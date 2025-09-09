@@ -1,0 +1,151 @@
+/* Animation mở modal: fade + scale up */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Animation đóng modal: fade + scale down */
+@keyframes fadeOutScale {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+/* Overlay fade in */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.5; /* tương ứng với bg-opacity-50 */
+  }
+}
+
+/* Overlay fade out */
+@keyframes fadeOut {
+  0% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Item fade + slide up */
+@keyframes fadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Lớp overlay khi mở modal */
+.overlay-open {
+  animation: fadeIn 0.3s forwards ease;
+}
+
+/* Lớp overlay khi đóng modal */
+.overlay-close {
+  animation: fadeOut 0.3s forwards ease;
+}
+
+/* Lớp modal khi mở */
+.modal-open {
+  animation: fadeInScale 0.3s forwards ease;
+}
+
+/* Lớp modal khi đóng */
+.modal-close {
+  animation: fadeOutScale 0.3s forwards ease;
+}
+
+/* Lớp item nhân viên */
+.employee-item {
+  opacity: 0;
+  animation: fadeSlideUp 0.3s forwards ease;
+}
+
+/* Button hover mượt */
+.btn-hover {
+  transition: background-color 0.3s ease;
+}
+
+.btn-hover:hover {
+  background-color: #fbbf24; /* vàng đậm hơn (tailwind yellow-500) */
+}
+/* notifications.css */
+
+@keyframes slideInFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOutFade {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  animation: slideInFade 0.3s ease forwards;
+  z-index: 9999;
+  min-width: 220px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.3s ease;
+}
+
+.notification.info {
+  background-color: #3b82f6; /* blue */
+}
+
+.notification.success {
+  background-color: #16a34a; /* green */
+}
+
+.notification.error {
+  background-color: #dc2626; /* red */
+}
+
+.notification.warning {
+  background-color: #f59e0b; /* amber */
+}
+
+/* Ẩn dần khi xóa */
+.notification.hide {
+  animation: slideOutFade 0.3s ease forwards;
+}

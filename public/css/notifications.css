@@ -1,0 +1,61 @@
+/* notifications.css */
+
+@keyframes slideInFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOutFade {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  animation: slideInFade 0.3s ease forwards;
+  z-index: 9999;
+  min-width: 220px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.3s ease;
+}
+
+.notification.info {
+  background-color: #3b82f6; /* blue */
+}
+
+.notification.success {
+  background-color: #16a34a; /* green */
+}
+
+.notification.error {
+  background-color: #dc2626; /* red */
+}
+
+.notification.warning {
+  background-color: #f59e0b; /* amber */
+}
+
+/* Ẩn dần khi xóa */
+.notification.hide {
+  animation: slideOutFade 0.3s ease forwards;
+}
