@@ -96,9 +96,9 @@ export default function DetailedModal({ isOpen, onClose, area }) {
       isMounted = false;
     };
   }, [selectedArea, selectedDate, forceFetch]);
-  const filteredData = allDetailData.filter((item) =>
-    item.model.toLowerCase().includes(selectedModel.toLowerCase())
-  );
+  const filteredData = allDetailData
+    .filter((item) => item.model.toLowerCase().includes(selectedModel.toLowerCase()))
+    .sort((a, b) => b.quantity - a.quantity);
 
   // Xuất Excel toàn bộ dữ liệu đang lọc
   const handleExportExcel = () => {
@@ -163,75 +163,67 @@ export default function DetailedModal({ isOpen, onClose, area }) {
           </button>
         </div>
 
-        {/* Bộ lọc + Nút xuất Excel: sang trọng, hiện đại (glassmorphism, gradient, icon) */}
-        <div className="flex flex-wrap gap-6 mb-6 items-end px-8 pt-2 pb-5 rounded-3xl shadow-2xl border border-transparent bg-white/60 backdrop-blur-md"
-          style={{ borderImage: 'linear-gradient(90deg, #a18cd1 0%, #fbc2eb 100%) 1' }}>
-          <div className="flex flex-col min-w-[140px]">
-            <label className="text-xs text-gray-600 mb-1 font-semibold tracking-wide" htmlFor="area-select">{t("detailedModal.area")}</label>
-            <select
-              id="area-select"
-              value={selectedArea}
-              onChange={(e) => setSelectedArea(e.target.value)}
-              className="border-0 rounded-xl px-4 py-2 bg-white/80 shadow focus:outline-none focus:ring-2 focus:ring-purple-400 transition hover:bg-white/100 text-gray-800 font-medium"
-              style={{ boxShadow: '0 2px 8px 0 rgba(161,140,209,0.10)' }}
-            >
-              {areas.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col min-w-[140px]">
-            <label className="text-xs text-gray-600 mb-1 font-semibold tracking-wide" htmlFor="date-input">{t("detailedModal.date")}</label>
-            <input
-              id="date-input"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="border-0 rounded-xl px-4 py-2 bg-white/80 shadow focus:outline-none focus:ring-2 focus:ring-purple-400 transition hover:bg-white/100 text-gray-800 font-medium"
-              style={{ boxShadow: '0 2px 8px 0 rgba(161,140,209,0.10)' }}
-            />
-          </div>
-          <div className="flex flex-col min-w-[120px]">
-            <label className="text-xs text-gray-600 mb-1 font-semibold tracking-wide" htmlFor="week-select">Tuần</label>
-            <select
-              id="week-select"
-              value={selectedWeek}
-              onChange={(e) => setSelectedWeek(e.target.value)}
-              className="border-0 rounded-xl px-4 py-2 bg-white/80 shadow cursor-not-allowed opacity-60 text-gray-800 font-medium"
-              style={{ boxShadow: '0 2px 8px 0 rgba(161,140,209,0.10)' }}
-              disabled
-            >
-              {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col min-w-[180px]">
-            <label className="text-xs text-gray-600 mb-1 font-semibold tracking-wide" htmlFor="model-search">{t("detailedModal.model")}</label>
-            <input
-              id="model-search"
-              type="text"
-              placeholder={t("detailedModal.searchModel")}
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="border-0 rounded-xl px-4 py-2 bg-white/80 shadow focus:outline-none focus:ring-2 focus:ring-purple-400 transition hover:bg-white/100 text-gray-800 font-medium"
-              style={{ boxShadow: '0 2px 8px 0 rgba(161,140,209,0.10)' }}
-            />
-          </div>
-          <div className="flex flex-col min-w-[150px] mt-2 sm:mt-0">
-            <label className="text-xs text-gray-600 mb-1 font-semibold invisible select-none">Export</label>
-            <button
-              onClick={handleExportExcel}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-400 via-pink-300 to-pink-400 hover:from-purple-500 hover:to-pink-500 active:from-purple-700 active:to-pink-700 text-white font-bold py-2 px-5 rounded-2xl shadow-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-pink-300"
-              style={{ boxShadow: '0 4px 16px 0 rgba(251,194,235,0.15)' }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" /></svg>
-              {t("detailedModal.exportExcel")}
-            </button>
+        {/* Bộ lọc nhỏ gọn giống DetailedNGModal */}
+        <div className="flex flex-col gap-2 mb-4 px-4 pt-2 pb-3 rounded-2xl shadow border border-[#e0e7ef] bg-white/70 backdrop-blur-sm w-full max-w-2xl mx-auto">
+          <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col min-w-[120px] flex-1">
+              <label className="text-xs text-gray-600 mb-1 font-semibold" htmlFor="area-select">{t("detailedModal.area")}</label>
+              <select
+                id="area-select"
+                value={selectedArea}
+                onChange={(e) => setSelectedArea(e.target.value)}
+                className="border border-gray-300 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-800 text-sm"
+              >
+                {areas.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col min-w-[120px] flex-1">
+              <label className="text-xs text-gray-600 mb-1 font-semibold" htmlFor="date-input">{t("detailedModal.date")}</label>
+              <input
+                id="date-input"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="border border-gray-300 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-800 text-sm"
+              />
+            </div>
+            <div className="flex flex-col min-w-[90px] flex-1">
+              <label className="text-xs text-gray-600 mb-1 font-semibold" htmlFor="week-select">Tuần</label>
+              <select
+                id="week-select"
+                value={selectedWeek}
+                onChange={(e) => setSelectedWeek(e.target.value)}
+                className="border border-gray-300 rounded-lg px-2 py-1 bg-white text-gray-800 text-sm cursor-not-allowed opacity-60"
+                disabled
+              >
+                {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
+                  <option key={w} value={w}>{w}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col min-w-[120px] flex-1">
+              <label className="text-xs text-gray-600 mb-1 font-semibold" htmlFor="model-search">{t("detailedModal.model")}</label>
+              <input
+                id="model-search"
+                type="text"
+                placeholder={t("detailedModal.searchModel")}
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="border border-gray-300 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-800 text-sm"
+              />
+            </div>
+            <div className="flex flex-col justify-end min-w-fit flex-1 items-end">
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center gap-1 bg-gradient-to-r from-[#7dd3fc] to-[#38bdf8] hover:from-[#bae6fd] hover:to-[#0ea5e9] text-[#334155] font-bold py-1 px-3 rounded-lg shadow transition-all duration-150 text-sm whitespace-nowrap min-w-fit"
+                style={{ boxShadow: '0 2px 8px 0 rgba(56,189,248,0.10)' }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" /></svg>
+                <span className="whitespace-nowrap">{t("detailedModal.exportExcel")}</span>
+              </button>
+            </div>
           </div>
         </div>
 

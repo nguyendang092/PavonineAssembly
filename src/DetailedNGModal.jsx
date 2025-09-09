@@ -146,7 +146,9 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
 
   // Filtered data (memoized)
   const filteredData = useMemo(() =>
-    allDetailData.filter(item => item.model.toLowerCase().includes(selectedModel.toLowerCase())),
+    allDetailData
+      .filter(item => item.model.toLowerCase().includes(selectedModel.toLowerCase()))
+      .sort((a, b) => b.quantity - a.quantity),
     [allDetailData, selectedModel]
   );
 
@@ -417,7 +419,7 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
                     );
                   }
                 }}
-                className="mt-2 w-full bg-gradient-to-r from-[#7dd3fc] to-[#38bdf8] hover:from-[#bae6fd] hover:to-[#0ea5e9] active:from-[#0ea5e9] active:to-[#0369a1] text-[#334155] font-bold py-1 rounded-xl shadow-md transition-all duration-150"
+                className="mt-2 w-full bg-gradient-to-r from-[#7dd3fc] to-[#38bdf8] hover:from-[#bae6fd] hover:to-[#0ea5e9] active:from-[rgb(14,165,233)] active:to-[#0369a1] text-[#334155] font-bold py-1 rounded-xl shadow-md transition-all duration-150"
               >
                 {t("detailedNGModal.viewMore")}
               </button>
