@@ -186,8 +186,8 @@ const AddEmployeeModal = ({
       }
     }
 
-  setIsSaving(true);
-  setLoading(true);
+    setIsSaving(true);
+    setLoading(true);
 
     try {
       let employeeId = newEmployee.employeeId || `PAVO${Date.now()}`;
@@ -270,7 +270,7 @@ const AddEmployeeModal = ({
 
       resetForm();
       onClose();
-  } catch (err) {
+    } catch (err) {
       console.error("🔥 Lỗi chi tiết:", err);
       alert(t("addEmployeeModal.saveError", { message: err.message || "" }));
     } finally {

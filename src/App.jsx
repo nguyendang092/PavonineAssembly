@@ -14,16 +14,30 @@ import CertificateGenerator1 from "./CertificateGenerator1";
 import CertificateGenerator2 from "./CertificateGenerator2";
 import Metandeco from "./Metandeco";
 import { routeConfig } from "./menuConfig";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import "./App.css";
 
 const App = () => {
-
   // Nếu reload (F5) thì về trang chủ /sanluong
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.performance && window.performance.navigation && window.performance.navigation.type === 1) {
-      if (window.location.pathname !== '/normal' && window.location.pathname !== '/') {
-        window.history.replaceState({}, '', '/normal');
+    if (
+      typeof window !== "undefined" &&
+      window.performance &&
+      window.performance.navigation &&
+      window.performance.navigation.type === 1
+    ) {
+      if (
+        window.location.pathname !== "/normal" &&
+        window.location.pathname !== "/"
+      ) {
+        window.history.replaceState({}, "", "/normal");
         window.location.reload();
       }
     }
@@ -94,15 +108,34 @@ const App = () => {
               {routeConfig.map((r) => {
                 let Element;
                 switch (r.element) {
-                  case "WorkplaceChart": Element = WorkplaceChart; break;
-                  case "NGWorkplaceChart": Element = NGWorkplaceChart; break;
-                  case "ModelProductionChart": Element = ModelProductionChart; break;
-                  case "Metandeco": Element = Metandeco; break;
-                  case "CertificateGenerator1": Element = CertificateGenerator1; break;
-                  case "CertificateGenerator2": Element = CertificateGenerator2; break;
-                  case "TemperatureMonitor": Element = TemperatureMonitor; break;
-                  case "Employ": Element = (props) => <Employ {...props} showToast={showToast} />; break;
-                  default: Element = null;
+                  case "WorkplaceChart":
+                    Element = WorkplaceChart;
+                    break;
+                  case "NGWorkplaceChart":
+                    Element = NGWorkplaceChart;
+                    break;
+                  case "ModelProductionChart":
+                    Element = ModelProductionChart;
+                    break;
+                  case "Metandeco":
+                    Element = Metandeco;
+                    break;
+                  case "CertificateGenerator1":
+                    Element = CertificateGenerator1;
+                    break;
+                  case "CertificateGenerator2":
+                    Element = CertificateGenerator2;
+                    break;
+                  case "TemperatureMonitor":
+                    Element = TemperatureMonitor;
+                    break;
+                  case "Employ":
+                    Element = (props) => (
+                      <Employ {...props} showToast={showToast} />
+                    );
+                    break;
+                  default:
+                    Element = null;
                 }
                 return Element ? (
                   <Route key={r.path} path={r.path} element={<Element />} />

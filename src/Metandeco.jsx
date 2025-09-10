@@ -317,6 +317,36 @@ function Metandeco() {
         {uploadSuccess && (
           <div style={{background: '#22c55e', color: '#fff', padding: 12, borderRadius: 8, marginBottom: 18, fontWeight: 600, fontSize: 16, textAlign: 'center', boxShadow: '0 2px 8px 0 rgba(34,197,94,0.10)'}}>{t('metandeco.uploadSuccess')}</div>
         )}
+        {/* Nút xuất Excel mới */}
+        <button
+          onClick={() => {
+            if (!filteredData.length) return;
+            const ws = XLSX.utils.json_to_sheet(filteredData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "ExportedData");
+            XLSX.writeFile(wb, `exported_data_${Date.now()}.xlsx`);
+          }}
+          style={{
+            background: 'linear-gradient(90deg, #38bdf8 0%, #0ea5e9 100%)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            padding: '10px 24px',
+            fontWeight: 700,
+            fontSize: 15,
+            boxShadow: '0 2px 8px 0 rgba(30,41,59,0.13)',
+            cursor: 'pointer',
+            marginBottom: 18,
+            letterSpacing: 0.5,
+            marginRight: 12,
+            float: 'right'
+          }}
+        >
+          <span style={{display:'inline-flex',alignItems:'center',gap:7}}>
+            <svg width="18" height="18" fill="none" viewBox="0 0 20 20" style={{marginRight:2}}><rect width="20" height="20" rx="4" fill="#0ea5e9"/><path d="M7 10l5 5m0 0l5-5m-5 5V4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Xuất Excel
+          </span>
+        </button>
         {filteredData.length > 0 && (
             <div style={{marginBottom: 24, borderRadius: 12, border: '1px solid #cbd5e1', background: '#fff'}}>
               <table style={{borderCollapse: 'collapse', width: '100%', fontSize: 12, tableLayout: 'fixed', textTransform: 'uppercase'}}>

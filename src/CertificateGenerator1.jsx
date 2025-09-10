@@ -39,12 +39,16 @@ export default function CertificateGenerator1() {
     return str
       .toLowerCase()
       .replace(/(?:^|\s)([a-zà-ỹ])/g, (m) => m.toUpperCase())
-      .replace(/\s+/g, ' ')
+      .replace(/\s+/g, " ")
       .trim();
   }
 
   // Hàm vẽ bằng khen
-  const drawCertificate = (text, dpr = window.devicePixelRatio || 1, sttNum = 1) => {
+  const drawCertificate = (
+    text,
+    dpr = window.devicePixelRatio || 1,
+    sttNum = 1
+  ) => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform trước khi scale
@@ -69,7 +73,10 @@ export default function CertificateGenerator1() {
     let nameFontSize = 190 * dpr;
     ctx.font = `bold ${nameFontSize}px 'TDF_cut-putroe-navisha-kyokm3', 'Arial', 'Times New Roman', 'serif'`;
     let maxNameWidth = baseWidth * 0.9; // chỉ chiếm 90% chiều rộng
-    while (ctx.measureText(displayName).width > maxNameWidth && nameFontSize > 40 * dpr) {
+    while (
+      ctx.measureText(displayName).width > maxNameWidth &&
+      nameFontSize > 40 * dpr
+    ) {
       nameFontSize -= 4 * dpr;
       ctx.font = `bold ${nameFontSize}px 'TDF_cut-putroe-navisha-kyokm3', 'Arial', 'Times New Roman', 'serif'`;
     }
@@ -100,11 +107,13 @@ export default function CertificateGenerator1() {
     ctx.fillText(subText, baseWidth / 2, 1900 + offsetSub);
 
     // Ngày tháng năm bên trái dưới
-    const dateFontSize = 50;   // chỉnh font size tại đây
-    const paddingLeft = 1320;   // khoảng cách từ lề trái
+    const dateFontSize = 50; // chỉnh font size tại đây
+    const paddingLeft = 1320; // khoảng cách từ lề trái
     const paddingBottom = 840; // tăng khoảng cách từ đáy lên để chữ cao hơn
 
-    ctx.font = `italic ${dateFontSize * dpr}px 'Arial', 'Times New Roman', 'serif'`;
+    ctx.font = `italic ${
+      dateFontSize * dpr
+    }px 'Arial', 'Times New Roman', 'serif'`;
     ctx.textAlign = "left";
     ctx.textBaseline = "bottom";
 
@@ -114,7 +123,11 @@ export default function CertificateGenerator1() {
     const m = (now.getMonth() + 1).toString().padStart(2, "0");
     const y = now.getFullYear();
     const todayStr = `Ngày ${d} Tháng ${m} Năm ${y}`;
-    ctx.fillText(`Phú Mỹ, ${todayStr}`, paddingLeft, baseHeight - paddingBottom);
+    ctx.fillText(
+      `Phú Mỹ, ${todayStr}`,
+      paddingLeft,
+      baseHeight - paddingBottom
+    );
 
     // Dòng số ký hiệu nằm giữa cạnh dưới cùng của bằng khen
     const soKyHieu = `SỐ: ${m}/${y}-${sttNum.toString().padStart(2, "0")}`;
@@ -130,7 +143,7 @@ export default function CertificateGenerator1() {
       alert("Vui lòng nhập tên!");
       return;
     }
-    setStt(prev => {
+    setStt((prev) => {
       const next = prev + 1;
       drawCertificate(name, window.devicePixelRatio || 1, next);
       return next;
@@ -140,14 +153,18 @@ export default function CertificateGenerator1() {
   const handleDownload = () => {
     // Xử lý tên file: bỏ dấu, viết liền, lowercase, thay khoảng trắng bằng _
     function removeVietnameseTones(str) {
-      return str.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+      return str
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D");
     }
-    let fileName = name.trim() ? name.trim() : 'bang-khen';
+    let fileName = name.trim() ? name.trim() : "bang-khen";
     fileName = removeVietnameseTones(fileName)
-      .replace(/\s+/g, '_')
-      .replace(/[^a-zA-Z0-9_]/g, '')
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9_]/g, "")
       .toLowerCase();
-    if (!fileName) fileName = 'bang-khen';
+    if (!fileName) fileName = "bang-khen";
     const link = document.createElement("a");
     link.download = `${fileName}.png`;
     link.href = canvasRef.current.toDataURL("image/png");
@@ -155,33 +172,113 @@ export default function CertificateGenerator1() {
   };
 
   return (
-    <div style={{ display: "flex", height: "90vh", background: "#f7f7fa", borderRadius: 12, boxShadow: "0 2px 8px #0001", overflow: "hidden" }}>
+    <div
+      style={{
+        display: "flex",
+        height: "90vh",
+        background: "#f7f7fa",
+        borderRadius: 12,
+        boxShadow: "0 2px 8px #0001",
+        overflow: "hidden",
+      }}
+    >
       {/* Sidebar nhập liệu */}
-      <div style={{ width: 340, background: "#fff", padding: 32, display: "flex", flexDirection: "column", alignItems: "center", borderRight: "1px solid #eee", boxShadow: "2px 0 8px #0001" }}>
-        <h2 style={{ fontWeight: 700, fontSize: 30, marginBottom: 32, fontFamily: "Cambria, sans-serif",textTransform: "uppercase", letterSpacing: "2px" }}>Tạo Bằng Khen</h2>
+      <div
+        style={{
+          width: 340,
+          background: "#fff",
+          padding: 32,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          borderRight: "1px solid #eee",
+          boxShadow: "2px 0 8px #0001",
+        }}
+      >
+        <h2
+          style={{
+            fontWeight: 700,
+            fontSize: 30,
+            marginBottom: 32,
+            fontFamily: "Cambria, sans-serif",
+            textTransform: "uppercase",
+            letterSpacing: "2px",
+          }}
+        >
+          Tạo Bằng Khen
+        </h2>
         <input
           type="text"
           placeholder="Nhập tên người được khen"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          style={{ padding: "12px 16px", fontSize: 18, borderRadius: 8, border: "1px solid #ccc", marginBottom: 24, width: "100%" }}
+          style={{
+            padding: "12px 16px",
+            fontSize: 18,
+            borderRadius: 8,
+            border: "1px solid #ccc",
+            marginBottom: 24,
+            width: "100%",
+          }}
         />
         <input
           type="text"
           placeholder="Nhập bộ phận"
           value={department}
-          onChange={e => setDepartment(e.target.value)}
-          style={{ padding: "12px 16px", fontSize: 16, borderRadius: 8, border: "1px solid #ccc", marginBottom: 24, width: "100%" }}
+          onChange={(e) => setDepartment(e.target.value)}
+          style={{
+            padding: "12px 16px",
+            fontSize: 16,
+            borderRadius: 8,
+            border: "1px solid #ccc",
+            marginBottom: 24,
+            width: "100%",
+          }}
         />
-        <button onClick={handleGenerate} style={{ marginBottom: 16, padding: "12px 0", width: "100%", fontWeight: 600, fontSize: 16, background: "#4f46e5", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer" }}>
+        <button
+          onClick={handleGenerate}
+          style={{
+            marginBottom: 16,
+            padding: "12px 0",
+            width: "100%",
+            fontWeight: 600,
+            fontSize: 16,
+            background: "#4f46e5",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+          }}
+        >
           Tạo
         </button>
-        <button onClick={handleDownload} style={{ padding: "12px 0", width: "100%", fontWeight: 600, fontSize: 16, background: "#10b981", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer" }}>
+        <button
+          onClick={handleDownload}
+          style={{
+            padding: "12px 0",
+            width: "100%",
+            fontWeight: 600,
+            fontSize: 16,
+            background: "#10b981",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+          }}
+        >
           Tải về
         </button>
       </div>
       {/* Preview bên phải */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#f7f7fa" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f7f7fa",
+        }}
+      >
         <canvas
           ref={canvasRef}
           style={{
@@ -192,7 +289,7 @@ export default function CertificateGenerator1() {
             height: "auto",
             maxHeight: "80vh",
             boxShadow: "0 2px 8px #0002",
-            display: "block"
+            display: "block",
           }}
         />
       </div>
