@@ -8,8 +8,8 @@ import { ref, set, get } from "firebase/database";
 
 // Định nghĩa mapping giữa tên cột Excel và key trong code
 const COLUMN_MAP = {
-  "Line": "AP5",
-  "Công đoạn": "công đoạn",
+  "Line": "Line",
+  "Công đoạn": "Công đoạn",
   "Phân Loại": "Phân Loại",
   "Tháng": "Tháng",
   "Năm": "Năm",
@@ -321,31 +321,54 @@ function Metandeco() {
         <button
           onClick={() => {
             if (!filteredData.length) return;
-            const ws = XLSX.utils.json_to_sheet(filteredData);
+            // Lấy tất cả các key lỗi xuất hiện trong filteredData
+            const allLoiKeys = Array.from(
+              filteredData.reduce((set, row) => {
+                if (row.Lỗi && typeof row.Lỗi === 'object') {
+                  Object.keys(row.Lỗi).forEach(k => set.add(k));
+                }
+                return set;
+              }, new Set())
+            );
+            // Tạo dữ liệu xuất với các cột lỗi riêng biệt
+            const exportData = filteredData.map(row => {
+              const base = { ...row };
+              // Xóa object Lỗi, thay bằng từng cột lỗi
+              delete base.Lỗi;
+              delete base["Tháng Năm"];
+              allLoiKeys.forEach(loiKey => {
+                base[loiKey] = row.Lỗi && row.Lỗi[loiKey] !== undefined ? row.Lỗi[loiKey] : 0;
+              });
+              return base;
+            });
+            const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "ExportedData");
-            XLSX.writeFile(wb, `exported_data_${Date.now()}.xlsx`);
+            XLSX.writeFile(wb, `Pavonine_AP5_${Date.now()}.xlsx`);
           }}
           style={{
             background: 'linear-gradient(90deg, #38bdf8 0%, #0ea5e9 100%)',
             color: '#fff',
             border: 'none',
-            borderRadius: 8,
-            padding: '10px 24px',
-            fontWeight: 700,
-            fontSize: 15,
-            boxShadow: '0 2px 8px 0 rgba(30,41,59,0.13)',
+            borderRadius: 6,
+            padding: '5px 12px',
+            fontWeight: 600,
+            fontSize: 13,
+            boxShadow: '0 1px 4px 0 rgba(30,41,59,0.10)',
             cursor: 'pointer',
-            marginBottom: 18,
-            letterSpacing: 0.5,
-            marginRight: 12,
-            float: 'right'
+            marginBottom: 8,
+            marginRight: 6,
+            float: 'right',
+            minWidth: 0,
+            height: 32,
+            lineHeight: '20px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5
           }}
         >
-          <span style={{display:'inline-flex',alignItems:'center',gap:7}}>
-            <svg width="18" height="18" fill="none" viewBox="0 0 20 20" style={{marginRight:2}}><rect width="20" height="20" rx="4" fill="#0ea5e9"/><path d="M7 10l5 5m0 0l5-5m-5 5V4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Xuất Excel
-          </span>
+          <svg width="16" height="16" fill="none" viewBox="0 0 20 20" style={{marginRight:3}}><rect width="16" height="16" rx="3" fill="#0ea5e9"/><path d="M7 10l5 5m0 0l5-5m-5 5V4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span style={{whiteSpace:'nowrap'}}>Xuất Excel</span>
         </button>
         {filteredData.length > 0 && (
             <div style={{marginBottom: 24, borderRadius: 12, border: '1px solid #cbd5e1', background: '#fff'}}>
