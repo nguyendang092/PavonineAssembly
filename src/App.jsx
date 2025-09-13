@@ -25,21 +25,10 @@ import {
 import "./App.css";
 
 const App = () => {
-  // Nếu reload (F5) thì về trang chủ /sanluong
+  // Khi F5 (refresh) ở bất kỳ trang nào, tự động chuyển về trang chủ /normal
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      window.performance &&
-      window.performance.navigation &&
-      window.performance.navigation.type === 1
-    ) {
-      if (
-        window.location.pathname !== "/normal" &&
-        window.location.pathname !== "/"
-      ) {
-        window.history.replaceState({}, "", "/normal");
-        window.location.reload();
-      }
+    if (window.location.pathname !== "/normal" && window.location.pathname !== "/") {
+      window.location.replace("/normal");
     }
   }, []);
   const [toastMessage, setToastMessage] = useState("");
