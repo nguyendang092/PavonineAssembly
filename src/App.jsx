@@ -14,6 +14,7 @@ import CertificateGenerator1 from "./CertificateGenerator1";
 import CertificateGenerator2 from "./CertificateGenerator2";
 import Metandeco from "./Metandeco";
 import { routeConfig } from "./menuConfig";
+import MoldManager from "./MoldManager";
 import {
   BrowserRouter as Router,
   Routes,
@@ -118,6 +119,9 @@ const App = () => {
                   case "TemperatureMonitor":
                     Element = TemperatureMonitor;
                     break;
+                  case "MoldManager":
+  Element = MoldManager;
+  break;
                   case "Employ":
                     Element = (props) => (
                       <Employ {...props} showToast={showToast} />

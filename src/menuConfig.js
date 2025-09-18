@@ -56,6 +56,14 @@ export const menuConfig = [
     //   { key: "DuyHinh", label: "navbar.DuyHinh", path: "/employ/DuyHinh" },
     ],
   },
+  {
+    key: "mold",
+    label: "navbar.mold",
+    type: "dropdown",
+    children: [
+      { key: "mold", label: "navbar.mold", path: "/mold" },
+    ],
+  },
  
 ];
 
@@ -73,4 +81,5 @@ export const routeConfig = [
   { path: "/nhietdo", element: "TemperatureMonitor" },
   { path: "/employ", element: "Employ" },
   { path: "/employ/:leader", element: "Employ" },
+  { path: "/mold", element: "MoldManager" },
 ];

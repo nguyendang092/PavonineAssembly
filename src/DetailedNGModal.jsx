@@ -8,11 +8,13 @@ import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Lege
 import { useUser } from "./UserContext";
 
 // Utility functions
-function getCurrentWeekNumber() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const diff = (now - start + (start.getTimezoneOffset() - now.getTimezoneOffset()) * 60000) / 86400000;
-  return Math.ceil((diff + start.getDay() + 1) / 7);
+// ISO week number (tuần bắt đầu từ thứ 2, tuần 1 là tuần có ngày đầu tiên của năm)
+function getISOWeekNumber(date = new Date()) {
+  date = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1)/7);
 }
 function getYesterday() {
   const d = new Date();
@@ -21,9 +23,7 @@ function getYesterday() {
 }
 function getWeekNumber(dateStr) {
   const date = new Date(dateStr);
-  const startOfYear = new Date(date.getFullYear(), 0, 1);
-  const days = Math.floor((date - startOfYear) / (24 * 60 * 60 * 1000));
-  return Math.ceil((days + startOfYear.getDay() + 1) / 7);
+  return getISOWeekNumber(date);
 }
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
@@ -32,7 +32,7 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
   const { t } = useTranslation();
   const { user } = useUser();
   const [selectedArea, setSelectedArea] = useState(area || "Press");
-  const [selectedWeek, setSelectedWeek] = useState(week || getCurrentWeekNumber().toString());
+  const [selectedWeek, setSelectedWeek] = useState(week || getISOWeekNumber().toString());
   const [selectedDate, setSelectedDate] = useState(getYesterday());
   const [selectedModel, setSelectedModel] = useState("");
   const [areas, setAreas] = useState([]);
@@ -69,9 +69,9 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
     if (!isOpen || !selectedArea) return;
     let isMounted = true;
     setLoading(true);
-    if (viewWholeWeek && week && !ignoreWeekProp) {
-      // Fetch all data for the selected area and week
-      get(ref(db, `ng/${selectedArea}/${week}`)).then(snapshot => {
+    if (viewWholeWeek) {
+      // Luôn lấy dữ liệu tuần hiện tại (selectedWeek)
+      get(ref(db, `ng/${selectedArea}/${selectedWeek}`)).then(snapshot => {
         if (!isMounted) return;
         const details = [];
         if (snapshot.exists()) {
@@ -94,7 +94,7 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
                   quantity = modelData[model];
                 }
                 if (quantity > 0) {
-                  details.push({ model, date: day, quantity, week, rework, area: selectedArea, notes });
+                  details.push({ model, date: day, quantity, week: selectedWeek, rework, area: selectedArea, notes });
                 }
               }
             }
@@ -104,7 +104,7 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
         setLoading(false);
       });
     } else if (selectedDate) {
-      // Fetch for the selected date
+      // Lấy dữ liệu theo ngày
       get(ref(db, `ng/${selectedArea}`)).then(snapshot => {
         if (!isMounted) return;
         const details = [];
@@ -142,7 +142,7 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
       });
     }
     return () => { isMounted = false; };
-  }, [selectedArea, selectedDate, isOpen, week, ignoreWeekProp, viewWholeWeek]);
+  }, [selectedArea, selectedDate, selectedWeek, isOpen, ignoreWeekProp, viewWholeWeek]);
 
   // Filtered data (memoized)
   const filteredData = useMemo(() =>

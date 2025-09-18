@@ -121,7 +121,7 @@ export default function DetailedModal({ isOpen, onClose, area }) {
       {
         label: "Sản lượng",
         data: filteredData.map((item) => item.quantity),
-        backgroundColor: "#4F46E5",
+        backgroundColor: "#7dd3fc",
       },
     ],
   };

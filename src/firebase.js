@@ -1,6 +1,6 @@
 // src/firebase.js
 import { initializeApp } from 'firebase/app';
-import { getDatabase } from 'firebase/database';
+import { getDatabase, ref, set, onValue } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBJcT3NZYg7_BfW_J9SKuxqiWS0o9SPhTo",
@@ -15,4 +15,5 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-export { db };
+// Export thêm các hàm thao tác database phổ biến
+export { db, ref, set, onValue };
