@@ -70,6 +70,17 @@ export default function WorkplaceChart() {
   const [dataMap, setDataMap] = useState({});
   const [tableView, setTableView] = useState("detailed");
   const [rawData, setRawData] = useState(null);
+  const [showTable, setShowTable] = useState(window.innerWidth >= 1520);
+
+  // Theo dõi kích thước màn hình
+  useEffect(() => {
+    const handleResize = () => {
+      setShowTable(window.innerWidth >= 1520);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // Load dữ liệu từ Firebase khi component mount
   useEffect(() => {
     const loadDataFromFirebase = async () => {
@@ -94,9 +105,11 @@ export default function WorkplaceChart() {
                 // Sửa đoạn này: lặp qua từng shiftKey trong shifts
                 for (const shiftKey in shifts) {
                   const shiftData = shifts[shiftKey];
-                  let totalGood = 0, totalNG = 0;
+                  let totalGood = 0,
+                    totalNG = 0;
                   if (typeof shiftData === "object" && shiftData !== null) {
-                    totalGood = shiftData.Total_Good ?? shiftData.Total_Product ?? 0;
+                    totalGood =
+                      shiftData.Total_Good ?? shiftData.Total_Product ?? 0;
                     totalNG = shiftData.Total_NG ?? 0;
                   } else {
                     totalGood = shiftData ?? 0;
@@ -347,7 +360,7 @@ export default function WorkplaceChart() {
       } else {
         dataArr = map[area].map(
           ({ Day, Night }) =>
-           Day.normal +
+            Day.normal +
             Day.rework +
             Night.normal +
             Night.rework +
@@ -414,23 +427,23 @@ export default function WorkplaceChart() {
     XLSX.writeFile(wb, `san_luong_chi_tiet_tuan_${selectedWeek}.xlsx`);
   };
   return (
-    <div className="flex bg-gray-50 overflow-hidden">
+    <div className="flex flex-col lg:flex-row bg-gray-50 min-h-screen overflow-hidden">
       {/* Sidebar */}
-      <div className="w-64 flex flex-col p-6 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-md border-r overflow-hidden">
+      <div className="w-full lg:w-64 flex flex-col p-2 sm:p-3 lg:p-6 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-md lg:border-r overflow-auto">
         {/* Nội dung chính */}
         <div className="flex-grow">
-          <h2 className="text-2xl font-bold text-white mb-6 uppercase flex items-center gap-2">
+          <h2 className="text-base sm:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 lg:mb-6 uppercase flex items-center gap-1 sm:gap-2 justify-center lg:justify-start">
             {t("workplaceChart.menuTitle")}
           </h2>
           {Object.keys(weekData).length > 0 && (
             <>
-              <label className="block text-white font-medium mb-2">
+              <label className="block text-white font-medium mb-1 sm:mb-1.5 lg:mb-2 text-xs sm:text-sm lg:text-base">
                 {t("workplaceChart.selectWeek")}
               </label>
               <select
                 value={selectedWeek}
                 onChange={(e) => setSelectedWeek(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none mb-4"
+                className="w-full border border-gray-300 rounded-md px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none mb-2 sm:mb-3 lg:mb-4"
               >
                 {Object.keys(weekData).map((week) => (
                   <option key={week} value={week}>
@@ -443,16 +456,16 @@ export default function WorkplaceChart() {
         </div>
         {/* Chỉ hiển thị upload khi đã đăng nhập */}
         {user && (
-          <div className="flex flex-col gap-3 w-full px-1">
-            <div className="flex items-center justify-between gap-2 backdrop-blur rounded-lg p-1 shadow-md">
+          <div className="flex flex-col gap-2 sm:gap-3 w-full px-1">
+            <div className="flex items-center justify-between gap-1 sm:gap-2 backdrop-blur rounded-lg p-1 shadow-md">
               <label
                 htmlFor="file-upload-total"
-                className="cursor-pointer p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
+                className="cursor-pointer p-1.5 sm:p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
                 title="Chọn file"
               >
-                <FiUpload size={18} />
+                <FiUpload size={16} className="sm:w-[18px] sm:h-[18px]" />
               </label>
-              <span className="text-white text-sm font-medium flex-1 text-center">
+              <span className="text-white text-[10px] sm:text-xs lg:text-sm font-medium flex-1 text-center">
                 {t("workplaceChart.chooseExceltotal")}
               </span>
               {/* Nút upload */}
@@ -468,7 +481,7 @@ export default function WorkplaceChart() {
                       alert(t("workplaceChart.uploadError") + error.message)
                     );
                 }}
-                className="hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition"
+                className="hover:bg-purple-700 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-[10px] sm:text-xs lg:text-sm font-medium transition"
               >
                 {t("workplaceChart.uploadFirebase")}
               </button>
@@ -481,22 +494,22 @@ export default function WorkplaceChart() {
               />
             </div>
             {/* Chi tiết */}
-            <div className="flex items-center justify-between gap-2 backdrop-blur rounded-lg p-1 shadow-md">
+            <div className="flex items-center justify-between gap-1 sm:gap-2 backdrop-blur rounded-lg p-1 shadow-md">
               {/* Icon upload */}
               <label
                 htmlFor="file-upload-detail"
-                className="cursor-pointer p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
+                className="cursor-pointer p-1.5 sm:p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
                 title="Chọn file"
               >
-                <FiUpload size={18} />
+                <FiUpload size={16} className="sm:w-[18px] sm:h-[18px]" />
               </label>
-              <span className="text-white text-sm font-medium flex-1 text-center">
+              <span className="text-white text-[10px] sm:text-xs lg:text-sm font-medium flex-1 text-center">
                 {t("workplaceChart.chooseExceldetail")}
               </span>
               <button
                 onClick={handleDetailUploadToFirebase}
                 disabled={!detailData}
-                className=" hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition disabled:opacity-50"
+                className=" hover:bg-purple-700 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-[10px] sm:text-xs lg:text-sm font-medium transition disabled:opacity-50"
               >
                 {t("workplaceChart.uploadFirebase")}
               </button>
@@ -512,9 +525,15 @@ export default function WorkplaceChart() {
         )}
       </div>
       {/* Chart và bảng tổng */}
-      <div className="flex-1 p-4 flex gap-6" style={{ height: "93vh" }}>
+      <div
+        className="flex-1 p-2 sm:p-4 flex flex-col lg:flex-row gap-3 sm:gap-6 overflow-auto"
+        style={{ minHeight: "50vh" }}
+      >
         {/* Chart */}
-        <div style={{ flex: "7", overflowY: "auto" }}>
+        <div
+          className="w-full lg:flex-[7] overflow-y-auto"
+          style={{ minHeight: "300px" }}
+        >
           {chartData ? (
             <Bar
               data={chartData}
@@ -574,260 +593,317 @@ export default function WorkplaceChart() {
             </p>
           )}
         </div>
-        {/* Bảng tổng */}
-        <div
-          style={{
-            flex: "4",
-            backgroundColor: "white",
-            borderRadius: 8,
-            padding: 16,
-            boxShadow: "0 0 10px rgba(0,0,0,0.1)",
-            overflowX: "auto",
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            height: "100%",
-            width: "300px",
-          }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xl font-bold uppercase px-2">
-              {t("workplaceChart.outputByArea")}
-            </h3>
+        {/* Bảng tổng - Hiển thị khi màn hình >= 1520px */}
+        {showTable && (
+          <div
+            className="flex"
+            style={{
+              flex: "4",
+              backgroundColor: "white",
+              borderRadius: 8,
+              padding: "12px",
+              boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+              overflowX: "auto",
+              overflowY: "auto",
+              flexDirection: "column",
+              height: "100%",
+              minWidth: "280px",
+            }}
+          >
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-2">
+              <h3 className="text-base sm:text-xl font-bold uppercase px-1 sm:px-2">
+                {t("workplaceChart.outputByArea")}
+              </h3>
 
-            <div className="flex items-center gap-4">
-              <select
-                value={selectedArea}
-                onChange={(e) => setSelectedArea(e.target.value)}
-                className="border border-gray-300 rounded-md px-2 py-1 text-xs focus:outline-none"
-                style={{ minWidth: 140 }}
-              >
-                <option value="">{t("workplaceChart.selectArea")}</option>
-                {Object.keys(dataMap).map((area) => (
-                  <option key={area} value={area}>
-                    {t(`areas.${area}`)}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                <select
+                  value={selectedArea}
+                  onChange={(e) => setSelectedArea(e.target.value)}
+                  className="border border-gray-300 rounded-md px-2 py-1 text-xs sm:text-sm focus:outline-none flex-1 sm:flex-none"
+                  style={{ minWidth: 100 }}
+                >
+                  <option value="">{t("workplaceChart.selectArea")}</option>
+                  {Object.keys(dataMap).map((area) => (
+                    <option key={area} value={area}>
+                      {t(`areas.${area}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
-          {chartData ? (
-            tableView === "detailed" ? (
-              <>
+            {chartData ? (
+              tableView === "detailed" ? (
+                <>
+                  <table
+                    className="min-w-full text-left border-collapse table-auto text-sm"
+                    style={{ fontSize: "0.875rem", lineHeight: 1.2 }}
+                  >
+                    <thead>
+                      <tr className="uppercase">
+                        <th className="border-b pb-1" style={{ width: "35%" }}>
+                          {t("workplaceChart.areaDay")}
+                        </th>
+                        <th
+                          className="border-b pb-1 text-right"
+                          style={{ width: "25%" }}
+                        >
+                          {t("workplaceChart.normal")}
+                        </th>
+                        <th
+                          className="border-b pb-1 text-right"
+                          style={{ width: "20%" }}
+                        >
+                          NG
+                        </th>
+                        <th
+                          className="border-b pb-1 text-right font-bold"
+                          style={{ width: "20%" }}
+                        >
+                          {t("workplaceChart.total")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(dataMap)
+                        .filter(
+                          ([area]) =>
+                            selectedArea === "" || selectedArea === area
+                        )
+                        .map(([area, dayArr]) => {
+                          let totalNormal = 0;
+                          let totalNG = 0;
+                          chartData.labels.forEach((_, idx) => {
+                            const { Day, Night } = dayArr[idx] || {
+                              Day: {},
+                              Night: {},
+                            };
+                            let normal, ng;
+                            if (area === "CNC") {
+                              normal = Day.normal;
+                              ng = Day.ng_normal + Day.ng_rework;
+                            } else {
+                              normal = Day.normal + Night.normal;
+                              ng =
+                                Day.ng_normal +
+                                Night.ng_normal +
+                                Day.ng_rework +
+                                Night.ng_rework;
+                            }
+                            totalNormal += normal;
+                            totalNG += ng;
+                          });
+                          return (
+                            <React.Fragment key={area}>
+                              <tr
+                                className="bg-gray-200 font-semibold uppercase"
+                                style={{ fontSize: "0.9rem" }}
+                              >
+                                <td style={{ padding: "6px 8px" }}>
+                                  {t(`areas.${area}`)}
+                                </td>
+                                <td
+                                  className="text-right"
+                                  style={{ padding: "6px 8px" }}
+                                >
+                                  {totalNormal.toLocaleString()}
+                                </td>
+                                <td
+                                  className="text-right"
+                                  style={{ padding: "6px 8px" }}
+                                >
+                                  {totalNG.toLocaleString()}
+                                </td>
+                                <td
+                                  className="text-right"
+                                  style={{ padding: "6px 8px" }}
+                                >
+                                  {(totalNormal + totalNG).toLocaleString()}
+                                </td>
+                              </tr>
+                              {chartData.labels.map((label, idx) => {
+                                const { Day, Night } = dayArr[idx] || {
+                                  Day: {
+                                    normal: 0,
+                                    ng_normal: 0,
+                                    ng_rework: 0,
+                                  },
+                                  Night: {
+                                    normal: 0,
+                                    ng_normal: 0,
+                                    ng_rework: 0,
+                                  },
+                                };
+                                let normal, ng;
+                                if (area === "CNC") {
+                                  normal = Day.normal;
+                                  ng = Day.ng_normal + Day.ng_rework;
+                                } else {
+                                  normal = Day.normal + Night.normal;
+                                  ng =
+                                    Day.ng_normal +
+                                    Night.ng_normal +
+                                    Day.ng_rework +
+                                    Night.ng_rework;
+                                }
+                                const total = normal + ng; // Tổng = good + NG
+                                if (total === 0) return null;
+                                return (
+                                  <tr
+                                    key={idx}
+                                    className="text-gray-700"
+                                    style={{ fontSize: "0.8rem" }}
+                                  >
+                                    <td
+                                      style={{
+                                        paddingLeft: 32,
+                                        paddingTop: 2,
+                                        paddingBottom: 2,
+                                      }}
+                                    >
+                                      {label}
+                                    </td>
+                                    <td
+                                      className="text-right"
+                                      style={{
+                                        paddingTop: 2,
+                                        paddingBottom: 2,
+                                      }}
+                                    >
+                                      {normal.toLocaleString()}
+                                    </td>
+                                    <td
+                                      className="text-right"
+                                      style={{
+                                        paddingTop: 2,
+                                        paddingBottom: 2,
+                                      }}
+                                    >
+                                      {ng.toLocaleString()}
+                                    </td>
+                                    <td
+                                      className="text-right"
+                                      style={{
+                                        paddingTop: 2,
+                                        paddingBottom: 2,
+                                      }}
+                                    >
+                                      {total.toLocaleString()}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </React.Fragment>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                  {/* Nút xuất Excel */}
+                  <div className="mt-4 flex justify-end gap-3">
+                    <button
+                      onClick={() =>
+                        openDetailModal("Assembly", getCurrentWeekNumber())
+                      }
+                      className="bg-blue-600 text-white px-4 py-2 rounded font-bold"
+                    >
+                      {t("workplaceChart.viewDetail")}
+                    </button>
+
+                    <button
+                      onClick={exportToExcel}
+                      className="font-bold text-white px-3 py-2 bg-green-600 rounded hover:bg-green-700"
+                    >
+                      {t("workplaceChart.exportExcel")}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                // summary view: bảng đơn giản tổng mỗi khu vực
                 <table
                   className="min-w-full text-left border-collapse table-auto text-sm"
                   style={{ fontSize: "0.875rem", lineHeight: 1.2 }}
                 >
                   <thead>
-                    <tr className="uppercase">
-                      <th className="border-b pb-1" style={{ width: "35%" }}>
-                        {t("workplaceChart.areaDay")}
+                    <tr>
+                      <th className="border-b pb-1" style={{ width: "40%" }}>
+                        {t("workplaceChart.area")}
                       </th>
-                      <th className="border-b pb-1 text-right" style={{ width: "25%" }}>
+                      <th
+                        className="border-b pb-1 text-right"
+                        style={{ width: "20%" }}
+                      >
                         {t("workplaceChart.normal")}
                       </th>
-                      <th className="border-b pb-1 text-right" style={{ width: "20%" }}>
-                        NG
+                      <th
+                        className="border-b pb-1 text-right"
+                        style={{ width: "20%" }}
+                      >
+                        {t("workplaceChart.rework")}
                       </th>
-                      <th className="border-b pb-1 text-right font-bold" style={{ width: "20%" }}>
+                      <th
+                        className="border-b pb-1 text-right font-bold"
+                        style={{ width: "20%" }}
+                      >
                         {t("workplaceChart.total")}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(dataMap)
-                      .filter(
-                        ([area]) => selectedArea === "" || selectedArea === area
-                      )
-                      .map(([area, dayArr]) => {
-                        let totalNormal = 0;
-                        let totalNG = 0;
-                        chartData.labels.forEach((_, idx) => {
-                          const { Day, Night } = dayArr[idx] || {
-                            Day: {},
-                            Night: {},
-                          };
-                          let normal, ng;
-                          if (area === "CNC") {
-                            normal = Day.normal;
-                            ng = Day.ng_normal + Day.ng_rework;
-                          } else {
-                            normal = Day.normal + Night.normal;
-                            ng = Day.ng_normal + Night.ng_normal + Day.ng_rework + Night.ng_rework;
-                          }
-                          totalNormal += normal;
-                          totalNG += ng;
-                        });
-                        return (
-                          <React.Fragment key={area}>
-                            <tr
-                              className="bg-gray-200 font-semibold uppercase"
-                              style={{ fontSize: "0.9rem" }}
-                            >
-                              <td style={{ padding: "6px 8px" }}>
-                                {t(`areas.${area}`)}
-                              </td>
-                              <td className="text-right" style={{ padding: "6px 8px" }}>
-                                {totalNormal.toLocaleString()}
-                              </td>
-                              <td className="text-right" style={{ padding: "6px 8px" }}>
-                                {totalNG.toLocaleString()}
-                              </td>
-                              <td className="text-right" style={{ padding: "6px 8px" }}>
-                                {(totalNormal + totalNG).toLocaleString()}
-                              </td>
-                            </tr>
-                            {chartData.labels.map((label, idx) => {
-                              const { Day, Night } = dayArr[idx] || {
-                                Day: { normal: 0, ng_normal: 0, ng_rework: 0 },
-                                Night: { normal: 0, ng_normal: 0, ng_rework: 0 },
-                              };
-                              let normal, ng;
-                              if (area === "CNC") {
-                                normal = Day.normal;
-                                ng = Day.ng_normal + Day.ng_rework;
-                              } else {
-                                normal = Day.normal + Night.normal;
-                                ng = Day.ng_normal + Night.ng_normal + Day.ng_rework + Night.ng_rework;
-                              }
-                              const total = normal + ng; // Tổng = good + NG
-                              if (total === 0) return null;
-                              return (
-                                <tr
-                                  key={idx}
-                                  className="text-gray-700"
-                                  style={{ fontSize: "0.8rem" }}
-                                >
-                                  <td style={{
-                                    paddingLeft: 32,
-                                    paddingTop: 2,
-                                    paddingBottom: 2,
-                                  }}>
-                                    {label}
-                                  </td>
-                                  <td className="text-right" style={{ paddingTop: 2, paddingBottom: 2 }}>
-                                    {normal.toLocaleString()}
-                                  </td>
-                                  <td className="text-right" style={{ paddingTop: 2, paddingBottom: 2 }}>
-                                    {ng.toLocaleString()}
-                                  </td>
-                                  <td className="text-right" style={{ paddingTop: 2, paddingBottom: 2 }}>
-                                    {total.toLocaleString()}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </React.Fragment>
-                        );
-                      })}
+                    {Object.entries(dataMap).map(([area, dayArr]) => {
+                      let totalNormal = 0;
+                      let totalRework = 0;
+                      dayArr.forEach(({ Day, Night }, idx) => {
+                        let normal = Day.normal;
+                        let rework = Day.rework;
+                        if (area === "CNC") {
+                          const nextNight =
+                            idx + 1 < dayArr.length
+                              ? dayArr[idx + 1].Night
+                              : { normal: 0, rework: 0 };
+                          normal += nextNight.normal;
+                          rework += nextNight.rework;
+                        } else {
+                          normal += Night.normal;
+                          rework += Night.rework;
+                        }
+                        totalNormal += normal;
+                        totalRework += rework;
+                      });
+                      return (
+                        <tr
+                          key={area}
+                          className="font-semibold"
+                          style={{ fontSize: "1rem" }}
+                        >
+                          <td style={{ padding: "6px 8px" }}>{area}</td>
+                          <td
+                            className="text-right"
+                            style={{ padding: "6px 8px" }}
+                          >
+                            {totalNormal.toLocaleString()}
+                          </td>
+                          <td
+                            className="text-right"
+                            style={{ padding: "6px 8px" }}
+                          >
+                            {totalRework.toLocaleString()}
+                          </td>
+                          <td
+                            className="text-right"
+                            style={{ padding: "6px 8px" }}
+                          >
+                            {(totalNormal + totalRework).toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
-                {/* Nút xuất Excel */}
-                <div className="mt-4 flex justify-end gap-3">
-                  <button
-                    onClick={() =>
-                      openDetailModal("Assembly", getCurrentWeekNumber())
-                    }
-                    className="bg-blue-600 text-white px-4 py-2 rounded font-bold"
-                  >
-                    {t("workplaceChart.viewDetail")}
-                  </button>
-
-                  <button
-                    onClick={exportToExcel}
-                    className="font-bold text-white px-3 py-2 bg-green-600 rounded hover:bg-green-700"
-                  >
-                    {t("workplaceChart.exportExcel")}
-                  </button>
-                </div>
-              </>
+              )
             ) : (
-              // summary view: bảng đơn giản tổng mỗi khu vực
-              <table
-                className="min-w-full text-left border-collapse table-auto text-sm"
-                style={{ fontSize: "0.875rem", lineHeight: 1.2 }}
-              >
-                <thead>
-                  <tr>
-                    <th className="border-b pb-1" style={{ width: "40%" }}>
-                      {t("workplaceChart.area")}
-                    </th>
-                    <th
-                      className="border-b pb-1 text-right"
-                      style={{ width: "20%" }}
-                    >
-                      {t("workplaceChart.normal")}
-                    </th>
-                    <th
-                      className="border-b pb-1 text-right"
-                      style={{ width: "20%" }}
-                    >
-                      {t("workplaceChart.rework")}
-                    </th>
-                    <th
-                      className="border-b pb-1 text-right font-bold"
-                      style={{ width: "20%" }}
-                    >
-                      {t("workplaceChart.total")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(dataMap).map(([area, dayArr]) => {
-                    let totalNormal = 0;
-                    let totalRework = 0;
-                    dayArr.forEach(({ Day, Night }, idx) => {
-                      let normal = Day.normal;
-                      let rework = Day.rework;
-                      if (area === "CNC") {
-                        const nextNight =
-                          idx + 1 < dayArr.length
-                            ? dayArr[idx + 1].Night
-                            : { normal: 0, rework: 0 };
-                        normal += nextNight.normal;
-                        rework += nextNight.rework;
-                      } else {
-                        normal += Night.normal;
-                        rework += Night.rework;
-                      }
-                      totalNormal += normal;
-                      totalRework += rework;
-                    });
-                    return (
-                      <tr
-                        key={area}
-                        className="font-semibold"
-                        style={{ fontSize: "1rem" }}
-                      >
-                        <td style={{ padding: "6px 8px" }}>{area}</td>
-                        <td
-                          className="text-right"
-                          style={{ padding: "6px 8px" }}
-                        >
-                          {totalNormal.toLocaleString()}
-                        </td>
-                        <td
-                          className="text-right"
-                          style={{ padding: "6px 8px" }}
-                        >
-                          {totalRework.toLocaleString()}
-                        </td>
-                        <td
-                          className="text-right"
-                          style={{ padding: "6px 8px" }}
-                        >
-                          {(totalNormal + totalRework).toLocaleString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )
-          ) : (
-            <p>{t("workplaceChart.noData")}</p>
-          )}
-        </div>
+              <p>{t("workplaceChart.noData")}</p>
+            )}
+          </div>
+        )}
       </div>
       <DetailedModal
         isOpen={isModalOpen}

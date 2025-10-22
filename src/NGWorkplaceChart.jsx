@@ -68,6 +68,16 @@ export default function NGWorkplaceChart() {
   const [dataMap, setDataMap] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalArea, setModalArea] = useState("");
+  const [showTable, setShowTable] = useState(window.innerWidth >= 1520);
+
+  // Theo dõi kích thước màn hình
+  useEffect(() => {
+    const handleResize = () => {
+      setShowTable(window.innerWidth >= 1520);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Hàm đóng modal chi tiết
   const closeDetailModal = () => {
@@ -317,22 +327,22 @@ export default function NGWorkplaceChart() {
   };
 
   return (
-  <div className="flex bg-gray-50 overflow-hidden">
-      <aside className="w-64 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-lg border-r flex flex-col">
+    <div className="flex flex-col lg:flex-row bg-gray-50 min-h-screen">
+      <aside className="w-full lg:w-64 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-lg border-r flex flex-col">
         {/* Title + Week Select => scrollable */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <h2 className="text-2xl font-bold text-white mb-6 uppercase flex items-center gap-2 tracking-wide">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-6">
+          <h2 className="text-base sm:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 lg:mb-6 uppercase flex items-center gap-1 sm:gap-2 tracking-wide">
             {t("workplaceNGChart.menuTitle")}
           </h2>
           {Object.keys(weekData).length > 0 && (
-            <div className="mb-4">
-              <label className="block text-white font-medium mb-2">
+            <div className="mb-2 sm:mb-3 lg:mb-4">
+              <label className="block text-white text-xs sm:text-sm lg:text-base font-medium mb-1 sm:mb-1.5 lg:mb-2">
                 {t("workplaceNGChart.selectWeek")}
               </label>
               <select
                 value={selectedWeek}
                 onChange={(e) => setSelectedWeek(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none mb-2 bg-white"
+                className="w-full border border-gray-300 rounded-md px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm focus:outline-none mb-2 bg-white"
               >
                 {Object.keys(weekData)
                   .filter((week) => {
@@ -356,16 +366,16 @@ export default function NGWorkplaceChart() {
 
         {/* Footer - upload file */}
         {user && (
-          <div className="p-4 border-t border-white/20">
-            <div className="flex items-center gap-2 bg-white/30 rounded-lg p-2 shadow">
+          <div className="p-2 sm:p-3 lg:p-4 border-t border-white/20">
+            <div className="flex items-center gap-1 sm:gap-2 bg-white/30 rounded-lg p-1.5 sm:p-2 shadow">
               <label
                 htmlFor="file-upload-total"
-                className="cursor-pointer p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
+                className="cursor-pointer p-1.5 sm:p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
                 title="Chọn file"
               >
-                <FiUpload size={18} />
+                <FiUpload size={16} className="sm:w-[18px] sm:h-[18px]" />
               </label>
-              <span className="text-white text-sm font-medium flex-1 text-center">
+              <span className="text-white text-[10px] sm:text-xs lg:text-sm font-medium flex-1 text-center">
                 {t("workplaceNGChart.chooseExceltotal")}
               </span>
               <input
@@ -381,12 +391,12 @@ export default function NGWorkplaceChart() {
       </aside>
 
       {/* Main content */}
-      <main
-        className="flex-1 p-2 flex gap-8 overflow-auto"
-        style={{ height: "93vh" }}
-      >
+      <main className="flex-1 p-4 sm:p-6 flex flex-col lg:flex-row gap-4 lg:gap-8 overflow-auto">
         {/* Chart 2/3 */}
-        <section className="basis-2/3 bg-white rounded-xl shadow-lg p-6 flex flex-col">
+        <section
+          className="w-full lg:basis-2/3 bg-white rounded-xl shadow-lg p-4 sm:p-6 flex flex-col"
+          style={{ minHeight: "50vh" }}
+        >
           <div className="flex-1 flex items-center justify-center">
             {chartData ? (
               <Bar
@@ -442,127 +452,136 @@ export default function NGWorkplaceChart() {
                 plugins={[ChartDataLabels, extraLabelPlugin]}
               />
             ) : (
-              <p className="text-gray-400 text-lg font-medium">
+              <p className="text-gray-400 text-base sm:text-lg font-medium">
                 {t("workplaceNGChart.pleaseSelectExcel")}
               </p>
             )}
           </div>
         </section>
-        {/* Bảng chi tiết 1/3 */}
-        <section className="basis-1/3 bg-white rounded-xl shadow-lg p-2 flex flex-col overflow-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-black uppercase">
-              {t("workplaceNGChart.outputByArea")}
-            </h3>
-            <select
-              value={selectedArea}
-              onChange={(e) => setSelectedArea(e.target.value)}
-              className="border border-gray-300 rounded-md px-2 py-1 text-xs focus:outline-none min-w-[140px] bg-white"
-            >
-              <option value="">{t("workplaceNGChart.selectArea")}</option>
-              {Object.keys(dataMap).map((area) => (
-                <option key={area} value={area}>
-                  {t(`areas.${area}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          {chartData ? (
-            <>
-              <table className="min-w-full text-left border-collapse table-auto text-sm">
-                <thead>
-                  <tr className="bg-indigo-50 text-indigo-700 uppercase">
-                    <th className="border-b pb-1 px-2">
-                      {t("workplaceNGChart.areaDay")}
-                    </th>
-                    <th className="border-b pb-1 px-2 text-right">
-                      {t("workplaceNGChart.normal")}
-                    </th>
-                    <th className="border-b pb-1 px-2 text-right">
-                      {t("workplaceNGChart.rework")}
-                    </th>
-                    <th className="border-b pb-1 px-2 text-right font-bold">
-                      {t("workplaceNGChart.total")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(dataMap)
-                    .filter(
-                      ([area]) => selectedArea === "" || selectedArea === area
-                    )
-                    .map(([area, dayObj]) => {
-                      let totalNormal = 0;
-                      let totalRework = 0;
-                      chartData.labels.forEach((day) => {
-                        const d = dayObj[day] || { normal: 0, rework: 0 };
-                        totalNormal += d.normal;
-                        totalRework += d.rework;
-                      });
-                      return (
-                        <React.Fragment key={area}>
-                          <tr className="bg-indigo-100 font-semibold uppercase">
-                            <td className="px-2 py-1">{t(`areas.${area}`)}</td>
-                            <td className="text-center px-2 py-1">
-                              {totalNormal.toLocaleString()}
-                            </td>
-                            <td className="text-center px-2 py-1">
-                              {totalRework.toLocaleString()}
-                            </td>
-                            <td className="text-center px-2 py-1">
-                              {(totalNormal + totalRework).toLocaleString()}
-                            </td>
-                          </tr>
-                          {chartData.labels.map((label) => {
-                            const d = dayObj[label] || { normal: 0, rework: 0 };
-                            const total = d.normal + d.rework;
-                            if (total === 0) return null;
-                            return (
-                              <tr key={label} className="text-gray-700">
-                                <td className="pl-8 py-1">{label}</td>
-                                <td className="text-center px-2 py-1">
-                                  {d.normal.toLocaleString()}
-                                </td>
-                                <td className="text-center px-2 py-1">
-                                  {d.rework.toLocaleString()}
-                                </td>
-                                <td className="text-center px-2 py-1">
-                                  {total.toLocaleString()}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </React.Fragment>
+        {/* Bảng chi tiết 1/3 - Hiển thị khi màn hình >= 1520px */}
+        {showTable && (
+          <section className="w-full lg:basis-1/3 bg-white rounded-xl shadow-lg p-4 sm:p-6 flex flex-col overflow-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
+              <h3 className="text-lg sm:text-xl font-bold text-black uppercase">
+                {t("workplaceNGChart.outputByArea")}
+              </h3>
+              <select
+                value={selectedArea}
+                onChange={(e) => setSelectedArea(e.target.value)}
+                className="w-full sm:w-auto border border-gray-300 rounded-md px-2 py-1 text-xs focus:outline-none min-w-[140px] bg-white"
+              >
+                <option value="">{t("workplaceNGChart.selectArea")}</option>
+                {Object.keys(dataMap).map((area) => (
+                  <option key={area} value={area}>
+                    {t(`areas.${area}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {chartData ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left border-collapse table-auto text-xs sm:text-sm">
+                  <thead>
+                    <tr className="bg-indigo-50 text-indigo-700 uppercase text-xs sm:text-sm">
+                      <th className="border-b pb-1 px-2">
+                        {t("workplaceNGChart.areaDay")}
+                      </th>
+                      <th className="border-b pb-1 px-2 text-right">
+                        {t("workplaceNGChart.normal")}
+                      </th>
+                      <th className="border-b pb-1 px-2 text-right">
+                        {t("workplaceNGChart.rework")}
+                      </th>
+                      <th className="border-b pb-1 px-2 text-right font-bold">
+                        {t("workplaceNGChart.total")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(dataMap)
+                      .filter(
+                        ([area]) => selectedArea === "" || selectedArea === area
+                      )
+                      .map(([area, dayObj]) => {
+                        let totalNormal = 0;
+                        let totalRework = 0;
+                        chartData.labels.forEach((day) => {
+                          const d = dayObj[day] || { normal: 0, rework: 0 };
+                          totalNormal += d.normal;
+                          totalRework += d.rework;
+                        });
+                        return (
+                          <React.Fragment key={area}>
+                            <tr className="bg-indigo-100 font-semibold uppercase">
+                              <td className="px-2 py-1">
+                                {t(`areas.${area}`)}
+                              </td>
+                              <td className="text-center px-2 py-1">
+                                {totalNormal.toLocaleString()}
+                              </td>
+                              <td className="text-center px-2 py-1">
+                                {totalRework.toLocaleString()}
+                              </td>
+                              <td className="text-center px-2 py-1">
+                                {(totalNormal + totalRework).toLocaleString()}
+                              </td>
+                            </tr>
+                            {chartData.labels.map((label) => {
+                              const d = dayObj[label] || {
+                                normal: 0,
+                                rework: 0,
+                              };
+                              const total = d.normal + d.rework;
+                              if (total === 0) return null;
+                              return (
+                                <tr key={label} className="text-gray-700">
+                                  <td className="pl-8 py-1">{label}</td>
+                                  <td className="text-center px-2 py-1">
+                                    {d.normal.toLocaleString()}
+                                  </td>
+                                  <td className="text-center px-2 py-1">
+                                    {d.rework.toLocaleString()}
+                                  </td>
+                                  <td className="text-center px-2 py-1">
+                                    {total.toLocaleString()}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
+                        );
+                      })}
+                  </tbody>
+                </table>
+                <div className="mt-4 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
+                  <button
+                    onClick={() => {
+                      setModalArea(
+                        selectedArea || Object.keys(dataMap)[0] || ""
                       );
-                    })}
-                </tbody>
-              </table>
-              <div className="mt-4 flex justify-end gap-3">
-                <button
-                  onClick={() => {
-                    setModalArea(selectedArea || Object.keys(dataMap)[0] || "");
-                    setIsModalOpen(true);
-                  }}
-                  className="bg-blue-600 text-white px-4 py-2 rounded font-bold"
-                >
-                  {t("workplaceNGChart.viewDetail")}
-                </button>
-                <button
-                  onClick={() => {
-                    exportToExcel && exportToExcel();
-                  }}
-                  className="font-bold text-white px-3 py-2 bg-green-600 rounded hover:bg-green-700"
-                >
-                  {t("workplaceNGChart.exportExcel")}
-                </button>
+                      setIsModalOpen(true);
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm sm:text-base hover:bg-blue-700 transition-colors"
+                  >
+                    {t("workplaceNGChart.viewDetail")}
+                  </button>
+                  <button
+                    onClick={() => {
+                      exportToExcel && exportToExcel();
+                    }}
+                    className="font-bold text-white px-3 py-2 bg-green-600 rounded hover:bg-green-700 text-sm sm:text-base transition-colors"
+                  >
+                    {t("workplaceNGChart.exportExcel")}
+                  </button>
+                </div>
               </div>
-            </>
-          ) : (
-            <p className="text-gray-400 text-lg font-medium">
-              {t("workplaceNGChart.noData")}
-            </p>
-          )}
-        </section>
+            ) : (
+              <p className="text-gray-400 text-base sm:text-lg font-medium">
+                {t("workplaceNGChart.noData")}
+              </p>
+            )}
+          </section>
+        )}
       </main>
       <DetailedNGModal
         isOpen={isModalOpen}

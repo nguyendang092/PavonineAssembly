@@ -85,6 +85,17 @@ export default function Navbar({ user, setUser }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [userDropdownOpen]);
 
+  // Lock scroll when mobile menu open
+  useEffect(() => {
+    if (isOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isOpen]);
+
   // Hàm mở/đóng dropdown động
   const openDropdown = (key) => {
     if (dropdownTimers.current[key]) clearTimeout(dropdownTimers.current[key]);
@@ -94,11 +105,19 @@ export default function Navbar({ user, setUser }) {
     if (dropdownTimers.current[key]) clearTimeout(dropdownTimers.current[key]);
     dropdownTimers.current[key] = setTimeout(() => {
       setDropdownOpen((prev) => ({ ...prev, [key]: false }));
-    }, 300); 
+    }, 300);
   };
 
   return (
     <>
+      {/* Backdrop for mobile menu */}
+      {isOpen && (
+        <div
+          className="fixed left-0 right-0 bottom-0 top-16 z-30 bg-black/30 md:hidden"
+          onClick={() => setIsOpen(false)}
+          aria-hidden
+        />
+      )}
       {signInOpen && (
         <SignIn
           onSignIn={handleSignInSuccess}
@@ -108,38 +127,38 @@ export default function Navbar({ user, setUser }) {
       {changePwOpen && (
         <ChangePasswordModal onClose={() => setChangePwOpen(false)} />
       )}
-      <nav className="bg-gradient-to-r from-blue-100 via-purple-100 to-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700 shadow-md">
-        <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+      <nav className="sticky top-0 z-50 bg-white/70 dark:bg-gray-900/70 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-sm antialiased">
+        <div className="w-full flex items-center justify-between mx-auto pl-2 pr-2 py-2 sm:pl-3 sm:pr-3 md:pl-4 md:pr-4 md:py-3 flex-nowrap gap-1 sm:gap-2">
           <a
             href="http://www.pavonine.net/en/"
-            className="flex items-center space-x-3"
+            className="flex items-center min-w-0 shrink-0"
           >
             <img
               src="/picture/logo/logo_pavo.jpg"
-              className="h-10 w-auto rounded-full shadow-md"
+              className="h-7 sm:h-8 md:h-9 lg:h-10 w-auto rounded-full shadow-md"
               alt={t("navbar.logoAlt")}
             />
           </a>
 
-          <div className="flex md:order-2  md:space-x-1 items-center relative">
+          <div className="flex lg:order-2 items-center relative gap-1 sm:gap-2 md:gap-3 whitespace-nowrap shrink-0">
             {/* User info or Sign In/Up */}
             {user ? (
               <>
-                <div className="relative inline-block text-left mr-2">
+                <div className="relative inline-block text-left">
                   <button
                     onClick={() => setUserDropdownOpen((v) => !v)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-200 to-purple-200 text-blue-900 font-semibold text-xs shadow hover:shadow-lg border border-blue-300 focus:outline-none transition-all duration-150 user-dropdown-btn"
+                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-blue-200 to-purple-200 text-blue-900 font-semibold text-xs tracking-wide shadow hover:shadow-lg border border-blue-300 focus:outline-none transition-all duration-150 user-dropdown-btn"
                   >
-                    <span className="flex w-7 h-7 rounded-full bg-blue-400 text-white items-center justify-center font-bold text-base shadow-md">
+                    <span className="flex w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-blue-400 text-white items-center justify-center font-bold text-sm sm:text-base shadow-md">
                       {user.name
                         ? user.name[0].toUpperCase()
                         : user.email[0].toUpperCase()}
                     </span>
-                    <span className="truncate max-w-[90px]">
+                    <span className="hidden sm:inline truncate max-w-[80px] md:max-w-[120px]">
                       {user.name || user.email}
                     </span>
                     <svg
-                      className={`w-4 h-4 ml-1 transition-transform ${
+                      className={`w-3 h-3 sm:w-4 sm:h-4 ml-0.5 sm:ml-1 transition-transform ${
                         userDropdownOpen ? "rotate-180" : ""
                       }`}
                       fill="none"
@@ -161,7 +180,7 @@ export default function Navbar({ user, setUser }) {
                           setChangePwOpen(true);
                           setUserDropdownOpen(false);
                         }}
-                        className="flex items-center gap-2 w-full text-left px-5 py-3 text-sm text-blue-700 hover:bg-blue-50 font-medium transition-all duration-100"
+                        className="flex items-center gap-2 w-full text-left px-5 py-3 text-sm text-blue-700 hover:bg-blue-50 font-medium tracking-wide transition-all duration-100"
                       >
                         <svg
                           className="w-5 h-5 text-blue-500"
@@ -183,7 +202,7 @@ export default function Navbar({ user, setUser }) {
                           handleSignOut();
                           setUserDropdownOpen(false);
                         }}
-                        className="flex items-center gap-2 w-full text-left px-5 py-3 text-sm text-red-600 hover:bg-red-50 font-medium border-t border-gray-100 transition-all duration-100"
+                        className="flex items-center gap-2 w-full text-left px-5 py-3 text-sm text-red-600 hover:bg-red-50 font-medium tracking-wide border-t border-gray-100 transition-all duration-100"
                       >
                         <svg
                           className="w-5 h-5 text-red-500"
@@ -208,10 +227,12 @@ export default function Navbar({ user, setUser }) {
               <>
                 <button
                   onClick={handleSignIn}
-                  className="px-2 mx-2 py-2 rounded bg-white border border-blue-400 text-blue-700 font-semibold hover:bg-blue-50 shadow-sm text-xs"
-                  style={{ minWidth: 70 }}
+                  className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white border border-blue-400 text-blue-700 font-semibold tracking-wide hover:bg-blue-50 shadow-sm text-xs min-w-[50px] sm:min-w-[70px]"
                 >
-                  {t("navbar.dangNhap")}
+                  <span className="hidden xs:inline">
+                    {t("navbar.dangNhap")}
+                  </span>
+                  <span className="xs:hidden">👤</span>
                 </button>
                 {/* <button
                   onClick={handleSignUp}
@@ -228,10 +249,10 @@ export default function Navbar({ user, setUser }) {
               onClick={() => setLangPopupOpen(!langPopupOpen)}
               aria-label="Select language"
               title={language === "vi" ? "Tiếng Việt" : "한국어"}
-              className="flex items-center space-x-1 cursor-pointer focus:outline-none text-gray-700 dark:text-gray-300"
+              className="flex items-center space-x-1 cursor-pointer focus:outline-none text-gray-700 dark:text-gray-300 hover:opacity-90 shrink-0"
             >
               <span
-                className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600 bg-cover bg-center"
+                className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border border-gray-300 dark:border-gray-600 bg-cover bg-center shrink-0"
                 style={{ backgroundImage: `url(${flagMap[language]})` }}
               />
             </button>
@@ -262,12 +283,16 @@ export default function Navbar({ user, setUser }) {
             <button
               onClick={toggleMenu}
               type="button"
-              className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-600 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              className="inline-flex items-center p-1.5 sm:p-2 w-8 h-8 sm:w-10 sm:h-10 justify-center text-sm text-gray-600 rounded-lg lg:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shrink-0"
               aria-controls="navbar-cta"
               aria-expanded={isOpen}
             >
               <span className="sr-only">Open main menu</span>
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5 sm:w-6 sm:h-6"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
                 <path
                   stroke="currentColor"
                   strokeLinecap="round"
@@ -281,15 +306,17 @@ export default function Navbar({ user, setUser }) {
 
           {/* Navigation */}
           <div
-            className={`items-center justify-between w-full md:flex md:w-auto md:order-1 transition-all duration-300 ease-in-out ${
-              isOpen ? "block animate-fade-in" : "hidden"
-            }`}
+            className={`items-center justify-center w-full transition-all duration-300 ease-in-out ${
+              isOpen
+                ? "fixed left-0 right-0 top-16 z-40 bg-white border-b shadow-lg lg:static lg:bg-transparent lg:border-0 lg:shadow-none"
+                : "hidden lg:flex lg:flex-1 lg:min-w-0 lg:order-1"
+            } lg:flex lg:flex-1 lg:min-w-0 lg:order-1`}
             id="navbar-cta"
           >
-            <ul className="flex flex-col font-medium p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-white shadow-md md:shadow-none md:space-x-6 md:flex-row md:mt-0 md:border-0 md:bg-transparent dark:bg-gray-900">
+            <ul className="flex flex-row flex-wrap items-center justify-center gap-2 font-medium tracking-wide p-2 sm:p-3 lg:p-0 mt-2 border border-gray-100 rounded-xl bg-white/80 backdrop-blur shadow-md lg:shadow-none lg:gap-3 xl:gap-4 lg:flex-nowrap lg:mt-0 lg:border-0 lg:bg-transparent dark:bg-gray-900/80">
               {menuConfig.map((item) => {
                 if (item.type === "dropdown") {
-                  const isOpen = !!dropdownOpen[item.key];
+                  const isDropdownOpen = !!dropdownOpen[item.key];
                   const openFn = () => openDropdown(item.key);
                   const closeFn = () => closeDropdown(item.key);
                   if (
@@ -308,14 +335,28 @@ export default function Navbar({ user, setUser }) {
                       tabIndex={0}
                     >
                       <button
-                        className={`flex items-center py-2 px-4 md:px-3 rounded-md transition-all duration-200 font-semibold text-sm uppercase ${
+                        className={`group inline-flex items-center rounded-full px-3 py-1.5 md:px-3 transition-all duration-200 ease-out font-medium text-sm ${
                           item.children.some((c) => c.key === activeLeaderKey)
-                            ? "bg-blue-100 text-blue-700 font-semibold underline underline-offset-4"
-                            : "text-gray-800 hover:text-blue-600 hover:bg-blue-50"
+                            ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 shadow-sm"
+                            : "text-gray-800 hover:text-blue-700 hover:shadow-md hover:-translate-y-0.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50"
                         } dark:text-white dark:hover:text-blue-300`}
                         type="button"
                         aria-haspopup="true"
-                        aria-expanded={isOpen}
+                        aria-expanded={isDropdownOpen}
+                        onClick={(e) => {
+                          // Toggle dropdown on mobile (no hover)
+                          if (
+                            window &&
+                            window.matchMedia &&
+                            !window.matchMedia("(min-width: 768px)").matches
+                          ) {
+                            e.preventDefault();
+                            setDropdownOpen((prev) => ({
+                              ...prev,
+                              [item.key]: !prev[item.key],
+                            }));
+                          }
+                        }}
                         disabled={
                           item.adminOnly &&
                           (!user || user.email !== "admin@gmail.com")
@@ -329,7 +370,7 @@ export default function Navbar({ user, setUser }) {
                       >
                         {t(item.label)}
                         <svg
-                          className="inline w-4 h-4 ml-1"
+                          className="inline w-4 h-4 ml-1 transition-transform duration-200 group-hover:translate-y-[-1px]"
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="2"
@@ -342,17 +383,17 @@ export default function Navbar({ user, setUser }) {
                           />
                         </svg>
                       </button>
-                      {isOpen && (
+                      {isDropdownOpen && (
                         <div
                           className="absolute left-0 mt-2 w-36 bg-white border rounded shadow-lg z-50"
                           style={{ minWidth: 120 }}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {item.children.map((child) => (
+                          {item.children.map((child) =>
                             child.children ? (
                               <div key={child.key} className="relative group">
                                 <button
-                                  className={`block w-full text-left px-4 py-2 hover:bg-blue-50 uppercase text-xs ${
+                                  className={`block w-full text-left px-4 py-2 rounded-md transition-all duration-150 hover:bg-blue-50 hover:text-blue-700 hover:pl-5 text-xs ${
                                     activeLeaderKey === child.key
                                       ? "bg-blue-100 text-blue-700"
                                       : ""
@@ -360,9 +401,24 @@ export default function Navbar({ user, setUser }) {
                                   tabIndex={0}
                                 >
                                   {t(child.label)}
-                                  <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                  <svg
+                                    className="w-3 h-3 ml-1 transition-transform duration-150 group-hover:translate-x-0.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M19 9l-7 7-7-7"
+                                    />
+                                  </svg>
                                 </button>
-                                <div className="absolute left-full top-0 mt-0 ml-0 w-36 bg-white border rounded shadow-lg z-50 hidden group-hover:block group-focus:block" style={{ minWidth: 120 }}>
+                                <div
+                                  className="absolute left-full top-0 mt-0 ml-0 w-36 bg-white border rounded shadow-lg z-50 hidden group-hover:block group-focus:block"
+                                  style={{ minWidth: 120 }}
+                                >
                                   {child.children.map((sub) => (
                                     <Link
                                       key={sub.key}
@@ -373,6 +429,7 @@ export default function Navbar({ user, setUser }) {
                                           ...prev,
                                           [item.key]: false,
                                         }));
+                                        setIsOpen(false);
                                       }}
                                       className={`block w-full text-left px-4 py-2 hover:bg-blue-50 uppercase text-xs ${
                                         activeLeaderKey === sub.key
@@ -396,8 +453,9 @@ export default function Navbar({ user, setUser }) {
                                     ...prev,
                                     [item.key]: false,
                                   }));
+                                  setIsOpen(false);
                                 }}
-                                className={`block w-full text-left px-4 py-2 hover:bg-blue-50 uppercase text-xs ${
+                                className={`block w-full text-left px-4 py-2 rounded-md transition-all duration-150 hover:bg-blue-50 hover:text-blue-700 hover:pl-5 text-xs ${
                                   activeLeaderKey === child.key
                                     ? "bg-blue-100 text-blue-700"
                                     : ""
@@ -417,7 +475,7 @@ export default function Navbar({ user, setUser }) {
                                 {t(child.label)}
                               </Link>
                             )
-                          ))}
+                          )}
                         </div>
                       )}
                     </li>
@@ -429,10 +487,10 @@ export default function Navbar({ user, setUser }) {
                     <Link
                       to={item.path}
                       onClick={() => handleSelect(item.key)}
-                      className={`block py-2 px-4 md:px-3 rounded-md transition-all duration-200 font-semibold text-sm uppercase ${
+                      className={`inline-flex items-center rounded-full px-3 py-1.5 md:px-3 transition-all duration-200 ease-out font-medium text-sm ${
                         item.key === activeLeaderKey
-                          ? "bg-blue-100 text-blue-700 font-semibold underline underline-offset-4"
-                          : "text-gray-800 hover:text-blue-600 hover:bg-blue-50"
+                          ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 shadow-sm"
+                          : "text-gray-800 hover:text-blue-700 hover:shadow-md hover:-translate-y-0.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50"
                       } dark:text-white dark:hover:text-blue-300`}
                     >
                       {t(item.label)}

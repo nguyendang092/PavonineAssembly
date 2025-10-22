@@ -19,7 +19,7 @@ const resources = {
         khungGio: "Khung giờ",
         sanLuong: "Sản lượng",
         hieuSuat: "% Hiệu suất",
-        total: "TỔNG"
+        total: "TỔNG",
       },
       loading: {
         loading: "Đang tải dữ liệu...",
@@ -45,15 +45,18 @@ const resources = {
         signupSuccess: "Đăng ký thành công",
         signupFail: "Đăng ký thất bại. Vui lòng thử lại.",
         resetSent: "Đã gửi email đặt lại mật khẩu. Vui lòng kiểm tra hộp thư.",
-        resetFail: "Không gửi được email đặt lại mật khẩu. Vui lòng kiểm tra lại email.",
+        resetFail:
+          "Không gửi được email đặt lại mật khẩu. Vui lòng kiểm tra lại email.",
         sendReset: "Gửi email đặt lại mật khẩu",
         sending: "Đang gửi...",
         backToLogin: "Quay lại đăng nhập",
         enterEmailReset: "Nhập email để đặt lại mật khẩu",
         overlayWelcomeBack: "Chào mừng trở lại!",
-        overlayDescBack: "Để giữ kết nối, hãy đăng nhập bằng thông tin cá nhân của bạn",
+        overlayDescBack:
+          "Để giữ kết nối, hãy đăng nhập bằng thông tin cá nhân của bạn",
         overlayHelloNew: "Xin chào, bạn mới!",
-        overlayDescNew: "Nhập thông tin cá nhân và bắt đầu hành trình cùng chúng tôi"
+        overlayDescNew:
+          "Nhập thông tin cá nhân và bắt đầu hành trình cùng chúng tôi",
       },
       navbar: {
         getStarted: "Bắt đầu",
@@ -64,6 +67,7 @@ const resources = {
         AP5FZ: "AP5FZ",
         nhietdo: "Nhiệt độ",
         model: "Model",
+        mold: "Quản lý khuôn",
         NgocThanh: "Ngọc Thành",
         ChiThanh: "Chí Thành",
         Muoi: "Muội",
@@ -78,7 +82,7 @@ const resources = {
         logOut: "Đăng xuất",
         changePassword: "Đổi mật khẩu",
         Normal: "Normal",
-        ng: "NG"
+        ng: "NG",
       },
       temperatureMonitor: {
         dashboard: "Bảng điều khiển",
@@ -177,7 +181,7 @@ const resources = {
         plan: "Kế hoạch",
         actual: "Thực tế",
         completeRate: "% Hoàn thành",
-        total: "Total",
+        total: "Tổng cộng",
         addLine: "➕",
         close: "Đóng",
         save: "💾 Lưu",
@@ -283,16 +287,16 @@ const resources = {
       },
       workplaceChart: {
         menuTitle: "📁 Menu",
-        chooseExceltotal: "Total",
-        chooseExceldetail: "Detail",
+        chooseExceltotal: "Tổng hợp",
+        chooseExceldetail: "Chi tiết",
         selectWeek: "Chọn tuần",
         uploadFirebase: "⬆️ Upload",
         uploadSuccess: "✅ Upload dữ liệu thành công!",
         uploadError: "❌ Upload lỗi: ",
         pleaseSelectExcel: "📂 Vui lòng chọn file Excel để hiển thị biểu đồ.",
         areaDay: "Khu vực / Ngày",
-        normal: "Normal",
-        rework: "Rework",
+        normal: "Bình thường",
+        rework: "Làm lại",
         total: "Tổng",
         outputByArea: "Sản lượng theo khu vực",
         exportExcel: "Xuất Excel",
@@ -313,38 +317,40 @@ const resources = {
         date: "Ngày",
         quantity: "Sản lượng",
         viewMore: "Xem thêm",
-        logViewMore: "Xem thêm chi tiết sản lượng khu vực: {{area}}, ngày: {{date}}",
-        exportExcel: "Xuất Excel"
+        logViewMore:
+          "Xem thêm chi tiết sản lượng khu vực: {{area}}, ngày: {{date}}",
+        exportExcel: "Xuất Excel",
       },
       detailedNGModal: {
-  title: "Bảng chi tiết sản lượng NG",
-  close: "Đóng",
-  searchModel: "Tìm Model...",
-  loadingChart: "Đang tải biểu đồ...",
-  noChartData: "Không có dữ liệu để hiển thị.",
-  area: "Khu vực",
-  model: "Model",
-  date: "Ngày",
-  quantity: "Sản lượng",
-  ngReason: "Lỗi NG",
-  viewMore: "Xem thêm",
-  logViewMore: "Xem thêm chi tiết sản lượng NG khu vực: {{area}}, ngày: {{date}}",
-  exportExcel: "Xuất Excel",
-  outputLabel: "Sản lượng NG",
-  viewWholeWeek: "Xem toàn bộ tuần này"
+        title: "Bảng chi tiết sản lượng NG",
+        close: "Đóng",
+        searchModel: "Tìm Model...",
+        loadingChart: "Đang tải biểu đồ...",
+        noChartData: "Không có dữ liệu để hiển thị.",
+        area: "Khu vực",
+        model: "Model",
+        date: "Ngày",
+        quantity: "Sản lượng",
+        ngReason: "Lỗi NG",
+        viewMore: "Xem thêm",
+        logViewMore:
+          "Xem thêm chi tiết sản lượng NG khu vực: {{area}}, ngày: {{date}}",
+        exportExcel: "Xuất Excel",
+        outputLabel: "Sản lượng NG",
+        viewWholeWeek: "Xem toàn bộ tuần này",
       },
       workplaceNGChart: {
         menuTitle: "📁 Menu",
-        chooseExceltotal: "Total",
-        chooseExceldetail: "Detail",
+        chooseExceltotal: "Tổng hợp",
+        chooseExceldetail: "Chi tiết",
         selectWeek: "Chọn tuần",
         uploadFirebase: "⬆️ Upload",
         uploadSuccess: "✅ Upload dữ liệu thành công!",
         uploadError: "❌ Upload lỗi: ",
         pleaseSelectExcel: "📂 Vui lòng chọn file Excel để hiển thị biểu đồ.",
         areaDay: "Khu vực / Ngày",
-        normal: "Normal",
-        rework: "Rework",
+        normal: "Bình thường",
+        rework: "Làm lại",
         total: "Tổng",
         outputByArea: "Sản lượng NG theo khu vực",
         exportExcel: "Xuất Excel",
@@ -352,62 +358,66 @@ const resources = {
         selectArea: "-- Chọn khu vực --",
         week: "Tuần",
         viewDetail: "Xem chi tiết",
-        alertTitle: "Đang xử lý dữ liệu..."
+        alertTitle: "Đang xử lý dữ liệu...",
       },
     },
   },
-    ko: {
-      translation: {
-        metandeco: {
-          dashboardTitle: "대시보드 - AP5FF & AP5FZ",
-          filterMonth: "월/년별 필터",
-          filterCongDoan: "공정별 필터",
-          chooseFile: "파일 선택",
-          upload: "업로드",
-          uploadSuccess: "Firebase에 업로드 성공!",
-          line: "라인",
-          congDoan: "공정",
-          phanLoai: "분류",
-          thang: "월",
-          nam: "년",
-          khungGio: "시간대",
-          sanLuong: "생산량",
-          hieuSuat: "% 효율",
-          total: "합계"
-        },
-        signIn: {
-          login: "로그인",
-          signup: "회원가입",
-          signingIn: "로그인 중...",
-          signingUp: "회원가입 중...",
-          email: "이메일",
-          password: "비밀번호",
-          displayName: "이름",
-          orLoginWithEmail: "또는 이메일로 로그인",
-          orSignupWithEmail: "또는 이메일로 회원가입",
-          forgotPassword: "비밀번호를 잊으셨나요?",
-          haveAccount: "이미 계정이 있으신가요? 로그인",
-          noAccount: "계정이 없으신가요? 회원가입",
-          requireEmailPassword: "이메일과 비밀번호를 입력해 주세요.",
-          requireAllFields: "이름, 이메일, 비밀번호를 모두 입력해 주세요.",
-          requireEmailReset: "비밀번호 재설정을 위해 이메일을 입력해 주세요.",
-          loginSuccess: "로그인 성공",
-          loginFail: "로그인에 실패했습니다. 다시 시도해 주세요.",
-          signupSuccess: "회원가입 성공",
-          signupFail: "회원가입에 실패했습니다. 다시 시도해 주세요.",
-          resetSent: "비밀번호 재설정 이메일이 전송되었습니다. 메일함을 확인해 주세요.",
-          resetFail: "비밀번호 재설정 이메일을 보낼 수 없습니다. 이메일을 확인해 주세요.",
-          sendReset: "비밀번호 재설정 이메일 보내기",
-          sending: "전송 중...",
-          backToLogin: "로그인으로 돌아가기",
-          enterEmailReset: "비밀번호 재설정을 위해 이메일을 입력해 주세요.",
-          overlayWelcomeBack: "다시 오신 것을 환영합니다!",
-          overlayDescBack: "계속 이용하려면 개인 정보를 입력하여 로그인해 주세요.",
-          overlayHelloNew: "안녕하세요, 새로운 회원님!",
-          overlayDescNew: "개인 정보를 입력하고 저희와 함께 여정을 시작해 보세요."
-        },
+  ko: {
+    translation: {
+      metandeco: {
+        dashboardTitle: "대시보드 - AP5FF & AP5FZ",
+        filterMonth: "월/년별 필터",
+        filterCongDoan: "공정별 필터",
+        chooseFile: "파일 선택",
+        upload: "업로드",
+        uploadSuccess: "Firebase에 업로드 성공!",
+        line: "라인",
+        congDoan: "공정",
+        phanLoai: "분류",
+        thang: "월",
+        nam: "년",
+        khungGio: "시간대",
+        sanLuong: "생산량",
+        hieuSuat: "% 효율",
+        total: "합계",
+      },
+      signIn: {
+        login: "로그인",
+        signup: "회원가입",
+        signingIn: "로그인 중...",
+        signingUp: "회원가입 중...",
+        email: "이메일",
+        password: "비밀번호",
+        displayName: "이름",
+        orLoginWithEmail: "또는 이메일로 로그인",
+        orSignupWithEmail: "또는 이메일로 회원가입",
+        forgotPassword: "비밀번호를 잊으셨나요?",
+        haveAccount: "이미 계정이 있으신가요? 로그인",
+        noAccount: "계정이 없으신가요? 회원가입",
+        requireEmailPassword: "이메일과 비밀번호를 입력해 주세요.",
+        requireAllFields: "이름, 이메일, 비밀번호를 모두 입력해 주세요.",
+        requireEmailReset: "비밀번호 재설정을 위해 이메일을 입력해 주세요.",
+        loginSuccess: "로그인 성공",
+        loginFail: "로그인에 실패했습니다. 다시 시도해 주세요.",
+        signupSuccess: "회원가입 성공",
+        signupFail: "회원가입에 실패했습니다. 다시 시도해 주세요.",
+        resetSent:
+          "비밀번호 재설정 이메일이 전송되었습니다. 메일함을 확인해 주세요.",
+        resetFail:
+          "비밀번호 재설정 이메일을 보낼 수 없습니다. 이메일을 확인해 주세요.",
+        sendReset: "비밀번호 재설정 이메일 보내기",
+        sending: "전송 중...",
+        backToLogin: "로그인으로 돌아가기",
+        enterEmailReset: "비밀번호 재설정을 위해 이메일을 입력해 주세요.",
+        overlayWelcomeBack: "다시 오신 것을 환영합니다!",
+        overlayDescBack:
+          "계속 이용하려면 개인 정보를 입력하여 로그인해 주세요.",
+        overlayHelloNew: "안녕하세요, 새로운 회원님!",
+        overlayDescNew:
+          "개인 정보를 입력하고 저희와 함께 여정을 시작해 보세요.",
+      },
       loading: {
-        loading : "데이터를 불러오는 중..."
+        loading: "데이터를 불러오는 중...",
       },
       navbar: {
         getStarted: "시작하기",
@@ -418,6 +428,7 @@ const resources = {
         AP5FZ: "AP5FZ",
         nhietdo: "온도",
         model: "모델",
+        mold: "금형 관리",
         NgocThanh: "옥탄",
         ChiThanh: "찌탄",
         Muoi: "무이",
@@ -432,7 +443,7 @@ const resources = {
         changePassword: "비밀번호 변경",
         Normal: "정상",
         ng: "불량",
-        leader: "리더"
+        leader: "리더",
       },
       temperatureMonitor: {
         dashboard: "대시보드",
@@ -639,7 +650,7 @@ const resources = {
       workplaceChart: {
         menuTitle: "📁 메뉴",
         chooseExceltotal: "총합",
-        chooseExceldetail : "상세",
+        chooseExceldetail: "상세",
         selectWeek: "주차 선택",
         uploadFirebase: "⬆️업로드",
         uploadSuccess: "✅ 데이터 업로드에 성공했습니다!",
@@ -669,29 +680,29 @@ const resources = {
         quantity: "생산량",
         viewMore: "더 보기",
         logViewMore: "상세 생산량 더 보기: {{area}}, 날짜: {{date}}",
-        exportExcel: "엑셀로 내보내기"
+        exportExcel: "엑셀로 내보내기",
       },
       detailedNGModal: {
-  title: "NG 상세 생산량 표",
-  close: "닫기",
-  searchModel: "모델 검색...",
-  loadingChart: "차트 불러오는 중...",
-  noChartData: "표시할 데이터가 없습니다.",
-  area: "공정",
-  model: "모델",
-  date: "날짜",
-  quantity: "생산량",
-  ngReason: "NG 사유",
-  viewMore: "더 보기",
-  logViewMore: "NG 상세 생산량 더 보기: {{area}}, 날짜: {{date}}",
-  exportExcel: "엑셀로 내보내기",
-  outputLabel: "NG 생산량",
-  viewWholeWeek: "이번 주 전체 보기"
+        title: "NG 상세 생산량 표",
+        close: "닫기",
+        searchModel: "모델 검색...",
+        loadingChart: "차트 불러오는 중...",
+        noChartData: "표시할 데이터가 없습니다.",
+        area: "공정",
+        model: "모델",
+        date: "날짜",
+        quantity: "생산량",
+        ngReason: "NG 사유",
+        viewMore: "더 보기",
+        logViewMore: "NG 상세 생산량 더 보기: {{area}}, 날짜: {{date}}",
+        exportExcel: "엑셀로 내보내기",
+        outputLabel: "NG 생산량",
+        viewWholeWeek: "이번 주 전체 보기",
       },
       workplaceNGChart: {
         menuTitle: "📁 메뉴",
         chooseExceltotal: "총합",
-        chooseExceldetail : "상세",
+        chooseExceldetail: "상세",
         selectWeek: "주차 선택",
         uploadFirebase: "⬆️업로드",
         uploadSuccess: "✅ 데이터 업로드에 성공했습니다!",
@@ -713,10 +724,28 @@ const resources = {
   },
 };
 
+// Tự động nhận diện ngôn ngữ hệ thống
+const getBrowserLanguage = () => {
+  const browserLang = navigator.language || navigator.userLanguage;
+
+  // Nếu là tiếng Hàn (ko, ko-KR, ko-KP, etc.)
+  if (browserLang.toLowerCase().startsWith("ko")) {
+    return "ko";
+  }
+
+  // Nếu là tiếng Việt (vi, vi-VN, etc.)
+  if (browserLang.toLowerCase().startsWith("vi")) {
+    return "vi";
+  }
+
+  // Mặc định là tiếng Việt
+  return "vi";
+};
+
 i18n.use(initReactI18next).init({
   resources,
-  lng: "vi",
-  fallbackLng: "vi",
+  lng: getBrowserLanguage(), // Tự động nhận diện ngôn ngữ
+  fallbackLng: "vi", // Dự phòng là tiếng Việt
   interpolation: {
     escapeValue: false,
   },
