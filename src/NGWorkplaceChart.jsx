@@ -327,10 +327,16 @@ export default function NGWorkplaceChart() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row bg-gray-50 min-h-screen">
-      <aside className="w-full lg:w-64 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-lg border-r flex flex-col">
+    <div className="flex flex-col lg:flex-row bg-gray-50 h-screen overflow-hidden">
+      <aside
+        className="w-full lg:w-64 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-lg border-r flex flex-col"
+        style={{ maxHeight: "93vh" }}
+      >
         {/* Title + Week Select => scrollable */}
-        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-6">
+        <div
+          className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-6"
+          style={{ maxHeight: "calc(100vh - 100px)" }}
+        >
           <h2 className="text-base sm:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 lg:mb-6 uppercase flex items-center gap-1 sm:gap-2 tracking-wide">
             {t("workplaceNGChart.menuTitle")}
           </h2>
@@ -391,76 +397,125 @@ export default function NGWorkplaceChart() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-4 sm:p-6 flex flex-col lg:flex-row gap-4 lg:gap-8 overflow-auto">
+      <main
+        className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-8 px-4 sm:px-6"
+        style={{ minHeight: 0, overflow: "hidden" }}
+      >
         {/* Chart 2/3 */}
         <section
-          className="w-full lg:basis-2/3 bg-white rounded-xl shadow-lg p-4 sm:p-6 flex flex-col"
-          style={{ minHeight: "50vh" }}
+          className="w-full lg:basis-2/3 bg-white rounded-xl shadow-lg px-4 sm:px-6"
+          style={{
+            minHeight: 0,
+            maxHeight: "93vh",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
         >
-          <div className="flex-1 flex items-center justify-center">
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              maxHeight: "93vh",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
             {chartData ? (
-              <Bar
-                data={chartData}
-                options={{
-                  indexAxis: "y",
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false, position: "bottom" },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) => {
-                          const label = context.dataset.label || "";
-                          const val = context.parsed.x || 0;
-                          return `${label}: ${val.toLocaleString()}`;
-                        },
-                      },
-                    },
-                    datalabels: { display: false },
-                  },
-                  scales: {
-                    x: {
-                      beginAtZero: true,
-                      stacked: false,
-                      barPercentage: 0.2,
-                      categoryPercentage: 0.5,
-                      grid: { display: false, color: "#000" },
-                      ticks: {
-                        color: "#000",
-                        font: { weight: "bold", size: 14 },
-                      },
-                    },
-                    y: {
-                      ticks: {
-                        callback: function (value) {
-                          const label = this.getLabelForValue(value);
-                          return label.length > 15
-                            ? label.slice(0, 15) + "..."
-                            : label;
-                        },
-                        font: { size: 14, weight: "bold" },
-                        color: "#000",
-                      },
-                      grid: {
-                        display: true,
-                        color: "#000",
-                        lineWidth: 0.8,
-                      },
-                    },
-                  },
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
                 }}
-                plugins={[ChartDataLabels, extraLabelPlugin]}
-              />
+              >
+                <Bar
+                  data={chartData}
+                  options={{
+                    indexAxis: "y",
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false, position: "bottom" },
+                      tooltip: {
+                        callbacks: {
+                          label: (context) => {
+                            const label = context.dataset.label || "";
+                            const val = context.parsed.x || 0;
+                            return `${label}: ${val.toLocaleString()}`;
+                          },
+                        },
+                      },
+                      datalabels: { display: false },
+                    },
+                    layout: {
+                      padding: 0,
+                    },
+                    scales: {
+                      x: {
+                        beginAtZero: true,
+                        stacked: false,
+                        barPercentage: 0.2,
+                        categoryPercentage: 0.5,
+                        grid: { display: false, color: "#000" },
+                        ticks: {
+                          color: "#000",
+                          font: { weight: "bold", size: 14 },
+                        },
+                      },
+                      y: {
+                        ticks: {
+                          callback: function (value) {
+                            const label = this.getLabelForValue(value);
+                            return label.length > 15
+                              ? label.slice(0, 15) + "..."
+                              : label;
+                          },
+                          font: { size: 14, weight: "bold" },
+                          color: "#000",
+                          autoSkip: true,
+                          maxTicksLimit: 20,
+                        },
+                        grid: {
+                          display: true,
+                          color: "#000",
+                          lineWidth: 0.8,
+                        },
+                      },
+                    },
+                  }}
+                  plugins={[ChartDataLabels, extraLabelPlugin]}
+                  height={null}
+                />
+              </div>
             ) : (
-              <p className="text-gray-400 text-base sm:text-lg font-medium">
-                {t("workplaceNGChart.pleaseSelectExcel")}
-              </p>
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <p className="text-gray-400 text-base sm:text-lg font-medium">
+                  {t("workplaceNGChart.pleaseSelectExcel")}
+                </p>
+              </div>
             )}
           </div>
         </section>
         {/* Bảng chi tiết 1/3 - Hiển thị khi màn hình >= 1520px */}
         {showTable && (
-          <section className="w-full lg:basis-1/3 bg-white rounded-xl shadow-lg p-4 sm:p-6 flex flex-col overflow-auto">
+          <section
+            className="w-full lg:basis-1/3 bg-white rounded-xl shadow-lg p-4 sm:p-6 flex flex-col overflow-y-auto"
+            style={{ maxHeight: "93vh" }}
+          >
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
               <h3 className="text-lg sm:text-xl font-bold text-black uppercase">
                 {t("workplaceNGChart.outputByArea")}

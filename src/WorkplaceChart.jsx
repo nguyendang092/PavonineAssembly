@@ -427,11 +427,17 @@ export default function WorkplaceChart() {
     XLSX.writeFile(wb, `san_luong_chi_tiet_tuan_${selectedWeek}.xlsx`);
   };
   return (
-    <div className="flex flex-col lg:flex-row bg-gray-50 min-h-screen overflow-hidden">
+    <div className="flex flex-col lg:flex-row bg-gray-50 h-screen overflow-hidden">
       {/* Sidebar */}
-      <div className="w-full lg:w-64 flex flex-col p-2 sm:p-3 lg:p-6 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-md lg:border-r overflow-auto">
+      <div
+        className="w-full lg:w-64 flex flex-col p-2 sm:p-3 lg:p-6 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-md lg:border-r"
+        style={{ maxHeight: "93vh" }}
+      >
         {/* Nội dung chính */}
-        <div className="flex-grow">
+        <div
+          className="flex-grow overflow-y-auto"
+          style={{ maxHeight: "calc(100vh - 150px)" }}
+        >
           <h2 className="text-base sm:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 lg:mb-6 uppercase flex items-center gap-1 sm:gap-2 justify-center lg:justify-start">
             {t("workplaceChart.menuTitle")}
           </h2>
@@ -526,88 +532,122 @@ export default function WorkplaceChart() {
       </div>
       {/* Chart và bảng tổng */}
       <div
-        className="flex-1 p-2 sm:p-4 flex flex-col lg:flex-row gap-3 sm:gap-6 overflow-auto"
-        style={{ minHeight: "50vh" }}
+        className="flex-1 flex flex-col lg:flex-row gap-3 sm:gap-6 px-2 sm:px-4"
+        style={{ minHeight: 0, overflow: "hidden" }}
       >
         {/* Chart */}
         <div
-          className="w-full lg:flex-[7] overflow-y-auto"
-          style={{ minHeight: "300px" }}
+          className="w-full lg:flex-[7] bg-white rounded-xl shadow-lg px-4"
+          style={{
+            minHeight: 0,
+            maxHeight: "93vh",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
         >
           {chartData ? (
-            <Bar
-              data={chartData}
-              options={{
-                indexAxis: "y",
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    callbacks: {
-                      label: (context) => {
-                        const label = context.dataset.label || "";
-                        const val = context.parsed.x || 0;
-                        return `${label}: ${val.toLocaleString()}`;
-                      },
-                    },
-                  },
-                  datalabels: { display: false },
-                },
-                scales: {
-                  x: {
-                    beginAtZero: true,
-                    stacked: false,
-                    barPercentage: 0.2,
-                    categoryPercentage: 0.5,
-                    grid: { display: false, color: "#000" },
-                    ticks: {
-                      color: "#000",
-                      font: { weight: "bold", size: 15 },
-                    },
-                  },
-                  y: {
-                    ticks: {
-                      callback: function (value) {
-                        const label = this.getLabelForValue(value);
-                        return label.length > 15
-                          ? label.slice(0, 15) + "..."
-                          : label;
-                      },
-                      font: { size: 15, weight: "bold" },
-                      color: "#000",
-                    },
-                    grid: {
-                      display: true,
-                      color: "#000",
-                      lineWidth: 0.8,
-                    },
-                  },
-                },
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                maxHeight: "93vh",
+                position: "relative",
+                overflow: "hidden",
               }}
-              plugins={[ChartDataLabels, extraLabelPlugin]}
-            />
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+              >
+                <Bar
+                  data={chartData}
+                  options={{
+                    indexAxis: "y",
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: {
+                        callbacks: {
+                          label: (context) => {
+                            const label = context.dataset.label || "";
+                            const val = context.parsed.x || 0;
+                            return `${label}: ${val.toLocaleString()}`;
+                          },
+                        },
+                      },
+                      datalabels: { display: false },
+                    },
+                    layout: {
+                      padding: 0,
+                    },
+                    scales: {
+                      x: {
+                        beginAtZero: true,
+                        stacked: false,
+                        barPercentage: 0.2,
+                        categoryPercentage: 0.5,
+                        grid: { display: false, color: "#000" },
+                        ticks: {
+                          color: "#000",
+                          font: { weight: "bold", size: 15 },
+                        },
+                      },
+                      y: {
+                        ticks: {
+                          callback: function (value) {
+                            const label = this.getLabelForValue(value);
+                            return label.length > 15
+                              ? label.slice(0, 15) + "..."
+                              : label;
+                          },
+                          font: { size: 15, weight: "bold" },
+                          color: "#000",
+                          autoSkip: true,
+                          maxTicksLimit: 20,
+                        },
+                        grid: {
+                          display: true,
+                          color: "#000",
+                          lineWidth: 0.8,
+                        },
+                      },
+                    },
+                  }}
+                  plugins={[ChartDataLabels, extraLabelPlugin]}
+                  height={null}
+                />
+              </div>
+            </div>
           ) : (
-            <p className="text-gray-500">
-              {t("workplaceChart.pleaseSelectExcel")}
-            </p>
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <p className="text-gray-500">
+                {t("workplaceChart.pleaseSelectExcel")}
+              </p>
+            </div>
           )}
         </div>
         {/* Bảng tổng - Hiển thị khi màn hình >= 1520px */}
         {showTable && (
           <div
-            className="flex"
+            className="flex flex-col bg-white rounded-xl shadow-lg p-3 overflow-y-auto"
             style={{
               flex: "4",
-              backgroundColor: "white",
-              borderRadius: 8,
-              padding: "12px",
-              boxShadow: "0 0 10px rgba(0,0,0,0.1)",
-              overflowX: "auto",
-              overflowY: "auto",
-              flexDirection: "column",
-              height: "100%",
               minWidth: "280px",
+              maxHeight: "93vh",
             }}
           >
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-2">
