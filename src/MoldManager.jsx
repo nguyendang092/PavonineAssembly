@@ -57,6 +57,7 @@ function MoldManager() {
     getPrevMonthLabel(), // Tự động cập nhật theo tháng hiện tại
     "Molds per Product",
     "Warehouse",
+    "Vendor",
     "NamePlate",
     "Process",
   ];
