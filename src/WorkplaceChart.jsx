@@ -429,10 +429,7 @@ export default function WorkplaceChart() {
   return (
     <div className="flex flex-col lg:flex-row bg-gray-50 h-screen overflow-hidden">
       {/* Sidebar */}
-      <div
-        className="w-full lg:w-64 flex flex-col p-2 sm:p-3 lg:p-6 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-md lg:border-r"
-        style={{ maxHeight: "93vh" }}
-      >
+      <div className="w-full lg:w-64 flex flex-col p-2 sm:p-3 lg:p-6 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-md lg:border-r max-h-[30vh] lg:max-h-[93vh]">
         {/* Nội dung chính */}
         <div
           className="flex-grow overflow-y-auto"
@@ -537,10 +534,9 @@ export default function WorkplaceChart() {
       >
         {/* Chart */}
         <div
-          className="w-full lg:flex-[7] bg-white rounded-xl shadow-lg px-4"
+          className="flex-1 lg:flex-[7] bg-white rounded-xl shadow-lg px-4 max-h-[65vh] lg:max-h-[93vh]"
           style={{
             minHeight: 0,
-            maxHeight: "93vh",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
@@ -548,11 +544,9 @@ export default function WorkplaceChart() {
         >
           {chartData ? (
             <div
+              className="relative flex-1"
               style={{
-                flex: 1,
                 minHeight: 0,
-                maxHeight: "93vh",
-                position: "relative",
                 overflow: "hidden",
               }}
             >

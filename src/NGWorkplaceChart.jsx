@@ -328,10 +328,7 @@ export default function NGWorkplaceChart() {
 
   return (
     <div className="flex flex-col lg:flex-row bg-gray-50 h-screen overflow-hidden">
-      <aside
-        className="w-full lg:w-64 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-lg border-r flex flex-col"
-        style={{ maxHeight: "93vh" }}
-      >
+      <aside className="w-full lg:w-64 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-lg border-r flex flex-col max-h-[30vh] lg:max-h-[93vh]">
         {/* Title + Week Select => scrollable */}
         <div
           className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-6"
@@ -403,21 +400,18 @@ export default function NGWorkplaceChart() {
       >
         {/* Chart 2/3 */}
         <section
-          className="w-full lg:basis-2/3 bg-white rounded-xl shadow-lg px-4 sm:px-6"
+          className="flex-1 lg:basis-2/3 bg-white rounded-xl shadow-lg px-4 sm:px-6 max-h-[65vh] lg:max-h-[93vh]"
           style={{
             minHeight: 0,
-            maxHeight: "93vh",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
           }}
         >
           <div
+            className="relative flex-1"
             style={{
-              flex: 1,
               minHeight: 0,
-              maxHeight: "93vh",
-              position: "relative",
               overflow: "hidden",
             }}
           >
