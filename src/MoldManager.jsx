@@ -328,6 +328,7 @@ function MoldManager() {
               </h2>
               <form
                 onSubmit={handleSubmit}
+                noValidate
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-2"
               >
                 {columns.map((col) => {
@@ -372,7 +373,6 @@ function MoldManager() {
                           value={form[col]}
                           onChange={handleChange}
                           className="border p-2 sm:p-1 rounded text-xs focus:ring-2 focus:ring-blue-200"
-                          required={col !== "No" && !col.startsWith("Prev ")}
                           disabled={col === "No" || col.startsWith("Prev ")}
                         />
                       )}
