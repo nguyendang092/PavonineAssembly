@@ -163,7 +163,21 @@ function MoldManager() {
     e.preventDefault();
     try {
       if (editing !== null) {
-        // Cập nhật mold
+        // Cập nhật mold - kiểm tra trùng với các mold khác (không phải chính nó)
+        const moldCode = form["Mold Code"]?.trim();
+        if (moldCode) {
+          const duplicate = molds.find(
+            (m) => m.id !== editing && m["Mold Code"]?.trim() === moldCode
+          );
+          if (duplicate) {
+            setAlert({
+              show: true,
+              type: "error",
+              message: `Mold Code "${moldCode}" đã tồn tại! Vui lòng sử dụng mã khác.`,
+            });
+            return;
+          }
+        }
         const moldRef = ref(db, `molds/${editing}`);
         await set(moldRef, normalizeMold(form, editing, form.No));
         setEditing(null);
@@ -173,7 +187,21 @@ function MoldManager() {
           message: "Cập nhật thành công!",
         });
       } else {
-        // Thêm mold mới
+        // Thêm mold mới - kiểm tra trùng Mold Code
+        const moldCode = form["Mold Code"]?.trim();
+        if (moldCode) {
+          const duplicate = molds.find(
+            (m) => m["Mold Code"]?.trim() === moldCode
+          );
+          if (duplicate) {
+            setAlert({
+              show: true,
+              type: "error",
+              message: `Mold Code "${moldCode}" đã tồn tại! Vui lòng sử dụng mã khác.`,
+            });
+            return;
+          }
+        }
         const newRef = push(ref(db, "molds"));
         const newNo = molds.length + 1;
         await set(newRef, normalizeMold(form, newRef.key, newNo));
@@ -205,6 +233,9 @@ function MoldManager() {
 
   // Xóa mold và đánh lại No
   const handleDelete = async (id) => {
+    // Đóng modal trước
+    setConfirmDelete({ show: false, id: null });
+
     try {
       await remove(ref(db, `molds/${id}`));
       // Sau khi xóa, cập nhật lại No cho danh sách
@@ -212,7 +243,7 @@ function MoldManager() {
       for (let i = 0; i < newMolds.length; i++) {
         await update(ref(db, `molds/${newMolds[i].id}`), { No: i + 1 });
       }
-      setAlert({ show: true, type: "success", message: "Đã xóa thành công!" });
+      setAlert({ show: true, type: "success", message: "Xóa thành công!" });
     } catch (err) {
       setAlert({
         show: true,
@@ -220,7 +251,6 @@ function MoldManager() {
         message: "Xóa thất bại, vui lòng thử lại!",
       });
     }
-    setConfirmDelete({ show: false, id: null });
   };
 
   const handleAddNew = () => {
