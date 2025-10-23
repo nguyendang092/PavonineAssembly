@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 // Tự động tắt thông báo sau 3s
 // (đặt sau khai báo state trong component MoldManager)
@@ -17,12 +18,14 @@ const fromSafeKey = (key, columns) => {
 };
 
 function MoldManager() {
+  const { t } = useTranslation();
+
   // Sidebar menu mẫu
   const sidebarItems = [
-    { label: "Dashboard", icon: "🏠" },
-    { label: "Mold List", icon: "🗂️" },
-    { label: "Statistics", icon: "📊" },
-    { label: "Settings", icon: "⚙️" },
+    { label: t("moldManager.dashboard"), icon: "🏠" },
+    { label: t("moldManager.moldList"), icon: "🗂️" },
+    { label: t("moldManager.statistics"), icon: "📊" },
+    { label: t("moldManager.settings"), icon: "⚙️" },
   ];
 
   // Tính tháng trước để hiển thị trong tên cột
@@ -40,7 +43,48 @@ function MoldManager() {
     return `Prev ${mm} Shots`;
   };
 
-  // Các cột hiển thị
+  // Map tên cột sang key i18n
+  const getColumnTranslationKey = (col) => {
+    const map = {
+      No: "no",
+      Model: "model",
+      "Production Name": "productionName",
+      "Mold Code": "moldCode",
+      "Asset No.": "assetNo",
+      "Mold Size (W*D*H)": "moldSize",
+      "Tooling Weight": "toolingWeight",
+      Date: "date",
+      Location: "location",
+      Type: "type",
+      "Pavonine Model": "pavonineModel",
+      "Shot Counter": "shotCounter",
+      "Molds per Product": "moldsPerProduct",
+      Warehouse: "warehouse",
+      Vendor: "vendor",
+      NamePlate: "namePlate",
+      Process: "process",
+    };
+
+    // Kiểm tra nếu là cột Prev Shots (động)
+    if (col.startsWith("Prev ") && col.includes("Shots")) {
+      return "prevShots";
+    }
+
+    return map[col] || col;
+  };
+
+  // Hàm lấy tên cột đã dịch
+  const getTranslatedColumn = (col) => {
+    const key = getColumnTranslationKey(col);
+    if (key === "prevShots") {
+      // Lấy tháng từ label gốc
+      const month = col.match(/\d+/)?.[0] || "";
+      return `${t("moldManager.columns.prevShots")} (${month})`;
+    }
+    return t(`moldManager.columns.${key}`);
+  };
+
+  // Các cột hiển thị (giữ nguyên key tiếng Anh để xử lý dữ liệu)
   const columns = [
     "No",
     "Model",
@@ -173,7 +217,7 @@ function MoldManager() {
             setAlert({
               show: true,
               type: "error",
-              message: `Mold Code "${moldCode}" đã tồn tại! Vui lòng sử dụng mã khác.`,
+              message: t("moldManager.duplicateMoldCode", { code: moldCode }),
             });
             return;
           }
@@ -184,7 +228,7 @@ function MoldManager() {
         setAlert({
           show: true,
           type: "success",
-          message: "Cập nhật thành công!",
+          message: t("moldManager.updateSuccess"),
         });
       } else {
         // Thêm mold mới - kiểm tra trùng Mold Code
@@ -197,7 +241,7 @@ function MoldManager() {
             setAlert({
               show: true,
               type: "error",
-              message: `Mold Code "${moldCode}" đã tồn tại! Vui lòng sử dụng mã khác.`,
+              message: t("moldManager.duplicateMoldCode", { code: moldCode }),
             });
             return;
           }
@@ -208,7 +252,7 @@ function MoldManager() {
         setAlert({
           show: true,
           type: "success",
-          message: "Thêm mới thành công!",
+          message: t("moldManager.addSuccess"),
         });
       }
       setForm({ ...emptyForm });
@@ -217,7 +261,7 @@ function MoldManager() {
       setAlert({
         show: true,
         type: "error",
-        message: "Có lỗi xảy ra, vui lòng thử lại!",
+        message: t("moldManager.errorOccurred"),
       });
       setShowModal(false);
     }
@@ -243,12 +287,16 @@ function MoldManager() {
       for (let i = 0; i < newMolds.length; i++) {
         await update(ref(db, `molds/${newMolds[i].id}`), { No: i + 1 });
       }
-      setAlert({ show: true, type: "success", message: "Xóa thành công!" });
+      setAlert({
+        show: true,
+        type: "success",
+        message: t("moldManager.deleteSuccess"),
+      });
     } catch (err) {
       setAlert({
         show: true,
         type: "error",
-        message: "Xóa thất bại, vui lòng thử lại!",
+        message: t("moldManager.deleteFail"),
       });
     }
   };
@@ -316,12 +364,14 @@ function MoldManager() {
               />
             </svg>
           </button>
-          <h1 className="text-lg font-bold text-[#1e293b]">Quản lý Mold</h1>
+          <h1 className="text-lg font-bold text-[#1e293b]">
+            {t("moldManager.title")}
+          </h1>
           <div className="w-9" />
         </div>
 
         <h1 className="hidden md:block text-xl font-bold mb-4 text-[#1e293b]">
-          Quản lý Mold
+          {t("moldManager.title")}
         </h1>
         {alert.show && (
           <div
@@ -339,7 +389,7 @@ function MoldManager() {
             onClick={handleAddNew}
             className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
           >
-            Thêm mới
+            {t("moldManager.addNew")}
           </button>
         </div>
 
@@ -350,12 +400,14 @@ function MoldManager() {
               <button
                 onClick={() => setShowModal(false)}
                 className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl font-bold"
-                aria-label="Đóng"
+                aria-label={t("moldManager.close")}
               >
                 ×
               </button>
               <h2 className="text-base sm:text-lg font-bold mb-4 text-[#1e293b]">
-                {editing !== null ? "Cập nhật Mold" : "Thêm mới Mold"}
+                {editing !== null
+                  ? t("moldManager.updateMold")
+                  : t("moldManager.addMold")}
               </h2>
               <form
                 onSubmit={handleSubmit}
@@ -371,7 +423,7 @@ function MoldManager() {
                         htmlFor={col}
                         className="mb-1 font-medium text-gray-700 text-[11px] sm:text-xs pl-1 truncate"
                       >
-                        {col}
+                        {getTranslatedColumn(col)}
                       </label>
                       {isImage ? (
                         <>
@@ -379,7 +431,9 @@ function MoldManager() {
                             id={col}
                             type="text"
                             name={col}
-                            placeholder={col + " (link hình ảnh)"}
+                            placeholder={
+                              getTranslatedColumn(col) + " (link hình ảnh)"
+                            }
                             value={form[col]}
                             onChange={handleChange}
                             className="border p-2 sm:p-1 rounded text-xs focus:ring-2 focus:ring-blue-200"
@@ -387,7 +441,7 @@ function MoldManager() {
                           {form[col] && (
                             <img
                               src={form[col]}
-                              alt={col}
+                              alt={getTranslatedColumn(col)}
                               className="mt-1 rounded border max-h-16 object-contain"
                               onError={(e) => {
                                 e.target.style.display = "none";
@@ -400,7 +454,7 @@ function MoldManager() {
                           id={col}
                           type={col.includes("Date") ? "date" : "text"}
                           name={col}
-                          placeholder={col}
+                          placeholder={getTranslatedColumn(col)}
                           value={form[col]}
                           onChange={handleChange}
                           className="border p-2 sm:p-1 rounded text-xs focus:ring-2 focus:ring-blue-200"
@@ -414,7 +468,9 @@ function MoldManager() {
                   type="submit"
                   className="col-span-1 sm:col-span-2 lg:col-span-4 bg-blue-600 text-white py-2 sm:py-1 rounded font-bold text-sm mt-2"
                 >
-                  {editing !== null ? "Cập nhật" : "Thêm mới"}
+                  {editing !== null
+                    ? t("moldManager.edit")
+                    : t("moldManager.addNew")}
                 </button>
               </form>
             </div>
@@ -426,14 +482,14 @@ function MoldManager() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
             <div className="bg-white rounded-xl shadow-xl p-5 w-80 max-w-full border border-gray-300">
               <h3 className="text-base font-bold mb-4 text-[#1e293b] text-center">
-                Bạn có chắc chắn muốn xóa?
+                {t("moldManager.confirmDeleteMessage")}
               </h3>
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setConfirmDelete({ show: false, id: null })}
                   className="px-3 py-1 rounded bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300"
                 >
-                  Hủy
+                  {t("moldManager.cancel")}
                 </button>
                 <button
                   onClick={() => {
@@ -441,7 +497,7 @@ function MoldManager() {
                   }}
                   className="px-3 py-1 rounded bg-red-600 text-white font-semibold hover:bg-red-700"
                 >
-                  Xóa
+                  {t("moldManager.delete")}
                 </button>
               </div>
             </div>
@@ -458,11 +514,11 @@ function MoldManager() {
                     key={col}
                     className="border border-gray-200 px-3 py-2 text-center text-blue-900 text-xs font-bold uppercase tracking-wide bg-blue-100"
                   >
-                    {col}
+                    {getTranslatedColumn(col)}
                   </th>
                 ))}
                 <th className="border border-gray-200 px-3 py-2 text-center text-blue-900 text-xs font-bold uppercase tracking-wide bg-blue-100">
-                  Edit
+                  {t("moldManager.actions")}
                 </th>
               </tr>
             </thead>
@@ -487,7 +543,7 @@ function MoldManager() {
                           onClick={() => handleEdit(m.id)}
                           className="px-3 py-1.5 bg-blue-500 text-white rounded-md font-medium text-xs shadow-sm hover:bg-blue-600 hover:shadow-md transition-all duration-200 transform hover:scale-105"
                         >
-                          ✏️ Sửa
+                          ✏️ {t("moldManager.edit")}
                         </button>
                         <button
                           onClick={() =>
@@ -495,7 +551,7 @@ function MoldManager() {
                           }
                           className="px-3 py-1.5 bg-red-500 text-white rounded-md font-medium text-xs shadow-sm hover:bg-red-600 hover:shadow-md transition-all duration-200 transform hover:scale-105"
                         >
-                          🗑️ Xóa
+                          🗑️ {t("moldManager.delete")}
                         </button>
                       </div>
                     )}
