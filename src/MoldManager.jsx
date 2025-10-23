@@ -81,7 +81,22 @@ function MoldManager() {
       const month = col.match(/\d+/)?.[0] || "";
       return `${t("moldManager.columns.prevShots")} (${month})`;
     }
-    return t(`moldManager.columns.${key}`);
+
+    // Nếu key không có trong map, trả về tên cột gốc
+    if (key === col) {
+      return col;
+    }
+
+    // Kiểm tra xem key có tồn tại trong translation không
+    const translationKey = `moldManager.columns.${key}`;
+    const translated = t(translationKey);
+
+    // Nếu không tìm thấy translation (trả về key), dùng tên cột gốc
+    if (translated === translationKey) {
+      return col;
+    }
+
+    return translated;
   };
 
   // Các cột hiển thị (giữ nguyên key tiếng Anh để xử lý dữ liệu)
