@@ -48,6 +48,7 @@ function MoldManager() {
   const getColumnTranslationKey = (col) => {
     const map = {
       No: "no",
+      Subsidiary: "subsidiary",
       Model: "model",
       "Production Name": "productionName",
       "Mold Code": "moldCode",
@@ -103,6 +104,7 @@ function MoldManager() {
   // Các cột hiển thị (giữ nguyên key tiếng Anh để xử lý dữ liệu)
   const columns = [
     "No",
+    "Subsidiary",
     "Model",
     "Production Name",
     "Mold Code",
@@ -139,7 +141,7 @@ function MoldManager() {
   const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
   // Giả lập user đăng nhập, thực tế lấy từ context hoặc prop
   const [user, setUser] = useState({ name: "Admin" }); // Tạm thời set user để hiển thị nút Sửa/Xóa
-  // Toggle sidebar for small screens
+  // Toggle sidebar for all screens
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Search term
   const [searchTerm, setSearchTerm] = useState("");
@@ -390,68 +392,78 @@ function MoldManager() {
 
   return (
     <div className="min-h-screen w-full bg-[#f1f5f9] flex flex-col md:flex-row">
-      {/* Sidebar - mobile overlay */}
-      {/* Backdrop for mobile when sidebar open */}
-      {sidebarOpen && (
-        <div
-          className="fixed left-0 right-0 bottom-0 top-16 z-30 bg-black/40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden
-        />
-      )}
-      <aside
-        className={
-          "fixed left-0 top-16 bottom-0 z-40 w-64 transform bg-gradient-to-b from-[#1e293b] to-[#64748b] text-white p-6 shadow-lg transition-transform duration-300 md:static md:translate-x-0 md:flex md:w-64 md:shrink-0" +
-          (sidebarOpen
-            ? " translate-x-0"
-            : " -translate-x-full md:translate-x-0")
+      {/* Sidebar toggle button (always visible, top left) */}
+      <button
+        className="fixed top-20 left-2 z-50 bg-blue-600 text-white rounded-full p-2 shadow-lg hover:bg-blue-700 transition md:top-20 md:left-2"
+        style={{ display: "block" }}
+        onClick={() => setSidebarOpen((open) => !open)}
+        aria-label={
+          sidebarOpen ? t("moldManager.close") : t("moldManager.dashboard")
         }
-        aria-label="Sidebar"
       >
-        <ul className="space-y-4">
-          {sidebarItems.map((item) => (
-            <li
-              key={item.label}
-              className="flex items-center gap-3 text-base font-medium hover:text-sky-300 cursor-pointer transition"
-            >
-              <span className="text-lg">{item.icon}</span>
-              {item.label}
-            </li>
-          ))}
-        </ul>
-      </aside>
+        {sidebarOpen ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="2"
+            stroke="currentColor"
+            className="w-6 h-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        ) : (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="2"
+            stroke="currentColor"
+            className="w-6 h-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        )}
+      </button>
+
+      {/* Sidebar - overlay for mobile and desktop */}
+      {sidebarOpen && (
+        <aside
+          className="fixed left-0 top-16 bottom-0 z-40 w-64 bg-gradient-to-b from-[#1e293b] to-[#64748b] text-white p-6 shadow-lg transition-transform duration-300 md:static md:flex md:w-64 md:shrink-0"
+          aria-label="Sidebar"
+        >
+          <ul className="space-y-4">
+            {sidebarItems.map((item) => (
+              <li
+                key={item.label}
+                className="flex items-center gap-3 text-base font-medium hover:text-sky-300 cursor-pointer transition"
+              >
+                <span className="text-lg">{item.icon}</span>
+                {item.label}
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
 
       {/* Main content */}
       <main className="flex-1 p-4 md:p-8 overflow-auto">
         {/* Mobile top bar */}
-        <div className="flex items-center justify-between md:hidden mb-3">
-          <button
-            className="inline-flex items-center justify-center rounded-md p-2 text-slate-700 hover:bg-slate-200"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open menu"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-              stroke="currentColor"
-              className="w-6 h-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-              />
-            </svg>
-          </button>
-          <h1 className="text-lg font-bold text-[#1e293b]">
+        <div className="flex items-center justify-center md:hidden mb-3">
+          <h1 className="w-full text-center text-xl font-extrabold uppercase tracking-widest text-[#1e293b]">
             {t("moldManager.title")}
           </h1>
-          <div className="w-9" />
         </div>
 
-        <h1 className="hidden md:block text-xl font-bold mb-4 text-[#1e293b]">
+        <h1 className="hidden md:block text-2xl font-extrabold uppercase mb-4 text-center tracking-widest text-[#1e293b]">
           {t("moldManager.title")}
         </h1>
         {alert.show && (

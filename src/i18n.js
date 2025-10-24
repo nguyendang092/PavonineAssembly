@@ -388,6 +388,7 @@ const resources = {
         exportExcel: "Xuất Excel",
         columns: {
           no: "STT",
+          subsidiary: "Chi nhánh",
           model: "Model",
           productionName: "Tên sản phẩm",
           moldCode: "Mã khuôn",
@@ -795,6 +796,7 @@ const resources = {
         exportExcel: "엑셀로 내보내기",
         columns: {
           no: "번호",
+          subsidiary: "자회사",
           model: "모델",
           productionName: "제품명",
           moldCode: "금형 코드",
