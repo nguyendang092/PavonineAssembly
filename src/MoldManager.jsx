@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 // Tự động tắt thông báo sau 3s
 // (đặt sau khai báo state trong component MoldManager)
 import { db, ref, set, onValue } from "./firebase";
 import { push, remove, update } from "firebase/database";
+import * as XLSX from "xlsx";
 
 // Map hiển thị <-> key lưu Firebase
 const toSafeKey = (col) => col.replace(/[^a-zA-Z0-9_]/g, "_");
@@ -140,6 +141,8 @@ function MoldManager() {
   const [user, setUser] = useState({ name: "Admin" }); // Tạm thời set user để hiển thị nút Sửa/Xóa
   // Toggle sidebar for small screens
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Search term
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Tự động tắt thông báo sau 3s
   useEffect(() => {
@@ -322,6 +325,69 @@ function MoldManager() {
     setShowModal(true);
   };
 
+  // Filtered molds by search term (search across all columns)
+  const filteredMolds = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return molds;
+    return molds.filter((m) =>
+      columns.some((col) => `${m[col] ?? ""}`.toLowerCase().includes(q))
+    );
+  }, [searchTerm, molds]);
+
+  // Highlight matched text in table cells
+  const highlightText = (value) => {
+    const text = `${value ?? ""}`;
+    const q = searchTerm.trim();
+    if (!q) return text;
+    const lower = text.toLowerCase();
+    const qLower = q.toLowerCase();
+    const parts = [];
+    let start = 0;
+    let idx = lower.indexOf(qLower, start);
+    let key = 0;
+    while (idx !== -1) {
+      if (idx > start) parts.push(text.slice(start, idx));
+      parts.push(
+        <span key={`hl-${key++}`} className="bg-yellow-200 rounded px-0.5">
+          {text.slice(idx, idx + q.length)}
+        </span>
+      );
+      start = idx + q.length;
+      idx = lower.indexOf(qLower, start);
+    }
+    if (start < text.length) parts.push(text.slice(start));
+    return <>{parts}</>;
+  };
+
+  // Export current filtered table to Excel with translated headers
+  const handleExportExcel = () => {
+    try {
+      const dataRows = filteredMolds.map((m) => {
+        const row = {};
+        columns.forEach((col) => {
+          row[getTranslatedColumn(col)] = m[col] ?? "";
+        });
+        return row;
+      });
+      const ws = XLSX.utils.json_to_sheet(dataRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Molds");
+      const dateStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `molds_${dateStr}.xlsx`);
+      setAlert({
+        show: true,
+        type: "success",
+        message: t("moldManager.exportExcel") + " ✅",
+      });
+    } catch (err) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: t("moldManager.errorOccurred"),
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-[#f1f5f9] flex flex-col md:flex-row">
       {/* Sidebar - mobile overlay */}
@@ -399,13 +465,30 @@ function MoldManager() {
             {alert.message}
           </div>
         )}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={handleAddNew}
-            className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
-          >
-            {t("moldManager.addNew")}
-          </button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center mb-4">
+          <div className="w-full sm:w-64">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={t("moldManager.searchPlaceholder")}
+              className="w-full border rounded-md h-8 px-2 py-1 text-xs focus:ring-2 focus:ring-blue-200"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExportExcel}
+              className="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition"
+            >
+              {t("moldManager.exportExcel")}
+            </button>
+            <button
+              onClick={handleAddNew}
+              className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
+            >
+              {t("moldManager.addNew")}
+            </button>
+          </div>
         </div>
 
         {/* Modal */}
@@ -538,7 +621,7 @@ function MoldManager() {
               </tr>
             </thead>
             <tbody>
-              {molds.map((m, idx) => (
+              {filteredMolds.map((m, idx) => (
                 <tr
                   key={m.id}
                   className={idx % 2 === 0 ? "bg-white" : "bg-blue-100"}
@@ -548,7 +631,7 @@ function MoldManager() {
                       key={col}
                       className="border border-gray-200 px-2 py-1 text-xs text-center align-middle"
                     >
-                      {m[col]}
+                      {highlightText(m[col])}
                     </td>
                   ))}
                   <td className="border border-gray-200 px-2 py-1 text-center align-middle">

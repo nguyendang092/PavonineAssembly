@@ -385,6 +385,7 @@ const resources = {
         duplicateMoldCode:
           'Mold Code "{{code}}" đã tồn tại! Vui lòng sử dụng mã khác.',
         close: "Đóng",
+        exportExcel: "Xuất Excel",
         columns: {
           no: "STT",
           model: "Model",
@@ -791,6 +792,7 @@ const resources = {
         duplicateMoldCode:
           '금형 코드 "{{code}}"이(가) 이미 존재합니다! 다른 코드를 사용해주세요.',
         close: "닫기",
+        exportExcel: "엑셀로 내보내기",
         columns: {
           no: "번호",
           model: "모델",
