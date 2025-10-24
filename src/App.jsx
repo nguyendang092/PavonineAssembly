@@ -28,7 +28,10 @@ import "./App.css";
 const App = () => {
   // Khi F5 (refresh) ở bất kỳ trang nào, tự động chuyển về trang chủ /normal
   useEffect(() => {
-    if (window.location.pathname !== "/normal" && window.location.pathname !== "/") {
+    if (
+      window.location.pathname !== "/normal" &&
+      window.location.pathname !== "/"
+    ) {
       window.location.replace("/normal");
     }
   }, []);
@@ -107,9 +110,9 @@ const App = () => {
                   case "ModelProductionChart":
                     Element = ModelProductionChart;
                     break;
-                  case "Metandeco":
-                    Element = Metandeco;
-                    break;
+                  // case "Metandeco":
+                  //   Element = Metandeco;
+                  //   break;
                   case "CertificateGenerator1":
                     Element = CertificateGenerator1;
                     break;
@@ -120,8 +123,8 @@ const App = () => {
                     Element = TemperatureMonitor;
                     break;
                   case "MoldManager":
-  Element = MoldManager;
-  break;
+                    Element = MoldManager;
+                    break;
                   case "Employ":
                     Element = (props) => (
                       <Employ {...props} showToast={showToast} />
