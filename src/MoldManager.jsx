@@ -336,28 +336,45 @@ function MoldManager() {
     );
   }, [searchTerm, molds]);
 
+  // Format number with comma separator
+  const formatNumber = (value) => {
+    if (!value) return "";
+    const num = parseInt(value, 10);
+    if (isNaN(num)) return value;
+    return num.toLocaleString("en-US");
+  };
+
   // Highlight matched text in table cells
-  const highlightText = (value) => {
+  const highlightText = (value, col) => {
     const text = `${value ?? ""}`;
+    // Format numbers for Shot Counter and Prev Shots columns
+    let displayText = text;
+    if (
+      col === "Shot Counter" ||
+      (col.startsWith("Prev ") && col.includes("Shots"))
+    ) {
+      displayText = formatNumber(text) || text;
+    }
+
     const q = searchTerm.trim();
-    if (!q) return text;
-    const lower = text.toLowerCase();
+    if (!q) return displayText;
+    const lower = displayText.toLowerCase();
     const qLower = q.toLowerCase();
     const parts = [];
     let start = 0;
     let idx = lower.indexOf(qLower, start);
     let key = 0;
     while (idx !== -1) {
-      if (idx > start) parts.push(text.slice(start, idx));
+      if (idx > start) parts.push(displayText.slice(start, idx));
       parts.push(
         <span key={`hl-${key++}`} className="bg-yellow-200 rounded px-0.5">
-          {text.slice(idx, idx + q.length)}
+          {displayText.slice(idx, idx + q.length)}
         </span>
       );
       start = idx + q.length;
       idx = lower.indexOf(qLower, start);
     }
-    if (start < text.length) parts.push(text.slice(start));
+    if (start < displayText.length) parts.push(displayText.slice(start));
     return <>{parts}</>;
   };
 
@@ -643,7 +660,7 @@ function MoldManager() {
                       key={col}
                       className="border border-gray-200 px-2 py-1 text-xs text-center align-middle"
                     >
-                      {highlightText(m[col])}
+                      {highlightText(m[col], col)}
                     </td>
                   ))}
                   <td className="border border-gray-200 px-2 py-1 text-center align-middle">
