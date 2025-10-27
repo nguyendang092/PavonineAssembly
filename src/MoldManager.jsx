@@ -145,6 +145,8 @@ function MoldManager() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Search term
   const [searchTerm, setSearchTerm] = useState("");
+  // Image zoom modal
+  const [imageZoom, setImageZoom] = useState({ show: false, src: "", alt: "" });
 
   // Tự động tắt thông báo sau 3s
   useEffect(() => {
@@ -655,14 +657,39 @@ function MoldManager() {
                   key={m.id}
                   className={idx % 2 === 0 ? "bg-white" : "bg-blue-100"}
                 >
-                  {columns.map((col) => (
-                    <td
-                      key={col}
-                      className="border border-gray-200 px-2 py-1 text-xs text-center align-middle"
-                    >
-                      {highlightText(m[col], col)}
-                    </td>
-                  ))}
+                  {columns.map((col) => {
+                    const isImage = col === "NamePlate" || col === "Process";
+                    const cellValue = m[col];
+
+                    return (
+                      <td
+                        key={col}
+                        className="border border-gray-200 px-2 py-1 text-xs text-center align-middle"
+                      >
+                        {isImage && cellValue && cellValue.trim() ? (
+                          <img
+                            src={cellValue}
+                            alt={getTranslatedColumn(col)}
+                            loading="lazy"
+                            className="max-h-16 max-w-full object-contain mx-auto rounded cursor-pointer hover:opacity-80 transition"
+                            onClick={() =>
+                              setImageZoom({
+                                show: true,
+                                src: cellValue,
+                                alt: getTranslatedColumn(col),
+                              })
+                            }
+                            onError={(e) => {
+                              // Hiển thị text thay vì ẩn khi lỗi
+                              e.target.parentElement.innerHTML = `<span class="text-red-500 text-xs">${cellValue}</span>`;
+                            }}
+                          />
+                        ) : (
+                          highlightText(cellValue, col)
+                        )}
+                      </td>
+                    );
+                  })}
                   <td className="border border-gray-200 px-2 py-1 text-center align-middle">
                     {user && (
                       <div className="flex items-center justify-center gap-2">
@@ -688,6 +715,43 @@ function MoldManager() {
             </tbody>
           </table>
         </div>
+
+        {/* Image Zoom Modal */}
+        {imageZoom.show && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90"
+            onClick={() => setImageZoom({ show: false, src: "", alt: "" })}
+          >
+            <div className="relative w-full h-full p-8 flex items-center justify-center">
+              <button
+                onClick={() => setImageZoom({ show: false, src: "", alt: "" })}
+                className="absolute top-4 right-4 text-white bg-black bg-opacity-70 rounded-full p-3 hover:bg-opacity-90 transition z-10"
+                aria-label={t("moldManager.close")}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="2.5"
+                  stroke="currentColor"
+                  className="w-8 h-8"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+              <img
+                src={imageZoom.src}
+                alt={imageZoom.alt}
+                className="max-w-[85vw] max-h-[85vh] w-auto h-auto object-contain rounded shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
