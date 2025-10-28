@@ -26,15 +26,15 @@ import {
 import "./App.css";
 
 const App = () => {
-  // Khi F5 (refresh) ở bất kỳ trang nào, tự động chuyển về trang chủ /normal
-  useEffect(() => {
-    if (
-      window.location.pathname !== "/normal" &&
-      window.location.pathname !== "/"
-    ) {
-      window.location.replace("/normal");
-    }
-  }, []);
+  // Bỏ logic tự động chuyển về /normal khi refresh
+  // useEffect(() => {
+  //   if (
+  //     window.location.pathname !== "/normal" &&
+  //     window.location.pathname !== "/"
+  //   ) {
+  //     window.location.replace("/normal");
+  //   }
+  // }, []);
   const [toastMessage, setToastMessage] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
   const [user, setUser] = useState(null);
