@@ -453,10 +453,10 @@ function MoldManager() {
         )}
       </button>
 
-      {/* Sidebar - overlay for mobile and desktop */}
+      {/* Sidebar - always fixed for all screen sizes */}
       {sidebarOpen && (
         <aside
-          className="fixed left-0 top-16 bottom-0 z-40 w-64 bg-gradient-to-b from-[#1e293b] to-[#64748b] text-white p-6 shadow-lg transition-transform duration-300 md:static md:flex md:w-64 md:shrink-0"
+          className="fixed left-0 top-20 h-[calc(100vh_-_5rem)] z-40 w-64 bg-gradient-to-b from-[#1e293b] to-[#64748b] text-white p-6 shadow-lg transition-transform duration-300"
           aria-label="Sidebar"
         >
           <ul className="space-y-4">
