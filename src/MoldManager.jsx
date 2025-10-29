@@ -21,6 +21,25 @@ const fromSafeKey = (key, columns) => {
 function MoldManager() {
   const { t } = useTranslation();
 
+  // Helper function để tạo đường dẫn hình ảnh từ thư mục local
+  // Chỉ hỗ trợ local path: /picture/molds/
+  const getImagePath = (cellValue, moldId, columnType) => {
+    // Nếu không có giá trị, không hiển thị hình
+    if (!cellValue || !cellValue.trim()) {
+      return null;
+    }
+
+    // Nếu đã có path đầy đủ bắt đầu bằng "/", dùng luôn
+    if (cellValue.startsWith("/")) {
+      return cellValue;
+    }
+
+    // Nếu chỉ là tên file, tạo path local
+    const fullPath = `/picture/molds/${cellValue}`;
+    console.log(`Image path for ${columnType}:`, fullPath); // Debug log
+    return fullPath;
+  };
+
   // Sidebar menu mẫu
   const sidebarItems = [
     { label: t("moldManager.dashboard"), icon: "🏠" },
@@ -147,6 +166,65 @@ function MoldManager() {
   const [searchTerm, setSearchTerm] = useState("");
   // Image zoom modal
   const [imageZoom, setImageZoom] = useState({ show: false, src: "", alt: "" });
+  // Track failed images to avoid re-rendering issues
+  const [failedImages, setFailedImages] = useState(new Set());
+  // File upload refs for image columns
+  const fileInputRefs = {
+    NamePlate: React.useRef(null),
+    Process: React.useRef(null),
+  };
+
+  // Handle file upload for images
+  const handleImageUpload = (columnName, file) => {
+    if (!file) return;
+
+    // Kiểm tra file type
+    const validTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/gif",
+      "image/webp",
+    ];
+    if (!validTypes.includes(file.type)) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "Chỉ chấp nhận file hình ảnh (PNG, JPG, GIF, WebP)!",
+      });
+      return;
+    }
+
+    // Tạo tên file dựa trên Mold Code
+    const moldCode = form["Mold Code"] || `mold_${Date.now()}`;
+    const fileExt = file.name.split(".").pop();
+    const columnType = columnName === "NamePlate" ? "nameplate" : "process";
+    const newFileName = `${moldCode}_${columnType}.${fileExt}`;
+
+    // Tạo preview URL
+    const previewURL = URL.createObjectURL(file);
+
+    // Cập nhật form với tên file mới
+    setForm((prev) => ({
+      ...prev,
+      [columnName]: newFileName,
+    }));
+
+    // Thông báo người dùng cần copy file vào public/picture/molds/
+    setAlert({
+      show: true,
+      type: "success",
+      message: `Đã chọn hình! Vui lòng copy file vào: public/picture/molds/${newFileName}`,
+    });
+
+    // TODO: Trong production, bạn có thể dùng API để upload file tự động
+    console.log("File cần copy:", {
+      originalName: file.name,
+      newName: newFileName,
+      destination: `public/picture/molds/${newFileName}`,
+      preview: previewURL,
+    });
+  };
 
   // Tự động tắt thông báo sau 3s
   useEffect(() => {
@@ -548,28 +626,54 @@ function MoldManager() {
                     col === "NamePlate" || col.startsWith("Process");
                   return (
                     <div key={col} className="flex flex-col text-xs">
-                      <label
-                        htmlFor={col}
-                        className="mb-1 font-medium text-gray-700 text-[11px] sm:text-xs pl-1 truncate"
-                      >
-                        {getTranslatedColumn(col)}
-                      </label>
+                      <div className="mb-1 flex items-center justify-between gap-1">
+                        <label
+                          htmlFor={col}
+                          className="font-medium text-gray-700 text-[11px] sm:text-xs pl-1 truncate flex-1"
+                        >
+                          {getTranslatedColumn(col)}
+                        </label>
+                        {isImage && (
+                          <button
+                            type="button"
+                            onClick={() => fileInputRefs[col]?.current?.click()}
+                            className="px-2 py-0.5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 whitespace-nowrap"
+                            title="Chọn hình"
+                          >
+                            📁
+                          </button>
+                        )}
+                        {isImage && (
+                          <input
+                            ref={fileInputRefs[col]}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleImageUpload(col, file);
+                            }}
+                          />
+                        )}
+                      </div>
                       {isImage ? (
                         <>
                           <input
                             id={col}
                             type="text"
                             name={col}
-                            placeholder={
-                              getTranslatedColumn(col) + " (link hình ảnh)"
-                            }
+                            placeholder={getTranslatedColumn(col)}
                             value={form[col]}
                             onChange={handleChange}
                             className="border p-2 sm:p-1 rounded text-xs focus:ring-2 focus:ring-blue-200"
                           />
                           {form[col] && (
                             <img
-                              src={form[col]}
+                              src={getImagePath(
+                                form[col],
+                                form["Mold Code"],
+                                col
+                              )}
                               alt={getTranslatedColumn(col)}
                               className="mt-1 rounded border max-h-16 object-contain"
                               onError={(e) => {
@@ -660,30 +764,45 @@ function MoldManager() {
                   {columns.map((col) => {
                     const isImage = col === "NamePlate" || col === "Process";
                     const cellValue = m[col];
+                    // Tạo đường dẫn hình ảnh tự động dựa trên MoldID
+                    const moldId = m["Mold Code"] || m.id;
+                    const imagePath = isImage
+                      ? getImagePath(cellValue, moldId, col)
+                      : null;
+
+                    // Kiểm tra xem hình ảnh này đã fail chưa
+                    const imageKey = `${m.id}-${col}`;
+                    const hasImageError = failedImages.has(imageKey);
 
                     return (
                       <td
                         key={col}
                         className="border border-gray-200 px-2 py-1 text-xs text-center align-middle"
                       >
-                        {isImage && cellValue && cellValue.trim() ? (
+                        {isImage && imagePath && !hasImageError ? (
                           <img
-                            src={cellValue}
+                            src={imagePath}
                             alt={getTranslatedColumn(col)}
                             loading="lazy"
                             className="max-h-16 max-w-full object-contain mx-auto rounded cursor-pointer hover:opacity-80 transition"
                             onClick={() =>
                               setImageZoom({
                                 show: true,
-                                src: cellValue,
+                                src: imagePath,
                                 alt: getTranslatedColumn(col),
                               })
                             }
                             onError={(e) => {
-                              // Hiển thị text thay vì ẩn khi lỗi
-                              e.target.parentElement.innerHTML = `<span class="text-red-500 text-xs">${cellValue}</span>`;
+                              // Thêm vào set failed images để không render lại
+                              setFailedImages((prev) =>
+                                new Set(prev).add(imageKey)
+                              );
                             }}
                           />
+                        ) : isImage && hasImageError ? (
+                          <span className="text-gray-400 text-xs italic">
+                            Image not found
+                          </span>
                         ) : (
                           highlightText(cellValue, col)
                         )}
