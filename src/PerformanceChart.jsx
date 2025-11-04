@@ -54,10 +54,10 @@ export default function PerformanceChart() {
         <div className="text-center mb-4">
           <div className="inline-block">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">
-              개선된 대시보드
+              개선 제안현황
             </h1>
             <p className="text-xs text-gray-500 tracking-wide">
-              Improved Dashboard
+              Improvement Dashboard
             </p>
           </div>
         </div>
