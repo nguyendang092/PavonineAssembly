@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   BarChart,
   Bar,
@@ -23,6 +23,7 @@ const initialData = [
 
 export default function PerformanceChart() {
   const [data, setData] = useState(initialData);
+  const chartRef = useRef(null);
 
   // Tính số tuần hiện tại trong năm
   const getCurrentWeek = () => {
@@ -34,6 +35,98 @@ export default function PerformanceChart() {
 
   const currentWeekNumber = getCurrentWeek();
   const currentYear = new Date().getFullYear();
+
+  // Download chart as SVG
+  const downloadChartAsSVG = () => {
+    const container = chartRef.current;
+    if (!container) return;
+    const svg = container.querySelector("svg");
+    if (!svg) return;
+
+    const serializer = new XMLSerializer();
+    let svgString = serializer.serializeToString(svg);
+    // Ensure proper XML header
+    if (!svgString.startsWith("<?xml")) {
+      svgString = `<?xml version="1.0" encoding="UTF-8"?>\n` + svgString;
+    }
+    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    a.download = `performance-chart-${yyyy}${mm}${dd}.svg`;
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  // Download full chart (with title header) as PNG
+  const downloadChartAsPNG = () => {
+    const container = chartRef.current;
+    if (!container) return;
+    const svg = container.querySelector("svg");
+    if (!svg) return;
+
+    const rect = svg.getBoundingClientRect();
+    const serializer = new XMLSerializer();
+    let svgString = serializer.serializeToString(svg);
+    if (!svgString.startsWith("<?xml")) {
+      svgString = `<?xml version="1.0" encoding="UTF-8"?>\n` + svgString;
+    }
+    const svgBlob = new Blob([svgString], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      const scale = window.devicePixelRatio || 1;
+      const headerHeight = 44; // pixels
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(rect.width * scale));
+      canvas.height = Math.max(
+        1,
+        Math.round((rect.height + headerHeight) * scale)
+      );
+      const ctx = canvas.getContext("2d");
+      // scale to keep things sharp
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      // White background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, rect.width, rect.height + headerHeight);
+      // Header gradient background
+      const grad = ctx.createLinearGradient(0, 0, rect.width, 0);
+      grad.addColorStop(0, "#ec4899"); // pink-500
+      grad.addColorStop(1, "#db2777"); // rose-600/700
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, rect.width, headerHeight);
+      // Header title
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.font = "600 14px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.textBaseline = "middle";
+      ctx.fillText("📈 성과 비교 차트", 12, headerHeight / 2);
+      // Draw chart SVG below header
+      ctx.drawImage(img, 0, headerHeight);
+      URL.revokeObjectURL(url);
+
+      const pngUrl = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      a.download = `performance-chart-${yyyy}${mm}${dd}.png`;
+      a.href = pngUrl;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    };
+    img.src = url;
+  };
 
   const handleChange = (index, field, value) => {
     const updated = [...data];
@@ -157,14 +250,33 @@ export default function PerformanceChart() {
 
         {/* Biểu đồ */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-          <div className="bg-gradient-to-r from-pink-500 to-rose-600 px-4 py-2">
+          <div className="bg-gradient-to-r from-pink-500 to-rose-600 px-4 py-2 flex items-center justify-between">
             <h3 className="text-white font-semibold text-sm flex items-center gap-2">
               <span>📈</span>
               <span>성과 비교 차트</span>
             </h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={downloadChartAsPNG}
+                className="text-white/90 hover:text-white bg-white/20 hover:bg-white/30 border border-white/30 rounded px-2 py-1 text-[11px] font-semibold transition"
+                title="Tải ảnh PNG"
+              >
+                ⬇️ PNG
+              </button>
+              <button
+                onClick={downloadChartAsSVG}
+                className="text-white/90 hover:text-white bg-white/20 hover:bg-white/30 border border-white/30 rounded px-2 py-1 text-[11px] font-semibold transition"
+                title="Tải ảnh SVG"
+              >
+                ⬇️ SVG
+              </button>
+            </div>
           </div>
 
-          <div className="h-96 bg-gradient-to-br from-slate-50 to-indigo-50 rounded-lg p-4">
+          <div
+            ref={chartRef}
+            className="h-96 bg-gradient-to-br from-slate-50 to-indigo-50 rounded-lg p-4"
+          >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={data.map((row) => ({
