@@ -15,6 +15,7 @@ import CertificateGenerator2 from "./CertificateGenerator2";
 import Metandeco from "./Metandeco";
 import { routeConfig } from "./menuConfig";
 import MoldManager from "./MoldManager";
+import PerformanceChart from "./PerformanceChart";
 import {
   BrowserRouter as Router,
   Routes,
@@ -124,6 +125,9 @@ const App = () => {
                     break;
                   case "MoldManager":
                     Element = MoldManager;
+                    break;
+                  case "PerformanceChart":
+                    Element = PerformanceChart;
                     break;
                   case "Employ":
                     Element = (props) => (

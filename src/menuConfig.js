@@ -69,6 +69,11 @@ export const menuConfig = [
     type: "dropdown",
     children: [{ key: "mold", label: "navbar.mold", path: "/mold" }],
   },
+  {
+    key: "performance",
+    label: "navbar.performance",
+    path: "/performance",
+  },
 ];
 
 // Cấu hình route cho App.jsx
@@ -86,4 +91,5 @@ export const routeConfig = [
   { path: "/employ", element: "Employ" },
   { path: "/employ/:leader", element: "Employ" },
   { path: "/mold", element: "MoldManager" },
+  { path: "/performance", element: "PerformanceChart" },
 ];

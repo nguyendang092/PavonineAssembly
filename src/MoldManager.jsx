@@ -574,7 +574,7 @@ function MoldManager() {
             {alert.message}
           </div>
         )}
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center mb-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end mb-4">
           <div className="w-full sm:w-64">
             <input
               type="text"
