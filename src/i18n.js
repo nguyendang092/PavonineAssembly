@@ -83,7 +83,7 @@ const resources = {
         changePassword: "Đổi mật khẩu",
         Normal: "Normal",
         ng: "NG",
-        performance: "Hiệu suất",
+        performance: "Cải tiến",
       },
       temperatureMonitor: {
         dashboard: "Bảng điều khiển",
