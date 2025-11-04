@@ -14,9 +14,9 @@ import {
 const initialData = [
   { team: "PRESS", target: 58, total: 21, currentWeek: 0 },
   { team: "MC", target: 173, total: 150, currentWeek: 0 },
-  { team: "H/L", target: 92, total: 6, currentWeek: 0 },
-  { team: "ANOD", target: 69, total: 13, currentWeek: 0 },
-  { team: "ASSY", target: 127, total: 21, currentWeek: 0 },
+  { team: "HAIRLINE", target: 92, total: 6, currentWeek: 0 },
+  { team: "ANODIZING", target: 69, total: 13, currentWeek: 0 },
+  { team: "ASSEMBLY", target: 127, total: 21, currentWeek: 0 },
   { team: "QC", target: 150, total: 63, currentWeek: 0 },
   { team: "지원부서", target: 35, total: 7, currentWeek: 0 },
 ];
