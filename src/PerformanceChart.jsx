@@ -143,13 +143,13 @@ export default function PerformanceChart() {
                     TARGET
                   </th>
                   <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
-                    TOTAL (W1~W{currentWeekNumber - 1}/{currentYear})
+                    TOTAL (W1~W{currentWeekNumber - 2}/{currentYear})
                   </th>
                   <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
                     % TOTAL/TARGET
                   </th>
                   <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
-                    WEEK {currentWeekNumber}/{currentYear}
+                    WEEK {currentWeekNumber - 1}/{currentYear}
                   </th>
                 </tr>
               </thead>
