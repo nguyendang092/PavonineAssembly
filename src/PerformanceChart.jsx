@@ -205,11 +205,11 @@ export default function PerformanceChart() {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden flex">
+    <div className="h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden flex flex-col md:flex-row">
       {/* Sidebar */}
       <div
-        className={`bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ${
-          sidebarOpen ? "w-56" : "w-0"
+        className={`bg-white border-r md:border-b-0 border-b border-gray-200 shadow-lg transition-all duration-300 ${
+          sidebarOpen ? "md:w-56 w-full h-auto md:h-full" : "w-0 h-0"
         } overflow-hidden flex-shrink-0`}
       >
         <div className="h-full flex flex-col p-4">
@@ -221,11 +221,17 @@ export default function PerformanceChart() {
             <p className="text-[10px] text-gray-500">Select Year</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-2">
+          <div className="flex-1 overflow-y-auto space-y-2 md:block grid grid-cols-2 gap-2">
             {years.map((year) => (
               <button
                 key={year}
-                onClick={() => setSelectedYear(year)}
+                onClick={() => {
+                  setSelectedYear(year);
+                  // Auto-close sidebar on mobile after selection
+                  if (window.innerWidth < 768) {
+                    setSidebarOpen(false);
+                  }
+                }}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
                   selectedYear === year
                     ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md"
@@ -249,14 +255,14 @@ export default function PerformanceChart() {
       {/* Toggle Button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="absolute top-4 left-4 z-10 bg-white border border-gray-300 rounded-lg p-2 shadow-md hover:shadow-lg transition-all hover:bg-gray-50"
+        className="fixed md:absolute top-4 left-4 z-20 bg-white border border-gray-300 rounded-lg p-2 shadow-md hover:shadow-lg transition-all hover:bg-gray-50"
         title={sidebarOpen ? "닫기" : "열기"}
       >
         <span className="text-lg">{sidebarOpen ? "◀" : "▶"}</span>
       </button>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 overflow-hidden">
+      <div className="flex-1 p-2 md:p-4 overflow-hidden">
         {loading ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
@@ -270,9 +276,9 @@ export default function PerformanceChart() {
         ) : (
           <div className="max-w-7xl mx-auto h-full flex flex-col">
             {/* Header */}
-            <div className="text-center mb-4">
+            <div className="text-center mb-2 md:mb-4">
               <div className="inline-block">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">
+                <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">
                   개선 제안현황 ({selectedYear})
                 </h1>
                 <p className="text-xs text-gray-500 tracking-wide">
@@ -282,16 +288,17 @@ export default function PerformanceChart() {
             </div>
 
             {/* Bảng nhập liệu */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-4 border border-gray-100 flex-shrink-0">
-              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2 flex items-center justify-between">
-                <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-2 md:mb-4 border border-gray-100 flex-shrink-0">
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-2 md:px-4 py-2 flex items-center justify-between flex-wrap gap-2">
+                <h3 className="text-white font-semibold text-xs md:text-sm flex items-center gap-2">
                   <span>📊</span>
-                  <span>데이터 입력 테이블</span>
+                  <span className="hidden sm:inline">데이터 입력 테이블</span>
+                  <span className="sm:hidden">테이블</span>
                 </h3>
                 <button
                   onClick={handleSaveData}
                   disabled={!hasUnsavedChanges || saving}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-[10px] md:text-xs font-semibold transition-all ${
                     hasUnsavedChanges && !saving
                       ? "bg-white text-indigo-600 hover:bg-gray-100 shadow-md"
                       : "bg-white/20 text-white/50 cursor-not-allowed"
@@ -305,12 +312,13 @@ export default function PerformanceChart() {
                   {saving ? (
                     <>
                       <span className="animate-spin">⏳</span>
-                      <span>저장 중...</span>
+                      <span className="hidden sm:inline">저장 중...</span>
+                      <span className="sm:hidden">...</span>
                     </>
                   ) : (
                     <>
                       <span>💾</span>
-                      <span>저장</span>
+                      <span className="hidden sm:inline">저장</span>
                       {hasUnsavedChanges && (
                         <span className="text-[10px] bg-red-500 text-white px-1 rounded-full">
                           ●
@@ -322,23 +330,30 @@ export default function PerformanceChart() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-[10px] md:text-xs">
                   <thead>
                     <tr className="bg-gradient-to-r from-gray-50 to-slate-50">
-                      <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
+                      <th className="px-2 md:px-3 py-1 md:py-2 text-left text-[9px] md:text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
                         TEAM
                       </th>
-                      <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
-                        TARGET
+                      <th className="px-2 md:px-3 py-1 md:py-2 text-center text-[9px] md:text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
+                        <span className="hidden sm:inline">TARGET</span>
+                        <span className="sm:hidden">TGT</span>
                       </th>
-                      <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
-                        TOTAL (W1~W{currentWeekNumber - 1}/{selectedYear})
+                      <th className="px-2 md:px-3 py-1 md:py-2 text-center text-[9px] md:text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
+                        <span className="hidden md:inline">
+                          TOTAL (W1~W{currentWeekNumber - 1}/{selectedYear})
+                        </span>
+                        <span className="md:hidden">TOTAL</span>
                       </th>
-                      <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
-                        % TOTAL/TARGET
+                      <th className="px-2 md:px-3 py-1 md:py-2 text-center text-[9px] md:text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
+                        %
                       </th>
-                      <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
-                        WEEK {currentWeekNumber - 1}/{selectedYear}
+                      <th className="px-2 md:px-3 py-1 md:py-2 text-center text-[9px] md:text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
+                        <span className="hidden sm:inline">
+                          WEEK {currentWeekNumber - 1}/{selectedYear}
+                        </span>
+                        <span className="sm:hidden">WK</span>
                       </th>
                     </tr>
                   </thead>
@@ -348,35 +363,35 @@ export default function PerformanceChart() {
                         key={i}
                         className="hover:bg-indigo-50/50 transition-all duration-200"
                       >
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800">
+                        <td className="px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">
+                          <span className="inline-flex items-center px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[11px] font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800">
                             {row.team}
                           </span>
                         </td>
-                        <td className="px-3 py-2 text-center">
+                        <td className="px-2 md:px-3 py-1 md:py-2 text-center">
                           <input
                             type="number"
                             value={row.target}
                             onChange={(e) =>
                               handleChange(i, "target", e.target.value)
                             }
-                            className="w-16 px-2 py-1 text-center text-xs border border-gray-200 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all outline-none font-medium text-gray-700"
+                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all outline-none font-medium text-gray-700"
                           />
                         </td>
-                        <td className="px-3 py-2 text-center">
+                        <td className="px-2 md:px-3 py-1 md:py-2 text-center">
                           <input
                             type="number"
                             value={row.total}
                             onChange={(e) =>
                               handleChange(i, "total", e.target.value)
                             }
-                            className="w-16 px-2 py-1 text-center text-xs border border-gray-200 rounded focus:border-purple-400 focus:ring-1 focus:ring-purple-200 transition-all outline-none font-medium text-gray-700"
+                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-purple-400 focus:ring-1 focus:ring-purple-200 transition-all outline-none font-medium text-gray-700"
                           />
                         </td>
-                        <td className="px-3 py-2 text-center">
+                        <td className="px-2 md:px-3 py-1 md:py-2 text-center">
                           <div className="inline-flex items-center gap-1">
                             <div
-                              className={`px-2 py-1 rounded-full font-bold text-[11px] ${
+                              className={`px-1.5 md:px-2 py-0.5 md:py-1 rounded-full font-bold text-[9px] md:text-[11px] ${
                                 calculatePercentage(row.total, row.target) >=
                                 100
                                   ? "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-sm"
@@ -392,14 +407,14 @@ export default function PerformanceChart() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-center">
+                        <td className="px-2 md:px-3 py-1 md:py-2 text-center">
                           <input
                             type="number"
                             value={row.currentWeek}
                             onChange={(e) =>
                               handleChange(i, "currentWeek", e.target.value)
                             }
-                            className="w-16 px-2 py-1 text-center text-xs border border-gray-200 rounded focus:border-pink-400 focus:ring-1 focus:ring-pink-200 transition-all outline-none font-medium text-gray-700"
+                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-pink-400 focus:ring-1 focus:ring-pink-200 transition-all outline-none font-medium text-gray-700"
                           />
                         </td>
                       </tr>
@@ -414,34 +429,37 @@ export default function PerformanceChart() {
               ref={cardRef}
               className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100"
             >
-              <div className="bg-gradient-to-r from-pink-500 to-rose-600 px-4 py-2 flex items-center justify-between">
-                <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+              <div className="bg-gradient-to-r from-pink-500 to-rose-600 px-2 md:px-4 py-2 flex items-center justify-between flex-wrap gap-2">
+                <h3 className="text-white font-semibold text-xs md:text-sm flex items-center gap-2">
                   <span>📈</span>
-                  <span>성과 비교 차트</span>
+                  <span className="hidden sm:inline">성과 비교 차트</span>
+                  <span className="sm:hidden">차트</span>
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 md:gap-2">
                   <button
                     onClick={downloadChartAsPNG}
                     data-no-export="true"
-                    className="text-white/90 hover:text-white bg-white/20 hover:bg-white/30 border border-white/30 rounded px-2 py-1 text-[11px] font-semibold transition"
+                    className="text-white/90 hover:text-white bg-white/20 hover:bg-white/30 border border-white/30 rounded px-1.5 md:px-2 py-0.5 md:py-1 text-[9px] md:text-[11px] font-semibold transition"
                     title="Tải ảnh PNG"
                   >
-                    ⬇️ PNG
+                    <span className="hidden sm:inline">⬇️ PNG</span>
+                    <span className="sm:hidden">PNG</span>
                   </button>
                   <button
                     onClick={downloadChartAsSVG}
                     data-no-export="true"
-                    className="text-white/90 hover:text-white bg-white/20 hover:bg-white/30 border border-white/30 rounded px-2 py-1 text-[11px] font-semibold transition"
+                    className="text-white/90 hover:text-white bg-white/20 hover:bg-white/30 border border-white/30 rounded px-1.5 md:px-2 py-0.5 md:py-1 text-[9px] md:text-[11px] font-semibold transition"
                     title="Tải ảnh SVG"
                   >
-                    ⬇️ SVG
+                    <span className="hidden sm:inline">⬇️ SVG</span>
+                    <span className="sm:hidden">SVG</span>
                   </button>
                 </div>
               </div>
 
               <div
                 ref={chartRef}
-                className="h-96 bg-gradient-to-br from-slate-50 to-indigo-50 rounded-lg p-4"
+                className="h-64 md:h-96 bg-gradient-to-br from-slate-50 to-indigo-50 rounded-lg p-2 md:p-4"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -451,9 +469,14 @@ export default function PerformanceChart() {
                         calculatePercentage(row.total, row.target)
                       ),
                     }))}
-                    margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
-                    barGap={6}
-                    barCategoryGap={15}
+                    margin={{
+                      top: 20,
+                      right: 10,
+                      left: 10,
+                      bottom: 20,
+                    }}
+                    barGap={4}
+                    barCategoryGap={10}
                   >
                     <defs>
                       <linearGradient
