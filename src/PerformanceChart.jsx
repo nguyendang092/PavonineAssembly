@@ -14,16 +14,33 @@ import {
   LabelList,
 } from "recharts";
 
-// Template cố định cho các team
-const TEAM_TEMPLATE = [
-  { team: "PRESS", target: 0, total: 0, currentWeek: 0 },
-  { team: "MC", target: 0, total: 0, currentWeek: 0 },
-  { team: "HAIRLINE", target: 0, total: 0, currentWeek: 0 },
-  { team: "ANODIZING", target: 0, total: 0, currentWeek: 0 },
-  { team: "ASSEMBLY", target: 0, total: 0, currentWeek: 0 },
-  { team: "QC", target: 0, total: 0, currentWeek: 0 },
-  { team: "지원부서", target: 0, total: 0, currentWeek: 0 },
+// Template cố định cho các team với dữ liệu theo tuần
+const createTeamTemplate = () => {
+  const weeks = {};
+  for (let i = 1; i <= 52; i++) {
+    weeks[`W${i}`] = 0;
+  }
+  return {
+    team: "",
+    target: 0,
+    weeks: weeks,
+  };
+};
+
+const TEAM_NAMES = [
+  "PRESS",
+  "MC",
+  "HAIRLINE",
+  "ANODIZING",
+  "ASSEMBLY",
+  "QC",
+  "지원부서",
 ];
+
+const TEAM_TEMPLATE = TEAM_NAMES.map((name) => ({
+  ...createTeamTemplate(),
+  team: name,
+}));
 
 export default function PerformanceChart() {
   const { user } = useUser();
@@ -47,7 +64,30 @@ export default function PerformanceChart() {
         setYearDataStore(firebaseData);
         // Load data cho năm đã chọn nếu có
         if (firebaseData[selectedYear]) {
-          setData(firebaseData[selectedYear]);
+          const yearData = firebaseData[selectedYear];
+          // Kiểm tra xem dữ liệu có cấu trúc mới (có weeks) hay cũ
+          if (yearData[0] && yearData[0].weeks) {
+            // Cấu trúc mới, dùng trực tiếp
+            setData(yearData);
+          } else {
+            // Cấu trúc cũ, chuyển đổi sang cấu trúc mới
+            const convertedData = yearData.map((item) => {
+              const weeks = {};
+              for (let i = 1; i <= 52; i++) {
+                weeks[`W${i}`] = 0;
+              }
+              // Đặt giá trị currentWeek vào tuần tương ứng
+              if (item.currentWeek && currentWeekNumber > 1) {
+                weeks[`W${currentWeekNumber - 1}`] = item.currentWeek || 0;
+              }
+              return {
+                team: item.team,
+                target: item.target || 0,
+                weeks: weeks,
+              };
+            });
+            setData(convertedData);
+          }
         } else {
           // Nếu chưa có data cho năm này, dùng template
           setData(TEAM_TEMPLATE);
@@ -65,7 +105,31 @@ export default function PerformanceChart() {
   // Cập nhật data khi chuyển năm (chỉ load từ Firebase, không tạo mới)
   useEffect(() => {
     if (yearDataStore[selectedYear]) {
-      setData(yearDataStore[selectedYear]);
+      const yearData = yearDataStore[selectedYear];
+      // Kiểm tra xem dữ liệu có cấu trúc mới (có weeks) hay cũ
+      if (yearData[0] && yearData[0].weeks) {
+        // Cấu trúc mới, dùng trực tiếp
+        setData(yearData);
+      } else {
+        // Cấu trúc cũ, chuyển đổi sang cấu trúc mới
+        const convertedData = yearData.map((item) => {
+          const weeks = {};
+          for (let i = 1; i <= 52; i++) {
+            weeks[`W${i}`] = 0;
+          }
+          // Đặt giá trị currentWeek vào tuần tương ứng
+          const weekNum = getCurrentWeek(selectedYear);
+          if (item.currentWeek && weekNum > 1) {
+            weeks[`W${weekNum - 1}`] = item.currentWeek || 0;
+          }
+          return {
+            team: item.team,
+            target: item.target || 0,
+            weeks: weeks,
+          };
+        });
+        setData(convertedData);
+      }
     } else {
       // Nếu chưa có data cho năm này, dùng template
       setData(TEAM_TEMPLATE);
@@ -163,9 +227,29 @@ export default function PerformanceChart() {
 
   const handleChange = (index, field, value) => {
     const updated = [...data];
-    updated[index][field] = Number(value);
+    if (field === "target") {
+      updated[index].target = Number(value);
+    } else if (field.startsWith("W")) {
+      // Cập nhật giá trị cho tuần cụ thể
+      updated[index].weeks[field] = Number(value);
+    }
     setData(updated);
     setHasUnsavedChanges(true);
+  };
+
+  // Tính tổng từ W1 đến tuần hiện tại - 1
+  const calculateTotal = (teamData, upToWeek) => {
+    let total = 0;
+    for (let i = 1; i < upToWeek; i++) {
+      total += teamData.weeks[`W${i}`] || 0;
+    }
+    return total;
+  };
+
+  // Tính phần trăm total vs target
+  const calculatePercentage = (total, target) => {
+    if (target === 0) return 0;
+    return ((total / target) * 100).toFixed(1);
   };
 
   // Hàm lưu dữ liệu vào Firebase
@@ -188,12 +272,6 @@ export default function PerformanceChart() {
     } finally {
       setSaving(false);
     }
-  };
-
-  // Tính phần trăm total vs target
-  const calculatePercentage = (total, target) => {
-    if (target === 0) return 0;
-    return ((total / target) * 100).toFixed(1);
   };
 
   return (
@@ -355,70 +433,71 @@ export default function PerformanceChart() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {data.map((row, i) => (
-                      <tr
-                        key={i}
-                        className="hover:bg-indigo-50/50 transition-all duration-200"
-                      >
-                        <td className="px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">
-                          <span className="inline-flex items-center px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[11px] font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800">
-                            {row.team}
-                          </span>
-                        </td>
-                        <td className="px-2 md:px-3 py-1 md:py-2 text-center">
-                          <input
-                            type="number"
-                            value={row.target}
-                            onChange={(e) =>
-                              handleChange(i, "target", e.target.value)
-                            }
-                            disabled={!user}
-                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          />
-                        </td>
-                        <td className="px-2 md:px-3 py-1 md:py-2 text-center">
-                          <input
-                            type="number"
-                            value={row.total}
-                            onChange={(e) =>
-                              handleChange(i, "total", e.target.value)
-                            }
-                            disabled={!user}
-                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-purple-400 focus:ring-1 focus:ring-purple-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          />
-                        </td>
-                        <td className="px-2 md:px-3 py-1 md:py-2 text-center">
-                          <div className="inline-flex items-center gap-1">
-                            <div
-                              className={`px-1.5 md:px-2 py-0.5 md:py-1 rounded-full font-bold text-[9px] md:text-[11px] ${
-                                calculatePercentage(row.total, row.target) >=
-                                100
-                                  ? "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-sm"
-                                  : calculatePercentage(
-                                      row.total,
-                                      row.target
-                                    ) >= 75
-                                  ? "bg-gradient-to-r from-yellow-400 to-orange-400 text-white shadow-sm"
-                                  : "bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm"
-                              }`}
-                            >
-                              {calculatePercentage(row.total, row.target)}%
+                    {data.map((row, i) => {
+                      const total = calculateTotal(row, currentWeekNumber);
+                      const currentWeekValue =
+                        row.weeks[`W${currentWeekNumber - 1}`] || 0;
+
+                      return (
+                        <tr
+                          key={i}
+                          className="hover:bg-indigo-50/50 transition-all duration-200"
+                        >
+                          <td className="px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">
+                            <span className="inline-flex items-center px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[11px] font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800">
+                              {row.team}
+                            </span>
+                          </td>
+                          <td className="px-2 md:px-3 py-1 md:py-2 text-center">
+                            <input
+                              type="number"
+                              value={row.target}
+                              onChange={(e) =>
+                                handleChange(i, "target", e.target.value)
+                              }
+                              disabled={!user}
+                              className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
+                          </td>
+                          <td className="px-2 md:px-3 py-1 md:py-2 text-center">
+                            <div className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs font-bold text-purple-600 bg-purple-50 rounded mx-auto">
+                              {total}
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-2 md:px-3 py-1 md:py-2 text-center">
-                          <input
-                            type="number"
-                            value={row.currentWeek}
-                            onChange={(e) =>
-                              handleChange(i, "currentWeek", e.target.value)
-                            }
-                            disabled={!user}
-                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-pink-400 focus:ring-1 focus:ring-pink-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          />
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-2 md:px-3 py-1 md:py-2 text-center">
+                            <div className="inline-flex items-center gap-1">
+                              <div
+                                className={`px-1.5 md:px-2 py-0.5 md:py-1 rounded-full font-bold text-[9px] md:text-[11px] ${
+                                  calculatePercentage(total, row.target) >= 100
+                                    ? "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-sm"
+                                    : calculatePercentage(total, row.target) >=
+                                      75
+                                    ? "bg-gradient-to-r from-yellow-400 to-orange-400 text-white shadow-sm"
+                                    : "bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm"
+                                }`}
+                              >
+                                {calculatePercentage(total, row.target)}%
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-2 md:px-3 py-1 md:py-2 text-center">
+                            <input
+                              type="number"
+                              value={currentWeekValue}
+                              onChange={(e) =>
+                                handleChange(
+                                  i,
+                                  `W${currentWeekNumber - 1}`,
+                                  e.target.value
+                                )
+                              }
+                              disabled={!user}
+                              className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-pink-400 focus:ring-1 focus:ring-pink-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -463,12 +542,20 @@ export default function PerformanceChart() {
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={data.map((row) => ({
-                      ...row,
-                      percentage: parseFloat(
-                        calculatePercentage(row.total, row.target)
-                      ),
-                    }))}
+                    data={data.map((row) => {
+                      const total = calculateTotal(row, currentWeekNumber);
+                      const currentWeekValue =
+                        row.weeks[`W${currentWeekNumber - 1}`] || 0;
+                      return {
+                        team: row.team,
+                        target: row.target,
+                        total: total,
+                        currentWeek: currentWeekValue,
+                        percentage: parseFloat(
+                          calculatePercentage(total, row.target)
+                        ),
+                      };
+                    })}
                     margin={{
                       top: 20,
                       right: 10,
