@@ -3,7 +3,7 @@ import Employ from "./Employ";
 import Toast from "./Toast";
 import Navbar from "./Navbar";
 import TemperatureMonitor from "./TemperatureMonitor";
-import { FaArrowCircleUp } from "react-icons/fa";
+import BackToTop from "./BackToTop";
 import "./i18n";
 import WorkplaceChart from "./WorkplaceChart";
 import ModelProductionChart from "./ModelProductionChart";
@@ -148,15 +148,8 @@ const App = () => {
           {/* Toast */}
           <Toast message={toastMessage} onClose={() => setToastMessage("")} />
 
-          {/* Nút scroll to top */}
-          {isScrolled && (
-            <button
-              onClick={scrollToTop}
-              className="fixed bottom-6 right-6 z-50 text-blue-600 hover:text-white bg-white hover:bg-blue-600 rounded-full shadow-lg p-3 transition duration-300"
-            >
-              <FaArrowCircleUp size={24} />
-            </button>
-          )}
+          {/* Nút scroll to top - luôn hiển thị */}
+          <BackToTop alwaysVisible bottom={24} right={24} />
         </div>
       </Router>
     </UserContext.Provider>
