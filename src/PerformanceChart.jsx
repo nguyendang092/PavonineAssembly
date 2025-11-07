@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { db, ref, onValue, set } from "./firebase";
+import { useUser } from "./UserContext";
 import {
   BarChart,
   Bar,
@@ -13,17 +14,19 @@ import {
   LabelList,
 } from "recharts";
 
-const initialData = [
-  { team: "PRESS", target: 58, total: 21, currentWeek: 0 },
-  { team: "MC", target: 173, total: 150, currentWeek: 0 },
-  { team: "HAIRLINE", target: 92, total: 6, currentWeek: 0 },
-  { team: "ANODIZING", target: 69, total: 13, currentWeek: 0 },
-  { team: "ASSEMBLY", target: 127, total: 21, currentWeek: 0 },
-  { team: "QC", target: 150, total: 63, currentWeek: 0 },
-  { team: "지원부서", target: 35, total: 7, currentWeek: 0 },
+// Template cố định cho các team
+const TEAM_TEMPLATE = [
+  { team: "PRESS", target: 0, total: 0, currentWeek: 0 },
+  { team: "MC", target: 0, total: 0, currentWeek: 0 },
+  { team: "HAIRLINE", target: 0, total: 0, currentWeek: 0 },
+  { team: "ANODIZING", target: 0, total: 0, currentWeek: 0 },
+  { team: "ASSEMBLY", target: 0, total: 0, currentWeek: 0 },
+  { team: "QC", target: 0, total: 0, currentWeek: 0 },
+  { team: "지원부서", target: 0, total: 0, currentWeek: 0 },
 ];
 
 export default function PerformanceChart() {
+  const { user } = useUser();
   const chartRef = useRef(null);
   const cardRef = useRef(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -33,18 +36,7 @@ export default function PerformanceChart() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Data cho năm đã chọn - bắt đầu với dữ liệu trống
-  const emptyData = [
-    { team: "PRESS", target: 0, total: 0, currentWeek: 0 },
-    { team: "MC", target: 0, total: 0, currentWeek: 0 },
-    { team: "HAIRLINE", target: 0, total: 0, currentWeek: 0 },
-    { team: "ANODIZING", target: 0, total: 0, currentWeek: 0 },
-    { team: "ASSEMBLY", target: 0, total: 0, currentWeek: 0 },
-    { team: "QC", target: 0, total: 0, currentWeek: 0 },
-    { team: "지원부서", target: 0, total: 0, currentWeek: 0 },
-  ];
-
-  const [data, setData] = useState(emptyData);
+  const [data, setData] = useState(TEAM_TEMPLATE);
 
   // Load dữ liệu từ Firebase khi component mount
   useEffect(() => {
@@ -57,12 +49,12 @@ export default function PerformanceChart() {
         if (firebaseData[selectedYear]) {
           setData(firebaseData[selectedYear]);
         } else {
-          // Nếu chưa có data cho năm này, dùng emptyData
-          setData(emptyData);
+          // Nếu chưa có data cho năm này, dùng template
+          setData(TEAM_TEMPLATE);
         }
       } else {
-        // Firebase chưa có data gì, dùng emptyData
-        setData(emptyData);
+        // Firebase chưa có data gì, dùng template
+        setData(TEAM_TEMPLATE);
       }
       setLoading(false);
     });
@@ -75,8 +67,8 @@ export default function PerformanceChart() {
     if (yearDataStore[selectedYear]) {
       setData(yearDataStore[selectedYear]);
     } else {
-      // Nếu chưa có data cho năm này, dùng emptyData
-      setData(emptyData);
+      // Nếu chưa có data cho năm này, dùng template
+      setData(TEAM_TEMPLATE);
     }
     setHasUnsavedChanges(false);
   }, [selectedYear, yearDataStore]);
@@ -297,14 +289,16 @@ export default function PerformanceChart() {
                 </h3>
                 <button
                   onClick={handleSaveData}
-                  disabled={!hasUnsavedChanges || saving}
+                  disabled={!hasUnsavedChanges || saving || !user}
                   className={`flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-[10px] md:text-xs font-semibold transition-all ${
-                    hasUnsavedChanges && !saving
+                    hasUnsavedChanges && !saving && user
                       ? "bg-white text-indigo-600 hover:bg-gray-100 shadow-md"
                       : "bg-white/20 text-white/50 cursor-not-allowed"
                   }`}
                   title={
-                    hasUnsavedChanges
+                    !user
+                      ? "Vui lòng đăng nhập để lưu dữ liệu"
+                      : hasUnsavedChanges
                       ? "Lưu dữ liệu vào Firebase"
                       : "Không có thay đổi"
                   }
@@ -347,7 +341,10 @@ export default function PerformanceChart() {
                         <span className="md:hidden">TOTAL</span>
                       </th>
                       <th className="px-2 md:px-3 py-1 md:py-2 text-center text-[9px] md:text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
-                        %
+                        <span className="hidden sm:inline">
+                          Achievement Rate
+                        </span>
+                        <span className="sm:hidden">%</span>
                       </th>
                       <th className="px-2 md:px-3 py-1 md:py-2 text-center text-[9px] md:text-[10px] font-bold text-gray-700 uppercase tracking-wider border-b border-indigo-200">
                         <span className="hidden sm:inline">
@@ -375,7 +372,8 @@ export default function PerformanceChart() {
                             onChange={(e) =>
                               handleChange(i, "target", e.target.value)
                             }
-                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all outline-none font-medium text-gray-700"
+                            disabled={!user}
+                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
                           />
                         </td>
                         <td className="px-2 md:px-3 py-1 md:py-2 text-center">
@@ -385,7 +383,8 @@ export default function PerformanceChart() {
                             onChange={(e) =>
                               handleChange(i, "total", e.target.value)
                             }
-                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-purple-400 focus:ring-1 focus:ring-purple-200 transition-all outline-none font-medium text-gray-700"
+                            disabled={!user}
+                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-purple-400 focus:ring-1 focus:ring-purple-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
                           />
                         </td>
                         <td className="px-2 md:px-3 py-1 md:py-2 text-center">
@@ -414,7 +413,8 @@ export default function PerformanceChart() {
                             onChange={(e) =>
                               handleChange(i, "currentWeek", e.target.value)
                             }
-                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-pink-400 focus:ring-1 focus:ring-pink-200 transition-all outline-none font-medium text-gray-700"
+                            disabled={!user}
+                            className="w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-pink-400 focus:ring-1 focus:ring-pink-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
                           />
                         </td>
                       </tr>
@@ -627,7 +627,7 @@ export default function PerformanceChart() {
                     <Bar
                       dataKey="percentage"
                       fill="url(#colorPercentage)"
-                      name="📈 % Achievement"
+                      name="📈 Achievement Rate"
                       radius={[8, 8, 0, 0]}
                       maxBarSize={50}
                     >
