@@ -164,6 +164,44 @@ function MoldManager() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Search term
   const [searchTerm, setSearchTerm] = useState("");
+  // Filter states
+  const [subsidiaryFilter, setSubsidiaryFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [warehouseFilter, setWarehouseFilter] = useState("");
+  const [vendorFilter, setVendorFilter] = useState("");
+
+  // Filter configurations for cleaner code
+  const filterConfigs = [
+    {
+      key: "Subsidiary",
+      value: subsidiaryFilter,
+      setValue: setSubsidiaryFilter,
+      labelKey: "moldManager.allSubsidiaries",
+      getOptions: () => [
+        ...new Set(molds.map((m) => m["Subsidiary"]).filter(Boolean)),
+      ],
+    },
+    {
+      key: "Type",
+      value: typeFilter,
+      setValue: setTypeFilter,
+      labelKey: "moldManager.allTypes",
+      getOptions: () => [
+        ...new Set(molds.map((m) => m["Type"]).filter(Boolean)),
+      ],
+    },
+    {
+      key: "Vendor",
+      value: vendorFilter,
+      setValue: setVendorFilter,
+      labelKey: "moldManager.allVendors",
+      getOptions: () => [
+        ...new Set(molds.map((m) => m["Vendor"]).filter(Boolean)),
+      ],
+    },
+  ];
+
   // Image zoom modal
   const [imageZoom, setImageZoom] = useState({ show: false, src: "", alt: "" });
   // Track failed images to avoid re-rendering issues
@@ -407,14 +445,30 @@ function MoldManager() {
     setShowModal(true);
   };
 
-  // Filtered molds by search term (search across all columns)
+  // Filtered molds by search term and dropdown filters
   const filteredMolds = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
-    if (!q) return molds;
-    return molds.filter((m) =>
-      columns.some((col) => `${m[col] ?? ""}`.toLowerCase().includes(q))
-    );
-  }, [searchTerm, molds]);
+    return molds.filter((m) => {
+      // Dropdown filters
+      if (subsidiaryFilter && m["Subsidiary"] !== subsidiaryFilter)
+        return false;
+      if (typeFilter && m["Type"] !== typeFilter) return false;
+      if (locationFilter && m["Location"] !== locationFilter) return false;
+      if (warehouseFilter && m["Warehouse"] !== warehouseFilter) return false;
+      if (vendorFilter && m["Vendor"] !== vendorFilter) return false;
+      // Search
+      if (!q) return true;
+      return columns.some((col) => `${m[col] ?? ""}`.toLowerCase().includes(q));
+    });
+  }, [
+    searchTerm,
+    molds,
+    subsidiaryFilter,
+    typeFilter,
+    locationFilter,
+    warehouseFilter,
+    vendorFilter,
+  ]);
 
   // Format number with comma separator
   const formatNumber = (value) => {
@@ -575,14 +629,30 @@ function MoldManager() {
           </div>
         )}
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end mb-4">
-          <div className="w-full sm:w-64">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t("moldManager.searchPlaceholder")}
-              className="w-full border rounded-md h-8 px-2 py-1 text-xs focus:ring-2 focus:ring-blue-200"
+              className="w-full sm:w-48 border rounded-md h-8 px-2 py-1 text-xs focus:ring-2 focus:ring-blue-200"
             />
+            {/* Dynamic filter dropdowns */}
+            {filterConfigs.map((filter) => (
+              <select
+                key={filter.key}
+                value={filter.value}
+                onChange={(e) => filter.setValue(e.target.value)}
+                className="border rounded-md h-8 px-2 text-xs bg-white"
+              >
+                <option value="">{t(filter.labelKey)}</option>
+                {filter.getOptions().map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            ))}
           </div>
           <div className="flex gap-2">
             <button
