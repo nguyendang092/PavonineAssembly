@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useUser } from "./UserContext";
 
 // Tự động tắt thông báo sau 3s
 // (đặt sau khai báo state trong component MoldManager)
@@ -158,8 +159,10 @@ function MoldManager() {
   const [showModal, setShowModal] = useState(false);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
-  // Giả lập user đăng nhập, thực tế lấy từ context hoặc prop
-  const [user, setUser] = useState({ name: "Admin" }); // Tạm thời set user để hiển thị nút Sửa/Xóa
+
+  // Lấy thông tin user từ UserContext
+  const { user } = useUser();
+
   // Toggle sidebar for all screens
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Search term
@@ -343,6 +346,19 @@ function MoldManager() {
   // Thêm mới hoặc cập nhật mold
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Kiểm tra đăng nhập
+    if (!user) {
+      setAlert({
+        show: true,
+        type: "error",
+        message:
+          t("moldManager.loginRequired") ||
+          "Vui lòng đăng nhập để thực hiện thao tác này",
+      });
+      return;
+    }
+
     try {
       if (editing !== null) {
         // Cập nhật mold - kiểm tra trùng với các mold khác (không phải chính nó)
@@ -407,6 +423,18 @@ function MoldManager() {
 
   // Bật modal edit
   const handleEdit = (id) => {
+    // Kiểm tra đăng nhập
+    if (!user) {
+      setAlert({
+        show: true,
+        type: "error",
+        message:
+          t("moldManager.loginRequired") ||
+          "Vui lòng đăng nhập để thực hiện thao tác này",
+      });
+      return;
+    }
+
     const mold = molds.find((m) => m.id === id);
     setForm({ ...emptyForm, ...mold });
     setEditing(id);
@@ -415,6 +443,19 @@ function MoldManager() {
 
   // Xóa mold và đánh lại No
   const handleDelete = async (id) => {
+    // Kiểm tra đăng nhập
+    if (!user) {
+      setAlert({
+        show: true,
+        type: "error",
+        message:
+          t("moldManager.loginRequired") ||
+          "Vui lòng đăng nhập để thực hiện thao tác này",
+      });
+      setConfirmDelete({ show: false, id: null });
+      return;
+    }
+
     // Đóng modal trước
     setConfirmDelete({ show: false, id: null });
 
@@ -440,6 +481,18 @@ function MoldManager() {
   };
 
   const handleAddNew = () => {
+    // Kiểm tra đăng nhập
+    if (!user) {
+      setAlert({
+        show: true,
+        type: "error",
+        message:
+          t("moldManager.loginRequired") ||
+          "Vui lòng đăng nhập để thực hiện thao tác này",
+      });
+      return;
+    }
+
     setForm({ ...emptyForm });
     setEditing(null);
     setShowModal(true);
@@ -661,12 +714,14 @@ function MoldManager() {
             >
               {t("moldManager.exportExcel")}
             </button>
-            <button
-              onClick={handleAddNew}
-              className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
-            >
-              {t("moldManager.addNew")}
-            </button>
+            {user && (
+              <button
+                onClick={handleAddNew}
+                className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
+              >
+                {t("moldManager.addNew")}
+              </button>
+            )}
           </div>
         </div>
 

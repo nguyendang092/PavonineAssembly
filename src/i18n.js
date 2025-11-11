@@ -390,6 +390,7 @@ const resources = {
         errorOccurred: "Có lỗi xảy ra, vui lòng thử lại!",
         duplicateMoldCode:
           'Mold Code "{{code}}" đã tồn tại! Vui lòng sử dụng mã khác.',
+        loginRequired: "Vui lòng đăng nhập để thực hiện thao tác này",
         close: "Đóng",
         exportExcel: "Xuất Excel",
         columns: {
@@ -804,6 +805,7 @@ const resources = {
         errorOccurred: "오류가 발생했습니다. 다시 시도해주세요!",
         duplicateMoldCode:
           '금형 코드 "{{code}}"이(가) 이미 존재합니다! 다른 코드를 사용해주세요.',
+        loginRequired: "이 작업을 수행하려면 로그인이 필요합니다",
         close: "닫기",
         exportExcel: "엑셀로 내보내기",
         columns: {
