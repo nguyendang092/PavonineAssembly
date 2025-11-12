@@ -512,13 +512,16 @@ function HonorBoard() {
               return (
                 <div key={`${timeData.year}-${timeData.month}`}>
                   {/* Month Header */}
-                  <div className="mb-4">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
-                      <span>
-                        {timeData.month}/{timeData.year}
-                      </span>
-                      <span className="flex-1 border-b-2 border-gray-300"></span>
-                    </h2>
+                  <div className="mb-6 relative">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-lg shadow-md">
+                        <span className="text-xl font-bold">
+                          {String(timeData.month).padStart(2, "0")}/
+                          {timeData.year}
+                        </span>
+                      </div>
+                      <div className="flex-1 h-0.5 bg-gradient-to-r from-indigo-400 to-transparent"></div>
+                    </div>
                   </div>
 
                   {/* Cards for this month */}
