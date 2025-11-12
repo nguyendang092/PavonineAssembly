@@ -19,6 +19,7 @@ function HonorBoard() {
   const [filterYear, setFilterYear] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("");
   const [filterAward, setFilterAward] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -49,6 +50,7 @@ function HonorBoard() {
     "Logistic",
     "Quality",
     "Admin",
+    "Sales",
   ];
 
   // Lấy dữ liệu từ Firebase
@@ -123,6 +125,23 @@ function HonorBoard() {
     filterAward,
     employees,
   ]);
+
+  // Tạo timeline từ filteredEmployees (danh sách phẳng)
+  const timeline = React.useMemo(() => {
+    const timeMap = new Map();
+    filteredEmployees.forEach((emp) => {
+      const key = `${emp.year}-${emp.month}`;
+      if (!timeMap.has(key)) {
+        timeMap.set(key, { year: emp.year, month: emp.month, count: 0 });
+      }
+      timeMap.get(key).count++;
+    });
+    return Array.from(timeMap.values()).sort(
+      (a, b) =>
+        parseInt(b.year) - parseInt(a.year) ||
+        parseInt(b.month) - parseInt(a.month)
+    );
+  }, [filteredEmployees]);
 
   // Xử lý thêm/sửa
   const handleSubmit = async (e) => {
@@ -351,10 +370,34 @@ function HonorBoard() {
     }
   };
 
+  // Lấy đường dẫn ảnh từ mã NV
+  const getEmployeePhoto = (employeeId, customPhoto) => {
+    // Nếu có custom photo thì dùng custom photo
+    if (customPhoto) return customPhoto;
+
+    // Nếu không có mã NV thì return null
+    if (!employeeId) return null;
+
+    // Tự động tạo đường dẫn từ mã NV (hỗ trợ .jpg và .png)
+    return `/picture/employees/${employeeId}.jpg`;
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Toggle Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="fixed left-4 top-20 z-50 bg-indigo-600 text-white p-3 rounded-lg shadow-lg hover:bg-indigo-700 transition"
+      >
+        {sidebarOpen ? "✕" : "☰"}
+      </button>
+
       {/* Sidebar */}
-      <div className="w-72 bg-white shadow-2xl min-h-screen p-6 flex-shrink-0 overflow-y-auto">
+      <div
+        className={`fixed left-0 top-16 w-72 bg-white shadow-2xl h-[calc(100vh-4rem)] p-6 overflow-y-auto z-40 transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-indigo-600 mb-2">🏆 Menu</h2>
           <p className="text-sm text-gray-500">Quản lý bảng vinh danh</p>
@@ -518,21 +561,23 @@ function HonorBoard() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
+      <div
+        className={`transition-all duration-300 p-4 sm:p-6 overflow-y-auto ${
+          sidebarOpen ? "ml-72" : "ml-0"
+        }`}
+      >
         {/* Header */}
-        <div className="mb-6">
-          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-indigo-600">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 flex items-center gap-3">
-              🏆 Bảng Vinh Danh Nhân Viên Ưu Tú
+        <div className="mb-1">
+          <div className="text-center">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+              🏆 Nhân Viên Ưu Tú
             </h1>
-            <p className="text-gray-600 mt-2">
-              Ghi nhận và tôn vinh những cá nhân có thành tích xuất sắc
-            </p>
+            <p className="text-sm text-gray-500">Employee of Excellence</p>
           </div>
         </div>
 
-        {/* Employee Cards */}
-        <div>
+        {/* Employee Cards by Month */}
+        <div className="space-y-8">
           {filteredEmployees.length === 0 ? (
             <div className="bg-white rounded-xl shadow-lg p-12 text-center">
               <div className="text-6xl mb-4">🔍</div>
@@ -541,38 +586,56 @@ function HonorBoard() {
               </p>
             </div>
           ) : (
-            <div className="space-y-8">
-              {/* Ưu tú nhất Section */}
-              {filteredEmployees.filter((emp) => emp.awardType === "Ưu tú nhất")
-                .length > 0 && (
-                <div>
-                  <div className="flex flex-wrap gap-6 justify-center">
-                    {filteredEmployees
-                      .filter((emp) => emp.awardType === "Ưu tú nhất")
-                      .map((emp) => (
-                        <div
-                          key={emp.id}
-                          className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-1 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] xl:w-[calc(25%-18px)]"
-                        >
-                          {/* Award Badge */}
-                          <div
-                            className={`${getAwardColor(
-                              emp.awardType
-                            )} p-3 text-center`}
-                          >
-                            <span className="text-2xl">
-                              {getAwardIcon(emp.awardType)}
-                            </span>
-                            <span className="ml-2 font-bold text-lg">
-                              {emp.awardType}
-                            </span>
-                          </div>
+            timeline.map((timeData) => {
+              const monthEmployees = filteredEmployees.filter(
+                (emp) =>
+                  emp.year === timeData.year && emp.month === timeData.month
+              );
+              return (
+                <div key={`${timeData.year}-${timeData.month}`}>
+                  {/* Month Header */}
+                  <div className="mb-4">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                      <span>
+                        {timeData.month}/{timeData.year}
+                      </span>
+                      <span className="flex-1 border-b-2 border-gray-300"></span>
+                    </h2>
+                  </div>
 
-                          {/* Photo */}
-                          <div className="p-6 pb-3">
-                            {emp.photo ? (
+                  {/* Cards for this month */}
+                  <div className="flex flex-wrap gap-6 justify-center mb-8">
+                    {monthEmployees.map((emp) => (
+                      <div
+                        key={emp.id}
+                        className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-1 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] xl:w-[calc(25%-18px)] ${
+                          emp.awardType === "Ưu tú" ? "scale-90" : ""
+                        }`}
+                      >
+                        {/* Award Badge */}
+                        <div
+                          className={`${getAwardColor(
+                            emp.awardType
+                          )} p-3 text-center`}
+                        >
+                          <span className="text-2xl">
+                            {getAwardIcon(emp.awardType)}
+                          </span>
+                          <span className="ml-2 text-2xl uppercase">
+                            {emp.awardType}
+                          </span>
+                        </div>
+
+                        {/* Photo */}
+                        <div className="p-6 pb-3">
+                          {(() => {
+                            const photoUrl = getEmployeePhoto(
+                              emp.employeeId,
+                              emp.photo
+                            );
+                            return photoUrl ? (
                               <img
-                                src={emp.photo}
+                                src={photoUrl}
                                 alt={emp.name}
                                 className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-indigo-200 shadow-lg"
                                 onError={(e) => {
@@ -580,188 +643,80 @@ function HonorBoard() {
                                   e.target.nextSibling.style.display = "flex";
                                 }}
                               />
-                            ) : null}
-                            <div
-                              className="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-4xl font-bold shadow-lg"
-                              style={{ display: emp.photo ? "none" : "flex" }}
-                            >
-                              {emp.name?.charAt(0)?.toUpperCase() || "?"}
-                            </div>
-                          </div>
-
-                          {/* Info */}
-                          <div className="px-6 pb-6">
-                            <h3 className="text-xl font-bold text-gray-800 text-center mb-2">
-                              {emp.name}
-                            </h3>
-                            <div className="space-y-1 text-sm text-gray-600">
-                              {emp.employeeId && (
-                                <p>
-                                  <span className="font-semibold">Mã NV:</span>{" "}
-                                  {emp.employeeId}
-                                </p>
-                              )}
-                              <p>
-                                <span className="font-semibold">
-                                  Phòng ban:
-                                </span>{" "}
-                                {emp.department}
-                              </p>
-                              {emp.position && (
-                                <p>
-                                  <span className="font-semibold">
-                                    Chức vụ:
-                                  </span>{" "}
-                                  {emp.position}
-                                </p>
-                              )}
-                              <p>
-                                <span className="font-semibold">
-                                  Thời gian:
-                                </span>{" "}
-                                Tháng {emp.month}/{emp.year}
-                              </p>
-                              {emp.achievement && (
-                                <p className="mt-2 p-2 bg-gray-50 rounded text-xs italic">
-                                  "{emp.achievement}"
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Actions */}
-                            {user?.email === "admin@gmail.com" && (
-                              <div className="flex gap-2 mt-4">
-                                <button
-                                  onClick={() => handleEdit(emp)}
-                                  className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition"
-                                >
-                                  ✏️ Sửa
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(emp.id)}
-                                  className="flex-1 px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition"
-                                >
-                                  🗑️ Xóa
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Ưu tú Section */}
-              {filteredEmployees.filter((emp) => emp.awardType === "Ưu tú")
-                .length > 0 && (
-                <div>
-                  <div className="flex flex-wrap gap-6 justify-center">
-                    {filteredEmployees
-                      .filter((emp) => emp.awardType === "Ưu tú")
-                      .map((emp) => (
-                        <div
-                          key={emp.id}
-                          className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-1 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] xl:w-[calc(25%-18px)]"
-                        >
-                          {/* Award Badge */}
+                            ) : null;
+                          })()}
                           <div
-                            className={`${getAwardColor(
-                              emp.awardType
-                            )} p-3 text-center`}
+                            className="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-4xl font-bold shadow-lg"
+                            style={{
+                              display: getEmployeePhoto(
+                                emp.employeeId,
+                                emp.photo
+                              )
+                                ? "none"
+                                : "flex",
+                            }}
                           >
-                            <span className="text-2xl">
-                              {getAwardIcon(emp.awardType)}
-                            </span>
-                            <span className="ml-2 font-bold text-lg">
-                              {emp.awardType}
-                            </span>
-                          </div>
-
-                          {/* Photo */}
-                          <div className="p-6 pb-3">
-                            {emp.photo ? (
-                              <img
-                                src={emp.photo}
-                                alt={emp.name}
-                                className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-indigo-200 shadow-lg"
-                                onError={(e) => {
-                                  e.target.style.display = "none";
-                                  e.target.nextSibling.style.display = "flex";
-                                }}
-                              />
-                            ) : null}
-                            <div
-                              className="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-4xl font-bold shadow-lg"
-                              style={{ display: emp.photo ? "none" : "flex" }}
-                            >
-                              {emp.name?.charAt(0)?.toUpperCase() || "?"}
-                            </div>
-                          </div>
-
-                          {/* Info */}
-                          <div className="px-6 pb-6">
-                            <h3 className="text-xl font-bold text-gray-800 text-center mb-2">
-                              {emp.name}
-                            </h3>
-                            <div className="space-y-1 text-sm text-gray-600">
-                              {emp.employeeId && (
-                                <p>
-                                  <span className="font-semibold">Mã NV:</span>{" "}
-                                  {emp.employeeId}
-                                </p>
-                              )}
-                              <p>
-                                <span className="font-semibold">
-                                  Phòng ban:
-                                </span>{" "}
-                                {emp.department}
-                              </p>
-                              {emp.position && (
-                                <p>
-                                  <span className="font-semibold">
-                                    Chức vụ:
-                                  </span>{" "}
-                                  {emp.position}
-                                </p>
-                              )}
-                              <p>
-                                <span className="font-semibold">
-                                  Thời gian:
-                                </span>{" "}
-                                Tháng {emp.month}/{emp.year}
-                              </p>
-                              {emp.achievement && (
-                                <p className="mt-2 p-2 bg-gray-50 rounded text-xs italic">
-                                  "{emp.achievement}"
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Actions */}
-                            {user?.email === "admin@gmail.com" && (
-                              <div className="flex gap-2 mt-4">
-                                <button
-                                  onClick={() => handleEdit(emp)}
-                                  className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition"
-                                >
-                                  ✏️ Sửa
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(emp.id)}
-                                  className="flex-1 px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition"
-                                >
-                                  🗑️ Xóa
-                                </button>
-                              </div>
-                            )}
+                            {emp.name?.charAt(0)?.toUpperCase() || "?"}
                           </div>
                         </div>
-                      ))}
+
+                        {/* Info */}
+                        <div className="px-6 pb-6">
+                          <h3 className="text-3xl font-bold text-gray-800 text-center mb-2 uppercase">
+                            {emp.name}
+                          </h3>
+                          <div className="space-y-1 text-sm text-gray-600">
+                            {emp.employeeId && (
+                              <p>
+                                <span className="font-semibold">Mã NV:</span>{" "}
+                                {emp.employeeId}
+                              </p>
+                            )}
+                            <p>
+                              <span className="font-semibold">Phòng ban:</span>{" "}
+                              {emp.department}
+                            </p>
+                            {emp.position && (
+                              <p>
+                                <span className="font-semibold">Chức vụ:</span>{" "}
+                                {emp.position}
+                              </p>
+                            )}
+                            <p>
+                              <span className="font-semibold">Thời gian:</span>{" "}
+                              Tháng {emp.month}/{emp.year}
+                            </p>
+                            {emp.achievement && (
+                              <p className="mt-2 p-2 bg-gray-50 rounded text-xs italic">
+                                "{emp.achievement}"
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          {user?.email === "admin@gmail.com" && (
+                            <div className="flex gap-2 mt-4">
+                              <button
+                                onClick={() => handleEdit(emp)}
+                                className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition"
+                              >
+                                ✏️ Sửa
+                              </button>
+                              <button
+                                onClick={() => handleDelete(emp.id)}
+                                className="flex-1 px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition"
+                              >
+                                🗑️ Xóa
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
-            </div>
+              );
+            })
           )}
         </div>
       </div>
