@@ -378,8 +378,13 @@ function HonorBoard() {
     // Nếu không có mã NV thì return null
     if (!employeeId) return null;
 
-    // Tự động tạo đường dẫn từ mã NV (hỗ trợ .jpg và .png)
-    return `/picture/employees/${employeeId}.jpg`;
+    // Chuẩn hóa mã NV: thêm "NV" nếu chưa có
+    const normalizedId = employeeId.startsWith("NV")
+      ? employeeId
+      : `NV${employeeId}`;
+
+    // Tự động tạo đường dẫn từ mã NV - thử .png trước, fallback sang .jpg
+    return `/picture/employees/${normalizedId}.png`;
   };
 
   return (
@@ -633,31 +638,41 @@ function HonorBoard() {
                               emp.employeeId,
                               emp.photo
                             );
+
                             return photoUrl ? (
-                              <img
-                                src={photoUrl}
-                                alt={emp.name}
-                                className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-indigo-200 shadow-lg"
-                                onError={(e) => {
-                                  e.target.style.display = "none";
-                                  e.target.nextSibling.style.display = "flex";
-                                }}
-                              />
-                            ) : null;
+                              <>
+                                <img
+                                  src={photoUrl}
+                                  alt={emp.name}
+                                  className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-indigo-200 shadow-lg"
+                                  onError={(e) => {
+                                    // Thử .jpg nếu .png không tồn tại
+                                    if (e.target.src.endsWith(".png")) {
+                                      e.target.src = e.target.src.replace(
+                                        ".png",
+                                        ".jpg"
+                                      );
+                                    } else {
+                                      // Nếu cả 2 đều không có, ẩn ảnh và hiện avatar
+                                      e.target.style.display = "none";
+                                      e.target.nextSibling.style.display =
+                                        "flex";
+                                    }
+                                  }}
+                                />
+                                <div
+                                  className="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-indigo-400 to-purple-500 items-center justify-center text-white text-4xl font-bold shadow-lg"
+                                  style={{ display: "none" }}
+                                >
+                                  {emp.name?.charAt(0)?.toUpperCase() || "?"}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+                                {emp.name?.charAt(0)?.toUpperCase() || "?"}
+                              </div>
+                            );
                           })()}
-                          <div
-                            className="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-4xl font-bold shadow-lg"
-                            style={{
-                              display: getEmployeePhoto(
-                                emp.employeeId,
-                                emp.photo
-                              )
-                                ? "none"
-                                : "flex",
-                            }}
-                          >
-                            {emp.name?.charAt(0)?.toUpperCase() || "?"}
-                          </div>
                         </div>
 
                         {/* Info */}
