@@ -12,6 +12,7 @@ export const menuConfig = [
     ],
   },
   { key: "nhietdo", label: "navbar.nhietdo", path: "/nhietdo" },
+  { key: "honorBoard", label: "navbar.honorBoard", path: "/honor-board" },
   // {
   //   key: "ap5",
   //   label: "AP5",
@@ -87,6 +88,7 @@ export const routeConfig = [
   // { path: "/ap5/ap5fz", element: "Metandeco" },
   { path: "/bangkhen1", element: "CertificateGenerator1" },
   { path: "/bangkhen2", element: "CertificateGenerator2" },
+  { path: "/honor-board", element: "HonorBoard" },
   { path: "/nhietdo", element: "TemperatureMonitor" },
   { path: "/employ", element: "Employ" },
   { path: "/employ/:leader", element: "Employ" },

@@ -12,6 +12,7 @@ import NGWorkplaceChart from "./NGWorkplaceChart";
 import { useLoading } from "./LoadingContext";
 import CertificateGenerator1 from "./CertificateGenerator1";
 import CertificateGenerator2 from "./CertificateGenerator2";
+import HonorBoard from "./HonorBoard";
 import Metandeco from "./Metandeco";
 import { routeConfig } from "./menuConfig";
 import MoldManager from "./MoldManager";
@@ -119,6 +120,9 @@ const App = () => {
                     break;
                   case "CertificateGenerator2":
                     Element = CertificateGenerator2;
+                    break;
+                  case "HonorBoard":
+                    Element = HonorBoard;
                     break;
                   case "TemperatureMonitor":
                     Element = TemperatureMonitor;
