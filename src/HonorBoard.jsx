@@ -12,7 +12,6 @@ function HonorBoard() {
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [showBulkModal, setShowBulkModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMonth, setFilterMonth] = useState("");
@@ -25,7 +24,7 @@ function HonorBoard() {
     name: "",
     employeeId: "",
     department: "",
-    position: "",
+    startDate: "",
     awardType: "Ưu tú nhất",
     month: "",
     year: new Date().getFullYear().toString(),
@@ -33,23 +32,19 @@ function HonorBoard() {
     photo: "",
   });
 
-  // Form nhập hàng loạt
-  const [bulkForm, setBulkForm] = useState({
-    awardType: "Ưu tú nhất",
-    month: "",
-    year: new Date().getFullYear().toString(),
-    department: "",
-    employeeList: "", // Danh sách nhân viên, mỗi dòng 1 người
-  });
-
   const awardTypes = ["Ưu tú nhất", "Ưu tú"];
   const departments = [
     "Assembly",
     "CNC",
-    "Metandeco",
-    "Logistic",
-    "Quality",
-    "Admin",
+    "Press",
+    "Hairline",
+    "Anodizing",
+    "Production",
+    "Accounting",
+    "QC",
+    "Human Resources",
+    "Purchasing",
+    "EHS",
     "Sales",
   ];
 
@@ -206,7 +201,7 @@ function HonorBoard() {
       name: emp.name || "",
       employeeId: emp.employeeId || "",
       department: emp.department || "",
-      position: emp.position || "",
+      startDate: emp.startDate || "",
       awardType: emp.awardType || "Ưu tú nhất",
       month: emp.month || "",
       year: emp.year || new Date().getFullYear().toString(),
@@ -223,7 +218,7 @@ function HonorBoard() {
       name: "",
       employeeId: "",
       department: "",
-      position: "",
+      startDate: "",
       awardType: "Ưu tú nhất",
       month: "",
       year: new Date().getFullYear().toString(),
@@ -234,79 +229,6 @@ function HonorBoard() {
     setShowModal(false);
   };
 
-  // Reset bulk form
-  const resetBulkForm = () => {
-    setBulkForm({
-      awardType: "Ưu tú nhất",
-      month: "",
-      year: new Date().getFullYear().toString(),
-      department: "",
-      employeeList: "",
-    });
-    setShowBulkModal(false);
-  };
-
-  // Xử lý submit bulk form
-  const handleBulkSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!user) {
-      alert("Vui lòng đăng nhập để thực hiện thao tác này");
-      return;
-    }
-
-    if (!bulkForm.employeeList.trim()) {
-      alert("Vui lòng nhập danh sách nhân viên");
-      return;
-    }
-
-    try {
-      // Parse danh sách nhân viên
-      const lines = bulkForm.employeeList
-        .split("\n")
-        .filter((line) => line.trim());
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const line of lines) {
-        try {
-          // Format: Tên|Mã NV|Chức vụ|Thành tích (các trường phân cách bằng |)
-          const parts = line.split("|").map((p) => p.trim());
-
-          if (parts.length < 1) continue;
-
-          const employeeData = {
-            name: parts[0] || "",
-            employeeId: parts[1] || "",
-            department: bulkForm.department || "",
-            position: parts[2] || "",
-            awardType: bulkForm.awardType,
-            month: bulkForm.month,
-            year: bulkForm.year,
-            achievement: parts[3] || "",
-            photo: "",
-          };
-
-          // Thêm vào Firebase
-          const newRef = push(ref(db, "honorBoard"));
-          await set(newRef, employeeData);
-          successCount++;
-        } catch (error) {
-          console.error("Error adding employee:", line, error);
-          errorCount++;
-        }
-      }
-
-      alert(
-        `Hoàn tất!\n✅ Thêm thành công: ${successCount}\n❌ Lỗi: ${errorCount}`
-      );
-      resetBulkForm();
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Có lỗi xảy ra: " + error.message);
-    }
-  };
-
   // Xuất Excel
   const handleExportExcel = () => {
     const data = filteredEmployees.map((emp, index) => ({
@@ -314,11 +236,11 @@ function HonorBoard() {
       "Họ và tên": emp.name,
       "Mã NV": emp.employeeId,
       "Phòng ban": emp.department,
-      "Chức vụ": emp.position,
+      "Ngày bắt đầu": emp.startDate,
       "Loại giải thưởng": emp.awardType,
       Tháng: emp.month,
       Năm: emp.year,
-      "Thành tích": emp.achievement,
+      "Lời cám ơn": emp.achievement,
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -439,16 +361,7 @@ function HonorBoard() {
                 }}
                 className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition shadow-md text-sm"
               >
-                ➕ Thêm 1 nhân viên
-              </button>
-              <button
-                onClick={() => {
-                  resetBulkForm();
-                  setShowBulkModal(true);
-                }}
-                className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition shadow-md text-sm"
-              >
-                📝 Thêm nhiều nhân viên
+                ➕ Thêm nhân viên
               </button>
             </>
           )}
@@ -691,10 +604,12 @@ function HonorBoard() {
                               <span className="font-semibold">Phòng ban:</span>{" "}
                               {emp.department}
                             </p>
-                            {emp.position && (
+                            {emp.startDate && (
                               <p>
-                                <span className="font-semibold">Chức vụ:</span>{" "}
-                                {emp.position}
+                                <span className="font-semibold">
+                                  Ngày bắt đầu:
+                                </span>{" "}
+                                {emp.startDate}
                               </p>
                             )}
                             <p>
@@ -798,13 +713,13 @@ function HonorBoard() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Chức vụ
+                    Ngày bắt đầu
                   </label>
                   <input
-                    type="text"
-                    value={form.position}
+                    type="date"
+                    value={form.startDate}
                     onChange={(e) =>
-                      setForm({ ...form, position: e.target.value })
+                      setForm({ ...form, startDate: e.target.value })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
@@ -878,7 +793,7 @@ function HonorBoard() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Thành tích
+                  Lời cám ơn
                 </label>
                 <textarea
                   value={form.achievement}
@@ -887,7 +802,7 @@ function HonorBoard() {
                   }
                   rows="3"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Mô tả ngắn về thành tích xuất sắc..."
+                  placeholder="Gửi lời cám ơn đến nhân viên..."
                 />
               </div>
 
@@ -904,165 +819,6 @@ function HonorBoard() {
                   className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition"
                 >
                   {editingId ? "Cập nhật" : "Thêm mới"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Modal */}
-      {showBulkModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-purple-600 text-white p-6 rounded-t-xl">
-              <h2 className="text-2xl font-bold">
-                📝 Thêm nhiều nhân viên ưu tú
-              </h2>
-              <p className="text-sm mt-1 opacity-90">
-                Nhập danh sách nhân viên, mỗi dòng 1 người
-              </p>
-            </div>
-
-            <form onSubmit={handleBulkSubmit} className="p-6 space-y-4">
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                <h3 className="font-semibold text-blue-800 mb-2">
-                  📋 Hướng dẫn nhập liệu:
-                </h3>
-                <p className="text-sm text-blue-700 mb-2">
-                  Mỗi dòng nhập 1 nhân viên theo định dạng:
-                </p>
-                <code className="block bg-white p-2 rounded text-xs font-mono border">
-                  Họ tên | Mã NV | Chức vụ | Thành tích
-                </code>
-                <p className="text-xs text-blue-600 mt-2">
-                  <strong>Ví dụ:</strong>
-                </p>
-                <code className="block bg-white p-2 rounded text-xs font-mono border mt-1">
-                  Nguyễn Văn A | NV001 | Nhân viên | Hoàn thành xuất sắc KPI
-                  tháng 10
-                  <br />
-                  Trần Thị B | NV002 | Tổ trưởng | Cải tiến quy trình sản xuất
-                </code>
-                <p className="text-xs text-blue-600 mt-2">
-                  💡 <strong>Lưu ý:</strong> Nếu không có thông tin, để trống
-                  giữa các dấu |
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Loại giải thưởng <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={bulkForm.awardType}
-                    onChange={(e) =>
-                      setBulkForm({ ...bulkForm, awardType: e.target.value })
-                    }
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  >
-                    {awardTypes.map((award) => (
-                      <option key={award} value={award}>
-                        {getAwardIcon(award)} {award}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Phòng ban <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={bulkForm.department}
-                    onChange={(e) =>
-                      setBulkForm({ ...bulkForm, department: e.target.value })
-                    }
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">Chọn phòng ban</option>
-                    {departments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Tháng
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="12"
-                    value={bulkForm.month}
-                    onChange={(e) =>
-                      setBulkForm({ ...bulkForm, month: e.target.value })
-                    }
-                    placeholder="1-12"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Năm
-                  </label>
-                  <input
-                    type="number"
-                    min="2020"
-                    max="2100"
-                    value={bulkForm.year}
-                    onChange={(e) =>
-                      setBulkForm({ ...bulkForm, year: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Danh sách nhân viên <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={bulkForm.employeeList}
-                  onChange={(e) =>
-                    setBulkForm({ ...bulkForm, employeeList: e.target.value })
-                  }
-                  rows="12"
-                  required
-                  placeholder="Họ tên | Mã NV | Chức vụ | Thành tích&#10;Nguyễn Văn A | NV001 | Nhân viên | Hoàn thành tốt nhiệm vụ&#10;Trần Thị B | NV002 | Tổ trưởng | Cải tiến quy trình"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 font-mono text-sm"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Đã nhập:{" "}
-                  {
-                    bulkForm.employeeList.split("\n").filter((l) => l.trim())
-                      .length
-                  }{" "}
-                  nhân viên
-                </p>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={resetBulkForm}
-                  className="flex-1 px-6 py-3 bg-gray-400 text-white rounded-lg font-semibold hover:bg-gray-500 transition"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition"
-                >
-                  ✅ Thêm tất cả
                 </button>
               </div>
             </form>
