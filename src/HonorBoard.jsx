@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { db, ref, onValue, set } from "./firebase";
 import { push, remove } from "firebase/database";
@@ -236,7 +236,7 @@ function HonorBoard() {
       "Họ và tên": emp.name,
       "Mã NV": emp.employeeId,
       "Phòng ban": emp.department,
-      "Ngày bắt đầu": emp.startDate,
+      "Ngày vào công ty": emp.startDate,
       "Loại giải thưởng": emp.awardType,
       Tháng: emp.month,
       Năm: emp.year,
@@ -290,6 +290,35 @@ function HonorBoard() {
       default:
         return "🎖️";
     }
+  };
+
+  // Nhấn nhá nhẹ theo loại giải thưởng (dành cho viền gradient & vòng ảnh)
+  const getAwardAccent = (awardType) => {
+    // Trả về các class Tailwind sẵn có để Tailwind không bị tree-shake
+    const map = {
+      "Ưu tú nhất": {
+        gradient: "bg-gradient-to-br from-yellow-200 to-yellow-500",
+        ring: "border-yellow-200",
+      },
+      "Ưu tú": {
+        gradient: "bg-gradient-to-br from-blue-200 to-blue-500",
+        ring: "border-blue-200",
+      },
+      "Tiến bộ": {
+        gradient: "bg-gradient-to-br from-green-200 to-green-500",
+        ring: "border-green-200",
+      },
+      "Cống hiến": {
+        gradient: "bg-gradient-to-br from-purple-200 to-purple-500",
+        ring: "border-purple-200",
+      },
+    };
+    return (
+      map[awardType] || {
+        gradient: "bg-gradient-to-br from-gray-200 to-gray-400",
+        ring: "border-gray-200",
+      }
+    );
   };
 
   // Lấy đường dẫn ảnh từ mã NV
@@ -641,143 +670,177 @@ function HonorBoard() {
 
                       {/* Cards for this month */}
                       <div className="flex flex-wrap gap-6 justify-center mb-8">
-                        {monthEmployees.map((emp) => (
-                          <div
-                            key={emp.id}
-                            className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-1 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] xl:w-[calc(25%-18px)] ${
-                              emp.awardType === "Ưu tú" ? "scale-90" : ""
-                            }`}
-                          >
-                            {/* Award Badge */}
+                        {monthEmployees.map((emp) => {
+                          const accent = getAwardAccent(emp.awardType);
+                          return (
                             <div
-                              className={`${getAwardColor(
-                                emp.awardType
-                              )} p-3 text-center`}
+                              key={emp.id}
+                              className={`rounded-2xl p-[1.5px] ${accent.gradient} w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] xl:w-[calc(25%-18px)]`}
                             >
-                              <span className="text-2xl">
-                                {getAwardIcon(emp.awardType)}
-                              </span>
-                              <span className="ml-2 text-2xl uppercase">
-                                {emp.awardType}
-                              </span>
-                            </div>
-
-                            {/* Photo with overlay frame */}
-                            <div className="p-6 pb-3">
-                              <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
-                                {(() => {
-                                  const photoUrl = getEmployeePhoto(
-                                    emp.employeeId,
-                                    emp.photo
-                                  );
-
-                                  return photoUrl ? (
-                                    <>
-                                      <img
-                                        src={photoUrl}
-                                        alt={emp.name}
-                                        className="w-32 h-32 rounded-full object-cover border-4 border-indigo-200 shadow-lg"
-                                        onError={(e) => {
-                                          // Thử .jpg nếu .png không tồn tại
-                                          if (e.target.src.endsWith(".png")) {
-                                            e.target.src = e.target.src.replace(
-                                              ".png",
-                                              ".jpg"
-                                            );
-                                          } else {
-                                            // Nếu cả 2 đều không có, ẩn ảnh và hiện avatar
-                                            e.target.style.display = "none";
-                                            e.target.nextSibling.style.display =
-                                              "flex";
-                                          }
-                                        }}
-                                      />
-                                      <div
-                                        className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 items-center justify-center text-white text-4xl font-bold shadow-lg"
-                                        style={{ display: "none" }}
-                                      >
-                                        {emp.name?.charAt(0)?.toUpperCase() ||
-                                          "?"}
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
-                                      {emp.name?.charAt(0)?.toUpperCase() ||
-                                        "?"}
-                                    </div>
-                                  );
-                                })()}
-                                {/* Frame overlay from public */}
-                                <img
-                                  src="/picture/logo/avatar.png"
-                                  alt=""
-                                  aria-hidden="true"
-                                  className="absolute inset-0 w-36 h-36 object-contain pointer-events-none"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Info */}
-                            <div className="px-6 pb-6">
-                              <h3 className="text-3xl font-bold text-gray-800 text-center mb-2 uppercase">
-                                {emp.name}
-                              </h3>
-                              <div className="space-y-1 text-sm text-gray-600">
-                                {emp.employeeId && (
-                                  <p>
-                                    <span className="font-semibold">
-                                      Mã NV:
-                                    </span>{" "}
-                                    {emp.employeeId}
-                                  </p>
-                                )}
-                                <p>
-                                  <span className="font-semibold">
-                                    Phòng ban:
-                                  </span>{" "}
-                                  {emp.department}
-                                </p>
-                                {emp.startDate && (
-                                  <p>
-                                    <span className="font-semibold">
-                                      Ngày bắt đầu:
-                                    </span>{" "}
-                                    {emp.startDate}
-                                  </p>
-                                )}
-                                <p>
-                                  <span className="font-semibold">
-                                    Thời gian:
-                                  </span>{" "}
-                                  Tháng {emp.month}/{emp.year}
-                                </p>
-                                {emp.achievement && (
-                                  <p className="mt-2 p-2 bg-gray-50 rounded text-xs italic">
-                                    "{emp.achievement}"
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Actions */}
-                              {user?.email === "admin@gmail.com" && (
-                                <div className="flex gap-2 mt-4">
-                                  <button
-                                    onClick={() => handleEdit(emp)}
-                                    className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition"
-                                  >
-                                    ✏️ Sửa
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(emp.id)}
-                                    className="flex-1 px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition"
-                                  >
-                                    🗑️ Xóa
-                                  </button>
+                              <div
+                                className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-1 ${
+                                  emp.awardType === "Ưu tú" ? "scale-90" : ""
+                                }`}
+                              >
+                                {/* Award Badge */}
+                                <div
+                                  className={`${getAwardColor(
+                                    emp.awardType
+                                  )} p-3 text-center`}
+                                >
+                                  <span className="text-2xl">
+                                    {getAwardIcon(emp.awardType)}
+                                  </span>
+                                  <span className="ml-2 text-2xl uppercase">
+                                    {emp.awardType}
+                                  </span>
                                 </div>
-                              )}
+
+                                {/* Photo with overlay frame */}
+                                <div className="p-6 pb-3">
+                                  <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
+                                    {/* Soft halo behind avatar (subtle) */}
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <div
+                                        className={`w-28 h-28 rounded-full blur-2xl opacity-35 ${accent.gradient}`}
+                                      ></div>
+                                    </div>
+                                    {(() => {
+                                      const photoUrl = getEmployeePhoto(
+                                        emp.employeeId,
+                                        emp.photo
+                                      );
+
+                                      return photoUrl ? (
+                                        <>
+                                          <img
+                                            src={photoUrl}
+                                            alt={emp.name}
+                                            className={`relative z-10 w-32 h-32 rounded-full object-cover border-4 ${accent.ring} shadow-lg`}
+                                            onError={(e) => {
+                                              // Thử .jpg nếu .png không tồn tại
+                                              if (
+                                                e.target.src.endsWith(".png")
+                                              ) {
+                                                e.target.src =
+                                                  e.target.src.replace(
+                                                    ".png",
+                                                    ".jpg"
+                                                  );
+                                              } else {
+                                                // Nếu cả 2 đều không có, ẩn ảnh và hiện avatar
+                                                e.target.style.display = "none";
+                                                e.target.nextSibling.style.display =
+                                                  "flex";
+                                              }
+                                            }}
+                                          />
+                                          <div
+                                            className="relative z-10 w-32 h-32 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 items-center justify-center text-white text-4xl font-bold shadow-lg"
+                                            style={{ display: "none" }}
+                                          >
+                                            {emp.name
+                                              ?.charAt(0)
+                                              ?.toUpperCase() || "?"}
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <div className="relative z-10 w-32 h-32 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+                                          {emp.name?.charAt(0)?.toUpperCase() ||
+                                            "?"}
+                                        </div>
+                                      );
+                                    })()}
+                                    {/* Frame overlay from public */}
+                                    <img
+                                      src="/picture/logo/avatar.png"
+                                      alt=""
+                                      aria-hidden="true"
+                                      className="absolute inset-0 w-36 h-36 object-contain pointer-events-none z-20"
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Info */}
+                                <div className="px-6 pb-6">
+                                  <h3 className="text-3xl font-bold text-gray-800 text-center mb-2 uppercase tracking-tight">
+                                    {emp.name}
+                                  </h3>
+                                  {/* Badges */}
+                                  <div className="flex flex-wrap justify-center gap-2 mb-2">
+                                    {emp.employeeId && (
+                                      <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 ring-1 ring-gray-200">
+                                        Mã NV:{" "}
+                                        <span className="font-semibold">
+                                          {emp.employeeId}
+                                        </span>
+                                      </span>
+                                    )}
+                                    <span
+                                      className={`px-2 py-0.5 rounded-full text-xs bg-white/60 text-gray-700 border ${
+                                        getAwardAccent(emp.awardType).ring
+                                      }`}
+                                    >
+                                      {emp.department}
+                                    </span>
+                                  </div>
+
+                                  {/* Divider */}
+                                  <div className="mt-2 mb-3 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+
+                                  {/* Details */}
+                                  <div className="space-y-1 text-sm text-gray-600">
+                                    {emp.startDate && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-gray-400">
+                                          📅
+                                        </span>
+                                        <span className="font-semibold">
+                                          Ngày vào công ty:
+                                        </span>
+                                        <span>{emp.startDate}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-gray-400">
+                                        {getAwardIcon(emp.awardType)}
+                                      </span>
+                                      <span className="font-semibold">
+                                        Nhân viên {emp.awardType}
+                                      </span>
+                                      <span>
+                                        — Tháng {emp.month}/{emp.year}
+                                      </span>
+                                    </div>
+                                    {emp.achievement && (
+                                      <div className="mt-2 p-3 bg-gray-50 border border-gray-100 rounded-lg text-xs italic text-gray-700">
+                                        “{emp.achievement}”
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Actions */}
+                                  {user?.email === "admin@gmail.com" && (
+                                    <div className="flex gap-2 mt-4">
+                                      <button
+                                        onClick={() => handleEdit(emp)}
+                                        className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition"
+                                      >
+                                        ✏️ Sửa
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(emp.id)}
+                                        className="flex-1 px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition"
+                                      >
+                                        🗑️ Xóa
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -852,7 +915,7 @@ function HonorBoard() {
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Ngày bắt đầu
+                        Ngày vào công ty
                       </label>
                       <input
                         type="date"
@@ -916,20 +979,7 @@ function HonorBoard() {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        URL hình ảnh
-                      </label>
-                      <input
-                        type="text"
-                        value={form.photo}
-                        onChange={(e) =>
-                          setForm({ ...form, photo: e.target.value })
-                        }
-                        placeholder="/picture/employees/ten-file.jpg"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
+                    {/* URL hình ảnh: đã bỏ theo yêu cầu */}
                   </div>
 
                   <div>
