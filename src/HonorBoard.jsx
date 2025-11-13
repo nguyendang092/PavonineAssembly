@@ -664,7 +664,7 @@ function HonorBoard() {
 
                             {/* Photo with overlay frame */}
                             <div className="p-6 pb-3">
-                              <div className="relative w-40 h-40 mx-auto flex items-center justify-center">
+                              <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
                                 {(() => {
                                   const photoUrl = getEmployeePhoto(
                                     emp.employeeId,
@@ -676,7 +676,7 @@ function HonorBoard() {
                                       <img
                                         src={photoUrl}
                                         alt={emp.name}
-                                        className="relative z-10 w-32 h-32 rounded-full object-cover border-4 border-indigo-200 shadow-lg"
+                                        className="w-32 h-32 rounded-full object-cover border-4 border-indigo-200 shadow-lg"
                                         onError={(e) => {
                                           // Thử .jpg nếu .png không tồn tại
                                           if (e.target.src.endsWith(".png")) {
@@ -693,7 +693,7 @@ function HonorBoard() {
                                         }}
                                       />
                                       <div
-                                        className="relative z-10 w-32 h-32 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 items-center justify-center text-white text-4xl font-bold shadow-lg"
+                                        className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 items-center justify-center text-white text-4xl font-bold shadow-lg"
                                         style={{ display: "none" }}
                                       >
                                         {emp.name?.charAt(0)?.toUpperCase() ||
@@ -712,7 +712,7 @@ function HonorBoard() {
                                   src="/picture/logo/avatar.png"
                                   alt=""
                                   aria-hidden="true"
-                                  className="absolute inset-0 w-40 h-40 object-contain pointer-events-none z-0"
+                                  className="absolute inset-0 w-36 h-36 object-contain pointer-events-none"
                                 />
                               </div>
                             </div>
