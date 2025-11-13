@@ -813,8 +813,11 @@ function HonorBoard() {
                                       </span>
                                     </div>
                                     {emp.achievement && (
-                                      <div className="mt-2 p-3 bg-gray-50 border border-gray-100 rounded-lg text-xs italic text-gray-700">
-                                        “{emp.achievement}”
+                                      <div className="mt-3 mx-3 p-4 bg-gradient-to-br from-white to-indigo-50 border-l-4 border-indigo-400 rounded-lg shadow-lg">
+                                        <p className="text-sm text-gray-900 font-bold leading-relaxed flex items-start gap-2">
+                                          <span className="text-xl">💬</span>
+                                          <span>"{emp.achievement}"</span>
+                                        </p>
                                       </div>
                                     )}
                                   </div>
