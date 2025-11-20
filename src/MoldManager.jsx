@@ -25,20 +25,13 @@ function MoldManager() {
   // Helper function để tạo đường dẫn hình ảnh từ thư mục local
   // Chỉ hỗ trợ local path: /picture/molds/
   const getImagePath = (cellValue, moldId, columnType) => {
-    // Nếu không có giá trị, không hiển thị hình
     if (!cellValue || !cellValue.trim()) {
       return null;
     }
-
-    // Nếu đã có path đầy đủ bắt đầu bằng "/", dùng luôn
     if (cellValue.startsWith("/")) {
       return cellValue;
     }
-
-    // Nếu chỉ là tên file, tạo path local
-    const fullPath = `/picture/molds/${cellValue}`;
-    console.log(`Image path for ${columnType}:`, fullPath); // Debug log
-    return fullPath;
+    return `/picture/molds/${cellValue}`;
   };
 
   // Sidebar menu mẫu
@@ -84,6 +77,7 @@ function MoldManager() {
       Warehouse: "warehouse",
       Vendor: "vendor",
       NamePlate: "namePlate",
+      "PM Image": "pmImage",
       Process: "process",
     };
 
@@ -142,6 +136,7 @@ function MoldManager() {
     "Vendor",
     "NamePlate",
     "Process",
+    "PM Image",
   ];
 
   // Object mẫu cho form
@@ -212,8 +207,16 @@ function MoldManager() {
   // File upload refs for image columns
   const fileInputRefs = {
     NamePlate: React.useRef(null),
+    "PM Image": React.useRef(null),
     Process: React.useRef(null),
   };
+  // Detail modal state
+  const [detailModal, setDetailModal] = useState({ show: false, mold: null });
+  // PM detail modal state
+  const [pmDetailModal, setPmDetailModal] = useState({
+    show: false,
+    mold: null,
+  });
 
   // Handle file upload for images
   const handleImageUpload = (columnName, file) => {
@@ -239,7 +242,9 @@ function MoldManager() {
     // Tạo tên file dựa trên Mold Code
     const moldCode = form["Mold Code"] || `mold_${Date.now()}`;
     const fileExt = file.name.split(".").pop();
-    const columnType = columnName === "NamePlate" ? "nameplate" : "process";
+    let columnType = "process";
+    if (columnName === "NamePlate") columnType = "nameplate";
+    else if (columnName === "PM Image") columnType = "pm";
     const newFileName = `${moldCode}_${columnType}.${fileExt}`;
 
     // Tạo preview URL
@@ -498,6 +503,18 @@ function MoldManager() {
     setShowModal(true);
   };
 
+  // Open detail modal
+  const handleViewDetail = (mold) => {
+    setDetailModal({ show: true, mold });
+  };
+  const closeDetailModal = () => setDetailModal({ show: false, mold: null });
+  // PM detail modal handler
+  const handleViewPmDetail = (mold) => {
+    setPmDetailModal({ show: true, mold });
+  };
+  const closePmDetailModal = () =>
+    setPmDetailModal({ show: false, mold: null });
+
   // Filtered molds by search term and dropdown filters
   const filteredMolds = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -748,7 +765,9 @@ function MoldManager() {
               >
                 {columns.map((col) => {
                   const isImage =
-                    col === "NamePlate" || col.startsWith("Process");
+                    col === "NamePlate" ||
+                    col === "PM Image" ||
+                    col.startsWith("Process");
                   return (
                     <div key={col} className="flex flex-col text-xs">
                       <div className="mb-1 flex items-center justify-between gap-1">
@@ -887,6 +906,89 @@ function MoldManager() {
                   className={idx % 2 === 0 ? "bg-white" : "bg-blue-100"}
                 >
                   {columns.map((col) => {
+                    // Xử lý đặc biệt cho cột PM Image - chỉ hiển thị nút
+                    if (col === "PM Image") {
+                      return (
+                        <td
+                          key={col}
+                          className="border border-gray-200 px-2 py-1 text-xs text-center align-middle"
+                        >
+                          <button
+                            onClick={() => handleViewPmDetail(m)}
+                            className="px-3 py-1.5 bg-emerald-500 text-white rounded-md font-medium text-xs shadow-sm hover:bg-emerald-600 hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                          >
+                            🔍 {t("moldManager.viewDetail")}
+                          </button>
+                        </td>
+                      );
+                    }
+
+                    {
+                      /* PM Detail Modal - render outside table row loop */
+                    }
+                    {
+                      pmDetailModal.show && pmDetailModal.mold && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                          <div className="bg-white rounded-lg shadow-xl p-5 w-full max-w-5xl relative mx-4 overflow-y-auto max-h-[90vh]">
+                            <button
+                              onClick={closePmDetailModal}
+                              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl font-bold"
+                              aria-label={t("moldManager.close")}
+                            >
+                              ×
+                            </button>
+                            <h2 className="text-lg font-extrabold mb-4 text-[#1e293b] tracking-wide">
+                              {t("moldManager.viewDetail")} - PM
+                            </h2>
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full border border-gray-300 rounded">
+                                <thead>
+                                  <tr className="bg-blue-100 text-xs">
+                                    <th className="border px-2 py-1">Tên</th>
+                                    <th className="border px-2 py-1">
+                                      Thời gian
+                                    </th>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                                      <th key={i} className="border px-2 py-1">
+                                        {i}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr>
+                                    <td className="border px-2 py-1 font-semibold">
+                                      {pmDetailModal.mold["Production Name"] ||
+                                        pmDetailModal.mold["Tên"] ||
+                                        ""}
+                                    </td>
+                                    <td className="border px-2 py-1">
+                                      {pmDetailModal.mold["Date"] ||
+                                        pmDetailModal.mold["Thời gian"] ||
+                                        ""}
+                                    </td>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                                      <td key={i} className="border px-2 py-1">
+                                        {pmDetailModal.mold[`pm${i}`] || ""}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                            <div className="mt-6 flex justify-end">
+                              <button
+                                onClick={closePmDetailModal}
+                                className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
+                              >
+                                {t("moldManager.close")}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     const isImage = col === "NamePlate" || col === "Process";
                     const cellValue = m[col];
                     // Tạo đường dẫn hình ảnh tự động dựa trên MoldID
@@ -937,6 +1039,12 @@ function MoldManager() {
                   <td className="border border-gray-200 px-2 py-1 text-center align-middle">
                     {user && (
                       <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleViewDetail(m)}
+                          className="px-3 py-1.5 bg-emerald-500 text-white rounded-md font-medium text-xs shadow-sm hover:bg-emerald-600 hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                        >
+                          🔍 {t("moldManager.viewDetail")}
+                        </button>
                         <button
                           onClick={() => handleEdit(m.id)}
                           className="px-3 py-1.5 bg-blue-500 text-white rounded-md font-medium text-xs shadow-sm hover:bg-blue-600 hover:shadow-md transition-all duration-200 transform hover:scale-105"
@@ -993,6 +1101,74 @@ function MoldManager() {
                 className="max-w-[85vw] max-h-[85vh] w-auto h-auto object-contain rounded shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               />
+            </div>
+          </div>
+        )}
+
+        {/* Detail Modal */}
+        {detailModal.show && detailModal.mold && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-xl p-5 w-full max-w-4xl relative mx-4 overflow-y-auto max-h-[90vh]">
+              <button
+                onClick={closeDetailModal}
+                className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl font-bold"
+                aria-label={t("moldManager.close")}
+              >
+                ×
+              </button>
+              <h2 className="text-lg font-extrabold mb-4 text-[#1e293b] tracking-wide">
+                {t("moldManager.viewDetail")}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                {columns
+                  .filter((c) => c !== "No")
+                  .map((col) => {
+                    const value = detailModal.mold[col];
+                    const isImage =
+                      col === "NamePlate" ||
+                      col === "PM Image" ||
+                      col === "Process";
+                    return (
+                      <div
+                        key={col}
+                        className="bg-gray-50 rounded border p-3 shadow-sm"
+                      >
+                        <div className="font-semibold text-gray-700 text-xs mb-1 uppercase tracking-wide">
+                          {getTranslatedColumn(col)}
+                        </div>
+                        {isImage && value ? (
+                          <img
+                            src={getImagePath(
+                              value,
+                              detailModal.mold["Mold Code"] ||
+                                detailModal.mold.id,
+                              col
+                            )}
+                            alt={getTranslatedColumn(col)}
+                            className="w-full h-32 object-contain rounded border bg-white"
+                            onError={(e) => (e.target.style.display = "none")}
+                          />
+                        ) : (
+                          <div className="text-gray-900 break-all">
+                            {value || (
+                              <span className="italic text-gray-400">
+                                (empty)
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={closeDetailModal}
+                  className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
+                >
+                  {t("moldManager.close")}
+                </button>
+              </div>
             </div>
           </div>
         )}
