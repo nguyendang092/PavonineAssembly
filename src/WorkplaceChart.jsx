@@ -450,7 +450,7 @@ export default function WorkplaceChart() {
               >
                 {Object.keys(weekData).map((week) => (
                   <option key={week} value={week}>
-                    {t("workplaceChart.week")} {week}
+                    {week} {t("workplaceChart.week")}
                   </option>
                 ))}
               </select>

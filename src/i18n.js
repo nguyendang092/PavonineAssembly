@@ -724,7 +724,7 @@ const resources = {
         exportExcel: "내보내기",
         noData: "표시할 데이터가 없습니다.",
         selectArea: "-- 공정을 선택하세요 --",
-        week: "주",
+        week: "주차",
         viewDetail: "상세 보기",
       },
       detailedModal: {
