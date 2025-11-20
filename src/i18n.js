@@ -500,7 +500,7 @@ const resources = {
         dangNhap: "로그인",
         logOut: "로그아웃",
         changePassword: "비밀번호 변경",
-        Normal: "정상",
+        Normal: "양품",
         ng: "불량",
         leader: "리더",
         performance: "개선제안",
