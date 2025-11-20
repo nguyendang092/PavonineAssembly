@@ -717,7 +717,7 @@ const resources = {
         uploadError: "❌ 업로드 오류: ",
         pleaseSelectExcel: "📂 그래프를 표시하려면 Excel 파일을 선택해 주세요.",
         areaDay: "공정 / 날짜",
-        normal: "정상 생산",
+        normal: "양품",
         rework: "재작업",
         total: "총합",
         outputByArea: "공정별 생산량",
