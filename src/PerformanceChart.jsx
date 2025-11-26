@@ -17,7 +17,7 @@ import {
 // Template cố định cho các team với dữ liệu theo tuần
 const createTeamTemplate = () => {
   const weeks = {};
-  for (let i = 1; i <= 52; i++) {
+  for (let i = 1; i <= 53; i++) {
     weeks[`W${i}`] = 0;
   }
   return {
@@ -73,7 +73,7 @@ export default function PerformanceChart() {
             // Cấu trúc cũ, chuyển đổi sang cấu trúc mới
             const convertedData = yearData.map((item) => {
               const weeks = {};
-              for (let i = 1; i <= 52; i++) {
+              for (let i = 1; i <= 53; i++) {
                 weeks[`W${i}`] = 0;
               }
               // Đặt giá trị currentWeek vào tuần tương ứng
@@ -114,7 +114,7 @@ export default function PerformanceChart() {
         // Cấu trúc cũ, chuyển đổi sang cấu trúc mới
         const convertedData = yearData.map((item) => {
           const weeks = {};
-          for (let i = 1; i <= 52; i++) {
+          for (let i = 1; i <= 53; i++) {
             weeks[`W${i}`] = 0;
           }
           // Đặt giá trị currentWeek vào tuần tương ứng
@@ -149,9 +149,9 @@ export default function PerformanceChart() {
       return Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7);
     }
 
-    // Nếu là năm trong quá khứ, trả về tuần 52 (coi như cả năm)
+    // Nếu là năm trong quá khứ, trả về tuần 53 (coi như cả năm)
     if (targetYear < now.getFullYear()) {
-      return 52;
+      return 53;
     }
 
     // Nếu là năm tương lai, trả về tuần 1
