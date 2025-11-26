@@ -256,15 +256,18 @@ export default function PerformanceChart() {
   const handleSaveData = async () => {
     setSaving(true);
     try {
-      const performanceRef = ref(db, "performanceData");
-      const updatedStore = {
-        ...yearDataStore,
-        [selectedYear]: data,
-      };
-      await set(performanceRef, updatedStore);
-      setYearDataStore(updatedStore);
+      const yearRef = ref(db, `performanceData/${selectedYear}`);
+
+      // ❗ CHỈ LƯU DỮ LIỆU CỦA NĂM ĐANG CHỌN
+      await set(yearRef, data);
+
+      // ❗ ĐỪNG MERGE DỮ LIỆU NĂM KHÁC → gây ghi đè
+      setYearDataStore((prev) => ({
+        ...prev,
+        [selectedYear]: data, // chỉ update đúng năm này
+      }));
+
       setHasUnsavedChanges(false);
-      // Hiển thị thông báo thành công
       alert("✅ Đã lưu dữ liệu thành công!");
     } catch (error) {
       console.error("Error saving to Firebase:", error);
