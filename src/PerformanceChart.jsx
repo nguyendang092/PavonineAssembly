@@ -161,9 +161,9 @@ export default function PerformanceChart() {
   const currentWeekNumber = getCurrentWeek(selectedYear);
   const currentYear = new Date().getFullYear();
 
-  // Tạo danh sách năm (từ 2020 đến năm hiện tại + 2)
+  // Tạo danh sách năm (từ 2021 đến năm hiện tại + 1)
   const years = [];
-  for (let year = 2020; year <= currentYear + 2; year++) {
+  for (let year = 2021; year <= currentYear + 1; year++) {
     years.push(year);
   }
 
