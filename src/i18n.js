@@ -85,6 +85,7 @@ const resources = {
         Normal: "Normal",
         ng: "NG",
         performance: "Cải tiến",
+        attendance: "Điểm danh",
       },
       temperatureMonitor: {
         dashboard: "Bảng điều khiển",
@@ -504,6 +505,7 @@ const resources = {
         ng: "불량",
         leader: "리더",
         performance: "개선제안",
+        attendance: "출석부",
       },
       temperatureMonitor: {
         dashboard: "대시보드",

@@ -75,6 +75,11 @@ export const menuConfig = [
     label: "navbar.performance",
     path: "/performance",
   },
+  {
+    key: "attendance",
+    label: "navbar.attendance",
+    path: "/attendance-list",
+  },
 ];
 
 // Cấu hình route cho App.jsx
@@ -94,4 +99,5 @@ export const routeConfig = [
   { path: "/employ/:leader", element: "Employ" },
   { path: "/mold", element: "MoldManager" },
   { path: "/performance", element: "PerformanceChart" },
+  { path: "/attendance-list", element: "AttendanceList" },
 ];

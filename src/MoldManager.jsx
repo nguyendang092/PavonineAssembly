@@ -130,9 +130,7 @@ function MoldManager() {
     "Type",
     "Pavonine Model",
     "Shot Counter",
-    getPrevMonthLabel(), // Tự động cập nhật theo tháng hiện tại
     "Molds per Product",
-    "Warehouse",
     "Vendor",
     "NamePlate",
     "Process",
@@ -166,7 +164,6 @@ function MoldManager() {
   const [subsidiaryFilter, setSubsidiaryFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
-  const [warehouseFilter, setWarehouseFilter] = useState("");
   const [vendorFilter, setVendorFilter] = useState("");
 
   // Filter configurations for cleaner code
@@ -524,7 +521,6 @@ function MoldManager() {
         return false;
       if (typeFilter && m["Type"] !== typeFilter) return false;
       if (locationFilter && m["Location"] !== locationFilter) return false;
-      if (warehouseFilter && m["Warehouse"] !== warehouseFilter) return false;
       if (vendorFilter && m["Vendor"] !== vendorFilter) return false;
       // Search
       if (!q) return true;
@@ -536,7 +532,6 @@ function MoldManager() {
     subsidiaryFilter,
     typeFilter,
     locationFilter,
-    warehouseFilter,
     vendorFilter,
   ]);
 
@@ -923,72 +918,6 @@ function MoldManager() {
                       );
                     }
 
-                    {
-                      /* PM Detail Modal - render outside table row loop */
-                    }
-                    {
-                      pmDetailModal.show && pmDetailModal.mold && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                          <div className="bg-white rounded-lg shadow-xl p-5 w-full max-w-5xl relative mx-4 overflow-y-auto max-h-[90vh]">
-                            <button
-                              onClick={closePmDetailModal}
-                              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl font-bold"
-                              aria-label={t("moldManager.close")}
-                            >
-                              ×
-                            </button>
-                            <h2 className="text-lg font-extrabold mb-4 text-[#1e293b] tracking-wide">
-                              {t("moldManager.viewDetail")} - PM
-                            </h2>
-                            <div className="overflow-x-auto">
-                              <table className="min-w-full border border-gray-300 rounded">
-                                <thead>
-                                  <tr className="bg-blue-100 text-xs">
-                                    <th className="border px-2 py-1">Tên</th>
-                                    <th className="border px-2 py-1">
-                                      Thời gian
-                                    </th>
-                                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                                      <th key={i} className="border px-2 py-1">
-                                        {i}
-                                      </th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  <tr>
-                                    <td className="border px-2 py-1 font-semibold">
-                                      {pmDetailModal.mold["Production Name"] ||
-                                        pmDetailModal.mold["Tên"] ||
-                                        ""}
-                                    </td>
-                                    <td className="border px-2 py-1">
-                                      {pmDetailModal.mold["Date"] ||
-                                        pmDetailModal.mold["Thời gian"] ||
-                                        ""}
-                                    </td>
-                                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                                      <td key={i} className="border px-2 py-1">
-                                        {pmDetailModal.mold[`pm${i}`] || ""}
-                                      </td>
-                                    ))}
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-                            <div className="mt-6 flex justify-end">
-                              <button
-                                onClick={closePmDetailModal}
-                                className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
-                              >
-                                {t("moldManager.close")}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
                     const isImage = col === "NamePlate" || col === "Process";
                     const cellValue = m[col];
                     // Tạo đường dẫn hình ảnh tự động dựa trên MoldID
@@ -1164,6 +1093,66 @@ function MoldManager() {
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={closeDetailModal}
+                  className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
+                >
+                  {t("moldManager.close")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PM Detail Modal */}
+        {pmDetailModal.show && pmDetailModal.mold && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-xl p-5 w-full max-w-5xl relative mx-4 overflow-y-auto max-h-[90vh]">
+              <button
+                onClick={closePmDetailModal}
+                className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl font-bold"
+                aria-label={t("moldManager.close")}
+              >
+                ×
+              </button>
+              <h2 className="text-lg font-extrabold mb-4 text-[#1e293b] tracking-wide">
+                {t("moldManager.viewDetail")} - PM
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border border-gray-300 rounded">
+                  <thead>
+                    <tr className="bg-blue-100 text-xs">
+                      <th className="border px-2 py-1">Tên</th>
+                      <th className="border px-2 py-1">Thời gian</th>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                        <th key={i} className="border px-2 py-1">
+                          {i}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border px-2 py-1 font-semibold">
+                        {pmDetailModal.mold["Production Name"] ||
+                          pmDetailModal.mold["Tên"] ||
+                          ""}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {pmDetailModal.mold["Date"] ||
+                          pmDetailModal.mold["Thời gian"] ||
+                          ""}
+                      </td>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                        <td key={i} className="border px-2 py-1">
+                          {pmDetailModal.mold[`pm${i}`] || ""}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={closePmDetailModal}
                   className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
                 >
                   {t("moldManager.close")}

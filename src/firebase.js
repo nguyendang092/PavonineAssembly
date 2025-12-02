@@ -1,6 +1,14 @@
 // src/firebase.js
-import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, onValue } from 'firebase/database';
+import { initializeApp } from "firebase/app";
+import {
+  getDatabase,
+  ref,
+  set,
+  onValue,
+  push,
+  remove,
+  update,
+} from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBJcT3NZYg7_BfW_J9SKuxqiWS0o9SPhTo",
@@ -9,11 +17,11 @@ const firebaseConfig = {
   storageBucket: "pavoassembly.appspot.com",
   messagingSenderId: "69575955552",
   appId: "1:69575955552:web:9e324b0b4a4ecdbb085f05",
-  databaseURL: "https://pavoassembly-default-rtdb.firebaseio.com/"
+  databaseURL: "https://pavoassembly-default-rtdb.firebaseio.com/",
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // Export thêm các hàm thao tác database phổ biến
-export { db, ref, set, onValue };
+export { db, ref, set, onValue, push, remove, update };

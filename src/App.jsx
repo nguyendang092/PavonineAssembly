@@ -17,6 +17,7 @@ import Metandeco from "./Metandeco";
 import { routeConfig } from "./menuConfig";
 import MoldManager from "./MoldManager";
 import PerformanceChart from "./PerformanceChart";
+import AttendanceList from "./AttendanceList";
 import {
   BrowserRouter as Router,
   Routes,
@@ -132,6 +133,9 @@ const App = () => {
                     break;
                   case "PerformanceChart":
                     Element = PerformanceChart;
+                    break;
+                  case "AttendanceList":
+                    Element = AttendanceList;
                     break;
                   case "Employ":
                     Element = (props) => (
