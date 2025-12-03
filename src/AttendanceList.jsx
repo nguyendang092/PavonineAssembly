@@ -9,10 +9,10 @@ function AttendanceList() {
   const { t } = useTranslation();
   const { user } = useUser();
 
-  // // Debug: Log user state
-  // useEffect(() => {
-  //   console.log("AttendanceList - User:", user);
-  // }, [user]);
+  // Debug: Log user state
+  useEffect(() => {
+    console.log("AttendanceList - User:", user);
+  }, [user]);
 
   const [employees, setEmployees] = useState([]);
   const [selectedDate, setSelectedDate] = useState(
@@ -25,6 +25,7 @@ function AttendanceList() {
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
   const [form, setForm] = useState({
     id: "",
     stt: "",
@@ -37,6 +38,7 @@ function AttendanceList() {
     boPhan: "",
     gioVao: "",
     gioRa: "",
+    caLamViec: "",
     chamCong: "",
   });
 
@@ -148,6 +150,7 @@ function AttendanceList() {
         boPhan: "",
         gioVao: "",
         gioRa: "",
+        caLamViec: "",
         chamCong: "",
       });
       setShowModal(false);
@@ -644,6 +647,8 @@ function AttendanceList() {
               boPhan: row[7] || "",
               gioVao: row[8] || "",
               gioRa: row[9] || "",
+              caLamViec: row[10] || "",
+              chamCong: row[11] || "",
             };
 
             const newRef = push(ref(db, `attendance/${selectedDate}`));
@@ -769,13 +774,13 @@ function AttendanceList() {
           <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-600">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h1 className="text-2xl font-extrabold text-[#1e293b] uppercase tracking-wide">
+                <h1 className="text-3xl font-extrabold text-[#1e293b] uppercase tracking-wide">
                   DANH SÁCH NHÂN VIÊN HIỆN DIỆN
                 </h1>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-base text-gray-600 mt-1">
                   List of Active Employees
                 </p>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-sm text-gray-500 mt-2">
                   Ngày/Date: {new Date().toLocaleDateString("vi-VN")}
                 </p>
               </div>
@@ -856,6 +861,7 @@ function AttendanceList() {
                     boPhan: "",
                     gioVao: "",
                     gioRa: "",
+                    caLamViec: "",
                     chamCong: "",
                   });
                   setEditing(null);
@@ -1011,6 +1017,30 @@ function AttendanceList() {
                     className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                    Ca làm việc
+                  </label>
+                  <input
+                    type="text"
+                    name="caLamViec"
+                    value={form.caLamViec}
+                    onChange={handleChange}
+                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                    Chấm công
+                  </label>
+                  <input
+                    type="text"
+                    name="chamCong"
+                    value={form.chamCong}
+                    onChange={handleChange}
+                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                  />
+                </div>
                 <button
                   type="submit"
                   className="sm:col-span-2 bg-blue-600 text-white py-2 rounded font-bold text-sm mt-2 hover:bg-blue-700 transition"
@@ -1056,6 +1086,12 @@ function AttendanceList() {
                 </th>
                 <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Thời gian ra
+                </th>
+                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                  Ca làm việc
+                </th>
+                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                  Chấm công
                 </th>
                 {user && (
                   <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
@@ -1110,36 +1146,53 @@ function AttendanceList() {
                         {emp.gioVao}
                       </span>
                     ) : user ? (
-                      <select
-                        className="border rounded px-2 py-1 text-sm text-green-700 font-bold focus:ring-2 focus:ring-green-300"
-                        defaultValue=""
-                        onBlur={async (e) => {
-                          const value = e.target.value;
-                          if (value) {
-                            const empRef = ref(
-                              db,
-                              `attendance/${selectedDate}/${emp.id}`
-                            );
-                            await set(empRef, { ...emp, gioVao: value });
-                          }
-                        }}
-                        onChange={async (e) => {
-                          const value = e.target.value;
-                          if (value) {
-                            const empRef = ref(
-                              db,
-                              `attendance/${selectedDate}/${emp.id}`
-                            );
-                            await set(empRef, { ...emp, gioVao: value });
-                          }
-                        }}
-                      >
-                        <option value="">Chọn loại</option>
-                        <option value="PN">PN</option>
-                        <option value="KL">KL</option>
-                        <option value="TN">TN</option>
-                        <option value="PO">PO</option>
-                      </select>
+                      <div className="flex items-center justify-center gap-2">
+                        <select
+                          className="border rounded px-2 py-1 text-sm text-green-700 font-bold focus:ring-2 focus:ring-green-300"
+                          value={editingGioVao[emp.id] || ""}
+                          onChange={(e) => {
+                            setEditingGioVao((prev) => ({
+                              ...prev,
+                              [emp.id]: e.target.value,
+                            }));
+                          }}
+                        >
+                          <option value="">Chọn loại</option>
+                          <option value="CDL">Có đi làm</option>
+                          <option value="VT">Vào trễ</option>
+                          <option value="PN">Phép năm</option>
+                          <option value="PN1/2">1/2 Phép năm</option>
+                          <option value="KL">Không lương</option>
+                          <option value="KP">Không phép</option>
+                          <option value="PO">Phép ốm</option>
+                          <option value="TN">Tai nạn</option>
+                          <option value="PC">Phép cưới</option>
+                          <option value="PT">Phép tang</option>
+                          <option value="DS">Dưỡng sức</option>
+                        </select>
+                        {editingGioVao[emp.id] && (
+                          <button
+                            onClick={async () => {
+                              const value = editingGioVao[emp.id];
+                              if (value) {
+                                const empRef = ref(
+                                  db,
+                                  `attendance/${selectedDate}/${emp.id}`
+                                );
+                                await set(empRef, { ...emp, gioVao: value });
+                                setEditingGioVao((prev) => {
+                                  const newState = { ...prev };
+                                  delete newState[emp.id];
+                                  return newState;
+                                });
+                              }
+                            }}
+                            className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                          >
+                            ✓
+                          </button>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-gray-400 italic">--</span>
                     )}
@@ -1147,6 +1200,16 @@ function AttendanceList() {
                   <td className="px-3 py-3 text-sm text-center">
                     <span className="text-red-600 font-bold text-base">
                       {emp.gioRa}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-sm text-center">
+                    <span className="text-gray-700 font-medium">
+                      {emp.caLamViec || "--"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-sm text-center">
+                    <span className="text-gray-700 font-medium">
+                      {emp.chamCong || "--"}
                     </span>
                   </td>
                   {user && (
@@ -1159,13 +1222,16 @@ function AttendanceList() {
                         >
                           ✏️ Sửa
                         </button>
-                        <button
-                          onClick={() => handleDelete(emp.id)}
-                          className="px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
-                          title="Xóa"
-                        >
-                          🗑️ Xóa
-                        </button>
+                        {(user.email === "admin@gmail.com" ||
+                          user.email === "hr@gmail.com") && (
+                          <button
+                            onClick={() => handleDelete(emp.id)}
+                            className="px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
+                            title="Xóa"
+                          >
+                            🗑️ Xóa
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}
