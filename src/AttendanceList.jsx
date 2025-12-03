@@ -383,10 +383,10 @@ function AttendanceList() {
   );
 
   return (
-    <div className="min-h-screen w-full bg-[#f1f5f9] flex">
+    <div className="min-h-screen w-full bg-[#f1f5f9] lg:pl-64">
       {/* Sidebar */}
       <div
-        className={`fixed lg:sticky top-0 inset-y-0 left-0 z-50 w-64 h-screen bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 z-50 w-64 h-screen bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -434,23 +434,23 @@ function AttendanceList() {
                 </button>
               ))}
             </nav>
+          </div>
 
-            {/* Stats */}
-            <div className="mt-6 p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
-              <h3 className="text-sm font-bold text-gray-700 mb-2">Thống kê</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tổng:</span>
-                  <span className="font-bold text-blue-600">
-                    {employees.length}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Hiển thị:</span>
-                  <span className="font-bold text-green-600">
-                    {filteredEmployees.length}
-                  </span>
-                </div>
+          {/* Stats - Always at bottom */}
+          <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-t">
+            <h3 className="text-sm font-bold text-gray-700 mb-2">Thống kê</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Tổng:</span>
+                <span className="font-bold text-blue-600">
+                  {employees.length}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Hiển thị:</span>
+                <span className="font-bold text-green-600">
+                  {filteredEmployees.length}
+                </span>
               </div>
             </div>
           </div>
@@ -466,7 +466,7 @@ function AttendanceList() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 p-4 md:p-8">
+      <div className="p-4 md:p-8">
         {/* Toggle Sidebar Button (Mobile) */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
