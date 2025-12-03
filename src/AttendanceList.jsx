@@ -3,15 +3,16 @@ import { useTranslation } from "react-i18next";
 import { useUser } from "./UserContext";
 import { db, ref, set, onValue, push, remove, update } from "./firebase";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 function AttendanceList() {
   const { t } = useTranslation();
   const { user } = useUser();
 
-  // Debug: Log user state
-  useEffect(() => {
-    console.log("AttendanceList - User:", user);
-  }, [user]);
+  // // Debug: Log user state
+  // useEffect(() => {
+  //   console.log("AttendanceList - User:", user);
+  // }, [user]);
 
   const [employees, setEmployees] = useState([]);
   const [selectedDate, setSelectedDate] = useState(
@@ -209,54 +210,341 @@ function AttendanceList() {
   );
 
   // Export to Excel
-  const handleExportExcel = useCallback(() => {
+  const handleExportExcel = useCallback(async () => {
     try {
-      // Tạo dòng tiêu đề
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Attendance");
+
+      // Tải logo
+      const logoResponse = await fetch("/picture/logo/logo_pavo.jpg");
+      const logoBlob = await logoResponse.blob();
+      const logoArrayBuffer = await logoBlob.arrayBuffer();
+      const logoId = workbook.addImage({
+        buffer: logoArrayBuffer,
+        extension: "jpeg",
+      });
+
+      // Set chiều cao cho các dòng header trước
+      worksheet.getRow(1).height = 25;
+      worksheet.getRow(2).height = 15;
+      worksheet.getRow(3).height = 15;
+      worksheet.getRow(4).height = 25;
+      worksheet.getRow(5).height = 20;
+      worksheet.getRow(6).height = 20;
+      worksheet.getRow(7).height = 5;
+
+      // Thêm logo vào góc trái (A1:B3)
+      worksheet.addImage(logoId, {
+        tl: { col: 0, row: 0 },
+        ext: { width: 120, height: 60 },
+      });
+
+      // Thông tin công ty (C1:I3)
+      worksheet.mergeCells("C1:I3");
+      const companyCell = worksheet.getCell("C1");
+      companyCell.value =
+        "CÔNG TY TNHH PAVONINE VINA\nLots VII-I, VII-2, and part of Lot VII-3, My Xuan B1 - Tien Hung\nIndustrial Park, Phu My Ward, Ho Chi Minh City, Vietnam";
+      companyCell.font = { bold: true, size: 9 };
+      companyCell.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+        wrapText: true,
+      };
+      companyCell.border = {
+        top: { style: "thin", color: { argb: "FFFFFFFF" } },
+        left: { style: "thin", color: { argb: "FFFFFFFF" } },
+        right: { style: "thin", color: { argb: "FFFFFFFF" } },
+        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
+      };
+
+      // Tải và thêm ảnh attendance (thay thế merge cells)
+      const attendanceResponse = await fetch(
+        "/picture/ateemdance/attendance.png"
+      );
+      const attendanceBlob = await attendanceResponse.blob();
+      const attendanceArrayBuffer = await attendanceBlob.arrayBuffer();
+      const attendanceId = workbook.addImage({
+        buffer: attendanceArrayBuffer,
+        extension: "png",
+      });
+
+      // Thêm ảnh attendance vào vị trí J1 (thay thế bảng chữ ký và ghi chú)
+      worksheet.addImage(attendanceId, {
+        tl: { col: 9, row: 0 },
+        ext: { width: 250, height: 200 },
+      });
+
+      // Tiêu đề bảng (A4:I4) - Không merge vào vùng J-L đã merge
+      worksheet.mergeCells("A4:I4");
+      const titleCell = worksheet.getCell("A4");
+      titleCell.value = "DANH SÁCH NHÂN VIÊN HIỆN DIỆN";
+      titleCell.font = { bold: true, size: 14, color: { argb: "FF8B4513" } };
+      titleCell.alignment = { vertical: "middle", horizontal: "center" };
+      titleCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFFFF4E6" },
+      };
+      titleCell.border = {
+        top: { style: "thin", color: { argb: "FFFFFFFF" } },
+        left: { style: "thin", color: { argb: "FFFFFFFF" } },
+        right: { style: "thin", color: { argb: "FFFFFFFF" } },
+        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
+      };
+
+      // Subtitle (A5:I5) - Không merge vào vùng J-L đã merge
+      worksheet.mergeCells("A5:I5");
+      const subtitleCell = worksheet.getCell("A5");
+      subtitleCell.value = "List of Active Employees";
+      subtitleCell.font = { bold: true, size: 12 };
+      subtitleCell.alignment = { vertical: "middle", horizontal: "center" };
+      subtitleCell.border = {
+        top: { style: "thin", color: { argb: "FFFFFFFF" } },
+        left: { style: "thin", color: { argb: "FFFFFFFF" } },
+        right: { style: "thin", color: { argb: "FFFFFFFF" } },
+        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
+      };
+
+      // Ngày tháng (A6:D6)
+      worksheet.mergeCells("A6:D6");
+      const dateCell = worksheet.getCell("A6");
+      dateCell.value = `Ngày/Date: ${new Date().toLocaleDateString("vi-VN")}`;
+      dateCell.font = { size: 12, bold: true };
+      dateCell.alignment = { vertical: "middle", horizontal: "left" };
+      dateCell.border = {
+        top: { style: "thin", color: { argb: "FFFFFFFF" } },
+        left: { style: "thin", color: { argb: "FFFFFFFF" } },
+        right: { style: "thin", color: { argb: "FFFFFFFF" } },
+        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
+      };
+
+      // Số lượng cơm (E6:I6) - Không merge vào vùng J-L đã merge
+      worksheet.mergeCells("E6:I6");
+      const countCell = worksheet.getCell("E6");
+      countCell.value = "Số lượng cơm ca trưa:";
+      countCell.font = { size: 10, color: { argb: "FFFF0000" }, italic: true };
+      countCell.alignment = { vertical: "middle", horizontal: "left" };
+      countCell.border = {
+        top: { style: "thin", color: { argb: "FFFFFFFF" } },
+        left: { style: "thin", color: { argb: "FFFFFFFF" } },
+        right: { style: "thin", color: { argb: "FFFFFFFF" } },
+        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
+      };
+
+      // Thêm các dòng trống để tránh bị che bởi ảnh attendance
+      worksheet.addRow([]);
+      worksheet.addRow([]);
+      worksheet.addRow([]);
+
+      // Xóa border của các dòng trống 8, 9, 10
+      [7, 8, 9, 10].forEach((rowNum) => {
+        const row = worksheet.getRow(rowNum);
+        for (let col = 1; col <= 12; col++) {
+          const cell = worksheet.getCell(rowNum, col);
+          cell.border = {
+            top: { style: "thin", color: { argb: "FFFFFFFF" } },
+            left: { style: "thin", color: { argb: "FFFFFFFF" } },
+            right: { style: "thin", color: { argb: "FFFFFFFF" } },
+            bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
+          };
+        }
+      });
+
+      // Tạo 2 dòng tiêu đề bảng (giờ là row 11 và 12)
       const headerVi = [
         "STT",
         "MNV",
         "MVT",
         "Họ và tên",
         "Giới tính",
-        "Ngày tháng năm sinh",
+        "Ngày bắt đầu",
         "Mã BP",
         "Bộ phận",
         "Thời gian vào",
         "Thời gian ra",
+        "Ca làm việc",
+        "Chấm công",
       ];
 
-      // Tạo dữ liệu
-      const dataRows = filteredEmployees.map((emp, idx) => [
-        idx + 1,
-        emp.mnv || "",
-        emp.mvt || "",
-        emp.hoVaTen || "",
-        emp.gioiTinh === "YES" ? "YES" : "NO",
-        emp.ngayThangNamSinh || "",
-        emp.maBoPhan || "",
-        emp.boPhan || "",
-        emp.gioVao || "",
-        emp.gioRa || "",
-      ]);
+      const headerEn = [
+        "",
+        "Code",
+        "",
+        "Full name",
+        "Gender",
+        "Start working",
+        "Code-Dept",
+        "Department",
+        "Time in",
+        "Time out",
+        "Current shift",
+        "Timekeeping",
+      ];
 
-      // Chỉ có 1 dòng tiêu đề, sau đó là dữ liệu
-      const excelData = [headerVi, ...dataRows];
+      // Thêm header rows
+      worksheet.addRow(headerVi);
+      worksheet.addRow(headerEn);
 
-      const ws = XLSX.utils.aoa_to_sheet(excelData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+      // Style cho header (giờ là row 11 và 12)
+      [11, 12].forEach((rowNum) => {
+        const row = worksheet.getRow(rowNum);
+        row.height = 30;
+        row.eachCell((cell) => {
+          cell.font = { bold: true, size: 9, color: { argb: "FF000000" } };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFD3D3D3" },
+          };
+          cell.alignment = {
+            vertical: "middle",
+            horizontal: "center",
+            wrapText: true,
+          };
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "hair" },
+            bottom: { style: "hair" },
+            right: { style: "hair" },
+          };
+        });
+      });
+
+      // Thêm dữ liệu
+      filteredEmployees.forEach((emp, idx) => {
+        const row = worksheet.addRow([
+          idx + 1,
+          emp.mnv || "",
+          emp.mvt || "",
+          emp.hoVaTen || "",
+          emp.gioiTinh === "YES" ? "YES" : "NO",
+          emp.ngayThangNamSinh || "",
+          emp.maBoPhan || "",
+          emp.boPhan || "",
+          emp.gioVao || "",
+          emp.gioRa || "",
+          "",
+          "",
+        ]);
+
+        // Style cho data rows với zebra striping
+        const isEvenRow = idx % 2 === 0;
+        row.eachCell((cell, colNumber) => {
+          cell.font = { size: 9 };
+
+          // Căn lề: STT, số, mã căn giữa; tên căn trái
+          if (colNumber === 4 || colNumber === 8) {
+            cell.alignment = {
+              vertical: "middle",
+              horizontal: "left",
+              indent: 1,
+            };
+          } else {
+            cell.alignment = { vertical: "middle", horizontal: "center" };
+          }
+
+          cell.border = {
+            top: { style: "hair" },
+            left: { style: "hair" },
+            bottom: { style: "hair" },
+            right: { style: "hair" },
+          };
+
+          // Zebra striping
+          if (isEvenRow) {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFF0F8FF" },
+            };
+          }
+
+          // Highlight thời gian vào/ra
+          if (colNumber === 9 && cell.value) {
+            cell.font = { size: 9, color: { argb: "FF006400" }, bold: true };
+          }
+          if (colNumber === 10 && cell.value) {
+            cell.font = { size: 9, color: { argb: "FFDC143C" }, bold: true };
+          }
+        });
+      });
+
+      // Set độ rộng cột
+      worksheet.columns = [
+        { width: 5 }, // STT
+        { width: 10 }, // MNV
+        { width: 10 }, // MVT
+        { width: 25 }, // Họ và tên
+        { width: 8 }, // Giới tính
+        { width: 12 }, // Ngày bắt đầu
+        { width: 10 }, // Mã BP
+        { width: 15 }, // Bộ phận
+        { width: 10 }, // Thời gian vào
+        { width: 10 }, // Thời gian ra
+        { width: 12 }, // Ca làm việc
+        { width: 14 }, // Chấm công (cột L - rộng hơn để bao hình)
+      ];
+
+      // Border ngoài cho toàn bộ bảng
+      const lastRow = worksheet.rowCount;
+      const lastCol = 12;
+
+      // Top border
+      for (let col = 1; col <= lastCol; col++) {
+        worksheet.getCell(1, col).border = {
+          ...worksheet.getCell(1, col).border,
+          top: { style: "thin" },
+        };
+      }
+
+      // Bottom border
+      for (let col = 1; col <= lastCol; col++) {
+        worksheet.getCell(lastRow, col).border = {
+          ...worksheet.getCell(lastRow, col).border,
+          bottom: { style: "thin" },
+        };
+      }
+
+      // Left border
+      for (let row = 1; row <= lastRow; row++) {
+        worksheet.getCell(row, 1).border = {
+          ...worksheet.getCell(row, 1).border,
+          left: { style: "thin" },
+        };
+      }
+
+      // Right border
+      for (let row = 1; row <= lastRow; row++) {
+        worksheet.getCell(row, lastCol).border = {
+          ...worksheet.getCell(row, lastCol).border,
+          right: { style: "thin" },
+        };
+      }
+
+      // Xuất file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
       const dateStr = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `attendance_${dateStr}.xlsx`);
+      a.download = `attendance_${dateStr}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
       setAlert({
         show: true,
         type: "success",
         message: "✅ Xuất Excel thành công!",
       });
     } catch (err) {
+      console.error("Export Excel Error:", err);
       setAlert({
         show: true,
         type: "error",
-        message: "❌ Xuất Excel thất bại!",
+        message: `❌ Xuất Excel thất bại! ${err.message || ""}`,
       });
     }
   }, [filteredEmployees]);
