@@ -8,12 +8,18 @@ function AttendanceList() {
   const { t } = useTranslation();
   const { user } = useUser();
 
+  // Debug: Log user state
+  useEffect(() => {
+    console.log("AttendanceList - User:", user);
+  }, [user]);
+
   const [employees, setEmployees] = useState([]);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().slice(0, 10)
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
+  const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [showModal, setShowModal] = useState(false);
@@ -84,6 +90,13 @@ function AttendanceList() {
     }
     return Array.from(depts);
   }, [employees]);
+
+  // Filter departments based on search
+  const filteredDepartments = useMemo(() => {
+    if (!departmentSearchTerm.trim()) return departments;
+    const search = departmentSearchTerm.toLowerCase();
+    return departments.filter((dept) => dept.toLowerCase().includes(search));
+  }, [departments, departmentSearchTerm]);
 
   // Handle form input
   const handleChange = useCallback((e) => {
@@ -308,9 +321,11 @@ function AttendanceList() {
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-          // Tìm dòng đầu tiên có STT = 1
+          // Tìm dòng đầu tiên có STT là số
           let startIndex = jsonData.findIndex(
-            (row) => row[0] === 1 || row[0] === "1"
+            (row) =>
+              typeof row[0] === "number" ||
+              (!isNaN(row[0]) && row[0] !== "" && row[0] !== null)
           );
           if (startIndex === -1) {
             // Nếu không tìm thấy, bỏ qua 1 dòng tiêu đề
@@ -320,7 +335,13 @@ function AttendanceList() {
 
           let uploadCount = 0;
           for (const row of dataRows) {
-            if (!row[1] && !row[2]) continue; // Bỏ qua dòng trống
+            // Bỏ qua dòng trống hoặc dòng có STT không phải là số
+            if (!row[1] && !row[2]) continue;
+            if (
+              typeof row[0] !== "number" &&
+              (isNaN(row[0]) || row[0] === "" || row[0] === null)
+            )
+              continue;
 
             const employeeData = {
               stt: row[0] || "",
@@ -377,6 +398,17 @@ function AttendanceList() {
 
           {/* Sidebar Content */}
           <div className="flex-1 overflow-y-auto p-4">
+            {/* Search Box for Departments */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="🔍 Tìm bộ phận..."
+                value={departmentSearchTerm}
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300"
+                onChange={(e) => setDepartmentSearchTerm(e.target.value)}
+              />
+            </div>
+
             <nav className="space-y-2">
               <button
                 onClick={() => setDepartmentFilter("")}
@@ -388,7 +420,7 @@ function AttendanceList() {
               >
                 📋 Tất cả bộ phận
               </button>
-              {departments.map((dept) => (
+              {filteredDepartments.map((dept) => (
                 <button
                   key={dept}
                   onClick={() => setDepartmentFilter(dept)}
@@ -783,9 +815,44 @@ function AttendanceList() {
                     {emp.boPhan}
                   </td>
                   <td className="px-3 py-3 text-sm text-center">
-                    <span className="text-green-600 font-bold text-base">
-                      {emp.gioVao}
-                    </span>
+                    {emp.gioVao ? (
+                      <span className="text-green-600 font-bold text-base">
+                        {emp.gioVao}
+                      </span>
+                    ) : user ? (
+                      <select
+                        className="border rounded px-2 py-1 text-sm text-green-700 font-bold focus:ring-2 focus:ring-green-300"
+                        defaultValue=""
+                        onBlur={async (e) => {
+                          const value = e.target.value;
+                          if (value) {
+                            const empRef = ref(
+                              db,
+                              `attendance/${selectedDate}/${emp.id}`
+                            );
+                            await set(empRef, { ...emp, gioVao: value });
+                          }
+                        }}
+                        onChange={async (e) => {
+                          const value = e.target.value;
+                          if (value) {
+                            const empRef = ref(
+                              db,
+                              `attendance/${selectedDate}/${emp.id}`
+                            );
+                            await set(empRef, { ...emp, gioVao: value });
+                          }
+                        }}
+                      >
+                        <option value="">Chọn loại</option>
+                        <option value="PN">PN</option>
+                        <option value="KL">KL</option>
+                        <option value="TN">TN</option>
+                        <option value="PO">PO</option>
+                      </select>
+                    ) : (
+                      <span className="text-gray-400 italic">--</span>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-sm text-center">
                     <span className="text-red-600 font-bold text-base">
