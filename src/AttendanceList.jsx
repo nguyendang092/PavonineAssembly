@@ -952,8 +952,8 @@ function AttendanceList() {
                     onChange={handleChange}
                     className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
                   >
-                    <option value="YES">YES (Nam)</option>
-                    <option value="NO">NO (Nữ)</option>
+                    <option value="YES">YES (Nữ)</option>
+                    <option value="NO">NO (Nam)</option>
                   </select>
                 </div>
                 <div>
