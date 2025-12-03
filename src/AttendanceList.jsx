@@ -529,8 +529,10 @@ function AttendanceList() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const dateStr = new Date().toISOString().slice(0, 10);
-      a.download = `attendance_${dateStr}.xlsx`;
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10);
+      const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, "-");
+      a.download = `PAVONINE_diemDanh_${dateStr}_${timeStr}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
 
