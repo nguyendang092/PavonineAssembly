@@ -678,7 +678,7 @@ function AttendanceList() {
   );
 
   return (
-    <div className="min-h-screen w-full bg-[#f1f5f9] lg:pl-64">
+    <div className="min-h-screen w-full bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 lg:pl-64">
       {/* Sidebar */}
       <div
         className={`fixed left-0 z-40 w-64 h-screen bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
@@ -715,9 +715,17 @@ function AttendanceList() {
                 onClick={() => setDepartmentFilter("")}
                 className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
                   departmentFilter === ""
-                    ? "bg-blue-600 text-white font-semibold"
-                    : "text-gray-700 hover:bg-blue-50"
+                    ? "text-white font-semibold"
+                    : "text-gray-700 hover:bg-purple-50"
                 }`}
+                style={
+                  departmentFilter === ""
+                    ? {
+                        background:
+                          "linear-gradient(to right, #3b82f6, #8b5cf6)",
+                      }
+                    : {}
+                }
               >
                 📋 Tất cả bộ phận
               </button>
@@ -727,9 +735,17 @@ function AttendanceList() {
                   onClick={() => setDepartmentFilter(dept)}
                   className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
                     departmentFilter === dept
-                      ? "bg-blue-600 text-white font-semibold"
-                      : "text-gray-700 hover:bg-blue-50"
+                      ? "text-white font-semibold"
+                      : "text-gray-700 hover:bg-purple-50"
                   }`}
+                  style={
+                    departmentFilter === dept
+                      ? {
+                          background:
+                            "linear-gradient(to right, #3b82f6, #8b5cf6)",
+                        }
+                      : {}
+                  }
                 >
                   🏢 {dept}
                 </button>
@@ -738,7 +754,12 @@ function AttendanceList() {
           </div>
 
           {/* Stats - Always at bottom */}
-          <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-t">
+          <div
+            className="p-4 border-t"
+            style={{
+              background: "linear-gradient(to bottom right, #ede9fe, #ddd6fe)",
+            }}
+          >
             <h3 className="text-sm font-bold text-gray-700 mb-2">Thống kê</h3>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
@@ -771,7 +792,8 @@ function AttendanceList() {
         {/* Toggle Sidebar Button (Mobile) */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="lg:hidden fixed bottom-4 right-4 z-50 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition"
+          className="lg:hidden fixed bottom-4 right-4 z-50 text-white p-3 rounded-full shadow-lg transition hover:shadow-xl"
+          style={{ background: "linear-gradient(to right, #3b82f6, #8b5cf6)" }}
         >
           {sidebarOpen ? "✕" : "☰"}
         </button>

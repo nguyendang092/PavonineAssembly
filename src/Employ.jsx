@@ -76,7 +76,7 @@ const Employ = ({ showToast, selectedLeader }) => {
                           onClick={() => toggleViewMode(a.area, "time")}
                           className={`px-4 py-2 rounded font-semibold ${
                             currentViewMode === "time"
-                              ? "bg-blue-500 text-white"
+                              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                               : "bg-gray-300"
                           }`}
                         >
@@ -86,7 +86,7 @@ const Employ = ({ showToast, selectedLeader }) => {
                           onClick={() => toggleViewMode(a.area, "day")}
                           className={`px-4 py-2 rounded font-semibold ${
                             currentViewMode === "day"
-                              ? "bg-blue-500 text-white"
+                              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                               : "bg-gray-300"
                           }`}
                         >

@@ -238,7 +238,7 @@ export default function Navbar({ user, setUser }) {
             <img
               src="/picture/logo/logo_pavo.jpg"
               alt={t("navbar.logoAlt")}
-              style={{ height: "50px", borderRadius: "50%" }}
+              style={{ height: "50px" }}
             />
           </a>
         </div>

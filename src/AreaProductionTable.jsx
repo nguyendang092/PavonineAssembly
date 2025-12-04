@@ -227,7 +227,7 @@ const AreaProductionTable = ({ area, showToast }) => {
         <div className="space-x-2">
           <button
             onClick={() => setAttendanceModalOpen(true)}
-            className="px-4 py-1 bg-purple-600 text-white rounded hover:bg-purple-700"
+            className="px-4 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded hover:from-blue-700 hover:to-purple-700"
           >
             {t("areaProduction.employees")}
           </button>
@@ -239,7 +239,7 @@ const AreaProductionTable = ({ area, showToast }) => {
           </button>
           <button
             onClick={() => setModalIsOpen(true)}
-            className="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded hover:from-blue-700 hover:to-purple-700"
           >
             {t("areaProduction.chart")}
           </button>
@@ -459,7 +459,7 @@ const AreaProductionTable = ({ area, showToast }) => {
                   showToast(t("areaProduction.errorSaving"));
                 });
             }}
-            className="bg-blue-600 text-white px-4 py-1 rounded"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded"
           >
             {t("areaProduction.save")}
           </button>

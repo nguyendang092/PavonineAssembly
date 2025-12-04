@@ -453,7 +453,7 @@ function HonorBoard() {
           {/* Toggle Button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="fixed left-4 top-20 z-50 bg-indigo-600 text-white p-3 rounded-lg shadow-lg hover:bg-indigo-700 transition"
+            className="fixed left-4 top-20 z-50 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 rounded-lg shadow-lg hover:from-blue-700 hover:to-purple-700 transition"
           >
             {sidebarOpen ? "✕" : "☰"}
           </button>
@@ -465,7 +465,7 @@ function HonorBoard() {
             }`}
           >
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-indigo-600 mb-2">
+              <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2">
                 🏆 Menu
               </h2>
               <p className="text-sm text-gray-500">Quản lý bảng vinh danh</p>
@@ -500,7 +500,7 @@ function HonorBoard() {
                       resetForm();
                       setShowModal(true);
                     }}
-                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition shadow-md text-sm"
+                    className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition shadow-md text-sm"
                   >
                     ➕ Thêm nhân viên
                   </button>
@@ -658,13 +658,13 @@ function HonorBoard() {
                       {/* Month Header */}
                       <div className="mb-6 relative">
                         <div className="flex items-center gap-4">
-                          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-lg shadow-md">
+                          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg shadow-md">
                             <span className="text-xl font-bold">
                               {String(timeData.month).padStart(2, "0")}/
                               {timeData.year}
                             </span>
                           </div>
-                          <div className="flex-1 h-0.5 bg-gradient-to-r from-indigo-400 to-transparent"></div>
+                          <div className="flex-1 h-0.5 bg-gradient-to-r from-blue-400 to-transparent"></div>
                         </div>
                       </div>
 
@@ -856,7 +856,7 @@ function HonorBoard() {
           {showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="sticky top-0 bg-indigo-600 text-white p-6 rounded-t-xl">
+                <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-xl">
                   <h2 className="text-2xl font-bold">
                     {editingId
                       ? "✏️ Cập nhật thông tin"
@@ -1010,7 +1010,7 @@ function HonorBoard() {
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition"
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition"
                     >
                       {editingId ? "Cập nhật" : "Thêm mới"}
                     </button>

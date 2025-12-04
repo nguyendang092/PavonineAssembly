@@ -610,7 +610,7 @@ function MoldManager() {
     <div className="min-h-screen w-full bg-[#f1f5f9] flex flex-col md:flex-row">
       {/* Sidebar toggle button (always visible, top left) */}
       <button
-        className="fixed top-20 left-2 z-50 bg-blue-600 text-white rounded-full p-2 shadow-lg hover:bg-blue-700 transition md:top-20 md:left-2"
+        className="fixed top-20 left-2 z-50 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full p-2 shadow-lg hover:from-blue-700 hover:to-purple-700 transition md:top-20 md:left-2"
         style={{ display: "block" }}
         onClick={() => setSidebarOpen((open) => !open)}
         aria-label={
@@ -729,7 +729,7 @@ function MoldManager() {
             {user && (
               <button
                 onClick={handleAddNew}
-                className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded font-bold text-sm shadow hover:from-blue-700 hover:to-purple-700 transition"
               >
                 {t("moldManager.addNew")}
               </button>
@@ -838,7 +838,7 @@ function MoldManager() {
                 })}
                 <button
                   type="submit"
-                  className="col-span-1 sm:col-span-2 lg:col-span-4 bg-blue-600 text-white py-2 sm:py-1 rounded font-bold text-sm mt-2"
+                  className="col-span-1 sm:col-span-2 lg:col-span-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 sm:py-1 rounded font-bold text-sm mt-2"
                 >
                   {editing !== null
                     ? t("moldManager.edit")
@@ -1093,7 +1093,7 @@ function MoldManager() {
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={closeDetailModal}
-                  className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded font-bold text-sm shadow hover:from-blue-700 hover:to-purple-700 transition"
                 >
                   {t("moldManager.close")}
                 </button>
@@ -1153,7 +1153,7 @@ function MoldManager() {
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={closePmDetailModal}
-                  className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded font-bold text-sm shadow hover:from-blue-700 hover:to-purple-700 transition"
                 >
                   {t("moldManager.close")}
                 </button>
