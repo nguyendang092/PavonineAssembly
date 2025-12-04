@@ -3,82 +3,92 @@
 
 export const menuConfig = [
   {
-    key: "sanLuong",
-    label: "navbar.sanLuong",
-    type: "dropdown",
-    children: [
-      { key: "sanLuongNormal", label: "navbar.Normal", path: "/normal" },
-      { key: "sanLuongNG", label: "navbar.ng", path: "/ng" },
-    ],
-  },
-  { key: "nhietdo", label: "navbar.nhietdo", path: "/nhietdo" },
-  { key: "honorBoard", label: "navbar.honorBoard", path: "/honor-board" },
-  // {
-  //   key: "ap5",
-  //   label: "AP5",
-  //   type: "dropdown",
-  //   children: [
-  //     {
-  //       key: "AP5 MD",
-  //       label: "AP5MD",
-  //       path: "/ap5md",
-  //       children: [
-  //         { key: "ap5mdff", label: "AP5 MD FF", path: "/ap5md/ap5mdff" },
-  //         { key: "ap5mdfz", label: "AP5 MD FZ", path: "/ap5md/ap5mdfz" },
-  //         { key: "ap5mdfl", label: "AP5 MD FL", path: "/ap5md/ap5mdfl" },
-  //       ],
-  //     },
-  //     // {
-  //     //   key: "AP5",
-  //     //   label: "AP5",
-  //     //   path: "/ap5",
-  //     //   children: [
-  //     //     { key: "ap5ff", label: "AP5FF", path: "/ap5/ap5ff" },
-  //     //     { key: "ap5fz", label: "AP5FZ", path: "/ap5/ap5fz" },
-  //     //   ],
-  //     // },
-  //   ],
-  // },
-  {
-    key: "certificate",
-    label: "navbar.certificate",
-    type: "dropdown",
-    adminOnly: true,
-    children: [
-      { key: "certificate1", label: "navbar.certificate1", path: "/bangkhen1" },
-      { key: "certificate2", label: "navbar.certificate2", path: "/bangkhen2" },
-    ],
+    key: "home",
+    label: "navbar.home",
+    path: "/",
   },
   {
-    key: "leader",
-    label: "navbar.leader",
+    key: "reports",
+    label: "navbar.reports",
     type: "dropdown",
     children: [
-      { key: "ChiThanh", label: "navbar.ChiThanh", path: "/employ/ChiThanh" },
       {
-        key: "NgocThanh",
-        label: "navbar.NgocThanh",
-        path: "/employ/NgocThanh",
+        key: "production",
+        label: "navbar.production",
+        type: "nested",
+        children: [
+          {
+            key: "sanLuong",
+            label: "navbar.sanLuong",
+            type: "nested",
+            children: [
+              {
+                key: "sanLuongNormal",
+                label: "navbar.Normal",
+                path: "/normal",
+              },
+              { key: "sanLuongNG", label: "navbar.ng", path: "/ng" },
+            ],
+          },
+          { key: "nhietdo", label: "navbar.nhietdo", path: "/nhietdo" },
+          { key: "mold", label: "navbar.mold", path: "/mold" },
+          { key: "caiTien", label: "navbar.caiTien", path: "/performance" },
+          {
+            key: "leader",
+            label: "navbar.leader",
+            type: "nested",
+            children: [
+              {
+                key: "ChiThanh",
+                label: "navbar.ChiThanh",
+                path: "/employ/ChiThanh",
+              },
+              {
+                key: "NgocThanh",
+                label: "navbar.NgocThanh",
+                path: "/employ/NgocThanh",
+              },
+              { key: "Muoi", label: "navbar.Muoi", path: "/employ/Muoi" },
+            ],
+          },
+        ],
       },
-      { key: "Muoi", label: "navbar.Muoi", path: "/employ/Muoi" },
-      //   { key: "DuyHinh", label: "navbar.DuyHinh", path: "/employ/DuyHinh" },
+      {
+        key: "hr",
+        label: "navbar.hr",
+        type: "nested",
+        children: [
+          {
+            key: "attendance",
+            label: "navbar.attendance",
+            path: "/attendance-list",
+          },
+          {
+            key: "honorBoard",
+            label: "navbar.honorBoard",
+            path: "/honor-board",
+          },
+          {
+            key: "certificate",
+            label: "navbar.certificate",
+            adminOnly: true,
+            type: "nested",
+            children: [
+              {
+                key: "certificate1",
+                label: "navbar.certificate1",
+                path: "/bangkhen1",
+              },
+              {
+                key: "certificate2",
+                label: "navbar.certificate2",
+                path: "/bangkhen2",
+              },
+            ],
+          },
+        ],
+      },
     ],
-  },
-  {
-    key: "mold",
-    label: "navbar.mold",
-    type: "dropdown",
-    children: [{ key: "mold", label: "navbar.mold", path: "/mold" }],
-  },
-  {
-    key: "performance",
-    label: "navbar.performance",
-    path: "/performance",
-  },
-  {
-    key: "attendance",
-    label: "navbar.attendance",
-    path: "/attendance-list",
   },
 ];
 

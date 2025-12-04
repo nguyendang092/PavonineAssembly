@@ -1124,8 +1124,8 @@ function AttendanceList() {
                     <span
                       className={`px-3 py-1.5 rounded-full text-sm font-bold ${
                         emp.gioiTinh === "YES"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-pink-100 text-pink-700"
+                          ? "bg-pink-100 text-pink-700"
+                          : "bg-blue-100 text-blue-700"
                       }`}
                     >
                       {emp.gioiTinh}
@@ -1158,17 +1158,17 @@ function AttendanceList() {
                           }}
                         >
                           <option value="">Chọn loại</option>
-                          <option value="CDL">Có đi làm</option>
+                          <option value="CDL">Có</option>
                           <option value="VT">Vào trễ</option>
-                          <option value="PN">Phép năm</option>
-                          <option value="PN1/2">1/2 Phép năm</option>
-                          <option value="KL">Không lương</option>
-                          <option value="KP">Không phép</option>
-                          <option value="PO">Phép ốm</option>
-                          <option value="TN">Tai nạn</option>
-                          <option value="PC">Phép cưới</option>
-                          <option value="PT">Phép tang</option>
-                          <option value="DS">Dưỡng sức</option>
+                          <option value="PN">PN</option>
+                          <option value="PN1/2">1/2 PN</option>
+                          <option value="KL">KL</option>
+                          <option value="KP">KP</option>
+                          <option value="PO">PO</option>
+                          <option value="TN">TN</option>
+                          <option value="PC">PC</option>
+                          <option value="PT">PT</option>
+                          <option value="DS">DS</option>
                         </select>
                         {editingGioVao[emp.id] && (
                           <button
