@@ -681,13 +681,19 @@ function AttendanceList() {
     <div className="min-h-screen w-full bg-[#f1f5f9] lg:pl-64">
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 z-50 w-64 h-screen bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
+        className={`fixed left-0 z-40 w-64 h-screen bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
+        style={{ top: "60px" }}
       >
         <div className="h-full flex flex-col">
           {/* Sidebar Header */}
-          <div className="p-4 border-b bg-gradient-to-r from-blue-600 to-blue-700">
+          <div
+            className="p-4 border-b"
+            style={{
+              background: "linear-gradient(to right, #3b82f6, #8b5cf6)",
+            }}
+          >
             <h2 className="text-lg font-bold text-white">📊 Menu</h2>
           </div>
 
@@ -1056,7 +1062,11 @@ function AttendanceList() {
         <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
           <table className="w-full border-collapse min-w-[1200px]">
             <thead>
-              <tr className="bg-gradient-to-r from-blue-600 to-blue-700">
+              <tr
+                style={{
+                  background: "linear-gradient(to right, #3b82f6, #8b5cf6)",
+                }}
+              >
                 <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   STT
                 </th>
