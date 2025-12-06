@@ -6,17 +6,12 @@ import Modal from "react-modal";
 import { ref, onValue, set, remove, update, get } from "firebase/database";
 import { db } from "./firebase";
 import { HiHome, HiCalendar, HiFolder } from "react-icons/hi";
-import {
-  FaCheck,
-  FaChartLine,
-  FaPlus,
-  FaEdit,
-  FaTrash,
-} from "react-icons/fa";
+import { FaCheck, FaChartLine, FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import Toast from "./Toast";
 import SingleMachineTable from "./SingleMachineTable";
 import ChartView from "./ChartView";
 import { useTranslation } from "react-i18next";
+import Sidebar from "./Sidebar";
 
 Modal.setAppElement("#root");
 
@@ -118,6 +113,7 @@ const TemperatureMonitor = () => {
   }, [selectedArea, filteredMachines.length]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const handleEditMachine = async (oldName, newName) => {
     const trimmedNew = newName.trim();
     if (!selectedArea || !trimmedNew) return;
@@ -257,16 +253,22 @@ const TemperatureMonitor = () => {
     setIsLoading(false);
   };
   return (
-    <div className="flex">
+    <div className="" style={{ backgroundColor: "#eef4ff" }}>
+      {/* Toggle Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="fixed left-4 top-20 z-50 w-12 h-12 flex items-center justify-center rounded-full shadow-lg bg-black text-white hover:bg-gray-900 transition"
+        aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+      >
+        {sidebarOpen ? "✕" : "☰"}
+      </button>
+
       {/* Sidebar */}
-      <div className="w-72 h-screen fixed top-0 left-0 bg-gradient-to-b from-indigo-600 to-purple-600 text-white p-6 space-y-6 shadow z-10 overflow-y-auto">
-        <div className="space-y-2">
-          <div className="flex items-center space-x-3 bg-white/20 rounded">
-            <HiHome className="text-xl" />
-            <span className="font-semibold">
-              {t("temperatureMonitor.dashboard")}
-            </span>
-          </div>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
+        <div className="text-center mb-4">
+          <h2 className="text-xl font-bold text-white">
+            🌡️ {t("temperatureMonitor.title")}
+          </h2>
         </div>
         <div className="space-y-4">
           <p className="uppercase text-sm text-white tracking-wide pt-2">
@@ -490,11 +492,11 @@ const TemperatureMonitor = () => {
             </span>
           </div>
         </div>
-      </div>
+      </Sidebar>
 
       {/* Nội dung chính */}
-      <div className="ml-72 flex-1 p-6">
-        <div className="bg-white rounded shadow p-6 pt-12 min-h-[500px]">
+      <div className="ml-72 flex-1 px-6 pt-6 pb-0">
+        <div className="bg-white rounded shadow p-6 pt-10 min-h-[71.2vh]">
           <h2 className="text-2xl font-bold text-center mb-6">
             📋 {t("temperatureMonitor.header")} -{" "}
             {selectedArea

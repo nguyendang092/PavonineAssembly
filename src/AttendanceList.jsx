@@ -4,15 +4,16 @@ import { useUser } from "./UserContext";
 import { db, ref, set, onValue, push, remove, update } from "./firebase";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
+import Sidebar from "./Sidebar";
 
 function AttendanceList() {
   const { t } = useTranslation();
   const { user } = useUser();
 
   // Debug: Log user state
-  useEffect(() => {
-    console.log("AttendanceList - User:", user);
-  }, [user]);
+  // useEffect(() => {
+  //   console.log("AttendanceList - User:", user);
+  // }, [user]);
 
   const [employees, setEmployees] = useState([]);
   const [selectedDate, setSelectedDate] = useState(
@@ -678,20 +679,15 @@ function AttendanceList() {
   );
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 lg:pl-64">
+    <div className="min-h-screen w-full" style={{ backgroundColor: "#eef4ff" }}>
       {/* Sidebar */}
-      <div
-        className={`fixed left-0 z-40 w-64 h-screen bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
-        style={{ top: "60px" }}
-      >
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
         <div className="h-full flex flex-col">
           {/* Sidebar Header */}
           <div
-            className="p-4 border-b"
+            className="p-4 border-b mb-4 text-center"
             style={{
-              background: "linear-gradient(to right, #3b82f6, #8b5cf6)",
+              backgroundColor: "#000000cb",
             }}
           >
             <h2 className="text-lg font-bold text-white">📊 Menu</h2>
@@ -777,7 +773,7 @@ function AttendanceList() {
             </div>
           </div>
         </div>
-      </div>
+      </Sidebar>
 
       {/* Overlay for mobile */}
       {sidebarOpen && (
@@ -787,16 +783,20 @@ function AttendanceList() {
         />
       )}
 
+      {/* Toggle Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="fixed left-4 top-20 z-50 w-12 h-12 flex items-center justify-center rounded-full shadow-lg bg-black text-white hover:bg-gray-900 transition"
+      >
+        {sidebarOpen ? "✕" : "☰"}
+      </button>
+
       {/* Main Content */}
-      <div className="p-4 md:p-8">
-        {/* Toggle Sidebar Button (Mobile) */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="lg:hidden fixed bottom-4 right-4 z-50 text-white p-3 rounded-full shadow-lg transition hover:shadow-xl"
-          style={{ background: "linear-gradient(to right, #3b82f6, #8b5cf6)" }}
-        >
-          {sidebarOpen ? "✕" : "☰"}
-        </button>
+      <div
+        className={`p-4 md:p-8 transition-all duration-300 ${
+          sidebarOpen ? "ml-72" : "ml-0"
+        }`}
+      >
         {/* Header */}
         <div className="mb-6">
           <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-600">

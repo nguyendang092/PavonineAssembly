@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { db, ref, onValue, set } from "./firebase";
 import { useUser } from "./UserContext";
+import Sidebar from "./Sidebar";
 import {
   BarChart,
   Bar,
@@ -47,7 +48,7 @@ export default function PerformanceChart() {
   const chartRef = useRef(null);
   const cardRef = useRef(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [yearDataStore, setYearDataStore] = useState({});
   const [loading, setLoading] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -278,20 +279,19 @@ export default function PerformanceChart() {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden flex flex-col md:flex-row">
+    <div
+      className="h-screen overflow-hidden flex flex-col md:flex-row"
+      style={{ backgroundColor: "#eef4ff" }}
+    >
       {/* Sidebar */}
-      <div
-        className={`bg-white border-r md:border-b-0 border-b border-gray-200 shadow-lg transition-all duration-300 ${
-          sidebarOpen ? "md:w-56 w-full h-auto md:h-full" : "w-0 h-0"
-        } overflow-hidden flex-shrink-0`}
-      >
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
         <div className="h-full flex flex-col p-4">
-          <div className="mb-4">
-            <h2 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+          <div className="mb-4 text-center">
+            <h2 className="text-sm font-bold text-white mb-2 flex items-center justify-center gap-2">
               <span>📅</span>
               <span>년도 선택</span>
             </h2>
-            <p className="text-[10px] text-gray-500">Select Year</p>
+            <p className="text-[10px] text-gray-300">Select Year</p>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 md:block grid grid-cols-2 gap-2">
@@ -307,8 +307,8 @@ export default function PerformanceChart() {
                 }}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
                   selectedYear === year
-                    ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
+                    : "bg-white/10 text-gray-300 hover:bg-white/20"
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -323,19 +323,22 @@ export default function PerformanceChart() {
             ))}
           </div>
         </div>
-      </div>
+      </Sidebar>
 
       {/* Toggle Button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed md:absolute top-4 left-4 z-20 bg-white border border-gray-300 rounded-lg p-2 shadow-md hover:shadow-lg transition-all hover:bg-gray-50"
-        title={sidebarOpen ? "닫기" : "열기"}
+        className="fixed left-4 top-20 z-50 w-12 h-12 flex items-center justify-center rounded-full shadow-lg bg-black text-white hover:bg-gray-900 transition"
       >
-        <span className="text-lg">{sidebarOpen ? "◀" : "▶"}</span>
+        {sidebarOpen ? "✕" : "☰"}
       </button>
 
       {/* Main Content */}
-      <div className="flex-1 p-2 md:p-4 overflow-hidden">
+      <div
+        className={`flex-1 p-2 md:p-4 overflow-hidden transition-all duration-300 ${
+          sidebarOpen ? "ml-72" : "ml-0"
+        }`}
+      >
         {loading ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center">

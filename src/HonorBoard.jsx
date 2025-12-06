@@ -4,6 +4,7 @@ import { db, ref, onValue, set } from "./firebase";
 import { push, remove } from "firebase/database";
 import { useUser } from "./UserContext";
 import * as XLSX from "xlsx";
+import Sidebar from "./Sidebar";
 
 function HonorBoard() {
   const { t } = useTranslation();
@@ -402,7 +403,10 @@ function HonorBoard() {
         }
       `}</style>
 
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+      <div
+        className="min-h-screen relative overflow-hidden"
+        style={{ backgroundColor: "#eef4ff" }}
+      >
         {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div
@@ -453,26 +457,20 @@ function HonorBoard() {
           {/* Toggle Button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="fixed left-4 top-20 z-50 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 rounded-lg shadow-lg hover:from-blue-700 hover:to-purple-700 transition"
+            className="fixed left-4 top-20 z-50 w-12 h-12 flex items-center justify-center rounded-full shadow-lg bg-black text-white hover:bg-gray-900 transition"
           >
             {sidebarOpen ? "✕" : "☰"}
           </button>
 
           {/* Sidebar */}
-          <div
-            className={`fixed left-0 top-16 w-72 bg-white shadow-2xl h-[calc(100vh-4rem)] p-6 overflow-y-auto z-40 transition-transform duration-300 ${
-              sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
-          >
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2">
-                🏆 Menu
-              </h2>
-              <p className="text-sm text-gray-500">Quản lý bảng vinh danh</p>
+          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-white mb-2">🏆 Menu</h2>
+              <p className="text-sm text-gray-300">Quản lý bảng vinh danh</p>
             </div>
 
             {/* Search in Sidebar */}
-            <div className="mb-6">
+            <div>
               <h3 className="text-sm font-semibold text-gray-700 uppercase mb-3">
                 Tìm kiếm
               </h3>
@@ -486,7 +484,7 @@ function HonorBoard() {
             </div>
 
             {/* Actions in Sidebar */}
-            <div className="mb-6 space-y-2">
+            <div className="space-y-2">
               <button
                 onClick={handleExportExcel}
                 className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition shadow-md text-sm"
@@ -509,7 +507,7 @@ function HonorBoard() {
             </div>
 
             {/* Statistics in Sidebar */}
-            <div className="space-y-4 mb-6">
+            <div className="space-y-4">
               <h3 className="text-sm font-semibold text-gray-700 uppercase mb-3">
                 Thống kê
               </h3>
@@ -620,7 +618,7 @@ function HonorBoard() {
                 </button>
               )}
             </div>
-          </div>
+          </Sidebar>
 
           {/* Main Content */}
           <div

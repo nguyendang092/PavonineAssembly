@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import DetailedNGModal from "./DetailedNGModal";
 import { useUser } from "./UserContext";
 import { logUserAction } from "./userLog";
+import Sidebar from "./Sidebar";
 import {
   Chart as ChartJS,
   BarElement,
@@ -69,6 +70,7 @@ export default function NGWorkplaceChart() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalArea, setModalArea] = useState("");
   const [showTable, setShowTable] = useState(window.innerWidth >= 1520);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Theo dõi kích thước màn hình
   useEffect(() => {
@@ -327,58 +329,77 @@ export default function NGWorkplaceChart() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row bg-gray-50 h-screen overflow-hidden">
-      <aside className="w-full lg:w-64 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-lg border-r flex flex-col max-h-[30vh] lg:max-h-[93vh]">
-        {/* Title + Week Select => scrollable */}
-        <div
-          className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-6"
-          style={{ maxHeight: "calc(100vh - 100px)" }}
-        >
-          <h2 className="text-base sm:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 lg:mb-6 uppercase flex items-center gap-1 sm:gap-2 tracking-wide">
-            {t("workplaceNGChart.menuTitle")}
-          </h2>
-          {Object.keys(weekData).length > 0 && (
-            <div className="mb-2 sm:mb-3 lg:mb-4">
-              <label className="block text-white text-xs sm:text-sm lg:text-base font-medium mb-1 sm:mb-1.5 lg:mb-2">
-                {t("workplaceNGChart.selectWeek")}
-              </label>
-              <select
-                value={selectedWeek}
-                onChange={(e) => setSelectedWeek(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm focus:outline-none mb-2 bg-white"
-              >
-                {Object.keys(weekData)
-                  .filter((week) => {
-                    if (!chartData || !chartData.labels) return true;
-                    const days = chartData.labels.map((label) =>
-                      label.toLowerCase()
-                    );
-                    return (
-                      !days.includes("chủ nhật") && !days.includes("sunday")
-                    );
-                  })
-                  .map((week) => (
-                    <option key={week} value={week}>
-                      {t("workplaceNGChart.week")} {week}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          )}
+    <div
+      className="flex flex-col lg:flex-row h-screen overflow-hidden"
+      style={{ backgroundColor: "#eef4ff" }}
+    >
+      {/* Toggle Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="fixed left-4 top-20 z-50 w-12 h-12 flex items-center justify-center rounded-full shadow-lg bg-black text-white hover:bg-gray-900 transition"
+      >
+        {sidebarOpen ? "✕" : "☰"}
+      </button>
+
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        className="!space-y-0"
+      >
+        <div className="space-y-4">
+          <div className="text-center">
+            <h2 className="text-lg lg:text-2xl font-bold text-white mb-3 uppercase">
+              {t("workplaceNGChart.menuTitle")}
+            </h2>
+          </div>
+          <div>
+            {Object.keys(weekData).length > 0 && (
+              <>
+                <label className="block text-white font-medium mb-2 text-sm">
+                  {t("workplaceNGChart.selectWeek")}
+                </label>
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(e.target.value)}
+                  className="w-full bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.keys(weekData)
+                    .filter((week) => {
+                      if (!chartData || !chartData.labels) return true;
+                      const days = chartData.labels.map((label) =>
+                        label.toLowerCase()
+                      );
+                      return (
+                        !days.includes("chủ nhật") && !days.includes("sunday")
+                      );
+                    })
+                    .map((week) => (
+                      <option key={week} value={week}>
+                        {t("workplaceNGChart.week")} {week}
+                      </option>
+                    ))}
+                </select>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Footer - upload file */}
+        {/* Upload section */}
         {user && (
-          <div className="p-2 sm:p-3 lg:p-4 border-t border-white/20">
-            <div className="flex items-center gap-1 sm:gap-2 bg-white/30 rounded-lg p-1.5 sm:p-2 shadow">
+          <div className="space-y-3">
+            <p className="uppercase text-sm text-white tracking-wide">
+              {t("workplaceNGChart.uploadData")}
+            </p>
+            <div className="flex items-center justify-between gap-2 bg-white/10 rounded-lg p-2">
               <label
                 htmlFor="file-upload-total"
-                className="cursor-pointer p-1.5 sm:p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
+                className="cursor-pointer p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                 title="Chọn file"
               >
-                <FiUpload size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <FiUpload size={16} />
               </label>
-              <span className="text-white text-[10px] sm:text-xs lg:text-sm font-medium flex-1 text-center">
+              <span className="text-white text-xs font-medium flex-1 text-center">
                 {t("workplaceNGChart.chooseExceltotal")}
               </span>
               <input
@@ -391,7 +412,7 @@ export default function NGWorkplaceChart() {
             </div>
           </div>
         )}
-      </aside>
+      </Sidebar>
 
       {/* Main content */}
       <main

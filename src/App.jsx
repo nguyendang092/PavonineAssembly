@@ -4,6 +4,7 @@ import Toast from "./Toast";
 import Navbar from "./Navbar";
 import TemperatureMonitor from "./TemperatureMonitor";
 import BackToTop from "./BackToTop";
+import Footer from "./Footer";
 import "./i18n";
 import WorkplaceChart from "./WorkplaceChart";
 import ModelProductionChart from "./ModelProductionChart";
@@ -85,7 +86,7 @@ const App = () => {
   return (
     <UserContext.Provider value={{ user, setUser }}>
       <Router>
-        <div>
+        <div className="min-h-screen flex flex-col bg-gray-50">
           {/* Navbar cố định */}
           <div
             className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
@@ -98,7 +99,7 @@ const App = () => {
           </div>
 
           {/* Nội dung chính */}
-          <div className="pt-16 overflow-hidden">
+          <div className="pt-16 overflow-hidden flex-1">
             <Routes>
               <Route path="/" element={<Navigate to="/normal" replace />} />
               {routeConfig.map((r) => {
@@ -152,6 +153,9 @@ const App = () => {
               <Route path="*" element={<Navigate to="/normal" replace />} />
             </Routes>
           </div>
+
+          {/* Footer */}
+          <Footer />
 
           {/* Toast */}
           <Toast message={toastMessage} onClose={() => setToastMessage("")} />

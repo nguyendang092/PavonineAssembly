@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import Sidebar from "./Sidebar";
 
 export default function CertificateGenerator1() {
   const canvasRef = useRef(null);
@@ -183,92 +184,94 @@ export default function CertificateGenerator1() {
       }}
     >
       {/* Sidebar nhập liệu */}
-      <div
-        style={{
-          width: 340,
-          background: "#fff",
-          padding: 32,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          borderRight: "1px solid #eee",
-          boxShadow: "2px 0 8px #0001",
-        }}
+      <Sidebar
+        isOpen={true}
+        className="!static !top-0 !h-full rounded-l-lg !space-y-0"
       >
-        <h2
+        <div
           style={{
-            fontWeight: 700,
-            fontSize: 30,
-            marginBottom: 32,
-            fontFamily: "Cambria, sans-serif",
-            textTransform: "uppercase",
-            letterSpacing: "2px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            height: "100%",
           }}
         >
-          Tạo Bằng Khen
-        </h2>
-        <input
-          type="text"
-          placeholder="Nhập tên người được khen"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          style={{
-            padding: "12px 16px",
-            fontSize: 18,
-            borderRadius: 8,
-            border: "1px solid #ccc",
-            marginBottom: 24,
-            width: "100%",
-          }}
-        />
-        <input
-          type="text"
-          placeholder="Nhập bộ phận"
-          value={department}
-          onChange={(e) => setDepartment(e.target.value)}
-          style={{
-            padding: "12px 16px",
-            fontSize: 16,
-            borderRadius: 8,
-            border: "1px solid #ccc",
-            marginBottom: 24,
-            width: "100%",
-          }}
-        />
-        <button
-          onClick={handleGenerate}
-          style={{
-            marginBottom: 16,
-            padding: "12px 0",
-            width: "100%",
-            fontWeight: 600,
-            fontSize: 16,
-            background: "#4f46e5",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-          }}
-        >
-          Tạo
-        </button>
-        <button
-          onClick={handleDownload}
-          style={{
-            padding: "12px 0",
-            width: "100%",
-            fontWeight: 600,
-            fontSize: 16,
-            background: "#10b981",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-          }}
-        >
-          Tải về
-        </button>
-      </div>
+          <h2
+            style={{
+              fontWeight: 700,
+              fontSize: 30,
+              marginBottom: 32,
+              fontFamily: "Cambria, sans-serif",
+              textTransform: "uppercase",
+              letterSpacing: "2px",
+              color: "#fff",
+            }}
+          >
+            Tạo Bằng Khen
+          </h2>
+          <input
+            type="text"
+            placeholder="Nhập tên người được khen"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={{
+              padding: "12px 16px",
+              fontSize: 18,
+              borderRadius: 8,
+              border: "1px solid #ccc",
+              marginBottom: 24,
+              width: "100%",
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Nhập bộ phận"
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+            style={{
+              padding: "12px 16px",
+              fontSize: 16,
+              borderRadius: 8,
+              border: "1px solid #ccc",
+              marginBottom: 24,
+              width: "100%",
+            }}
+          />
+          <button
+            onClick={handleGenerate}
+            style={{
+              marginBottom: 16,
+              padding: "12px 0",
+              width: "100%",
+              fontWeight: 600,
+              fontSize: 16,
+              background: "linear-gradient(to right, #2563eb, #7c3aed)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              cursor: "pointer",
+            }}
+          >
+            Tạo
+          </button>
+          <button
+            onClick={handleDownload}
+            style={{
+              padding: "12px 0",
+              width: "100%",
+              fontWeight: 600,
+              fontSize: 16,
+              background: "#10b981",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              cursor: "pointer",
+            }}
+          >
+            Tải về
+          </button>
+        </div>
+      </Sidebar>
       {/* Preview bên phải */}
       <div
         style={{

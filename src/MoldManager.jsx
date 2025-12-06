@@ -7,6 +7,7 @@ import { useUser } from "./UserContext";
 import { db, ref, set, onValue } from "./firebase";
 import { push, remove, update } from "firebase/database";
 import * as XLSX from "xlsx";
+import Sidebar from "./Sidebar";
 
 // Map hiển thị <-> key lưu Firebase
 const toSafeKey = (col) => col.replace(/[^a-zA-Z0-9_]/g, "_");
@@ -21,6 +22,7 @@ const fromSafeKey = (key, columns) => {
 
 function MoldManager() {
   const { t } = useTranslation();
+  const { user } = useUser();
 
   // Helper function để tạo đường dẫn hình ảnh từ thư mục local
   // Chỉ hỗ trợ local path: /picture/molds/
@@ -138,64 +140,28 @@ function MoldManager() {
   ];
 
   // Object mẫu cho form
-  const emptyForm = columns.reduce(
-    (acc, col) => {
-      acc[col] = "";
-      return acc;
-    },
-    { id: "" }
-  );
+  const emptyForm = columns.reduce((acc, col) => {
+    acc[col] = "";
+    return acc;
+  }, {});
 
-  const [molds, setMolds] = useState([]);
-  const [form, setForm] = useState({ ...emptyForm });
-  const [editing, setEditing] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [alert, setAlert] = useState({ show: false, type: "", message: "" });
-  const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
-
-  // Lấy thông tin user từ UserContext
-  const { user } = useUser();
-
-  // Toggle sidebar for all screens
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Search term
+  // Filters & search
   const [searchTerm, setSearchTerm] = useState("");
-  // Filter states
   const [subsidiaryFilter, setSubsidiaryFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [vendorFilter, setVendorFilter] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Filter configurations for cleaner code
-  const filterConfigs = [
-    {
-      key: "Subsidiary",
-      value: subsidiaryFilter,
-      setValue: setSubsidiaryFilter,
-      labelKey: "moldManager.allSubsidiaries",
-      getOptions: () => [
-        ...new Set(molds.map((m) => m["Subsidiary"]).filter(Boolean)),
-      ],
-    },
-    {
-      key: "Type",
-      value: typeFilter,
-      setValue: setTypeFilter,
-      labelKey: "moldManager.allTypes",
-      getOptions: () => [
-        ...new Set(molds.map((m) => m["Type"]).filter(Boolean)),
-      ],
-    },
-    {
-      key: "Vendor",
-      value: vendorFilter,
-      setValue: setVendorFilter,
-      labelKey: "moldManager.allVendors",
-      getOptions: () => [
-        ...new Set(molds.map((m) => m["Vendor"]).filter(Boolean)),
-      ],
-    },
-  ];
+  // Data & form state
+  const [molds, setMolds] = useState([]);
+  const [form, setForm] = useState({ ...emptyForm });
+  const [editing, setEditing] = useState(null);
+
+  // Alerts
+  const [alert, setAlert] = useState({ show: false, type: "", message: "" });
 
   // Image zoom modal
   const [imageZoom, setImageZoom] = useState({ show: false, src: "", alt: "" });
@@ -214,6 +180,69 @@ function MoldManager() {
     show: false,
     mold: null,
   });
+
+  // Dynamic filter dropdown configs
+  const filterConfigs = useMemo(
+    () => [
+      {
+        key: "subsidiary",
+        labelKey: "moldManager.columns.subsidiary",
+        value: subsidiaryFilter,
+        setValue: setSubsidiaryFilter,
+        getOptions: () =>
+          Array.from(
+            new Set(
+              molds
+                .map((m) => m["Subsidiary"])
+                .filter((v) => v !== undefined && v !== "")
+            )
+          ).sort(),
+      },
+      {
+        key: "type",
+        labelKey: "moldManager.columns.type",
+        value: typeFilter,
+        setValue: setTypeFilter,
+        getOptions: () =>
+          Array.from(
+            new Set(
+              molds
+                .map((m) => m["Type"])
+                .filter((v) => v !== undefined && v !== "")
+            )
+          ).sort(),
+      },
+      {
+        key: "location",
+        labelKey: "moldManager.columns.location",
+        value: locationFilter,
+        setValue: setLocationFilter,
+        getOptions: () =>
+          Array.from(
+            new Set(
+              molds
+                .map((m) => m["Location"])
+                .filter((v) => v !== undefined && v !== "")
+            )
+          ).sort(),
+      },
+      {
+        key: "vendor",
+        labelKey: "moldManager.columns.vendor",
+        value: vendorFilter,
+        setValue: setVendorFilter,
+        getOptions: () =>
+          Array.from(
+            new Set(
+              molds
+                .map((m) => m["Vendor"])
+                .filter((v) => v !== undefined && v !== "")
+            )
+          ).sort(),
+      },
+    ],
+    [molds, subsidiaryFilter, typeFilter, locationFilter, vendorFilter]
+  );
 
   // Handle file upload for images
   const handleImageUpload = (columnName, file) => {
@@ -607,71 +636,52 @@ function MoldManager() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#f1f5f9] flex flex-col md:flex-row">
+    <div
+      className="min-h-screen w-full flex flex-col md:flex-row"
+      style={{ backgroundColor: "#eef4ff" }}
+    >
       {/* Sidebar toggle button (always visible, top left) */}
       <button
-        className="fixed top-20 left-2 z-50 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full p-2 shadow-lg hover:from-blue-700 hover:to-purple-700 transition md:top-20 md:left-2"
+        className="fixed top-20 left-4 z-50 w-12 h-12 flex items-center justify-center bg-black text-white rounded-full shadow-lg hover:bg-gray-900 transition md:top-20 md:left-4"
         style={{ display: "block" }}
         onClick={() => setSidebarOpen((open) => !open)}
         aria-label={
           sidebarOpen ? t("moldManager.close") : t("moldManager.dashboard")
         }
       >
-        {sidebarOpen ? (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="2"
-            stroke="currentColor"
-            className="w-6 h-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        ) : (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="2"
-            stroke="currentColor"
-            className="w-6 h-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-        )}
+        {sidebarOpen ? "✕" : "☰"}
       </button>
 
       {/* Sidebar - always fixed for all screen sizes */}
-      {sidebarOpen && (
-        <aside
-          className="fixed left-0 top-20 h-[calc(100vh_-_5rem)] z-40 w-64 bg-gradient-to-b from-[#1e293b] to-[#64748b] text-white p-6 shadow-lg transition-transform duration-300"
-          aria-label="Sidebar"
-        >
-          <ul className="space-y-4">
-            {sidebarItems.map((item) => (
-              <li
-                key={item.label}
-                className="flex items-center gap-3 text-base font-medium hover:text-sky-300 cursor-pointer transition"
-              >
-                <span className="text-lg">{item.icon}</span>
-                {item.label}
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        aria-label="Sidebar"
+      >
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-bold text-white">
+            📋 {t("moldManager.title")}
+          </h2>
+        </div>
+        <ul className="space-y-4">
+          {sidebarItems.map((item) => (
+            <li
+              key={item.label}
+              className="flex items-center gap-3 text-base font-medium hover:text-sky-300 cursor-pointer transition"
+            >
+              <span className="text-lg">{item.icon}</span>
+              {item.label}
+            </li>
+          ))}
+        </ul>
+      </Sidebar>
 
       {/* Main content */}
-      <main className="flex-1 p-4 md:p-8 overflow-auto">
+      <main
+        className={`flex-1 p-4 md:p-8 overflow-auto transition-all duration-300 ${
+          sidebarOpen ? "ml-72" : "ml-0"
+        }`}
+      >
         {/* Mobile top bar */}
         <div className="flex items-center justify-center md:hidden mb-3">
           <h1 className="w-full text-center text-xl font-extrabold uppercase tracking-widest text-[#1e293b]">

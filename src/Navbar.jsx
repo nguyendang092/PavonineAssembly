@@ -424,11 +424,6 @@ export default function Navbar({ user, setUser }) {
               </div>
             )}
           </div>
-
-          {/* Hamburger Menu */}
-          <div id="hamburger-menu" onClick={toggleMobileMenu}>
-            ☰
-          </div>
         </div>
       </nav>
     </>

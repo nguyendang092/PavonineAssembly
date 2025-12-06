@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import DetailedModal from "./DetailedModal";
 import { useUser } from "./UserContext";
 import { logUserAction } from "./userLog";
+import Sidebar from "./Sidebar";
 import {
   Chart as ChartJS,
   BarElement,
@@ -71,6 +72,7 @@ export default function WorkplaceChart() {
   const [tableView, setTableView] = useState("detailed");
   const [rawData, setRawData] = useState(null);
   const [showTable, setShowTable] = useState(window.innerWidth >= 1520);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Theo dõi kích thước màn hình
   useEffect(() => {
@@ -427,51 +429,69 @@ export default function WorkplaceChart() {
     XLSX.writeFile(wb, `san_luong_chi_tiet_tuan_${selectedWeek}.xlsx`);
   };
   return (
-    <div className="flex flex-col lg:flex-row bg-gray-50 h-screen overflow-hidden">
+    <div
+      className="flex flex-col lg:flex-row h-screen overflow-hidden"
+      style={{ backgroundColor: "#eef4ff" }}
+    >
+      {/* Toggle Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="fixed left-4 top-20 z-50 w-12 h-12 flex items-center justify-center rounded-full shadow-lg bg-black text-white hover:bg-gray-900 transition"
+      >
+        {sidebarOpen ? "✕" : "☰"}
+      </button>
+
       {/* Sidebar */}
-      <div className="w-full lg:w-64 flex flex-col p-2 sm:p-3 lg:p-6 bg-gradient-to-b from-indigo-600 to-purple-600 shadow-md lg:border-r max-h-[30vh] lg:max-h-[93vh]">
-        {/* Nội dung chính */}
-        <div
-          className="flex-grow overflow-y-auto"
-          style={{ maxHeight: "calc(100vh - 150px)" }}
-        >
-          <h2 className="text-base sm:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 lg:mb-6 uppercase flex items-center gap-1 sm:gap-2 justify-center lg:justify-start">
-            {t("workplaceChart.menuTitle")}
-          </h2>
-          {Object.keys(weekData).length > 0 && (
-            <>
-              <label className="block text-white font-medium mb-1 sm:mb-1.5 lg:mb-2 text-xs sm:text-sm lg:text-base">
-                {t("workplaceChart.selectWeek")}
-              </label>
-              <select
-                value={selectedWeek}
-                onChange={(e) => setSelectedWeek(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none mb-2 sm:mb-3 lg:mb-4"
-              >
-                {Object.keys(weekData).map((week) => (
-                  <option key={week} value={week}>
-                    {week} {t("workplaceChart.week")}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        className="!space-y-0"
+      >
+        <div className="space-y-4">
+          <div className="text-center">
+            <h2 className="text-lg lg:text-2xl font-bold text-white mb-3 uppercase">
+              {t("workplaceChart.menuTitle")}
+            </h2>
+          </div>
+          <div>
+            {Object.keys(weekData).length > 0 && (
+              <>
+                <label className="block text-white font-medium mb-2 text-sm">
+                  {t("workplaceChart.selectWeek")}
+                </label>
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(e.target.value)}
+                  className="w-full bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.keys(weekData).map((week) => (
+                    <option key={week} value={week}>
+                      {week} {t("workplaceChart.week")}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+          </div>
         </div>
-        {/* Chỉ hiển thị upload khi đã đăng nhập */}
+
+        {/* Upload section */}
         {user && (
-          <div className="flex flex-col gap-2 sm:gap-3 w-full px-1">
-            <div className="flex items-center justify-between gap-1 sm:gap-2 backdrop-blur rounded-lg p-1 shadow-md">
+          <div className="space-y-3">
+            <p className="uppercase text-sm text-white tracking-wide">
+              {t("workplaceChart.uploadData")}
+            </p>
+            <div className="flex items-center justify-between gap-2 bg-white/10 rounded-lg p-2">
               <label
                 htmlFor="file-upload-total"
-                className="cursor-pointer p-1.5 sm:p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
+                className="cursor-pointer p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                 title="Chọn file"
               >
-                <FiUpload size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <FiUpload size={16} />
               </label>
-              <span className="text-white text-[10px] sm:text-xs lg:text-sm font-medium flex-1 text-center">
+              <span className="text-white text-xs font-medium flex-1 text-center">
                 {t("workplaceChart.chooseExceltotal")}
               </span>
-              {/* Nút upload */}
               <button
                 onClick={() => {
                   if (!rawData) {
@@ -484,7 +504,7 @@ export default function WorkplaceChart() {
                       alert(t("workplaceChart.uploadError") + error.message)
                     );
                 }}
-                className="hover:bg-purple-700 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-[10px] sm:text-xs lg:text-sm font-medium transition"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-lg text-xs font-medium hover:from-blue-700 hover:to-purple-700 transition"
               >
                 {t("workplaceChart.uploadFirebase")}
               </button>
@@ -496,23 +516,22 @@ export default function WorkplaceChart() {
                 className="hidden"
               />
             </div>
-            {/* Chi tiết */}
-            <div className="flex items-center justify-between gap-1 sm:gap-2 backdrop-blur rounded-lg p-1 shadow-md">
-              {/* Icon upload */}
+
+            <div className="flex items-center justify-between gap-2 bg-white/10 rounded-lg p-2">
               <label
                 htmlFor="file-upload-detail"
-                className="cursor-pointer p-1.5 sm:p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
+                className="cursor-pointer p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                 title="Chọn file"
               >
-                <FiUpload size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <FiUpload size={16} />
               </label>
-              <span className="text-white text-[10px] sm:text-xs lg:text-sm font-medium flex-1 text-center">
+              <span className="text-white text-xs font-medium flex-1 text-center">
                 {t("workplaceChart.chooseExceldetail")}
               </span>
               <button
                 onClick={handleDetailUploadToFirebase}
                 disabled={!detailData}
-                className=" hover:bg-purple-700 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-[10px] sm:text-xs lg:text-sm font-medium transition disabled:opacity-50"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-lg text-xs font-medium hover:from-blue-700 hover:to-purple-700 transition disabled:opacity-50"
               >
                 {t("workplaceChart.uploadFirebase")}
               </button>
@@ -526,10 +545,12 @@ export default function WorkplaceChart() {
             </div>
           </div>
         )}
-      </div>
+      </Sidebar>
       {/* Chart và bảng tổng */}
       <div
-        className="flex-1 flex flex-col lg:flex-row gap-3 sm:gap-6 px-2 sm:px-4"
+        className={`flex-1 flex flex-col lg:flex-row gap-3 sm:gap-6 px-2 sm:px-4 transition-all duration-300 ${
+          sidebarOpen ? "ml-72" : "ml-0"
+        }`}
         style={{ minHeight: 0, overflow: "hidden" }}
       >
         {/* Chart */}
