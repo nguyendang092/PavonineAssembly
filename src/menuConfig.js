@@ -88,6 +88,18 @@ export const menuConfig = [
           },
         ],
       },
+      {
+        key: "download",
+        label: "navbar.download",
+        type: "nested",
+        children: [
+          {
+            key: "files",
+            label: "navbar.files",
+            path: "/downloads",
+          },
+        ],
+      },
     ],
   },
 ];
@@ -110,4 +122,5 @@ export const routeConfig = [
   { path: "/mold", element: "MoldManager" },
   { path: "/performance", element: "PerformanceChart" },
   { path: "/attendance-list", element: "AttendanceList" },
+  { path: "/downloads", element: "Downloads" },
 ];

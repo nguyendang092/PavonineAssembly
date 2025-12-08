@@ -19,6 +19,7 @@ import { routeConfig } from "./menuConfig";
 import MoldManager from "./MoldManager";
 import PerformanceChart from "./PerformanceChart";
 import AttendanceList from "./AttendanceList";
+import Downloads from "./Downloads";
 import {
   BrowserRouter as Router,
   Routes,
@@ -137,6 +138,9 @@ const App = () => {
                     break;
                   case "AttendanceList":
                     Element = AttendanceList;
+                    break;
+                  case "Downloads":
+                    Element = Downloads;
                     break;
                   case "Employ":
                     Element = (props) => (

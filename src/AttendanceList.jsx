@@ -27,6 +27,13 @@ function AttendanceList() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [mnvFilter, setMnvFilter] = useState([]); // Filter by MNV (array for multiple selection)
+  const [mvtFilter, setMvtFilter] = useState([]); // Filter by MVT (array for multiple selection)
+  const [gioiTinhFilter, setGioiTinhFilter] = useState([]); // Filter by gender
+  const [departmentListFilter, setDepartmentListFilter] = useState([]); // Filter by department in filter section
+  const [caLamViecFilter, setCaLamViecFilter] = useState([]); // Filter by shift
+  const [expandedSections, setExpandedSections] = useState({}); // Track which sections are expanded
   const [form, setForm] = useState({
     id: "",
     stt: "",
@@ -77,6 +84,20 @@ function AttendanceList() {
     const q = searchTerm.trim().toLowerCase();
     return employees.filter((emp) => {
       if (departmentFilter && emp.boPhan !== departmentFilter) return false;
+      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) return false;
+      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) return false;
+      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
+        return false;
+      if (
+        departmentListFilter.length > 0 &&
+        !departmentListFilter.includes(emp.boPhan)
+      )
+        return false;
+      if (
+        caLamViecFilter.length > 0 &&
+        !caLamViecFilter.includes(emp.caLamViec)
+      )
+        return false;
       if (!q) return true;
       return (
         (emp.hoVaTen || "").toLowerCase().includes(q) ||
@@ -84,16 +105,134 @@ function AttendanceList() {
         (emp.boPhan || "").toLowerCase().includes(q)
       );
     });
-  }, [searchTerm, employees, departmentFilter]);
+  }, [
+    searchTerm,
+    employees,
+    departmentFilter,
+    mnvFilter,
+    mvtFilter,
+    gioiTinhFilter,
+    departmentListFilter,
+    caLamViecFilter,
+  ]);
 
-  // Get unique departments
+  // Get unique departments (cascading filter - based on other selected filters)
   const departments = useMemo(() => {
     const depts = new Set();
     for (const emp of employees) {
+      // Apply other filters except Department
+      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) continue;
+      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
+      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
+        continue;
+      if (
+        caLamViecFilter.length > 0 &&
+        !caLamViecFilter.includes(emp.caLamViec)
+      )
+        continue;
       if (emp.boPhan) depts.add(emp.boPhan);
     }
     return Array.from(depts);
-  }, [employees]);
+  }, [employees, mnvFilter, mvtFilter, gioiTinhFilter, caLamViecFilter]);
+
+  // Get unique MNV codes (cascading filter - based on other selected filters)
+  const mnvList = useMemo(() => {
+    const mnvs = new Set();
+    for (const emp of employees) {
+      // Apply other filters except MNV
+      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
+      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
+        continue;
+      if (
+        departmentListFilter.length > 0 &&
+        !departmentListFilter.includes(emp.boPhan)
+      )
+        continue;
+      if (
+        caLamViecFilter.length > 0 &&
+        !caLamViecFilter.includes(emp.caLamViec)
+      )
+        continue;
+      if (emp.mnv) mnvs.add(emp.mnv);
+    }
+    return Array.from(mnvs).sort();
+  }, [
+    employees,
+    mvtFilter,
+    gioiTinhFilter,
+    departmentListFilter,
+    caLamViecFilter,
+  ]);
+
+  // Get unique MVT codes (cascading filter - based on other selected filters)
+  const mvtList = useMemo(() => {
+    const mvts = new Set();
+    for (const emp of employees) {
+      // Apply other filters except MVT
+      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) continue;
+      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
+        continue;
+      if (
+        departmentListFilter.length > 0 &&
+        !departmentListFilter.includes(emp.boPhan)
+      )
+        continue;
+      if (
+        caLamViecFilter.length > 0 &&
+        !caLamViecFilter.includes(emp.caLamViec)
+      )
+        continue;
+      if (emp.mvt) mvts.add(emp.mvt);
+    }
+    return Array.from(mvts).sort();
+  }, [
+    employees,
+    mnvFilter,
+    gioiTinhFilter,
+    departmentListFilter,
+    caLamViecFilter,
+  ]);
+
+  // Get unique genders (cascading filter - based on other selected filters)
+  const genderList = useMemo(() => {
+    const genders = new Set();
+    for (const emp of employees) {
+      // Apply other filters except Gender
+      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) continue;
+      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
+      if (
+        departmentListFilter.length > 0 &&
+        !departmentListFilter.includes(emp.boPhan)
+      )
+        continue;
+      if (
+        caLamViecFilter.length > 0 &&
+        !caLamViecFilter.includes(emp.caLamViec)
+      )
+        continue;
+      if (emp.gioiTinh) genders.add(emp.gioiTinh);
+    }
+    return Array.from(genders).sort();
+  }, [employees, mnvFilter, mvtFilter, departmentListFilter, caLamViecFilter]);
+
+  // Get unique shifts (cascading filter - based on other selected filters)
+  const shiftList = useMemo(() => {
+    const shifts = new Set();
+    for (const emp of employees) {
+      // Apply other filters except Shift
+      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) continue;
+      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
+      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
+        continue;
+      if (
+        departmentListFilter.length > 0 &&
+        !departmentListFilter.includes(emp.boPhan)
+      )
+        continue;
+      if (emp.caLamViec) shifts.add(emp.caLamViec);
+    }
+    return Array.from(shifts).sort();
+  }, [employees, mnvFilter, mvtFilter, gioiTinhFilter, departmentListFilter]);
 
   // Filter departments based on search
   const filteredDepartments = useMemo(() => {
@@ -684,89 +823,95 @@ function AttendanceList() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
         <div className="h-full flex flex-col">
           {/* Sidebar Header */}
-          <div
-            className="p-4 border-b mb-4 text-center"
-            style={{
-              backgroundColor: "#000000cb",
-            }}
-          >
-            <h2 className="text-lg font-bold text-white">📊 Menu</h2>
+          <div className="pb-4 mb-6 border-b border-white/20">
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center shadow-lg">
+                <span className="text-base font-bold">📑</span>
+              </div>
+              <h2 className="text-lg font-bold text-white">Bộ Phận</h2>
+            </div>
           </div>
 
           {/* Sidebar Content */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto">
             {/* Search Box for Departments */}
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="🔍 Tìm bộ phận..."
-                value={departmentSearchTerm}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300"
-                onChange={(e) => setDepartmentSearchTerm(e.target.value)}
-              />
+            <div className="mb-6 px-1">
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-lg">🔎</span>
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm..."
+                  value={departmentSearchTerm}
+                  className="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-3 py-2.5 text-sm text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                  onChange={(e) => setDepartmentSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
 
-            <nav className="space-y-2">
+            <nav className="space-y-1.5">
               <button
                 onClick={() => setDepartmentFilter("")}
-                className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                className={`w-full text-left px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 ${
                   departmentFilter === ""
-                    ? "text-white font-semibold"
-                    : "text-gray-700 hover:bg-purple-50"
+                    ? "text-white font-semibold shadow-lg"
+                    : "text-gray-200 hover:text-white hover:bg-white/10"
                 }`}
                 style={
                   departmentFilter === ""
                     ? {
                         background:
-                          "linear-gradient(to right, #3b82f6, #8b5cf6)",
+                          "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
                       }
                     : {}
                 }
               >
-                📋 Tất cả bộ phận
+                <div className="w-5 h-5 flex items-center justify-center rounded-md bg-gradient-to-br from-violet-400 to-indigo-500 text-white text-xs font-bold shadow-sm">
+                  ☆
+                </div>
+                <span>Tất Cả</span>
               </button>
               {filteredDepartments.map((dept) => (
                 <button
                   key={dept}
                   onClick={() => setDepartmentFilter(dept)}
-                  className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                  className={`w-full text-left px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 ${
                     departmentFilter === dept
-                      ? "text-white font-semibold"
-                      : "text-gray-700 hover:bg-purple-50"
+                      ? "text-white font-semibold shadow-lg"
+                      : "text-gray-200 hover:text-white hover:bg-white/10"
                   }`}
                   style={
                     departmentFilter === dept
                       ? {
                           background:
-                            "linear-gradient(to right, #3b82f6, #8b5cf6)",
+                            "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
                         }
                       : {}
                   }
                 >
-                  🏢 {dept}
+                  <div className="w-5 h-5 flex items-center justify-center rounded-md bg-gradient-to-br from-cyan-400 to-blue-500 text-white text-xs font-bold shadow-sm">
+                    ▢
+                  </div>
+                  <span>{dept}</span>
                 </button>
               ))}
             </nav>
           </div>
 
           {/* Stats - Always at bottom */}
-          <div
-            className="p-4 border-t"
-            style={{
-              background: "linear-gradient(to bottom right, #ede9fe, #ddd6fe)",
-            }}
-          >
-            <h3 className="text-sm font-bold text-gray-700 mb-2">Thống kê</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Tổng:</span>
-                <span className="font-bold text-blue-600">
+          <div className="pt-4 mt-4 border-t border-white/20">
+            <h3 className="text-xs font-bold text-white/80 uppercase tracking-wider mb-3">
+              Thống Kê
+            </h3>
+            <div className="space-y-2.5">
+              <div className="flex justify-between items-center bg-white/5 rounded-lg px-3 py-2">
+                <span className="text-sm text-white/70">Tổng Nhân Viên</span>
+                <span className="text-lg font-bold text-blue-400">
                   {employees.length}
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Hiển thị:</span>
-                <span className="font-bold text-green-600">
+              <div className="flex justify-between items-center bg-white/5 rounded-lg px-3 py-2">
+                <span className="text-sm text-white/70">Đang Hiển Thị</span>
+                <span className="text-lg font-bold text-green-400">
                   {filteredEmployees.length}
                 </span>
               </div>
@@ -855,12 +1000,367 @@ function AttendanceList() {
             />
           </div>
           <div className="flex gap-2">
+            {/* Filter Button */}
+            <div className="relative">
+              <button
+                onClick={() => setFilterOpen(!filterOpen)}
+                className={`px-4 py-2 rounded font-bold text-sm shadow transition flex items-center gap-2 ${
+                  mnvFilter.length > 0 ||
+                  mvtFilter.length > 0 ||
+                  gioiTinhFilter.length > 0 ||
+                  departmentListFilter.length > 0 ||
+                  caLamViecFilter.length > 0
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-gray-600 text-white hover:bg-gray-700"
+                }`}
+              >
+                🔍 Lọc
+                <span className="text-xs">
+                  {mnvFilter.length > 0 ||
+                  mvtFilter.length > 0 ||
+                  gioiTinhFilter.length > 0 ||
+                  departmentListFilter.length > 0 ||
+                  caLamViecFilter.length > 0
+                    ? "✓"
+                    : ""}
+                </span>
+              </button>
+
+              {/* Filter Modal Dialog */}
+              {filterOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col animate-slideUp border border-gray-100">
+                    {/* Header */}
+                    <div className="p-5 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-white opacity-10"></div>
+                      <div className="relative z-10">
+                        <h3 className="font-bold text-white text-xl flex items-center gap-2">
+                          <span className="text-2xl">🔍</span>
+                          Bộ lọc nâng cao
+                        </h3>
+                        <p className="text-xs text-blue-50 mt-1.5 font-medium">
+                          Chọn điều kiện lọc • Kết quả tự động cập nhật
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4 overflow-y-auto flex-1">
+                      {/* MNV Filter Section */}
+                      <div className="mb-3">
+                        <button
+                          onClick={() => {
+                            setExpandedSections((prev) => ({
+                              ...prev,
+                              mnv: !prev.mnv,
+                            }));
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-blue-200"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-blue-500 text-base">👤</span>
+                            <span>Mã nhân viên (MNV)</span>
+                          </span>
+                          <span className="text-blue-600 font-bold">
+                            {expandedSections.mnv ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {expandedSections.mnv && (
+                          <div className="border-2 border-blue-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-blue-50/30 shadow-inner">
+                            {employees.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
+                                <span className="animate-spin">⏳</span>
+                                Đang tải dữ liệu...
+                              </div>
+                            ) : (
+                              mnvList.map((mnv) => (
+                                <label
+                                  key={mnv}
+                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={mnvFilter.includes(mnv)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setMnvFilter([...mnvFilter, mnv]);
+                                      } else {
+                                        setMnvFilter(
+                                          mnvFilter.filter((m) => m !== mnv)
+                                        );
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  {mnv}
+                                </label>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* MVT Filter Section */}
+                      <div className="mb-3">
+                        <button
+                          onClick={() => {
+                            setExpandedSections((prev) => ({
+                              ...prev,
+                              mvt: !prev.mvt,
+                            }));
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-purple-200"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-purple-500 text-base">
+                              🔑
+                            </span>
+                            <span>Mã vân tay (MVT)</span>
+                          </span>
+                          <span className="text-purple-600 font-bold">
+                            {expandedSections.mvt ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {expandedSections.mvt && (
+                          <div className="border-2 border-purple-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-purple-50/30 shadow-inner">
+                            {employees.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
+                                <span className="animate-spin">⏳</span>
+                                Đang tải dữ liệu...
+                              </div>
+                            ) : (
+                              mvtList.map((mvt) => (
+                                <label
+                                  key={mvt}
+                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={mvtFilter.includes(mvt)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setMvtFilter([...mvtFilter, mvt]);
+                                      } else {
+                                        setMvtFilter(
+                                          mvtFilter.filter((m) => m !== mvt)
+                                        );
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  {mvt}
+                                </label>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Gender Filter Section */}
+                      <div className="mb-3">
+                        <button
+                          onClick={() => {
+                            setExpandedSections((prev) => ({
+                              ...prev,
+                              gender: !prev.gender,
+                            }));
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-green-500 text-base">⚧️</span>
+                            <span>Giới tính</span>
+                          </span>
+                          <span className="text-green-600 font-bold">
+                            {expandedSections.gender ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {expandedSections.gender && (
+                          <div className="border-2 border-green-100 rounded-lg mt-2 bg-gradient-to-b from-white to-green-50/30 shadow-inner">
+                            {genderList.map((gender) => (
+                              <label
+                                key={gender}
+                                className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={gioiTinhFilter.includes(gender)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setGioiTinhFilter([
+                                        ...gioiTinhFilter,
+                                        gender,
+                                      ]);
+                                    } else {
+                                      setGioiTinhFilter(
+                                        gioiTinhFilter.filter(
+                                          (g) => g !== gender
+                                        )
+                                      );
+                                    }
+                                  }}
+                                  className="mr-2 w-4 h-4 cursor-pointer"
+                                />
+                                {gender === "YES" ? "Nữ" : "Nam"}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Department Filter Section */}
+                      <div className="mb-3">
+                        <button
+                          onClick={() => {
+                            setExpandedSections((prev) => ({
+                              ...prev,
+                              department: !prev.department,
+                            }));
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-orange-200"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-orange-500 text-base">
+                              🏢
+                            </span>
+                            <span>Bộ phận</span>
+                          </span>
+                          <span className="text-orange-600 font-bold">
+                            {expandedSections.department ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {expandedSections.department && (
+                          <div className="border-2 border-orange-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-orange-50/30 shadow-inner">
+                            {departments.map((dept) => (
+                              <label
+                                key={dept}
+                                className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={departmentListFilter.includes(dept)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setDepartmentListFilter([
+                                        ...departmentListFilter,
+                                        dept,
+                                      ]);
+                                    } else {
+                                      setDepartmentListFilter(
+                                        departmentListFilter.filter(
+                                          (d) => d !== dept
+                                        )
+                                      );
+                                    }
+                                  }}
+                                  className="mr-2 w-4 h-4 cursor-pointer"
+                                />
+                                {dept}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Shift Filter Section */}
+                      <div className="mb-3">
+                        <button
+                          onClick={() => {
+                            setExpandedSections((prev) => ({
+                              ...prev,
+                              shift: !prev.shift,
+                            }));
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-red-200"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-red-500 text-base">🕐</span>
+                            <span>Ca làm việc</span>
+                          </span>
+                          <span className="text-red-600 font-bold">
+                            {expandedSections.shift ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {expandedSections.shift && (
+                          <div className="border-2 border-red-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-red-50/30 shadow-inner">
+                            {shiftList.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-gray-500 italic">
+                                Không có dữ liệu
+                              </div>
+                            ) : (
+                              shiftList.map((shift) => (
+                                <label
+                                  key={shift}
+                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={caLamViecFilter.includes(shift)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setCaLamViecFilter([
+                                          ...caLamViecFilter,
+                                          shift,
+                                        ]);
+                                      } else {
+                                        setCaLamViecFilter(
+                                          caLamViecFilter.filter(
+                                            (s) => s !== shift
+                                          )
+                                        );
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  {shift}
+                                </label>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer - Buttons */}
+                    <div className="p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex gap-3 justify-end">
+                      <button
+                        onClick={() => {
+                          setMnvFilter([]);
+                          setMvtFilter([]);
+                          setGioiTinhFilter([]);
+                          setDepartmentListFilter([]);
+                          setCaLamViecFilter([]);
+                          setExpandedSections({});
+                        }}
+                        className="px-5 py-2.5 rounded-lg text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow"
+                      >
+                        🗑️ Xóa tất cả
+                      </button>
+                      <button
+                        onClick={() => setFilterOpen(false)}
+                        className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                      >
+                        ✖️ Hủy
+                      </button>
+                      <button
+                        onClick={() => setFilterOpen(false)}
+                        className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                      >
+                        ✓ Áp dụng
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={handleExportExcel}
               className="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition"
             >
               📥 Xuất Excel
             </button>
+
             {user && (
               <>
                 <label className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition cursor-pointer inline-flex items-center">

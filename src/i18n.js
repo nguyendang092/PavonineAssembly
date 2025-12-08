@@ -64,8 +64,8 @@ const resources = {
         logoAlt: "Logo PavoAssembly",
         home: "Home",
         reports: "Báo cáo",
-        production: "Production",
-        hr: "HR",
+        production: "Sản xuất",
+        hr: "Nhân sự",
         ap5: "AP5",
         AP5FF: "AP5FF",
         AP5FZ: "AP5FZ",
@@ -91,6 +91,8 @@ const resources = {
         performance: "Cải tiến",
         caiTien: "Cải tiến",
         attendance: "Điểm danh",
+        download: "Download",
+        files: "Tài liệu",
       },
       temperatureMonitor: {
         dashboard: "Bảng điều khiển",
@@ -516,6 +518,8 @@ const resources = {
         performance: "개선제안",
         caiTien: "개선제안",
         attendance: "출석부",
+        download: "다운로드",
+        files: "파일",
       },
       temperatureMonitor: {
         dashboard: "대시보드",
