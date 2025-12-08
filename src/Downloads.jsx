@@ -5,44 +5,58 @@ import { db, ref, onValue, update, set } from "./firebase";
 const Downloads = () => {
   const { t } = useTranslation();
 
+  // Icon URL mặc định theo loại file
+  const typeIconMap = {
+    psd: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='18' fill='%231f6feb'/%3E%3Ctext x='50%25' y='55%25' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-size='42' font-weight='700' fill='white'%3EPS%3C/text%3E%3C/svg%3E",
+  };
+
   // Danh sách tài liệu - URL trỏ đến thư mục public/downloads/
   const [files] = useState([
     {
       id: 1,
-      name: "Form thông báo kiểm kê",
+      name: "Mẫu thông báo kiểm kê",
       description: "Form mẫu dùng để thông báo kiểm kê hàng hóa hàng tháng",
       size: "13 KB",
       type: "Excel",
-      icon: "📊",
+      icon: "📗",
       url: "/downloads/PAVONINE_FormThongBaoKiemKe_202511.xlsx",
     },
-    // {
-    //   id: 2,
-    //   name: "Biểu mẫu chấm công",
-    //   description: "Mẫu biểu mẫu điểm danh nhân viên",
-    //   size: "1.2 MB",
-    //   type: "Excel",
-    //   icon: "📊",
-    //   url: "/downloads/bieu-mau-cham-cong.xlsx",
-    // },
-    // {
-    //   id: 3,
-    //   name: "Quy trình sản xuất",
-    //   description: "Tài liệu quy trình và tiêu chuẩn sản xuất",
-    //   size: "3.8 MB",
-    //   type: "PDF",
-    //   icon: "📄",
-    //   url: "/downloads/quy-trinh-san-xuat.pdf",
-    // },
-    // {
-    //   id: 4,
-    //   name: "Báo cáo mẫu",
-    //   description: "Template báo cáo tháng",
-    //   size: "1.5 MB",
-    //   type: "Word",
-    //   icon: "📝",
-    //   url: "/downloads/bao-cao-mau.docx",
-    // },
+    {
+      id: 2,
+      name: "Mẫu báo cáo hàng tiêu hao",
+      description: "Form mẫu dùng để làm phê duyệt trừ tiêu hao mỗi tháng",
+      size: "12 KB",
+      type: "Excel",
+      icon: "📗",
+      url: "/downloads/PAVONINE_MauBaoCaoHangTieuHao.xlsx",
+    },
+    {
+      id: 3,
+      name: "Mẫu báo cáo kiểm kê tồn kho theo quý",
+      description: "Form mẫu dùng để báo cáo kiểm kê tồn kho theo quý",
+      size: "499 KB",
+      type: "Excel",
+      icon: "📗",
+      url: "/downloads/PAVONINE_Inventory Statement_092025.xlsx",
+    },
+    {
+      id: 4,
+      name: "Mẫu giấy khen bản nằm ngang",
+      description:
+        "Form mẫu giấy khen cho nhân viên (bản nằm ngang) photoshop CS6",
+      size: "12,252 KB",
+      type: "PSD",
+      url: "/downloads/PAVONINE_CertificateLandscape.psd",
+    },
+    {
+      id: 5,
+      name: "Mẫu giấy khen bản nằm dọc",
+      description:
+        "Form mẫu giấy khen cho nhân viên (bản nằm dọc) photoshop CS6",
+      size: "12,861 KB",
+      type: "PSD",
+      url: "/downloads/PAVONINE_CertificatePortrait.psd",
+    },
   ]);
 
   // State để đếm lượt tải xuống từ Firebase
@@ -135,44 +149,60 @@ const Downloads = () => {
 
         {/* Files Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {files.map((file) => (
-            <div
-              key={file.id}
-              className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group"
-            >
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-center">
-                <div className="text-6xl mb-2 transform group-hover:scale-110 transition-transform duration-300">
-                  {file.icon}
-                </div>
-                <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-semibold">
-                  {file.type}
-                </span>
-              </div>
+          {files.map((file) =>
+            // Chọn iconUrl nếu có, hoặc map theo loại file
+            // eslint-disable-next-line react/jsx-no-comment-textnodes
+            (() => {
+              const resolvedIconUrl =
+                file.iconUrl || typeIconMap[file.type?.toLowerCase?.()] || null;
+              return (
+                <div
+                  key={file.id}
+                  className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group h-full flex flex-col"
+                >
+                  <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-center">
+                    {resolvedIconUrl ? (
+                      <img
+                        src={resolvedIconUrl}
+                        alt={`${file.type} icon`}
+                        className="h-14 mx-auto mb-2 drop-shadow-md transform group-hover:scale-110 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="text-6xl mb-2 transform group-hover:scale-110 transition-transform duration-300">
+                        {file.icon}
+                      </div>
+                    )}
+                    <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-semibold">
+                      {file.type}
+                    </span>
+                  </div>
 
-              <div className="p-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-2 uppercase">
-                  {file.name}
-                </h3>
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                  {file.description}
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs text-gray-500 font-medium">
-                    📦 {file.size}
-                  </span>
+                  <div className="p-6 flex flex-col flex-1">
+                    <h3 className="text-lg font-bold text-gray-800 mb-2 uppercase">
+                      {file.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                      {file.description}
+                    </p>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs text-gray-500 font-medium">
+                        📦 {file.size}
+                      </span>
+                    </div>
+                    <div className="flex gap-2 mt-auto">
+                      <button
+                        onClick={() => handleDownload(file)}
+                        className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                      >
+                        <span>⬇️</span>
+                        <span>Tải xuống</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleDownload(file)}
-                    className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-                  >
-                    <span>⬇️</span>
-                    <span>Tải xuống</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+              );
+            })()
+          )}
         </div>
 
         {/* Statistics */}
