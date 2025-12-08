@@ -61,6 +61,8 @@ const Downloads = () => {
 
   // State để đếm lượt tải xuống từ Firebase
   const [downloadCounts, setDownloadCounts] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedType, setSelectedType] = useState("");
 
   // Load dữ liệu từ Firebase khi component mount
   useEffect(() => {
@@ -108,6 +110,17 @@ const Downloads = () => {
     0
   );
 
+  // Lọc file theo tìm kiếm và loại
+  const filteredFiles = files.filter((file) => {
+    const matchesSearch =
+      file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      file.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType =
+      selectedType === "" ||
+      file.type.toLowerCase() === selectedType.toLowerCase();
+    return matchesSearch && matchesType;
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -119,7 +132,7 @@ const Downloads = () => {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-800">
-                Trung tâm tải xuống
+                Tài liệu & Biểu mẫu
               </h1>
               <p className="text-gray-600 text-sm mt-1">
                 Tài liệu, biểu mẫu và hướng dẫn sử dụng
@@ -135,24 +148,28 @@ const Downloads = () => {
               <input
                 type="text"
                 placeholder="🔍 Tìm kiếm tài liệu..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition"
               />
             </div>
-            <select className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition">
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition"
+            >
               <option value="">Tất cả loại file</option>
               <option value="pdf">PDF</option>
               <option value="excel">Excel</option>
-              <option value="word">Word</option>
+              <option value="psd">PSD</option>
             </select>
           </div>
         </div>
 
         {/* Files Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {files.map((file) =>
-            // Chọn iconUrl nếu có, hoặc map theo loại file
-            // eslint-disable-next-line react/jsx-no-comment-textnodes
-            (() => {
+          {filteredFiles.length > 0 ? (
+            filteredFiles.map((file) => {
               const resolvedIconUrl =
                 file.iconUrl || typeIconMap[file.type?.toLowerCase?.()] || null;
               return (
@@ -201,7 +218,17 @@ const Downloads = () => {
                   </div>
                 </div>
               );
-            })()
+            })
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <div className="text-4xl mb-4">🔍</div>
+              <p className="text-lg text-gray-600 font-semibold mb-2">
+                Không tìm thấy tài liệu
+              </p>
+              <p className="text-sm text-gray-500">
+                Hãy thử thay đổi từ khóa hoặc bộ lọc
+              </p>
+            </div>
           )}
         </div>
 
