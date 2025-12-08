@@ -344,8 +344,9 @@
     filter: blur(0);
 }
 
-/* Ẩn hamburger menu khi SignIn mở */
-body.signin-open #hamburger-menu {
+/* Ẩn hamburger menu và tất cả toggle button khi SignIn mở */
+body.signin-open #hamburger-menu,
+body.signin-open button[class*="fixed left-4 top-20"] {
     display: none !important;
 }
 
