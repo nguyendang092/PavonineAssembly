@@ -11,53 +11,94 @@ const Downloads = () => {
   };
 
   // Danh sách tài liệu - URL trỏ đến thư mục public/downloads/
-  const [files] = useState([
-    {
-      id: 1,
-      name: "Mẫu thông báo kiểm kê",
-      description: "Form mẫu dùng để thông báo kiểm kê hàng hóa hàng tháng",
-      size: "13 KB",
-      type: "Excel",
-      icon: "📗",
-      url: "/downloads/PAVONINE_FormThongBaoKiemKe_202511.xlsx",
-    },
-    {
-      id: 2,
-      name: "Mẫu báo cáo hàng tiêu hao",
-      description: "Form mẫu dùng để làm phê duyệt trừ tiêu hao mỗi tháng",
-      size: "12 KB",
-      type: "Excel",
-      icon: "📗",
-      url: "/downloads/PAVONINE_MauBaoCaoHangTieuHao.xlsx",
-    },
-    {
-      id: 3,
-      name: "Mẫu báo cáo kiểm kê tồn kho theo quý",
-      description: "Form mẫu dùng để báo cáo kiểm kê tồn kho theo quý",
-      size: "499 KB",
-      type: "Excel",
-      icon: "📗",
-      url: "/downloads/PAVONINE_Inventory Statement_092025.xlsx",
-    },
-    {
-      id: 4,
-      name: "Mẫu giấy khen bản nằm ngang",
-      description:
-        "Form mẫu giấy khen cho nhân viên (bản nằm ngang) photoshop CS6",
-      size: "12,252 KB",
-      type: "PSD",
-      url: "/downloads/PAVONINE_CertificateLandscape.psd",
-    },
-    {
-      id: 5,
-      name: "Mẫu giấy khen bản nằm dọc",
-      description:
-        "Form mẫu giấy khen cho nhân viên (bản nằm dọc) photoshop CS6",
-      size: "12,861 KB",
-      type: "PSD",
-      url: "/downloads/PAVONINE_CertificatePortrait.psd",
-    },
-  ]);
+  const [files] = useState(
+    [
+      {
+        name: "Mẫu thông báo kiểm kê",
+        description: "Form mẫu dùng để thông báo kiểm kê hàng hóa hàng tháng",
+        size: "13 KB",
+        type: "Excel",
+        icon: "📗",
+        url: "/downloads/PAVONINE_FormThongBaoKiemKe_202511.xlsx",
+      },
+      {
+        name: "Mẫu báo cáo hàng tiêu hao",
+        description: "Form mẫu dùng để làm phê duyệt trừ tiêu hao mỗi tháng",
+        size: "12 KB",
+        type: "Excel",
+        icon: "📗",
+        url: "/downloads/PAVONINE_MauBaoCaoHangTieuHao.xlsx",
+      },
+      {
+        name: "Mẫu báo cáo kiểm kê tồn kho theo quý",
+        description: "Form mẫu dùng để báo cáo kiểm kê tồn kho theo quý",
+        size: "499 KB",
+        type: "Excel",
+        icon: "📗",
+        url: "/downloads/PAVONINE_Inventory Statement_092025.xlsx",
+      },
+      {
+        name: "Mẫu giấy khen bản nằm ngang",
+        description:
+          "Form mẫu giấy khen cho nhân viên (bản nằm ngang) photoshop CS6",
+        size: "12,252 KB",
+        type: "PSD",
+        url: "/downloads/PAVONINE_CertificateLandscape.psd",
+      },
+      {
+        name: "Mẫu giấy khen bản nằm dọc",
+        description:
+          "Form mẫu giấy khen cho nhân viên (bản nằm dọc) photoshop CS6",
+        size: "12,861 KB",
+        type: "PSD",
+        url: "/downloads/PAVONINE_CertificatePortrait.psd",
+      },
+      {
+        name: "Mẫu giấy khen NVUTN & NVUT",
+        description:
+          "Form mẫu giấy khen cho nhân viên ưu tú nhất & nhân viên ưu tú photoshop CS6",
+        size: "39,657 KB",
+        type: "PSD",
+        url: "/downloads/PAVONINE_Merit.psd",
+      },
+      {
+        name: "Mẫu label cho vua đề án & hiệu quả cải tiến",
+        description:
+          "Form mẫu label cho vua đề án & hiệu quả cải tiến photoshop CS6",
+        size: "53,527 KB",
+        type: "PSD",
+        url: "/downloads/PAVONINE_LabelCertificate_v2.psd",
+      },
+      {
+        name: "Mẫu lael nhân viên ưu tú nhất & nhân viên ưu tú",
+        description:
+          "Form mẫu label cho nhân viên ưu tú nhất & nhân viên ưu tú photoshop CS6",
+        size: "52,148 KB",
+        type: "PSD",
+        url: "/downloads/PAVONINE_LabelFull.psd",
+      },
+      {
+        name: "Mẫu upload kế hoạch sản xuất mỗi tuần",
+        description:
+          "Form mẫu để upload kế hoạch sản xuất mỗi tuần để gửi cho bên Sales",
+        size: "603 KB",
+        type: "Excel",
+        icon: "📗",
+        url: "/downloads/PAVONINE_SamSungPlanUploadWeek.xlsx",
+      },
+      {
+        name: "Mẫu file tổng hợp kiểm kê hàng tháng",
+        description: "Form mẫu để tổng hợp kiểm kê hàng tháng",
+        size: "24,260 KB",
+        type: "Excel",
+        icon: "📗",
+        url: "/downloads/2025.11월말 재고실사_v3.xlsb",
+      },
+    ].map((file, index) => ({
+      ...file,
+      id: index + 1, // Tự động gán id từ 1 đến số lượng file
+    }))
+  );
 
   // State để đếm lượt tải xuống từ Firebase
   const [downloadCounts, setDownloadCounts] = useState({});
@@ -121,6 +162,14 @@ const Downloads = () => {
     return matchesSearch && matchesType;
   });
 
+  // Sắp xếp ưu tiên Excel lên trên
+  const sortedFiles = [...filteredFiles].sort((a, b) => {
+    const aExcel = a.type.toLowerCase() === "excel" ? 1 : 0;
+    const bExcel = b.type.toLowerCase() === "excel" ? 1 : 0;
+    if (aExcel !== bExcel) return bExcel - aExcel; // Excel trước
+    return a.name.localeCompare(b.name); // sau đó theo tên
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -168,8 +217,8 @@ const Downloads = () => {
 
         {/* Files Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredFiles.length > 0 ? (
-            filteredFiles.map((file) => {
+          {sortedFiles.length > 0 ? (
+            sortedFiles.map((file) => {
               const resolvedIconUrl =
                 file.iconUrl || typeIconMap[file.type?.toLowerCase?.()] || null;
               return (
