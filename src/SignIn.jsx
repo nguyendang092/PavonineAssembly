@@ -13,14 +13,17 @@ import "../public/css/auth.css";
 export default function SignIn({ onSignIn, onClose }) {
   const { t } = useTranslation();
   const [isActive, setIsActive] = useState(false);
+  const [showReset, setShowReset] = useState(false);
   // Tách state cho từng form
   const [signInEmail, setSignInEmail] = useState("");
   const [signInPassword, setSignInPassword] = useState("");
   const [signUpName, setSignUpName] = useState("");
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   // Auto login if session exists
   useEffect(() => {
@@ -47,6 +50,34 @@ export default function SignIn({ onSignIn, onClose }) {
       document.body.classList.remove("signin-open");
     };
   }, []);
+
+  // Đặt lại mật khẩu
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setError("");
+    setResetSuccess(false);
+    setLoading(true);
+    try {
+      if (!resetEmail) {
+        setError(t("signIn.requireEmailReset"));
+        setLoading(false);
+        return;
+      }
+      const auth = getAuth();
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetSuccess(true);
+      setResetEmail("");
+      setError("");
+      setTimeout(() => {
+        setShowReset(false);
+        setResetSuccess(false);
+      }, 3000);
+    } catch (err) {
+      setError(t("signIn.resetFail"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Đăng nhập
   const handleSignIn = async (e) => {
@@ -218,6 +249,18 @@ export default function SignIn({ onSignIn, onClose }) {
               style={{ "--D": 4, "--S": 25 }}
             >
               <p>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowReset(true);
+                    setError("");
+                  }}
+                  style={{ fontSize: "14px", color: "#007bff" }}
+                >
+                  {t("signIn.forgotPassword")}
+                </a>
+                <br />
                 {t("signIn.noAccount")} <br />
                 <a
                   href="#"
@@ -381,6 +424,132 @@ export default function SignIn({ onSignIn, onClose }) {
             {t("signIn.overlayDescNew")}
           </p>
         </div>
+
+        {/* Reset Password Modal */}
+        {showReset && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+            onClick={() => {
+              setShowReset(false);
+              setResetSuccess(false);
+              setError("");
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: "white",
+                padding: "40px",
+                borderRadius: "10px",
+                boxShadow: "0 5px 15px rgba(0, 0, 0, 0.3)",
+                maxWidth: "400px",
+                width: "90%",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 style={{ marginBottom: "20px", textAlign: "center" }}>
+                {t("signIn.sendReset")}
+              </h2>
+              {resetSuccess && (
+                <div
+                  style={{
+                    backgroundColor: "#d4edda",
+                    color: "#155724",
+                    padding: "12px",
+                    borderRadius: "5px",
+                    marginBottom: "15px",
+                    textAlign: "center",
+                  }}
+                >
+                  {t("signIn.resetSent")}
+                </div>
+              )}
+              <form onSubmit={handlePasswordReset}>
+                <div style={{ marginBottom: "20px", position: "relative" }}>
+                  <input
+                    type="email"
+                    required
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder={t("signIn.email")}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      fontSize: "16px",
+                      border: "1px solid #ccc",
+                      borderRadius: "5px",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+                {error && !resetSuccess && (
+                  <div
+                    style={{
+                      color: "red",
+                      fontSize: "14px",
+                      marginBottom: "15px",
+                      textAlign: "center",
+                    }}
+                  >
+                    {error}
+                  </div>
+                )}
+                <div
+                  style={{ display: "flex", gap: "10px", marginTop: "25px" }}
+                >
+                  <button
+                    type="submit"
+                    disabled={loading || resetSuccess}
+                    style={{
+                      flex: 1,
+                      padding: "10px",
+                      backgroundColor: "#007bff",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "5px",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {loading ? "Đang gửi..." : t("signIn.sendReset")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReset(false);
+                      setResetSuccess(false);
+                      setError("");
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "10px",
+                      backgroundColor: "#6c757d",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "5px",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {t("signIn.cancel")}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

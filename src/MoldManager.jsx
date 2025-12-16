@@ -71,6 +71,8 @@ function MoldManager() {
       "Mold Size (W*D*H)": "moldSize",
       "Tooling Weight": "toolingWeight",
       Date: "date",
+      "Date Received": "dateReceived",
+      "Date Released": "dateReleased",
       Location: "location",
       Type: "type",
       "Pavonine Model": "pavonineModel",
@@ -79,6 +81,7 @@ function MoldManager() {
       Warehouse: "warehouse",
       Vendor: "vendor",
       NamePlate: "namePlate",
+      Notes: "notes",
       "PM Image": "pmImage",
       Process: "process",
     };
@@ -128,6 +131,8 @@ function MoldManager() {
     "Mold Size (W*D*H)",
     "Tooling Weight",
     "Date",
+    "Date Received",
+    "Date Released",
     "Location",
     "Type",
     "Pavonine Model",
@@ -136,6 +141,7 @@ function MoldManager() {
     "Vendor",
     "NamePlate",
     "Process",
+    "Notes",
     "PM Image",
   ];
 

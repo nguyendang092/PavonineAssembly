@@ -125,7 +125,7 @@ const Downloads = () => {
         setDownloadCounts(data);
       }
     });
-  }, []);
+  }, [files]);
 
   const handleDownload = (file) => {
     // Tải file từ thư mục public

@@ -34,6 +34,14 @@ function AttendanceList() {
   const [departmentListFilter, setDepartmentListFilter] = useState([]); // Filter by department in filter section
   const [caLamViecFilter, setCaLamViecFilter] = useState([]); // Filter by shift
   const [expandedSections, setExpandedSections] = useState({}); // Track which sections are expanded
+  const [showOvertimeModal, setShowOvertimeModal] = useState(false);
+  // Overtime modal-specific filters
+  const [modalFilterOpen, setModalFilterOpen] = useState(false);
+  const [modalGioiTinhFilter, setModalGioiTinhFilter] = useState([]);
+  const [modalDepartmentListFilter, setModalDepartmentListFilter] = useState(
+    []
+  );
+  const [modalExpandedSections, setModalExpandedSections] = useState({});
   const [form, setForm] = useState({
     id: "",
     stt: "",
@@ -115,6 +123,37 @@ function AttendanceList() {
     departmentListFilter,
     caLamViecFilter,
   ]);
+
+  // Overtime modal: derive unique options and apply modal filters from filteredEmployees
+  const modalUniqueGenders = useMemo(
+    () =>
+      Array.from(
+        new Set(filteredEmployees.map((e) => e.gioiTinh).filter(Boolean))
+      ),
+    [filteredEmployees]
+  );
+  const modalUniqueDepartments = useMemo(
+    () =>
+      Array.from(
+        new Set(filteredEmployees.map((e) => e.boPhan).filter(Boolean))
+      ),
+    [filteredEmployees]
+  );
+  const modalFilteredEmployees = useMemo(() => {
+    return filteredEmployees.filter((emp) => {
+      if (
+        modalGioiTinhFilter.length > 0 &&
+        !modalGioiTinhFilter.includes(emp.gioiTinh)
+      )
+        return false;
+      if (
+        modalDepartmentListFilter.length > 0 &&
+        !modalDepartmentListFilter.includes(emp.boPhan)
+      )
+        return false;
+      return true;
+    });
+  }, [filteredEmployees, modalGioiTinhFilter, modalDepartmentListFilter]);
 
   // Get unique departments (cascading filter - based on other selected filters)
   const departments = useMemo(() => {
@@ -355,113 +394,167 @@ function AttendanceList() {
   // Export to Excel
   const handleExportExcel = useCallback(async () => {
     try {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Attendance");
+      {
+        modalFilterOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col animate-slideUp border border-gray-100">
+              {/* Header */}
+              <div className="p-5 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
+                <div className="absolute inset-0 bg-white opacity-10"></div>
+                <div className="relative z-10">
+                  <h3 className="font-bold text-white text-xl flex items-center gap-2">
+                    <span className="text-2xl">🔍</span>
+                    Bộ lọc nâng cao
+                  </h3>
+                  <p className="text-xs text-blue-50 mt-1.5 font-medium">
+                    Chọn điều kiện lọc • Áp dụng cho danh sách trong modal
+                  </p>
+                </div>
+              </div>
 
-      // Tải logo
-      const logoResponse = await fetch("/picture/logo/logo_pavo.jpg");
-      const logoBlob = await logoResponse.blob();
-      const logoArrayBuffer = await logoBlob.arrayBuffer();
-      const logoId = workbook.addImage({
-        buffer: logoArrayBuffer,
-        extension: "jpeg",
-      });
+              {/* Content */}
+              <div className="p-4 overflow-y-auto flex-1 space-y-3">
+                {/* Department Filter */}
+                <div className="mb-1">
+                  <button
+                    onClick={() => {
+                      setModalExpandedSections((prev) => ({
+                        ...prev,
+                        dept: !prev.dept,
+                      }));
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-blue-200"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-blue-500 text-base">🏢</span>
+                      <span>Bộ phận</span>
+                    </span>
+                    <span className="text-blue-600 font-bold">
+                      {modalExpandedSections.dept ? "▼" : "▶"}
+                    </span>
+                  </button>
+                  {modalExpandedSections.dept && (
+                    <div className="border-2 border-blue-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-blue-50/30 shadow-inner">
+                      {modalUniqueDepartments.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
+                          <span className="animate-spin">⏳</span>
+                          Không có dữ liệu
+                        </div>
+                      ) : (
+                        modalUniqueDepartments.map((dept) => (
+                          <label
+                            key={dept || "dept-empty"}
+                            className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={modalDepartmentListFilter.includes(dept)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setModalDepartmentListFilter([
+                                    ...modalDepartmentListFilter,
+                                    dept,
+                                  ]);
+                                } else {
+                                  setModalDepartmentListFilter(
+                                    modalDepartmentListFilter.filter(
+                                      (d) => d !== dept
+                                    )
+                                  );
+                                }
+                              }}
+                              className="mr-2 w-4 h-4 cursor-pointer"
+                            />
+                            {dept || "(Không rõ)"}
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
 
-      // Set chiều cao cho các dòng header trước
-      worksheet.getRow(1).height = 25;
-      worksheet.getRow(2).height = 15;
-      worksheet.getRow(3).height = 15;
-      worksheet.getRow(4).height = 25;
-      worksheet.getRow(5).height = 20;
-      worksheet.getRow(6).height = 20;
-      worksheet.getRow(7).height = 5;
+                {/* Gender Filter */}
+                <div className="mb-1">
+                  <button
+                    onClick={() => {
+                      setModalExpandedSections((prev) => ({
+                        ...prev,
+                        gender: !prev.gender,
+                      }));
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-green-500 text-base">⚧️</span>
+                      <span>Giới tính</span>
+                    </span>
+                    <span className="text-green-600 font-bold">
+                      {modalExpandedSections.gender ? "▼" : "▶"}
+                    </span>
+                  </button>
+                  {modalExpandedSections.gender && (
+                    <div className="border-2 border-green-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-green-50/30 shadow-inner">
+                      {modalUniqueGenders.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
+                          <span className="animate-spin">⏳</span>
+                          Không có dữ liệu
+                        </div>
+                      ) : (
+                        modalUniqueGenders.map((gender) => (
+                          <label
+                            key={gender || "gender-empty"}
+                            className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={modalGioiTinhFilter.includes(gender)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setModalGioiTinhFilter([
+                                    ...modalGioiTinhFilter,
+                                    gender,
+                                  ]);
+                                } else {
+                                  setModalGioiTinhFilter(
+                                    modalGioiTinhFilter.filter(
+                                      (g) => g !== gender
+                                    )
+                                  );
+                                }
+                              }}
+                              className="mr-2 w-4 h-4 cursor-pointer"
+                            />
+                            {gender || "(Không rõ)"}
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-      // Thêm logo vào góc trái (A1:B3)
-      worksheet.addImage(logoId, {
-        tl: { col: 0, row: 0 },
-        ext: { width: 120, height: 60 },
-      });
-
-      // Thông tin công ty (C1:I3)
-      worksheet.mergeCells("C1:I3");
-      const companyCell = worksheet.getCell("C1");
-      companyCell.value =
-        "CÔNG TY TNHH PAVONINE VINA\nLots VII-I, VII-2, and part of Lot VII-3, My Xuan B1 - Tien Hung\nIndustrial Park, Phu My Ward, Ho Chi Minh City, Vietnam";
-      companyCell.font = { bold: true, size: 9 };
-      companyCell.alignment = {
-        vertical: "middle",
-        horizontal: "center",
-        wrapText: true,
-      };
-      companyCell.border = {
-        top: { style: "thin", color: { argb: "FFFFFFFF" } },
-        left: { style: "thin", color: { argb: "FFFFFFFF" } },
-        right: { style: "thin", color: { argb: "FFFFFFFF" } },
-        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
-      };
-
-      // Tải và thêm ảnh attendance (thay thế merge cells)
-      const attendanceResponse = await fetch(
-        "/picture/ateemdance/attendance.png"
-      );
-      const attendanceBlob = await attendanceResponse.blob();
-      const attendanceArrayBuffer = await attendanceBlob.arrayBuffer();
-      const attendanceId = workbook.addImage({
-        buffer: attendanceArrayBuffer,
-        extension: "png",
-      });
-
-      // Thêm ảnh attendance vào vị trí J1 (thay thế bảng chữ ký và ghi chú)
-      worksheet.addImage(attendanceId, {
-        tl: { col: 9, row: 0 },
-        ext: { width: 250, height: 200 },
-      });
-
-      // Tiêu đề bảng (A4:I4) - Không merge vào vùng J-L đã merge
-      worksheet.mergeCells("A4:I4");
-      const titleCell = worksheet.getCell("A4");
-      titleCell.value = "DANH SÁCH NHÂN VIÊN HIỆN DIỆN";
-      titleCell.font = { bold: true, size: 14, color: { argb: "FF8B4513" } };
-      titleCell.alignment = { vertical: "middle", horizontal: "center" };
-      titleCell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFFFF4E6" },
-      };
-      titleCell.border = {
-        top: { style: "thin", color: { argb: "FFFFFFFF" } },
-        left: { style: "thin", color: { argb: "FFFFFFFF" } },
-        right: { style: "thin", color: { argb: "FFFFFFFF" } },
-        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
-      };
-
-      // Subtitle (A5:I5) - Không merge vào vùng J-L đã merge
-      worksheet.mergeCells("A5:I5");
-      const subtitleCell = worksheet.getCell("A5");
-      subtitleCell.value = "List of Active Employees";
-      subtitleCell.font = { bold: true, size: 12 };
-      subtitleCell.alignment = { vertical: "middle", horizontal: "center" };
-      subtitleCell.border = {
-        top: { style: "thin", color: { argb: "FFFFFFFF" } },
-        left: { style: "thin", color: { argb: "FFFFFFFF" } },
-        right: { style: "thin", color: { argb: "FFFFFFFF" } },
-        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
-      };
-
-      // Ngày tháng (A6:D6)
-      worksheet.mergeCells("A6:D6");
-      const dateCell = worksheet.getCell("A6");
-      dateCell.value = `Ngày/Date: ${new Date().toLocaleDateString("vi-VN")}`;
-      dateCell.font = { size: 12, bold: true };
-      dateCell.alignment = { vertical: "middle", horizontal: "left" };
-      dateCell.border = {
-        top: { style: "thin", color: { argb: "FFFFFFFF" } },
-        left: { style: "thin", color: { argb: "FFFFFFFF" } },
-        right: { style: "thin", color: { argb: "FFFFFFFF" } },
-        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
-      };
-
-      // Số lượng cơm (E6:I6) - Không merge vào vùng J-L đã merge
+              {/* Footer Actions */}
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  onClick={() => {
+                    setModalGioiTinhFilter([]);
+                    setModalDepartmentListFilter([]);
+                  }}
+                  className="px-3 py-2 text-xs rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+                >
+                  Xóa bộ lọc
+                </button>
+                <button
+                  onClick={() => setModalFilterOpen(false)}
+                  className="px-3 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
       worksheet.mergeCells("E6:I6");
       const countCell = worksheet.getCell("E6");
       countCell.value = "Số lượng cơm ca trưa:";
@@ -694,6 +787,199 @@ function AttendanceList() {
     }
   }, [filteredEmployees]);
 
+  // Handle Overtime button - Export overtime form
+  const handleOvertimeButton_OLD = useCallback(async () => {
+    try {
+      if (filteredEmployees.length === 0) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "⚠️ Không có nhân viên trong danh sách!",
+        });
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Overtime Form");
+
+      // Load logo
+      const logoResponse = await fetch("/picture/logo/logo_pavo.jpg");
+      const logoBlob = await logoResponse.blob();
+      const logoArrayBuffer = await logoBlob.arrayBuffer();
+      const logoId = workbook.addImage({
+        buffer: logoArrayBuffer,
+        extension: "jpeg",
+      });
+
+      worksheet.addImage(logoId, {
+        tl: { col: 0, row: 0 },
+        ext: { width: 80, height: 40 },
+      });
+
+      // Title and date info
+      worksheet.mergeCells("A1:M1");
+      const titleCell = worksheet.getCell("A1");
+      titleCell.value = "ĐĂNG KÝ LÀM THÊM GIỜ / OVERTIME REGISTRATION";
+      titleCell.font = { bold: true, size: 14, color: { argb: "FFFF0000" } };
+      titleCell.alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.mergeCells("A2:M2");
+      const dateInfoCell = worksheet.getCell("A2");
+      const overtimeDate = new Date(selectedDate);
+      dateInfoCell.value = `Ngày/Date: ${overtimeDate.toLocaleDateString(
+        "vi-VN"
+      )}`;
+      dateInfoCell.font = { bold: true, size: 11 };
+      dateInfoCell.alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.addRow([]);
+
+      // Header row 1 (Vietnamese)
+      const headerRow1 = worksheet.addRow([
+        "STT",
+        "MNV",
+        "Họ và tên",
+        "Ngày bắt đầu",
+        "Mã BP",
+        "Bộ phận",
+        "Tổng thời gian làm thêm giờ",
+        "Thời gian dự kiến\\nTừ ...h đến ...h",
+        "Thời gian làm thêm giờ ký",
+        "Chữ ký người lao động",
+        "Thời gian thực tế\\nTừ ...h đến ...h",
+        "Số giờ làm thêm",
+        "Ghi chú",
+      ]);
+
+      // Header row 2 (English)
+      const headerRow2 = worksheet.addRow([
+        "No.",
+        "Code",
+        "Full name",
+        "Start working date",
+        "Code-Dept",
+        "Department",
+        "Total overtime hours",
+        "Estimated Time OT\\n(From..... To....)",
+        "Total hours OT\\n(Hrs)",
+        "Employees sign",
+        "Fact Time OT\\n(From..... To....)",
+        "Total hours OT\\n(Hrs)",
+        "Remark",
+      ]);
+
+      // Style headers
+      [headerRow1, headerRow2].forEach((row, idx) => {
+        row.height = 40;
+        row.eachCell((cell, colNumber) => {
+          cell.font = { bold: true, size: 9 };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFD3D3D3" },
+          };
+          cell.alignment = {
+            vertical: "middle",
+            horizontal: "center",
+            wrapText: true,
+          };
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
+      });
+
+      // Add employee data
+      filteredEmployees.forEach((emp, idx) => {
+        const row = worksheet.addRow([
+          idx + 1,
+          emp.mnv || "",
+          emp.hoVaTen || "",
+          emp.ngayThangNamSinh || "",
+          emp.maBoPhan || "",
+          emp.boPhan || "",
+          "", // Total overtime hours
+          "", // Estimated Time
+          "", // Total hours OT
+          "", // Employee sign
+          "", // Fact Time OT
+          "", // Total hours OT
+          "", // Remark
+        ]);
+
+        row.height = 30;
+        row.eachCell((cell, colNumber) => {
+          cell.font = { size: 9 };
+          cell.alignment = {
+            vertical: "middle",
+            horizontal: colNumber <= 6 ? "center" : "center",
+            wrapText: true,
+          };
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+          // Zebra striping
+          if (idx % 2 === 0) {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFF0F8FF" },
+            };
+          }
+        });
+      });
+
+      // Set column widths
+      worksheet.columns = [
+        { width: 5 }, // STT
+        { width: 10 }, // MNV
+        { width: 25 }, // Full name
+        { width: 12 }, // Start date
+        { width: 10 }, // Code BP
+        { width: 15 }, // Department
+        { width: 12 }, // Total OT hours
+        { width: 15 }, // Estimated Time
+        { width: 10 }, // Total hours OT
+        { width: 15 }, // Employee sign
+        { width: 15 }, // Fact Time OT
+        { width: 10 }, // Total hours OT
+        { width: 15 }, // Remark
+      ];
+
+      // Export file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const dateStr = selectedDate;
+      a.download = `PAVONINE_DangKyTangCa_${dateStr}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      setAlert({
+        show: true,
+        type: "success",
+        message: `✅ Xuất biểu mẫu tăng ca thành công! ${filteredEmployees.length} nhân viên.`,
+      });
+    } catch (err) {
+      console.error("Export Overtime Form Error:", err);
+      setAlert({
+        show: true,
+        type: "error",
+        message: `❌ Xuất biểu mẫu tăng ca thất bại! ${err.message || ""}`,
+      });
+    }
+  }, [filteredEmployees, selectedDate]);
+
   // Parse Excel date function (defined outside to avoid recreation)
   const parseExcelDate = useCallback((value) => {
     if (!value) return "";
@@ -739,187 +1025,206 @@ function AttendanceList() {
     return String(value);
   }, []);
 
-  // Upload Excel to Firebase
-  const handleUploadExcel = useCallback(
-    (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+  // Handle Overtime button - open modal
+  const handleOvertimeButton = useCallback(() => {
+    if (filteredEmployees.length === 0) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "⚠️ Không có nhân viên trong danh sách!",
+      });
+      return;
+    }
+    setShowOvertimeModal(true);
+  }, [filteredEmployees]);
 
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const data = new Uint8Array(event.target.result);
-          const workbook = XLSX.read(data, { type: "array" });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+  // Export overtime form (from modal)
+  const handleExportOvertimeForm = useCallback(async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Overtime Form");
 
-          // Tìm dòng đầu tiên có STT là số
-          let startIndex = jsonData.findIndex(
-            (row) =>
-              typeof row[0] === "number" ||
-              (!isNaN(row[0]) && row[0] !== "" && row[0] !== null)
-          );
-          if (startIndex === -1) {
-            // Nếu không tìm thấy, bỏ qua 1 dòng tiêu đề
-            startIndex = 1;
-          }
-          const dataRows = jsonData.slice(startIndex);
+      const logoResponse = await fetch("/picture/logo/logo_pavo.jpg");
+      const logoBlob = await logoResponse.blob();
+      const logoArrayBuffer = await logoBlob.arrayBuffer();
+      const logoId = workbook.addImage({
+        buffer: logoArrayBuffer,
+        extension: "jpeg",
+      });
+      worksheet.addImage(logoId, {
+        tl: { col: 0, row: 0 },
+        ext: { width: 80, height: 40 },
+      });
 
-          let uploadCount = 0;
-          for (const row of dataRows) {
-            // Bỏ qua dòng trống hoặc dòng có STT không phải là số
-            if (!row[1] && !row[2]) continue;
-            if (
-              typeof row[0] !== "number" &&
-              (isNaN(row[0]) || row[0] === "" || row[0] === null)
-            )
-              continue;
+      worksheet.mergeCells("A1:M1");
+      const titleCell = worksheet.getCell("A1");
+      titleCell.value = "ĐĂNG KÝ LÀM THÊM GIỜ / OVERTIME REGISTRATION";
+      titleCell.font = { bold: true, size: 14, color: { argb: "FFFF0000" } };
+      titleCell.alignment = { vertical: "middle", horizontal: "center" };
 
-            const employeeData = {
-              stt: row[0] || "",
-              mnv: row[1] || "",
-              mvt: row[2] || "",
-              hoVaTen: row[3] || "",
-              gioiTinh: row[4] || "NO",
-              ngayThangNamSinh: parseExcelDate(row[5]),
-              maBoPhan: row[6] || "",
-              boPhan: row[7] || "",
-              gioVao: row[8] || "",
-              gioRa: row[9] || "",
-              caLamViec: row[10] || "",
-              chamCong: row[11] || "",
+      worksheet.mergeCells("A2:M2");
+      const dateInfoCell = worksheet.getCell("A2");
+      const overtimeDate = new Date(selectedDate);
+      dateInfoCell.value = `Ngày/Date: ${overtimeDate.toLocaleDateString(
+        "vi-VN"
+      )}`;
+      dateInfoCell.font = { bold: true, size: 11 };
+      dateInfoCell.alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.addRow([]);
+
+      const headerRow1 = worksheet.addRow([
+        "STT",
+        "MNV",
+        "Họ và tên",
+        "Ngày bắt đầu",
+        "Mã BP",
+        "Bộ phận",
+        "Tổng thời gian làm thêm giờ",
+        "Thời gian dự kiến\nTừ ...h đến ...h",
+        "Thời gian làm thêm giờ ký",
+        "Chữ ký người lao động",
+        "Thời gian thực tế\nTừ ...h đến ...h",
+        "Số giờ làm thêm",
+        "Ghi chú",
+      ]);
+      const headerRow2 = worksheet.addRow([
+        "No.",
+        "Code",
+        "Full name",
+        "Start working date",
+        "Code-Dept",
+        "Department",
+        "Total overtime hours",
+        "Estimated Time OT\n(From..... To....)",
+        "Total hours OT\n(Hrs)",
+        "Employees sign",
+        "Fact Time OT\n(From..... To....)",
+        "Total hours OT\n(Hrs)",
+        "Remark",
+      ]);
+
+      [headerRow1, headerRow2].forEach((row) => {
+        row.height = 40;
+        row.eachCell((cell) => {
+          cell.font = { bold: true, size: 9 };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFD3D3D3" },
+          };
+          cell.alignment = {
+            vertical: "middle",
+            horizontal: "center",
+            wrapText: true,
+          };
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
+      });
+
+      // Sử dụng modalFilteredEmployees (đã lọc theo bộ phận & giới tính)
+      modalFilteredEmployees.forEach((emp, idx) => {
+        const row = worksheet.addRow([
+          idx + 1,
+          emp.mnv || "",
+          emp.hoVaTen || "",
+          emp.ngayThangNamSinh || "",
+          emp.maBoPhan || "",
+          emp.boPhan || "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+        ]);
+        row.height = 30;
+        row.eachCell((cell, colNumber) => {
+          cell.font = { size: 9 };
+
+          // Căn chỉnh: tên căn trái, còn lại căn giữa
+          if (colNumber === 3) {
+            cell.alignment = {
+              vertical: "middle",
+              horizontal: "left",
+              indent: 1,
+              wrapText: true,
             };
-
-            const newRef = push(ref(db, `attendance/${selectedDate}`));
-            await set(newRef, employeeData);
-            uploadCount++;
+          } else {
+            cell.alignment = {
+              vertical: "middle",
+              horizontal: "center",
+              wrapText: true,
+            };
           }
 
-          setAlert({
-            show: true,
-            type: "success",
-            message: `✅ Upload thành công ${uploadCount} nhân viên!`,
-          });
-          e.target.value = ""; // Reset input
-        } catch (err) {
-          console.error(err);
-          setAlert({
-            show: true,
-            type: "error",
-            message: "❌ Upload thất bại! Kiểm tra định dạng file.",
-          });
-          e.target.value = "";
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    },
-    [selectedDate, parseExcelDate]
-  );
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+
+          if (idx % 2 === 0) {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFF0F8FF" },
+            };
+          }
+        });
+      });
+
+      worksheet.columns = [
+        { width: 5 },
+        { width: 10 },
+        { width: 25 },
+        { width: 12 },
+        { width: 10 },
+        { width: 15 },
+        { width: 12 },
+        { width: 15 },
+        { width: 10 },
+        { width: 15 },
+        { width: 15 },
+        { width: 10 },
+        { width: 15 },
+      ];
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `PAVONINE_DangKyTangCa_${selectedDate}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      setAlert({
+        show: true,
+        type: "success",
+        message: `✅ Xuất biểu mẫu tăng ca thành công! ${modalFilteredEmployees.length} nhân viên.`,
+      });
+    } catch (err) {
+      console.error("Export Overtime Form Error:", err);
+      setAlert({
+        show: true,
+        type: "error",
+        message: `❌ Xuất biểu mẫu tăng ca thất bại! ${err.message || ""}`,
+      });
+    }
+  }, [modalFilteredEmployees, selectedDate]);
 
   return (
-    <div className="min-h-screen w-full" style={{ backgroundColor: "#eef4ff" }}>
-      {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-        <div className="h-full flex flex-col">
-          {/* Sidebar Header */}
-          <div className="pb-4 mb-6 border-b border-white/20">
-            <div className="flex items-center justify-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center shadow-lg">
-                <span className="text-base font-bold">📑</span>
-              </div>
-              <h2 className="text-lg font-bold text-white">Bộ Phận</h2>
-            </div>
-          </div>
-
-          {/* Sidebar Content */}
-          <div className="flex-1 overflow-y-auto">
-            {/* Search Box for Departments */}
-            <div className="mb-6 px-1">
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-lg">🔎</span>
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm..."
-                  value={departmentSearchTerm}
-                  className="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-3 py-2.5 text-sm text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-                  onChange={(e) => setDepartmentSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <nav className="space-y-1.5">
-              <button
-                onClick={() => setDepartmentFilter("")}
-                className={`w-full text-left px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 ${
-                  departmentFilter === ""
-                    ? "text-white font-semibold shadow-lg"
-                    : "text-gray-200 hover:text-white hover:bg-white/10"
-                }`}
-                style={
-                  departmentFilter === ""
-                    ? {
-                        background:
-                          "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
-                      }
-                    : {}
-                }
-              >
-                <div className="w-5 h-5 flex items-center justify-center rounded-md bg-gradient-to-br from-violet-400 to-indigo-500 text-white text-xs font-bold shadow-sm">
-                  ☆
-                </div>
-                <span>Tất Cả</span>
-              </button>
-              {filteredDepartments.map((dept) => (
-                <button
-                  key={dept}
-                  onClick={() => setDepartmentFilter(dept)}
-                  className={`w-full text-left px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 ${
-                    departmentFilter === dept
-                      ? "text-white font-semibold shadow-lg"
-                      : "text-gray-200 hover:text-white hover:bg-white/10"
-                  }`}
-                  style={
-                    departmentFilter === dept
-                      ? {
-                          background:
-                            "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
-                        }
-                      : {}
-                  }
-                >
-                  <div className="w-5 h-5 flex items-center justify-center rounded-md bg-gradient-to-br from-cyan-400 to-blue-500 text-white text-xs font-bold shadow-sm">
-                    ▢
-                  </div>
-                  <span>{dept}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* Stats - Always at bottom */}
-          <div className="pt-4 mt-4 border-t border-white/20">
-            <h3 className="text-xs font-bold text-white/80 uppercase tracking-wider mb-3">
-              Thống Kê
-            </h3>
-            <div className="space-y-2.5">
-              <div className="flex justify-between items-center bg-white/5 rounded-lg px-3 py-2">
-                <span className="text-sm text-white/70">Tổng Nhân Viên</span>
-                <span className="text-lg font-bold text-blue-400">
-                  {employees.length}
-                </span>
-              </div>
-              <div className="flex justify-between items-center bg-white/5 rounded-lg px-3 py-2">
-                <span className="text-sm text-white/70">Đang Hiển Thị</span>
-                <span className="text-lg font-bold text-green-400">
-                  {filteredEmployees.length}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Sidebar>
-
+    <>
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
@@ -1361,6 +1666,13 @@ function AttendanceList() {
               📥 Xuất Excel
             </button>
 
+            <button
+              onClick={handleOvertimeButton}
+              className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition"
+            >
+              ⏰ Tăng ca
+            </button>
+
             {user && (
               <>
                 <label className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition cursor-pointer inline-flex items-center">
@@ -1580,6 +1892,326 @@ function AttendanceList() {
           </div>
         )}
 
+        {/* Overtime Modal */}
+        {showOvertimeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-8xl relative mx-4 overflow-y-auto max-h-[90vh]">
+              <button
+                onClick={() => setShowOvertimeModal(false)}
+                className="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white text-2xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 z-20"
+              >
+                ×
+              </button>
+              <h2 className="text-lg font-bold mb-4 text-[#1e293b]">
+                Biểu mẫu đăng ký tăng ca
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Ngày: {new Date(selectedDate).toLocaleDateString("vi-VN")}
+              </p>
+
+              {/* Filter and Export */}
+              <div className="mb-4 flex gap-3 items-center justify-between">
+                <button
+                  onClick={() => setModalFilterOpen(!modalFilterOpen)}
+                  className={`px-4 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg ${
+                    modalGioiTinhFilter.length > 0 ||
+                    modalDepartmentListFilter.length > 0
+                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800"
+                      : "bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700"
+                  }`}
+                >
+                  🔍 Lọc
+                  {(modalGioiTinhFilter.length > 0 ||
+                    modalDepartmentListFilter.length > 0) && (
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-xs font-bold">
+                      ✓
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={handleExportOvertimeForm}
+                  className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition whitespace-nowrap"
+                >
+                  ⬇️ Xuất biểu mẫu Excel
+                </button>
+              </div>
+              {/* Popup Filter Panel */}
+              {modalFilterOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col animate-slideUp border border-gray-100">
+                    {/* Header */}
+                    <div className="p-5 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-white opacity-10"></div>
+                      <div className="relative z-10">
+                        <h3 className="font-bold text-white text-xl flex items-center gap-2">
+                          <span className="text-2xl">🔍</span>
+                          Bộ lọc nâng cao
+                        </h3>
+                        <p className="text-xs text-blue-50 mt-1.5 font-medium">
+                          Chọn điều kiện lọc • Áp dụng cho danh sách trong modal
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4 overflow-y-auto flex-1 space-y-3">
+                      {/* Department Filter */}
+                      <div className="mb-1">
+                        <button
+                          onClick={() => {
+                            setModalExpandedSections((prev) => ({
+                              ...prev,
+                              dept: !prev.dept,
+                            }));
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-blue-200"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-blue-500 text-base">🏢</span>
+                            <span>Bộ phận</span>
+                          </span>
+                          <span className="text-blue-600 font-bold">
+                            {modalExpandedSections.dept ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {modalExpandedSections.dept && (
+                          <div className="border-2 border-blue-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-blue-50/30 shadow-inner">
+                            {modalUniqueDepartments.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
+                                <span className="animate-spin">⏳</span>
+                                Không có dữ liệu
+                              </div>
+                            ) : (
+                              modalUniqueDepartments.map((dept) => (
+                                <label
+                                  key={dept || "dept-empty"}
+                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={modalDepartmentListFilter.includes(
+                                      dept
+                                    )}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setModalDepartmentListFilter([
+                                          ...modalDepartmentListFilter,
+                                          dept,
+                                        ]);
+                                      } else {
+                                        setModalDepartmentListFilter(
+                                          modalDepartmentListFilter.filter(
+                                            (d) => d !== dept
+                                          )
+                                        );
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  {dept || "(Không rõ)"}
+                                </label>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Gender Filter */}
+                      <div className="mb-1">
+                        <button
+                          onClick={() => {
+                            setModalExpandedSections((prev) => ({
+                              ...prev,
+                              gender: !prev.gender,
+                            }));
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-green-500 text-base">⚧️</span>
+                            <span>Giới tính</span>
+                          </span>
+                          <span className="text-green-600 font-bold">
+                            {modalExpandedSections.gender ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {modalExpandedSections.gender && (
+                          <div className="border-2 border-green-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-green-50/30 shadow-inner">
+                            {modalUniqueGenders.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
+                                <span className="animate-spin">⏳</span>
+                                Không có dữ liệu
+                              </div>
+                            ) : (
+                              modalUniqueGenders.map((gender) => (
+                                <label
+                                  key={gender || "gender-empty"}
+                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={modalGioiTinhFilter.includes(
+                                      gender
+                                    )}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setModalGioiTinhFilter([
+                                          ...modalGioiTinhFilter,
+                                          gender,
+                                        ]);
+                                      } else {
+                                        setModalGioiTinhFilter(
+                                          modalGioiTinhFilter.filter(
+                                            (g) => g !== gender
+                                          )
+                                        );
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  {gender || "(Không rõ)"}
+                                </label>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 px-4 pb-4">
+                      <button
+                        onClick={() => {
+                          setModalGioiTinhFilter([]);
+                          setModalDepartmentListFilter([]);
+                        }}
+                        className="px-3 py-2 text-xs rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 font-medium"
+                      >
+                        Xóa bộ lọc
+                      </button>
+                      <button
+                        onClick={() => setModalFilterOpen(false)}
+                        className="px-3 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow font-medium"
+                      >
+                        Đóng
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Table with consistent styling */}
+              <div className="overflow-x-auto bg-white rounded-lg shadow-lg mt-6 max-h-[500px] flex flex-col">
+                <table className="w-full border-collapse min-w-[1400px]">
+                  <thead>
+                    <tr
+                      className="sticky top-0 z-10"
+                      style={{
+                        background:
+                          "linear-gradient(to right, #3b82f6, #8b5cf6)",
+                      }}
+                    >
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[40px]">
+                        STT
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[70px]">
+                        MNV
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-left border-r border-blue-400 min-w-[150px]">
+                        Họ và tên
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
+                        Ngày bắt đầu
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[60px]">
+                        Mã BP
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
+                        Bộ phận
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[110px]">
+                        Tổng thời gian làm thêm giờ
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[130px]">
+                        Thời gian dự kiến
+                        <br />
+                        Từ ...h đến ...h
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[110px]">
+                        Thời gian làm thêm giờ ký
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[120px]">
+                        Chữ ký người lao động
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[130px]">
+                        Thời gian thực tế
+                        <br />
+                        Từ ...h đến ...h
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
+                        Số giờ làm thêm
+                      </th>
+                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center min-w-[100px]">
+                        Ghi chú
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {modalFilteredEmployees.map((emp, idx) => (
+                      <tr
+                        key={emp.id || idx}
+                        className={`border-b transition-colors hover:bg-blue-100 ${
+                          idx % 2 === 0 ? "bg-blue-50" : "bg-white"
+                        }`}
+                      >
+                        <td className="px-3 py-3 text-xs text-gray-800 text-center font-bold border-r border-gray-300">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-800 text-center font-semibold border-r border-gray-300">
+                          {emp.mnv || ""}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-900 font-medium text-left border-r border-gray-300">
+                          {emp.hoVaTen || ""}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                          {emp.ngayThangNamSinh || ""}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                          {emp.maBoPhan || ""}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                          {emp.boPhan || ""}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                          {/* Để trống cho người dùng điền */}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                          {/* Để trống cho người dùng điền */}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                          {/* Để trống cho người dùng điền */}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                          {/* Để trống cho người dùng điền */}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                          {/* Để trống cho người dùng điền */}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                          {/* Để trống cho người dùng điền */}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-700 text-center">
+                          {/* Để trống cho người dùng điền */}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Table */}
         <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
           <table className="w-full border-collapse min-w-[1200px]">
@@ -1744,18 +2376,18 @@ function AttendanceList() {
                       {emp.chamCong || "--"}
                     </span>
                   </td>
-                  {user && (
-                    <td className="px-2 py-2 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEdit(emp)}
-                          className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md"
-                          title="Chỉnh sửa"
-                        >
-                          ✏️ Sửa
-                        </button>
-                        {(user.email === "admin@gmail.com" ||
-                          user.email === "hr@gmail.com") && (
+                  {user &&
+                    (user.email === "admin@gmail.com" ||
+                      user.email === "hr@pavonine.net") && (
+                      <td className="px-2 py-2 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleEdit(emp)}
+                            className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md"
+                            title="Chỉnh sửa"
+                          >
+                            ✏️ Sửa
+                          </button>
                           <button
                             onClick={() => handleDelete(emp.id)}
                             className="px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
@@ -1763,10 +2395,9 @@ function AttendanceList() {
                           >
                             🗑️ Xóa
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
+                        </div>
+                      </td>
+                    )}
                 </tr>
               ))}
             </tbody>
@@ -1788,7 +2419,7 @@ function AttendanceList() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
