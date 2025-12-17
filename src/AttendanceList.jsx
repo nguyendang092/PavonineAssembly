@@ -1337,6 +1337,135 @@ function AttendanceList() {
     });
   }, [modalFilteredEmployees, selectedDate]);
 
+  // Print main attendance list (using current filters)
+  const handlePrintAttendanceList = useCallback(() => {
+    if (filteredEmployees.length === 0) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "⚠️ Không có nhân viên trong danh sách!",
+      });
+      return;
+    }
+
+    const dateStr = new Date(selectedDate).toLocaleDateString("vi-VN");
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      setAlert({
+        show: true,
+        type: "error",
+        message:
+          "❌ Không thể mở cửa sổ in. Vui lòng kiểm tra cài đặt trình duyệt!",
+      });
+      return;
+    }
+
+    let html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Danh sách chấm công - ${dateStr}</title>
+  <style>
+    @media print {
+      @page { size: A4 portrait; margin: 10mm; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .no-print { display: none !important; }
+      body { margin: 0; padding: 0; }
+    }
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 9pt;
+      line-height: 1.25;
+      color: #000;
+      background: #fff;
+      margin: 0 auto;
+      padding: 10mm;
+      width: 100%;
+      max-width: 210mm;
+      box-sizing: border-box;
+    }
+    .header { text-align: center; margin-bottom: 10px; }
+    .header h1 { margin: 0; font-size: 12pt; font-weight: bold; color: #c41e3a; letter-spacing: .3px; text-transform: uppercase; }
+    .header .date { margin-top: 3px; font-weight: bold; font-size: 9pt; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7pt; }
+    th, td { border: 1px solid #000; padding: 3px 2px; text-align: center; vertical-align: middle; }
+    th { background: #b0b0b0; font-weight: bold; }
+    .name { text-align: left; padding-left: 4px; }
+    .dept { text-align: left; padding-left: 4px; }
+    tbody tr:nth-child(even) { background: #e8f4f8; }
+    .print-button { position: fixed; top: 10px; right: 10px; padding: 8px 14px; background: #2196F3; color: #fff; border: none; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; z-index: 1000; }
+    .close-button { position: fixed; top: 10px; right: 90px; padding: 8px 14px; background: #f44336; color: #fff; border: none; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; z-index: 1000; }
+  </style>
+  <script>
+    function doPrint(){ window.print(); }
+    function doClose(){ window.close(); }
+  </script>
+  </head>
+  <body>
+    <button class="print-button no-print" onclick="doPrint()">🖨️ In</button>
+    <button class="close-button no-print" onclick="doClose()">✕ Đóng</button>
+    <div class="header">
+      <h1>Danh sách chấm công</h1>
+      <div class="date">Ngày: ${dateStr}</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:4%">STT</th>
+          <th style="width:7%">MNV</th>
+          <th style="width:7%">MVT</th>
+          <th style="width:16%">Họ và tên</th>
+          <th style="width:8%">Giới tính</th>
+          <th style="width:12%">Ngày tháng năm sinh</th>
+          <th style="width:7%">Mã BP</th>
+          <th style="width:12%">Bộ phận</th>
+          <th style="width:8%">Thời gian vào</th>
+          <th style="width:8%">Thời gian ra</th>
+          <th style="width:7%">Ca làm việc</th>
+          <th style="width:8%">Chấm công</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    filteredEmployees.forEach((emp, idx) => {
+      const gioiTinh = emp.gioiTinh || "";
+      html += `
+        <tr>
+          <td>${emp.stt || idx + 1}</td>
+          <td>${emp.mnv || ""}</td>
+          <td>${emp.mvt || ""}</td>
+          <td class="name">${emp.hoVaTen || ""}</td>
+          <td>${gioiTinh}</td>
+          <td>${emp.ngayThangNamSinh || ""}</td>
+          <td>${emp.maBoPhan || ""}</td>
+          <td class="dept">${emp.boPhan || ""}</td>
+          <td>${emp.gioVao || ""}</td>
+          <td>${emp.gioRa || ""}</td>
+          <td>${emp.caLamViec || ""}</td>
+          <td>${emp.chamCong || ""}</td>
+        </tr>`;
+    });
+
+    html += `
+      </tbody>
+    </table>
+    <script>
+      window.onload = function(){ document.querySelector('.print-button').focus(); };
+    <\/script>
+  </body>
+  </html>`;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+
+    setAlert({
+      show: true,
+      type: "success",
+      message: `✅ Mở cửa sổ in danh sách chấm công (${filteredEmployees.length} nhân viên)`,
+    });
+  }, [filteredEmployees, selectedDate]);
+
   // Export overtime form (from modal)
   const handleExportOvertimeForm = useCallback(async () => {
     try {
@@ -1970,6 +2099,20 @@ function AttendanceList() {
               className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition"
             >
               ⏰ Tăng ca
+            </button>
+
+            <button
+              onClick={handlePrintOvertimeList}
+              className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
+            >
+              🖨️ In đăng ký tăng ca
+            </button>
+
+            <button
+              onClick={handlePrintAttendanceList}
+              className="px-4 py-2 bg-indigo-600 text-white rounded font-bold text-sm shadow hover:bg-indigo-700 transition"
+            >
+              🖨️ In danh sách chấm công
             </button>
 
             {user && (
