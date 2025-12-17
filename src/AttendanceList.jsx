@@ -1038,6 +1038,305 @@ function AttendanceList() {
     setShowOvertimeModal(true);
   }, [filteredEmployees]);
 
+  // Print overtime list (from modal)
+  const handlePrintOvertimeList = useCallback(() => {
+    if (modalFilteredEmployees.length === 0) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "⚠️ Không có nhân viên trong danh sách!",
+      });
+      return;
+    }
+
+    const overtimeDate = new Date(selectedDate).toLocaleDateString("vi-VN");
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      setAlert({
+        show: true,
+        type: "error",
+        message:
+          "❌ Không thể mở cửa sổ in. Vui lòng kiểm tra cài đặt trình duyệt!",
+      });
+      return;
+    }
+
+    let htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Danh sách tăng ca - ${overtimeDate}</title>
+  <style>
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+    
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    html {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 9pt;
+      line-height: 1.2;
+      color: #000;
+      background: white;
+      margin: 0 auto;
+      padding: 10mm;
+      width: 100%;
+      max-width: 210mm;
+      box-sizing: border-box;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 12px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .header h1 {
+      color: #c41e3a;
+      font-size: 12pt;
+      font-weight: bold;
+      margin: 2px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .header .date {
+      font-size: 9pt;
+      font-weight: bold;
+      margin: 3px 0;
+      color: #000;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 7pt;
+      table-layout: fixed;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    th, td {
+      border: 1px solid #000;
+      padding: 3px 1px;
+      text-align: center;
+      vertical-align: middle;
+      color: #000;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    
+    th {
+      background-color: #b0b0b0;
+      font-weight: bold;
+      font-size: 6.5pt;
+    }
+    
+    .name-col, .dept-col {
+      text-align: left;
+      padding-left: 5px;
+    }
+    
+    tbody tr:nth-child(even) {
+      background-color: #e8f4f8;
+    }
+    
+    .footer {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-around;
+    }
+    
+    .signature {
+      text-align: center;
+      width: 30%;
+    }
+    
+    .signature-title {
+      font-weight: bold;
+      margin-bottom: 30px;
+      font-size: 8pt;
+    }
+    
+    .print-button {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 10px 20px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      z-index: 1000;
+    }
+    
+    .close-button {
+      position: fixed;
+      top: 10px;
+      right: 85px;
+      padding: 10px 20px;
+      background-color: #f44336;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <button class="print-button no-print" onclick="window.print()">🖨️ In</button>
+  <button class="close-button no-print" onclick="window.close()">✕ Đóng</button>
+  
+  <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 12px; max-width: 210mm; margin-left: auto; margin-right: auto;">
+    <!-- Bên trái: Header + bảng nhỏ -->
+    <div style="flex: 1;">
+      <h1 style="color: #c41e3a; font-size: 12pt; font-weight: bold; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">ĐĂNG KÝ LÀM THÊM GIỜ</h1>
+      <div style="font-size: 9pt; margin: 3px 0; color: #000;">OVERTIME REGISTRATION</div>
+      <div style="font-size: 8pt; font-weight: bold; margin-top: 5px;">Ngày/Date: ${overtimeDate}</div>
+    </div>
+    
+    <!-- Bên phải: Bảng Pavonine + thỏa thuận + nguyên tắc -->
+    <div style="flex: 1;">
+      <div style="border: 1.5px solid #000; padding: 5px; margin: 0 0 5px 0; background: #fff;">
+        <h2 style="margin: 0 0 3px 0; font-size: 9pt; font-weight: bold; text-align: center;">PAVONINE VINA CO.,LTD</h2>
+        <h3 style="margin: 0 0 2px 0; font-size: 8pt; font-weight: bold; text-align: center;">VĂN BẢN THỎA THUẬN CỦA NGƯỜI LAO ĐỘNG LÀM THÊM GIỜ</h3>
+        <p style="margin: 0 0 3px 0; font-size: 7pt; text-align: center;">DAILY ATTENDANCE & AGREEMENT FOR LABOR TO WORK OVER TIME (OT)</p>
+        
+        <table style="font-size: 6.5pt; width: 100%;">
+          <tr>
+            <td colspan="3" style="text-align: center; font-weight: bold;">TRƯỚC KHI TĂNG CA/ BEFORE OT</td>
+            <td colspan="3" style="text-align: center; font-weight: bold;">SAU TĂNG CA/ AFTER OT</td>
+          </tr>
+          <tr>
+            <td>Người lập</td>
+            <td>Kiểm tra</td>
+            <td>Phê duyệt</td>
+            <td>Người lập</td>
+            <td>Kiểm tra</td>
+            <td>Phê duyệt</td>
+          </tr>
+          <tr>
+            <td style="height: 20px;">&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <div style="border: 1.5px solid #000; padding: 5px; margin: 12px auto; background: #f9f9f9; max-width: 210mm;">
+    <h4 style="margin: 0 0 4px 0; text-align: center; font-size: 8pt; font-weight: bold;">NGUYÊN TẮC THỎA THUẬN LÀM THÊM GIỜ</h4>
+    <ol style="margin: 0; padding-left: 15px; font-size: 7pt; line-height: 1.3;">
+      <li>Người lao động ký tên bên dưới là đăng ký làm thêm giờ hoàn toàn tự nguyện không ép buộc.</li>
+      <li>Thời gian tăng ca phải được chính xác rõ ràng.</li>
+      <li>Thời gian tăng ca không được vượt quá 04 giờ/ngày.</li>
+      <li>Trường hợp đã đăng ký làm thêm giờ mà có việc đột xuất phải báo cáo quản lý.</li>
+    </ol>
+  </div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 4%;">STT</th>
+        <th style="width: 6%;">MNV</th>
+        <th style="width: 14%;">Họ và tên</th>
+        <th style="width: 7%;">Ngày bắt đầu</th>
+        <th style="width: 4%;">Mã BP</th>
+        <th style="width: 9%;">Bộ phận</th>
+        <th style="width: 7%;">Tổng thời gian tăng ca</th>
+        <th style="width: 7%;">Thời gian dự kiến<br/>Từ …h đến …h</th>
+        <th style="width: 7%;">Thời gian làm thêm ký<br/>(Hrs)</th>
+        <th style="width: 8%;">Chữ ký người lao động</th>
+        <th style="width: 7%;">Thời gian thực tế<br/>Từ …h đến …h</th>
+        <th style="width: 6%;">Số giờ làm thêm/ ngày</th>
+        <th style="width: 7%;">Ghi chú</th>
+      </tr>
+    </thead>
+    <tbody>
+`;
+
+    modalFilteredEmployees.forEach((emp, idx) => {
+      htmlContent += `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${emp.mnv || ""}</td>
+        <td class="name-col">${emp.hoVaTen || ""}</td>
+        <td>${emp.ngayThangNamSinh || ""}</td>
+        <td>${emp.maBoPhan || ""}</td>
+        <td class="dept-col">${emp.boPhan || ""}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      `;
+    });
+
+    htmlContent += `
+    </tbody>
+  </table>
+  <script>
+    window.onload = function() {
+      document.querySelector('.print-button').focus();
+    };
+  </script>
+</body>
+</html>`;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+
+    setAlert({
+      show: true,
+      type: "success",
+      message: `✅ Mở cửa sổ in danh sách tăng ca (${modalFilteredEmployees.length} nhân viên)`,
+    });
+  }, [modalFilteredEmployees, selectedDate]);
+
   // Export overtime form (from modal)
   const handleExportOvertimeForm = useCallback(async () => {
     try {
@@ -1910,7 +2209,7 @@ function AttendanceList() {
               </p>
 
               {/* Filter and Export */}
-              <div className="mb-4 flex gap-3 items-center justify-between">
+              <div className="mb-4 flex flex-wrap gap-3 items-center justify-between">
                 <button
                   onClick={() => setModalFilterOpen(!modalFilterOpen)}
                   className={`px-4 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg ${
@@ -1928,12 +2227,20 @@ function AttendanceList() {
                     </span>
                   )}
                 </button>
-                <button
-                  onClick={handleExportOvertimeForm}
-                  className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition whitespace-nowrap"
-                >
-                  ⬇️ Xuất biểu mẫu Excel
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handlePrintOvertimeList}
+                    className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition whitespace-nowrap"
+                  >
+                    🖨️ In danh sách
+                  </button>
+                  <button
+                    onClick={handleExportOvertimeForm}
+                    className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition whitespace-nowrap"
+                  >
+                    ⬇️ Xuất biểu mẫu Excel
+                  </button>
+                </div>
               </div>
               {/* Popup Filter Panel */}
               {modalFilterOpen && (
