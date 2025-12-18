@@ -408,48 +408,109 @@ function AttendanceList() {
 
       try {
         const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data, { type: "array" });
+        const workbook = XLSX.read(data, {
+          type: "array",
+          cellDates: true,
+          dateNF: "yyyy-mm-dd",
+        });
+
+        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+          throw new Error("File Excel không có sheet");
+        }
+
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(sheet);
+
+        // Đọc dạng mảng để bỏ qua 2 dòng header (VN + EN)
+        const rows = XLSX.utils.sheet_to_json(sheet, {
+          header: 1,
+          defval: "",
+        });
+
+        if (!Array.isArray(rows) || rows.length <= 2) {
+          throw new Error("File trống hoặc không đọc được dữ liệu");
+        }
+
+        // Bỏ 2 dòng tiêu đề, phần còn lại là dữ liệu
+        const dataRows = rows.slice(2);
+
+        // Hàm chuẩn hóa ngày từ excel (serial hoặc Date) về yyyy-mm-dd
+        const normalizeDate = (value) => {
+          if (!value) return "";
+          if (value instanceof Date) {
+            return value.toISOString().slice(0, 10);
+          }
+          if (typeof value === "number") {
+            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+            const date = new Date(excelEpoch.getTime() + value * 86400000);
+            return date.toISOString().slice(0, 10);
+          }
+          if (typeof value === "string") {
+            const parsed = new Date(value);
+            if (!isNaN(parsed.getTime()))
+              return parsed.toISOString().slice(0, 10);
+          }
+          return String(value);
+        };
 
         // Prepare data for Firebase
         const attendanceRef = ref(db, `attendance/${selectedDate}`);
         const dataToUpload = {};
 
-        json.forEach((row, index) => {
+        dataRows.forEach((row, index) => {
+          // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu, Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc, Chấm công
+          const [
+            stt,
+            mnv,
+            mvt,
+            hoVaTen,
+            gioiTinh,
+            ngayThangNamSinh,
+            maBoPhan,
+            boPhan,
+            gioVao,
+            gioRa,
+            caLamViec,
+            chamCong,
+          ] = row;
+
+          // Bỏ qua dòng trống hoàn toàn
+          const hasValue = row.some((cell) => String(cell || "").trim() !== "");
+          if (!hasValue) return;
+
+          // Chỉ giữ các dòng có MNV là số
+          const mnvNum = Number(mnv);
+          if (!Number.isFinite(mnvNum) || mnvNum === 0) return;
+
           const empKey = `emp_${index}`;
+          const sttNum = Number.isFinite(Number(stt))
+            ? Number(stt)
+            : Object.keys(dataToUpload).length + 1;
+
           dataToUpload[empKey] = {
             id: empKey,
-            stt: row.stt || row.STT || index + 1,
-            mnv: row.mnv || row.MNV || "",
-            mvt: row.mvt || row.MVT || "",
-            hoVaTen: row.hoVaTen || row["Họ và Tên"] || row["họ và tên"] || "",
-            gioiTinh:
-              row.gioiTinh || row["Giới Tính"] || row["giới tính"] || "YES",
-            ngayThangNamSinh:
-              row.ngayThangNamSinh ||
-              row["Ngày Tháng Năm Sinh"] ||
-              row["ngày tháng năm sinh"] ||
-              "",
-            maBoPhan:
-              row.maBoPhan || row["Mã Bộ Phận"] || row["mã bộ phận"] || "",
-            boPhan: row.boPhan || row["Bộ Phận"] || row["bộ phận"] || "",
-            gioVao: row.gioVao || row["Giờ Vào"] || row["giờ vào"] || "",
-            gioRa: row.gioRa || row["Giờ Ra"] || row["giờ ra"] || "",
-            caLamViec:
-              row.caLamViec || row["Ca Làm Việc"] || row["ca làm việc"] || "",
-            chamCong:
-              row.chamCong || row["Chấm Công"] || row["chấm công"] || "",
+            stt: sttNum,
+            mnv: String(mnvNum),
+            mvt: mvt || "",
+            hoVaTen: hoVaTen || "",
+            gioiTinh: gioiTinh || "YES",
+            ngayThangNamSinh: normalizeDate(ngayThangNamSinh),
+            maBoPhan: maBoPhan || "",
+            boPhan: boPhan || "",
+            gioVao: gioVao || "",
+            gioRa: gioRa || "",
+            caLamViec: caLamViec || "",
+            chamCong: chamCong || "",
           };
         });
 
         // Upload to Firebase
         await set(attendanceRef, dataToUpload);
+        const uploadedCount = Object.keys(dataToUpload).length;
         setAlert({
           show: true,
           type: "success",
-          message: `✅ Upload thành công ${json.length} nhân viên`,
+          message: `✅ Upload thành công ${uploadedCount} nhân viên`,
         });
 
         // Reset file input
