@@ -2478,10 +2478,11 @@ function AttendanceList() {
                     Giờ vào
                   </label>
                   <input
-                    type="time"
+                    type="text"
                     name="gioVao"
                     value={form.gioVao}
                     onChange={handleChange}
+                    placeholder="HH:MM hoặc mã phép (PN, KP,...)"
                     className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
                   />
                 </div>
