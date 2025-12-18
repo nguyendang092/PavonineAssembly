@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "./UserContext";
-import { db, ref, set, onValue, push, remove, update } from "./firebase";
+import { db, ref, set, onValue, push, remove, update, get } from "./firebase";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import Sidebar from "./Sidebar";
@@ -32,6 +32,7 @@ function AttendanceList() {
   const [mvtFilter, setMvtFilter] = useState([]); // Filter by MVT (array for multiple selection)
   const [gioiTinhFilter, setGioiTinhFilter] = useState([]); // Filter by gender
   const [departmentListFilter, setDepartmentListFilter] = useState([]); // Filter by department in filter section
+  const [maBoPhanFilter, setMaBoPhanFilter] = useState([]); // Filter by department code (mã BP)
   const [caLamViecFilter, setCaLamViecFilter] = useState([]); // Filter by shift
   const [expandedSections, setExpandedSections] = useState({}); // Track which sections are expanded
   const [showOvertimeModal, setShowOvertimeModal] = useState(false);
@@ -101,6 +102,8 @@ function AttendanceList() {
         !departmentListFilter.includes(emp.boPhan)
       )
         return false;
+      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
+        return false;
       if (
         caLamViecFilter.length > 0 &&
         !caLamViecFilter.includes(emp.caLamViec)
@@ -121,6 +124,7 @@ function AttendanceList() {
     mvtFilter,
     gioiTinhFilter,
     departmentListFilter,
+    maBoPhanFilter,
     caLamViecFilter,
   ]);
 
@@ -164,6 +168,8 @@ function AttendanceList() {
       if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
         continue;
+      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
+        continue;
       if (
         caLamViecFilter.length > 0 &&
         !caLamViecFilter.includes(emp.caLamViec)
@@ -172,7 +178,14 @@ function AttendanceList() {
       if (emp.boPhan) depts.add(emp.boPhan);
     }
     return Array.from(depts);
-  }, [employees, mnvFilter, mvtFilter, gioiTinhFilter, caLamViecFilter]);
+  }, [
+    employees,
+    mnvFilter,
+    mvtFilter,
+    gioiTinhFilter,
+    maBoPhanFilter,
+    caLamViecFilter,
+  ]);
 
   // Get unique MNV codes (cascading filter - based on other selected filters)
   const mnvList = useMemo(() => {
@@ -187,6 +200,8 @@ function AttendanceList() {
         !departmentListFilter.includes(emp.boPhan)
       )
         continue;
+      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
+        continue;
       if (
         caLamViecFilter.length > 0 &&
         !caLamViecFilter.includes(emp.caLamViec)
@@ -200,6 +215,7 @@ function AttendanceList() {
     mvtFilter,
     gioiTinhFilter,
     departmentListFilter,
+    maBoPhanFilter,
     caLamViecFilter,
   ]);
 
@@ -216,6 +232,8 @@ function AttendanceList() {
         !departmentListFilter.includes(emp.boPhan)
       )
         continue;
+      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
+        continue;
       if (
         caLamViecFilter.length > 0 &&
         !caLamViecFilter.includes(emp.caLamViec)
@@ -229,6 +247,7 @@ function AttendanceList() {
     mnvFilter,
     gioiTinhFilter,
     departmentListFilter,
+    maBoPhanFilter,
     caLamViecFilter,
   ]);
 
@@ -244,6 +263,8 @@ function AttendanceList() {
         !departmentListFilter.includes(emp.boPhan)
       )
         continue;
+      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
+        continue;
       if (
         caLamViecFilter.length > 0 &&
         !caLamViecFilter.includes(emp.caLamViec)
@@ -252,7 +273,45 @@ function AttendanceList() {
       if (emp.gioiTinh) genders.add(emp.gioiTinh);
     }
     return Array.from(genders).sort();
-  }, [employees, mnvFilter, mvtFilter, departmentListFilter, caLamViecFilter]);
+  }, [
+    employees,
+    mnvFilter,
+    mvtFilter,
+    departmentListFilter,
+    maBoPhanFilter,
+    caLamViecFilter,
+  ]);
+
+  // Get unique mã BP codes (cascading filter - based on other selected filters)
+  const maBoPhanList = useMemo(() => {
+    const maBoPhanCodes = new Set();
+    for (const emp of employees) {
+      // Apply other filters except mã BP
+      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) continue;
+      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
+      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
+        continue;
+      if (
+        departmentListFilter.length > 0 &&
+        !departmentListFilter.includes(emp.boPhan)
+      )
+        continue;
+      if (
+        caLamViecFilter.length > 0 &&
+        !caLamViecFilter.includes(emp.caLamViec)
+      )
+        continue;
+      if (emp.maBoPhan) maBoPhanCodes.add(emp.maBoPhan);
+    }
+    return Array.from(maBoPhanCodes).sort();
+  }, [
+    employees,
+    mnvFilter,
+    mvtFilter,
+    gioiTinhFilter,
+    departmentListFilter,
+    caLamViecFilter,
+  ]);
 
   // Get unique shifts (cascading filter - based on other selected filters)
   const shiftList = useMemo(() => {
@@ -268,10 +327,19 @@ function AttendanceList() {
         !departmentListFilter.includes(emp.boPhan)
       )
         continue;
+      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
+        continue;
       if (emp.caLamViec) shifts.add(emp.caLamViec);
     }
     return Array.from(shifts).sort();
-  }, [employees, mnvFilter, mvtFilter, gioiTinhFilter, departmentListFilter]);
+  }, [
+    employees,
+    mnvFilter,
+    mvtFilter,
+    gioiTinhFilter,
+    departmentListFilter,
+    maBoPhanFilter,
+  ]);
 
   // Filter departments based on search
   const filteredDepartments = useMemo(() => {
@@ -504,13 +572,51 @@ function AttendanceList() {
           };
         });
 
-        // Upload to Firebase
-        await set(attendanceRef, dataToUpload);
-        const uploadedCount = Object.keys(dataToUpload).length;
+        // Upload to Firebase - Merge with existing data to prevent data loss
+        let uploadedCount = 0;
+        let duplicateCount = 0;
+
+        // Get existing data to merge and check for duplicates
+        const snapshot = await get(attendanceRef);
+        const existingData = snapshot.val() || {};
+        const existingMNVs = Object.values(existingData).map((emp) => emp.mnv);
+
+        // Merge new data with existing data, avoiding duplicates
+        const mergedData = { ...existingData };
+
+        Object.entries(dataToUpload).forEach(([key, newEmp]) => {
+          const isDuplicate = existingMNVs.includes(newEmp.mnv);
+          if (isDuplicate) {
+            // Update existing employee with new data
+            const existingKey = Object.keys(existingData).find(
+              (k) => existingData[k].mnv === newEmp.mnv
+            );
+            if (existingKey) {
+              mergedData[existingKey] = {
+                ...mergedData[existingKey],
+                ...newEmp,
+              };
+            }
+            duplicateCount++;
+          } else {
+            // Add new employee
+            mergedData[key] = newEmp;
+            uploadedCount++;
+          }
+        });
+
+        // Save merged data
+        await set(attendanceRef, mergedData);
+
+        // Show result message
+        let message = `✅ Upload thành công ${uploadedCount} nhân viên mới`;
+        if (duplicateCount > 0) {
+          message += `, cập nhật ${duplicateCount} nhân viên đã tồn tại`;
+        }
         setAlert({
           show: true,
           type: "success",
-          message: `✅ Upload thành công ${uploadedCount} nhân viên`,
+          message: message,
         });
 
         // Reset file input
@@ -2193,6 +2299,66 @@ function AttendanceList() {
                         )}
                       </div>
 
+                      {/* Mã BP (Department Code) Filter Section */}
+                      <div className="mb-3">
+                        <button
+                          onClick={() => {
+                            setExpandedSections((prev) => ({
+                              ...prev,
+                              maBoPhan: !prev.maBoPhan,
+                            }));
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-purple-200"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-purple-500 text-base">
+                              🏷️
+                            </span>
+                            <span>Mã BP</span>
+                          </span>
+                          <span className="text-purple-600 font-bold">
+                            {expandedSections.maBoPhan ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {expandedSections.maBoPhan && (
+                          <div className="border-2 border-purple-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-purple-50/30 shadow-inner">
+                            {maBoPhanList.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-gray-500 italic">
+                                Không có dữ liệu
+                              </div>
+                            ) : (
+                              maBoPhanList.map((code) => (
+                                <label
+                                  key={code}
+                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={maBoPhanFilter.includes(code)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setMaBoPhanFilter([
+                                          ...maBoPhanFilter,
+                                          code,
+                                        ]);
+                                      } else {
+                                        setMaBoPhanFilter(
+                                          maBoPhanFilter.filter(
+                                            (m) => m !== code
+                                          )
+                                        );
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  {code}
+                                </label>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+
                       {/* Shift Filter Section */}
                       <div className="mb-3">
                         <button
@@ -2260,6 +2426,7 @@ function AttendanceList() {
                           setMvtFilter([]);
                           setGioiTinhFilter([]);
                           setDepartmentListFilter([]);
+                          setMaBoPhanFilter([]);
                           setCaLamViecFilter([]);
                           setExpandedSections({});
                         }}
