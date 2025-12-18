@@ -28,8 +28,6 @@ function AttendanceList() {
   const [editing, setEditing] = useState(null);
   const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
   const [filterOpen, setFilterOpen] = useState(false);
-  const [mnvFilter, setMnvFilter] = useState([]); // Filter by MNV (array for multiple selection)
-  const [mvtFilter, setMvtFilter] = useState([]); // Filter by MVT (array for multiple selection)
   const [gioiTinhFilter, setGioiTinhFilter] = useState([]); // Filter by gender
   const [departmentListFilter, setDepartmentListFilter] = useState([]); // Filter by department in filter section
   const [maBoPhanFilter, setMaBoPhanFilter] = useState([]); // Filter by department code (mã BP)
@@ -93,8 +91,6 @@ function AttendanceList() {
     const q = searchTerm.trim().toLowerCase();
     return employees.filter((emp) => {
       if (departmentFilter && emp.boPhan !== departmentFilter) return false;
-      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) return false;
-      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) return false;
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
         return false;
       if (
@@ -120,8 +116,6 @@ function AttendanceList() {
     searchTerm,
     employees,
     departmentFilter,
-    mnvFilter,
-    mvtFilter,
     gioiTinhFilter,
     departmentListFilter,
     maBoPhanFilter,
@@ -164,8 +158,6 @@ function AttendanceList() {
     const depts = new Set();
     for (const emp of employees) {
       // Apply other filters except Department
-      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) continue;
-      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
         continue;
       if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
@@ -178,86 +170,13 @@ function AttendanceList() {
       if (emp.boPhan) depts.add(emp.boPhan);
     }
     return Array.from(depts);
-  }, [
-    employees,
-    mnvFilter,
-    mvtFilter,
-    gioiTinhFilter,
-    maBoPhanFilter,
-    caLamViecFilter,
-  ]);
-
-  // Get unique MNV codes (cascading filter - based on other selected filters)
-  const mnvList = useMemo(() => {
-    const mnvs = new Set();
-    for (const emp of employees) {
-      // Apply other filters except MNV
-      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
-      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
-        continue;
-      if (
-        departmentListFilter.length > 0 &&
-        !departmentListFilter.includes(emp.boPhan)
-      )
-        continue;
-      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
-        continue;
-      if (
-        caLamViecFilter.length > 0 &&
-        !caLamViecFilter.includes(emp.caLamViec)
-      )
-        continue;
-      if (emp.mnv) mnvs.add(emp.mnv);
-    }
-    return Array.from(mnvs).sort();
-  }, [
-    employees,
-    mvtFilter,
-    gioiTinhFilter,
-    departmentListFilter,
-    maBoPhanFilter,
-    caLamViecFilter,
-  ]);
-
-  // Get unique MVT codes (cascading filter - based on other selected filters)
-  const mvtList = useMemo(() => {
-    const mvts = new Set();
-    for (const emp of employees) {
-      // Apply other filters except MVT
-      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) continue;
-      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
-        continue;
-      if (
-        departmentListFilter.length > 0 &&
-        !departmentListFilter.includes(emp.boPhan)
-      )
-        continue;
-      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
-        continue;
-      if (
-        caLamViecFilter.length > 0 &&
-        !caLamViecFilter.includes(emp.caLamViec)
-      )
-        continue;
-      if (emp.mvt) mvts.add(emp.mvt);
-    }
-    return Array.from(mvts).sort();
-  }, [
-    employees,
-    mnvFilter,
-    gioiTinhFilter,
-    departmentListFilter,
-    maBoPhanFilter,
-    caLamViecFilter,
-  ]);
+  }, [employees, gioiTinhFilter, maBoPhanFilter, caLamViecFilter]);
 
   // Get unique genders (cascading filter - based on other selected filters)
   const genderList = useMemo(() => {
     const genders = new Set();
     for (const emp of employees) {
       // Apply other filters except Gender
-      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) continue;
-      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
       if (
         departmentListFilter.length > 0 &&
         !departmentListFilter.includes(emp.boPhan)
@@ -273,22 +192,13 @@ function AttendanceList() {
       if (emp.gioiTinh) genders.add(emp.gioiTinh);
     }
     return Array.from(genders).sort();
-  }, [
-    employees,
-    mnvFilter,
-    mvtFilter,
-    departmentListFilter,
-    maBoPhanFilter,
-    caLamViecFilter,
-  ]);
+  }, [employees, departmentListFilter, maBoPhanFilter, caLamViecFilter]);
 
   // Get unique mã BP codes (cascading filter - based on other selected filters)
   const maBoPhanList = useMemo(() => {
     const maBoPhanCodes = new Set();
     for (const emp of employees) {
       // Apply other filters except mã BP
-      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) continue;
-      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
         continue;
       if (
@@ -304,22 +214,13 @@ function AttendanceList() {
       if (emp.maBoPhan) maBoPhanCodes.add(emp.maBoPhan);
     }
     return Array.from(maBoPhanCodes).sort();
-  }, [
-    employees,
-    mnvFilter,
-    mvtFilter,
-    gioiTinhFilter,
-    departmentListFilter,
-    caLamViecFilter,
-  ]);
+  }, [employees, gioiTinhFilter, departmentListFilter, caLamViecFilter]);
 
   // Get unique shifts (cascading filter - based on other selected filters)
   const shiftList = useMemo(() => {
     const shifts = new Set();
     for (const emp of employees) {
       // Apply other filters except Shift
-      if (mnvFilter.length > 0 && !mnvFilter.includes(emp.mnv)) continue;
-      if (mvtFilter.length > 0 && !mvtFilter.includes(emp.mvt)) continue;
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
         continue;
       if (
@@ -332,14 +233,7 @@ function AttendanceList() {
       if (emp.caLamViec) shifts.add(emp.caLamViec);
     }
     return Array.from(shifts).sort();
-  }, [
-    employees,
-    mnvFilter,
-    mvtFilter,
-    gioiTinhFilter,
-    departmentListFilter,
-    maBoPhanFilter,
-  ]);
+  }, [employees, gioiTinhFilter, departmentListFilter, maBoPhanFilter]);
 
   // Filter departments based on search
   const filteredDepartments = useMemo(() => {
@@ -2042,10 +1936,9 @@ function AttendanceList() {
               <button
                 onClick={() => setFilterOpen(!filterOpen)}
                 className={`px-4 py-2 rounded font-bold text-sm shadow transition flex items-center gap-2 ${
-                  mnvFilter.length > 0 ||
-                  mvtFilter.length > 0 ||
                   gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
+                  maBoPhanFilter.length > 0 ||
                   caLamViecFilter.length > 0
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-gray-600 text-white hover:bg-gray-700"
@@ -2053,10 +1946,9 @@ function AttendanceList() {
               >
                 🔍 Lọc
                 <span className="text-xs">
-                  {mnvFilter.length > 0 ||
-                  mvtFilter.length > 0 ||
-                  gioiTinhFilter.length > 0 ||
+                  {gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
+                  maBoPhanFilter.length > 0 ||
                   caLamViecFilter.length > 0
                     ? "✓"
                     : ""}
@@ -2083,222 +1975,6 @@ function AttendanceList() {
 
                     {/* Content */}
                     <div className="p-4 overflow-y-auto flex-1">
-                      {/* MNV Filter Section */}
-                      <div className="mb-3">
-                        <button
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              mnv: !prev.mnv,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-blue-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-blue-500 text-base">👤</span>
-                            <span>Mã nhân viên (MNV)</span>
-                          </span>
-                          <span className="text-blue-600 font-bold">
-                            {expandedSections.mnv ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.mnv && (
-                          <div className="border-2 border-blue-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-blue-50/30 shadow-inner">
-                            {employees.length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
-                                <span className="animate-spin">⏳</span>
-                                Đang tải dữ liệu...
-                              </div>
-                            ) : (
-                              mnvList.map((mnv) => (
-                                <label
-                                  key={mnv}
-                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={mnvFilter.includes(mnv)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setMnvFilter([...mnvFilter, mnv]);
-                                      } else {
-                                        setMnvFilter(
-                                          mnvFilter.filter((m) => m !== mnv)
-                                        );
-                                      }
-                                    }}
-                                    className="mr-2 w-4 h-4 cursor-pointer"
-                                  />
-                                  {mnv}
-                                </label>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* MVT Filter Section */}
-                      <div className="mb-3">
-                        <button
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              mvt: !prev.mvt,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-purple-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-purple-500 text-base">
-                              🔑
-                            </span>
-                            <span>Mã vân tay (MVT)</span>
-                          </span>
-                          <span className="text-purple-600 font-bold">
-                            {expandedSections.mvt ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.mvt && (
-                          <div className="border-2 border-purple-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-purple-50/30 shadow-inner">
-                            {employees.length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
-                                <span className="animate-spin">⏳</span>
-                                Đang tải dữ liệu...
-                              </div>
-                            ) : (
-                              mvtList.map((mvt) => (
-                                <label
-                                  key={mvt}
-                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={mvtFilter.includes(mvt)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setMvtFilter([...mvtFilter, mvt]);
-                                      } else {
-                                        setMvtFilter(
-                                          mvtFilter.filter((m) => m !== mvt)
-                                        );
-                                      }
-                                    }}
-                                    className="mr-2 w-4 h-4 cursor-pointer"
-                                  />
-                                  {mvt}
-                                </label>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Gender Filter Section */}
-                      <div className="mb-3">
-                        <button
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              gender: !prev.gender,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-green-500 text-base">⚧️</span>
-                            <span>Giới tính</span>
-                          </span>
-                          <span className="text-green-600 font-bold">
-                            {expandedSections.gender ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.gender && (
-                          <div className="border-2 border-green-100 rounded-lg mt-2 bg-gradient-to-b from-white to-green-50/30 shadow-inner">
-                            {genderList.map((gender) => (
-                              <label
-                                key={gender}
-                                className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={gioiTinhFilter.includes(gender)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setGioiTinhFilter([
-                                        ...gioiTinhFilter,
-                                        gender,
-                                      ]);
-                                    } else {
-                                      setGioiTinhFilter(
-                                        gioiTinhFilter.filter(
-                                          (g) => g !== gender
-                                        )
-                                      );
-                                    }
-                                  }}
-                                  className="mr-2 w-4 h-4 cursor-pointer"
-                                />
-                                {gender === "YES" ? "Nữ" : "Nam"}
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Department Filter Section */}
-                      <div className="mb-3">
-                        <button
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              department: !prev.department,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-orange-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-orange-500 text-base">
-                              🏢
-                            </span>
-                            <span>Bộ phận</span>
-                          </span>
-                          <span className="text-orange-600 font-bold">
-                            {expandedSections.department ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.department && (
-                          <div className="border-2 border-orange-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-orange-50/30 shadow-inner">
-                            {departments.map((dept) => (
-                              <label
-                                key={dept}
-                                className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={departmentListFilter.includes(dept)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setDepartmentListFilter([
-                                        ...departmentListFilter,
-                                        dept,
-                                      ]);
-                                    } else {
-                                      setDepartmentListFilter(
-                                        departmentListFilter.filter(
-                                          (d) => d !== dept
-                                        )
-                                      );
-                                    }
-                                  }}
-                                  className="mr-2 w-4 h-4 cursor-pointer"
-                                />
-                                {dept}
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
                       {/* Mã BP (Department Code) Filter Section */}
                       <div className="mb-3">
                         <button
@@ -2327,33 +2003,215 @@ function AttendanceList() {
                                 Không có dữ liệu
                               </div>
                             ) : (
-                              maBoPhanList.map((code) => (
-                                <label
-                                  key={code}
-                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                >
+                              <>
+                                <label className="flex items-center px-3 py-2 hover:bg-purple-50 cursor-pointer text-sm border-b-2 border-purple-200 bg-purple-50/50 font-semibold">
                                   <input
                                     type="checkbox"
-                                    checked={maBoPhanFilter.includes(code)}
+                                    checked={
+                                      maBoPhanFilter.length ===
+                                      maBoPhanList.length
+                                    }
                                     onChange={(e) => {
                                       if (e.target.checked) {
-                                        setMaBoPhanFilter([
-                                          ...maBoPhanFilter,
-                                          code,
-                                        ]);
+                                        setMaBoPhanFilter([...maBoPhanList]);
                                       } else {
-                                        setMaBoPhanFilter(
-                                          maBoPhanFilter.filter(
-                                            (m) => m !== code
-                                          )
-                                        );
+                                        setMaBoPhanFilter([]);
                                       }
                                     }}
                                     className="mr-2 w-4 h-4 cursor-pointer"
                                   />
-                                  {code}
+                                  ✓ Chọn tất cả
                                 </label>
-                              ))
+                                {maBoPhanList.map((code) => (
+                                  <label
+                                    key={code}
+                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={maBoPhanFilter.includes(code)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setMaBoPhanFilter([
+                                            ...maBoPhanFilter,
+                                            code,
+                                          ]);
+                                        } else {
+                                          setMaBoPhanFilter(
+                                            maBoPhanFilter.filter(
+                                              (m) => m !== code
+                                            )
+                                          );
+                                        }
+                                      }}
+                                      className="mr-2 w-4 h-4 cursor-pointer"
+                                    />
+                                    {code}
+                                  </label>
+                                ))}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Department Filter Section */}
+                      <div className="mb-3">
+                        <button
+                          onClick={() => {
+                            setExpandedSections((prev) => ({
+                              ...prev,
+                              department: !prev.department,
+                            }));
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-orange-200"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-orange-500 text-base">
+                              🏢
+                            </span>
+                            <span>Bộ phận</span>
+                          </span>
+                          <span className="text-orange-600 font-bold">
+                            {expandedSections.department ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {expandedSections.department && (
+                          <div className="border-2 border-orange-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-orange-50/30 shadow-inner">
+                            {departments.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-gray-500 italic">
+                                Không có dữ liệu
+                              </div>
+                            ) : (
+                              <>
+                                <label className="flex items-center px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm border-b-2 border-orange-200 bg-orange-50/50 font-semibold">
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      departmentListFilter.length ===
+                                      departments.length
+                                    }
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setDepartmentListFilter([
+                                          ...departments,
+                                        ]);
+                                      } else {
+                                        setDepartmentListFilter([]);
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  ✓ Chọn tất cả
+                                </label>
+                                {departments.map((dept) => (
+                                  <label
+                                    key={dept}
+                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={departmentListFilter.includes(
+                                        dept
+                                      )}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setDepartmentListFilter([
+                                            ...departmentListFilter,
+                                            dept,
+                                          ]);
+                                        } else {
+                                          setDepartmentListFilter(
+                                            departmentListFilter.filter(
+                                              (d) => d !== dept
+                                            )
+                                          );
+                                        }
+                                      }}
+                                      className="mr-2 w-4 h-4 cursor-pointer"
+                                    />
+                                    {dept}
+                                  </label>
+                                ))}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Gender Filter Section */}
+                      <div className="mb-3">
+                        <button
+                          onClick={() => {
+                            setExpandedSections((prev) => ({
+                              ...prev,
+                              gender: !prev.gender,
+                            }));
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-green-500 text-base">⚧️</span>
+                            <span>Giới tính</span>
+                          </span>
+                          <span className="text-green-600 font-bold">
+                            {expandedSections.gender ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {expandedSections.gender && (
+                          <div className="border-2 border-green-100 rounded-lg mt-2 bg-gradient-to-b from-white to-green-50/30 shadow-inner">
+                            {genderList.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-gray-500 italic">
+                                Không có dữ liệu
+                              </div>
+                            ) : (
+                              <>
+                                <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      gioiTinhFilter.length ===
+                                      genderList.length
+                                    }
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setGioiTinhFilter([...genderList]);
+                                      } else {
+                                        setGioiTinhFilter([]);
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  ✓ Chọn tất cả
+                                </label>
+                                {genderList.map((gender) => (
+                                  <label
+                                    key={gender}
+                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={gioiTinhFilter.includes(gender)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setGioiTinhFilter([
+                                            ...gioiTinhFilter,
+                                            gender,
+                                          ]);
+                                        } else {
+                                          setGioiTinhFilter(
+                                            gioiTinhFilter.filter(
+                                              (g) => g !== gender
+                                            )
+                                          );
+                                        }
+                                      }}
+                                      className="mr-2 w-4 h-4 cursor-pointer"
+                                    />
+                                    {gender === "YES" ? "Nữ" : "Nam"}
+                                  </label>
+                                ))}
+                              </>
                             )}
                           </div>
                         )}
@@ -2385,33 +2243,53 @@ function AttendanceList() {
                                 Không có dữ liệu
                               </div>
                             ) : (
-                              shiftList.map((shift) => (
-                                <label
-                                  key={shift}
-                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                >
+                              <>
+                                <label className="flex items-center px-3 py-2 hover:bg-red-50 cursor-pointer text-sm border-b-2 border-red-200 bg-red-50/50 font-semibold">
                                   <input
                                     type="checkbox"
-                                    checked={caLamViecFilter.includes(shift)}
+                                    checked={
+                                      caLamViecFilter.length ===
+                                      shiftList.length
+                                    }
                                     onChange={(e) => {
                                       if (e.target.checked) {
-                                        setCaLamViecFilter([
-                                          ...caLamViecFilter,
-                                          shift,
-                                        ]);
+                                        setCaLamViecFilter([...shiftList]);
                                       } else {
-                                        setCaLamViecFilter(
-                                          caLamViecFilter.filter(
-                                            (s) => s !== shift
-                                          )
-                                        );
+                                        setCaLamViecFilter([]);
                                       }
                                     }}
                                     className="mr-2 w-4 h-4 cursor-pointer"
                                   />
-                                  {shift}
+                                  ✓ Chọn tất cả
                                 </label>
-                              ))
+                                {shiftList.map((shift) => (
+                                  <label
+                                    key={shift}
+                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={caLamViecFilter.includes(shift)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setCaLamViecFilter([
+                                            ...caLamViecFilter,
+                                            shift,
+                                          ]);
+                                        } else {
+                                          setCaLamViecFilter(
+                                            caLamViecFilter.filter(
+                                              (s) => s !== shift
+                                            )
+                                          );
+                                        }
+                                      }}
+                                      className="mr-2 w-4 h-4 cursor-pointer"
+                                    />
+                                    {shift}
+                                  </label>
+                                ))}
+                              </>
                             )}
                           </div>
                         )}
@@ -2422,8 +2300,6 @@ function AttendanceList() {
                     <div className="p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex gap-3 justify-end">
                       <button
                         onClick={() => {
-                          setMnvFilter([]);
-                          setMvtFilter([]);
                           setGioiTinhFilter([]);
                           setDepartmentListFilter([]);
                           setMaBoPhanFilter([]);
