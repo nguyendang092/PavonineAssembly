@@ -473,206 +473,148 @@ function AttendanceList() {
   // Export to Excel
   const handleExportExcel = useCallback(async () => {
     try {
-      {
-        modalFilterOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col animate-slideUp border border-gray-100">
-              {/* Header */}
-              <div className="p-5 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
-                <div className="absolute inset-0 bg-white opacity-10"></div>
-                <div className="relative z-10">
-                  <h3 className="font-bold text-white text-xl flex items-center gap-2">
-                    <span className="text-2xl">🔍</span>
-                    Bộ lọc nâng cao
-                  </h3>
-                  <p className="text-xs text-blue-50 mt-1.5 font-medium">
-                    Chọn điều kiện lọc • Áp dụng cho danh sách trong modal
-                  </p>
-                </div>
-              </div>
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Attendance");
 
-              {/* Content */}
-              <div className="p-4 overflow-y-auto flex-1 space-y-3">
-                {/* Department Filter */}
-                <div className="mb-1">
-                  <button
-                    onClick={() => {
-                      setModalExpandedSections((prev) => ({
-                        ...prev,
-                        dept: !prev.dept,
-                      }));
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-blue-200"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="text-blue-500 text-base">🏢</span>
-                      <span>Bộ phận</span>
-                    </span>
-                    <span className="text-blue-600 font-bold">
-                      {modalExpandedSections.dept ? "▼" : "▶"}
-                    </span>
-                  </button>
-                  {modalExpandedSections.dept && (
-                    <div className="border-2 border-blue-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-blue-50/30 shadow-inner">
-                      {modalUniqueDepartments.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
-                          <span className="animate-spin">⏳</span>
-                          Không có dữ liệu
-                        </div>
-                      ) : (
-                        modalUniqueDepartments.map((dept) => (
-                          <label
-                            key={dept || "dept-empty"}
-                            className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={modalDepartmentListFilter.includes(dept)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setModalDepartmentListFilter([
-                                    ...modalDepartmentListFilter,
-                                    dept,
-                                  ]);
-                                } else {
-                                  setModalDepartmentListFilter(
-                                    modalDepartmentListFilter.filter(
-                                      (d) => d !== dept
-                                    )
-                                  );
-                                }
-                              }}
-                              className="mr-2 w-4 h-4 cursor-pointer"
-                            />
-                            {dept || "(Không rõ)"}
-                          </label>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
+      // Thêm header
+      worksheet.mergeCells("A1:L1");
+      const titleCell = worksheet.getCell("A1");
+      titleCell.value = "DANH SÁCH CHẤM CÔNG NHÂN VIÊN";
+      titleCell.font = { size: 14, bold: true, color: { argb: "FFC41E3A" } };
+      titleCell.alignment = { vertical: "middle", horizontal: "center" };
+      titleCell.height = 25;
 
-                {/* Gender Filter */}
-                <div className="mb-1">
-                  <button
-                    onClick={() => {
-                      setModalExpandedSections((prev) => ({
-                        ...prev,
-                        gender: !prev.gender,
-                      }));
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="text-green-500 text-base">⚧️</span>
-                      <span>Giới tính</span>
-                    </span>
-                    <span className="text-green-600 font-bold">
-                      {modalExpandedSections.gender ? "▼" : "▶"}
-                    </span>
-                  </button>
-                  {modalExpandedSections.gender && (
-                    <div className="border-2 border-green-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-green-50/30 shadow-inner">
-                      {modalUniqueGenders.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
-                          <span className="animate-spin">⏳</span>
-                          Không có dữ liệu
-                        </div>
-                      ) : (
-                        modalUniqueGenders.map((gender) => (
-                          <label
-                            key={gender || "gender-empty"}
-                            className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={modalGioiTinhFilter.includes(gender)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setModalGioiTinhFilter([
-                                    ...modalGioiTinhFilter,
-                                    gender,
-                                  ]);
-                                } else {
-                                  setModalGioiTinhFilter(
-                                    modalGioiTinhFilter.filter(
-                                      (g) => g !== gender
-                                    )
-                                  );
-                                }
-                              }}
-                              className="mr-2 w-4 h-4 cursor-pointer"
-                            />
-                            {gender || "(Không rõ)"}
-                          </label>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+      worksheet.mergeCells("A2:L2");
+      const dateCell = worksheet.getCell("A2");
+      dateCell.value = `Ngày: ${new Date(selectedDate).toLocaleDateString(
+        "vi-VN"
+      )}`;
+      dateCell.font = { size: 10, bold: true };
+      dateCell.alignment = { vertical: "middle", horizontal: "center" };
+      dateCell.height = 20;
 
-              {/* Footer Actions */}
-              <div className="flex justify-end gap-2 pt-1">
-                <button
-                  onClick={() => {
-                    setModalGioiTinhFilter([]);
-                    setModalDepartmentListFilter([]);
-                  }}
-                  className="px-3 py-2 text-xs rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
-                >
-                  Xóa bộ lọc
-                </button>
-                <button
-                  onClick={() => setModalFilterOpen(false)}
-                  className="px-3 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow"
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      }
-      worksheet.mergeCells("E6:I6");
-      const countCell = worksheet.getCell("E6");
-      countCell.value = "Số lượng cơm ca trưa:";
-      countCell.font = { size: 10, color: { argb: "FFFF0000" }, italic: true };
-      countCell.alignment = { vertical: "middle", horizontal: "left" };
-      countCell.border = {
-        top: { style: "thin", color: { argb: "FFFFFFFF" } },
-        left: { style: "thin", color: { argb: "FFFFFFFF" } },
-        right: { style: "thin", color: { argb: "FFFFFFFF" } },
-        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
-      };
-
-      // Thêm các dòng trống để tránh bị che bởi ảnh attendance
       worksheet.addRow([]);
       worksheet.addRow([]);
       worksheet.addRow([]);
 
-      // Xóa border của các dòng trống 8, 9, 10
-      [7, 8, 9, 10].forEach((rowNum) => {
+      // Thêm bảng legend
+      worksheet.addRow([
+        "Category: Vẫn còn làm",
+        "S1",
+        "1.Phép năm/Annual Leave",
+        "PN",
+        "6.Không Lương/Unpaid Leave",
+        "KL",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]);
+      worksheet.addRow([
+        "Có đơn Nghỉ việc",
+        "S2",
+        "2.1/2 ngày phép năm/1/2 day",
+        "1/2PN",
+        "7.Không phép/Illegal Leave",
+        "KP",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]);
+      worksheet.addRow([
+        "",
+        "",
+        "3.Nghỉ TNLĐ/Labor accident",
+        "TN",
+        "8.Nghỉ ốm/Sick Leave",
+        "PO",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]);
+      worksheet.addRow([
+        "",
+        "",
+        "4.Phép cưới/Wedding Leave",
+        "PC",
+        "9.Thai sản/Maternity",
+        "TS",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]);
+      worksheet.addRow([
+        "",
+        "",
+        "5.Phép tang/Funeral Leave",
+        "PT",
+        "10.Dưỡng sức/Recovery health",
+        "DS",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]);
+
+      // Style cho legend
+      [6, 7, 8, 9, 10].forEach((rowNum) => {
         const row = worksheet.getRow(rowNum);
-        for (let col = 1; col <= 12; col++) {
-          const cell = worksheet.getCell(rowNum, col);
-          cell.border = {
-            top: { style: "thin", color: { argb: "FFFFFFFF" } },
-            left: { style: "thin", color: { argb: "FFFFFFFF" } },
-            right: { style: "thin", color: { argb: "FFFFFFFF" } },
-            bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
+        row.height = 15;
+        row.eachCell((cell, colNumber) => {
+          cell.font = { size: 8 };
+          cell.alignment = {
+            vertical: "top",
+            horizontal: "left",
+            wrapText: true,
           };
-        }
+          if (colNumber <= 6) {
+            cell.border = {
+              top: { style: "hair" },
+              left: { style: "hair" },
+              bottom: { style: "hair" },
+              right: { style: "hair" },
+            };
+          }
+        });
       });
 
-      // Tạo 2 dòng tiêu đề bảng (giờ là row 11 và 12)
+      worksheet.addRow([]);
+
+      // Thêm "Số lượng cơm ca trưa:" text
+      worksheet.mergeCells("E13:I13");
+      const mealCountCell = worksheet.getCell("E13");
+      mealCountCell.value = "Số lượng cơm ca trưa:";
+      mealCountCell.font = {
+        size: 10,
+        color: { argb: "FFC41E3A" },
+        italic: true,
+        bold: true,
+      };
+      mealCountCell.alignment = { vertical: "middle", horizontal: "left" };
+
+      worksheet.addRow([]);
+
+      // Tạo tiêu đề bảng chính
       const headerVi = [
         "STT",
         "MNV",
         "MVT",
         "Họ và tên",
         "Giới tính",
-        "Ngày bắt đầu",
+        "Ngày tháng năm sinh",
         "Mã BP",
         "Bộ phận",
         "Thời gian vào",
@@ -687,7 +629,7 @@ function AttendanceList() {
         "",
         "Full name",
         "Gender",
-        "Start working",
+        "DoB",
         "Code-Dept",
         "Department",
         "Time in",
@@ -696,20 +638,19 @@ function AttendanceList() {
         "Timekeeping",
       ];
 
-      // Thêm header rows
       worksheet.addRow(headerVi);
       worksheet.addRow(headerEn);
 
-      // Style cho header (giờ là row 11 và 12)
-      [11, 12].forEach((rowNum) => {
+      // Style cho header
+      [15, 16].forEach((rowNum) => {
         const row = worksheet.getRow(rowNum);
-        row.height = 30;
+        row.height = 25;
         row.eachCell((cell) => {
           cell.font = { bold: true, size: 9, color: { argb: "FF000000" } };
           cell.fill = {
             type: "pattern",
             pattern: "solid",
-            fgColor: { argb: "FFD3D3D3" },
+            fgColor: { argb: "FFB0B0B0" },
           };
           cell.alignment = {
             vertical: "middle",
@@ -738,16 +679,16 @@ function AttendanceList() {
           emp.boPhan || "",
           emp.gioVao || "",
           emp.gioRa || "",
-          "",
-          "",
+          emp.caLamViec || "",
+          emp.chamCong || "",
         ]);
 
-        // Style cho data rows với zebra striping
+        // Style cho data rows
         const isEvenRow = idx % 2 === 0;
         row.eachCell((cell, colNumber) => {
           cell.font = { size: 9 };
 
-          // Căn lề: STT, số, mã căn giữa; tên căn trái
+          // Căn lề: tên và bộ phận căn trái
           if (colNumber === 4 || colNumber === 8) {
             cell.alignment = {
               vertical: "middle",
@@ -786,55 +727,19 @@ function AttendanceList() {
 
       // Set độ rộng cột
       worksheet.columns = [
-        { width: 5 }, // STT
-        { width: 10 }, // MNV
-        { width: 10 }, // MVT
-        { width: 25 }, // Họ và tên
-        { width: 8 }, // Giới tính
-        { width: 12 }, // Ngày bắt đầu
-        { width: 10 }, // Mã BP
-        { width: 15 }, // Bộ phận
-        { width: 10 }, // Thời gian vào
-        { width: 10 }, // Thời gian ra
-        { width: 12 }, // Ca làm việc
-        { width: 14 }, // Chấm công (cột L - rộng hơn để bao hình)
+        { width: 5 },
+        { width: 10 },
+        { width: 10 },
+        { width: 25 },
+        { width: 8 },
+        { width: 15 },
+        { width: 10 },
+        { width: 15 },
+        { width: 10 },
+        { width: 10 },
+        { width: 12 },
+        { width: 14 },
       ];
-
-      // Border ngoài cho toàn bộ bảng
-      const lastRow = worksheet.rowCount;
-      const lastCol = 12;
-
-      // Top border
-      for (let col = 1; col <= lastCol; col++) {
-        worksheet.getCell(1, col).border = {
-          ...worksheet.getCell(1, col).border,
-          top: { style: "thin" },
-        };
-      }
-
-      // Bottom border
-      for (let col = 1; col <= lastCol; col++) {
-        worksheet.getCell(lastRow, col).border = {
-          ...worksheet.getCell(lastRow, col).border,
-          bottom: { style: "thin" },
-        };
-      }
-
-      // Left border
-      for (let row = 1; row <= lastRow; row++) {
-        worksheet.getCell(row, 1).border = {
-          ...worksheet.getCell(row, 1).border,
-          left: { style: "thin" },
-        };
-      }
-
-      // Right border
-      for (let row = 1; row <= lastRow; row++) {
-        worksheet.getCell(row, lastCol).border = {
-          ...worksheet.getCell(row, lastCol).border,
-          right: { style: "thin" },
-        };
-      }
 
       // Xuất file
       const buffer = await workbook.xlsx.writeBuffer();
@@ -1332,7 +1237,7 @@ function AttendanceList() {
             <td>Phê duyệt</td>
           </tr>
           <tr>
-            <td style="height: 20px;">&nbsp;</td>
+            <td style="height: 60px;">&nbsp;</td>
             <td>&nbsp;</td>
             <td>&nbsp;</td>
             <td>&nbsp;</td>
@@ -1447,7 +1352,7 @@ function AttendanceList() {
   <title>Danh sách chấm công - ${dateStr}</title>
   <style>
     @media print {
-      @page { size: A4 portrait; margin: 10mm; }
+      @page { size: A4 portrait; margin: 5mm; }
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .no-print { display: none !important; }
       body { margin: 0; padding: 0; }
@@ -1459,22 +1364,103 @@ function AttendanceList() {
       color: #000;
       background: #fff;
       margin: 0 auto;
-      padding: 10mm;
+      padding: 6mm;
       width: 100%;
       max-width: 210mm;
       box-sizing: border-box;
     }
-    .header { text-align: center; margin-bottom: 10px; }
-    .header h1 { margin: 0; font-size: 12pt; font-weight: bold; color: #c41e3a; letter-spacing: .3px; text-transform: uppercase; }
+    .top-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .company-header { 
+      display: flex; 
+      align-items: flex-start;
+      flex: 1;
+    }
+    .company-logo { 
+      width: 70px; 
+      height: auto; 
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+    .company-info { 
+      flex: 1; 
+      text-align: left;
+    }
+    .company-info .company-name { 
+      font-size: 10pt; 
+      font-weight: bold; 
+      margin: 0 0 3px 0;
+      color: #000;
+    }
+    .company-info .company-address { 
+      font-size: 7.5pt; 
+      margin: 1px 0;
+      line-height: 1.2;
+      font-style: italic;
+    }
+    .approval-table {
+      width: 280px;
+      border-collapse: collapse;
+      font-size: 7pt;
+      margin-left: 15px;
+    }
+    .approval-table th {
+      border: 1px solid #000;
+      padding: 3px 5px;
+      text-align: center;
+      font-weight: bold;
+      background: #fff;
+    }
+    .approval-table td {
+      border: 1px solid #000;
+      padding: 15px 3px;
+      text-align: center;
+    }
+    .detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 6.5pt;
+      margin-bottom: 8px;
+      table-layout: fixed;
+    }
+    .detail-table td {
+      border: 1px solid #000;
+      padding: 2px 4px;
+      text-align: left;
+    }
+    .detail-table .label-col {
+      width: 8%;
+      font-weight: bold;
+    }
+    .detail-table .value-col {
+      width: 2%;
+      text-align: center;
+    }
+    .detail-table .desc-col {
+      width: 18%;
+    }
+    .red-text {
+      color: #c41e3a;
+      font-weight: bold;
+      font-size: 8.5pt;
+      margin: 6px 0;
+    }
+    .header { text-align: center; margin-bottom: 8px; margin-top: 5px; }
+    .header h1 { margin: 0; font-size: 12pt; font-weight: bold; color: #000; letter-spacing: .3px; text-transform: uppercase; }
+    .header .subtitle { font-size: 10pt; font-weight: bold; margin: 2px 0; }
     .header .date { margin-top: 3px; font-weight: bold; font-size: 9pt; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7pt; }
-    th, td { border: 1px solid #000; padding: 3px 2px; text-align: center; vertical-align: middle; }
-    th { background: #b0b0b0; font-weight: bold; }
-    .name { text-align: left; padding-left: 4px; }
-    .dept { text-align: left; padding-left: 4px; }
-    tbody tr:nth-child(even) { background: #e8f4f8; }
+    table.data-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7pt; border: 1px solid #000; }
+    table.data-table th, table.data-table td { border: 1px dashed rgba(0,0,0,0.5); padding: 3px 2px; text-align: center; vertical-align: middle; }
+    table.data-table th { background: #b0b0b0; font-weight: bold; }
+    table.data-table .name { text-align: left; padding-left: 4px; }
+    table.data-table .dept { text-align: left; padding-left: 4px; }
+    table.data-table tbody tr:nth-child(even) { background: #e8f4f8; }
     .print-button { position: fixed; top: 10px; right: 10px; padding: 8px 14px; background: #2196F3; color: #fff; border: none; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; z-index: 1000; }
-    .close-button { position: fixed; top: 10px; right: 90px; padding: 8px 14px; background: #f44336; color: #fff; border: none; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; z-index: 1000; }
+    .close-button { position: fixed; top: 10px; right: 72px; padding: 8px 14px; background: #f44336; color: #fff; border: none; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; z-index: 1000; }
   </style>
   <script>
     function doPrint(){ window.print(); }
@@ -1484,11 +1470,83 @@ function AttendanceList() {
   <body>
     <button class="print-button no-print" onclick="doPrint()">🖨️ In</button>
     <button class="close-button no-print" onclick="doClose()">✕ Đóng</button>
-    <div class="header">
-      <h1>Danh sách chấm công</h1>
-      <div class="date">Ngày: ${dateStr}</div>
+    
+    <div class="top-section">
+      <div class="company-header">
+        <img src="/picture/logo/logo.png" alt="Pavonine Logo" class="company-logo" onerror="this.style.display='none'">
+        <div class="company-info">
+          <div class="company-name">CÔNG TY TNHH PAVONINE VINA</div>
+          <div class="company-address">Lots VII-1, VII-2, and part of Lot VII-3, My Xuan B1 – Tien Hung</div>
+          <div class="company-address">Industrial Park, Phu My Ward, Ho Chi Minh City, Vietnam</div>
+        </div>
+      </div>
+      
+      <table class="approval-table">
+        <tr>
+          <th>Người lập /<br/>Prepared by</th>
+          <th>Kiểm tra /<br/>Reviewed by</th>
+          <th>Phê duyệt /<br/>Approved by</th>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </table>
     </div>
-    <table>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label-col">Ca ngày</td>
+        <td class="value-col">S1</td>
+        <td class="desc-col">1.Phép năm/Annual Leave</td>
+        <td class="value-col">PN</td>
+        <td class="desc-col">6.Không Lương/Unpaid Leave</td>
+        <td class="value-col">KL</td>
+      </tr>
+      <tr>
+        <td class="label-col">Ca đêm</td>
+        <td class="value-col">S2</td>
+        <td class="desc-col">2.1/2 ngày phép năm/1/2 day annual Leave</td>
+        <td class="value-col">1/2 PN</td>
+        <td class="desc-col">7.Không phép/Illegal Leave</td>
+        <td class="value-col">KP</td>
+      </tr>
+      <tr>
+        <td class="label-col"></td>
+        <td class="value-col"></td>
+        <td class="desc-col">3.Nghỉ TNLĐ/Labor accident</td>
+        <td class="value-col">TN</td>
+        <td class="desc-col">8.Nghỉ ốm/Sick Leave</td>
+        <td class="value-col">PO</td>
+      </tr>
+      <tr>
+        <td class="label-col"></td>
+        <td class="value-col"></td>
+        <td class="desc-col">4.Phép cưới/Wedding Leave</td>
+        <td class="value-col">PC</td>
+        <td class="desc-col">9.Thai sản/Maternity</td>
+        <td class="value-col">TS</td>
+      </tr>
+      <tr>
+        <td class="label-col"></td>
+        <td class="value-col"></td>
+        <td class="desc-col">5.Phép tang/Funeral Leave</td>
+        <td class="value-col">PT</td>
+        <td class="desc-col">10.Dưỡng sức/Recovery health</td>
+        <td class="value-col">DS</td>
+      </tr>
+    </table>
+    
+    <div class="header">
+      <h1>DANH SÁCH NHÂN VIÊN HIỆN DIỆN</h1>
+      <div class="subtitle">List of Active Employees</div>
+      <div class="date">Ngày/Date: ${dateStr}</div>
+    </div>
+
+    <div class="red-text">Số lượng cơm ca trưa:</div>
+    
+    <table class="data-table">
       <thead>
         <tr>
           <th style="width:4%">STT</th>
