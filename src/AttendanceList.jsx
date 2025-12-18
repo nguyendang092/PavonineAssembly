@@ -391,6 +391,85 @@ function AttendanceList() {
     [user, selectedDate]
   );
 
+  // Handle upload Excel
+  const handleUploadExcel = useCallback(
+    async (e) => {
+      if (!user) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Vui lòng đăng nhập để thực hiện thao tác này",
+        });
+        return;
+      }
+
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(sheet);
+
+        // Prepare data for Firebase
+        const attendanceRef = ref(db, `attendance/${selectedDate}`);
+        const dataToUpload = {};
+
+        json.forEach((row, index) => {
+          const empKey = `emp_${index}`;
+          dataToUpload[empKey] = {
+            id: empKey,
+            stt: row.stt || row.STT || index + 1,
+            mnv: row.mnv || row.MNV || "",
+            mvt: row.mvt || row.MVT || "",
+            hoVaTen: row.hoVaTen || row["Họ và Tên"] || row["họ và tên"] || "",
+            gioiTinh:
+              row.gioiTinh || row["Giới Tính"] || row["giới tính"] || "YES",
+            ngayThangNamSinh:
+              row.ngayThangNamSinh ||
+              row["Ngày Tháng Năm Sinh"] ||
+              row["ngày tháng năm sinh"] ||
+              "",
+            maBoPhan:
+              row.maBoPhan || row["Mã Bộ Phận"] || row["mã bộ phận"] || "",
+            boPhan: row.boPhan || row["Bộ Phận"] || row["bộ phận"] || "",
+            gioVao: row.gioVao || row["Giờ Vào"] || row["giờ vào"] || "",
+            gioRa: row.gioRa || row["Giờ Ra"] || row["giờ ra"] || "",
+            caLamViec:
+              row.caLamViec || row["Ca Làm Việc"] || row["ca làm việc"] || "",
+            chamCong:
+              row.chamCong || row["Chấm Công"] || row["chấm công"] || "",
+          };
+        });
+
+        // Upload to Firebase
+        await set(attendanceRef, dataToUpload);
+        setAlert({
+          show: true,
+          type: "success",
+          message: `✅ Upload thành công ${json.length} nhân viên`,
+        });
+
+        // Reset file input
+        if (e.target) {
+          e.target.value = "";
+        }
+      } catch (err) {
+        console.error("Upload Excel error:", err);
+        setAlert({
+          show: true,
+          type: "error",
+          message:
+            "❌ Lỗi khi upload file: " +
+            (err?.message || "Vui lòng kiểm tra định dạng file"),
+        });
+      }
+    },
+    [user, selectedDate]
+  );
+
   // Export to Excel
   const handleExportExcel = useCallback(async () => {
     try {
