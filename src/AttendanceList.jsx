@@ -4,6 +4,7 @@ import { useUser } from "./UserContext";
 import { db, ref, set, onValue, push, remove, update, get } from "./firebase";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
+import ExportExcelButton from "./ExportExcelButton";
 import Sidebar from "./Sidebar";
 
 function AttendanceList() {
@@ -28,6 +29,11 @@ function AttendanceList() {
   const [editing, setEditing] = useState(null);
   const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
   const [filterOpen, setFilterOpen] = useState(false);
+  const [filterMaBoPhanSearch, setFilterMaBoPhanSearch] = useState("");
+  const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
+  const [filterGenderSearch, setFilterGenderSearch] = useState("");
+  const [filterShiftSearch, setFilterShiftSearch] = useState("");
+  const [filterSearchTerm, setFilterSearchTerm] = useState("");
   const [gioiTinhFilter, setGioiTinhFilter] = useState([]); // Filter by gender
   const [departmentListFilter, setDepartmentListFilter] = useState([]); // Filter by department in filter section
   const [maBoPhanFilter, setMaBoPhanFilter] = useState([]); // Filter by department code (mã BP)
@@ -41,6 +47,8 @@ function AttendanceList() {
     []
   );
   const [modalExpandedSections, setModalExpandedSections] = useState({});
+  const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
+  const [actionDropdownOpen, setActionDropdownOpen] = useState(false);
   const [form, setForm] = useState({
     id: "",
     stt: "",
@@ -85,6 +93,28 @@ function AttendanceList() {
       return () => clearTimeout(timer);
     }
   }, [alert.show]);
+
+  // Close print dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (printDropdownOpen && !event.target.closest(".relative")) {
+        setPrintDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [printDropdownOpen]);
+
+  // Close action dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (actionDropdownOpen && !event.target.closest(".action-dropdown")) {
+        setActionDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [actionDropdownOpen]);
 
   // Filter employees
   const filteredEmployees = useMemo(() => {
@@ -531,306 +561,7 @@ function AttendanceList() {
     [user, selectedDate]
   );
 
-  // Export to Excel
-  const handleExportExcel = useCallback(async () => {
-    try {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Attendance");
-
-      // Thêm header
-      worksheet.mergeCells("A1:L1");
-      const titleCell = worksheet.getCell("A1");
-      titleCell.value = "DANH SÁCH CHẤM CÔNG NHÂN VIÊN";
-      titleCell.font = { size: 14, bold: true, color: { argb: "FFC41E3A" } };
-      titleCell.alignment = { vertical: "middle", horizontal: "center" };
-      titleCell.height = 25;
-
-      worksheet.mergeCells("A2:L2");
-      const dateCell = worksheet.getCell("A2");
-      dateCell.value = `Ngày: ${new Date(selectedDate).toLocaleDateString(
-        "vi-VN"
-      )}`;
-      dateCell.font = { size: 10, bold: true };
-      dateCell.alignment = { vertical: "middle", horizontal: "center" };
-      dateCell.height = 20;
-
-      worksheet.addRow([]);
-      worksheet.addRow([]);
-      worksheet.addRow([]);
-
-      // Thêm bảng legend
-      worksheet.addRow([
-        "Category: Vẫn còn làm",
-        "S1",
-        "1.Phép năm/Annual Leave",
-        "PN",
-        "6.Không Lương/Unpaid Leave",
-        "KL",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      ]);
-      worksheet.addRow([
-        "Có đơn Nghỉ việc",
-        "S2",
-        "2.1/2 ngày phép năm/1/2 day",
-        "1/2PN",
-        "7.Không phép/Illegal Leave",
-        "KP",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      ]);
-      worksheet.addRow([
-        "",
-        "",
-        "3.Nghỉ TNLĐ/Labor accident",
-        "TN",
-        "8.Nghỉ ốm/Sick Leave",
-        "PO",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      ]);
-      worksheet.addRow([
-        "",
-        "",
-        "4.Phép cưới/Wedding Leave",
-        "PC",
-        "9.Thai sản/Maternity",
-        "TS",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      ]);
-      worksheet.addRow([
-        "",
-        "",
-        "5.Phép tang/Funeral Leave",
-        "PT",
-        "10.Dưỡng sức/Recovery health",
-        "DS",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      ]);
-
-      // Style cho legend
-      [6, 7, 8, 9, 10].forEach((rowNum) => {
-        const row = worksheet.getRow(rowNum);
-        row.height = 15;
-        row.eachCell((cell, colNumber) => {
-          cell.font = { size: 8 };
-          cell.alignment = {
-            vertical: "top",
-            horizontal: "left",
-            wrapText: true,
-          };
-          if (colNumber <= 6) {
-            cell.border = {
-              top: { style: "hair" },
-              left: { style: "hair" },
-              bottom: { style: "hair" },
-              right: { style: "hair" },
-            };
-          }
-        });
-      });
-
-      worksheet.addRow([]);
-
-      // Thêm "Số lượng cơm ca trưa:" text
-      worksheet.mergeCells("E13:I13");
-      const mealCountCell = worksheet.getCell("E13");
-      mealCountCell.value = "Số lượng cơm ca trưa:";
-      mealCountCell.font = {
-        size: 10,
-        color: { argb: "FFC41E3A" },
-        italic: true,
-        bold: true,
-      };
-      mealCountCell.alignment = { vertical: "middle", horizontal: "left" };
-
-      worksheet.addRow([]);
-
-      // Tạo tiêu đề bảng chính
-      const headerVi = [
-        "STT",
-        "MNV",
-        "MVT",
-        "Họ và tên",
-        "Giới tính",
-        "Ngày tháng năm sinh",
-        "Mã BP",
-        "Bộ phận",
-        "Thời gian vào",
-        "Thời gian ra",
-        "Ca làm việc",
-        "Chấm công",
-      ];
-
-      const headerEn = [
-        "",
-        "Code",
-        "",
-        "Full name",
-        "Gender",
-        "DoB",
-        "Code-Dept",
-        "Department",
-        "Time in",
-        "Time out",
-        "Current shift",
-        "Timekeeping",
-      ];
-
-      worksheet.addRow(headerVi);
-      worksheet.addRow(headerEn);
-
-      // Style cho header
-      [15, 16].forEach((rowNum) => {
-        const row = worksheet.getRow(rowNum);
-        row.height = 25;
-        row.eachCell((cell) => {
-          cell.font = { bold: true, size: 9, color: { argb: "FF000000" } };
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFB0B0B0" },
-          };
-          cell.alignment = {
-            vertical: "middle",
-            horizontal: "center",
-            wrapText: true,
-          };
-          cell.border = {
-            top: { style: "thin" },
-            left: { style: "hair" },
-            bottom: { style: "hair" },
-            right: { style: "hair" },
-          };
-        });
-      });
-
-      // Thêm dữ liệu
-      filteredEmployees.forEach((emp, idx) => {
-        const row = worksheet.addRow([
-          idx + 1,
-          emp.mnv || "",
-          emp.mvt || "",
-          emp.hoVaTen || "",
-          emp.gioiTinh === "YES" ? "YES" : "NO",
-          emp.ngayThangNamSinh || "",
-          emp.maBoPhan || "",
-          emp.boPhan || "",
-          emp.gioVao || "",
-          emp.gioRa || "",
-          emp.caLamViec || "",
-          emp.chamCong || "",
-        ]);
-
-        // Style cho data rows
-        const isEvenRow = idx % 2 === 0;
-        row.eachCell((cell, colNumber) => {
-          cell.font = { size: 9 };
-
-          // Căn lề: tên và bộ phận căn trái
-          if (colNumber === 4 || colNumber === 8) {
-            cell.alignment = {
-              vertical: "middle",
-              horizontal: "left",
-              indent: 1,
-            };
-          } else {
-            cell.alignment = { vertical: "middle", horizontal: "center" };
-          }
-
-          cell.border = {
-            top: { style: "hair" },
-            left: { style: "hair" },
-            bottom: { style: "hair" },
-            right: { style: "hair" },
-          };
-
-          // Zebra striping
-          if (isEvenRow) {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFF0F8FF" },
-            };
-          }
-
-          // Highlight thời gian vào/ra
-          if (colNumber === 9 && cell.value) {
-            cell.font = { size: 9, color: { argb: "FF006400" }, bold: true };
-          }
-          if (colNumber === 10 && cell.value) {
-            cell.font = { size: 9, color: { argb: "FFDC143C" }, bold: true };
-          }
-        });
-      });
-
-      // Set độ rộng cột
-      worksheet.columns = [
-        { width: 5 },
-        { width: 10 },
-        { width: 10 },
-        { width: 25 },
-        { width: 8 },
-        { width: 15 },
-        { width: 10 },
-        { width: 15 },
-        { width: 10 },
-        { width: 10 },
-        { width: 12 },
-        { width: 14 },
-      ];
-
-      // Xuất file
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const now = new Date();
-      const dateStr = now.toISOString().slice(0, 10);
-      const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, "-");
-      a.download = `PAVONINE_diemDanh_${dateStr}_${timeStr}.xlsx`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-
-      setAlert({
-        show: true,
-        type: "success",
-        message: "✅ Xuất Excel thành công!",
-      });
-    } catch (err) {
-      console.error("Export Excel Error:", err);
-      setAlert({
-        show: true,
-        type: "error",
-        message: `❌ Xuất Excel thất bại! ${err.message || ""}`,
-      });
-    }
-  }, [filteredEmployees]);
+  // Export to Excel (moved to external component)
 
   // Handle Overtime button - Export overtime form
   const handleOvertimeButton_OLD = useCallback(async () => {
@@ -1997,60 +1728,95 @@ function AttendanceList() {
                           </span>
                         </button>
                         {expandedSections.maBoPhan && (
-                          <div className="border-2 border-purple-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-purple-50/30 shadow-inner">
-                            {maBoPhanList.length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                Không có dữ liệu
-                              </div>
-                            ) : (
-                              <>
-                                <label className="flex items-center px-3 py-2 hover:bg-purple-50 cursor-pointer text-sm border-b-2 border-purple-200 bg-purple-50/50 font-semibold">
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      maBoPhanFilter.length ===
-                                      maBoPhanList.length
-                                    }
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setMaBoPhanFilter([...maBoPhanList]);
-                                      } else {
-                                        setMaBoPhanFilter([]);
-                                      }
-                                    }}
-                                    className="mr-2 w-4 h-4 cursor-pointer"
-                                  />
-                                  ✓ Chọn tất cả
-                                </label>
-                                {maBoPhanList.map((code) => (
-                                  <label
-                                    key={code}
-                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                  >
+                          <div className="border-2 border-purple-100 rounded-lg mt-2 bg-gradient-to-b from-white to-purple-50/30 shadow-inner">
+                            <input
+                              type="text"
+                              value={filterMaBoPhanSearch}
+                              onChange={(e) =>
+                                setFilterMaBoPhanSearch(e.target.value)
+                              }
+                              placeholder="🔍 Tìm mã..."
+                              className="w-full border-b border-purple-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            />
+                            <div className="max-h-40 overflow-y-auto">
+                              {maBoPhanList.length === 0 ? (
+                                <div className="px-3 py-2 text-sm text-gray-500 italic">
+                                  Không có dữ liệu
+                                </div>
+                              ) : (
+                                <>
+                                  <label className="flex items-center px-3 py-2 hover:bg-purple-50 cursor-pointer text-sm border-b-2 border-purple-200 bg-purple-50/50 font-semibold">
                                     <input
                                       type="checkbox"
-                                      checked={maBoPhanFilter.includes(code)}
+                                      checked={
+                                        maBoPhanFilter.length ===
+                                        maBoPhanList.filter((code) =>
+                                          code
+                                            .toLowerCase()
+                                            .includes(
+                                              filterMaBoPhanSearch.toLowerCase()
+                                            )
+                                        ).length
+                                      }
                                       onChange={(e) => {
                                         if (e.target.checked) {
                                           setMaBoPhanFilter([
-                                            ...maBoPhanFilter,
-                                            code,
+                                            ...maBoPhanList.filter((code) =>
+                                              code
+                                                .toLowerCase()
+                                                .includes(
+                                                  filterMaBoPhanSearch.toLowerCase()
+                                                )
+                                            ),
                                           ]);
                                         } else {
-                                          setMaBoPhanFilter(
-                                            maBoPhanFilter.filter(
-                                              (m) => m !== code
-                                            )
-                                          );
+                                          setMaBoPhanFilter([]);
                                         }
                                       }}
                                       className="mr-2 w-4 h-4 cursor-pointer"
                                     />
-                                    {code}
+                                    ✓ Chọn tất cả
                                   </label>
-                                ))}
-                              </>
-                            )}
+                                  {maBoPhanList
+                                    .filter((code) =>
+                                      code
+                                        .toLowerCase()
+                                        .includes(
+                                          filterMaBoPhanSearch.toLowerCase()
+                                        )
+                                    )
+                                    .map((code) => (
+                                      <label
+                                        key={code}
+                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={maBoPhanFilter.includes(
+                                            code
+                                          )}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setMaBoPhanFilter([
+                                                ...maBoPhanFilter,
+                                                code,
+                                              ]);
+                                            } else {
+                                              setMaBoPhanFilter(
+                                                maBoPhanFilter.filter(
+                                                  (m) => m !== code
+                                                )
+                                              );
+                                            }
+                                          }}
+                                          className="mr-2 w-4 h-4 cursor-pointer"
+                                        />
+                                        {code}
+                                      </label>
+                                    ))}
+                                </>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2077,64 +1843,95 @@ function AttendanceList() {
                           </span>
                         </button>
                         {expandedSections.department && (
-                          <div className="border-2 border-orange-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-orange-50/30 shadow-inner">
-                            {departments.length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                Không có dữ liệu
-                              </div>
-                            ) : (
-                              <>
-                                <label className="flex items-center px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm border-b-2 border-orange-200 bg-orange-50/50 font-semibold">
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      departmentListFilter.length ===
-                                      departments.length
-                                    }
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setDepartmentListFilter([
-                                          ...departments,
-                                        ]);
-                                      } else {
-                                        setDepartmentListFilter([]);
-                                      }
-                                    }}
-                                    className="mr-2 w-4 h-4 cursor-pointer"
-                                  />
-                                  ✓ Chọn tất cả
-                                </label>
-                                {departments.map((dept) => (
-                                  <label
-                                    key={dept}
-                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                  >
+                          <div className="border-2 border-orange-100 rounded-lg mt-2 bg-gradient-to-b from-white to-orange-50/30 shadow-inner">
+                            <input
+                              type="text"
+                              value={filterDepartmentSearch}
+                              onChange={(e) =>
+                                setFilterDepartmentSearch(e.target.value)
+                              }
+                              placeholder="🔍 Tìm bộ phận..."
+                              className="w-full border-b border-orange-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                            />
+                            <div className="max-h-40 overflow-y-auto">
+                              {departments.length === 0 ? (
+                                <div className="px-3 py-2 text-sm text-gray-500 italic">
+                                  Không có dữ liệu
+                                </div>
+                              ) : (
+                                <>
+                                  <label className="flex items-center px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm border-b-2 border-orange-200 bg-orange-50/50 font-semibold">
                                     <input
                                       type="checkbox"
-                                      checked={departmentListFilter.includes(
-                                        dept
-                                      )}
+                                      checked={
+                                        departmentListFilter.length ===
+                                        departments.filter((dept) =>
+                                          dept
+                                            .toLowerCase()
+                                            .includes(
+                                              filterDepartmentSearch.toLowerCase()
+                                            )
+                                        ).length
+                                      }
                                       onChange={(e) => {
                                         if (e.target.checked) {
                                           setDepartmentListFilter([
-                                            ...departmentListFilter,
-                                            dept,
+                                            ...departments.filter((dept) =>
+                                              dept
+                                                .toLowerCase()
+                                                .includes(
+                                                  filterDepartmentSearch.toLowerCase()
+                                                )
+                                            ),
                                           ]);
                                         } else {
-                                          setDepartmentListFilter(
-                                            departmentListFilter.filter(
-                                              (d) => d !== dept
-                                            )
-                                          );
+                                          setDepartmentListFilter([]);
                                         }
                                       }}
                                       className="mr-2 w-4 h-4 cursor-pointer"
                                     />
-                                    {dept}
+                                    ✓ Chọn tất cả
                                   </label>
-                                ))}
-                              </>
-                            )}
+                                  {departments
+                                    .filter((dept) =>
+                                      dept
+                                        .toLowerCase()
+                                        .includes(
+                                          filterDepartmentSearch.toLowerCase()
+                                        )
+                                    )
+                                    .map((dept) => (
+                                      <label
+                                        key={dept}
+                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={departmentListFilter.includes(
+                                            dept
+                                          )}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setDepartmentListFilter([
+                                                ...departmentListFilter,
+                                                dept,
+                                              ]);
+                                            } else {
+                                              setDepartmentListFilter(
+                                                departmentListFilter.filter(
+                                                  (d) => d !== dept
+                                                )
+                                              );
+                                            }
+                                          }}
+                                          className="mr-2 w-4 h-4 cursor-pointer"
+                                        />
+                                        {dept}
+                                      </label>
+                                    ))}
+                                </>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2160,59 +1957,80 @@ function AttendanceList() {
                         </button>
                         {expandedSections.gender && (
                           <div className="border-2 border-green-100 rounded-lg mt-2 bg-gradient-to-b from-white to-green-50/30 shadow-inner">
-                            {genderList.length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                Không có dữ liệu
-                              </div>
-                            ) : (
-                              <>
-                                <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      gioiTinhFilter.length ===
-                                      genderList.length
-                                    }
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setGioiTinhFilter([...genderList]);
-                                      } else {
-                                        setGioiTinhFilter([]);
-                                      }
-                                    }}
-                                    className="mr-2 w-4 h-4 cursor-pointer"
-                                  />
-                                  ✓ Chọn tất cả
-                                </label>
-                                {genderList.map((gender) => (
-                                  <label
-                                    key={gender}
-                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                  >
+                            <input
+                              type="text"
+                              value={filterGenderSearch}
+                              onChange={(e) =>
+                                setFilterGenderSearch(e.target.value)
+                              }
+                              placeholder="🔍 Tìm giới tính..."
+                              className="w-full border-b border-green-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            />
+                            <div className="max-h-40 overflow-y-auto">
+                              {genderList.length === 0 ? (
+                                <div className="px-3 py-2 text-sm text-gray-500 italic">
+                                  Không có dữ liệu
+                                </div>
+                              ) : (
+                                <>
+                                  <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
                                     <input
                                       type="checkbox"
-                                      checked={gioiTinhFilter.includes(gender)}
+                                      checked={
+                                        gioiTinhFilter.length ===
+                                        genderList.length
+                                      }
                                       onChange={(e) => {
                                         if (e.target.checked) {
-                                          setGioiTinhFilter([
-                                            ...gioiTinhFilter,
-                                            gender,
-                                          ]);
+                                          setGioiTinhFilter([...genderList]);
                                         } else {
-                                          setGioiTinhFilter(
-                                            gioiTinhFilter.filter(
-                                              (g) => g !== gender
-                                            )
-                                          );
+                                          setGioiTinhFilter([]);
                                         }
                                       }}
                                       className="mr-2 w-4 h-4 cursor-pointer"
                                     />
-                                    {gender === "YES" ? "Nữ" : "Nam"}
+                                    ✓ Chọn tất cả
                                   </label>
-                                ))}
-                              </>
-                            )}
+                                  {genderList
+                                    .filter((gender) =>
+                                      gender
+                                        .toLowerCase()
+                                        .includes(
+                                          filterGenderSearch.toLowerCase()
+                                        )
+                                    )
+                                    .map((gender) => (
+                                      <label
+                                        key={gender}
+                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={gioiTinhFilter.includes(
+                                            gender
+                                          )}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setGioiTinhFilter([
+                                                ...gioiTinhFilter,
+                                                gender,
+                                              ]);
+                                            } else {
+                                              setGioiTinhFilter(
+                                                gioiTinhFilter.filter(
+                                                  (g) => g !== gender
+                                                )
+                                              );
+                                            }
+                                          }}
+                                          className="mr-2 w-4 h-4 cursor-pointer"
+                                        />
+                                        {gender === "YES" ? "Nữ" : "Nam"}
+                                      </label>
+                                    ))}
+                                </>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2237,60 +2055,81 @@ function AttendanceList() {
                           </span>
                         </button>
                         {expandedSections.shift && (
-                          <div className="border-2 border-red-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-red-50/30 shadow-inner">
-                            {shiftList.length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                Không có dữ liệu
-                              </div>
-                            ) : (
-                              <>
-                                <label className="flex items-center px-3 py-2 hover:bg-red-50 cursor-pointer text-sm border-b-2 border-red-200 bg-red-50/50 font-semibold">
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      caLamViecFilter.length ===
-                                      shiftList.length
-                                    }
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setCaLamViecFilter([...shiftList]);
-                                      } else {
-                                        setCaLamViecFilter([]);
-                                      }
-                                    }}
-                                    className="mr-2 w-4 h-4 cursor-pointer"
-                                  />
-                                  ✓ Chọn tất cả
-                                </label>
-                                {shiftList.map((shift) => (
-                                  <label
-                                    key={shift}
-                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                  >
+                          <div className="border-2 border-red-100 rounded-lg mt-2 bg-gradient-to-b from-white to-red-50/30 shadow-inner">
+                            <input
+                              type="text"
+                              value={filterShiftSearch}
+                              onChange={(e) =>
+                                setFilterShiftSearch(e.target.value)
+                              }
+                              placeholder="🔍 Tìm ca làm việc..."
+                              className="w-full border-b border-red-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            />
+                            <div className="max-h-40 overflow-y-auto">
+                              {shiftList.length === 0 ? (
+                                <div className="px-3 py-2 text-sm text-gray-500 italic">
+                                  Không có dữ liệu
+                                </div>
+                              ) : (
+                                <>
+                                  <label className="flex items-center px-3 py-2 hover:bg-red-50 cursor-pointer text-sm border-b-2 border-red-200 bg-red-50/50 font-semibold">
                                     <input
                                       type="checkbox"
-                                      checked={caLamViecFilter.includes(shift)}
+                                      checked={
+                                        caLamViecFilter.length ===
+                                        shiftList.length
+                                      }
                                       onChange={(e) => {
                                         if (e.target.checked) {
-                                          setCaLamViecFilter([
-                                            ...caLamViecFilter,
-                                            shift,
-                                          ]);
+                                          setCaLamViecFilter([...shiftList]);
                                         } else {
-                                          setCaLamViecFilter(
-                                            caLamViecFilter.filter(
-                                              (s) => s !== shift
-                                            )
-                                          );
+                                          setCaLamViecFilter([]);
                                         }
                                       }}
                                       className="mr-2 w-4 h-4 cursor-pointer"
                                     />
-                                    {shift}
+                                    ✓ Chọn tất cả
                                   </label>
-                                ))}
-                              </>
-                            )}
+                                  {shiftList
+                                    .filter((shift) =>
+                                      shift
+                                        .toLowerCase()
+                                        .includes(
+                                          filterShiftSearch.toLowerCase()
+                                        )
+                                    )
+                                    .map((shift) => (
+                                      <label
+                                        key={shift}
+                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={caLamViecFilter.includes(
+                                            shift
+                                          )}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setCaLamViecFilter([
+                                                ...caLamViecFilter,
+                                                shift,
+                                              ]);
+                                            } else {
+                                              setCaLamViecFilter(
+                                                caLamViecFilter.filter(
+                                                  (s) => s !== shift
+                                                )
+                                              );
+                                            }
+                                          }}
+                                          className="mr-2 w-4 h-4 cursor-pointer"
+                                        />
+                                        {shift}
+                                      </label>
+                                    ))}
+                                </>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2305,19 +2144,26 @@ function AttendanceList() {
                           setMaBoPhanFilter([]);
                           setCaLamViecFilter([]);
                           setExpandedSections({});
+                          setFilterSearchTerm("");
                         }}
                         className="px-5 py-2.5 rounded-lg text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow"
                       >
                         🗑️ Xóa tất cả
                       </button>
                       <button
-                        onClick={() => setFilterOpen(false)}
+                        onClick={() => {
+                          setFilterOpen(false);
+                          setFilterSearchTerm("");
+                        }}
                         className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                       >
                         ✖️ Hủy
                       </button>
                       <button
-                        onClick={() => setFilterOpen(false)}
+                        onClick={() => {
+                          setFilterOpen(false);
+                          setFilterSearchTerm("");
+                        }}
                         className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                       >
                         ✓ Áp dụng
@@ -2329,72 +2175,176 @@ function AttendanceList() {
             </div>
 
             <button
-              onClick={handleExportExcel}
-              className="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition"
-            >
-              📥 Xuất Excel
-            </button>
-
-            <button
               onClick={handleOvertimeButton}
               className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition"
             >
               ⏰ Tăng ca
             </button>
 
-            <button
-              onClick={handlePrintOvertimeList}
-              className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
-            >
-              🖨️ In đăng ký tăng ca
-            </button>
-
-            <button
-              onClick={handlePrintAttendanceList}
-              className="px-4 py-2 bg-indigo-600 text-white rounded font-bold text-sm shadow hover:bg-indigo-700 transition"
-            >
-              🖨️ In danh sách chấm công
-            </button>
-
+            {/* Action Dropdown (Upload/Export/Add) */}
             {user && (
-              <>
-                <label className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition cursor-pointer inline-flex items-center">
-                  📤 Upload Excel
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleUploadExcel}
-                    className="hidden"
+              <div className="relative action-dropdown">
+                <button
+                  onClick={() => setActionDropdownOpen(!actionDropdownOpen)}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center gap-1"
+                >
+                  ⚙️ Chức năng
+                  <span className="text-xs">
+                    {actionDropdownOpen ? "▲" : "▼"}
+                  </span>
+                </button>
+                {actionDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-50 overflow-hidden animate-fadeIn">
+                    <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
+                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                        📤
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                          Upload Excel
+                        </span>
+                        <span className="text-xs text-gray-500 mt-0.5">
+                          Import attendance data
+                        </span>
+                      </div>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={(e) => {
+                          handleUploadExcel(e);
+                          setActionDropdownOpen(false);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      onClick={() => {
+                        const exportButton = document.querySelector(
+                          '[title="📥 Xuất Excel"]'
+                        );
+                        if (exportButton) exportButton.click();
+                        setActionDropdownOpen(false);
+                      }}
+                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                    >
+                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                        📥
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                          Xuất Excel
+                        </span>
+                        <span className="text-xs text-gray-500 mt-0.5">
+                          Export to Excel file
+                        </span>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setForm({
+                          id: "",
+                          stt: "",
+                          mnv: "",
+                          mvt: "",
+                          hoVaTen: "",
+                          gioiTinh: "YES",
+                          ngayThangNamSinh: "",
+                          maBoPhan: "",
+                          boPhan: "",
+                          gioVao: "",
+                          gioRa: "",
+                          caLamViec: "",
+                          chamCong: "",
+                        });
+                        setEditing(null);
+                        setShowModal(true);
+                        setActionDropdownOpen(false);
+                      }}
+                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 group"
+                    >
+                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                        ➕
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                          Thêm mới
+                        </span>
+                        <span className="text-xs text-gray-500 mt-0.5">
+                          Add new employee
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                )}
+                {/* Hidden ExportExcelButton for functionality */}
+                <div className="hidden">
+                  <ExportExcelButton
+                    data={filteredEmployees}
+                    selectedDate={selectedDate}
+                    title="📥 Xuất Excel"
+                    onSuccess={(msg) =>
+                      setAlert({ show: true, type: "success", message: msg })
+                    }
+                    onError={(msg) =>
+                      setAlert({ show: true, type: "error", message: msg })
+                    }
                   />
-                </label>
-              </>
+                </div>
+              </div>
             )}
-            {user && (
+
+            {/* Print Dropdown */}
+            <div className="relative">
               <button
-                onClick={() => {
-                  setForm({
-                    id: "",
-                    stt: "",
-                    mnv: "",
-                    mvt: "",
-                    hoVaTen: "",
-                    gioiTinh: "YES",
-                    ngayThangNamSinh: "",
-                    maBoPhan: "",
-                    boPhan: "",
-                    gioVao: "",
-                    gioRa: "",
-                    caLamViec: "",
-                    chamCong: "",
-                  });
-                  setEditing(null);
-                  setShowModal(true);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition"
+                onClick={() => setPrintDropdownOpen(!printDropdownOpen)}
+                className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition flex items-center gap-1"
               >
-                ➕ Thêm mới
+                🖨️ In
+                <span className="text-xs">{printDropdownOpen ? "▲" : "▼"}</span>
               </button>
-            )}
+              {printDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-blue-200 z-50 overflow-hidden animate-fadeIn">
+                  <button
+                    onClick={() => {
+                      handlePrintOvertimeList();
+                      setPrintDropdownOpen(false);
+                    }}
+                    className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                  >
+                    <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                      📋
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-gray-800 text-sm group-hover:text-blue-700 transition-colors">
+                        In đăng ký tăng ca
+                      </span>
+                      <span className="text-xs text-gray-500 mt-0.5">
+                        Overtime registration form
+                      </span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handlePrintAttendanceList();
+                      setPrintDropdownOpen(false);
+                    }}
+                    className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 flex items-center gap-3 group"
+                  >
+                    <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                      📝
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-gray-800 text-sm group-hover:text-blue-700 transition-colors">
+                        In danh sách chấm công
+                      </span>
+                      <span className="text-xs text-gray-500 mt-0.5">
+                        Attendance list report
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
