@@ -127,17 +127,32 @@ const Downloads = () => {
     });
   }, [files]);
 
-  const handleDownload = (file) => {
-    // Tải file từ thư mục public
-    const link = document.createElement("a");
-    link.href = file.url;
-    // Lấy tên file từ URL (phần sau dấu "/" cuối cùng)
-    const fileName = file.url.split("/").pop();
-    link.download = fileName;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (file) => {
+    try {
+      // Lấy tên file từ URL (phần sau dấu "/" cuối cùng)
+      const fileName = file.url.split("/").pop();
+
+      // Fetch file và tạo blob để tải xuống
+      const response = await fetch(file.url);
+      const blob = await response.blob();
+
+      // Tạo URL từ blob
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      // Tạo link download
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Giải phóng blob URL
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Lỗi tải file:", error);
+      alert("Không thể tải file. Vui lòng thử lại!");
+    }
 
     // Cập nhật lượt tải xuống vào Firebase
     const newCount = (downloadCounts[file.id] || 0) + 1;
