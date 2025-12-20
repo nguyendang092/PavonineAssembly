@@ -1206,7 +1206,7 @@ function AttendanceList() {
     }
     .approval-table th {
       border: 1px solid #000;
-      padding: 3px 5px;
+      padding: 6px 5px;
       text-align: center;
       font-weight: bold;
       background: #fff;
@@ -1284,9 +1284,9 @@ function AttendanceList() {
           <th>Phê duyệt /<br/>Approved by</th>
         </tr>
         <tr>
-          <td></td>
-          <td></td>
-          <td></td>
+          <td style="height: 40px;"></td>
+          <td style="height: 40px;"></td>
+          <td style="height: 40px;"></td>
         </tr>
       </table>
     </div>
