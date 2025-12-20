@@ -35,7 +35,7 @@ const Downloads = () => {
         size: "499 KB",
         type: "Excel",
         icon: "📗",
-        url: "/downloads/PAVONINE_Inventory Statement_092025.xlsx",
+        url: "/downloads/PAVONINE_Inventory Statement_122025.xlsx",
       },
       {
         name: "Mẫu giấy khen bản nằm ngang",
