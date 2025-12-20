@@ -93,6 +93,7 @@ const resources = {
         attendance: "Điểm danh",
         download: "Download",
         files: "Tài liệu",
+        inventory: "Kiểm kê",
       },
       temperatureMonitor: {
         dashboard: "Bảng điều khiển",
@@ -523,6 +524,7 @@ const resources = {
         attendance: "출석부",
         download: "다운로드",
         files: "파일",
+        inventory: "재고 실사",
       },
       temperatureMonitor: {
         dashboard: "대시보드",

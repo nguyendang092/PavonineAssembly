@@ -32,6 +32,7 @@ export const menuConfig = [
           },
           { key: "nhietdo", label: "navbar.nhietdo", path: "/nhietdo" },
           { key: "mold", label: "navbar.mold", path: "/mold" },
+          { key: "inventory", label: "navbar.inventory", path: "/inventory" },
           { key: "caiTien", label: "navbar.caiTien", path: "/performance" },
           {
             key: "leader",
@@ -122,5 +123,6 @@ export const routeConfig = [
   { path: "/mold", element: "MoldManager" },
   { path: "/performance", element: "PerformanceChart" },
   { path: "/attendance-list", element: "AttendanceList" },
+  { path: "/inventory", element: "Inventory" },
   { path: "/downloads", element: "Downloads" },
 ];

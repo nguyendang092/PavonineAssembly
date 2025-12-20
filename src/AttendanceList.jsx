@@ -848,7 +848,7 @@ function AttendanceList() {
     @media print {
       @page {
         size: A4 portrait;
-        margin: 10mm;
+        margin: 1;
       }
       * {
         -webkit-print-color-adjust: exact !important;
@@ -856,8 +856,12 @@ function AttendanceList() {
         color-adjust: exact !important;
       }
       body {
-        margin: 0;
-        padding: 0;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      html {
+        margin: 0 !important;
+        padding: 0 !important;
       }
       .no-print {
         display: none !important;
@@ -883,8 +887,8 @@ function AttendanceList() {
       line-height: 1.2;
       color: #000;
       background: white;
-      margin: 0 auto;
-      padding: 10mm;
+      margin: 0;
+      padding: 5mm;
       width: 100%;
       max-width: 210mm;
       box-sizing: border-box;
@@ -892,7 +896,7 @@ function AttendanceList() {
     
     .header {
       text-align: center;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       margin-left: auto;
       margin-right: auto;
     }
@@ -909,14 +913,14 @@ function AttendanceList() {
     .header .date {
       font-size: 9pt;
       font-weight: bold;
-      margin: 3px 0;
+      margin: 2px 0;
       color: #000;
     }
     
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 5px;
       font-size: 7pt;
       table-layout: fixed;
       margin-left: auto;
@@ -949,7 +953,7 @@ function AttendanceList() {
     }
     
     .footer {
-      margin-top: 15px;
+      margin-top: 8px;
       display: flex;
       justify-content: space-around;
     }
@@ -961,7 +965,7 @@ function AttendanceList() {
     
     .signature-title {
       font-weight: bold;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       font-size: 8pt;
     }
     
@@ -1029,7 +1033,7 @@ function AttendanceList() {
             <td>Phê duyệt</td>
           </tr>
           <tr>
-            <td style="height: 60px;">&nbsp;</td>
+            <td style="height: 50px;">&nbsp;</td>
             <td>&nbsp;</td>
             <td>&nbsp;</td>
             <td>&nbsp;</td>
@@ -1054,19 +1058,19 @@ function AttendanceList() {
   <table>
     <thead>
       <tr>
-        <th style="width: 4%;">STT</th>
-        <th style="width: 6%;">MNV</th>
-        <th style="width: 14%;">Họ và tên</th>
+        <th style="width: 3%;">STT</th>
+        <th style="width: 4%;">MNV</th>
+        <th style="width: 20%;">Họ và tên</th>
         <th style="width: 7%;">Ngày bắt đầu</th>
         <th style="width: 4%;">Mã BP</th>
-        <th style="width: 9%;">Bộ phận</th>
+        <th style="width: 5%;">Bộ phận</th>
         <th style="width: 7%;">Tổng thời gian tăng ca</th>
-        <th style="width: 7%;">Thời gian dự kiến<br/>Từ …h đến …h</th>
-        <th style="width: 7%;">Thời gian làm thêm ký<br/>(Hrs)</th>
-        <th style="width: 8%;">Chữ ký người lao động</th>
-        <th style="width: 7%;">Thời gian thực tế<br/>Từ …h đến …h</th>
-        <th style="width: 6%;">Số giờ làm thêm/ ngày</th>
-        <th style="width: 7%;">Ghi chú</th>
+        <th style="width: 8%;">Thời gian dự kiến<br/>Từ …h đến …h</th>
+        <th style="width: 5%;">Thời gian làm thêm<br/>(Hrs)</th>
+        <th style="width: 9%;">Chữ ký người lao động</th>
+        <th style="width: 8%;">Thời gian thực tế<br/>Từ …h đến …h</th>
+        <th style="width: 5%;">Số giờ làm thêm/ ngày</th>
+        <th style="width: 5%;">Ghi chú</th>
       </tr>
     </thead>
     <tbody>
@@ -1439,7 +1443,7 @@ function AttendanceList() {
         "Bộ phận",
         "Tổng thời gian làm thêm giờ",
         "Thời gian dự kiến\nTừ ...h đến ...h",
-        "Thời gian làm thêm giờ ký",
+        "Thời gian làm thêm giờ",
         "Chữ ký người lao động",
         "Thời gian thực tế\nTừ ...h đến ...h",
         "Số giờ làm thêm",
@@ -2780,7 +2784,7 @@ function AttendanceList() {
                         Từ ...h đến ...h
                       </th>
                       <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[110px]">
-                        Thời gian làm thêm giờ ký
+                        Thời gian làm thêm giờ
                       </th>
                       <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[120px]">
                         Chữ ký người lao động
