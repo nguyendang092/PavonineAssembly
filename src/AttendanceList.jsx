@@ -17,6 +17,7 @@ function AttendanceList() {
   // }, [user]);
 
   const [employees, setEmployees] = useState([]);
+  const [userDepartments, setUserDepartments] = useState(null); // User's allowed departments
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().slice(0, 10)
   );
@@ -68,6 +69,36 @@ function AttendanceList() {
     chamCong: "",
   });
 
+  // Load user's department permissions
+  useEffect(() => {
+    if (!user?.email) {
+      setUserDepartments(null);
+      return;
+    }
+
+    const userDeptsRef = ref(db, "userDepartments");
+    const unsubscribe = onValue(userDeptsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && typeof data === "object") {
+        const userMapping = Object.values(data).find(
+          (mapping) => mapping.email === user.email
+        );
+        if (userMapping) {
+          // Support both old format (department: string) and new format (departments: array)
+          const depts =
+            userMapping.departments ||
+            (userMapping.department ? [userMapping.department] : []);
+          setUserDepartments(depts);
+        } else {
+          setUserDepartments(null);
+        }
+      } else {
+        setUserDepartments(null);
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   // Load data from Firebase
   useEffect(() => {
     const empRef = ref(db, `attendance/${selectedDate}`);
@@ -96,6 +127,25 @@ function AttendanceList() {
       return () => clearTimeout(timer);
     }
   }, [alert.show]);
+
+  // Check if user can edit this employee's data
+  const canEditEmployee = useCallback(
+    (employee) => {
+      if (!user) return false;
+
+      // Admin and HR can edit everything
+      const isAdmin =
+        user.email === "admin@gmail.com" || user.email === "hr@pavonine.net";
+      if (isAdmin) return true;
+
+      // Check if user has permission for this department
+      if (!userDepartments || userDepartments.length === 0) return false;
+      if (!employee.boPhan) return false;
+
+      return userDepartments.includes(employee.boPhan);
+    },
+    [user, userDepartments]
+  );
 
   // Close print dropdown when clicking outside
   useEffect(() => {
@@ -3026,7 +3076,7 @@ function AttendanceList() {
                       <span className="text-green-600 font-bold text-base">
                         {emp.gioVao}
                       </span>
-                    ) : user ? (
+                    ) : canEditEmployee(emp) ? (
                       <div className="flex items-center justify-center gap-2">
                         <select
                           disabled={savingGioVao[emp.id]}
@@ -3119,7 +3169,7 @@ function AttendanceList() {
                       <span className="text-blue-600 font-bold text-base">
                         {emp.caLamViec}
                       </span>
-                    ) : user ? (
+                    ) : canEditEmployee(emp) ? (
                       <div className="flex items-center justify-center gap-2">
                         <select
                           disabled={savingCaLamViec[emp.id]}
