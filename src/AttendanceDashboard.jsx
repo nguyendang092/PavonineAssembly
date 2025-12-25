@@ -1,9 +1,41 @@
+// Danh sách các bộ phận thuộc sản xuất
+export const PRODUCTION_DEPARTMENTS = [
+  "Press",
+  "MC",
+  "Hairline",
+  "Anodizing",
+  "Assembly",
+  "Deco",
+  "TU",
+  "Komsa",
+  "OHF",
+  "Flip",
+  "PMF",
+  "Assy-1",
+];
+// Danh sách các bộ phận ưu tiên hiển thị lên trước
+export const PRIORITY_DEPARTMENTS = [
+  "Press",
+  "MC",
+  "Hairline",
+  "Anodizing",
+  "Assembly",
+  "Deco",
+  "TU",
+  "Komsa",
+  "OHF",
+  "Flip",
+  "PMF",
+  "Assy-1",
+];
 import React, { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "./UserContext";
 import { db, ref, onValue } from "./firebase";
 
 function AttendanceDashboard() {
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [globalFilter, setGlobalFilter] = useState("all"); // 'all' | 'sanxuat'
   const { t } = useTranslation();
   const { user } = useUser();
   const [selectedDate, setSelectedDate] = useState(
@@ -32,17 +64,27 @@ function AttendanceDashboard() {
     return () => unsubscribe();
   }, [selectedDate]);
 
-  // Calculate statistics
+  // Tạo filteredEmployees dựa trên globalFilter
+  const filteredEmployees = useMemo(() => {
+    if (globalFilter === "all") return employees;
+    // Sản xuất: chỉ lấy các bộ phận thuộc PRODUCTION_DEPARTMENTS
+    return employees.filter((e) => PRODUCTION_DEPARTMENTS.includes(e.boPhan));
+  }, [employees, globalFilter]);
+
+  // Tính toán thống kê từ filteredEmployees
   const stats = useMemo(() => {
-    const total = employees.length;
-    const present = employees.filter((e) => e.gioVao && e.gioVao !== "").length;
+    const total = filteredEmployees.length;
+    const present = filteredEmployees.filter(
+      (e) => e.gioVao && e.gioVao !== ""
+    ).length;
     const absent = total - present;
     const presentRate = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
 
-    // Statistics by department
+    // Statistics by department (chuẩn hóa tên bộ phận)
     const byDepartment = {};
-    employees.forEach((emp) => {
-      const dept = emp.boPhan || "Chưa phân bộ phận";
+    filteredEmployees.forEach((emp) => {
+      let dept = emp.boPhan || "Chưa phân bộ phận";
+      dept = String(dept).trim(); // loại bỏ dấu cách đầu/cuối
       if (!byDepartment[dept]) {
         byDepartment[dept] = { total: 0, present: 0, absent: 0 };
       }
@@ -56,23 +98,18 @@ function AttendanceDashboard() {
 
     // Statistics by shift
     const byShift = {};
-    employees.forEach((emp) => {
+    filteredEmployees.forEach((emp) => {
       let shift;
-
-      // If employee has gioVao with time format (HH:MM), classify as "Ca hành chính"
       if (emp.gioVao && emp.gioVao !== "") {
         const timePattern = /^(\d{1,2}):(\d{2})$/;
         if (timePattern.test(emp.gioVao)) {
           shift = "Ca hành chính";
         } else {
-          // If gioVao is not a time (e.g., CDL, VT, PN), use caLamViec or "Khác"
           shift = emp.caLamViec || "Khác";
         }
       } else {
-        // No gioVao
         shift = emp.caLamViec || "Chưa có ca";
       }
-
       if (!byShift[shift]) {
         byShift[shift] = 0;
       }
@@ -80,57 +117,39 @@ function AttendanceDashboard() {
     });
 
     // Statistics by gender
-    const male = employees.filter((e) => e.gioiTinh === "NO").length;
-    const female = employees.filter((e) => e.gioiTinh === "YES").length;
+    const male = filteredEmployees.filter((e) => e.gioiTinh === "NO").length;
+    const female = filteredEmployees.filter((e) => e.gioiTinh === "YES").length;
 
     // Statistics by attendance status with time grouping
     const statusCount = {};
-    let onTime = 0; // <= 07:35
-    let late = 0; // > 07:35
-
-    employees.forEach((emp) => {
+    let onTime = 0;
+    let late = 0;
+    filteredEmployees.forEach((emp) => {
       const gioVao = emp.gioVao;
-
-      // If no gioVao, count as absent
       if (!gioVao || gioVao === "") {
-        if (!statusCount["Vắng"]) {
-          statusCount["Vắng"] = 0;
-        }
+        if (!statusCount["Vắng"]) statusCount["Vắng"] = 0;
         statusCount["Vắng"]++;
         return;
       }
-
-      // Check if gioVao is a time format (HH:MM)
       const timePattern = /^(\d{1,2}):(\d{2})$/;
       const match = gioVao.match(timePattern);
-
       if (match) {
         const hours = parseInt(match[1]);
         const minutes = parseInt(match[2]);
         const totalMinutes = hours * 60 + minutes;
-        const cutoffTime = 7 * 60 + 35; // 07:35 in minutes
-
+        const cutoffTime = 7 * 60 + 35;
         if (totalMinutes <= cutoffTime) {
           onTime++;
         } else {
           late++;
         }
       } else {
-        // Not a time format (CDL, VT, PN, etc.)
-        if (!statusCount[gioVao]) {
-          statusCount[gioVao] = 0;
-        }
+        if (!statusCount[gioVao]) statusCount[gioVao] = 0;
         statusCount[gioVao]++;
       }
     });
-
-    // Add time-based groups to statusCount
-    if (onTime > 0) {
-      statusCount["Đúng giờ (≤07:35)"] = onTime;
-    }
-    if (late > 0) {
-      statusCount["Trễ giờ (>07:35)"] = late;
-    }
+    if (onTime > 0) statusCount["Đúng giờ (≤07:35)"] = onTime;
+    if (late > 0) statusCount["Trễ giờ (>07:35)"] = late;
 
     return {
       total,
@@ -143,7 +162,7 @@ function AttendanceDashboard() {
       female,
       statusCount,
     };
-  }, [employees]);
+  }, [filteredEmployees]);
 
   // Derived helpers for UI rendering
   const genderTotal = stats.male + stats.female;
@@ -158,6 +177,30 @@ function AttendanceDashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 text-center">
           <p className="text-gray-600">Vui lòng đăng nhập để xem dashboard</p>
+
+          {/* Bộ lọc tổng/production */}
+          <div className="flex gap-2 mt-4">
+            <button
+              className={`px-4 py-2 rounded-full font-semibold border transition-all duration-200 ${
+                globalFilter === "all"
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-blue-700 border-blue-300 hover:bg-blue-50"
+              }`}
+              onClick={() => setGlobalFilter("all")}
+            >
+              Tổng tất cả
+            </button>
+            <button
+              className={`px-4 py-2 rounded-full font-semibold border transition-all duration-200 ${
+                globalFilter === "sanxuat"
+                  ? "bg-green-600 text-white border-green-600"
+                  : "bg-white text-green-700 border-green-300 hover:bg-green-50"
+              }`}
+              onClick={() => setGlobalFilter("sanxuat")}
+            >
+              Sản xuất
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -188,6 +231,29 @@ function AttendanceDashboard() {
                 className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
+          </div>
+          {/* Bộ lọc tổng/production đặt ngay dưới tiêu đề */}
+          <div className="flex gap-2 mt-4">
+            <button
+              className={`px-4 py-2 rounded-full font-semibold border transition-all duration-200 ${
+                globalFilter === "all"
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-blue-700 border-blue-300 hover:bg-blue-50"
+              }`}
+              onClick={() => setGlobalFilter("all")}
+            >
+              Tổng tất cả
+            </button>
+            <button
+              className={`px-4 py-2 rounded-full font-semibold border transition-all duration-200 ${
+                globalFilter === "sanxuat"
+                  ? "bg-green-600 text-white border-green-600"
+                  : "bg-white text-green-700 border-green-300 hover:bg-green-50"
+              }`}
+              onClick={() => setGlobalFilter("sanxuat")}
+            >
+              Sản xuất
+            </button>
           </div>
         </div>
 
@@ -608,173 +674,207 @@ function AttendanceDashboard() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Object.entries(stats.byDepartment)
-                  .sort((a, b) => b[1].total - a[1].total)
-                  .map(([dept, data], index) => {
-                    const rate =
-                      data.total > 0
-                        ? ((data.present / data.total) * 100).toFixed(1)
-                        : 0;
-                    const maxTotal = Math.max(
-                      ...Object.values(stats.byDepartment).map((d) => d.total)
+                {(() => {
+                  // Sử dụng danh sách ưu tiên từ PRIORITY_DEPARTMENTS
+                  const customOrder = PRIORITY_DEPARTMENTS;
+                  let entries = Object.entries(stats.byDepartment);
+                  if (departmentFilter === "sanxuat") {
+                    // Luôn hiển thị tất cả bộ phận thuộc PRODUCTION_DEPARTMENTS, giữ nguyên thứ tự
+                    entries = PRODUCTION_DEPARTMENTS.map((dept) => [
+                      dept,
+                      entries.find(([d]) => d === dept)?.[1] || {
+                        total: 0,
+                        present: 0,
+                        absent: 0,
+                      },
+                    ]);
+                    // KHÔNG sort lại!
+                  } else if (departmentFilter !== "all") {
+                    entries = entries.filter(
+                      ([dept]) => dept === departmentFilter
                     );
-                    const widthPercent =
-                      maxTotal > 0 ? (data.total / maxTotal) * 100 : 0;
+                    entries.sort((a, b) => {
+                      const idxA = customOrder.indexOf(a[0]);
+                      const idxB = customOrder.indexOf(b[0]);
+                      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                      if (idxA !== -1) return -1;
+                      if (idxB !== -1) return 1;
+                      return a[0].localeCompare(b[0]);
+                    });
+                  } else {
+                    entries.sort((a, b) => {
+                      const idxA = customOrder.indexOf(a[0]);
+                      const idxB = customOrder.indexOf(b[0]);
+                      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                      if (idxA !== -1) return -1;
+                      if (idxB !== -1) return 1;
+                      return a[0].localeCompare(b[0]);
+                    });
+                  }
+                  return entries;
+                })().map(([dept, data], index) => {
+                  const rate =
+                    data.total > 0
+                      ? ((data.present / data.total) * 100).toFixed(1)
+                      : 0;
+                  const maxTotal = Math.max(
+                    ...Object.values(stats.byDepartment).map((d) => d.total)
+                  );
+                  const widthPercent =
+                    maxTotal > 0 ? (data.total / maxTotal) * 100 : 0;
 
-                    // Rotating colors for departments
-                    const colors = [
-                      {
-                        bg: "from-blue-400 to-blue-600",
-                        shadow: "shadow-blue-200",
-                        text: "text-blue-700",
-                      },
-                      {
-                        bg: "from-purple-400 to-purple-600",
-                        shadow: "shadow-purple-200",
-                        text: "text-purple-700",
-                      },
-                      {
-                        bg: "from-pink-400 to-pink-600",
-                        shadow: "shadow-pink-200",
-                        text: "text-pink-700",
-                      },
-                      {
-                        bg: "from-indigo-400 to-indigo-600",
-                        shadow: "shadow-indigo-200",
-                        text: "text-indigo-700",
-                      },
-                      {
-                        bg: "from-cyan-400 to-cyan-600",
-                        shadow: "shadow-cyan-200",
-                        text: "text-cyan-700",
-                      },
-                      {
-                        bg: "from-teal-400 to-teal-600",
-                        shadow: "shadow-teal-200",
-                        text: "text-teal-700",
-                      },
-                      {
-                        bg: "from-emerald-400 to-emerald-600",
-                        shadow: "shadow-emerald-200",
-                        text: "text-emerald-700",
-                      },
-                      {
-                        bg: "from-amber-400 to-amber-600",
-                        shadow: "shadow-amber-200",
-                        text: "text-amber-700",
-                      },
-                      {
-                        bg: "from-orange-400 to-orange-600",
-                        shadow: "shadow-orange-200",
-                        text: "text-orange-700",
-                      },
-                      {
-                        bg: "from-rose-400 to-rose-600",
-                        shadow: "shadow-rose-200",
-                        text: "text-rose-700",
-                      },
-                    ];
-                    const color = colors[index % colors.length];
+                  // Rotating colors for departments
+                  const colors = [
+                    {
+                      bg: "from-blue-400 to-blue-600",
+                      shadow: "shadow-blue-200",
+                      text: "text-blue-700",
+                    },
+                    {
+                      bg: "from-purple-400 to-purple-600",
+                      shadow: "shadow-purple-200",
+                      text: "text-purple-700",
+                    },
+                    {
+                      bg: "from-pink-400 to-pink-600",
+                      shadow: "shadow-pink-200",
+                      text: "text-pink-700",
+                    },
+                    {
+                      bg: "from-indigo-400 to-indigo-600",
+                      shadow: "shadow-indigo-200",
+                      text: "text-indigo-700",
+                    },
+                    {
+                      bg: "from-cyan-400 to-cyan-600",
+                      shadow: "shadow-cyan-200",
+                      text: "text-cyan-700",
+                    },
+                    {
+                      bg: "from-teal-400 to-teal-600",
+                      shadow: "shadow-teal-200",
+                      text: "text-teal-700",
+                    },
+                    {
+                      bg: "from-emerald-400 to-emerald-600",
+                      shadow: "shadow-emerald-200",
+                      text: "text-emerald-700",
+                    },
+                    {
+                      bg: "from-amber-400 to-amber-600",
+                      shadow: "shadow-amber-200",
+                      text: "text-amber-700",
+                    },
+                    {
+                      bg: "from-orange-400 to-orange-600",
+                      shadow: "shadow-orange-200",
+                      text: "text-orange-700",
+                    },
+                    {
+                      bg: "from-rose-400 to-rose-600",
+                      shadow: "shadow-rose-200",
+                      text: "text-rose-700",
+                    },
+                  ];
+                  const color = colors[index % colors.length];
 
-                    return (
-                      <div
-                        key={dept}
-                        className="group bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100"
-                      >
-                        {/* Department header */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-3 h-3 rounded-full bg-gradient-to-br ${color.bg} shadow-lg ${color.shadow}`}
-                            ></div>
-                            <h3 className="text-lg font-bold text-gray-800 group-hover:text-gray-900 transition-colors">
-                              {dept}
-                            </h3>
-                          </div>
+                  return (
+                    <div
+                      key={dept}
+                      className="group bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100"
+                    >
+                      {/* Department header */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
                           <div
-                            className={`px-4 py-2 rounded-full bg-gradient-to-r ${color.bg} text-white font-bold text-sm shadow-md`}
-                          >
-                            {rate}%
+                            className={`w-3 h-3 rounded-full bg-gradient-to-br ${color.bg} shadow-lg ${color.shadow}`}
+                          ></div>
+                          <h3 className="text-lg font-bold text-gray-800 group-hover:text-gray-900 transition-colors">
+                            {dept}
+                          </h3>
+                        </div>
+                        <div
+                          className={`px-4 py-2 rounded-full bg-gradient-to-r ${color.bg} text-white font-bold text-sm shadow-md`}
+                        >
+                          {rate}%
+                        </div>
+                      </div>
+
+                      {/* Stats cards */}
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 text-center border border-gray-200">
+                          <div className="text-xs text-gray-600 mb-1">
+                            Tổng số
+                          </div>
+                          <div className="text-2xl font-bold text-gray-800">
+                            {data.total}
                           </div>
                         </div>
-
-                        {/* Stats cards */}
-                        <div className="grid grid-cols-3 gap-3 mb-4">
-                          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 text-center border border-gray-200">
-                            <div className="text-xs text-gray-600 mb-1">
-                              Tổng số
-                            </div>
-                            <div className="text-2xl font-bold text-gray-800">
-                              {data.total}
-                            </div>
+                        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 text-center border border-green-200">
+                          <div className="text-xs text-green-700 mb-1">
+                            Có mặt
                           </div>
-                          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 text-center border border-green-200">
-                            <div className="text-xs text-green-700 mb-1">
-                              Có mặt
-                            </div>
-                            <div className="text-2xl font-bold text-green-600">
-                              {data.present}
-                            </div>
-                          </div>
-                          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-3 text-center border border-red-200">
-                            <div className="text-xs text-red-700 mb-1">
-                              Vắng
-                            </div>
-                            <div className="text-2xl font-bold text-red-600">
-                              {data.absent}
-                            </div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {data.present}
                           </div>
                         </div>
-
-                        {/* Progress bars */}
-                        <div className="space-y-2">
-                          {/* Attendance rate bar */}
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-semibold text-gray-600">
-                                Tỷ lệ có mặt
-                              </span>
-                              <span className="text-xs font-bold text-green-600">
-                                {rate}%
-                              </span>
-                            </div>
-                            <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-700 ease-out shadow-md"
-                                style={{ width: `${rate}%` }}
-                              >
-                                <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white to-transparent opacity-30"></div>
-                              </div>
-                            </div>
+                        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-3 text-center border border-red-200">
+                          <div className="text-xs text-red-700 mb-1">Vắng</div>
+                          <div className="text-2xl font-bold text-red-600">
+                            {data.absent}
                           </div>
                         </div>
+                      </div>
 
-                        {/* Detailed breakdown */}
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              <span className="text-gray-600">
-                                Có mặt:{" "}
-                                <span className="font-bold text-green-600">
-                                  {data.present}/{data.total}
-                                </span>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                              <span className="text-gray-600">
-                                Vắng:{" "}
-                                <span className="font-bold text-red-600">
-                                  {data.absent}/{data.total}
-                                </span>
-                              </span>
+                      {/* Progress bars */}
+                      <div className="space-y-2">
+                        {/* Attendance rate bar */}
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs font-semibold text-gray-600">
+                              Tỷ lệ có mặt
+                            </span>
+                            <span className="text-xs font-bold text-green-600">
+                              {rate}%
+                            </span>
+                          </div>
+                          <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-700 ease-out shadow-md"
+                              style={{ width: `${rate}%` }}
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white to-transparent opacity-30"></div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
+
+                      {/* Detailed breakdown */}
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-gray-600">
+                              Có mặt:{" "}
+                              <span className="font-bold text-green-600">
+                                {data.present}/{data.total}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span className="text-gray-600">
+                              Vắng:{" "}
+                              <span className="font-bold text-red-600">
+                                {data.absent}/{data.total}
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </>
