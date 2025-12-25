@@ -561,6 +561,55 @@ function AttendanceList() {
     [user, selectedDate]
   );
 
+  // Handle delete all data for selected date
+  const handleDeleteAllData = useCallback(async () => {
+    if (!user) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "Vui lòng đăng nhập để thực hiện thao tác này",
+      });
+      return;
+    }
+
+    // Hiển thị dialog xác nhận với thông tin ngày
+    const confirmMessage = `⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu chấm công ngày ${selectedDate}?\n\nSố lượng: ${employees.length} nhân viên\n\nHành động này KHÔNG THỂ HOÀN TÁC!`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    // Xác nhận lần 2
+    const finalConfirm =
+      "Nhập 'XOA' (viết hoa) để xác nhận xóa toàn bộ dữ liệu:";
+    const userInput = window.prompt(finalConfirm);
+
+    if (userInput !== "XOA") {
+      setAlert({
+        show: true,
+        type: "info",
+        message: "❌ Đã hủy thao tác xóa",
+      });
+      return;
+    }
+
+    try {
+      // Xóa toàn bộ dữ liệu của ngày đã chọn
+      await remove(ref(db, `attendance/${selectedDate}`));
+      setAlert({
+        show: true,
+        type: "success",
+        message: `✅ Đã xóa toàn bộ ${employees.length} bản ghi của ngày ${selectedDate}`,
+      });
+    } catch (err) {
+      console.error("Delete all data error:", err);
+      setAlert({
+        show: true,
+        type: "error",
+        message:
+          "❌ Lỗi khi xóa dữ liệu: " + (err?.message || "Vui lòng thử lại"),
+      });
+    }
+  }, [user, selectedDate, employees.length]);
+
   // Export to Excel (moved to external component)
 
   // Handle Overtime button - Export overtime form
@@ -1059,11 +1108,11 @@ function AttendanceList() {
     <thead>
       <tr>
         <th style="width: 3%;">STT</th>
-        <th style="width: 4%;">MNV</th>
+        <th style="width: 5%;">MNV</th>
         <th style="width: 20%;">Họ và tên</th>
         <th style="width: 7%;">Ngày bắt đầu</th>
-        <th style="width: 4%;">Mã BP</th>
-        <th style="width: 5%;">Bộ phận</th>
+        <th style="width: 8%;">Mã BP</th>
+        <th style="width: 10%;">Bộ phận</th>
         <th style="width: 7%;">Tổng thời gian tăng ca</th>
         <th style="width: 8%;">Thời gian dự kiến<br/>Từ …h đến …h</th>
         <th style="width: 5%;">Thời gian làm thêm<br/>(Hrs)</th>
@@ -1352,7 +1401,7 @@ function AttendanceList() {
           <th style="width:8%">Giới tính</th>
           <th style="width:12%">Ngày tháng năm sinh</th>
           <th style="width:7%">Mã BP</th>
-          <th style="width:12%">Bộ phận</th>
+          <th style="width:14%">Bộ phận</th>
           <th style="width:8%">Thời gian vào</th>
           <th style="width:8%">Thời gian ra</th>
           <th style="width:7%">Ca làm việc</th>
@@ -2264,7 +2313,7 @@ function AttendanceList() {
                         setShowModal(true);
                         setActionDropdownOpen(false);
                       }}
-                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 group"
+                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
                     >
                       <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
                         ➕
@@ -2275,6 +2324,25 @@ function AttendanceList() {
                         </span>
                         <span className="text-xs text-gray-500 mt-0.5">
                           Add new employee
+                        </span>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleDeleteAllData();
+                        setActionDropdownOpen(false);
+                      }}
+                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-red-50 hover:to-rose-50 transition-all duration-200 flex items-center gap-3 group"
+                    >
+                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                        🗑️
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-red-600 text-sm group-hover:text-red-700 transition-colors">
+                          Xóa toàn bộ dữ liệu
+                        </span>
+                        <span className="text-xs text-gray-500 mt-0.5">
+                          Delete all data for {selectedDate}
                         </span>
                       </div>
                     </button>
@@ -2974,6 +3042,7 @@ function AttendanceList() {
                           <option value="PN1/2">1/2 PN</option>
                           <option value="KL">KL</option>
                           <option value="KP">KP</option>
+                          <option value="TS">TS</option>
                           <option value="PO">PO</option>
                           <option value="TN">TN</option>
                           <option value="PC">PC</option>

@@ -389,7 +389,7 @@ const resources = {
         actions: "Hành động",
         edit: "Sửa",
         delete: "Xóa",
-        viewDetail: "Xem chi tiết",
+        viewDetail: "",
         confirmDeleteTitle: "Xác nhận xóa",
         confirmDeleteMessage: "Bạn có chắc muốn xóa khuôn này không?",
         cancel: "Hủy",

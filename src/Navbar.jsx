@@ -238,9 +238,14 @@ export default function Navbar({ user, setUser }) {
             <img
               src="/picture/logo/logo_pavo.jpg"
               alt={t("navbar.logoAlt")}
-              style={{ height: "50px" }}
+              style={{ height: "40px" }}
             />
           </a>
+        </div>
+
+        {/* Hamburger Menu Button */}
+        <div id="hamburger-menu" onClick={toggleMobileMenu}>
+          ☰
         </div>
 
         <div className="nav-items">

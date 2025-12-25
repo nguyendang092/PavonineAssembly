@@ -189,6 +189,15 @@ body {
     font-size: 32px;
 }
 
+#hamburger-menu {
+    display: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    padding: 10px 15px;
+    user-select: none;
+}
+
 .nav-button {
     background: linear-gradient(to right, #3b82f6, #8b5cf6);
     border-radius: 50px;
@@ -353,6 +362,28 @@ body {
 }
 
 @media only screen and (max-width: 1024px) {
+    .nav-logo img {
+        height: 30px !important;
+        max-height: 30px;
+    }
+
+    .navbar {
+        padding: 5px 10px;
+        justify-content: space-between;
+    }
+
+    #hamburger-menu {
+        display: block;
+    }
+
+    .nav-items {
+        display: none;
+    }
+
+    .user-controls {
+        gap: 10px;
+    }
+
     #mobile-menu {
         background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
         width: 100%;
