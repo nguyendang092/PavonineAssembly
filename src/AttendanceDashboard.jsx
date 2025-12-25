@@ -38,9 +38,26 @@ function AttendanceDashboard({
   // Tính toán thống kê từ filteredEmployees
   const stats = useMemo(() => {
     const total = filteredEmployees.length;
-    const present = filteredEmployees.filter(
-      (e) => e.gioVao && e.gioVao !== ""
-    ).length;
+    // Chỉ tính là chấm công nếu không phải các loại nghỉ/phép đặc biệt
+    const INVALID_ATTENDANCE = [
+      "PN",
+      "KP",
+      "KL",
+      "TN",
+      "PO",
+      "PC",
+      "PT",
+      "TS",
+      "DS",
+      "1/2 PN",
+    ];
+    const present = filteredEmployees.filter((e) => {
+      // Nếu có trường chamCong và nó thuộc loại nghỉ/phép thì không tính
+      if (e.chamCong && INVALID_ATTENDANCE.includes(e.chamCong.trim()))
+        return false;
+      // Nếu không có trường chamCong, chỉ tính nếu có giờ vào
+      return e.gioVao && e.gioVao !== "";
+    }).length;
     const absent = total - present;
     const presentRate = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
 
@@ -53,7 +70,12 @@ function AttendanceDashboard({
         byDepartment[dept] = { total: 0, present: 0, absent: 0 };
       }
       byDepartment[dept].total++;
-      if (emp.gioVao && emp.gioVao !== "") {
+      // Chỉ tính present nếu không phải các loại nghỉ/phép đặc biệt
+      if (
+        emp.gioVao &&
+        emp.gioVao !== "" &&
+        !(emp.chamCong && INVALID_ATTENDANCE.includes(emp.chamCong.trim()))
+      ) {
         byDepartment[dept].present++;
       } else {
         byDepartment[dept].absent++;
@@ -64,7 +86,12 @@ function AttendanceDashboard({
     const byShift = {};
     filteredEmployees.forEach((emp) => {
       let shift;
-      if (emp.gioVao && emp.gioVao !== "") {
+      // Chỉ tính present nếu không phải các loại nghỉ/phép đặc biệt
+      const isPresent =
+        emp.gioVao &&
+        emp.gioVao !== "" &&
+        !(emp.chamCong && INVALID_ATTENDANCE.includes(emp.chamCong.trim()));
+      if (isPresent) {
         const timePattern = /^(\d{1,2}):(\d{2})$/;
         if (timePattern.test(emp.gioVao)) {
           shift = "Ca hành chính";

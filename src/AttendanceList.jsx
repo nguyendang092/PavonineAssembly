@@ -515,6 +515,7 @@ function AttendanceList() {
         };
 
         // Prepare data for Firebase
+        // Use the selectedDate from the date picker, not the current date
         const attendanceRef = ref(db, `attendance/${selectedDate}`);
         const dataToUpload = {};
 
