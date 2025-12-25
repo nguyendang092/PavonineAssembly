@@ -21,6 +21,7 @@ import PerformanceChart from "./PerformanceChart";
 import AttendanceList from "./AttendanceList";
 import Downloads from "./Downloads";
 import Inventory from "./Inventory";
+import UserDepartmentManager from "./UserDepartmentManager";
 import {
   BrowserRouter as Router,
   Routes,
@@ -145,6 +146,9 @@ const App = () => {
                     break;
                   case "Inventory":
                     Element = Inventory;
+                    break;
+                  case "UserDepartmentManager":
+                    Element = UserDepartmentManager;
                     break;
                   case "Employ":
                     Element = (props) => (

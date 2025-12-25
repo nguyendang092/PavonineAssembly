@@ -65,6 +65,12 @@ export const menuConfig = [
             path: "/attendance-list",
           },
           {
+            key: "userDepartment",
+            label: "navbar.userDepartment",
+            path: "/user-department",
+            adminOnly: true,
+          },
+          {
             key: "honorBoard",
             label: "navbar.honorBoard",
             path: "/honor-board",
@@ -123,6 +129,7 @@ export const routeConfig = [
   { path: "/mold", element: "MoldManager" },
   { path: "/performance", element: "PerformanceChart" },
   { path: "/attendance-list", element: "AttendanceList" },
+  { path: "/user-department", element: "UserDepartmentManager" },
   { path: "/inventory", element: "Inventory" },
   { path: "/downloads", element: "Downloads" },
 ];

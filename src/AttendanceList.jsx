@@ -88,7 +88,7 @@ function AttendanceList() {
     return () => unsubscribe();
   }, [selectedDate]);
 
-  // Load user's department from Firebase
+  // Load user's department from Firebase userDepartments mapping
   useEffect(() => {
     if (!user || !user.email) {
       setUserDepartment(null);
@@ -101,27 +101,34 @@ function AttendanceList() {
       return;
     }
 
-    // Extract department from email pattern: pavo_PRESS@gmail.com -> Press
-    // Email format: pavo_[DEPARTMENT]@gmail.com or pavo_[DEPARTMENT]@pavonine.net
-    const emailMatch = user.email.match(/pavo_(\w+)@/i);
-    if (emailMatch) {
-      const deptFromEmail = emailMatch[1]; // e.g., "press", "mc"
-      // Normalize to match database format (e.g., "press" -> "Press", "MC" -> "MC")
-      const normalizedDept =
-        deptFromEmail.charAt(0).toUpperCase() +
-        deptFromEmail.slice(1).toLowerCase();
-      setUserDepartment(normalizedDept);
-      return;
-    }
-
-    // Fallback: Get user's department from employees data
-    const userEmp = employees.find(
-      (emp) => emp.hoVaTen === user.name || emp.mnv === user.email
-    );
-    if (userEmp) {
-      setUserDepartment(userEmp.boPhan);
-    }
-  }, [user, employees]);
+    // Get user's department from userDepartments mapping in Firebase
+    const userDeptsRef = ref(db, "userDepartments");
+    const unsubscribe = onValue(userDeptsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && typeof data === "object") {
+        // Find mapping for current user
+        const userMapping = Object.values(data).find(
+          (mapping) => mapping.email === user.email
+        );
+        if (userMapping) {
+          setUserDepartment(userMapping.department);
+        } else {
+          // Fallback: Extract from email pattern if no mapping found
+          const emailMatch = user.email.match(/pavo_(\w+)@/i);
+          if (emailMatch) {
+            const deptFromEmail = emailMatch[1];
+            const normalizedDept =
+              deptFromEmail.charAt(0).toUpperCase() +
+              deptFromEmail.slice(1).toLowerCase();
+            setUserDepartment(normalizedDept);
+          } else {
+            setUserDepartment(null);
+          }
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   // Auto-hide alert after 3s
   useEffect(() => {
@@ -1165,10 +1172,10 @@ function AttendanceList() {
       <tr>
         <th style="width: 3%;">STT</th>
         <th style="width: 5%;">MNV</th>
-        <th style="width: 20%;">Họ và tên</th>
+        <th style="width: 26%;">Họ và tên</th>
         <th style="width: 7%;">Ngày bắt đầu</th>
-        <th style="width: 8%;">Mã BP</th>
-        <th style="width: 10%;">Bộ phận</th>
+        <th style="width: 5%;">Mã BP</th>
+        <th style="width: 11%;">Bộ phận</th>
         <th style="width: 7%;">Tổng thời gian tăng ca</th>
         <th style="width: 8%;">Thời gian dự kiến<br/>Từ …h đến …h</th>
         <th style="width: 5%;">Thời gian làm thêm<br/>(Hrs)</th>
@@ -1453,7 +1460,7 @@ function AttendanceList() {
           <th style="width:4%">STT</th>
           <th style="width:7%">MNV</th>
           <th style="width:7%">MVT</th>
-          <th style="width:16%">Họ và tên</th>
+          <th style="width:26%">Họ và tên</th>
           <th style="width:8%">Giới tính</th>
           <th style="width:12%">Ngày tháng năm sinh</th>
           <th style="width:7%">Mã BP</th>
