@@ -5,6 +5,7 @@ import { db, ref, set, onValue, remove } from "./firebase";
 function UserDepartmentManager() {
   const { user } = useUser();
   const [userDepartments, setUserDepartments] = useState([]);
+  const [availableDepartments, setAvailableDepartments] = useState([]);
   const [form, setForm] = useState({
     email: "",
     department: "",
@@ -12,6 +13,32 @@ function UserDepartmentManager() {
   });
   const [editing, setEditing] = useState(null);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
+
+  // Load available departments from attendance data
+  useEffect(() => {
+    const attendanceRef = ref(db, "attendance");
+    const unsubscribe = onValue(attendanceRef, (snapshot) => {
+      const data = snapshot.val();
+      const depts = new Set();
+
+      if (data && typeof data === "object") {
+        // Iterate through all dates
+        Object.values(data).forEach((dateData) => {
+          if (dateData && typeof dateData === "object") {
+            // Iterate through all employees in that date
+            Object.values(dateData).forEach((emp) => {
+              if (emp.boPhan) {
+                depts.add(emp.boPhan);
+              }
+            });
+          }
+        });
+      }
+
+      setAvailableDepartments(Array.from(depts).sort());
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Load user-department mappings from Firebase
   useEffect(() => {
@@ -217,16 +244,26 @@ function UserDepartmentManager() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Bộ phận *
                 </label>
-                <input
-                  type="text"
+                <select
                   value={form.department}
                   onChange={(e) =>
                     setForm({ ...form, department: e.target.value })
                   }
-                  placeholder="Press, MC, MOD..."
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
-                />
+                >
+                  <option value="">-- Chọn bộ phận --</option>
+                  {availableDepartments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {availableDepartments.length > 0
+                    ? `${availableDepartments.length} bộ phận có sẵn`
+                    : "Đang tải danh sách bộ phận..."}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">

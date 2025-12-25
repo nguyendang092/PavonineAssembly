@@ -31,7 +31,6 @@ function AttendanceList() {
   const [savingGioVao, setSavingGioVao] = useState({}); // Track which gioVao is being saved
   const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
   const [savingCaLamViec, setSavingCaLamViec] = useState({}); // Track which caLamViec is being saved
-  const [userDepartment, setUserDepartment] = useState(null); // Store current user's department
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterMaBoPhanSearch, setFilterMaBoPhanSearch] = useState("");
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
@@ -87,48 +86,6 @@ function AttendanceList() {
     });
     return () => unsubscribe();
   }, [selectedDate]);
-
-  // Load user's department from Firebase userDepartments mapping
-  useEffect(() => {
-    if (!user || !user.email) {
-      setUserDepartment(null);
-      return;
-    }
-
-    // For admin/HR, no department restriction
-    if (user.email === "admin@gmail.com" || user.email === "hr@pavonine.net") {
-      setUserDepartment("ADMIN");
-      return;
-    }
-
-    // Get user's department from userDepartments mapping in Firebase
-    const userDeptsRef = ref(db, "userDepartments");
-    const unsubscribe = onValue(userDeptsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        // Find mapping for current user
-        const userMapping = Object.values(data).find(
-          (mapping) => mapping.email === user.email
-        );
-        if (userMapping) {
-          setUserDepartment(userMapping.department);
-        } else {
-          // Fallback: Extract from email pattern if no mapping found
-          const emailMatch = user.email.match(/pavo_(\w+)@/i);
-          if (emailMatch) {
-            const deptFromEmail = emailMatch[1];
-            const normalizedDept =
-              deptFromEmail.charAt(0).toUpperCase() +
-              deptFromEmail.slice(1).toLowerCase();
-            setUserDepartment(normalizedDept);
-          } else {
-            setUserDepartment(null);
-          }
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, [user]);
 
   // Auto-hide alert after 3s
   useEffect(() => {
@@ -317,23 +274,6 @@ function AttendanceList() {
     const search = departmentSearchTerm.toLowerCase();
     return departments.filter((dept) => dept.toLowerCase().includes(search));
   }, [departments, departmentSearchTerm]);
-
-  // Check if user can edit employee
-  const canEditEmployee = useCallback(
-    (emp) => {
-      if (!user) return false;
-      // Admin/HR can edit everyone
-      if (
-        user.email === "admin@gmail.com" ||
-        user.email === "hr@pavonine.net"
-      ) {
-        return true;
-      }
-      // Other users can only edit employees in their own department
-      return userDepartment && emp.boPhan === userDepartment;
-    },
-    [user, userDepartment]
-  );
 
   // Handle form input
   const handleChange = useCallback((e) => {
@@ -3086,7 +3026,7 @@ function AttendanceList() {
                       <span className="text-green-600 font-bold text-base">
                         {emp.gioVao}
                       </span>
-                    ) : user && canEditEmployee(emp) ? (
+                    ) : user ? (
                       <div className="flex items-center justify-center gap-2">
                         <select
                           disabled={savingGioVao[emp.id]}
@@ -3179,7 +3119,7 @@ function AttendanceList() {
                       <span className="text-blue-600 font-bold text-base">
                         {emp.caLamViec}
                       </span>
-                    ) : user && canEditEmployee(emp) ? (
+                    ) : user ? (
                       <div className="flex items-center justify-center gap-2">
                         <select
                           disabled={savingCaLamViec[emp.id]}
