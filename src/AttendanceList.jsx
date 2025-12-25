@@ -483,17 +483,33 @@ function AttendanceList() {
         const normalizeDate = (value) => {
           if (!value) return "";
           if (value instanceof Date) {
-            return value.toISOString().slice(0, 10);
+            // Lấy ngày theo UTC để không bị lệch múi giờ
+            return new Date(
+              Date.UTC(value.getFullYear(), value.getMonth(), value.getDate())
+            )
+              .toISOString()
+              .slice(0, 10);
           }
           if (typeof value === "number") {
+            // Excel serial date: ngày 0 là 1899-12-30
             const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-            const date = new Date(excelEpoch.getTime() + value * 86400000);
-            return date.toISOString().slice(0, 10);
+            // Luôn cộng số ngày và lấy UTC, không để JS tự chuyển múi giờ
+            const utcDate = new Date(excelEpoch.getTime() + value * 86400000);
+            return utcDate.toISOString().slice(0, 10);
           }
           if (typeof value === "string") {
+            // Chuẩn hóa chuỗi ngày yyyy-mm-dd hoặc dd/mm/yyyy
             const parsed = new Date(value);
             if (!isNaN(parsed.getTime()))
-              return parsed.toISOString().slice(0, 10);
+              return new Date(
+                Date.UTC(
+                  parsed.getFullYear(),
+                  parsed.getMonth(),
+                  parsed.getDate()
+                )
+              )
+                .toISOString()
+                .slice(0, 10);
           }
           return String(value);
         };

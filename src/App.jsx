@@ -19,7 +19,7 @@ import { routeConfig } from "./menuConfig";
 import MoldManager from "./MoldManager";
 import PerformanceChart from "./PerformanceChart";
 import AttendanceList from "./AttendanceList";
-import AttendanceDashboard from "./AttendanceDashboard";
+import AttendanceDashboardContainer from "./AttendanceDashboardContainer";
 import Downloads from "./Downloads";
 import Inventory from "./Inventory";
 import UserDepartmentManager from "./UserDepartmentManager";
@@ -143,7 +143,7 @@ const App = () => {
                     Element = AttendanceList;
                     break;
                   case "AttendanceDashboard":
-                    Element = AttendanceDashboard;
+                    Element = AttendanceDashboardContainer;
                     break;
                   case "Downloads":
                     Element = Downloads;
