@@ -8,7 +8,7 @@ function UserDepartmentManager() {
   const [availableDepartments, setAvailableDepartments] = useState([]);
   const [form, setForm] = useState({
     email: "",
-    department: "",
+    departments: [], // Thay từ department thành departments (array)
     description: "",
   });
   const [editing, setEditing] = useState(null);
@@ -84,11 +84,11 @@ function UserDepartmentManager() {
       return;
     }
 
-    if (!form.email || !form.department) {
+    if (!form.email || form.departments.length === 0) {
       setAlert({
         show: true,
         type: "error",
-        message: "Vui lòng điền đầy đủ Email và Bộ phận",
+        message: "Vui lòng điền đầy đủ Email và chọn ít nhất 1 Bộ phận",
       });
       return;
     }
@@ -98,7 +98,7 @@ function UserDepartmentManager() {
       const userDeptRef = ref(db, `userDepartments/${id}`);
       await set(userDeptRef, {
         email: form.email,
-        department: form.department,
+        departments: form.departments, // Lưu array bộ phận
         description: form.description || "",
         updatedAt: new Date().toISOString(),
         updatedBy: user.email,
@@ -110,7 +110,7 @@ function UserDepartmentManager() {
         message: editing ? "✅ Cập nhật thành công" : "✅ Thêm mới thành công",
       });
 
-      setForm({ email: "", department: "", description: "" });
+      setForm({ email: "", departments: [], description: "" });
       setEditing(null);
     } catch (err) {
       console.error("Save error:", err);
@@ -125,7 +125,8 @@ function UserDepartmentManager() {
   const handleEdit = (dept) => {
     setForm({
       email: dept.email,
-      department: dept.department,
+      departments:
+        dept.departments || (dept.department ? [dept.department] : []), // Support cả old và new format
       description: dept.description || "",
     });
     setEditing(dept.id);
@@ -161,8 +162,19 @@ function UserDepartmentManager() {
   };
 
   const handleCancel = () => {
-    setForm({ email: "", department: "", description: "" });
+    setForm({ email: "", departments: [], description: "" });
     setEditing(null);
+  };
+
+  const toggleDepartment = (dept) => {
+    setForm((prev) => {
+      const depts = prev.departments || [];
+      if (depts.includes(dept)) {
+        return { ...prev, departments: depts.filter((d) => d !== dept) };
+      } else {
+        return { ...prev, departments: [...depts, dept] };
+      }
+    });
   };
 
   if (!user) {
@@ -222,11 +234,9 @@ function UserDepartmentManager() {
 
         {/* Form */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
-            {editing ? "✏️ Chỉnh sửa mapping" : "➕ Thêm mapping mới"}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              {/* Email */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Email User *
@@ -240,62 +250,62 @@ function UserDepartmentManager() {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Bộ phận *
-                </label>
-                <select
-                  value={form.department}
-                  onChange={(e) =>
-                    setForm({ ...form, department: e.target.value })
-                  }
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">-- Chọn bộ phận --</option>
-                  {availableDepartments.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {availableDepartments.length > 0
-                    ? `${availableDepartments.length} bộ phận có sẵn`
-                    : "Đang tải danh sách bộ phận..."}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Mô tả
-                </label>
-                <input
-                  type="text"
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                  placeholder="Quản lý bộ phận Press"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                {editing ? "💾 Cập nhật" : "➕ Thêm mới"}
-              </button>
-              {editing && (
+
+              {/* Buttons */}
+              <div className="flex gap-2 items-end">
                 <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="px-6 py-2 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500 transition-colors"
+                  type="submit"
+                  className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
                 >
-                  ❌ Hủy
+                  {editing ? "💾 Cập nhật" : "➕ Thêm"}
                 </button>
-              )}
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-3 py-2 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500 transition-colors"
+                    title="Hủy chỉnh sửa"
+                  >
+                    ❌
+                  </button>
+                )}
+              </div>
+
+              {/* Bộ phận */}
+              <div className="md:col-span-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Bộ phận * ({form.departments.length} đã chọn)
+                </label>
+                <div className="border border-gray-300 rounded-lg p-2 max-h-40 overflow-y-auto bg-gray-50">
+                  {availableDepartments.length === 0 ? (
+                    <p className="text-gray-500 italic text-xs p-2">
+                      Đang tải danh sách bộ phận...
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-7 gap-3">
+                      {availableDepartments.map((dept) => (
+                        <label
+                          key={dept}
+                          className="flex items-center gap-2 cursor-pointer px-2 py-1 hover:bg-blue-100 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={form.departments.includes(dept)}
+                            onChange={() => toggleDepartment(dept)}
+                            className="w-4 h-4 rounded"
+                          />
+                          <span className="text-xs text-gray-700">{dept}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {form.departments.length === 0 && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Bạn phải chọn ít nhất 1 bộ phận
+                  </p>
+                )}
+              </div>
             </div>
           </form>
         </div>
@@ -346,10 +356,24 @@ function UserDepartmentManager() {
                           {dept.email}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-bold rounded-full">
-                          {dept.department}
-                        </span>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {Array.isArray(dept.departments) &&
+                          dept.departments.length > 0
+                            ? dept.departments.map((d) => (
+                                <span
+                                  key={d}
+                                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded"
+                                >
+                                  {d}
+                                </span>
+                              ))
+                            : dept.department && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded">
+                                  {dept.department}
+                                </span>
+                              )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-gray-600">
