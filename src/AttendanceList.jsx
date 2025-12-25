@@ -28,6 +28,10 @@ function AttendanceList() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
+  const [savingGioVao, setSavingGioVao] = useState({}); // Track which gioVao is being saved
+  const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
+  const [savingCaLamViec, setSavingCaLamViec] = useState({}); // Track which caLamViec is being saved
+  const [userDepartment, setUserDepartment] = useState(null); // Store current user's department
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterMaBoPhanSearch, setFilterMaBoPhanSearch] = useState("");
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
@@ -83,6 +87,41 @@ function AttendanceList() {
     });
     return () => unsubscribe();
   }, [selectedDate]);
+
+  // Load user's department from Firebase
+  useEffect(() => {
+    if (!user || !user.email) {
+      setUserDepartment(null);
+      return;
+    }
+
+    // For admin/HR, no department restriction
+    if (user.email === "admin@gmail.com" || user.email === "hr@pavonine.net") {
+      setUserDepartment("ADMIN");
+      return;
+    }
+
+    // Extract department from email pattern: pavo_PRESS@gmail.com -> Press
+    // Email format: pavo_[DEPARTMENT]@gmail.com or pavo_[DEPARTMENT]@pavonine.net
+    const emailMatch = user.email.match(/pavo_(\w+)@/i);
+    if (emailMatch) {
+      const deptFromEmail = emailMatch[1]; // e.g., "press", "mc"
+      // Normalize to match database format (e.g., "press" -> "Press", "MC" -> "MC")
+      const normalizedDept =
+        deptFromEmail.charAt(0).toUpperCase() +
+        deptFromEmail.slice(1).toLowerCase();
+      setUserDepartment(normalizedDept);
+      return;
+    }
+
+    // Fallback: Get user's department from employees data
+    const userEmp = employees.find(
+      (emp) => emp.hoVaTen === user.name || emp.mnv === user.email
+    );
+    if (userEmp) {
+      setUserDepartment(userEmp.boPhan);
+    }
+  }, [user, employees]);
 
   // Auto-hide alert after 3s
   useEffect(() => {
@@ -271,6 +310,23 @@ function AttendanceList() {
     const search = departmentSearchTerm.toLowerCase();
     return departments.filter((dept) => dept.toLowerCase().includes(search));
   }, [departments, departmentSearchTerm]);
+
+  // Check if user can edit employee
+  const canEditEmployee = useCallback(
+    (emp) => {
+      if (!user) return false;
+      // Admin/HR can edit everyone
+      if (
+        user.email === "admin@gmail.com" ||
+        user.email === "hr@pavonine.net"
+      ) {
+        return true;
+      }
+      // Other users can only edit employees in their own department
+      return userDepartment && emp.boPhan === userDepartment;
+    },
+    [user, userDepartment]
+  );
 
   // Handle form input
   const handleChange = useCallback((e) => {
@@ -3023,10 +3079,11 @@ function AttendanceList() {
                       <span className="text-green-600 font-bold text-base">
                         {emp.gioVao}
                       </span>
-                    ) : user ? (
+                    ) : user && canEditEmployee(emp) ? (
                       <div className="flex items-center justify-center gap-2">
                         <select
-                          className="border rounded px-2 py-1 text-sm text-green-700 font-bold focus:ring-2 focus:ring-green-300"
+                          disabled={savingGioVao[emp.id]}
+                          className="border rounded px-2 py-1 text-sm text-green-700 font-bold focus:ring-2 focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
                           value={editingGioVao[emp.id] || ""}
                           onChange={(e) => {
                             setEditingGioVao((prev) => ({
@@ -3051,27 +3108,56 @@ function AttendanceList() {
                         </select>
                         {editingGioVao[emp.id] && (
                           <button
+                            disabled={savingGioVao[emp.id]}
                             onClick={async () => {
                               const value = editingGioVao[emp.id];
                               if (value) {
-                                const empRef = ref(
-                                  db,
-                                  `attendance/${selectedDate}/${emp.id}`
-                                );
-                                await set(empRef, { ...emp, gioVao: value });
-                                setEditingGioVao((prev) => {
-                                  const newState = { ...prev };
-                                  delete newState[emp.id];
-                                  return newState;
-                                });
+                                setSavingGioVao((prev) => ({
+                                  ...prev,
+                                  [emp.id]: true,
+                                }));
+                                try {
+                                  const empRef = ref(
+                                    db,
+                                    `attendance/${selectedDate}/${emp.id}`
+                                  );
+                                  await set(empRef, { ...emp, gioVao: value });
+                                  setEditingGioVao((prev) => {
+                                    const newState = { ...prev };
+                                    delete newState[emp.id];
+                                    return newState;
+                                  });
+                                  setAlert({
+                                    show: true,
+                                    type: "success",
+                                    message: "✅ Cập nhật thành công",
+                                  });
+                                } catch (err) {
+                                  console.error("Save gioVao error:", err);
+                                  setAlert({
+                                    show: true,
+                                    type: "error",
+                                    message: "❌ Cập nhật thất bại",
+                                  });
+                                } finally {
+                                  setSavingGioVao((prev) => {
+                                    const newState = { ...prev };
+                                    delete newState[emp.id];
+                                    return newState;
+                                  });
+                                }
                               }
                             }}
-                            className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                            className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            ✓
+                            {savingGioVao[emp.id] ? "⏳" : "✓"}
                           </button>
                         )}
                       </div>
+                    ) : user ? (
+                      <span className="text-gray-400 italic text-xs">
+                        🔒 Không được phép chỉnh sửa
+                      </span>
                     ) : (
                       <span className="text-gray-400 italic">--</span>
                     )}
@@ -3082,9 +3168,87 @@ function AttendanceList() {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-sm text-center">
-                    <span className="text-gray-700 font-medium">
-                      {emp.caLamViec || "--"}
-                    </span>
+                    {emp.caLamViec ? (
+                      <span className="text-blue-600 font-bold text-base">
+                        {emp.caLamViec}
+                      </span>
+                    ) : user && canEditEmployee(emp) ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <select
+                          disabled={savingCaLamViec[emp.id]}
+                          className="border rounded px-2 py-1 text-sm text-blue-700 font-bold focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          value={editingCaLamViec[emp.id] || ""}
+                          onChange={(e) => {
+                            setEditingCaLamViec((prev) => ({
+                              ...prev,
+                              [emp.id]: e.target.value,
+                            }));
+                          }}
+                        >
+                          <option value="">Chọn ca</option>
+                          <option value="Ca đêm">Ca đêm</option>
+                          <option value="Ca 1">Ca 1</option>
+                          <option value="Ca 2">Ca 2</option>
+                          <option value="Ca hành chính">Ca hành chính</option>
+                        </select>
+                        {editingCaLamViec[emp.id] && (
+                          <button
+                            disabled={savingCaLamViec[emp.id]}
+                            onClick={async () => {
+                              const value = editingCaLamViec[emp.id];
+                              if (value) {
+                                setSavingCaLamViec((prev) => ({
+                                  ...prev,
+                                  [emp.id]: true,
+                                }));
+                                try {
+                                  const empRef = ref(
+                                    db,
+                                    `attendance/${selectedDate}/${emp.id}`
+                                  );
+                                  await set(empRef, {
+                                    ...emp,
+                                    caLamViec: value,
+                                  });
+                                  setEditingCaLamViec((prev) => {
+                                    const newState = { ...prev };
+                                    delete newState[emp.id];
+                                    return newState;
+                                  });
+                                  setAlert({
+                                    show: true,
+                                    type: "success",
+                                    message: "✅ Cập nhật thành công",
+                                  });
+                                } catch (err) {
+                                  console.error("Save caLamViec error:", err);
+                                  setAlert({
+                                    show: true,
+                                    type: "error",
+                                    message: "❌ Cập nhật thất bại",
+                                  });
+                                } finally {
+                                  setSavingCaLamViec((prev) => {
+                                    const newState = { ...prev };
+                                    delete newState[emp.id];
+                                    return newState;
+                                  });
+                                }
+                              }
+                            }}
+                            className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {savingCaLamViec[emp.id] ? "⏳" : "✓"}
+                          </button>
+                        )}
+                      </div>
+                    ) : user ? (
+                      <span className="text-gray-400 italic text-xs">
+                        🔒 Không được phép chỉnh sửa
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 italic">--</span>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-sm text-center">
                     <span className="text-gray-700 font-medium">
