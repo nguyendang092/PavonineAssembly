@@ -640,17 +640,23 @@ function AttendanceList() {
       });
       return;
     }
-
+    const isAdminOrHR =
+      user.email === "admin@gmail.com" || user.email === "hr@pavonine.net";
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "Chỉ admin hoặc HR mới được phép xóa toàn bộ dữ liệu!",
+      });
+      return;
+    }
     // Hiển thị dialog xác nhận với thông tin ngày
     const confirmMessage = `⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu chấm công ngày ${selectedDate}?\n\nSố lượng: ${employees.length} nhân viên\n\nHành động này KHÔNG THỂ HOÀN TÁC!`;
-
     if (!window.confirm(confirmMessage)) return;
-
     // Xác nhận lần 2
     const finalConfirm =
       "Nhập 'XOA' (viết hoa) để xác nhận xóa toàn bộ dữ liệu:";
     const userInput = window.prompt(finalConfirm);
-
     if (userInput !== "XOA") {
       setAlert({
         show: true,
@@ -659,7 +665,6 @@ function AttendanceList() {
       });
       return;
     }
-
     try {
       // Xóa toàn bộ dữ liệu của ngày đã chọn
       await remove(ref(db, `attendance/${selectedDate}`));
@@ -2323,10 +2328,13 @@ function AttendanceList() {
                       </span>
                       <div className="flex flex-col">
                         <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                          Upload Excel
+                          Upload Excel theo ngày
                         </span>
                         <span className="text-xs text-gray-500 mt-0.5">
-                          Import attendance data
+                          Import dữ liệu cho ngày:{" "}
+                          <span className="font-bold text-blue-600">
+                            {selectedDate}
+                          </span>
                         </span>
                       </div>
                       <input
@@ -2396,25 +2404,29 @@ function AttendanceList() {
                         </span>
                       </div>
                     </button>
-                    <button
-                      onClick={() => {
-                        handleDeleteAllData();
-                        setActionDropdownOpen(false);
-                      }}
-                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-red-50 hover:to-rose-50 transition-all duration-200 flex items-center gap-3 group"
-                    >
-                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                        🗑️
-                      </span>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-red-600 text-sm group-hover:text-red-700 transition-colors">
-                          Xóa toàn bộ dữ liệu
-                        </span>
-                        <span className="text-xs text-gray-500 mt-0.5">
-                          Delete all data for {selectedDate}
-                        </span>
-                      </div>
-                    </button>
+                    {user &&
+                      (user.email === "admin@gmail.com" ||
+                        user.email === "hr@pavonine.net") && (
+                        <button
+                          onClick={() => {
+                            handleDeleteAllData();
+                            setActionDropdownOpen(false);
+                          }}
+                          className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-red-50 hover:to-rose-50 transition-all duration-200 flex items-center gap-3 group"
+                        >
+                          <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                            🗑️
+                          </span>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-red-600 text-sm group-hover:text-red-700 transition-colors">
+                              Xóa toàn bộ dữ liệu
+                            </span>
+                            <span className="text-xs text-gray-500 mt-0.5">
+                              Delete all data for {selectedDate}
+                            </span>
+                          </div>
+                        </button>
+                      )}
                   </div>
                 )}
                 {/* Hidden ExportExcelButton for functionality */}
