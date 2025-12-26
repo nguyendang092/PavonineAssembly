@@ -7,9 +7,33 @@ import ExcelJS from "exceljs";
 import ExportExcelButton from "./ExportExcelButton";
 // import BirthdayCake from "./BirthdayCake";
 import BirthdayCakeBell from "./BirthdayCakeBell";
+import NotificationBell from "./NotificationBell";
 import Sidebar from "./Sidebar";
+import CenterPortal from "./CenterPortal";
 
 function AttendanceList() {
+  // State for add/edit modal open/close
+  const [showModal, setShowModal] = useState(false);
+  // State for main filter modal open/close
+  const [filterOpen, setFilterOpen] = useState(false);
+  // State for sidebar open/close
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // State for department search input in filter
+  const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
+  // State for single department filter (if used)
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  // State for main search input
+  const [searchTerm, setSearchTerm] = useState("");
+  // State for user department permissions
+  const [userDepartments, setUserDepartments] = useState(null);
+  // State for selected date (default to today)
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  });
   const { t } = useTranslation();
   const { user } = useUser();
 
@@ -20,37 +44,7 @@ function AttendanceList() {
 
   const [employees, setEmployees] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]); // Danh sách toàn bộ nhân viên
-  // Lấy toàn bộ danh sách nhân viên từ nhánh employees
-  useEffect(() => {
-    const empRef = ref(db, "employees");
-    const unsubscribe = onValue(empRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, emp]) => ({ id, ...emp }));
-        setAllEmployees(arr);
-      } else {
-        setAllEmployees([]);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-  const [userDepartments, setUserDepartments] = useState(null); // User's allowed departments
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
-  const [searchTerm, setSearchTerm] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("");
-  const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [alert, setAlert] = useState({ show: false, type: "", message: "" });
-  const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
-  const [savingGioVao, setSavingGioVao] = useState({}); // Track which gioVao is being saved
-  const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
-  const [savingCaLamViec, setSavingCaLamViec] = useState({}); // Track which caLamViec is being saved
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [filterMaBoPhanSearch, setFilterMaBoPhanSearch] = useState("");
+
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
   const [filterGenderSearch, setFilterGenderSearch] = useState("");
   const [filterShiftSearch, setFilterShiftSearch] = useState("");
@@ -85,6 +79,21 @@ function AttendanceList() {
     caLamViec: "",
     chamCong: "",
   });
+
+  // Lấy toàn bộ danh sách nhân viên từ nhánh employees
+  useEffect(() => {
+    const empRef = ref(db, "employees");
+    const unsubscribe = onValue(empRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && typeof data === "object") {
+        const arr = Object.entries(data).map(([id, emp]) => ({ id, ...emp }));
+        setAllEmployees(arr);
+      } else {
+        setAllEmployees([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Load user's department permissions
   useEffect(() => {
@@ -1167,58 +1176,7 @@ function AttendanceList() {
   </style>
 </head>
 <body>
-  <button class="print-button no-print" onclick="window.print()">🖨️ In</button>
-  <button class="close-button no-print" onclick="window.close()">✕ Đóng</button>
-  
-  <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 12px; max-width: 210mm; margin-left: auto; margin-right: auto;">
-    <!-- Bên trái: Header + bảng nhỏ -->
-    <div style="flex: 1;">
-      <h1 style="color: #c41e3a; font-size: 12pt; font-weight: bold; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">ĐĂNG KÝ LÀM THÊM GIỜ</h1>
-      <div style="font-size: 9pt; margin: 3px 0; color: #000;">OVERTIME REGISTRATION</div>
-      <div style="font-size: 8pt; font-weight: bold; margin-top: 5px;">Ngày/Date: ${overtimeDate}</div>
-    </div>
-    
-    <!-- Bên phải: Bảng Pavonine + thỏa thuận + nguyên tắc -->
-    <div style="flex: 1;">
-      <div style="border: 1.5px solid #000; padding: 5px; margin: 0 0 5px 0; background: #fff;">
-        <h2 style="margin: 0 0 3px 0; font-size: 9pt; font-weight: bold; text-align: center;"></h2>
-        <h3 style="margin: 0 0 2px 0; font-size: 8pt; font-weight: bold; text-align: center;">VĂN BẢN THỎA THUẬN CỦA NGƯỜI LAO ĐỘNG LÀM THÊM GIỜ</h3>
-        <p style="margin: 0 0 3px 0; font-size: 7pt; text-align: center;">DAILY ATTENDANCE & AGREEMENT FOR LABOR TO WORK OVER TIME (OT)</p>
-        
-        <table style="font-size: 6.5pt; width: 100%;">
-          <tr>
-            <td colspan="3" style="text-align: center; font-weight: bold;">TRƯỚC KHI TĂNG CA/ BEFORE OT</td>
-            <td colspan="3" style="text-align: center; font-weight: bold;">SAU TĂNG CA/ AFTER OT</td>
-          </tr>
-          <tr>
-            <td>Người lập</td>
-            <td>Kiểm tra</td>
-            <td>Phê duyệt</td>
-            <td>Người lập</td>
-            <td>Kiểm tra</td>
-            <td>Phê duyệt</td>
-          </tr>
-          <tr>
-            <td style="height: 50px;">&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-          </tr>
-        </table>
-      </div>
-    </div>
-  </div>
-  
-  <div style="border: 1.5px solid #000; padding: 5px; margin: 12px auto; background: #f9f9f9; max-width: 210mm;">
-    <h4 style="margin: 0 0 4px 0; text-align: center; font-size: 8pt; font-weight: bold;">NGUYÊN TẮC THỎA THUẬN LÀM THÊM GIỜ</h4>
-    <ol style="margin: 0; padding-left: 15px; font-size: 7pt; line-height: 1.3;">
-      <li>Người lao động ký tên bên dưới là đăng ký làm thêm giờ hoàn toàn tự nguyện không ép buộc.</li>
-      <li>Thời gian tăng ca phải được chính xác rõ ràng.</li>
-      <li>Thời gian tăng ca không được vượt quá 04 giờ/ngày.</li>
-      <li>Trường hợp đã đăng ký làm thêm giờ mà có việc đột xuất phải báo cáo quản lý.</li>
-    </ol>
+  // ...existing code...
   </div>
   
   <table>
@@ -1825,11 +1783,91 @@ function AttendanceList() {
               </div>
               <div className="flex items-center gap-4">
                 <BirthdayCakeBell employees={allEmployees} />
-                <div className="text-right text-xs text-gray-600">
-                  <p className="font-semibold"></p>
-                  <p className="mt-1">{/* Để trống cho mục đích khác */}</p>
-                  <p></p>
-                </div>
+                <NotificationBell
+                  count={
+                    employees.filter(
+                      (emp) =>
+                        (emp.gioVao && !emp.gioRa) || (!emp.gioVao && emp.gioRa)
+                    ).length
+                  }
+                >
+                  {/* Danh sách nhân viên chưa chấm công đủ */}
+                  {(() => {
+                    const list = employees.filter(
+                      (emp) =>
+                        (emp.gioVao && !emp.gioRa) || (!emp.gioVao && emp.gioRa)
+                    );
+                    if (list.length === 0)
+                      return (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            color: "#888",
+                            fontSize: 14,
+                            padding: 20,
+                          }}
+                        >
+                          Tất cả nhân viên đã chấm công đủ
+                        </div>
+                      );
+                    return (
+                      <div style={{ maxHeight: 600, overflow: "auto" }}>
+                        <table
+                          style={{
+                            width: "100%",
+                            minWidth: 600,
+                            borderCollapse: "collapse",
+                            fontSize: 14,
+                          }}
+                        >
+                          <thead
+                            style={{
+                              position: "sticky",
+                              top: 0,
+                              background: "#e3f2fd",
+                              zIndex: 1,
+                            }}
+                          >
+                            <tr>
+                              <th style={{ padding: 8 }}>STT</th>
+                              <th style={{ padding: 8 }}>MNV</th>
+                              <th style={{ padding: 8 }}>Họ và tên</th>
+                              <th style={{ padding: 8 }}>Bộ phận</th>
+                              <th style={{ padding: 8 }}>Giờ vào</th>
+                              <th style={{ padding: 8 }}>Giờ ra</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {list.map((emp, idx) => (
+                              <tr
+                                key={emp.id}
+                                style={{
+                                  background:
+                                    idx % 2 === 0 ? "#f8fbff" : "#fff",
+                                }}
+                              >
+                                <td style={{ textAlign: "center", padding: 8 }}>
+                                  {idx + 1}
+                                </td>
+                                <td style={{ textAlign: "center", padding: 8 }}>
+                                  {emp.mnv}
+                                </td>
+                                <td style={{ padding: 8 }}>{emp.hoVaTen}</td>
+                                <td style={{ padding: 8 }}>{emp.boPhan}</td>
+                                <td style={{ textAlign: "center", padding: 8 }}>
+                                  {emp.gioVao || "-"}
+                                </td>
+                                <td style={{ textAlign: "center", padding: 8 }}>
+                                  {emp.gioRa || "-"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </NotificationBell>
               </div>
             </div>
           </div>

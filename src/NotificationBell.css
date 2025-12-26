@@ -1,0 +1,112 @@
+/* ===== Bell button ===== */
+.birthday-cake-bell-btn {
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.birthday-cake-bell-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 18px rgba(25, 118, 210, 0.25);
+}
+
+/* ===== Bell shake ===== */
+@keyframes bell-shake {
+  0% { transform: rotate(0deg); }
+  20% { transform: rotate(-10deg); }
+  40% { transform: rotate(10deg); }
+  60% { transform: rotate(-6deg); }
+  80% { transform: rotate(6deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.birthday-cake-bell-shake span {
+  display: inline-block;
+  animation: bell-shake 1.5s infinite;
+  transform-origin: top center;
+}
+.notification-bell-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: linear-gradient(135deg, #f71c2e, #f71c2e);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.4);
+}
+/* ===== Badge ===== */
+.birthday-cake-bell-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: linear-gradient(135deg, #f336e3, #f336e3);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.4);
+}
+
+/* ===== Overlay ===== */
+.birthday-cake-bell-overlay {
+  backdrop-filter: blur(2px);
+}
+
+/* ===== Popup ===== */
+.birthday-cake-bell-list {
+  background: #ffffff;
+  border-radius: 18px;
+  overflow: hidden;
+  animation: popup-fade 0.25s ease;
+}
+
+@keyframes popup-fade {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ===== Scrollbar ===== */
+.birthday-cake-bell-list ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.birthday-cake-bell-list ::-webkit-scrollbar-track {
+  background: #f1f6fc;
+}
+
+.notification-bell-list ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #1d79f1, #1d79f1);
+  border-radius: 8px;
+}
+
+.birthday-cake-bell-list ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #f336e3, #f336e3);
+  border-radius: 8px;
+}
+.notification-bell-list button:hover {
+  background: #1d79f1;
+}
+/* ===== Close button hover ===== */
+.birthday-cake-bell-list button:hover {
+  background: #f336e3;
+}
