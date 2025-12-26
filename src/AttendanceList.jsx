@@ -44,7 +44,10 @@ function AttendanceList() {
 
   const [employees, setEmployees] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]); // Danh sách toàn bộ nhân viên
-
+  const [savingCaLamViec, setSavingCaLamViec] = useState({});
+  const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
+  const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
+  const [savingGioVao, setSavingGioVao] = useState({}); // Track which gioVao is being saved
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
   const [filterGenderSearch, setFilterGenderSearch] = useState("");
   const [filterShiftSearch, setFilterShiftSearch] = useState("");
