@@ -5,6 +5,8 @@ import { db, ref, set, onValue, push, remove, update, get } from "./firebase";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import ExportExcelButton from "./ExportExcelButton";
+// import BirthdayCake from "./BirthdayCake";
+import BirthdayCakeBell from "./BirthdayCakeBell";
 import Sidebar from "./Sidebar";
 
 function AttendanceList() {
@@ -17,6 +19,21 @@ function AttendanceList() {
   // }, [user]);
 
   const [employees, setEmployees] = useState([]);
+  const [allEmployees, setAllEmployees] = useState([]); // Danh sách toàn bộ nhân viên
+  // Lấy toàn bộ danh sách nhân viên từ nhánh employees
+  useEffect(() => {
+    const empRef = ref(db, "employees");
+    const unsubscribe = onValue(empRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && typeof data === "object") {
+        const arr = Object.entries(data).map(([id, emp]) => ({ id, ...emp }));
+        setAllEmployees(arr);
+      } else {
+        setAllEmployees([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
   const [userDepartments, setUserDepartments] = useState(null); // User's allowed departments
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().slice(0, 10)
@@ -599,8 +616,33 @@ function AttendanceList() {
           }
         });
 
-        // Save merged data
+        // Save merged data (attendance)
         await set(attendanceRef, mergedData);
+
+        // --- Cập nhật nhánh employees ---
+        const employeesRef = ref(db, "employees");
+        const employeesSnap = await get(employeesRef);
+        const employeesData = employeesSnap.val() || {};
+        // Tạo map theo mnv để dễ tra cứu
+        const employeesByMNV = {};
+        Object.values(employeesData).forEach((emp) => {
+          if (emp.mnv) employeesByMNV[emp.mnv] = emp;
+        });
+        // Merge hoặc thêm mới
+        Object.values(dataToUpload).forEach((newEmp) => {
+          if (newEmp.mnv) {
+            employeesByMNV[newEmp.mnv] = {
+              ...employeesByMNV[newEmp.mnv],
+              ...newEmp,
+            };
+          }
+        });
+        // Lưu lại employees (dạng object với key là mnv)
+        const employeesToSave = {};
+        Object.values(employeesByMNV).forEach((emp) => {
+          employeesToSave[emp.mnv] = emp;
+        });
+        await set(employeesRef, employeesToSave);
 
         // Show result message
         let message = `✅ Upload thành công ${uploadedCount} nhân viên mới`;
@@ -1139,7 +1181,7 @@ function AttendanceList() {
     <!-- Bên phải: Bảng Pavonine + thỏa thuận + nguyên tắc -->
     <div style="flex: 1;">
       <div style="border: 1.5px solid #000; padding: 5px; margin: 0 0 5px 0; background: #fff;">
-        <h2 style="margin: 0 0 3px 0; font-size: 9pt; font-weight: bold; text-align: center;">PAVONINE VINA CO.,LTD</h2>
+        <h2 style="margin: 0 0 3px 0; font-size: 9pt; font-weight: bold; text-align: center;"></h2>
         <h3 style="margin: 0 0 2px 0; font-size: 8pt; font-weight: bold; text-align: center;">VĂN BẢN THỎA THUẬN CỦA NGƯỜI LAO ĐỘNG LÀM THÊM GIỜ</h3>
         <p style="margin: 0 0 3px 0; font-size: 7pt; text-align: center;">DAILY ATTENDANCE & AGREEMENT FOR LABOR TO WORK OVER TIME (OT)</p>
         
@@ -1392,14 +1434,19 @@ function AttendanceList() {
     <button class="close-button no-print" onclick="doClose()">✕ Đóng</button>
     
     <div class="top-section">
-      <div class="company-header">
-        <img src="/picture/logo/logo.png" alt="Pavonine Logo" class="company-logo" onerror="this.style.display='none'">
-        <div class="company-info">
-          <div class="company-name">CÔNG TY TNHH PAVONINE VINA</div>
-          <div class="company-address">Lots VII-1, VII-2, and part of Lot VII-3, My Xuan B1 – Tien Hung</div>
-          <div class="company-address">Industrial Park, Phu My Ward, Ho Chi Minh City, Vietnam</div>
+      {/* React header section - ensure this is inside the React render tree, not static HTML */}
+      {typeof window !== 'undefined' && (
+        <div className="company-header" style={{ position: 'relative', minHeight: 80 }}>
+          {/* Logo giữ nguyên nếu muốn */}
+          {/* <img src="/picture/logo/logo.png" alt="Pavonine Logo" className="company-logo" onError={(e) => (e.target.style.display = 'none')} /> */}
+          <div className="company-info">
+            <div className="company-name"></div>
+            <div className="company-address"></div>
+          </div>
+          {/* Birthday notification bell */}
+          <BirthdayCakeBell employees={allEmployees} />
         </div>
-      </div>
+      )}
       
       <table class="approval-table">
         <tr>
@@ -1485,14 +1532,40 @@ function AttendanceList() {
       </thead>
       <tbody>`;
 
+    // Hàm kiểm tra sinh nhật trong tháng
+    function isBirthdayThisMonth(ngayThangNamSinh) {
+      if (!ngayThangNamSinh) return false;
+      let dateObj;
+      if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(ngayThangNamSinh)) {
+        const [y, m, d] = ngayThangNamSinh.split(/[-\/]/);
+        dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+      } else if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/.test(ngayThangNamSinh)) {
+        const [d, m, y] = ngayThangNamSinh.split(/[-\/]/);
+        dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+      } else {
+        return false;
+      }
+      const now = new Date();
+      return (
+        dateObj &&
+        dateObj.getMonth() === now.getMonth() &&
+        !isNaN(dateObj.getTime())
+      );
+    }
+
     filteredEmployees.forEach((emp, idx) => {
       const gioiTinh = emp.gioiTinh || "";
+      const isBirthday = isBirthdayThisMonth(emp.ngayThangNamSinh);
       html += `
         <tr>
           <td>${emp.stt || idx + 1}</td>
           <td>${emp.mnv || ""}</td>
           <td>${emp.mvt || ""}</td>
-          <td class="name">${emp.hoVaTen || ""}</td>
+          <td class="name">${emp.hoVaTen || ""}${
+        isBirthday
+          ? ' <span title="Sinh nhật tháng này" style="margin-left:4px;font-size:16px;">🎂</span>'
+          : ""
+      }</td>
           <td>${gioiTinh}</td>
           <td>${emp.ngayThangNamSinh || ""}</td>
           <td>${emp.maBoPhan || ""}</td>
@@ -1710,6 +1783,9 @@ function AttendanceList() {
 
   return (
     <>
+      {/* Sidebar */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
@@ -1747,13 +1823,13 @@ function AttendanceList() {
                   Ngày/Date: {new Date().toLocaleDateString("vi-VN")}
                 </p>
               </div>
-              <div className="text-right text-xs text-gray-600">
-                <p className="font-semibold">CÔNG TY TNHH PAVONINE VINA</p>
-                <p className="mt-1">
-                  Lots VII-3, VII-2, and part of Lot VII-3, My Xuan B1 - Tien
-                  Hung
-                </p>
-                <p>Industrial Park, Phu My Ward, Ho Chi Minh City, Vietnam</p>
+              <div className="flex items-center gap-4">
+                <BirthdayCakeBell employees={allEmployees} />
+                <div className="text-right text-xs text-gray-600">
+                  <p className="font-semibold"></p>
+                  <p className="mt-1">{/* Để trống cho mục đích khác */}</p>
+                  <p></p>
+                </div>
               </div>
             </div>
           </div>
@@ -2323,31 +2399,34 @@ function AttendanceList() {
                 </button>
                 {actionDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-50 overflow-hidden animate-fadeIn">
-                    <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
-                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                        📤
-                      </span>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                          Upload Excel theo ngày
+                    {(user.email === "admin@gmail.com" ||
+                      user.email === "hr@pavonine.net") && (
+                      <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
+                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                          📤
                         </span>
-                        <span className="text-xs text-gray-500 mt-0.5">
-                          Import dữ liệu cho ngày:{" "}
-                          <span className="font-bold text-blue-600">
-                            {selectedDate}
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                            Upload Excel theo ngày
                           </span>
-                        </span>
-                      </div>
-                      <input
-                        type="file"
-                        accept=".xlsx,.xls"
-                        onChange={(e) => {
-                          handleUploadExcel(e);
-                          setActionDropdownOpen(false);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            Import dữ liệu cho ngày:{" "}
+                            <span className="font-bold text-blue-600">
+                              {selectedDate}
+                            </span>
+                          </span>
+                        </div>
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls"
+                          onChange={(e) => {
+                            handleUploadExcel(e);
+                            setActionDropdownOpen(false);
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
                     <button
                       onClick={() => {
                         const exportButton = document.querySelector(
