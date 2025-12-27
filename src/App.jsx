@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useLayoutEffect } from "react";
+import SeasonEffect from "./SeasonEffect";
 import Employ from "./Employ";
 import Toast from "./Toast";
 import Navbar from "./Navbar";
@@ -87,9 +88,14 @@ const App = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Chọn hiệu ứng theo mùa ở đây, ví dụ: 'snow' hoặc 'newyear'
+  const [seasonEffect, setSeasonEffect] = useState("snow"); // hoặc 'newyear'
+
   return (
     <UserContext.Provider value={{ user, setUser }}>
       <Router>
+        {/* Hiệu ứng mùa: tuyết rơi hoặc Happy New Year */}
+        <SeasonEffect effect={seasonEffect} />
         <div className="min-h-screen flex flex-col bg-gray-50">
           {/* Navbar cố định */}
           <div

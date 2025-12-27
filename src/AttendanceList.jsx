@@ -37,11 +37,6 @@ function AttendanceList() {
   const { t } = useTranslation();
   const { user } = useUser();
 
-  // Debug: Log user state
-  // useEffect(() => {
-  //   console.log("AttendanceList - User:", user);
-  // }, [user]);
-
   const [employees, setEmployees] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]); // Danh sách toàn bộ nhân viên
   const [savingCaLamViec, setSavingCaLamViec] = useState({});

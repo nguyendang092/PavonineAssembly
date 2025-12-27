@@ -1,0 +1,38 @@
+.snow-container {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+}
+.snowflake {
+  position: absolute;
+  top: -2em;
+  color: #ffffff;
+  user-select: none;
+  animation: snow-fall linear infinite;
+}
+@keyframes snow-fall {
+  to {
+    transform: translateY(100vh);
+  }
+}
+
+.newyear-effect {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  font-size: 2.5rem;
+  color: gold;
+  text-shadow: 2px 2px 8px #ff0, 0 0 10px #f00;
+  animation: newyear-blink 1s infinite alternate;
+  pointer-events: none;
+}
+@keyframes newyear-blink {
+  0% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
