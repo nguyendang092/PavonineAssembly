@@ -1174,7 +1174,58 @@ function AttendanceList() {
   </style>
 </head>
 <body>
-  // ...existing code...
+   <button class="print-button no-print" onclick="window.print()">🖨️ In</button>
+  <button class="close-button no-print" onclick="window.close()">✕ Đóng</button>
+  
+  <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 12px; max-width: 210mm; margin-left: auto; margin-right: auto;">
+    <!-- Bên trái: Header + bảng nhỏ -->
+    <div style="flex: 1;">
+      <h1 style="color: #c41e3a; font-size: 12pt; font-weight: bold; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">ĐĂNG KÝ LÀM THÊM GIỜ</h1>
+      <div style="font-size: 9pt; margin: 3px 0; color: #000;">OVERTIME REGISTRATION</div>
+      <div style="font-size: 8pt; font-weight: bold; margin-top: 5px;">Ngày/Date: ${overtimeDate}</div>
+    </div>
+    
+    <!-- Bên phải: Bảng Pavonine + thỏa thuận + nguyên tắc -->
+    <div style="flex: 1;">
+      <div style="border: 1.5px solid #000; padding: 5px; margin: 0 0 5px 0; background: #fff;">
+        <h2 style="margin: 0 0 3px 0; font-size: 9pt; font-weight: bold; text-align: center;">PAVONINE VINA CO.,LTD</h2>
+        <h3 style="margin: 0 0 2px 0; font-size: 8pt; font-weight: bold; text-align: center;">VĂN BẢN THỎA THUẬN CỦA NGƯỜI LAO ĐỘNG LÀM THÊM GIỜ</h3>
+        <p style="margin: 0 0 3px 0; font-size: 7pt; text-align: center;">DAILY ATTENDANCE & AGREEMENT FOR LABOR TO WORK OVER TIME (OT)</p>
+        
+        <table style="font-size: 6.5pt; width: 100%;">
+          <tr>
+            <td colspan="3" style="text-align: center; font-weight: bold;">TRƯỚC KHI TĂNG CA/ BEFORE OT</td>
+            <td colspan="3" style="text-align: center; font-weight: bold;">SAU TĂNG CA/ AFTER OT</td>
+          </tr>
+          <tr>
+            <td>Người lập</td>
+            <td>Kiểm tra</td>
+            <td>Phê duyệt</td>
+            <td>Người lập</td>
+            <td>Kiểm tra</td>
+            <td>Phê duyệt</td>
+          </tr>
+          <tr>
+            <td style="height: 50px;">&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <div style="border: 1.5px solid #000; padding: 5px; margin: 12px auto; background: #f9f9f9; max-width: 210mm;">
+    <h4 style="margin: 0 0 4px 0; text-align: center; font-size: 8pt; font-weight: bold;">NGUYÊN TẮC THỎA THUẬN LÀM THÊM GIỜ</h4>
+    <ol style="margin: 0; padding-left: 15px; font-size: 7pt; line-height: 1.3;">
+      <li>Người lao động ký tên bên dưới là đăng ký làm thêm giờ hoàn toàn tự nguyện không ép buộc.</li>
+      <li>Thời gian tăng ca phải được chính xác rõ ràng.</li>
+      <li>Thời gian tăng ca không được vượt quá 04 giờ/ngày.</li>
+      <li>Trường hợp đã đăng ký làm thêm giờ mà có việc đột xuất phải báo cáo quản lý.</li>
+    </ol>
   </div>
   
   <table>
@@ -1390,19 +1441,14 @@ function AttendanceList() {
     <button class="close-button no-print" onclick="doClose()">✕ Đóng</button>
     
     <div class="top-section">
-      {/* React header section - ensure this is inside the React render tree, not static HTML */}
-      {typeof window !== 'undefined' && (
-        <div className="company-header" style={{ position: 'relative', minHeight: 80 }}>
-          {/* Logo giữ nguyên nếu muốn */}
-          {/* <img src="/picture/logo/logo.png" alt="Pavonine Logo" className="company-logo" onError={(e) => (e.target.style.display = 'none')} /> */}
-          <div className="company-info">
-            <div className="company-name"></div>
-            <div className="company-address"></div>
-          </div>
-          {/* Birthday notification bell */}
-          <BirthdayCakeBell employees={allEmployees} />
+      <div class="company-header">
+        <img src="/picture/logo/logo.png" alt="Pavonine Logo" class="company-logo" onerror="this.style.display='none'">
+        <div class="company-info">
+          <div class="company-name">CÔNG TY TNHH PAVONINE VINA</div>
+          <div class="company-address">Lots VII-1, VII-2, and part of Lot VII-3, My Xuan B1 – Tien Hung</div>
+          <div class="company-address">Industrial Park, Phu My Ward, Ho Chi Minh City, Vietnam</div>
         </div>
-      )}
+      </div>
       
       <table class="approval-table">
         <tr>
@@ -1519,7 +1565,7 @@ function AttendanceList() {
           <td>${emp.mvt || ""}</td>
           <td class="name">${emp.hoVaTen || ""}${
         isBirthday
-          ? ' <span title="Sinh nhật tháng này" style="margin-left:4px;font-size:16px;">🎂</span>'
+          ? ' <span title="Sinh nhật tháng này" style="margin-left:4px;font-size:8px;">🎂</span>'
           : ""
       }</td>
             <td>${gioiTinh}</td>
