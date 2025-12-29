@@ -12,6 +12,8 @@ import Sidebar from "./Sidebar";
 import CenterPortal from "./CenterPortal";
 
 function AttendanceList() {
+  // State for alert messages
+  const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   // State for add/edit modal open/close
   const [showModal, setShowModal] = useState(false);
   // State for main filter modal open/close
@@ -40,6 +42,7 @@ function AttendanceList() {
   const [employees, setEmployees] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]); // Danh sách toàn bộ nhân viên
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
+  const [editing, setEditing] = useState(null);
   const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
   const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
   const [savingGioVao, setSavingGioVao] = useState({}); // Track which gioVao is being saved
@@ -371,6 +374,7 @@ function AttendanceList() {
       if (editing) {
         const empRef = ref(db, `attendance/${selectedDate}/${editing}`);
         await set(empRef, { ...form, id: editing });
+        setShowModal(false); // Đóng popup sau khi cập nhật thành công
         setAlert({
           show: true,
           type: "success",
@@ -380,6 +384,7 @@ function AttendanceList() {
       } else {
         const newRef = push(ref(db, `attendance/${selectedDate}`));
         await set(newRef, { ...form, id: newRef.key });
+        setShowModal(false); // Đóng popup sau khi thêm mới thành công
         setAlert({
           show: true,
           type: "success",
@@ -401,7 +406,6 @@ function AttendanceList() {
         caLamViec: "",
         chamCong: "",
       });
-      setShowModal(false);
     } catch (err) {
       setAlert({
         show: true,
@@ -2670,22 +2674,23 @@ function AttendanceList() {
         {/* Modal Add/Edit */}
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl relative mx-4 overflow-y-auto max-h-[90vh]">
+            <div className="bg-gradient-to-br from-purple-50 via-white to-purple-200 rounded-2xl shadow-2xl p-8 w-full max-w-2xl relative mx-4 overflow-y-auto max-h-[90vh] border-2 border-blue-200 animate-fadeIn">
               <button
                 onClick={() => setShowModal(false)}
-                className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl font-bold"
+                className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 rounded-full transition"
+                aria-label="Đóng"
               >
                 ×
               </button>
-              <h2 className="text-lg font-bold mb-4 text-[#1e293b]">
+              <h2 className="text-xl font-extrabold mb-6 text-black tracking-wide text-center drop-shadow uppercase">
                 {editing ? "Cập nhật nhân viên" : "Thêm nhân viên mới"}
               </h2>
               <form
                 onSubmit={handleSubmit}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                className="grid grid-cols-1 sm:grid-cols-2 gap-6"
               >
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     STT
                   </label>
                   <input
@@ -2693,11 +2698,11 @@ function AttendanceList() {
                     name="stt"
                     value={form.stt}
                     onChange={handleChange}
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     MNV *
                   </label>
                   <input
@@ -2706,11 +2711,11 @@ function AttendanceList() {
                     value={form.mnv}
                     onChange={handleChange}
                     required
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     MVT
                   </label>
                   <input
@@ -2718,11 +2723,11 @@ function AttendanceList() {
                     name="mvt"
                     value={form.mvt}
                     onChange={handleChange}
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     Họ và tên *
                   </label>
                   <input
@@ -2731,25 +2736,25 @@ function AttendanceList() {
                     value={form.hoVaTen}
                     onChange={handleChange}
                     required
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     Giới tính
                   </label>
                   <select
                     name="gioiTinh"
                     value={form.gioiTinh}
                     onChange={handleChange}
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   >
                     <option value="YES">YES (Nữ)</option>
                     <option value="NO">NO (Nam)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     Ngày tháng năm sinh
                   </label>
                   <input
@@ -2757,11 +2762,11 @@ function AttendanceList() {
                     name="ngayThangNamSinh"
                     value={form.ngayThangNamSinh}
                     onChange={handleChange}
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     Mã bộ phận
                   </label>
                   <input
@@ -2769,11 +2774,11 @@ function AttendanceList() {
                     name="maBoPhan"
                     value={form.maBoPhan}
                     onChange={handleChange}
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     Bộ phận *
                   </label>
                   <input
@@ -2782,11 +2787,11 @@ function AttendanceList() {
                     value={form.boPhan}
                     onChange={handleChange}
                     required
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     Giờ vào
                   </label>
                   <input
@@ -2795,11 +2800,11 @@ function AttendanceList() {
                     value={form.gioVao}
                     onChange={handleChange}
                     placeholder="HH:MM hoặc mã phép (PN, KP,...)"
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     Giờ ra
                   </label>
                   <input
@@ -2807,11 +2812,11 @@ function AttendanceList() {
                     name="gioRa"
                     value={form.gioRa}
                     onChange={handleChange}
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     Ca làm việc
                   </label>
                   <input
@@ -2819,11 +2824,11 @@ function AttendanceList() {
                     name="caLamViec"
                     value={form.caLamViec}
                     onChange={handleChange}
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     Chấm công
                   </label>
                   <input
@@ -2831,12 +2836,12 @@ function AttendanceList() {
                     name="chamCong"
                     value={form.chamCong}
                     onChange={handleChange}
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-200"
+                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="sm:col-span-2 bg-blue-600 text-white py-2 rounded font-bold text-sm mt-2 hover:bg-blue-700 transition"
+                  className="sm:col-span-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-extrabold text-base mt-2 shadow-lg hover:from-blue-700 hover:to-purple-700 active:scale-95 transition-all duration-150 tracking-wide"
                 >
                   {editing ? "Cập nhật" : "Thêm mới"}
                 </button>
