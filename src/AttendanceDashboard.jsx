@@ -55,8 +55,10 @@ function AttendanceDashboard({
       // Nếu có trường chamCong và nó thuộc loại nghỉ/phép thì không tính
       if (e.chamCong && INVALID_ATTENDANCE.includes(e.chamCong.trim()))
         return false;
-      // Nếu không có trường chamCong, chỉ tính nếu có giờ vào
-      return e.gioVao && e.gioVao !== "";
+      // Nếu giờ vào là PN, TN, PO thì vẫn tính là vắng
+      if (["PN", "TN", "PO"].includes((e.gioVao || "").trim())) return false;
+      // Chỉ tính có mặt nếu giờ vào đúng định dạng giờ (HH:MM)
+      return /^\d{1,2}:\d{2}$/.test(e.gioVao);
     }).length;
     const absent = total - present;
     const presentRate = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
@@ -70,10 +72,23 @@ function AttendanceDashboard({
         byDepartment[dept] = { total: 0, present: 0, absent: 0 };
       }
       byDepartment[dept].total++;
-      // Chỉ tính present nếu không phải các loại nghỉ/phép đặc biệt
+      // Chỉ tính present nếu giờ vào đúng định dạng HH:MM và không phải PN, TN, PO, TS
+      const gioVao = (emp.gioVao || "").trim();
+      const ABSENT_CODES = [
+        "PN",
+        "PN1/2",
+        "KL",
+        "KP",
+        "TS",
+        "PO",
+        "TN",
+        "PC",
+        "PT",
+        "DS",
+      ];
       if (
-        emp.gioVao &&
-        emp.gioVao !== "" &&
+        /^\d{1,2}:\d{2}$/.test(gioVao) &&
+        !ABSENT_CODES.includes(gioVao) &&
         !(emp.chamCong && INVALID_ATTENDANCE.includes(emp.chamCong.trim()))
       ) {
         byDepartment[dept].present++;

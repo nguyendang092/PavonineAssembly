@@ -95,7 +95,7 @@ const App = () => {
     <UserContext.Provider value={{ user, setUser }}>
       <Router>
         {/* Hiệu ứng mùa: tuyết rơi hoặc Happy New Year */}
-        <SeasonEffect effect={seasonEffect} />
+        {/* <SeasonEffect effect={seasonEffect} /> */}
         <div className="min-h-screen flex flex-col bg-gray-50">
           {/* Navbar cố định */}
           <div

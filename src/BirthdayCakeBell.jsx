@@ -47,7 +47,7 @@ export default function BirthdayCakeBell({ employees }) {
           onClick={() => setOpen((o) => !o)}
           style={{
             position: "fixed",
-            top: 104,
+            top: 114,
             right: 104,
             zIndex: 2147483647,
             background: "#fff",
@@ -56,7 +56,7 @@ export default function BirthdayCakeBell({ employees }) {
             padding: 8,
           }}
         >
-          <span role="img" aria-label="birthday-cake" style={{ fontSize: 32 }}>
+          <span role="img" aria-label="birthday-cake" style={{ fontSize: 24 }}>
             🎂
           </span>
           {birthdayList.length > 0 && (

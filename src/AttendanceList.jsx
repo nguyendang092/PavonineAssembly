@@ -1522,14 +1522,18 @@ function AttendanceList() {
           ? ' <span title="Sinh nhật tháng này" style="margin-left:4px;font-size:16px;">🎂</span>'
           : ""
       }</td>
-          <td>${gioiTinh}</td>
-          <td>${emp.ngayThangNamSinh || ""}</td>
-          <td>${emp.maBoPhan || ""}</td>
-          <td class="dept">${emp.boPhan || ""}</td>
-          <td>${emp.gioVao || ""}</td>
-          <td>${emp.gioRa || ""}</td>
-          <td>${emp.caLamViec || ""}</td>
-          <td>${emp.chamCong || ""}</td>
+            <td>${gioiTinh}</td>
+            <td>${emp.ngayThangNamSinh || ""}</td>
+            <td>${emp.maBoPhan || ""}</td>
+            <td class="dept">${emp.boPhan || ""}</td>
+            <td style="${
+              ["PN", "TS", "PO"].includes(emp.gioVao)
+                ? "color:#c41e3a;font-weight:bold;"
+                : ""
+            }">${emp.gioVao || ""}</td>
+            <td>${emp.gioRa || ""}</td>
+            <td>${emp.caLamViec || ""}</td>
+            <td>${emp.chamCong || ""}</td>
         </tr>`;
     });
 
@@ -3217,14 +3221,20 @@ function AttendanceList() {
                   </td>
                   <td className="px-3 py-3 text-sm text-center">
                     {emp.gioVao ? (
-                      <span className="text-green-600 font-bold text-base">
+                      <span
+                        className={`font-bold text-base ${
+                          /^\d{1,2}:\d{2}$/.test(emp.gioVao)
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
                         {emp.gioVao}
                       </span>
                     ) : canEditEmployee(emp) ? (
                       <div className="flex items-center justify-center gap-2">
                         <select
                           disabled={savingGioVao[emp.id]}
-                          className="border rounded px-2 py-1 text-sm text-green-700 font-bold focus:ring-2 focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="border rounded px-2 py-1 text-sm text-red-700 font-bold focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
                           value={editingGioVao[emp.id] || ""}
                           onChange={(e) => {
                             setEditingGioVao((prev) => ({

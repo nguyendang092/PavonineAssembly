@@ -27,7 +27,7 @@ export default function NotificationBell({
         padding: 8,
       }}
     >
-      <span role="img" aria-label="bell" style={{ fontSize: 32 }}>
+      <span role="img" aria-label="bell" style={{ fontSize: 24 }}>
         🔔
       </span>
       {count > 0 && <span className="notification-bell-badge">{count}</span>}
