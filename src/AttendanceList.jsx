@@ -609,15 +609,31 @@ function AttendanceList() {
         Object.entries(dataToUpload).forEach(([key, newEmp]) => {
           const isDuplicate = existingMNVs.includes(newEmp.mnv);
           if (isDuplicate) {
-            // Update existing employee with new data
+            // Update existing employee with new data, chỉ cập nhật gioVao nếu giá trị mới không rỗng
             const existingKey = Object.keys(existingData).find(
               (k) => existingData[k].mnv === newEmp.mnv
             );
             if (existingKey) {
-              mergedData[existingKey] = {
-                ...mergedData[existingKey],
-                ...newEmp,
-              };
+              const oldEmp = mergedData[existingKey] || {};
+              const mergedEmp = { ...oldEmp };
+              Object.keys(newEmp).forEach((field) => {
+                if (field === "gioVao") {
+                  const newValue = newEmp[field];
+                  if (
+                    newValue !== undefined &&
+                    newValue !== null &&
+                    newValue !== ""
+                  ) {
+                    mergedEmp[field] = newValue;
+                  }
+                  // Nếu giá trị mới rỗng, giữ nguyên giá trị cũ
+                } else {
+                  if (newEmp[field] !== undefined && newEmp[field] !== "") {
+                    mergedEmp[field] = newEmp[field];
+                  }
+                }
+              });
+              mergedData[existingKey] = mergedEmp;
             }
             duplicateCount++;
           } else {
@@ -642,10 +658,43 @@ function AttendanceList() {
         // Merge hoặc thêm mới
         Object.values(dataToUpload).forEach((newEmp) => {
           if (newEmp.mnv) {
-            employeesByMNV[newEmp.mnv] = {
-              ...employeesByMNV[newEmp.mnv],
-              ...newEmp,
-            };
+            const oldEmp = employeesByMNV[newEmp.mnv] || {};
+            const mergedEmp = { ...oldEmp };
+            Object.keys(newEmp).forEach((key) => {
+              if (key === "gioVao") {
+                const specialCodes = [
+                  "PN",
+                  "1/2PN",
+                  "KP",
+                  "KL",
+                  "TN",
+                  "PC",
+                  "PT",
+                  "PO",
+                  "TS",
+                  "DS",
+                ];
+                const newValue = newEmp[key];
+                if (
+                  newValue === undefined ||
+                  newValue === null ||
+                  newValue === ""
+                ) {
+                  // Nếu giá trị mới rỗng, giữ nguyên giá trị cũ
+                  // Không làm gì
+                } else if (specialCodes.includes(newValue)) {
+                  mergedEmp[key] = newValue;
+                } else {
+                  // Nếu là chuỗi giờ (dạng HH:mm hoặc HH:mm:ss) hoặc số, vẫn cập nhật
+                  mergedEmp[key] = newValue;
+                }
+              } else {
+                if (newEmp[key] !== undefined && newEmp[key] !== "") {
+                  mergedEmp[key] = newEmp[key];
+                }
+              }
+            });
+            employeesByMNV[newEmp.mnv] = mergedEmp;
           }
         });
         // Lưu lại employees (dạng object với key là mnv)
@@ -939,7 +988,9 @@ function AttendanceList() {
 
     // Nếu là số (Excel serial date)
     if (typeof value === "number") {
-      const date = new Date((value - 25569) * 86400 * 1000);
+      // Excel serial date: 1 = 1900-01-01, JS Date: 1970-01-01
+      // Remove -1 day offset (was causing -1 day bug)
+      const date = new Date((value - 25569) * 86400 * 1000 + 0.5); // +0.5 to avoid timezone issues
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, "0");
       const day = String(date.getDate()).padStart(2, "0");
@@ -1234,7 +1285,7 @@ function AttendanceList() {
   
   <table>
     <thead>
-      <tr>
+      <tr style="height: 70px;">
         <th style="width: 3%;">STT</th>
         <th style="width: 5%;">MNV</th>
         <th style="width: 26%;">Họ và tên</th>

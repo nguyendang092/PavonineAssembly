@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 export const PRODUCTION_DEPARTMENTS = [
   "Press",
   "MC",
-  "Hairline",
+  "Hairline ",
   "Anodizing",
   "Assembly",
   "Deco",

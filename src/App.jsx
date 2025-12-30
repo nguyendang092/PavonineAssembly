@@ -22,7 +22,6 @@ import PerformanceChart from "./PerformanceChart";
 import AttendanceList from "./AttendanceList";
 import AttendanceDashboardContainer from "./AttendanceDashboardContainer";
 import Downloads from "./Downloads";
-import Inventory from "./Inventory";
 import UserDepartmentManager from "./UserDepartmentManager";
 import {
   BrowserRouter as Router,
@@ -154,9 +153,9 @@ const App = () => {
                   case "Downloads":
                     Element = Downloads;
                     break;
-                  case "Inventory":
-                    Element = Inventory;
-                    break;
+                  // case "Inventory":
+                  //   Element = Inventory;
+                  //   break;
                   case "UserDepartmentManager":
                     Element = UserDepartmentManager;
                     break;
