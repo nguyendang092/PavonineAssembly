@@ -165,11 +165,14 @@ function AttendanceList() {
         user.email === "admin@gmail.com" || user.email === "hr@pavonine.net";
       if (isAdmin) return true;
 
-      // Check if user has permission for this department
+      // Check if user has permission for this department (case-insensitive, trimmed)
       if (!userDepartments || userDepartments.length === 0) return false;
       if (!employee.boPhan) return false;
 
-      return userDepartments.includes(employee.boPhan);
+      const empDept = (employee.boPhan || "").trim().toLowerCase();
+      return userDepartments.some(
+        (dept) => (dept || "").trim().toLowerCase() === empDept
+      );
     },
     [user, userDepartments]
   );
@@ -281,6 +284,34 @@ function AttendanceList() {
     }
     return Array.from(depts);
   }, [employees, gioiTinhFilter, maBoPhanFilter, caLamViecFilter]);
+
+  // Filtered list for 'bù công' (gioVao là giờ, không phải loại như PN, PO...)
+  const buCongEmployees = useMemo(() => {
+    // Strictly matches hh:mm or hh:mm:ss (no extra chars, no spaces)
+    const timeRegex = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+    // Danh sách các loại cần loại ra khỏi bù công (không phân biệt hoa thường, loại bỏ khoảng trắng)
+    const excludeTypes = [
+      "PN",
+      "PN1/2",
+      "PO",
+      "TS",
+      "KL",
+      "KP",
+      "CDL",
+      "VT",
+      "TN",
+      "PC",
+      "PT",
+      "DS",
+    ];
+    return filteredEmployees.filter((emp) => {
+      if (!emp.gioVao) return false;
+      const value = (emp.gioVao || "").trim().toUpperCase();
+      if (excludeTypes.includes(value)) return false;
+      // Chỉ nhận giá trị là giờ hợp lệ
+      return timeRegex.test(value);
+    });
+  }, [filteredEmployees]);
 
   // Get unique genders (cascading filter - based on other selected filters)
   const genderList = useMemo(() => {
@@ -1503,6 +1534,42 @@ function AttendanceList() {
           <div class="company-address">Lots VII-1, VII-2, and part of Lot VII-3, My Xuan B1 – Tien Hung</div>
           <div class="company-address">Industrial Park, Phu My Ward, Ho Chi Minh City, Vietnam</div>
         </div>
+
+        {/* Danh sách nhân viên bù công */}
+        <div className="mt-6 bg-yellow-50 rounded-lg shadow-md p-4 border-l-4 border-yellow-600">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-bold text-yellow-800 flex items-center">
+              🕒 Danh sách nhân viên bù công (giờ vào là giờ):
+              <span className="ml-2 text-lg text-yellow-700">{buCongEmployees.length}</span>
+            </span>
+          </div>
+          {buCongEmployees.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead>
+                  <tr className="bg-yellow-100">
+                    <th className="px-3 py-2 text-xs font-bold text-yellow-800 text-center">STT</th>
+                    <th className="px-4 py-2 text-xs font-bold text-yellow-800 text-center">Họ và tên</th>
+                    <th className="px-3 py-2 text-xs font-bold text-yellow-800 text-center">Bộ phận</th>
+                    <th className="px-3 py-2 text-xs font-bold text-yellow-800 text-center">Giờ vào</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {buCongEmployees.map((emp, idx) => (
+                    <tr key={emp.id} className="bg-white hover:bg-yellow-50">
+                      <td className="px-3 py-2 text-center text-sm font-semibold">{idx + 1}</td>
+                      <td className="px-4 py-2 text-center text-sm">{emp.hoVaTen}</td>
+                      <td className="px-3 py-2 text-center text-sm">{emp.boPhan}</td>
+                      <td className="px-3 py-2 text-center text-sm font-bold text-yellow-700">{emp.gioVao}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-gray-500 italic">Không có nhân viên bù công nào.</div>
+          )}
+        </div>
       </div>
       
       <table class="approval-table">
@@ -1886,90 +1953,71 @@ function AttendanceList() {
               </div>
               <div className="flex items-center gap-4">
                 <BirthdayCakeBell employees={allEmployees} />
-                <NotificationBell
-                  count={
-                    employees.filter(
-                      (emp) =>
-                        (emp.gioVao && !emp.gioRa) || (!emp.gioVao && emp.gioRa)
-                    ).length
-                  }
-                >
-                  {/* Danh sách nhân viên chưa chấm công đủ */}
-                  {(() => {
-                    const list = employees.filter(
-                      (emp) =>
-                        (emp.gioVao && !emp.gioRa) || (!emp.gioVao && emp.gioRa)
-                    );
-                    if (list.length === 0)
-                      return (
-                        <div
+                <NotificationBell count={buCongEmployees.length}>
+                  {/* Danh sách nhân viên bù công */}
+                  {buCongEmployees.length === 0 ? (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        color: "#888",
+                        fontSize: 14,
+                        padding: 20,
+                      }}
+                    >
+                      Không có nhân viên bù công nào
+                    </div>
+                  ) : (
+                    <div style={{ maxHeight: 600, overflow: "auto" }}>
+                      <table
+                        style={{
+                          width: "100%",
+                          minWidth: 600,
+                          borderCollapse: "collapse",
+                          fontSize: 14,
+                        }}
+                      >
+                        <thead
                           style={{
-                            textAlign: "center",
-                            color: "#888",
-                            fontSize: 14,
-                            padding: 20,
+                            position: "sticky",
+                            top: 0,
+                            background: "#e3f2fd",
+                            zIndex: 1,
                           }}
                         >
-                          Tất cả nhân viên đã chấm công đủ
-                        </div>
-                      );
-                    return (
-                      <div style={{ maxHeight: 600, overflow: "auto" }}>
-                        <table
-                          style={{
-                            width: "100%",
-                            minWidth: 600,
-                            borderCollapse: "collapse",
-                            fontSize: 14,
-                          }}
-                        >
-                          <thead
-                            style={{
-                              position: "sticky",
-                              top: 0,
-                              background: "#e3f2fd",
-                              zIndex: 1,
-                            }}
-                          >
-                            <tr>
-                              <th style={{ padding: 8 }}>STT</th>
-                              <th style={{ padding: 8 }}>MNV</th>
-                              <th style={{ padding: 8 }}>Họ và tên</th>
-                              <th style={{ padding: 8 }}>Bộ phận</th>
-                              <th style={{ padding: 8 }}>Giờ vào</th>
-                              <th style={{ padding: 8 }}>Giờ ra</th>
+                          <tr>
+                            <th style={{ padding: 8 }}>STT</th>
+                            <th style={{ padding: 8 }}>MNV</th>
+                            <th style={{ padding: 8 }}>Họ và tên</th>
+                            <th style={{ padding: 8 }}>Bộ phận</th>
+                            <th style={{ padding: 8 }}>Giờ vào</th>
+                            <th style={{ padding: 8 }}>Giờ ra</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {buCongEmployees.map((emp, idx) => (
+                            <tr
+                              key={emp.id}
+                              style={{
+                                background: idx % 2 === 0 ? "#f8fbff" : "#fff",
+                              }}
+                            >
+                              <td style={{ textAlign: "center", padding: 8 }}>
+                                {idx + 1}
+                              </td>
+                              <td style={{ textAlign: "center", padding: 8 }}>
+                                {emp.mnv}
+                              </td>
+                              <td style={{ padding: 8 }}>{emp.hoVaTen}</td>
+                              <td style={{ padding: 8 }}>{emp.boPhan}</td>
+                              <td style={{ textAlign: "center", padding: 8 }}>
+                                {emp.gioVao}
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody>
-                            {list.map((emp, idx) => (
-                              <tr
-                                key={emp.id}
-                                style={{
-                                  background:
-                                    idx % 2 === 0 ? "#f8fbff" : "#fff",
-                                }}
-                              >
-                                <td style={{ textAlign: "center", padding: 8 }}>
-                                  {idx + 1}
-                                </td>
-                                <td style={{ textAlign: "center", padding: 8 }}>
-                                  {emp.mnv}
-                                </td>
-                                <td style={{ padding: 8 }}>{emp.hoVaTen}</td>
-                                <td style={{ padding: 8 }}>{emp.boPhan}</td>
-                                <td style={{ textAlign: "center", padding: 8 }}>
-                                  {emp.gioVao || "-"}
-                                </td>
-                                <td style={{ textAlign: "center", padding: 8 }}>
-                                  {emp.gioRa || "-"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    );
-                  })()}
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </NotificationBell>
               </div>
             </div>
@@ -3539,12 +3587,44 @@ function AttendanceList() {
         {/* Summary */}
         <div className="mt-6 bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-600">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold text-gray-700">
-              📊 Tổng số nhân viên:
-              <span className="ml-2 text-lg text-blue-600">
-                {filteredEmployees.length}
-              </span>
-            </p>
+            <div>
+              <div className="flex items-center flex-wrap gap-2 mt-1">
+                <span className="text-sm font-bold text-gray-700 flex items-center">
+                  📊 Tổng số nhân viên:
+                  <span className="ml-2 text-lg text-blue-600">
+                    {filteredEmployees.length}
+                  </span>
+                </span>
+                {/* Đếm số lượng từng loại nhân viên (PO, PN, ...) */}
+                <div className="flex flex-wrap gap-2 ml-4">
+                  {(() => {
+                    // Đếm số lượng theo trường 'gioVao' (thời gian vào)
+                    const timeCounts = {};
+                    filteredEmployees.forEach((emp) => {
+                      const time = emp.gioVao;
+                      // Loại bỏ các giá trị là giờ (hh:mm hoặc hh:mm:ss)
+                      if (time && !/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) {
+                        timeCounts[time] = (timeCounts[time] || 0) + 1;
+                      }
+                    });
+                    return Object.entries(timeCounts).length > 0 ? (
+                      Object.entries(timeCounts).map(([time, count]) => (
+                        <span
+                          key={time}
+                          className="px-2 py-0.5 rounded text-black font-bold text-2xs"
+                        >
+                          {time}: {count}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="italic text-gray-400">
+                        Không có phân loại
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
             <p className="text-xs text-gray-500">
               Ngày: {new Date(selectedDate).toLocaleDateString("vi-VN")}
             </p>
