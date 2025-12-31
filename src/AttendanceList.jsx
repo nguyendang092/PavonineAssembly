@@ -305,11 +305,18 @@ function AttendanceList() {
       "DS",
     ];
     return filteredEmployees.filter((emp) => {
-      if (!emp.gioVao) return false;
-      const value = (emp.gioVao || "").trim().toUpperCase();
-      if (excludeTypes.includes(value)) return false;
-      // Chỉ nhận giá trị là giờ hợp lệ
-      return timeRegex.test(value);
+      const gioVao = (emp.gioVao || "").trim().toUpperCase();
+      const gioRa = (emp.gioRa || "").trim();
+      // Loại các loại đặc biệt
+      if (!gioVao || excludeTypes.includes(gioVao)) return false;
+      // Chỉ nhận giá trị giờ vào hợp lệ
+      if (!timeRegex.test(gioVao)) return false;
+      // Nếu có cả giờ vào và giờ ra (đều hợp lệ) thì không phải bù công
+      if (gioVao && gioRa && timeRegex.test(gioRa)) return false;
+      // Nếu chỉ có giờ vào hoặc chỉ có giờ ra (1 trong 2), thì là bù công
+      if ((gioVao && !gioRa) || (!gioVao && gioRa)) return true;
+      // Nếu không có giờ vào và không có giờ ra thì không phải bù công
+      return false;
     });
   }, [filteredEmployees]);
 
@@ -2011,6 +2018,9 @@ function AttendanceList() {
                               <td style={{ padding: 8 }}>{emp.boPhan}</td>
                               <td style={{ textAlign: "center", padding: 8 }}>
                                 {emp.gioVao}
+                              </td>
+                              <td style={{ textAlign: "center", padding: 8 }}>
+                                {emp.gioRa || "-"}
                               </td>
                             </tr>
                           ))}
