@@ -519,10 +519,10 @@ function AttendanceList() {
 
       try {
         const data = await file.arrayBuffer();
+        // ⚠️ KHÔNG dùng cellDates: true để tránh lỗi timezone
         const workbook = XLSX.read(data, {
           type: "array",
-          cellDates: true,
-          dateNF: "yyyy-mm-dd",
+          cellDates: false, // Giữ nguyên số serial, tự parse sau
         });
 
         if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
@@ -536,6 +536,7 @@ function AttendanceList() {
         const rows = XLSX.utils.sheet_to_json(sheet, {
           header: 1,
           defval: "",
+          raw: false, // Trả về giá trị đã format
         });
 
         if (!Array.isArray(rows) || rows.length <= 2) {
@@ -545,39 +546,84 @@ function AttendanceList() {
         // Bỏ 2 dòng tiêu đề, phần còn lại là dữ liệu
         const dataRows = rows.slice(2);
 
-        // Hàm chuẩn hóa ngày từ excel (serial hoặc Date) về yyyy-mm-dd
+        // ✅ Hàm parse ngày CHUẨN - tránh lệch timezone
         const normalizeDate = (value) => {
-          if (!value) return "";
-          if (value instanceof Date) {
-            // Lấy ngày theo UTC để không bị lệch múi giờ
-            return new Date(
-              Date.UTC(value.getFullYear(), value.getMonth(), value.getDate())
-            )
-              .toISOString()
-              .slice(0, 10);
+          if (value == null || value === "") return "";
+
+          const fmt = (y, m, d) =>
+            y && m && d
+              ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(
+                  2,
+                  "0"
+                )}`
+              : "";
+
+          // 1️⃣ Số serial Excel (QUAN TRỌNG NHẤT)
+          if (typeof value === "number" && Number.isFinite(value)) {
+            // Parse trực tiếp từ serial number
+            const parsed = XLSX.SSF.parse_date_code(value, {
+              date1904: workbook?.Workbook?.WBProps?.date1904 || false,
+            });
+            if (parsed?.y && parsed?.m && parsed?.d) {
+              return fmt(parsed.y, parsed.m, parsed.d);
+            }
           }
-          if (typeof value === "number") {
-            // Excel serial date: ngày 0 là 1899-12-30
-            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-            // Luôn cộng số ngày và lấy UTC, không để JS tự chuyển múi giờ
-            const utcDate = new Date(excelEpoch.getTime() + value * 86400000);
-            return utcDate.toISOString().slice(0, 10);
+
+          // 2️⃣ Date object (nếu có - nhưng không nên xảy ra với cellDates: false)
+          if (value instanceof Date && !isNaN(value)) {
+            return fmt(
+              value.getUTCFullYear(),
+              value.getUTCMonth() + 1,
+              value.getUTCDate()
+            );
           }
+
+          // 3️⃣ Chuỗi ngày đã được format
           if (typeof value === "string") {
-            // Chuẩn hóa chuỗi ngày yyyy-mm-dd hoặc dd/mm/yyyy
-            const parsed = new Date(value);
-            if (!isNaN(parsed.getTime()))
-              return new Date(
-                Date.UTC(
-                  parsed.getFullYear(),
-                  parsed.getMonth(),
-                  parsed.getDate()
-                )
-              )
-                .toISOString()
-                .slice(0, 10);
+            const str = value.trim();
+            if (!str) return "";
+
+            // yyyy-mm-dd hoặc yyyy/mm/dd
+            const iso = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+            if (iso) return fmt(+iso[1], +iso[2], +iso[3]);
+
+            // dd-mm-yyyy hoặc dd/mm/yyyy
+            const dmy = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+            if (dmy) return fmt(+dmy[3], +dmy[2], +dmy[1]);
+
+            // dd-MMM-yy (9-Feb-96)
+            const monthNames = {
+              jan: 1,
+              feb: 2,
+              mar: 3,
+              apr: 4,
+              may: 5,
+              jun: 6,
+              jul: 7,
+              aug: 8,
+              sep: 9,
+              oct: 10,
+              nov: 11,
+              dec: 12,
+            };
+            const dmyText = str.match(
+              /^(\d{1,2})[-\s]?([a-zA-Z]{3})[-\s]?(\d{2,4})$/i
+            );
+            if (dmyText) {
+              const day = +dmyText[1];
+              const mon = monthNames[dmyText[2].toLowerCase()];
+              if (mon) {
+                let year = +dmyText[3];
+                // Pivot year: 70-99 -> 1970-1999, 00-69 -> 2000-2069
+                if (year < 100) {
+                  year = year >= 70 ? 1900 + year : 2000 + year;
+                }
+                return fmt(year, mon, day);
+              }
+            }
           }
-          return String(value);
+
+          return "";
         };
 
         // Prepare data for Firebase
