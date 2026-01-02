@@ -1541,42 +1541,6 @@ function AttendanceList() {
           <div class="company-address">Lots VII-1, VII-2, and part of Lot VII-3, My Xuan B1 – Tien Hung</div>
           <div class="company-address">Industrial Park, Phu My Ward, Ho Chi Minh City, Vietnam</div>
         </div>
-
-        {/* Danh sách nhân viên bù công */}
-        <div className="mt-6 bg-yellow-50 rounded-lg shadow-md p-4 border-l-4 border-yellow-600">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold text-yellow-800 flex items-center">
-              🕒 Danh sách nhân viên bù công (giờ vào là giờ):
-              <span className="ml-2 text-lg text-yellow-700">{buCongEmployees.length}</span>
-            </span>
-          </div>
-          {buCongEmployees.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr className="bg-yellow-100">
-                    <th className="px-3 py-2 text-xs font-bold text-yellow-800 text-center">STT</th>
-                    <th className="px-4 py-2 text-xs font-bold text-yellow-800 text-center">Họ và tên</th>
-                    <th className="px-3 py-2 text-xs font-bold text-yellow-800 text-center">Bộ phận</th>
-                    <th className="px-3 py-2 text-xs font-bold text-yellow-800 text-center">Giờ vào</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {buCongEmployees.map((emp, idx) => (
-                    <tr key={emp.id} className="bg-white hover:bg-yellow-50">
-                      <td className="px-3 py-2 text-center text-sm font-semibold">{idx + 1}</td>
-                      <td className="px-4 py-2 text-center text-sm">{emp.hoVaTen}</td>
-                      <td className="px-3 py-2 text-center text-sm">{emp.boPhan}</td>
-                      <td className="px-3 py-2 text-center text-sm font-bold text-yellow-700">{emp.gioVao}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-gray-500 italic">Không có nhân viên bù công nào.</div>
-          )}
-        </div>
       </div>
       
       <table class="approval-table">
@@ -3404,18 +3368,18 @@ function AttendanceList() {
                           }}
                         >
                           <option value="">Chọn loại</option>
-                          <option value="CDL">Có</option>
-                          <option value="VT">Vào trễ</option>
-                          <option value="PN">PN</option>
-                          <option value="PN1/2">1/2 PN</option>
-                          <option value="KL">KL</option>
-                          <option value="KP">KP</option>
-                          <option value="TS">TS</option>
-                          <option value="PO">PO</option>
-                          <option value="TN">TN</option>
-                          <option value="PC">PC</option>
-                          <option value="PT">PT</option>
-                          <option value="DS">DS</option>
+                          <option value="Có đi làm">Có</option>
+                          <option value="Vào trễ">Vào trễ</option>
+                          <option value="Phép năm">PN</option>
+                          <option value="1/2 Phép năm">1/2 PN</option>
+                          <option value="Không lương">KL</option>
+                          <option value="Không phép">KP</option>
+                          <option value="Thai sản">TS</option>
+                          <option value="Phép ốm">PO</option>
+                          <option value="Tai nạn">TN</option>
+                          <option value="Phép cưới">PC</option>
+                          <option value="Phép tang">PT</option>
+                          <option value="Dưỡng sức">DS</option>
                         </select>
                         {editingGioVao[emp.id] && (
                           <button
