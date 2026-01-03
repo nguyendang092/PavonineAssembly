@@ -70,6 +70,11 @@ export const menuConfig = [
             path: "/attendance-dashboard",
           },
           {
+            key: "maintenance",
+            label: "navbar.maintenance",
+            path: "/maintenance",
+          },
+          {
             key: "userDepartment",
             label: "navbar.userDepartment",
             path: "/user-department",
@@ -138,4 +143,5 @@ export const routeConfig = [
   { path: "/user-department", element: "UserDepartmentManager" },
   { path: "/inventory", element: "Inventory" },
   { path: "/downloads", element: "Downloads" },
+  { path: "/maintenance", element: "MaintenanceChecklist" },
 ];

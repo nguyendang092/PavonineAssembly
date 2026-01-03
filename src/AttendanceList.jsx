@@ -3426,6 +3426,7 @@ function AttendanceList() {
                           <option value="Phép cưới">PC</option>
                           <option value="Phép tang">PT</option>
                           <option value="Dưỡng sức">DS</option>
+                          <option value="Phép công tác">PCT</option>
                         </select>
                         {editingGioVao[emp.id] && (
                           <button

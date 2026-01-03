@@ -23,6 +23,7 @@ import AttendanceList from "./AttendanceList";
 import AttendanceDashboardContainer from "./AttendanceDashboardContainer";
 import Downloads from "./Downloads";
 import UserDepartmentManager from "./UserDepartmentManager";
+import MaintenanceChecklist from "./MaintenanceChecklist";
 import {
   BrowserRouter as Router,
   Routes,
@@ -152,6 +153,9 @@ const App = () => {
                     break;
                   case "Downloads":
                     Element = Downloads;
+                    break;
+                  case "MaintenanceChecklist":
+                    Element = MaintenanceChecklist;
                     break;
                   // case "Inventory":
                   //   Element = Inventory;

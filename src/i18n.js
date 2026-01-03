@@ -96,6 +96,7 @@ const resources = {
         download: "Download",
         files: "Tài liệu",
         inventory: "Kiểm kê",
+        maintenance: "Bảo trì",
       },
       temperatureMonitor: {
         dashboard: "Bảng điều khiển",
@@ -529,6 +530,7 @@ const resources = {
         download: "다운로드",
         files: "파일",
         inventory: "재고 실사",
+        maintenance: "유지보수",
       },
       temperatureMonitor: {
         dashboard: "대시보드",
