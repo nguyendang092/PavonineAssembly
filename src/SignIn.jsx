@@ -6,7 +6,7 @@ import {
   updateProfile,
   sendPasswordResetEmail,
 } from "firebase/auth";
-import { logUserAction } from "./userLog";
+import { logUserAction } from "./utils/userLog";
 import { useTranslation } from "react-i18next";
 import "../public/css/auth.css";
 

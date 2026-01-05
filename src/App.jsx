@@ -1,29 +1,29 @@
 import React, { useEffect, useState, useLayoutEffect } from "react";
-import SeasonEffect from "./SeasonEffect";
-import Employ from "./Employ";
-import Toast from "./Toast";
-import Navbar from "./Navbar";
-import TemperatureMonitor from "./TemperatureMonitor";
-import BackToTop from "./BackToTop";
-import Footer from "./Footer";
-import "./i18n";
-import WorkplaceChart from "./WorkplaceChart";
-import ModelProductionChart from "./ModelProductionChart";
-import { UserContext } from "./UserContext";
-import NGWorkplaceChart from "./NGWorkplaceChart";
-import { useLoading } from "./LoadingContext";
-import CertificateGenerator1 from "./CertificateGenerator1";
-import CertificateGenerator2 from "./CertificateGenerator2";
-import HonorBoard from "./HonorBoard";
-import Metandeco from "./Metandeco";
-import { routeConfig } from "./menuConfig";
-import MoldManager from "./MoldManager";
-import PerformanceChart from "./PerformanceChart";
-import AttendanceList from "./AttendanceList";
-import AttendanceDashboardContainer from "./AttendanceDashboardContainer";
-import Downloads from "./Downloads";
-import UserDepartmentManager from "./UserDepartmentManager";
-import MaintenanceChecklist from "./MaintenanceChecklist";
+import SeasonEffect from "./components/common/SeasonEffect";
+import Employ from "./components/employee/Employ";
+import Toast from "./components/common/Toast";
+import Navbar from "./components/layout/Navbar";
+import TemperatureMonitor from "./components/common/TemperatureMonitor";
+import BackToTop from "./components/common/BackToTop";
+import Footer from "./components/layout/Footer";
+import "./config/i18n";
+import WorkplaceChart from "./components/dashboard/WorkplaceChart";
+import ModelProductionChart from "./components/dashboard/ModelProductionChart";
+import { UserContext } from "./contexts/UserContext";
+import NGWorkplaceChart from "./components/dashboard/NGWorkplaceChart";
+import { useLoading } from "./contexts/LoadingContext";
+import CertificateGenerator1 from "./components/common/CertificateGenerator1";
+import CertificateGenerator2 from "./components/common/CertificateGenerator2";
+import HonorBoard from "./components/employee/HonorBoard";
+import Metandeco from "./components/common/Metandeco";
+import { routeConfig } from "./config/menuConfig";
+import MoldManager from "./components/inventory/MoldManager";
+import PerformanceChart from "./components/dashboard/PerformanceChart";
+import AttendanceList from "./components/attendance/AttendanceList";
+import AttendanceDashboardContainer from "./components/attendance/AttendanceDashboardContainer";
+import Downloads from "./components/common/Downloads";
+import UserDepartmentManager from "./components/employee/UserDepartmentManager";
+import MaintenanceChecklist from "./components/maintenance/MaintenanceChecklist";
 import {
   BrowserRouter as Router,
   Routes,
@@ -32,7 +32,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import "./App.css";
+import "./styles/App.css";
 
 const App = () => {
   // Bỏ logic tự động chuyển về /normal khi refresh
