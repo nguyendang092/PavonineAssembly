@@ -65,12 +65,14 @@ export default function NGWorkplaceChart() {
   const [chartData, setChartData] = useState(null);
   const [selectedArea, setSelectedArea] = useState("");
   const [selectedWeek, setSelectedWeek] = useState("");
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [weekData, setWeekData] = useState({});
   const [dataMap, setDataMap] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalArea, setModalArea] = useState("");
   const [showTable, setShowTable] = useState(window.innerWidth >= 1520);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
 
   // Theo dõi kích thước màn hình
   useEffect(() => {
@@ -88,7 +90,13 @@ export default function NGWorkplaceChart() {
   };
   // Loading toàn cục
   const { setLoading } = useLoading();
-  // Tối ưu: chỉ load dữ liệu cho tuần được chọn
+  const parseYearFromDay = (dayStr) => {
+    if (!dayStr) return null;
+    const parsed = new Date(dayStr);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.getFullYear();
+  };
+
+  // Tối ưu: chỉ load dữ liệu cho tuần được chọn, lọc theo năm chọn
   useEffect(() => {
     setLoading(true);
     const fetchData = async () => {
@@ -104,11 +112,22 @@ export default function NGWorkplaceChart() {
         }
         const ngData = snapshot.val();
 
-        // Lấy danh sách tuần duy nhất
+        // Lấy danh sách tuần duy nhất trong năm đã chọn
         const weekSet = new Set();
         for (const workplace in ngData) {
           for (const week in ngData[workplace]) {
-            weekSet.add(week);
+            let hasDayInYear = false;
+            for (const rework in ngData[workplace][week]) {
+              for (const day in ngData[workplace][week][rework]) {
+                const year = parseYearFromDay(day);
+                if (year === selectedYear) {
+                  hasDayInYear = true;
+                  break;
+                }
+              }
+              if (hasDayInYear) break;
+            }
+            if (hasDayInYear) weekSet.add(week);
           }
         }
         let weekList = Array.from(weekSet);
@@ -124,27 +143,24 @@ export default function NGWorkplaceChart() {
 
         const currentWeek = getCurrentWeekNumber();
 
-        if (!selectedWeek) {
-          // Check tuần hiện tại
+        // Khi đổi năm hoặc chưa có tuần chọn, chọn tuần hợp lệ trong năm
+        if (!selectedWeek || !weekList.includes(selectedWeek)) {
           if (weekList.includes(currentWeek.toString())) {
             setSelectedWeek(currentWeek.toString());
             setLoading(false);
             return;
           }
-          // Kiểm tra tuần trước (currentWeek - 1)
           const previousWeek = currentWeek - 1;
           if (weekList.includes(previousWeek.toString())) {
             setSelectedWeek(previousWeek.toString());
             setLoading(false);
             return;
           }
-          // Nếu không có tuần trên, lấy tuần lớn nhất (cuối danh sách)
           if (weekList.length > 0) {
             setSelectedWeek(weekList[weekList.length - 1]);
             setLoading(false);
             return;
           }
-          // Không có tuần nào cả
           setSelectedWeek("");
           setLoading(false);
           return;
@@ -156,6 +172,8 @@ export default function NGWorkplaceChart() {
           if (!ngData[workplace][selectedWeek]) continue;
           for (const rework in ngData[workplace][selectedWeek]) {
             for (const day in ngData[workplace][selectedWeek][rework]) {
+              const year = parseYearFromDay(day);
+              if (year !== selectedYear) continue;
               for (const model in ngData[workplace][selectedWeek][rework][
                 day
               ]) {
@@ -238,7 +256,7 @@ export default function NGWorkplaceChart() {
       setLoading(false);
     };
     fetchData();
-  }, [selectedWeek]);
+  }, [selectedWeek, selectedYear]);
 
   // ✅ Hàm sanitize và upload
   const sanitizeKey = (key) =>
@@ -325,7 +343,46 @@ export default function NGWorkplaceChart() {
   // Handle khi người dùng chọn file
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (file) uploadFromExcel(file, user);
+    if (!file) return;
+    setPendingFile(file);
+  };
+
+  const openDetailModal = () => {
+    const fallbackArea = selectedArea || Object.keys(dataMap)[0] || "";
+    if (!fallbackArea) return;
+    setModalArea(fallbackArea);
+    setIsModalOpen(true);
+  };
+
+  const exportToExcel = () => {
+    if (!chartData) {
+      alert(t("workplaceNGChart.noData"));
+      return;
+    }
+
+    const headers = ["Khu vực", "Ngày", "Normal", "Rework", "Tổng"];
+    const rows = [];
+
+    Object.entries(dataMap)
+      .filter(([area]) => selectedArea === "" || selectedArea === area)
+      .forEach(([area, dayObj]) => {
+        chartData.labels.forEach((label) => {
+          const { normal = 0, rework = 0 } = dayObj[label] || {};
+          const total = normal + rework;
+          if (total === 0) return;
+          rows.push([area, label, normal, rework, total]);
+        });
+      });
+
+    if (rows.length === 0) {
+      alert(t("workplaceNGChart.noData"));
+      return;
+    }
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "NG Data");
+    XLSX.writeFile(workbook, `ng_data_week_${selectedWeek || "all"}.xlsx`);
   };
 
   return (
@@ -352,6 +409,24 @@ export default function NGWorkplaceChart() {
             <h2 className="text-lg lg:text-2xl font-bold text-white mb-3 uppercase">
               {t("workplaceNGChart.menuTitle")}
             </h2>
+          </div>
+
+          {/* Year Selection (UI match with WorkplaceChart) */}
+          <div>
+            <label className="block text-white font-medium mb-2 text-sm">
+              Năm
+            </label>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="w-full bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {[2026, 2025, 2024, 2023].map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             {Object.keys(weekData).length > 0 && (
@@ -400,8 +475,20 @@ export default function NGWorkplaceChart() {
                 <FiUpload size={16} />
               </label>
               <span className="text-white text-xs font-medium flex-1 text-center">
-                {t("workplaceNGChart.chooseExceltotal")}
+                {pendingFile?.name || t("workplaceNGChart.chooseExceltotal")}
               </span>
+              <button
+                onClick={() => {
+                  if (!pendingFile) {
+                    alert(t("workplaceNGChart.pleaseSelectExcel"));
+                    return;
+                  }
+                  uploadFromExcel(pendingFile, user);
+                }}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-lg text-xs font-medium hover:from-blue-700 hover:to-purple-700 transition"
+              >
+                {t("workplaceNGChart.uploadFirebase")}
+              </button>
               <input
                 id="file-upload-total"
                 type="file"
@@ -416,7 +503,9 @@ export default function NGWorkplaceChart() {
 
       {/* Main content */}
       <main
-        className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-8 px-4 sm:px-6"
+        className={`flex-1 flex flex-col lg:flex-row gap-4 lg:gap-8 px-4 sm:px-6 transition-all duration-300 ${
+          sidebarOpen ? "ml-72" : "ml-0"
+        }`}
         style={{ minHeight: 0, overflow: "hidden" }}
       >
         {/* Chart 2/3 */}
@@ -625,20 +714,14 @@ export default function NGWorkplaceChart() {
                 </table>
                 <div className="mt-4 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
                   <button
-                    onClick={() => {
-                      setModalArea(
-                        selectedArea || Object.keys(dataMap)[0] || ""
-                      );
-                      setIsModalOpen(true);
-                    }}
+                    onClick={openDetailModal}
                     className="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm sm:text-base hover:bg-blue-700 transition-colors"
                   >
                     {t("workplaceNGChart.viewDetail")}
                   </button>
                   <button
-                    onClick={() => {
-                      exportToExcel && exportToExcel();
-                    }}
+                    onClick={exportToExcel}
+                    disabled={!chartData}
                     className="font-bold text-white px-3 py-2 bg-green-600 rounded hover:bg-green-700 text-sm sm:text-base transition-colors"
                   >
                     {t("workplaceNGChart.exportExcel")}
