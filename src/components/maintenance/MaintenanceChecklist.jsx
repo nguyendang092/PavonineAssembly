@@ -47,6 +47,15 @@ function MaintenanceChecklist() {
     return () => unsubscribe();
   }, []);
 
+  // Auto-dismiss alert after 4s
+  useEffect(() => {
+    if (!alert.show) return;
+    const timer = setTimeout(() => {
+      setAlert({ show: false, type: "", message: "" });
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [alert.show]);
+
   const handleAddOrUpdate = async () => {
     if (!newTask.name.trim()) {
       setAlert({
@@ -248,6 +257,8 @@ function MaintenanceChecklist() {
     switch (category) {
       case "mechanical":
         return "⚙️";
+      case "outsourcing":
+        return "Sữa chữa bên ngoài";
       case "electrical":
         return "⚡";
       case "cleaning":
@@ -263,6 +274,8 @@ function MaintenanceChecklist() {
     switch (category) {
       case "mechanical":
         return "Cơ khí";
+      case "outsourcing":
+        return "Sữa chữa bên ngoài";
       case "electrical":
         return "Điện";
       case "cleaning":
@@ -499,7 +512,17 @@ function MaintenanceChecklist() {
                               type="checkbox"
                               checked={task.completed}
                               onChange={() => handleToggleComplete(task)}
-                              className="w-5 h-5 text-indigo-600 rounded cursor-pointer"
+                              disabled={task.completed}
+                              className={`w-5 h-5 rounded ${
+                                task.completed
+                                  ? "text-green-600 cursor-not-allowed opacity-70"
+                                  : "text-indigo-600 cursor-pointer"
+                              }`}
+                              title={
+                                task.completed
+                                  ? "Công việc đã hoàn tất - không thể thay đổi"
+                                  : "Click để đánh dấu hoàn tất"
+                              }
                             />
                           </div>
                         </td>
@@ -605,15 +628,33 @@ function MaintenanceChecklist() {
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleEdit(task)}
-                              className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition transform hover:scale-110"
-                              title="Chỉnh sửa"
+                              disabled={task.completed}
+                              className={`p-2 rounded-lg transition transform hover:scale-110 ${
+                                task.completed
+                                  ? "bg-gray-400 text-white cursor-not-allowed opacity-50"
+                                  : "bg-blue-500 text-white hover:bg-blue-600"
+                              }`}
+                              title={
+                                task.completed
+                                  ? "Không thể chỉnh sửa công việc đã hoàn tất"
+                                  : "Chỉnh sửa"
+                              }
                             >
                               ✏️
                             </button>
                             <button
                               onClick={() => handleDelete(task.id)}
-                              className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition transform hover:scale-110"
-                              title="Xóa"
+                              disabled={user?.email !== "admin@gmail.com"}
+                              className={`p-2 rounded-lg transition transform hover:scale-110 ${
+                                user?.email === "admin@gmail.com"
+                                  ? "bg-red-500 text-white hover:bg-red-600"
+                                  : "bg-gray-400 text-white cursor-not-allowed opacity-50"
+                              }`}
+                              title={
+                                user?.email === "admin@gmail.com"
+                                  ? "Xóa"
+                                  : "Chỉ admin mới có quyền xóa"
+                              }
                             >
                               🗑️
                             </button>
@@ -667,7 +708,18 @@ function MaintenanceChecklist() {
                     onChange={(e) =>
                       setNewTask({ ...newTask, name: e.target.value })
                     }
-                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base"
+                    disabled={
+                      editingId &&
+                      maintenanceTasks.find((t) => t.id === editingId)
+                        ?.completed
+                    }
+                    className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                      editingId &&
+                      maintenanceTasks.find((t) => t.id === editingId)
+                        ?.completed
+                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                        : ""
+                    }`}
                     placeholder="VD: Bảo trì máy nén khí số 3..."
                   />
                 </div>
@@ -684,13 +736,25 @@ function MaintenanceChecklist() {
                       onChange={(e) =>
                         setNewTask({ ...newTask, category: e.target.value })
                       }
-                      className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base"
+                      disabled={
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                      }
+                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          : ""
+                      }`}
                     >
                       <option value="general">📄 Chung</option>
                       <option value="mechanical">⚙️ Cơ khí</option>
                       <option value="electrical">⚡ Điện</option>
                       <option value="cleaning">🧹 Vệ sinh</option>
                       <option value="inspection">🔍 Kiểm tra</option>
+                      <option value="outsourcing">🔧 Sửa chữa bên ngoài</option>
                     </select>
                   </div>
 
@@ -704,7 +768,18 @@ function MaintenanceChecklist() {
                       onChange={(e) =>
                         setNewTask({ ...newTask, priority: e.target.value })
                       }
-                      className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base"
+                      disabled={
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                      }
+                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          : ""
+                      }`}
                     >
                       <option value="low">📋 Thấp</option>
                       <option value="medium">📌 Trung bình</option>
@@ -729,7 +804,18 @@ function MaintenanceChecklist() {
                     onChange={(e) =>
                       setNewTask({ ...newTask, description: e.target.value })
                     }
-                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all resize-none text-base"
+                    disabled={
+                      editingId &&
+                      maintenanceTasks.find((t) => t.id === editingId)
+                        ?.completed
+                    }
+                    className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all resize-none text-base ${
+                      editingId &&
+                      maintenanceTasks.find((t) => t.id === editingId)
+                        ?.completed
+                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                        : ""
+                    }`}
                     placeholder="Mô tả chi tiết về công việc cần thực hiện..."
                     rows="4"
                   ></textarea>
@@ -748,7 +834,18 @@ function MaintenanceChecklist() {
                       onChange={(e) =>
                         setNewTask({ ...newTask, startDate: e.target.value })
                       }
-                      className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base"
+                      disabled={
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                      }
+                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          : ""
+                      }`}
                     />
                   </div>
 
@@ -763,7 +860,18 @@ function MaintenanceChecklist() {
                       onChange={(e) =>
                         setNewTask({ ...newTask, startTime: e.target.value })
                       }
-                      className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base"
+                      disabled={
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                      }
+                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          : ""
+                      }`}
                     />
                   </div>
                 </div>
@@ -781,7 +889,18 @@ function MaintenanceChecklist() {
                       onChange={(e) =>
                         setNewTask({ ...newTask, assignedTo: e.target.value })
                       }
-                      className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base"
+                      disabled={
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                      }
+                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          : ""
+                      }`}
                       placeholder="Tên người phụ trách..."
                     />
                   </div>
@@ -796,7 +915,18 @@ function MaintenanceChecklist() {
                       onChange={(e) =>
                         setNewTask({ ...newTask, department: e.target.value })
                       }
-                      className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base"
+                      disabled={
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                      }
+                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          : ""
+                      }`}
                     >
                       <option value="">-- Chọn bộ phận --</option>
                       <option value="PRESS">PRESS</option>
@@ -820,7 +950,18 @@ function MaintenanceChecklist() {
                     onChange={(e) =>
                       setNewTask({ ...newTask, location: e.target.value })
                     }
-                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base"
+                    disabled={
+                      editingId &&
+                      maintenanceTasks.find((t) => t.id === editingId)
+                        ?.completed
+                    }
+                    className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                      editingId &&
+                      maintenanceTasks.find((t) => t.id === editingId)
+                        ?.completed
+                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                        : ""
+                    }`}
                     placeholder="VD: Tầng 1, Khu A, Máy số 5..."
                   />
                 </div>
