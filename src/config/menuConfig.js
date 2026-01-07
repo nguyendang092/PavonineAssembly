@@ -72,11 +72,6 @@ export const menuConfig = [
             path: "/maintenance",
           },
           {
-            key: "ocr",
-            label: "navbar.ocr",
-            path: "/ocr",
-          },
-          {
             key: "driverLogbook",
             label: "navbar.driverLogbook",
             path: "/driver-logbook",
