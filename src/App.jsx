@@ -24,6 +24,7 @@ import AttendanceDashboardContainer from "./components/attendance/AttendanceDash
 import Downloads from "./components/common/Downloads";
 import UserDepartmentManager from "./components/employee/UserDepartmentManager";
 import MaintenanceChecklist from "./components/maintenance/MaintenanceChecklist";
+import DriverLogbook from "./components/logistics/DriverLogbook";
 import {
   BrowserRouter as Router,
   Routes,
@@ -156,6 +157,9 @@ const App = () => {
                     break;
                   case "MaintenanceChecklist":
                     Element = MaintenanceChecklist;
+                    break;
+                  case "DriverLogbook":
+                    Element = DriverLogbook;
                     break;
                   // case "Inventory":
                   //   Element = Inventory;

@@ -97,6 +97,8 @@ const resources = {
         files: "Tài liệu",
         inventory: "Kiểm kê",
         maintenance: "Bảo trì",
+        driverLogbook: "Sổ nhật ký xe",
+        ocr: "Ảnh",
       },
       temperatureMonitor: {
         dashboard: "Bảng điều khiển",
@@ -531,6 +533,7 @@ const resources = {
         files: "파일",
         inventory: "재고 실사",
         maintenance: "유지보수",
+        driverLogbook: "운전 일지",
       },
       temperatureMonitor: {
         dashboard: "대시보드",

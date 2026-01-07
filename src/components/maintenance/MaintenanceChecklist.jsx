@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useUser } from "../../contexts/UserContext";
 import { db, ref, onValue, set, update, remove } from "../../services/firebase";
 import Sidebar from "../../components/layout/Sidebar";
+import MaintenanceHistory from "./MaintenanceHistory";
 import "./MaintenanceChecklist.css";
 
 function MaintenanceChecklist() {
@@ -11,9 +12,18 @@ function MaintenanceChecklist() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [maintenanceTasks, setMaintenanceTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [filterTab, setFilterTab] = useState("all"); // all, pending, completed
+
+  // Check if user is admin (for viewing history)
+  const isAdmin =
+    user?.email === "admin@gmail.com" || user?.email === "hr@pavonine.net";
+
+  // Check if user is HR (for adding/editing maintenance tasks)
+  const isHR =
+    user?.email === "hr@pavonine.net" || user?.email === "admin@gmail.com";
   const [newTask, setNewTask] = useState({
     name: "",
     description: "",
@@ -56,7 +66,34 @@ function MaintenanceChecklist() {
     return () => clearTimeout(timer);
   }, [alert.show]);
 
+  // Log history
+  const logHistory = async (action, taskId, taskName, details = "") => {
+    try {
+      const historyRef = ref(db, `maintenanceHistory/${Date.now()}`);
+      await set(historyRef, {
+        action, // "add", "edit", "delete"
+        taskId,
+        taskName,
+        details,
+        performedBy: user?.displayName || user?.email || "Unknown",
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      console.error("Error logging history:", error);
+    }
+  };
+
   const handleAddOrUpdate = async () => {
+    // Check if user is HR
+    if (!isHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Chỉ HR mới có quyền thêm hoặc chỉnh sửa công việc",
+      });
+      return;
+    }
+
     if (!newTask.name.trim()) {
       setAlert({
         show: true,
@@ -71,6 +108,15 @@ function MaintenanceChecklist() {
         // Update existing task
         const taskRef = ref(db, `maintenance/${editingId}`);
         await update(taskRef, newTask);
+
+        // Log history
+        await logHistory(
+          "edit",
+          editingId,
+          newTask.name,
+          `Cập nhật: ${newTask.description || "Không có mô tả"}`
+        );
+
         setAlert({
           show: true,
           type: "success",
@@ -78,9 +124,18 @@ function MaintenanceChecklist() {
         });
       } else {
         // Add new task
-        const tasksRef = ref(db, "maintenance");
-        const newTaskRef = ref(db, `maintenance/${Date.now()}`);
+        const taskId = Date.now();
+        const newTaskRef = ref(db, `maintenance/${taskId}`);
         await set(newTaskRef, newTask);
+
+        // Log history
+        await logHistory(
+          "add",
+          taskId,
+          newTask.name,
+          `Thêm mới: ${newTask.description || "Không có mô tả"}`
+        );
+
         setAlert({
           show: true,
           type: "success",
@@ -166,10 +221,20 @@ function MaintenanceChecklist() {
   };
 
   const handleDelete = async (id) => {
+    const task = maintenanceTasks.find((t) => t.id === id);
     if (window.confirm("Bạn chắc chắn muốn xóa công việc này?")) {
       try {
         const taskRef = ref(db, `maintenance/${id}`);
         await remove(taskRef);
+
+        // Log history
+        await logHistory(
+          "delete",
+          id,
+          task?.name || "Không rõ",
+          `Xóa công việc: ${task?.description || "Không có mô tả"}`
+        );
+
         setAlert({
           show: true,
           type: "success",
@@ -321,13 +386,34 @@ function MaintenanceChecklist() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={openNewTaskModal}
-                className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2"
-              >
-                <span className="text-xl">➕</span>
-                <span>Thêm Công Việc</span>
-              </button>
+              <div className="flex gap-3">
+                {isAdmin && (
+                  <button
+                    onClick={() => setShowHistory(true)}
+                    className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold rounded-xl hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2"
+                  >
+                    <span className="text-xl">📋</span>
+                    <span>Xem Lịch Sử</span>
+                  </button>
+                )}
+                {isHR ? (
+                  <button
+                    onClick={openNewTaskModal}
+                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2"
+                  >
+                    <span className="text-xl">➕</span>
+                    <span>Thêm Công Việc</span>
+                  </button>
+                ) : (
+                  <div
+                    className="px-6 py-3 bg-gray-400 text-white font-bold rounded-xl flex items-center gap-2 cursor-not-allowed opacity-60"
+                    title="Chỉ HR mới có quyền thêm công việc"
+                  >
+                    <span className="text-xl">🔒</span>
+                    <span>Chỉ HR Được Thêm</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -347,547 +433,367 @@ function MaintenanceChecklist() {
             </div>
           )}
 
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm font-medium mb-1">
-                    Tổng Công Việc
-                  </p>
-                  <p className="text-4xl font-extrabold">
-                    {maintenanceTasks.length}
-                  </p>
+          <div className="bg-white rounded-2xl shadow-xl p-6 mb-6 border-t-4 border-indigo-600">
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-100 text-sm font-medium mb-1">
+                      Tổng Công Việc
+                    </p>
+                    <p className="text-4xl font-extrabold">
+                      {maintenanceTasks.length}
+                    </p>
+                  </div>
+                  <div className="text-5xl opacity-20">📊</div>
                 </div>
-                <div className="text-5xl opacity-20">📊</div>
               </div>
-            </div>
 
-            <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm font-medium mb-1">
-                    Đã Hoàn Tất
-                  </p>
-                  <p className="text-4xl font-extrabold">{completedCount}</p>
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100 text-sm font-medium mb-1">
+                      Đã Hoàn Tất
+                    </p>
+                    <p className="text-4xl font-extrabold">{completedCount}</p>
+                  </div>
+                  <div className="text-5xl opacity-20">✅</div>
                 </div>
-                <div className="text-5xl opacity-20">✅</div>
               </div>
-            </div>
 
-            <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-sm font-medium mb-1">
-                    Đang Thực Hiện
-                  </p>
-                  <p className="text-4xl font-extrabold">
-                    {maintenanceTasks.length - completedCount}
-                  </p>
+              <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-100 text-sm font-medium mb-1">
+                      Đang Thực Hiện
+                    </p>
+                    <p className="text-4xl font-extrabold">
+                      {maintenanceTasks.length - completedCount}
+                    </p>
+                  </div>
+                  <div className="text-5xl opacity-20">⏳</div>
                 </div>
-                <div className="text-5xl opacity-20">⏳</div>
               </div>
-            </div>
 
-            <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm font-medium mb-1">
-                    Tiến Độ
-                  </p>
-                  <p className="text-4xl font-extrabold">
-                    {progressPercentage}%
-                  </p>
+              <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-100 text-sm font-medium mb-1">
+                      Tiến Độ
+                    </p>
+                    <p className="text-4xl font-extrabold">
+                      {progressPercentage}%
+                    </p>
+                  </div>
+                  <div className="text-5xl opacity-20">📈</div>
                 </div>
-                <div className="text-5xl opacity-20">📈</div>
-              </div>
-              <div className="w-full bg-white bg-opacity-30 rounded-full h-2 mt-3">
-                <div
-                  className="bg-white h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${progressPercentage}%` }}
-                ></div>
+                <div className="w-full bg-white bg-opacity-30 rounded-full h-2 mt-3">
+                  <div
+                    className="bg-white h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${progressPercentage}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="bg-white rounded-2xl shadow-lg p-2 mb-6">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilterTab("all")}
-                className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
-                  filterTab === "all"
-                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                Tất Cả ({maintenanceTasks.length})
-              </button>
-              <button
-                onClick={() => setFilterTab("pending")}
-                className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
-                  filterTab === "pending"
-                    ? "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                Đang Thực Hiện ({maintenanceTasks.length - completedCount})
-              </button>
-              <button
-                onClick={() => setFilterTab("completed")}
-                className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
-                  filterTab === "completed"
-                    ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                Đã Hoàn Tất ({completedCount})
-              </button>
-            </div>
-          </div>
-
-          {/* Tasks Table */}
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            {filteredTasks.length === 0 ? (
-              <div className="p-12 text-center">
-                <div className="text-6xl mb-4">📋</div>
-                <p className="text-gray-500 text-xl font-semibold">
-                  {filterTab === "pending"
-                    ? "Không có công việc đang thực hiện"
-                    : filterTab === "completed"
-                    ? "Chưa có công việc nào hoàn tất"
-                    : "Chưa có công việc bảo trì nào"}
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-                    <tr>
-                      <th className="px-4 py-4 text-left text-sm font-bold uppercase w-12">
-                        #
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-bold uppercase">
-                        Công Việc
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-bold uppercase">
-                        Loại
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-bold uppercase">
-                        Ưu Tiên
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-bold uppercase">
-                        Người Phụ Trách
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-bold uppercase">
-                        Bộ Phận Yêu cầu
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-bold uppercase">
-                        {" "}
-                        Vị Trí
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-bold uppercase">
-                        {" "}
-                        Thời Gian
-                      </th>
-                      <th className="px-4 py-4 text-center text-sm font-bold uppercase">
-                        Trạng Thái
-                      </th>
-                      <th className="px-4 py-4 text-center text-sm font-bold uppercase w-32">
-                        Thao Tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredTasks.map((task, index) => (
-                      <tr
-                        key={task.id}
-                        className={`hover:bg-gray-50 transition-colors ${
-                          task.completed ? "bg-green-50" : ""
-                        }`}
-                      >
-                        <td className="px-4 py-4">
-                          <div className="flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={task.completed}
-                              onChange={() => handleToggleComplete(task)}
-                              disabled={task.completed}
-                              className={`w-5 h-5 rounded ${
-                                task.completed
-                                  ? "text-green-600 cursor-not-allowed opacity-70"
-                                  : "text-indigo-600 cursor-pointer"
-                              }`}
-                              title={
-                                task.completed
-                                  ? "Công việc đã hoàn tất - không thể thay đổi"
-                                  : "Click để đánh dấu hoàn tất"
-                              }
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p
-                              className={`font-bold text-base ${
-                                task.completed
-                                  ? "line-through text-gray-500"
-                                  : "text-gray-900"
-                              }`}
-                            >
-                              {task.name}
-                            </p>
-                            {task.description && (
-                              <p className="text-sm text-gray-500 mt-1">
-                                {task.description}
-                              </p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
-                            {getCategoryIcon(task.category || "general")}
-                            {getCategoryName(task.category || "general")}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold border ${getPriorityColor(
-                              task.priority || "medium"
-                            )}`}
-                          >
-                            {getPriorityIcon(task.priority || "medium")}
-                            {task.priority === "urgent"
-                              ? "Khẩn"
-                              : task.priority === "high"
-                              ? "Cao"
-                              : task.priority === "low"
-                              ? "Thấp"
-                              : "Trung bình"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                              {(task.assignedTo || "?")[0].toUpperCase()}
-                            </div>
-                            <span className="text-gray-700 font-medium">
-                              {task.assignedTo || "Chưa gán"}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-800">
-                            🏢 {task.department || "Chưa xác định"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800">
-                            📍 {task.location || "Chưa xác định"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-sm">
-                            <p className="text-gray-600">
-                              <span className="font-semibold">Bắt đầu:</span>{" "}
-                              {new Date(task.startDate).toLocaleDateString(
-                                "vi-VN"
-                              )}{" "}
-                              {task.startTime}
-                            </p>
-                            {task.completed && (
-                              <>
-                                <p className="text-green-600 mt-1">
-                                  <span className="font-semibold">
-                                    Hoàn tất:
-                                  </span>{" "}
-                                  {new Date(
-                                    task.completedDate
-                                  ).toLocaleDateString("vi-VN")}{" "}
-                                  {task.completedTime}
-                                </p>
-                                <p className="text-indigo-600 font-bold mt-1">
-                                  ⏱️ {task.duration}
-                                </p>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          {task.completed ? (
-                            <span className="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-green-500 text-white text-sm font-bold shadow-lg">
-                              ✅ Hoàn tất
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-orange-500 text-white text-sm font-bold shadow-lg animate-pulse">
-                              ⏳ Đang làm
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEdit(task)}
-                              disabled={task.completed}
-                              className={`p-2 rounded-lg transition transform hover:scale-110 ${
-                                task.completed
-                                  ? "bg-gray-400 text-white cursor-not-allowed opacity-50"
-                                  : "bg-blue-500 text-white hover:bg-blue-600"
-                              }`}
-                              title={
-                                task.completed
-                                  ? "Không thể chỉnh sửa công việc đã hoàn tất"
-                                  : "Chỉnh sửa"
-                              }
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              onClick={() => handleDelete(task.id)}
-                              disabled={user?.email !== "admin@gmail.com"}
-                              className={`p-2 rounded-lg transition transform hover:scale-110 ${
-                                user?.email === "admin@gmail.com"
-                                  ? "bg-red-500 text-white hover:bg-red-600"
-                                  : "bg-gray-400 text-white cursor-not-allowed opacity-50"
-                              }`}
-                              title={
-                                user?.email === "admin@gmail.com"
-                                  ? "Xóa"
-                                  : "Chỉ admin mới có quyền xóa"
-                              }
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-6 py-5 flex items-center justify-between rounded-t-2xl">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                  {editingId ? (
-                    <>
-                      <span className="text-3xl">✏️</span>
-                      <span>Chỉnh Sửa Công Việc</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-3xl">➕</span>
-                      <span>Thêm Công Việc Bảo Trì</span>
-                    </>
-                  )}
-                </h2>
+            {/* Filter Tabs */}
+            <div className="bg-white rounded-2xl shadow-lg p-2 mb-6">
+              <div className="flex gap-2">
                 <button
-                  onClick={() => setShowModal(false)}
-                  className="text-white text-2xl font-bold hover:bg-white hover:text-indigo-600 rounded-full w-10 h-10 flex items-center justify-center transition-all transform hover:rotate-90"
+                  onClick={() => setFilterTab("all")}
+                  className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
+                    filterTab === "all"
+                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
                 >
-                  ✕
+                  Tất Cả ({maintenanceTasks.length})
+                </button>
+                <button
+                  onClick={() => setFilterTab("pending")}
+                  className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
+                    filterTab === "pending"
+                      ? "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  Đang Thực Hiện ({maintenanceTasks.length - completedCount})
+                </button>
+                <button
+                  onClick={() => setFilterTab("completed")}
+                  className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
+                    filterTab === "completed"
+                      ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  Đã Hoàn Tất ({completedCount})
                 </button>
               </div>
-
-              <div className="p-6 space-y-5">
-                {/* Task Name */}
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span className="text-red-500">*</span>
-                    <span>Tên Công Việc</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newTask.name}
-                    onChange={(e) =>
-                      setNewTask({ ...newTask, name: e.target.value })
-                    }
-                    disabled={
-                      editingId &&
-                      maintenanceTasks.find((t) => t.id === editingId)
-                        ?.completed
-                    }
-                    className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
-                      editingId &&
-                      maintenanceTasks.find((t) => t.id === editingId)
-                        ?.completed
-                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                        : ""
-                    }`}
-                    placeholder="VD: Bảo trì máy nén khí số 3..."
-                  />
+            </div>
+            {/* Tasks Table */}
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+              {filteredTasks.length === 0 ? (
+                <div className="p-12 text-center">
+                  <div className="text-6xl mb-4">📋</div>
+                  <p className="text-gray-500 text-xl font-semibold">
+                    {filterTab === "pending"
+                      ? "Không có công việc đang thực hiện"
+                      : filterTab === "completed"
+                      ? "Chưa có công việc nào hoàn tất"
+                      : "Chưa có công việc bảo trì nào"}
+                  </p>
                 </div>
-
-                {/* Category and Priority */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>📂</span>
-                      <span>Loại Công Việc</span>
-                    </label>
-                    <select
-                      value={newTask.category}
-                      onChange={(e) =>
-                        setNewTask({ ...newTask, category: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        maintenanceTasks.find((t) => t.id === editingId)
-                          ?.completed
-                      }
-                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
-                        editingId &&
-                        maintenanceTasks.find((t) => t.id === editingId)
-                          ?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                    >
-                      <option value="general">📄 Chung</option>
-                      <option value="mechanical">⚙️ Cơ khí</option>
-                      <option value="electrical">⚡ Điện</option>
-                      <option value="cleaning">🧹 Vệ sinh</option>
-                      <option value="inspection">🔍 Kiểm tra</option>
-                      <option value="outsourcing">🔧 Sửa chữa bên ngoài</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>⚡</span>
-                      <span>Mức Độ Ưu Tiên</span>
-                    </label>
-                    <select
-                      value={newTask.priority}
-                      onChange={(e) =>
-                        setNewTask({ ...newTask, priority: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        maintenanceTasks.find((t) => t.id === editingId)
-                          ?.completed
-                      }
-                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
-                        editingId &&
-                        maintenanceTasks.find((t) => t.id === editingId)
-                          ?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                    >
-                      <option value="low">📋 Thấp</option>
-                      <option value="medium">📌 Trung bình</option>
-                      <option value="high">⚠️ Cao</option>
-                      <option value="urgent">🚨 Khẩn cấp</option>
-                    </select>
-                  </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                      <tr>
+                        <th className="px-4 py-4 text-left text-sm font-bold uppercase w-12">
+                          #
+                        </th>
+                        <th className="px-4 py-4 text-left text-sm font-bold uppercase">
+                          Công Việc
+                        </th>
+                        <th className="px-4 py-4 text-left text-sm font-bold uppercase">
+                          Loại
+                        </th>
+                        <th className="px-4 py-4 text-left text-sm font-bold uppercase">
+                          Ưu Tiên
+                        </th>
+                        <th className="px-4 py-4 text-left text-sm font-bold uppercase">
+                          Người Phụ Trách
+                        </th>
+                        <th className="px-4 py-4 text-left text-sm font-bold uppercase">
+                          Bộ Phận Yêu cầu
+                        </th>
+                        <th className="px-4 py-4 text-left text-sm font-bold uppercase">
+                          {" "}
+                          Vị Trí
+                        </th>
+                        <th className="px-4 py-4 text-left text-sm font-bold uppercase">
+                          {" "}
+                          Thời Gian
+                        </th>
+                        <th className="px-4 py-4 text-center text-sm font-bold uppercase">
+                          Trạng Thái
+                        </th>
+                        <th className="px-4 py-4 text-center text-sm font-bold uppercase w-32">
+                          Thao Tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredTasks.map((task, index) => (
+                        <tr
+                          key={task.id}
+                          className={`hover:bg-gray-50 transition-colors ${
+                            task.completed ? "bg-green-50" : ""
+                          }`}
+                        >
+                          <td className="px-4 py-4">
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={task.completed}
+                                onChange={() => handleToggleComplete(task)}
+                                disabled={task.completed}
+                                className={`w-5 h-5 rounded ${
+                                  task.completed
+                                    ? "text-green-600 cursor-not-allowed opacity-70"
+                                    : "text-indigo-600 cursor-pointer"
+                                }`}
+                                title={
+                                  task.completed
+                                    ? "Công việc đã hoàn tất - không thể thay đổi"
+                                    : "Click để đánh dấu hoàn tất"
+                                }
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div>
+                              <p
+                                className={`font-bold text-base ${
+                                  task.completed
+                                    ? "line-through text-gray-500"
+                                    : "text-gray-900"
+                                }`}
+                              >
+                                {task.name}
+                              </p>
+                              {task.description && (
+                                <p className="text-sm text-gray-500 mt-1">
+                                  {task.description}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
+                              {getCategoryIcon(task.category || "general")}
+                              {getCategoryName(task.category || "general")}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold border ${getPriorityColor(
+                                task.priority || "medium"
+                              )}`}
+                            >
+                              {getPriorityIcon(task.priority || "medium")}
+                              {task.priority === "urgent"
+                                ? "Khẩn"
+                                : task.priority === "high"
+                                ? "Cao"
+                                : task.priority === "low"
+                                ? "Thấp"
+                                : "Trung bình"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                                {(task.assignedTo || "?")[0].toUpperCase()}
+                              </div>
+                              <span className="text-gray-700 font-medium">
+                                {task.assignedTo || "Chưa gán"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-800">
+                              🏢 {task.department || "Chưa xác định"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800">
+                              📍 {task.location || "Chưa xác định"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="text-sm">
+                              <p className="text-gray-600">
+                                <span className="font-semibold">Bắt đầu:</span>{" "}
+                                {new Date(task.startDate).toLocaleDateString(
+                                  "vi-VN"
+                                )}{" "}
+                                {task.startTime}
+                              </p>
+                              {task.completed && (
+                                <>
+                                  <p className="text-green-600 mt-1">
+                                    <span className="font-semibold">
+                                      Hoàn tất:
+                                    </span>{" "}
+                                    {new Date(
+                                      task.completedDate
+                                    ).toLocaleDateString("vi-VN")}{" "}
+                                    {task.completedTime}
+                                  </p>
+                                  <p className="text-indigo-600 font-bold mt-1">
+                                    ⏱️ {task.duration}
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            {task.completed ? (
+                              <span className="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-green-500 text-white text-sm font-bold shadow-lg">
+                                ✅ Hoàn tất
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-orange-500 text-white text-sm font-bold shadow-lg animate-pulse">
+                                ⏳ Đang làm
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleEdit(task)}
+                                disabled={task.completed || !isHR}
+                                className={`p-2 rounded-lg transition transform hover:scale-110 ${
+                                  task.completed || !isHR
+                                    ? "bg-gray-400 text-white cursor-not-allowed opacity-50"
+                                    : "bg-blue-500 text-white hover:bg-blue-600"
+                                }`}
+                                title={
+                                  !isHR
+                                    ? "Chỉ HR mới có quyền chỉnh sửa"
+                                    : task.completed
+                                    ? "Không thể chỉnh sửa công việc đã hoàn tất"
+                                    : "Chỉnh sửa"
+                                }
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => handleDelete(task.id)}
+                                disabled={user?.email !== "admin@gmail.com"}
+                                className={`p-2 rounded-lg transition transform hover:scale-110 ${
+                                  user?.email === "admin@gmail.com"
+                                    ? "bg-red-500 text-white hover:bg-red-600"
+                                    : "bg-gray-400 text-white cursor-not-allowed opacity-50"
+                                }`}
+                                title={
+                                  user?.email === "admin@gmail.com"
+                                    ? "Xóa"
+                                    : "Chỉ admin mới có quyền xóa"
+                                }
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
+              )}
+            </div>
+          </div>
 
-                {/* Description */}
-                <div>
-                  <label
-                    className="
-                  
-                  sm font-bold text-gray-700 mb-2 flex items-center gap-2"
+          {/* Modal */}
+          {showModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="sticky top-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-6 py-5 flex items-center justify-between rounded-t-2xl">
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                    {editingId ? (
+                      <>
+                        <span className="text-3xl">✏️</span>
+                        <span>Chỉnh Sửa Công Việc</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-3xl">➕</span>
+                        <span>Thêm Công Việc Bảo Trì</span>
+                      </>
+                    )}
+                  </h2>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="text-white text-2xl font-bold hover:bg-white hover:text-indigo-600 rounded-full w-10 h-10 flex items-center justify-center transition-all transform hover:rotate-90"
                   >
-                    <span>📝</span>
-                    <span>Mô Tả Chi Tiết</span>
-                  </label>
-                  <textarea
-                    value={newTask.description}
-                    onChange={(e) =>
-                      setNewTask({ ...newTask, description: e.target.value })
-                    }
-                    disabled={
-                      editingId &&
-                      maintenanceTasks.find((t) => t.id === editingId)
-                        ?.completed
-                    }
-                    className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all resize-none text-base ${
-                      editingId &&
-                      maintenanceTasks.find((t) => t.id === editingId)
-                        ?.completed
-                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                        : ""
-                    }`}
-                    placeholder="Mô tả chi tiết về công việc cần thực hiện..."
-                    rows="4"
-                  ></textarea>
+                    ✕
+                  </button>
                 </div>
 
-                {/* Date and Time */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-6 space-y-5">
+                  {/* Task Name */}
                   <div>
                     <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                       <span className="text-red-500">*</span>
-                      <span>📅 Ngày Bắt Đầu</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={newTask.startDate}
-                      onChange={(e) =>
-                        setNewTask({ ...newTask, startDate: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        maintenanceTasks.find((t) => t.id === editingId)
-                          ?.completed
-                      }
-                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
-                        editingId &&
-                        maintenanceTasks.find((t) => t.id === editingId)
-                          ?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span className="text-red-500">*</span>
-                      <span>⏰ Giờ Bắt Đầu</span>
-                    </label>
-                    <input
-                      type="time"
-                      value={newTask.startTime}
-                      onChange={(e) =>
-                        setNewTask({ ...newTask, startTime: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        maintenanceTasks.find((t) => t.id === editingId)
-                          ?.completed
-                      }
-                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
-                        editingId &&
-                        maintenanceTasks.find((t) => t.id === editingId)
-                          ?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                {/* Assigned To and Department */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>👤</span>
-                      <span>Người Phụ Trách</span>
+                      <span>Tên Công Việc</span>
                     </label>
                     <input
                       type="text"
-                      value={newTask.assignedTo}
+                      value={newTask.name}
                       onChange={(e) =>
-                        setNewTask({ ...newTask, assignedTo: e.target.value })
+                        setNewTask({ ...newTask, name: e.target.value })
                       }
                       disabled={
                         editingId &&
@@ -901,19 +807,237 @@ function MaintenanceChecklist() {
                           ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                           : ""
                       }`}
-                      placeholder="Tên người phụ trách..."
+                      placeholder="VD: Bảo trì máy nén khí số 3..."
                     />
                   </div>
 
+                  {/* Category and Priority */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <span>📂</span>
+                        <span>Loại Công Việc</span>
+                      </label>
+                      <select
+                        value={newTask.category}
+                        onChange={(e) =>
+                          setNewTask({ ...newTask, category: e.target.value })
+                        }
+                        disabled={
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                        }
+                        className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : ""
+                        }`}
+                      >
+                        <option value="general">📄 Chung</option>
+                        <option value="mechanical">⚙️ Cơ khí</option>
+                        <option value="electrical">⚡ Điện</option>
+                        <option value="cleaning">🧹 Vệ sinh</option>
+                        <option value="inspection">🔍 Kiểm tra</option>
+                        <option value="outsourcing">
+                          🔧 Sửa chữa bên ngoài
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <span>⚡</span>
+                        <span>Mức Độ Ưu Tiên</span>
+                      </label>
+                      <select
+                        value={newTask.priority}
+                        onChange={(e) =>
+                          setNewTask({ ...newTask, priority: e.target.value })
+                        }
+                        disabled={
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                        }
+                        className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : ""
+                        }`}
+                      >
+                        <option value="low">📋 Thấp</option>
+                        <option value="medium">📌 Trung bình</option>
+                        <option value="high">⚠️ Cao</option>
+                        <option value="urgent">🚨 Khẩn cấp</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label
+                      className="
+                  
+                  sm font-bold text-gray-700 mb-2 flex items-center gap-2"
+                    >
+                      <span>📝</span>
+                      <span>Mô Tả Chi Tiết</span>
+                    </label>
+                    <textarea
+                      value={newTask.description}
+                      onChange={(e) =>
+                        setNewTask({ ...newTask, description: e.target.value })
+                      }
+                      disabled={
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                      }
+                      className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all resize-none text-base ${
+                        editingId &&
+                        maintenanceTasks.find((t) => t.id === editingId)
+                          ?.completed
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          : ""
+                      }`}
+                      placeholder="Mô tả chi tiết về công việc cần thực hiện..."
+                      rows="4"
+                    ></textarea>
+                  </div>
+
+                  {/* Date and Time */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <span className="text-red-500">*</span>
+                        <span>📅 Ngày Bắt Đầu</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={newTask.startDate}
+                        onChange={(e) =>
+                          setNewTask({ ...newTask, startDate: e.target.value })
+                        }
+                        disabled={
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                        }
+                        className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : ""
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <span className="text-red-500">*</span>
+                        <span>⏰ Giờ Bắt Đầu</span>
+                      </label>
+                      <input
+                        type="time"
+                        value={newTask.startTime}
+                        onChange={(e) =>
+                          setNewTask({ ...newTask, startTime: e.target.value })
+                        }
+                        disabled={
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                        }
+                        className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : ""
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Assigned To and Department */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <span>👤</span>
+                        <span>Người Phụ Trách</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newTask.assignedTo}
+                        onChange={(e) =>
+                          setNewTask({ ...newTask, assignedTo: e.target.value })
+                        }
+                        disabled={
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                        }
+                        className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : ""
+                        }`}
+                        placeholder="Tên người phụ trách..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <span>🏢</span>
+                        <span>Bộ Phận</span>
+                      </label>
+                      <select
+                        value={newTask.department}
+                        onChange={(e) =>
+                          setNewTask({ ...newTask, department: e.target.value })
+                        }
+                        disabled={
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                        }
+                        className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
+                          editingId &&
+                          maintenanceTasks.find((t) => t.id === editingId)
+                            ?.completed
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : ""
+                        }`}
+                      >
+                        <option value="">-- Chọn bộ phận --</option>
+                        <option value="PRESS">PRESS</option>
+                        <option value="MC">MC</option>
+                        <option value="HAIRLINE">HAIRLINE</option>
+                        <option value="ANODIZING">ANODIZING</option>
+                        <option value="ASSEMBLY">ASSEMBLY</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Location */}
                   <div>
                     <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>🏢</span>
-                      <span>Bộ Phận</span>
+                      <span>📍</span>
+                      <span>Vị Trí</span>
                     </label>
-                    <select
-                      value={newTask.department}
+                    <input
+                      type="text"
+                      value={newTask.location}
                       onChange={(e) =>
-                        setNewTask({ ...newTask, department: e.target.value })
+                        setNewTask({ ...newTask, location: e.target.value })
                       }
                       disabled={
                         editingId &&
@@ -927,66 +1051,37 @@ function MaintenanceChecklist() {
                           ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                           : ""
                       }`}
-                    >
-                      <option value="">-- Chọn bộ phận --</option>
-                      <option value="PRESS">PRESS</option>
-                      <option value="MC">MC</option>
-                      <option value="HAIRLINE">HAIRLINE</option>
-                      <option value="ANODIZING">ANODIZING</option>
-                      <option value="ASSEMBLY">ASSEMBLY</option>
-                    </select>
+                      placeholder="VD: Tầng 1, Khu A, Máy số 5..."
+                    />
                   </div>
                 </div>
 
-                {/* Location */}
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span>📍</span>
-                    <span>Vị Trí</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newTask.location}
-                    onChange={(e) =>
-                      setNewTask({ ...newTask, location: e.target.value })
-                    }
-                    disabled={
-                      editingId &&
-                      maintenanceTasks.find((t) => t.id === editingId)
-                        ?.completed
-                    }
-                    className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
-                      editingId &&
-                      maintenanceTasks.find((t) => t.id === editingId)
-                        ?.completed
-                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                        : ""
-                    }`}
-                    placeholder="VD: Tầng 1, Khu A, Máy số 5..."
-                  />
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 flex gap-3 justify-end rounded-b-2xl border-t">
+                  <button
+                    onClick={() => {
+                      setShowModal(false);
+                      resetForm();
+                    }}
+                    className="px-6 py-3 bg-gray-400 text-white rounded-xl hover:bg-gray-500 transition-all font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
+                  >
+                    ❌ Hủy
+                  </button>
+                  <button
+                    onClick={handleAddOrUpdate}
+                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl transition-all font-bold shadow-lg transform hover:scale-105"
+                  >
+                    {editingId ? "💾 Cập Nhật" : "➕ Thêm Mới"}
+                  </button>
                 </div>
               </div>
-
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 flex gap-3 justify-end rounded-b-2xl border-t">
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    resetForm();
-                  }}
-                  className="px-6 py-3 bg-gray-400 text-white rounded-xl hover:bg-gray-500 transition-all font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
-                  ❌ Hủy
-                </button>
-                <button
-                  onClick={handleAddOrUpdate}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl transition-all font-bold shadow-lg transform hover:scale-105"
-                >
-                  {editingId ? "💾 Cập Nhật" : "➕ Thêm Mới"}
-                </button>
-              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* History Modal */}
+          {showHistory && (
+            <MaintenanceHistory onClose={() => setShowHistory(false)} />
+          )}
+        </div>
       </div>
     </>
   );

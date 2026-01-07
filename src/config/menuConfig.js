@@ -72,6 +72,16 @@ export const menuConfig = [
             path: "/maintenance",
           },
           {
+            key: "ocr",
+            label: "navbar.ocr",
+            path: "/ocr",
+          },
+          {
+            key: "driverLogbook",
+            label: "navbar.driverLogbook",
+            path: "/driver-logbook",
+          },
+          {
             key: "userDepartment",
             label: "navbar.userDepartment",
             path: "/user-department",
@@ -141,4 +151,5 @@ export const routeConfig = [
   { path: "/inventory", element: "Inventory" },
   { path: "/downloads", element: "Downloads" },
   { path: "/maintenance", element: "MaintenanceChecklist" },
+  { path: "/driver-logbook", element: "DriverLogbook" },
 ];
