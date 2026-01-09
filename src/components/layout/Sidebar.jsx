@@ -75,7 +75,7 @@ export default function Sidebar({
   return (
     <div
       ref={containerRef}
-      className={`w-72 fixed left-0 text-white p-6 shadow z-20 overflow-y-auto isolate space-y-6 transition-transform duration-300 ${
+      className={`w-80 fixed left-0 text-white p-6 shadow z-20 overflow-y-auto isolate space-y-6 transition-transform duration-300 ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       } ${className}`}
       style={{
