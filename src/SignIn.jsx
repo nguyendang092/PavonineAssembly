@@ -439,6 +439,7 @@ export default function SignIn({ onSignIn, onClose }) {
               alignItems: "center",
               justifyContent: "center",
               zIndex: 9999,
+              padding: "1rem",
             }}
             onClick={() => {
               setShowReset(false);
@@ -449,15 +450,21 @@ export default function SignIn({ onSignIn, onClose }) {
             <div
               style={{
                 backgroundColor: "white",
-                padding: "40px",
+                padding: "clamp(1.5rem, 4vw, 2.5rem)",
                 borderRadius: "10px",
                 boxShadow: "0 5px 15px rgba(0, 0, 0, 0.3)",
                 maxWidth: "400px",
-                width: "90%",
+                width: "100%",
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 style={{ marginBottom: "20px", textAlign: "center" }}>
+              <h2
+                style={{
+                  marginBottom: "1.25rem",
+                  textAlign: "center",
+                  fontSize: "clamp(1.125rem, 4vw, 1.5rem)",
+                }}
+              >
                 {t("signIn.sendReset")}
               </h2>
               {resetSuccess && (
@@ -465,17 +472,18 @@ export default function SignIn({ onSignIn, onClose }) {
                   style={{
                     backgroundColor: "#d4edda",
                     color: "#155724",
-                    padding: "12px",
+                    padding: "clamp(0.5rem, 2vw, 0.75rem)",
                     borderRadius: "5px",
-                    marginBottom: "15px",
+                    marginBottom: "1rem",
                     textAlign: "center",
+                    fontSize: "clamp(0.875rem, 2vw, 1rem)",
                   }}
                 >
                   {t("signIn.resetSent")}
                 </div>
               )}
               <form onSubmit={handlePasswordReset}>
-                <div style={{ marginBottom: "20px", position: "relative" }}>
+                <div style={{ marginBottom: "1.25rem", position: "relative" }}>
                   <input
                     type="email"
                     required
@@ -484,8 +492,8 @@ export default function SignIn({ onSignIn, onClose }) {
                     placeholder={t("signIn.email")}
                     style={{
                       width: "100%",
-                      padding: "10px",
-                      fontSize: "16px",
+                      padding: "clamp(0.5rem, 2vw, 0.625rem)",
+                      fontSize: "clamp(0.875rem, 2vw, 1rem)",
                       border: "1px solid #ccc",
                       borderRadius: "5px",
                       boxSizing: "border-box",
@@ -496,8 +504,8 @@ export default function SignIn({ onSignIn, onClose }) {
                   <div
                     style={{
                       color: "red",
-                      fontSize: "14px",
-                      marginBottom: "15px",
+                      fontSize: "clamp(0.75rem, 2vw, 0.875rem)",
+                      marginBottom: "1rem",
                       textAlign: "center",
                     }}
                   >
@@ -505,20 +513,25 @@ export default function SignIn({ onSignIn, onClose }) {
                   </div>
                 )}
                 <div
-                  style={{ display: "flex", gap: "10px", marginTop: "25px" }}
+                  style={{
+                    display: "flex",
+                    gap: "0.625rem",
+                    marginTop: "1.5rem",
+                    flexDirection: window.innerWidth < 400 ? "column" : "row",
+                  }}
                 >
                   <button
                     type="submit"
                     disabled={loading || resetSuccess}
                     style={{
                       flex: 1,
-                      padding: "10px",
+                      padding: "clamp(0.5rem, 2vw, 0.625rem)",
                       backgroundColor: "#007bff",
                       color: "white",
                       border: "none",
                       borderRadius: "5px",
                       cursor: "pointer",
-                      fontSize: "16px",
+                      fontSize: "clamp(0.875rem, 2vw, 1rem)",
                       fontWeight: "bold",
                     }}
                   >
@@ -533,13 +546,13 @@ export default function SignIn({ onSignIn, onClose }) {
                     }}
                     style={{
                       flex: 1,
-                      padding: "10px",
+                      padding: "clamp(0.5rem, 2vw, 0.625rem)",
                       backgroundColor: "#6c757d",
                       color: "white",
                       border: "none",
                       borderRadius: "5px",
                       cursor: "pointer",
-                      fontSize: "16px",
+                      fontSize: "clamp(0.875rem, 2vw, 1rem)",
                       fontWeight: "bold",
                     }}
                   >

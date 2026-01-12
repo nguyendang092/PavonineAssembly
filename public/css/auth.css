@@ -351,3 +351,237 @@ body.signin-open button[class*="fixed left-4 top-20"] {
 }
 
 /* Loại bỏ animation tự động ban đầu */
+
+/* ============================================ */
+/* RESPONSIVE STYLES */
+/* ============================================ */
+
+/* Mobile First - Base styles (< 768px) */
+@media (max-width: 767px) {
+    .auth-container {
+        padding: 1rem;
+    }
+
+    .auth-wrapper {
+        width: 100%;
+        height: 100%;
+        min-height: 100vh;
+        max-width: none;
+        border-radius: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.25rem;
+    }
+
+    /* Hide curved shapes on mobile */
+    .curved-shape,
+    .curved-shape2 {
+        display: none;
+    }
+
+    /* Full width forms on mobile */
+    .auth-wrapper .form-box {
+        position: relative;
+        width: 100%;
+        height: auto;
+        min-height: auto;
+        top: 0;
+        left: 0;
+        transform: none !important;
+        padding: 1.5rem 1rem !important;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        z-index: 1;
+        display: none;
+        max-width: 440px;
+        margin: 0 auto;
+    }
+
+    .auth-wrapper .form-box.Login {
+        padding: 1.5rem 1rem !important;
+        left: 0;
+        right: 0;
+        pointer-events: auto;
+        display: flex;
+    }
+
+    .auth-wrapper .form-box.Register {
+        padding: 1.5rem 1rem !important;
+        left: 0;
+        right: 0;
+        pointer-events: auto;
+        display: none;
+    }
+
+    /* Hide info content on mobile */
+    .auth-wrapper .info-content {
+        display: none;
+    }
+
+    /* Disable slide animations on mobile */
+    .auth-wrapper .form-box .animation {
+        transform: none !important;
+        opacity: 1 !important;
+        filter: none !important;
+    }
+
+    .auth-wrapper.active .form-box.Login,
+    .auth-wrapper.active .form-box.Register {
+        transform: none !important;
+        pointer-events: auto;
+    }
+
+    /* Show only the active form on mobile */
+    .auth-wrapper.active .form-box.Login {
+        display: none;
+    }
+
+    .auth-wrapper.active .form-box.Register {
+        display: flex;
+    }
+
+    /* Form adjustments */
+    .auth-wrapper .form-box h2 {
+        font-size: 1.5rem !important;
+        margin-bottom: 1.25rem;
+        color: #667eea;
+    }
+
+    .auth-wrapper .input-box {
+        margin-bottom: 1rem;
+    }
+
+    .auth-wrapper .input-box input {
+        height: 45px;
+        font-size: 0.875rem;
+        padding: 0 2.5rem 0 0.75rem;
+        color: #333;
+    }
+
+    .auth-wrapper .input-box label {
+        font-size: 0.875rem;
+        left: 0.75rem;
+        color: #666;
+    }
+
+    .auth-wrapper .input-box span {
+        font-size: 1rem !important;
+        right: 0.75rem !important;
+        color: #667eea !important;
+    }
+
+    .auth-wrapper .input-box .btn {
+        height: 45px;
+        font-size: 0.875rem;
+    }
+
+    .auth-wrapper .regi-link {
+        font-size: 0.75rem;
+        margin-top: 1rem;
+        color: #333;
+    }
+
+    .auth-wrapper .regi-link a {
+        color: #667eea !important;
+    }
+
+    /* Close button adjustment */
+    .auth-container .close-btn {
+        top: 10px;
+        right: 10px;
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
+    }
+
+    /* Stack forms vertically on mobile when switching */
+    .auth-wrapper.active .form-box.Login {
+        transform: translateY(-100%);
+    }
+
+    .auth-wrapper.active .form-box.Register {
+        transform: translateY(0);
+    }
+}
+
+/* Tablet (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .auth-wrapper {
+        width: 90%;
+        max-width: 650px;
+        height: 420px;
+    }
+
+    .auth-wrapper .form-box.Login {
+        padding: 0 2rem;
+    }
+
+    .auth-wrapper .form-box.Register {
+        padding: 0 2rem;
+    }
+
+    .auth-wrapper .info-content.Login {
+        padding: 0 2rem 3rem 6rem;
+    }
+
+    .auth-wrapper .info-content.Register {
+        padding: 0 6rem 3rem 2rem;
+    }
+
+    .auth-wrapper .info-content h2 {
+        font-size: 1.75rem;
+    }
+
+    .auth-wrapper .info-content p {
+        font-size: 0.875rem;
+    }
+
+    .auth-wrapper .input-box input {
+        height: 48px;
+        font-size: 0.9375rem;
+    }
+
+    .auth-wrapper .input-box .btn {
+        height: 48px;
+    }
+}
+
+/* Desktop (>= 1024px) - Original styles */
+@media (min-width: 1024px) {
+    .auth-wrapper {
+        width: 750px;
+        height: 450px;
+    }
+}
+
+/* Landscape mobile phones */
+@media (max-height: 600px) and (orientation: landscape) {
+    .auth-wrapper {
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .auth-wrapper .form-box {
+        padding: 1rem !important;
+    }
+
+    .auth-wrapper .form-box h2 {
+        font-size: 1.25rem !important;
+        margin-bottom: 0.75rem;
+    }
+
+    .auth-wrapper .input-box {
+        margin-bottom: 0.5rem;
+    }
+
+    .auth-wrapper .input-box input,
+    .auth-wrapper .input-box .btn {
+        height: 40px;
+    }
+}
