@@ -33,12 +33,12 @@ function StatusBadge({ trip }) {
       icon: "📅",
     },
     ONBOARD: {
-      label: "Đang Chạy",
+      label: "Waiting",
       color: "bg-amber-100 text-amber-700",
       icon: "🚗",
     },
     ARRIVED: {
-      label: "Hoàn Tất",
+      label: "Completed",
       color: "bg-green-100 text-green-700",
       icon: "✅",
     },
@@ -109,6 +109,15 @@ function DriverLogbook() {
   // Board/List view toggle
   const [viewMode, setViewMode] = useState("list");
 
+  // Check if user is admin or HR
+  const isAdminOrHR = React.useMemo(() => {
+    if (!user?.email) return false;
+    return (
+      user.email === "admin@gmail.com" ||
+      user.email.toLowerCase().includes("hr")
+    );
+  }, [user?.email]);
+
   // Detect duplicate booking: same vehicle + same start date/time
   const isDuplicateBooking = React.useMemo(() => {
     if (!newTrip.vehicleNumber || !newTrip.startDate || !newTrip.startTime)
@@ -162,12 +171,30 @@ function DriverLogbook() {
   }, []);
 
   const handleEdit = (trip) => {
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Chỉ Admin/HR mới có quyền chỉnh sửa chuyến đi",
+      });
+      return;
+    }
+
     setNewTrip(trip);
     setEditingId(trip.id);
     setShowModal(true);
   };
 
   const handleDelete = async (id) => {
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Chỉ Admin/HR mới có quyền xóa chuyến đi",
+      });
+      return;
+    }
+
     if (window.confirm("Bạn chắc chắn muốn xóa chuyến đi này?")) {
       try {
         const tripRef = ref(db, `driverTrips/${id}`);
@@ -188,6 +215,15 @@ function DriverLogbook() {
   };
 
   const handleAddOrUpdate = async () => {
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Chỉ Admin/HR mới có quyền thêm/sửa chuyến đi",
+      });
+      return;
+    }
+
     if (
       !newTrip.driverName ||
       !newTrip.destination ||
@@ -244,6 +280,15 @@ function DriverLogbook() {
   };
 
   const handleCompleteTrip = async (trip) => {
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Chỉ Admin/HR mới có quyền đánh dấu hoàn tất",
+      });
+      return;
+    }
+
     try {
       const tripRef = ref(db, `driverTrips/${trip.id}`);
       await update(tripRef, {
@@ -493,6 +538,14 @@ function DriverLogbook() {
             </button>
             <button
               onClick={() => {
+                if (!isAdminOrHR) {
+                  setAlert({
+                    show: true,
+                    type: "error",
+                    message: "❌ Chỉ Admin/HR mới có quyền thêm chuyến đi",
+                  });
+                  return;
+                }
                 setCurrentView("add");
                 setSidebarOpen(false);
               }}
@@ -643,27 +696,27 @@ function DriverLogbook() {
             return (
               <div className="rounded-3xl overflow-hidden border border-transparent shadow-2xl bg-white">
                 {/* Board Header - Airport Style */}
-                <div className="bg-gradient-to-r from-indigo-600 via-blue-500 to-cyan-500 text-white px-4 md:px-6 py-2 border-b border-blue-100/30">
+                <div className="bg-gradient-to-r from-indigo-600 via-blue-500 to-cyan-500 text-white px-3 sm:px-4 md:px-6 py-2 sm:py-3 border-b border-blue-100/30">
                   {/* Row 1: Menu button, Title, Time */}
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center justify-between gap-2 sm:gap-3">
                     {/* Left: Menu Button + Title */}
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <button
                         onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg bg-blue-500 text-white hover:bg-blue-400 transition-colors"
+                        className="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-blue-500 text-white hover:bg-blue-400 transition-colors text-lg sm:text-xl"
                         title="Menu"
                       >
                         ☰
                       </button>
-                      <div className="flex items-center gap-1 min-w-0">
-                        <span className="text-2xl md:text-3xl flex-shrink-0">
+                      <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+                        <span className="text-xl sm:text-2xl md:text-3xl flex-shrink-0">
                           🚗
                         </span>
                         <div className="min-w-0">
-                          <h2 className="text-lg md:text-xl font-bold truncate">
+                          <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold truncate">
                             LỊCH CHUYẾN ĐI
                           </h2>
-                          <p className="text-blue-100 text-xs md:text-sm">
+                          <p className="text-blue-100 text-xs hidden sm:block">
                             Departure Board
                           </p>
                         </div>
@@ -672,7 +725,7 @@ function DriverLogbook() {
 
                     {/* Right: Current Time */}
                     <div className="flex-shrink-0 text-right">
-                      <div className="text-2xl md:text-3xl font-mono font-bold tracking-wider">
+                      <div className="text-lg sm:text-2xl md:text-3xl font-mono font-bold tracking-wider">
                         {currentTime}
                       </div>
                       <p className="text-blue-100 text-xs">30s</p>
@@ -681,9 +734,9 @@ function DriverLogbook() {
                 </div>
 
                 {/* Controls - Sort & Filter */}
-                <div className="flex gap-3 px-6 py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100/40 flex-wrap">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100/40">
                   {/* Sort Options */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-1 sm:gap-2 flex-wrap">
                     {[
                       { value: "time", label: "⏰ Giờ" },
                       { value: "vehicle", label: "🚗 Xe" },
@@ -693,7 +746,7 @@ function DriverLogbook() {
                       <button
                         key={option.value}
                         onClick={() => setSortBy(option.value)}
-                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                        className={`px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-sm font-semibold transition ${
                           sortBy === option.value
                             ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
                             : "bg-white text-slate-700 border border-slate-200 hover:border-indigo-300 hover:shadow-sm"
@@ -703,48 +756,27 @@ function DriverLogbook() {
                       </button>
                     ))}
                   </div>
-
-                  {/* Filter Status */}
-                  <div className="flex gap-2 ml-auto">
-                    {[
-                      { value: "all", label: "Tất Cả" },
-                      { value: "onboard", label: "Đang Chạy" },
-                      { value: "arrived", label: "Hoàn Tất" },
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setFilterStatus(option.value)}
-                        className={`px-3 py-1 rounded text-sm font-semibold transition ${
-                          filterStatus === option.value
-                            ? "bg-green-600 text-white"
-                            : "bg-white text-gray-700 border border-gray-300 hover:border-green-400"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {/* Table Header */}
-                <div className="grid grid-cols-8 gap-3 bg-blue-600 text-blue-50 text-xs font-bold px-6 py-3">
-                  <div>⏰ GIỜ ĐI</div>
-                  <div>🚗 BIỂN SỐ XE</div>
-                  <div>👤 TÀI XẾ</div>
-                  <div>📱 SỐ ĐIỆN THOẠI</div>
-                  <div>📍 ĐIỂM ĐI</div>
-                  <div>🏁 ĐIỂM ĐẾN</div>
-                  <div>📊 TRẠNG THÁI</div>
-                  <div>📝 GHI CHÚ</div>
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1 sm:gap-2 md:gap-3 bg-blue-600 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3">
+                  <div className="truncate">⏰ GIỜ ĐI</div>
+                  <div className="truncate">🚗 XE</div>
+                  <div className="truncate hidden sm:block">👤 TÀI XẾ</div>
+                  <div className="truncate hidden md:block">📱 SỐ ĐT</div>
+                  <div className="truncate hidden sm:block">📍 ĐI</div>
+                  <div className="truncate">🏁 ĐẾN</div>
+                  <div className="truncate text-xs">📊 TRẠNG THÁI</div>
+                  <div className="truncate hidden md:block">📝 GHI CHÚ</div>
                 </div>
 
                 {/* Rows */}
                 {sorted.length === 0 ? (
-                  <div className="px-6 py-12 text-center">
-                    <p className="text-gray-400 text-lg">
+                  <div className="px-3 sm:px-4 md:px-6 py-8 sm:py-12 text-center">
+                    <p className="text-gray-400 text-base sm:text-lg">
                       🛫 Không có chuyến đi nào
                     </p>
-                    <p className="text-gray-300 text-sm mt-2">
+                    <p className="text-gray-300 text-xs sm:text-sm mt-2">
                       Chọn ngày hoặc xe khác để xem lịch
                     </p>
                   </div>
@@ -768,40 +800,40 @@ function DriverLogbook() {
                       return (
                         <div
                           key={`board-${trip.id}`}
-                          className={`grid grid-cols-8 gap-3 px-4 py-3 items-center ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
+                          className={`grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
                         >
                           {/* Time */}
-                          <div className="font-mono text-lg font-bold text-yellow-300">
-                            {scheduled}
+                          <div className="font-mono font-bold text-yellow-300">
+                            <div className="truncate">{scheduled}</div>
                             {estimated !== "-" && (
-                              <div className="text-xs text-pink-300 mt-1">
+                              <div className="text-xs text-pink-300 mt-0.5">
                                 ← {estimated}
                               </div>
                             )}
                           </div>
 
                           {/* Vehicle */}
-                          <div className="text-white font-bold">
+                          <div className="text-white font-bold truncate">
                             {trip.vehicleNumber || "N/A"}
                           </div>
 
                           {/* Driver */}
-                          <div className="text-white font-bold">
+                          <div className="text-white font-bold truncate hidden sm:block">
                             {trip.driverName || "-"}
                           </div>
 
                           {/* Phone */}
-                          <div className="text-white font-bold">
+                          <div className="text-white font-bold truncate hidden md:block text-xs">
                             {trip.phone || "-"}
                           </div>
 
                           {/* Departure */}
-                          <div className="text-white font-bold">
+                          <div className="text-white font-bold truncate hidden sm:block">
                             {trip.departure || "-"}
                           </div>
 
                           {/* Destination */}
-                          <div className="text-white font-bold">
+                          <div className="text-white font-bold truncate">
                             {trip.destination || "-"}
                           </div>
 
@@ -811,7 +843,7 @@ function DriverLogbook() {
                           </div>
 
                           {/* Notes */}
-                          <div className="text-xs text-gray-200">
+                          <div className="text-xs text-gray-200 truncate hidden md:block">
                             {trip.notes ||
                               (trip.totalKm ? `${trip.totalKm} km` : "-")}
                           </div>
@@ -822,8 +854,9 @@ function DriverLogbook() {
                 )}
 
                 {/* Footer */}
-                <div className="px-6 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 text-xs text-slate-600 text-center border-t border-blue-100/40">
-                  💡 Tổng {sorted.length} chuyến | Cập nhật tự động mỗi 30 giây
+                <div className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-50 to-indigo-50 text-xs sm:text-sm text-slate-600 text-center border-t border-blue-100/40">
+                  💡 Tổng <span className="font-bold">{sorted.length}</span>{" "}
+                  chuyến | Cập nhật tự động mỗi 30s
                 </div>
               </div>
             );
@@ -832,52 +865,52 @@ function DriverLogbook() {
         {currentView === "trips" && (
           <>
             {/* Filter Tabs */}
-            <div className="mb-4 flex gap-2 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="mb-4 flex gap-2 bg-white p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 transition-colors flex-shrink-0"
+                className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 transition-colors flex-shrink-0 text-lg sm:text-xl"
                 title="Menu"
               >
                 ☰
               </button>
               <button
                 onClick={() => setFilterTab("all")}
-                className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                   filterTab === "all"
                     ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
                     : "text-slate-700 hover:text-indigo-600"
                 }`}
               >
-                Tất Cả ({trips.length})
+                All({trips.length})
               </button>
               <button
                 onClick={() => setFilterTab("ongoing")}
-                className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                   filterTab === "ongoing"
                     ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
                     : "text-slate-700 hover:text-indigo-600"
                 }`}
               >
-                Đang Chạy ({trips.filter((t) => !t.completed).length})
+                Waiting({trips.filter((t) => !t.completed).length})
               </button>
               <button
                 onClick={() => setFilterTab("completed")}
-                className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                   filterTab === "completed"
                     ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
                     : "text-slate-700 hover:text-indigo-600"
                 }`}
               >
-                Hoàn Tất ({trips.filter((t) => t.completed).length})
+                Completed ({trips.filter((t) => t.completed).length})
               </button>
             </div>
 
             {/* Trips Table */}
-            <div className="bg-white rounded-3xl border border-transparent overflow-hidden shadow-xl">
+            <div className="bg-white rounded-xl sm:rounded-3xl border border-transparent overflow-hidden shadow-lg sm:shadow-xl">
               {filteredTrips.length === 0 ? (
-                <div className="p-12 text-center">
-                  <div className="text-6xl mb-4">🚗</div>
-                  <p className="text-slate-600 text-xl font-semibold">
+                <div className="p-6 sm:p-12 text-center">
+                  <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">🚗</div>
+                  <p className="text-slate-600 text-base sm:text-xl font-semibold">
                     {filterTab === "ongoing"
                       ? "Không có chuyến đi đang chạy"
                       : filterTab === "completed"
@@ -889,62 +922,84 @@ function DriverLogbook() {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-b border-indigo-100/30">
-                      <tr className="uppercase tracking-widest text-[12px] font-bold">
-                        <th className="px-4 py-4 text-center">Hoàn Tất</th>
-                        <th className="px-4 py-4 text-center">Tài Xế</th>
-                        <th className="px-4 py-4 text-center">Điện Thoại</th>
-                        <th className="px-4 py-4 text-center">Số Xe</th>
-                        <th className="px-4 py-4 text-center">
-                          Điểm Đi - Điểm Đến
+                      <tr className="uppercase tracking-widest text-xs sm:text-sm font-bold">
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
+                          ✓
                         </th>
-                        <th className="px-4 py-4 text-center">Km</th>
-                        <th className="px-4 py-4 text-center">Thời Gian</th>
-                        <th className="px-4 py-4 text-center">Chi Tiết</th>
-                        <th className="px-4 py-4 text-center">Trạng Thái</th>
-                        <th className="px-4 py-4 text-center w-32">Thao Tác</th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden sm:table-cell">
+                          Tài Xế
+                        </th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
+                          ĐT
+                        </th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
+                          Xe
+                        </th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden lg:table-cell">
+                          Tuyến
+                        </th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden sm:table-cell">
+                          Km
+                        </th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
+                          Thời Gian
+                        </th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
+                          Chi Tiết
+                        </th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center text-xs">
+                          Trạng thái
+                        </th>
+                        {isAdminOrHR && (
+                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center w-16 sm:w-20">
+                            Thao Tác
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200/50">
                       {filteredTrips.map((trip) => (
                         <tr
                           key={trip.id}
-                          className="transition-colors odd:bg-gray-900 even:bg-gray-700 hover:bg-gray-800 text-white"
+                          className="transition-colors odd:bg-gray-900 even:bg-gray-700 hover:bg-gray-800 text-white text-xs sm:text-sm"
                         >
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
                             <div className="flex items-center justify-center">
                               <input
                                 type="checkbox"
                                 checked={trip.completed}
                                 onChange={() => handleCompleteTrip(trip)}
-                                disabled={trip.completed}
-                                className={`w-5 h-5 rounded ${
-                                  trip.completed
+                                disabled={trip.completed || !isAdminOrHR}
+                                className={`w-4 h-4 sm:w-5 sm:h-5 rounded ${
+                                  trip.completed || !isAdminOrHR
                                     ? "text-green-600 cursor-not-allowed opacity-70"
                                     : "text-blue-600 cursor-pointer"
                                 }`}
                                 title={
                                   trip.completed
                                     ? "Chuyến đi đã hoàn tất"
+                                    : !isAdminOrHR
+                                    ? "Chỉ Admin/HR mới có quyền đánh dấu hoàn tất"
                                     : "Click để đánh dấu hoàn tất"
                                 }
                               />
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <div className="flex items-center gap-2 justify-center">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-200 to-blue-200 border border-indigo-300 flex items-center justify-center text-indigo-700 font-semibold text-sm">
+                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden sm:table-cell">
+                            <div className="flex items-center gap-1 sm:gap-2 justify-center">
+                              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-indigo-200 to-blue-200 border border-indigo-300 flex items-center justify-center text-indigo-700 font-semibold text-xs sm:text-sm flex-shrink-0">
                                 {(trip.driverName || "?")[0].toUpperCase()}
                               </div>
-                              <span className="font-bold text-white">
+                              <span className="font-bold text-white hidden md:inline truncate">
                                 {trip.driverName}
                               </span>
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
                             {trip.phone ? (
                               <a
                                 href={`tel:${trip.phone}`}
-                                className="text-white hover:text-yellow-400 font-semibold"
+                                className="text-white hover:text-yellow-400 font-semibold text-xs sm:text-sm truncate"
                               >
                                 {trip.phone}
                               </a>
@@ -952,133 +1007,124 @@ function DriverLogbook() {
                               <span className="text-slate-400">-</span>
                             )}
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <span className="px-3 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold border border-indigo-200">
+                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
+                            <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 inline-block truncate">
                               {trip.vehicleNumber || "N/A"}
                             </span>
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <div className="text-sm text-white">
-                              <p className="font-semibold text-white">
-                                📍 {trip.departure || "Chưa xác định"} →{" "}
+                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden lg:table-cell">
+                            <div className="text-xs sm:text-sm text-white">
+                              <p className="font-semibold text-white truncate">
+                                📍 {trip.departure || "N/A"} →{" "}
                                 {trip.destination}
                               </p>
                               {trip.purpose && (
-                                <p className="text-gray-300 mt-1 text-xs">
+                                <p className="text-gray-300 text-xs truncate">
                                   🎯 {trip.purpose}
                                 </p>
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <div className="text-sm text-white">
+                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden sm:table-cell">
+                            <div className="text-xs sm:text-sm text-white">
                               <p className="text-gray-300 font-medium">
-                                Bắt đầu:{" "}
-                                <span className="font-bold text-white">
-                                  {trip.startKm || 0} km
-                                </span>
+                                {trip.startKm || 0}km
                               </p>
                               {trip.endKm && (
                                 <>
-                                  <p className="text-gray-300 mt-1 font-medium">
-                                    Kết thúc:{" "}
+                                  <p className="text-gray-300 text-xs">
+                                    →
                                     <span className="font-bold text-white">
-                                      {trip.endKm} km
+                                      {trip.endKm}
                                     </span>
+                                    km
                                   </p>
-                                  <p className="text-white font-bold mt-1">
-                                    Tổng:{" "}
-                                    {trip.totalKm ||
-                                      parseFloat(trip.endKm) -
-                                        parseFloat(trip.startKm)}{" "}
-                                    km (
+                                  <p className="text-white font-bold text-xs">
+                                    Δ
                                     <span className="text-cyan-300">
-                                      chính xác
+                                      {trip.totalKm ||
+                                        parseFloat(trip.endKm) -
+                                          parseFloat(trip.startKm)}
                                     </span>
-                                    )
                                   </p>
                                 </>
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <div className="text-sm text-white">
+                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
+                            <div className="text-xs sm:text-sm text-white">
                               <p className="text-gray-300 font-medium">
                                 <span className="font-semibold text-white">
-                                  Xuất phát:
-                                </span>{" "}
-                                {new Date(trip.startDate).toLocaleDateString(
-                                  "vi-VN"
-                                )}{" "}
-                                {trip.startTime}
+                                  {new Date(trip.startDate).toLocaleDateString(
+                                    "vi-VN",
+                                    { month: "short", day: "numeric" }
+                                  )}
+                                </span>
                               </p>
                               {trip.completed && trip.endDate && (
-                                <p className="text-green-400 font-medium mt-1">
-                                  <span className="font-semibold">Về:</span>{" "}
+                                <p className="text-green-400 font-medium text-xs">
                                   {new Date(trip.endDate).toLocaleDateString(
-                                    "vi-VN"
-                                  )}{" "}
-                                  {trip.endTime}
+                                    "vi-VN",
+                                    { month: "short", day: "numeric" }
+                                  )}
                                 </p>
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
                             <button
                               onClick={() => handleOpenDetailsModal(trip)}
-                              className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all hover:shadow-md"
+                              className="p-1.5 sm:p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all hover:shadow-md text-lg sm:text-xl"
                               title="Xem/Nhập chi tiết chi phí & odo"
                             >
                               💰
                             </button>
                           </td>
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
                             {trip.completed ? (
-                              <span className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold border border-green-200">
-                                ✓ Hoàn tất
+                              <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200 inline-block">
+                                ✓
                               </span>
                             ) : (
-                              <span className="px-3 py-1 rounded-lg bg-amber-100 text-amber-700 text-xs font-semibold border border-amber-200">
-                                ⟳ Đang chạy
+                              <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 inline-block">
+                                x
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-4">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => handleEdit(trip)}
-                                disabled={trip.completed}
-                                className={`p-2 rounded-lg transition-all ${
-                                  trip.completed
-                                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                    : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200 hover:shadow-md"
-                                }`}
-                                title={
-                                  trip.completed
-                                    ? "Không thể chỉnh sửa chuyến đi đã hoàn tất"
-                                    : "Chỉnh sửa"
-                                }
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                onClick={() => handleDelete(trip.id)}
-                                disabled={user?.email !== "admin@gmail.com"}
-                                className={`p-2 rounded-lg transition-all ${
-                                  user?.email === "admin@gmail.com"
-                                    ? "bg-red-100 text-red-600 hover:bg-red-200 hover:shadow-md"
-                                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                }`}
-                                title={
-                                  user?.email === "admin@gmail.com"
-                                    ? "Xóa"
-                                    : "Chỉ admin mới có quyền xóa"
-                                }
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          </td>
+                          {isAdminOrHR && (
+                            <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4">
+                              <div className="flex items-center justify-center gap-1 sm:gap-2">
+                                <button
+                                  onClick={() => handleEdit(trip)}
+                                  disabled={trip.completed}
+                                  className={`p-1.5 sm:p-2 rounded transition-all text-lg sm:text-xl ${
+                                    trip.completed
+                                      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                      : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200 hover:shadow-md"
+                                  }`}
+                                  title={
+                                    trip.completed
+                                      ? "Không thể chỉnh sửa"
+                                      : "Chỉnh sửa"
+                                  }
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(trip.id)}
+                                  disabled={!isAdminOrHR}
+                                  className={`p-1.5 sm:p-2 rounded transition-all text-lg sm:text-xl ${
+                                    isAdminOrHR
+                                      ? "bg-red-100 text-red-600 hover:bg-red-200 hover:shadow-md"
+                                      : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                  }`}
+                                  title={isAdminOrHR ? "Xóa" : "Chỉ admin/HR"}
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -1091,19 +1137,19 @@ function DriverLogbook() {
 
         {/* Add Trip Form View */}
         {currentView === "add" && (
-          <div className="bg-white rounded-2xl shadow-2xl w-full">
-            <div className="sticky top-0 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-8 py-6 flex items-center justify-between rounded-t-2xl shadow-lg">
-              <div className="flex items-center gap-3">
+          <div className="bg-white sm:rounded-2xl shadow-2xl w-full min-h-screen sm:min-h-auto flex flex-col">
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-4 py-4 sm:px-8 sm:py-6 flex items-center justify-between sm:rounded-t-2xl shadow-lg">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition-all"
+                  className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition-all text-lg sm:text-xl"
                   title="Menu"
                 >
                   ☰
                 </button>
-                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                  <span className="text-3xl">🚚</span>
-                  <span>Thêm Chuyến Đi Mới</span>
+                <h2 className="text-lg sm:text-2xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                  <span className="text-2xl sm:text-3xl">🚚</span>
+                  <span>Thêm Chuyến Đi</span>
                 </h2>
               </div>
               <button
@@ -1111,24 +1157,24 @@ function DriverLogbook() {
                   setCurrentView("trips");
                   resetForm();
                 }}
-                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-200 text-xl font-bold"
+                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center transition-all duration-200 text-lg sm:text-xl font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 auto-rows-max">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 auto-rows-max pb-20 sm:pb-0">
               {/* Column 1 */}
               <div className="space-y-6">
                 {/* Driver, Phone & Vehicle */}
-                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
-                  <h3 className="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 sm:p-6 border border-blue-100">
+                  <h3 className="text-xs sm:text-sm font-bold text-blue-900 mb-3 sm:mb-4 flex items-center gap-2">
                     <span>👤</span>
                     <span>Thông Tin Tài Xế & Xe</span>
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                     <div>
-                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
                         <span className="text-red-500">*</span>
                         <span>Tên Tài Xế</span>
                       </label>
@@ -1138,13 +1184,13 @@ function DriverLogbook() {
                         onChange={(e) =>
                           setNewTrip({ ...newTrip, driverName: e.target.value })
                         }
-                        className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium bg-white hover:border-blue-300"
+                        className="w-full border-2 border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-blue-300"
                         placeholder="VD: Nguyễn Văn A"
                       />
                     </div>
 
                     <div>
-                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
                         <span>📞</span>
                         <span>Số Điện Thoại</span>
                       </label>
@@ -1154,13 +1200,13 @@ function DriverLogbook() {
                         onChange={(e) =>
                           setNewTrip({ ...newTrip, phone: e.target.value })
                         }
-                        className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium bg-white hover:border-blue-300"
+                        className="w-full border-2 border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-blue-300"
                         placeholder="VD: 0901234567"
                       />
                     </div>
 
                     <div>
-                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
                         <span>🚙</span>
                         <span>Biển Số Xe</span>
                       </label>
@@ -1173,7 +1219,7 @@ function DriverLogbook() {
                             vehicleNumber: e.target.value,
                           })
                         }
-                        className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium bg-white hover:border-blue-300"
+                        className="w-full border-2 border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-blue-300"
                         placeholder="VD: 51A-12345"
                       />
                     </div>
@@ -1181,14 +1227,14 @@ function DriverLogbook() {
                 </div>
 
                 {/* Departure & Destination */}
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-100">
-                  <h3 className="text-sm font-bold text-amber-900 mb-4 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 sm:p-6 border border-amber-100">
+                  <h3 className="text-xs sm:text-sm font-bold text-amber-900 mb-3 sm:mb-4 flex items-center gap-2">
                     <span>🗺️</span>
                     <span>Tuyến Đường</span>
                   </h3>
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 gap-3 sm:gap-4">
                     <div>
-                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
                         <span>📍</span>
                         <span>Điểm Đi</span>
                       </label>
@@ -1198,13 +1244,13 @@ function DriverLogbook() {
                         onChange={(e) =>
                           setNewTrip({ ...newTrip, departure: e.target.value })
                         }
-                        className="w-full border-2 border-amber-200 rounded-lg px-4 py-3 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-base font-medium bg-white hover:border-amber-300"
+                        className="w-full border-2 border-amber-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-amber-300"
                         placeholder="VD: Công ty ABC"
                       />
                     </div>
 
                     <div>
-                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
                         <span className="text-red-500">*</span>
                         <span>🎯 Điểm Đến</span>
                       </label>
@@ -1217,15 +1263,15 @@ function DriverLogbook() {
                             destination: e.target.value,
                           })
                         }
-                        className="w-full border-2 border-amber-200 rounded-lg px-4 py-3 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-base font-medium bg-white hover:border-amber-300"
+                        className="w-full border-2 border-amber-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-amber-300"
                         placeholder="VD: TP. Hồ Chí Minh"
                       />
                     </div>
                   </div>
                 </div>
                 {/* Notes */}
-                <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-xl p-6 border border-indigo-100">
-                  <label className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-xl p-4 sm:p-6 border border-indigo-100">
+                  <label className="text-xs sm:text-sm font-bold text-indigo-900 mb-2 sm:mb-3 flex items-center gap-2">
                     <span>📝</span>
                     <span>Ghi Chú</span>
                   </label>
@@ -1234,9 +1280,9 @@ function DriverLogbook() {
                     onChange={(e) =>
                       setNewTrip({ ...newTrip, notes: e.target.value })
                     }
-                    className="w-full border-2 border-indigo-200 rounded-lg px-4 py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all resize-none text-base font-medium bg-white hover:border-indigo-300"
+                    className="w-full border-2 border-indigo-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all resize-none text-sm sm:text-base font-medium bg-white hover:border-indigo-300"
                     placeholder="Ghi chú thêm về chuyến đi..."
-                    rows="4"
+                    rows="3"
                   ></textarea>
                 </div>
               </div>
@@ -1244,14 +1290,14 @@ function DriverLogbook() {
               {/* Column 2 */}
               <div className="space-y-6">
                 {/* Date & Time */}
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
-                  <h3 className="text-sm font-bold text-purple-900 mb-4 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 sm:p-6 border border-purple-100">
+                  <h3 className="text-xs sm:text-sm font-bold text-purple-900 mb-3 sm:mb-4 flex items-center gap-2">
                     <span>⏱️</span>
                     <span>Thời Gian</span>
                   </h3>
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 gap-3 sm:gap-4">
                     <div>
-                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
                         <span className="text-red-500">*</span>
                         <span>📅 Ngày Xuất Phát</span>
                       </label>
@@ -1261,12 +1307,12 @@ function DriverLogbook() {
                         onChange={(e) =>
                           setNewTrip({ ...newTrip, startDate: e.target.value })
                         }
-                        className="w-full border-2 border-purple-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all text-base font-medium bg-white hover:border-purple-300"
+                        className="w-full border-2 border-purple-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-purple-300"
                       />
                     </div>
 
                     <div>
-                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
                         <span className="text-red-500">*</span>
                         <span>⏰ Giờ Xuất Phát</span>
                       </label>
@@ -1276,18 +1322,20 @@ function DriverLogbook() {
                         onChange={(e) =>
                           setNewTrip({ ...newTrip, startTime: e.target.value })
                         }
-                        className="w-full border-2 border-purple-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all text-base font-medium bg-white hover:border-purple-300"
+                        className="w-full border-2 border-purple-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-purple-300"
                       />
                     </div>
                   </div>
                 </div>
 
                 {isDuplicateBooking && (
-                  <div className="p-4 rounded-xl bg-gradient-to-r from-red-50 to-red-100 text-red-800 border-2 border-red-300 font-semibold flex items-start gap-3 shadow-md">
-                    <span className="text-2xl mt-1">⚠️</span>
-                    <div>
+                  <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-r from-red-50 to-red-100 text-red-800 border-2 border-red-300 font-semibold flex items-start gap-2 sm:gap-3 shadow-md">
+                    <span className="text-xl sm:text-2xl mt-1 flex-shrink-0">
+                      ⚠️
+                    </span>
+                    <div className="text-xs sm:text-sm">
                       <div className="font-bold">Lịch Đã Tồn Tại!</div>
-                      <div className="text-sm font-normal mt-1">
+                      <div className="font-normal mt-1">
                         Xe{" "}
                         <span className="font-bold">
                           {newTrip.vehicleNumber}
@@ -1303,8 +1351,8 @@ function DriverLogbook() {
                 )}
 
                 {/* Purpose */}
-                <div className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-xl p-6 border border-cyan-100">
-                  <label className="text-sm font-bold text-cyan-900 mb-3 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-xl p-4 sm:p-6 border border-cyan-100">
+                  <label className="text-xs sm:text-sm font-bold text-cyan-900 mb-2 sm:mb-3 flex items-center gap-2">
                     <span>🎯</span>
                     <span>Mục Đích Chuyến Đi</span>
                   </label>
@@ -1314,35 +1362,36 @@ function DriverLogbook() {
                     onChange={(e) =>
                       setNewTrip({ ...newTrip, purpose: e.target.value })
                     }
-                    className="w-full border-2 border-cyan-200 rounded-lg px-4 py-3 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none transition-all text-base font-medium bg-white hover:border-cyan-300"
+                    className="w-full border-2 border-cyan-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-cyan-300"
                     placeholder="VD: Giao hàng, Công tác, ..."
                   />
                 </div>
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-8 py-5 flex gap-3 justify-end rounded-b-2xl border-t-2 border-gray-200 shadow-lg">
-                  <button
-                    onClick={() => {
-                      setCurrentView("schedule");
-                      resetForm();
-                    }}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center gap-2 shadow-md"
-                  >
-                    <span>❌</span>
-                    <span>Hủy</span>
-                  </button>
-                  <button
-                    onClick={handleAddOrUpdate}
-                    disabled={isDuplicateBooking}
-                    className={`px-6 py-3 rounded-lg font-bold transition-all duration-200 transform active:scale-95 flex items-center gap-2 shadow-md ${
-                      isDuplicateBooking
-                        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                        : "bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 hover:shadow-lg hover:scale-105"
-                    }`}
-                  >
-                    <span>🚀</span>
-                    <span>Thêm Mới</span>
-                  </button>
-                </div>
               </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 sm:px-8 sm:py-5 flex gap-2 sm:gap-3 justify-end sm:rounded-b-2xl border-t-2 border-gray-200 shadow-lg pb-[env(safe-area-inset-bottom)]">
+              <button
+                onClick={() => {
+                  setCurrentView("schedule");
+                  resetForm();
+                }}
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center gap-2 shadow-md text-sm sm:text-base"
+              >
+                <span>❌</span>
+                <span className="hidden sm:inline">Hủy</span>
+              </button>
+              <button
+                onClick={handleAddOrUpdate}
+                disabled={isDuplicateBooking || !isAdminOrHR}
+                className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-bold transition-all duration-200 transform active:scale-95 flex items-center gap-2 shadow-md text-sm sm:text-base ${
+                  isDuplicateBooking || !isAdminOrHR
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 hover:shadow-lg hover:scale-105"
+                }`}
+              >
+                <span>🚀</span>
+                <span className="hidden sm:inline">Thêm Mới</span>
+              </button>
             </div>
           </div>
         )}
@@ -1681,9 +1730,9 @@ function DriverLogbook() {
                 </button>
                 <button
                   onClick={handleAddOrUpdate}
-                  disabled={isDuplicateBooking}
+                  disabled={isDuplicateBooking || !isAdminOrHR}
                   className={`px-5 py-3 rounded-lg font-bold transition-all duration-200 transform active:scale-95 flex items-center gap-2 shadow-md ${
-                    isDuplicateBooking
+                    isDuplicateBooking || !isAdminOrHR
                       ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                       : "bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 hover:shadow-lg hover:scale-105"
                   }`}
