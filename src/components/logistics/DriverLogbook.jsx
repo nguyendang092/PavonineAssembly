@@ -67,6 +67,17 @@ function DriverLogbook() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsTrip, setDetailsTrip] = useState(null);
   const [tempDetails, setTempDetails] = useState("");
+  const [detailsForm, setDetailsForm] = useState({
+    startTime: "",
+    endTime: "",
+    destination: "",
+    odoFrom: "",
+    odoTo: "",
+    tollFee: "",
+    mealFee: "",
+    overtimeHours: "",
+    notes: "",
+  });
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [filterTab, setFilterTab] = useState("all"); // all, ongoing, completed
   // ScheduleBoard states
@@ -285,6 +296,25 @@ function DriverLogbook() {
   const handleOpenDetailsModal = (trip) => {
     setDetailsTrip(trip);
     setTempDetails(trip.expenseDetails || "");
+    // Prefill structured form from existing structured details if available
+    const d = trip?.details || {};
+    setDetailsForm({
+      startTime: d.startTime || "",
+      endTime: d.endTime || "",
+      destination: d.destination || "",
+      odoFrom:
+        d.odoFrom != null && d.odoFrom !== undefined ? String(d.odoFrom) : "",
+      odoTo: d.odoTo != null && d.odoTo !== undefined ? String(d.odoTo) : "",
+      tollFee:
+        d.tollFee != null && d.tollFee !== undefined ? String(d.tollFee) : "",
+      mealFee:
+        d.mealFee != null && d.mealFee !== undefined ? String(d.mealFee) : "",
+      overtimeHours:
+        d.overtimeHours != null && d.overtimeHours !== undefined
+          ? String(d.overtimeHours)
+          : "",
+      notes: d.notes || "",
+    });
     setShowDetailsModal(true);
   };
 
@@ -292,7 +322,35 @@ function DriverLogbook() {
     if (!detailsTrip) return;
     try {
       const tripRef = ref(db, `driverTrips/${detailsTrip.id}`);
-      await update(tripRef, { expenseDetails: tempDetails });
+
+      const parseNum = (v) => {
+        const n = parseFloat(v);
+        return Number.isFinite(n) ? n : null;
+      };
+
+      const odoFromNum = parseNum(detailsForm.odoFrom);
+      const odoToNum = parseNum(detailsForm.odoTo);
+      const totalKmNum =
+        odoFromNum != null && odoToNum != null ? odoToNum - odoFromNum : null;
+
+      const detailsPayload = {
+        startTime: detailsForm.startTime || null,
+        endTime: detailsForm.endTime || null,
+        destination: detailsForm.destination?.trim() || null,
+        odoFrom: odoFromNum,
+        odoTo: odoToNum,
+        totalKm: totalKmNum,
+        tollFee: parseNum(detailsForm.tollFee),
+        mealFee: parseNum(detailsForm.mealFee),
+        overtimeHours: parseNum(detailsForm.overtimeHours),
+        notes: detailsForm.notes?.trim() || null,
+      };
+
+      await update(tripRef, {
+        expenseDetails: tempDetails,
+        details: detailsPayload,
+      });
+
       setAlert({
         show: true,
         type: "success",
@@ -309,6 +367,67 @@ function DriverLogbook() {
       });
     }
   };
+
+  // Reset/prefill structured details form when opening details modal
+  useEffect(() => {
+    if (showDetailsModal && detailsTrip) {
+      const d = detailsTrip.details || {};
+      setDetailsForm({
+        startTime: d.startTime || "",
+        endTime: d.endTime || "",
+        destination: d.destination || "",
+        odoFrom:
+          d.odoFrom != null && d.odoFrom !== undefined ? String(d.odoFrom) : "",
+        odoTo: d.odoTo != null && d.odoTo !== undefined ? String(d.odoTo) : "",
+        tollFee:
+          d.tollFee != null && d.tollFee !== undefined ? String(d.tollFee) : "",
+        mealFee:
+          d.mealFee != null && d.mealFee !== undefined ? String(d.mealFee) : "",
+        overtimeHours:
+          d.overtimeHours != null && d.overtimeHours !== undefined
+            ? String(d.overtimeHours)
+            : "",
+        notes: d.notes || "",
+      });
+    }
+  }, [showDetailsModal, detailsTrip]);
+
+  // Keep original tempDetails in sync (no logic change) from structured inputs
+  useEffect(() => {
+    if (!showDetailsModal) return;
+    const {
+      startTime,
+      endTime,
+      destination,
+      odoFrom,
+      odoTo,
+      tollFee,
+      mealFee,
+      overtimeHours,
+      notes,
+    } = detailsForm;
+
+    const odoFromNum = parseFloat(odoFrom);
+    const odoToNum = parseFloat(odoTo);
+    const km =
+      !isNaN(odoFromNum) && !isNaN(odoToNum)
+        ? (odoToNum - odoFromNum).toString()
+        : "";
+
+    const lines = [
+      `Odo bắt đầu: ${odoFrom || ""}`,
+      `Odo kết thúc: ${odoTo || ""}`,
+      `Số km: ${km}`,
+      `Thời gian: ${startTime || ""} - ${endTime || ""}`,
+      `Nơi đến: ${destination || ""}`,
+      `Cầu đường: ${tollFee || ""}`,
+      `Ăn uống: ${mealFee || ""}`,
+      `Tăng ca (giờ): ${overtimeHours || ""}`,
+      `Ghi chú: ${notes || ""}`,
+    ].join("\n");
+
+    setTempDetails(lines.trim());
+  }, [detailsForm, showDetailsModal]);
 
   // Calculate total km when endKm changes
   useEffect(() => {
@@ -329,7 +448,7 @@ function DriverLogbook() {
   });
 
   return (
-    <div>
+    <>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
         <div className="h-full bg-gradient-to-b from-slate-50 to-slate-100 flex flex-col">
           {/* Header */}
@@ -402,7 +521,7 @@ function DriverLogbook() {
             <div className="space-y-4">
               {/* Vehicle Select */}
               <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
-                <label className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2 block">
+                <label className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
                   <span>🚙</span>
                   <span>Chọn Xe</span>
                 </label>
@@ -426,7 +545,7 @@ function DriverLogbook() {
 
               {/* Date Input */}
               <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
-                <label className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2 block">
+                <label className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
                   <span>📅</span>
                   <span>Chọn Ngày</span>
                 </label>
@@ -972,18 +1091,18 @@ function DriverLogbook() {
 
         {/* Add Trip Form View */}
         {currentView === "add" && (
-          <div className="bg-white rounded-xl border shadow-md max-w-3xl">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-xl">
+          <div className="bg-white rounded-2xl shadow-2xl w-full">
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-8 py-6 flex items-center justify-between rounded-t-2xl shadow-lg">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 transition-colors"
+                  className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition-all"
                   title="Menu"
                 >
                   ☰
                 </button>
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <span>➕</span>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                  <span className="text-3xl">🚚</span>
                   <span>Thêm Chuyến Đi Mới</span>
                 </h2>
               </div>
@@ -992,544 +1111,200 @@ function DriverLogbook() {
                   setCurrentView("trips");
                   resetForm();
                 }}
-                className="text-gray-600 hover:bg-gray-100 rounded-full w-9 h-9 flex items-center justify-center"
+                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-200 text-xl font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
-              {/* Driver, Phone & Vehicle */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span className="text-red-500">*</span>
-                    <span>👤 Tên Tài Xế</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newTrip.driverName}
-                    onChange={(e) =>
-                      setNewTrip({ ...newTrip, driverName: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                    placeholder="VD: Nguyễn Văn A"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span>📞</span>
-                    <span>Số Điện Thoại</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={newTrip.phone}
-                    onChange={(e) =>
-                      setNewTrip({ ...newTrip, phone: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                    placeholder="VD: 0901234567"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span>🚙</span>
-                    <span>Biển Số Xe</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newTrip.vehicleNumber}
-                    onChange={(e) =>
-                      setNewTrip({
-                        ...newTrip,
-                        vehicleNumber: e.target.value,
-                      })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                    placeholder="VD: 51A-12345"
-                  />
-                </div>
-              </div>
-
-              {/* Departure & Destination */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span>📍</span>
-                    <span>Điểm Đi</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newTrip.departure}
-                    onChange={(e) =>
-                      setNewTrip({ ...newTrip, departure: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                    placeholder="VD: Công ty ABC"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span className="text-red-500">*</span>
-                    <span>🎯 Điểm Đến</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newTrip.destination}
-                    onChange={(e) =>
-                      setNewTrip({
-                        ...newTrip,
-                        destination: e.target.value,
-                      })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                    placeholder="VD: TP. Hồ Chí Minh"
-                  />
-                </div>
-              </div>
-
-              {/* Kilometers */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span>🚗</span>
-                    <span>Km Bắt Đầu</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={newTrip.startKm}
-                    onChange={(e) =>
-                      setNewTrip({ ...newTrip, startKm: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                    placeholder="VD: 50000"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span>🏁</span>
-                    <span>Km Kết Thúc</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={newTrip.endKm}
-                    onChange={(e) =>
-                      setNewTrip({ ...newTrip, endKm: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                    placeholder="VD: 50100"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span>📏</span>
-                    <span>Tổng Km</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={
-                      newTrip.startKm && newTrip.endKm
-                        ? parseFloat(newTrip.endKm) -
-                          parseFloat(newTrip.startKm)
-                        : newTrip.totalKm
-                    }
-                    onChange={(e) =>
-                      setNewTrip({ ...newTrip, totalKm: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                    placeholder="Tự động tính"
-                  />
-                </div>
-              </div>
-
-              {/* Date & Time */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span className="text-red-500">*</span>
-                    <span>📅 Ngày Xuất Phát</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={newTrip.startDate}
-                    onChange={(e) =>
-                      setNewTrip({ ...newTrip, startDate: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span className="text-red-500">*</span>
-                    <span>⏰ Giờ Xuất Phát</span>
-                  </label>
-                  <input
-                    type="time"
-                    value={newTrip.startTime}
-                    onChange={(e) =>
-                      setNewTrip({ ...newTrip, startTime: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                  />
-                </div>
-              </div>
-
-              {/* Purpose & Notes */}
-              <div>
-                <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                  <span>🎯</span>
-                  <span>Mục Đích</span>
-                </label>
-                <input
-                  type="text"
-                  value={newTrip.purpose}
-                  onChange={(e) =>
-                    setNewTrip({ ...newTrip, purpose: e.target.value })
-                  }
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base"
-                  placeholder="VD: Giao hàng, Công tác, ..."
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                  <span>📝</span>
-                  <span>Ghi Chú</span>
-                </label>
-                <textarea
-                  value={newTrip.notes}
-                  onChange={(e) =>
-                    setNewTrip({ ...newTrip, notes: e.target.value })
-                  }
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none text-base"
-                  placeholder="Ghi chú thêm về chuyến đi..."
-                  rows="3"
-                ></textarea>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-end rounded-b-xl border-t">
-              <button
-                onClick={() => {
-                  setCurrentView("schedule");
-                  resetForm();
-                }}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
-              >
-                ❌ Hủy
-              </button>
-              <button
-                onClick={handleAddOrUpdate}
-                disabled={isDuplicateBooking}
-                className={`px-4 py-2 rounded-lg font-semibold ${
-                  isDuplicateBooking
-                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                ➕ Thêm Mới
-              </button>
-            </div>
-          </div>
-        )}
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl border shadow-md max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-xl">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  {editingId ? (
-                    <>
-                      <span>✏️</span>
-                      <span>Chỉnh Sửa Chuyến Đi</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>➕</span>
-                      <span>Thêm Chuyến Đi Mới</span>
-                    </>
-                  )}
-                </h2>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-600 hover:bg-gray-100 rounded-full w-9 h-9 flex items-center justify-center"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="p-6 space-y-5">
+            <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 auto-rows-max">
+              {/* Column 1 */}
+              <div className="space-y-6">
                 {/* Driver, Phone & Vehicle */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span className="text-red-500">*</span>
-                      <span>👤 Tên Tài Xế</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newTrip.driverName}
-                      onChange={(e) =>
-                        setNewTrip({ ...newTrip, driverName: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                      }
-                      className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base ${
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="VD: Nguyễn Văn A"
-                    />
-                  </div>
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
+                  <h3 className="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2">
+                    <span>👤</span>
+                    <span>Thông Tin Tài Xế & Xe</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                        <span className="text-red-500">*</span>
+                        <span>Tên Tài Xế</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newTrip.driverName}
+                        onChange={(e) =>
+                          setNewTrip({ ...newTrip, driverName: e.target.value })
+                        }
+                        className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium bg-white hover:border-blue-300"
+                        placeholder="VD: Nguyễn Văn A"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>📞</span>
-                      <span>Số Điện Thoại</span>
-                    </label>
-                    <input
-                      type="tel"
-                      value={newTrip.phone}
-                      onChange={(e) =>
-                        setNewTrip({ ...newTrip, phone: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                      }
-                      className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base ${
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="VD: 0901234567"
-                    />
-                  </div>
+                    <div>
+                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                        <span>📞</span>
+                        <span>Số Điện Thoại</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={newTrip.phone}
+                        onChange={(e) =>
+                          setNewTrip({ ...newTrip, phone: e.target.value })
+                        }
+                        className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium bg-white hover:border-blue-300"
+                        placeholder="VD: 0901234567"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>🚙</span>
-                      <span>Biển Số Xe</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newTrip.vehicleNumber}
-                      onChange={(e) =>
-                        setNewTrip({
-                          ...newTrip,
-                          vehicleNumber: e.target.value,
-                        })
-                      }
-                      disabled={
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                      }
-                      className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base ${
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="VD: 51A-12345"
-                    />
+                    <div>
+                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                        <span>🚙</span>
+                        <span>Biển Số Xe</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newTrip.vehicleNumber}
+                        onChange={(e) =>
+                          setNewTrip({
+                            ...newTrip,
+                            vehicleNumber: e.target.value,
+                          })
+                        }
+                        className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium bg-white hover:border-blue-300"
+                        placeholder="VD: 51A-12345"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Departure & Destination */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>📍</span>
-                      <span>Điểm Đi</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newTrip.departure}
-                      onChange={(e) =>
-                        setNewTrip({ ...newTrip, departure: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                      }
-                      className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base ${
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="VD: Công ty ABC"
-                    />
-                  </div>
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-100">
+                  <h3 className="text-sm font-bold text-amber-900 mb-4 flex items-center gap-2">
+                    <span>🗺️</span>
+                    <span>Tuyến Đường</span>
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                        <span>📍</span>
+                        <span>Điểm Đi</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newTrip.departure}
+                        onChange={(e) =>
+                          setNewTrip({ ...newTrip, departure: e.target.value })
+                        }
+                        className="w-full border-2 border-amber-200 rounded-lg px-4 py-3 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-base font-medium bg-white hover:border-amber-300"
+                        placeholder="VD: Công ty ABC"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span className="text-red-500">*</span>
-                      <span>🎯 Điểm Đến</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newTrip.destination}
-                      onChange={(e) =>
-                        setNewTrip({
-                          ...newTrip,
-                          destination: e.target.value,
-                        })
-                      }
-                      disabled={
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                      }
-                      className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base ${
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="VD: TP. Hồ Chí Minh"
-                    />
+                    <div>
+                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                        <span className="text-red-500">*</span>
+                        <span>🎯 Điểm Đến</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newTrip.destination}
+                        onChange={(e) =>
+                          setNewTrip({
+                            ...newTrip,
+                            destination: e.target.value,
+                          })
+                        }
+                        className="w-full border-2 border-amber-200 rounded-lg px-4 py-3 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-base font-medium bg-white hover:border-amber-300"
+                        placeholder="VD: TP. Hồ Chí Minh"
+                      />
+                    </div>
                   </div>
                 </div>
-
-                {/* Kilometers */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>🚗</span>
-                      <span>Km Bắt Đầu</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={newTrip.startKm}
-                      onChange={(e) =>
-                        setNewTrip({ ...newTrip, startKm: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                      }
-                      className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base ${
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>🏁</span>
-                      <span>Km Kết Thúc</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={newTrip.endKm}
-                      onChange={(e) =>
-                        setNewTrip({ ...newTrip, endKm: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                      }
-                      className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base ${
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>📊</span>
-                      <span>Tổng Km</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newTrip.totalKm}
-                      readOnly
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-gray-100 text-gray-700 font-semibold outline-none text-base"
-                      placeholder="Tự động"
-                    />
-                  </div>
+                {/* Notes */}
+                <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-xl p-6 border border-indigo-100">
+                  <label className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
+                    <span>📝</span>
+                    <span>Ghi Chú</span>
+                  </label>
+                  <textarea
+                    value={newTrip.notes}
+                    onChange={(e) =>
+                      setNewTrip({ ...newTrip, notes: e.target.value })
+                    }
+                    className="w-full border-2 border-indigo-200 rounded-lg px-4 py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all resize-none text-base font-medium bg-white hover:border-indigo-300"
+                    placeholder="Ghi chú thêm về chuyến đi..."
+                    rows="4"
+                  ></textarea>
                 </div>
+              </div>
 
+              {/* Column 2 */}
+              <div className="space-y-6">
                 {/* Date & Time */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span className="text-red-500">*</span>
-                      <span>📅 Ngày Xuất Phát</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={newTrip.startDate}
-                      onChange={(e) =>
-                        setNewTrip({ ...newTrip, startDate: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                      }
-                      className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base ${
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                    />
-                  </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+                  <h3 className="text-sm font-bold text-purple-900 mb-4 flex items-center gap-2">
+                    <span>⏱️</span>
+                    <span>Thời Gian</span>
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                        <span className="text-red-500">*</span>
+                        <span>📅 Ngày Xuất Phát</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={newTrip.startDate}
+                        onChange={(e) =>
+                          setNewTrip({ ...newTrip, startDate: e.target.value })
+                        }
+                        className="w-full border-2 border-purple-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all text-base font-medium bg-white hover:border-purple-300"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span className="text-red-500">*</span>
-                      <span>⏰ Giờ Xuất Phát</span>
-                    </label>
-                    <input
-                      type="time"
-                      value={newTrip.startTime}
-                      onChange={(e) =>
-                        setNewTrip({ ...newTrip, startTime: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                      }
-                      className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base ${
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : ""
-                      }`}
-                    />
+                    <div>
+                      <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                        <span className="text-red-500">*</span>
+                        <span>⏰ Giờ Xuất Phát</span>
+                      </label>
+                      <input
+                        type="time"
+                        value={newTrip.startTime}
+                        onChange={(e) =>
+                          setNewTrip({ ...newTrip, startTime: e.target.value })
+                        }
+                        className="w-full border-2 border-purple-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all text-base font-medium bg-white hover:border-purple-300"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {isDuplicateBooking && (
-                  <div className="mt-2 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 font-medium">
-                    ❌ Xe {newTrip.vehicleNumber} đã có lịch vào{" "}
-                    {newTrip.startDate} lúc {newTrip.startTime}. Vui lòng chọn
-                    thời điểm khác.
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-red-50 to-red-100 text-red-800 border-2 border-red-300 font-semibold flex items-start gap-3 shadow-md">
+                    <span className="text-2xl mt-1">⚠️</span>
+                    <div>
+                      <div className="font-bold">Lịch Đã Tồn Tại!</div>
+                      <div className="text-sm font-normal mt-1">
+                        Xe{" "}
+                        <span className="font-bold">
+                          {newTrip.vehicleNumber}
+                        </span>{" "}
+                        đã có lịch vào{" "}
+                        <span className="font-bold">{newTrip.startDate}</span>{" "}
+                        lúc{" "}
+                        <span className="font-bold">{newTrip.startTime}</span>.
+                        Vui lòng chọn thời điểm khác.
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {/* Purpose */}
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-xl p-6 border border-cyan-100">
+                  <label className="text-sm font-bold text-cyan-900 mb-3 flex items-center gap-2">
                     <span>🎯</span>
                     <span>Mục Đích Chuyến Đi</span>
                   </label>
@@ -1539,67 +1314,382 @@ function DriverLogbook() {
                     onChange={(e) =>
                       setNewTrip({ ...newTrip, purpose: e.target.value })
                     }
-                    disabled={
-                      editingId &&
-                      trips.find((t) => t.id === editingId)?.completed
-                    }
-                    className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-base ${
-                      editingId &&
-                      trips.find((t) => t.id === editingId)?.completed
-                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                        : ""
-                    }`}
+                    className="w-full border-2 border-cyan-200 rounded-lg px-4 py-3 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none transition-all text-base font-medium bg-white hover:border-cyan-300"
                     placeholder="VD: Giao hàng, Công tác, ..."
                   />
                 </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <span>📝</span>
-                    <span>Ghi Chú</span>
-                  </label>
-                  <textarea
-                    value={newTrip.notes}
-                    onChange={(e) =>
-                      setNewTrip({ ...newTrip, notes: e.target.value })
-                    }
-                    disabled={
-                      editingId &&
-                      trips.find((t) => t.id === editingId)?.completed
-                    }
-                    className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none text-base ${
-                      editingId &&
-                      trips.find((t) => t.id === editingId)?.completed
-                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                        : ""
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-8 py-5 flex gap-3 justify-end rounded-b-2xl border-t-2 border-gray-200 shadow-lg">
+                  <button
+                    onClick={() => {
+                      setCurrentView("schedule");
+                      resetForm();
+                    }}
+                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center gap-2 shadow-md"
+                  >
+                    <span>❌</span>
+                    <span>Hủy</span>
+                  </button>
+                  <button
+                    onClick={handleAddOrUpdate}
+                    disabled={isDuplicateBooking}
+                    className={`px-6 py-3 rounded-lg font-bold transition-all duration-200 transform active:scale-95 flex items-center gap-2 shadow-md ${
+                      isDuplicateBooking
+                        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                        : "bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 hover:shadow-lg hover:scale-105"
                     }`}
-                    placeholder="Ghi chú thêm về chuyến đi..."
-                    rows="3"
-                  ></textarea>
+                  >
+                    <span>🚀</span>
+                    <span>Thêm Mới</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4 backdrop-blur-sm">
+            <div className="bg-white sm:rounded-2xl shadow-2xl w-full h-full sm:max-w-5xl sm:max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="sticky top-0 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-4 py-4 sm:px-8 sm:py-6 flex items-center justify-between sm:rounded-t-2xl shadow-lg">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                  {editingId ? (
+                    <>
+                      <span className="text-3xl">✏️</span>
+                      <span>Chỉnh Sửa Chuyến Đi</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-3xl">🚚</span>
+                      <span>Thêm Chuyến Đi Mới</span>
+                    </>
+                  )}
+                </h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-200 text-xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 sm:p-8 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 auto-rows-max">
+                {/* Column 1 */}
+                <div className="space-y-6">
+                  {/* Driver, Phone & Vehicle */}
+                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
+                    <h3 className="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2">
+                      <span>👤</span>
+                      <span>Thông Tin Tài Xế & Xe</span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <span className="text-red-500">*</span>
+                          <span>Tên Tài Xế</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newTrip.driverName}
+                          onChange={(e) =>
+                            setNewTrip({
+                              ...newTrip,
+                              driverName: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                          }
+                          className={`w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium ${
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white hover:border-blue-300"
+                          }`}
+                          placeholder="VD: Nguyễn Văn A"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <span>📞</span>
+                          <span>Số Điện Thoại</span>
+                        </label>
+                        <input
+                          type="tel"
+                          value={newTrip.phone}
+                          onChange={(e) =>
+                            setNewTrip({ ...newTrip, phone: e.target.value })
+                          }
+                          disabled={
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                          }
+                          className={`w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium ${
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white hover:border-blue-300"
+                          }`}
+                          placeholder="VD: 0901234567"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <span>🚙</span>
+                          <span>Biển Số Xe</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newTrip.vehicleNumber}
+                          onChange={(e) =>
+                            setNewTrip({
+                              ...newTrip,
+                              vehicleNumber: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                          }
+                          className={`w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium ${
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white hover:border-blue-300"
+                          }`}
+                          placeholder="VD: 51A-12345"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Departure & Destination */}
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-100">
+                    <h3 className="text-sm font-bold text-amber-900 mb-4 flex items-center gap-2">
+                      <span>🗺️</span>
+                      <span>Tuyến Đường</span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <span>📍</span>
+                          <span>Điểm Đi</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newTrip.departure}
+                          onChange={(e) =>
+                            setNewTrip({
+                              ...newTrip,
+                              departure: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                          }
+                          className={`w-full border-2 border-amber-200 rounded-lg px-4 py-3 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-base font-medium ${
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white hover:border-amber-300"
+                          }`}
+                          placeholder="VD: Công ty ABC"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <span className="text-red-500">*</span>
+                          <span>🎯 Điểm Đến</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newTrip.destination}
+                          onChange={(e) =>
+                            setNewTrip({
+                              ...newTrip,
+                              destination: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                          }
+                          className={`w-full border-2 border-amber-200 rounded-lg px-4 py-3 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-base font-medium ${
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white hover:border-amber-300"
+                          }`}
+                          placeholder="VD: TP. Hồ Chí Minh"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Column 2 */}
+                <div className="space-y-6">
+                  {/* Date & Time */}
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+                    <h3 className="text-sm font-bold text-purple-900 mb-4 flex items-center gap-2">
+                      <span>⏱️</span>
+                      <span>Thời Gian</span>
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <span className="text-red-500">*</span>
+                          <span>📅 Ngày Xuất Phát</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={newTrip.startDate}
+                          onChange={(e) =>
+                            setNewTrip({
+                              ...newTrip,
+                              startDate: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                          }
+                          className={`w-full border-2 border-purple-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all text-base font-medium ${
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white hover:border-purple-300"
+                          }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <span className="text-red-500">*</span>
+                          <span>⏰ Giờ Xuất Phát</span>
+                        </label>
+                        <input
+                          type="time"
+                          value={newTrip.startTime}
+                          onChange={(e) =>
+                            setNewTrip({
+                              ...newTrip,
+                              startTime: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                          }
+                          className={`w-full border-2 border-purple-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all text-base font-medium ${
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white hover:border-purple-300"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {isDuplicateBooking && (
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-red-50 to-red-100 text-red-800 border-2 border-red-300 font-semibold flex items-start gap-3 shadow-md">
+                      <span className="text-2xl mt-1">⚠️</span>
+                      <div>
+                        <div className="font-bold">Lịch Đã Tồn Tại!</div>
+                        <div className="text-sm font-normal mt-1">
+                          Xe{" "}
+                          <span className="font-bold">
+                            {newTrip.vehicleNumber}
+                          </span>{" "}
+                          đã có lịch vào{" "}
+                          <span className="font-bold">{newTrip.startDate}</span>{" "}
+                          lúc{" "}
+                          <span className="font-bold">{newTrip.startTime}</span>
+                          . Vui lòng chọn thời điểm khác.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Purpose */}
+                  <div className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-xl p-6 border border-cyan-100">
+                    <label className="text-sm font-bold text-cyan-900 mb-3 flex items-center gap-2">
+                      <span>🎯</span>
+                      <span>Mục Đích Chuyến Đi</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newTrip.purpose}
+                      onChange={(e) =>
+                        setNewTrip({ ...newTrip, purpose: e.target.value })
+                      }
+                      disabled={
+                        editingId &&
+                        trips.find((t) => t.id === editingId)?.completed
+                      }
+                      className={`w-full border-2 border-cyan-200 rounded-lg px-4 py-3 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none transition-all text-base font-medium ${
+                        editingId &&
+                        trips.find((t) => t.id === editingId)?.completed
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          : "bg-white hover:border-cyan-300"
+                      }`}
+                      placeholder="VD: Giao hàng, Công tác, ..."
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-xl p-6 border border-indigo-100">
+                    <label className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
+                      <span>📝</span>
+                      <span>Ghi Chú</span>
+                    </label>
+                    <textarea
+                      value={newTrip.notes}
+                      onChange={(e) =>
+                        setNewTrip({ ...newTrip, notes: e.target.value })
+                      }
+                      disabled={
+                        editingId &&
+                        trips.find((t) => t.id === editingId)?.completed
+                      }
+                      className={`w-full border-2 border-indigo-200 rounded-lg px-4 py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all resize-none text-base font-medium ${
+                        editingId &&
+                        trips.find((t) => t.id === editingId)?.completed
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          : "bg-white hover:border-indigo-300"
+                      }`}
+                      placeholder="Ghi chú thêm về chuyến đi..."
+                      rows="4"
+                    ></textarea>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-end rounded-b-xl border-t">
+              <div className="sticky bottom-0 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-4 sm:px-8 sm:py-5 flex gap-3 justify-end sm:rounded-b-2xl border-t-2 border-gray-200 shadow-lg pb-[env(safe-area-inset-bottom)]">
                 <button
                   onClick={() => {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                  className="px-5 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center gap-2 shadow-md"
                 >
-                  ❌ Hủy
+                  <span>❌</span>
+                  <span>Hủy</span>
                 </button>
                 <button
                   onClick={handleAddOrUpdate}
                   disabled={isDuplicateBooking}
-                  className={`px-4 py-2 rounded-lg font-semibold ${
+                  className={`px-5 py-3 rounded-lg font-bold transition-all duration-200 transform active:scale-95 flex items-center gap-2 shadow-md ${
                     isDuplicateBooking
                       ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                      : "bg-blue-600 text-white hover:bg-blue-700"
+                      : "bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 hover:shadow-lg hover:scale-105"
                   }`}
                 >
-                  {editingId ? "💾 Cập Nhật" : "➕ Thêm Mới"}
+                  <span>{editingId ? "💾" : "🚀"}</span>
+                  <span>{editingId ? "Cập Nhật" : "Thêm Mới"}</span>
                 </button>
               </div>
             </div>
@@ -1608,9 +1698,9 @@ function DriverLogbook() {
 
         {/* Details Modal */}
         {showDetailsModal && detailsTrip && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl border shadow-md max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-xl">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
+            <div className="bg-white sm:rounded-xl border shadow-md w-full h-full sm:max-w-2xl sm:max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="sticky top-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between sm:rounded-t-xl">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                   <span>💰</span>
                   <span className="uppercase">Bảng thông tin chi tiết</span>
@@ -1627,7 +1717,7 @@ function DriverLogbook() {
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                 {/* Thông tin chuyến đi */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-300 shadow-sm">
                   <h3 className="font-bold text-blue-900 mb-4 text-base flex items-center gap-2">
@@ -1678,26 +1768,207 @@ function DriverLogbook() {
                   </div>
                 </div>
 
-                {/* Textarea nhập chi tiết */}
-                <div>
-                  <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                {/* Form chi tiết chi phí & Odo */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
                     <span>📝</span>
-                    <span>Chi Tiết Chi Phí & Số Odo</span>
-                  </label>
-                  <textarea
-                    value={tempDetails}
-                    onChange={(e) => setTempDetails(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none font-mono text-sm text-gray-800"
-                    placeholder="Ví dụ:\nOdo bắt đầu: 12,345 km\nOdo kết thúc: 12,450 km\nXăng: 500,000đ\nCầu đường: 50,000đ\nĂn uống: 150,000đ\nKhác: ..."
-                    rows="10"
-                  ></textarea>
-                  <p className="text-xs text-gray-500 mt-2">
-                    💡 Mẹo: Nhập mỗi mục trên một dòng để dễ đọc
+                    <h3 className="text-sm font-bold text-gray-800">
+                      Chi Tiết Chi Phí & Số Odo
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Thời gian từ - đến */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Thời gian (từ - đến)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="time"
+                          value={detailsForm.startTime}
+                          onChange={(e) =>
+                            setDetailsForm((p) => ({
+                              ...p,
+                              startTime: e.target.value,
+                            }))
+                          }
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                        />
+                        <input
+                          type="time"
+                          value={detailsForm.endTime}
+                          onChange={(e) =>
+                            setDetailsForm((p) => ({
+                              ...p,
+                              endTime: e.target.value,
+                            }))
+                          }
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Nơi đến */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Nơi đến
+                      </label>
+                      <input
+                        type="text"
+                        value={detailsForm.destination}
+                        onChange={(e) =>
+                          setDetailsForm((p) => ({
+                            ...p,
+                            destination: e.target.value,
+                          }))
+                        }
+                        placeholder="VD: Kho A, Công trình B..."
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                      />
+                    </div>
+
+                    {/* Odo từ - đến */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Odo (từ - đến)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={detailsForm.odoFrom}
+                          onChange={(e) =>
+                            setDetailsForm((p) => ({
+                              ...p,
+                              odoFrom: e.target.value,
+                            }))
+                          }
+                          placeholder="Odo từ"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                        />
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={detailsForm.odoTo}
+                          onChange={(e) =>
+                            setDetailsForm((p) => ({
+                              ...p,
+                              odoTo: e.target.value,
+                            }))
+                          }
+                          placeholder="Odo đến"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Số KM = odo đến - odo từ */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Số KM (tự tính)
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={(() => {
+                          const a = parseFloat(detailsForm.odoFrom);
+                          const b = parseFloat(detailsForm.odoTo);
+                          return !isNaN(a) && !isNaN(b) ? b - a : "";
+                        })()}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-700 text-sm"
+                      />
+                    </div>
+
+                    {/* Phí cầu đường */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Phí cầu đường (đ)
+                      </label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={detailsForm.tollFee}
+                        onChange={(e) =>
+                          setDetailsForm((p) => ({
+                            ...p,
+                            tollFee: e.target.value,
+                          }))
+                        }
+                        placeholder="VD: 500000"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                      />
+                    </div>
+
+                    {/* Tiền ăn */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Tiền ăn (đ)
+                      </label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={detailsForm.mealFee}
+                        onChange={(e) =>
+                          setDetailsForm((p) => ({
+                            ...p,
+                            mealFee: e.target.value,
+                          }))
+                        }
+                        placeholder="VD: 150000"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                      />
+                    </div>
+
+                    {/* Giờ tăng ca */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Giờ tăng ca
+                      </label>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.5"
+                        value={detailsForm.overtimeHours}
+                        onChange={(e) =>
+                          setDetailsForm((p) => ({
+                            ...p,
+                            overtimeHours: e.target.value,
+                          }))
+                        }
+                        placeholder="VD: 2"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                      />
+                    </div>
+
+                    {/* Ghi chú */}
+                    <div className="md:col-span-2 bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Ghi chú
+                      </label>
+                      <textarea
+                        value={detailsForm.notes}
+                        onChange={(e) =>
+                          setDetailsForm((p) => ({
+                            ...p,
+                            notes: e.target.value,
+                          }))
+                        }
+                        rows={3}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm resize-y"
+                        placeholder="Ghi chú thêm..."
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-500">
+                    💡 Dữ liệu được lưu dạng cấu trúc trong Firebase (kèm văn
+                    bản cũ) để dễ tái sử dụng.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-end rounded-b-xl border-t">
+              <div className="sticky bottom-0 bg-gray-50 px-4 py-3 sm:px-6 sm:py-4 flex gap-3 justify-end sm:rounded-b-xl border-t pb-[env(safe-area-inset-bottom)]">
                 <button
                   onClick={() => {
                     setShowDetailsModal(false);
@@ -1719,7 +1990,7 @@ function DriverLogbook() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
