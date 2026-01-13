@@ -96,9 +96,11 @@ const resources = {
         download: "Download",
         files: "Tài liệu",
         inventory: "Kiểm kê",
-        maintenance: "Bảo trì",
-        driverLogbook: "Sổ nhật ký xe",
+        maintenance: "Nhật ký bảo trì",
+        driverLogbook: "Nhật ký xe",
         ocr: "Ảnh",
+        GA: "GA",
+        ADMIN: "ADMIN",
       },
       temperatureMonitor: {
         dashboard: "Bảng điều khiển",

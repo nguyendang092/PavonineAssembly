@@ -24,74 +24,81 @@ export const menuConfig = [
                 label: "navbar.Normal",
                 path: "/normal",
               },
-              { key: "sanLuongNG", label: "navbar.ng", path: "/ng" },
+              {
+                key: "sanLuongNG",
+                label: "navbar.ng",
+                path: "/ng",
+              },
             ],
           },
-          { key: "nhietdo", label: "navbar.nhietdo", path: "/nhietdo" },
-          { key: "mold", label: "navbar.mold", path: "/mold" },
-          // { key: "inventory", label: "navbar.inventory", path: "/inventory" },
-          { key: "caiTien", label: "navbar.caiTien", path: "/performance" },
-          // {
-          //   key: "leader",
-          //   label: "navbar.leader",
-          //   type: "nested",
-          //   children: [
-          //     {
-          //       key: "ChiThanh",
-          //       label: "navbar.ChiThanh",
-          //       path: "/employ/ChiThanh",
-          //     },
-          //     {
-          //       key: "NgocThanh",
-          //       label: "navbar.NgocThanh",
-          //       path: "/employ/NgocThanh",
-          //     },
-          //     { key: "Muoi", label: "navbar.Muoi", path: "/employ/Muoi" },
-          //   ],
-          // },
+          {
+            key: "nhietdo",
+            label: "navbar.nhietdo",
+            path: "/nhietdo",
+          },
+          {
+            key: "mold",
+            label: "navbar.mold",
+            path: "/mold",
+          },
+          {
+            key: "caiTien",
+            label: "navbar.caiTien",
+            path: "/performance",
+          },
         ],
       },
+
       {
         key: "hr",
         label: "navbar.hr",
         type: "nested",
         children: [
           {
-            key: "attendance",
-            label: "navbar.attendance",
-            path: "/attendance-list",
+            key: "ADMIN",
+            label: "navbar.ADMIN",
+            type: "nested",
+            children: [
+              {
+                key: "attendance",
+                label: "navbar.attendance",
+                path: "/attendance-list",
+              },
+              {
+                key: "attendanceDashboard",
+                label: "navbar.attendanceDashboard",
+                path: "/attendance-dashboard",
+              },
+              {
+                key: "userDepartment",
+                label: "navbar.userDepartment",
+                path: "/user-department",
+                adminOnly: true,
+              },
+            ],
           },
           {
-            key: "attendanceDashboard",
-            label: "navbar.attendanceDashboard",
-            path: "/attendance-dashboard",
-          },
-          {
-            key: "maintenance",
-            label: "navbar.maintenance",
-            path: "/maintenance",
-          },
-          {
-            key: "driverLogbook",
-            label: "navbar.driverLogbook",
-            path: "/driver-logbook",
-          },
-          {
-            key: "userDepartment",
-            label: "navbar.userDepartment",
-            path: "/user-department",
-            adminOnly: true,
-          },
-          {
-            key: "honorBoard",
-            label: "navbar.honorBoard",
-            path: "/honor-board",
+            key: "GA",
+            label: "navbar.GA",
+            type: "nested",
+            children: [
+              {
+                key: "maintenance",
+                label: "navbar.maintenance",
+                path: "/maintenance",
+              },
+              {
+                key: "driverLogbook",
+                label: "navbar.driverLogbook",
+                path: "/driver-logbook",
+              },
+            ],
           },
           {
             key: "certificate",
             label: "navbar.certificate",
-            adminOnly: true,
             type: "nested",
+            adminOnly: true,
             children: [
               {
                 key: "certificate1",
@@ -105,8 +112,14 @@ export const menuConfig = [
               },
             ],
           },
+          {
+            key: "honorBoard",
+            label: "navbar.honorBoard",
+            path: "/honor-board",
+          },
         ],
       },
+
       {
         key: "download",
         label: "navbar.download",

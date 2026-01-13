@@ -56,16 +56,36 @@ function StatusBadge({ trip }) {
   );
 }
 
+// Vehicle type options
+const VEHICLE_TYPES = [
+  "Black Sedona",
+  "White Sedona",
+  "Truck",
+  "Carnival",
+  "Carnival HYB",
+];
+
 function DriverLogbook() {
   const { t } = useTranslation();
   const { user } = useUser();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentView, setCurrentView] = useState("schedule"); // schedule, trips
+  const [currentView, setCurrentView] = useState("schedule"); // schedule, trips, drivers
   const [trips, setTrips] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsTrip, setDetailsTrip] = useState(null);
+  const [showOutsideModal, setShowOutsideModal] = useState(false);
+  const [outsideTrip, setOutsideTrip] = useState(null);
+  const [outsideForm, setOutsideForm] = useState({
+    startTime: "",
+    endTime: "",
+    destination: "",
+    odoFrom: "",
+    odoTo: "",
+    fee: "",
+    purpose: "",
+  });
   const [tempDetails, setTempDetails] = useState("");
   const [detailsForm, setDetailsForm] = useState({
     startTime: "",
@@ -92,6 +112,7 @@ function DriverLogbook() {
     driverName: user?.name || "",
     phone: "",
     vehicleNumber: "",
+    vehicleType: "",
     departure: "",
     destination: "",
     startKm: "",
@@ -108,6 +129,21 @@ function DriverLogbook() {
   });
   // Board/List view toggle
   const [viewMode, setViewMode] = useState("list");
+
+  // Autocomplete states
+  const [driverSuggestions, setDriverSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [drivers, setDrivers] = useState({});
+
+  // Driver management states
+  const [showDriverModal, setShowDriverModal] = useState(false);
+  const [editingDriverId, setEditingDriverId] = useState(null);
+  const [driverForm, setDriverForm] = useState({
+    name: "",
+    phone: "",
+    vehicleNumber: "",
+    vehicleType: "",
+  });
 
   // Check if user is admin or HR
   const isAdminOrHR = React.useMemo(() => {
@@ -169,6 +205,101 @@ function DriverLogbook() {
     const t = setInterval(() => setBoardNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Load drivers from Firebase
+  useEffect(() => {
+    const driversRef = ref(db, "drivers");
+    const unsubscribe = onValue(driversRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && typeof data === "object") {
+        setDrivers(data);
+      } else {
+        setDrivers({});
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Convert drivers object to array for filtering
+  const driversList = React.useMemo(() => {
+    return Object.entries(drivers).map(([id, driver]) => ({
+      id,
+      ...driver,
+    }));
+  }, [drivers]);
+
+  // Handle driver name input change with autocomplete
+  const handleDriverNameChange = (value) => {
+    setNewTrip({ ...newTrip, driverName: value });
+
+    if (value.trim().length > 0) {
+      let filtered = driversList.filter((driver) =>
+        driver.name.toLowerCase().includes(value.toLowerCase())
+      );
+
+      // Filter by vehicle type if selected
+      if (newTrip.vehicleType) {
+        filtered = filtered.filter(
+          (driver) => driver.vehicleType === newTrip.vehicleType
+        );
+      }
+
+      setDriverSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setShowSuggestions(false);
+      setDriverSuggestions([]);
+    }
+  };
+
+  // Handle driver selection from autocomplete
+  const handleSelectDriver = (driver) => {
+    setNewTrip({
+      ...newTrip,
+      driverName: driver.name,
+      phone: driver.phone,
+      vehicleNumber: driver.vehicleNumber,
+      vehicleType: driver.vehicleType || "",
+    });
+    setShowSuggestions(false);
+    setDriverSuggestions([]);
+  };
+
+  // Handle vehicle type change - suggest drivers with that vehicle type
+  const handleVehicleTypeChange = (vehicleType) => {
+    if (vehicleType) {
+      // Find drivers with this vehicle type
+      const matchingDrivers = driversList.filter(
+        (driver) => driver.vehicleType === vehicleType
+      );
+
+      if (matchingDrivers.length > 0) {
+        // Auto-fill with first matching driver
+        const firstDriver = matchingDrivers[0];
+        setNewTrip({
+          ...newTrip,
+          vehicleType,
+          driverName: firstDriver.name,
+          phone: firstDriver.phone,
+          vehicleNumber: firstDriver.vehicleNumber,
+        });
+        setDriverSuggestions(matchingDrivers);
+        setShowSuggestions(false);
+      } else {
+        // No matching drivers, just set vehicle type
+        setNewTrip({ ...newTrip, vehicleType });
+      }
+    } else {
+      // Clear all if deselected
+      setNewTrip({
+        ...newTrip,
+        vehicleType: "",
+        driverName: "",
+        phone: "",
+        vehicleNumber: "",
+      });
+    }
+  };
 
   const handleEdit = (trip) => {
     if (!isAdminOrHR) {
@@ -248,6 +379,19 @@ function DriverLogbook() {
     }
 
     try {
+      // Save/update driver info if all fields are provided
+      if (newTrip.driverName && newTrip.phone && newTrip.vehicleNumber) {
+        const driverKey = newTrip.driverName.toLowerCase().replace(/\s+/g, "_");
+        const driverRef = ref(db, `drivers/${driverKey}`);
+        await set(driverRef, {
+          name: newTrip.driverName,
+          phone: newTrip.phone,
+          vehicleNumber: newTrip.vehicleNumber,
+          vehicleType: newTrip.vehicleType || "",
+          lastUpdated: new Date().toISOString(),
+        });
+      }
+
       if (editingId) {
         // Update existing trip
         const tripRef = ref(db, `driverTrips/${editingId}`);
@@ -316,6 +460,7 @@ function DriverLogbook() {
       driverName: user?.name || "",
       phone: "",
       vehicleNumber: "",
+      vehicleType: "",
       departure: "",
       destination: "",
       startKm: "",
@@ -336,6 +481,122 @@ function DriverLogbook() {
   const openNewTripModal = () => {
     resetForm();
     setShowModal(true);
+  };
+
+  // Driver management handlers
+  const handleAddDriver = () => {
+    setDriverForm({
+      name: "",
+      phone: "",
+      vehicleNumber: "",
+      vehicleType: "",
+    });
+    setEditingDriverId(null);
+    setShowDriverModal(true);
+  };
+
+  const handleEditDriver = (driverId, driver) => {
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Chỉ Admin/HR mới có quyền chỉnh sửa tài xế",
+      });
+      return;
+    }
+    setDriverForm({
+      name: driver.name,
+      phone: driver.phone,
+      vehicleNumber: driver.vehicleNumber,
+      vehicleType: driver.vehicleType || "",
+    });
+    setEditingDriverId(driverId);
+    setShowDriverModal(true);
+  };
+
+  const handleDeleteDriver = async (driverId, driverName) => {
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Chỉ Admin/HR mới có quyền xóa tài xế",
+      });
+      return;
+    }
+
+    if (window.confirm(`Bạn chắc chắn muốn xóa tài xế ${driverName}?`)) {
+      try {
+        const driverRef = ref(db, `drivers/${driverId}`);
+        await remove(driverRef);
+        setAlert({
+          show: true,
+          type: "success",
+          message: "✅ Xóa tài xế thành công",
+        });
+      } catch (error) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: `❌ Lỗi: ${error.message}`,
+        });
+      }
+    }
+  };
+
+  const handleSaveDriver = async () => {
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Chỉ Admin/HR mới có quyền thêm/sửa tài xế",
+      });
+      return;
+    }
+
+    if (!driverForm.name || !driverForm.phone || !driverForm.vehicleNumber) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Vui lòng điền đầy đủ: Tên, SĐT, Biển số xe",
+      });
+      return;
+    }
+
+    try {
+      const driverKey =
+        editingDriverId || driverForm.name.toLowerCase().replace(/\s+/g, "_");
+      const driverRef = ref(db, `drivers/${driverKey}`);
+
+      await set(driverRef, {
+        name: driverForm.name,
+        phone: driverForm.phone,
+        vehicleNumber: driverForm.vehicleNumber,
+        vehicleType: driverForm.vehicleType || "",
+        lastUpdated: new Date().toISOString(),
+      });
+
+      setAlert({
+        show: true,
+        type: "success",
+        message: editingDriverId
+          ? "✅ Cập nhật tài xế thành công"
+          : "✅ Thêm tài xế thành công",
+      });
+      setShowDriverModal(false);
+      setDriverForm({
+        name: "",
+        phone: "",
+        vehicleNumber: "",
+        vehicleType: "",
+      });
+      setEditingDriverId(null);
+    } catch (error) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: `❌ Lỗi: ${error.message}`,
+      });
+    }
   };
 
   const handleOpenDetailsModal = (trip) => {
@@ -536,93 +797,43 @@ function DriverLogbook() {
             >
               CHI TIẾT CHUYẾN ĐI
             </button>
-            <button
-              onClick={() => {
-                if (!isAdminOrHR) {
-                  setAlert({
-                    show: true,
-                    type: "error",
-                    message: "❌ Chỉ Admin/HR mới có quyền thêm chuyến đi",
-                  });
-                  return;
-                }
-                setCurrentView("add");
-                setSidebarOpen(false);
-              }}
-              className={`w-full px-4 py-3.5 rounded-lg font-bold transition-all duration-200 ${
-                currentView === "add"
-                  ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg hover:shadow-xl"
-                  : "text-slate-700 bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-300 hover:border-indigo-400 shadow-sm hover:shadow-md hover:from-indigo-50 hover:to-blue-100"
-              }`}
-            >
-              THÊM CHUYẾN MỚI
-            </button>
+            {isAdminOrHR && (
+              <>
+                <button
+                  onClick={() => {
+                    setCurrentView("add");
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full px-4 py-3.5 rounded-lg font-bold transition-all duration-200 ${
+                    currentView === "add"
+                      ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg hover:shadow-xl"
+                      : "text-slate-700 bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-300 hover:border-indigo-400 shadow-sm hover:shadow-md hover:from-indigo-50 hover:to-blue-100"
+                  }`}
+                >
+                  THÊM CHUYẾN MỚI
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentView("drivers");
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full px-4 py-3.5 rounded-lg font-bold transition-all duration-200 ${
+                    currentView === "drivers"
+                      ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg hover:shadow-xl"
+                      : "text-slate-700 bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-300 hover:border-indigo-400 shadow-sm hover:shadow-md hover:from-indigo-50 hover:to-blue-100"
+                  }`}
+                >
+                  QUẢN LÝ TÀI XẾ
+                </button>
+              </>
+            )}
           </div>
 
           {/* Divider */}
           <div className="px-4">
             <div className="border-t-2 border-slate-200"></div>
           </div>
-
-          {/* Filters Section */}
-          <div className="px-4 py-5 flex-1 overflow-y-auto">
-            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest px-2 mb-4 flex items-center gap-2">
-              <span>🔍</span>
-              <span>Bộ Lọc Tìm Kiếm</span>
-            </p>
-
-            <div className="space-y-4">
-              {/* Vehicle Select */}
-              <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
-                <label className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                  <span>🚙</span>
-                  <span>Chọn Xe</span>
-                </label>
-                <select
-                  value={selectedVehicle}
-                  onChange={(e) => setSelectedVehicle(e.target.value)}
-                  className="w-full border-2 border-slate-300 rounded-lg px-3 py-2.5 bg-white text-slate-700 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm font-medium hover:border-blue-400"
-                >
-                  <option value="">📍 Tất cả xe</option>
-                  {Array.from(
-                    new Set(trips.map((t) => t.vehicleNumber).filter(Boolean))
-                  )
-                    .sort()
-                    .map((v) => (
-                      <option key={v} value={v}>
-                        {v}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              {/* Date Input */}
-              <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
-                <label className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                  <span>📅</span>
-                  <span>Chọn Ngày</span>
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full border-2 border-slate-300 rounded-lg px-3 py-2.5 bg-white text-slate-700 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm font-medium hover:border-blue-400"
-                />
-              </div>
-
-              {/* Clear Filters Button */}
-              <button
-                onClick={() => {
-                  setSelectedVehicle("");
-                  setSelectedDate(new Date().toISOString().split("T")[0]);
-                }}
-                className="w-full px-4 py-2.5 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-              >
-                <span>🗑️</span>
-                <span>Xóa Tất Cả Lọc</span>
-              </button>
-            </div>
-          </div>
+          <div className="flex-1" />
 
           {/* Footer Info */}
           <div className="px-4 py-4 bg-blue-50 border-t border-slate-200 text-xs text-slate-600 text-center rounded-lg m-3">
@@ -653,7 +864,6 @@ function DriverLogbook() {
             {alert.message}
           </div>
         )}
-
         {/* Vehicle Schedule View - Airport Style Board */}
         {currentView === "schedule" &&
           (() => {
@@ -734,9 +944,9 @@ function DriverLogbook() {
                 </div>
 
                 {/* Controls - Sort & Filter */}
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100/40">
-                  {/* Sort Options */}
-                  <div className="flex gap-1 sm:gap-2 flex-wrap">
+                <div className="flex flex-col sm:flex-row justify-between items-stretch gap-3 px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100/40">
+                  {/* Left: Sort Options */}
+                  <div className="flex gap-1 sm:gap-2 flex-wrap items-center">
                     {[
                       { value: "time", label: "⏰ Giờ" },
                       { value: "vehicle", label: "🚗 Xe" },
@@ -756,12 +966,56 @@ function DriverLogbook() {
                       </button>
                     ))}
                   </div>
+
+                  {/* Right: Filter Row - Vehicle, Date, Actions */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-end sm:items-center">
+                    {/* Vehicle Select */}
+                    <div className="flex flex-col gap-1 w-full sm:w-auto">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                        <span>🚙</span>
+                        <span>Xe</span>
+                      </label>
+                      <select
+                        value={selectedVehicle}
+                        onChange={(e) => setSelectedVehicle(e.target.value)}
+                        className="border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all hover:border-blue-400"
+                      >
+                        <option value="">Tất cả xe</option>
+                        {Array.from(
+                          new Set(
+                            trips.map((t) => t.vehicleNumber).filter(Boolean)
+                          )
+                        )
+                          .sort()
+                          .map((v) => (
+                            <option key={v} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* Date Input */}
+                    <div className="flex flex-col gap-1 w-full sm:w-auto">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                        <span>📅</span>
+                        <span>Ngày</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all hover:border-blue-400"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Table Header */}
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1 sm:gap-2 md:gap-3 bg-blue-600 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3">
+                <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 bg-blue-600 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3">
                   <div className="truncate">⏰ GIỜ ĐI</div>
                   <div className="truncate">🚗 XE</div>
+                  <div className="truncate hidden sm:block">🚛 LOẠI XE</div>
                   <div className="truncate hidden sm:block">👤 TÀI XẾ</div>
                   <div className="truncate hidden md:block">📱 SỐ ĐT</div>
                   <div className="truncate hidden sm:block">📍 ĐI</div>
@@ -800,7 +1054,7 @@ function DriverLogbook() {
                       return (
                         <div
                           key={`board-${trip.id}`}
-                          className={`grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
+                          className={`grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
                         >
                           {/* Time */}
                           <div className="font-mono font-bold text-yellow-300">
@@ -815,6 +1069,11 @@ function DriverLogbook() {
                           {/* Vehicle */}
                           <div className="text-white font-bold truncate">
                             {trip.vehicleNumber || "N/A"}
+                          </div>
+
+                          {/* Vehicle Type */}
+                          <div className="text-yellow-200 font-semibold truncate hidden sm:block">
+                            {trip.vehicleType || "-"}
                           </div>
 
                           {/* Driver */}
@@ -861,7 +1120,6 @@ function DriverLogbook() {
               </div>
             );
           })()}
-
         {currentView === "trips" && (
           <>
             {/* Filter Tabs */}
@@ -935,6 +1193,9 @@ function DriverLogbook() {
                         <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
                           Xe
                         </th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
+                          Loại Xe
+                        </th>
                         <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden lg:table-cell">
                           Tuyến
                         </th>
@@ -945,7 +1206,7 @@ function DriverLogbook() {
                           Thời Gian
                         </th>
                         <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
-                          Chi Tiết
+                          Hành Động
                         </th>
                         <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center text-xs">
                           Trạng thái
@@ -1012,6 +1273,11 @@ function DriverLogbook() {
                               {trip.vehicleNumber || "N/A"}
                             </span>
                           </td>
+                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
+                            <span className="text-white font-medium text-xs sm:text-sm truncate">
+                              {trip.vehicleType || "-"}
+                            </span>
+                          </td>
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden lg:table-cell">
                             <div className="text-xs sm:text-sm text-white">
                               <p className="font-semibold text-white truncate">
@@ -1072,13 +1338,34 @@ function DriverLogbook() {
                             </div>
                           </td>
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
-                            <button
-                              onClick={() => handleOpenDetailsModal(trip)}
-                              className="p-1.5 sm:p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all hover:shadow-md text-lg sm:text-xl"
-                              title="Xem/Nhập chi tiết chi phí & odo"
-                            >
-                              💰
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleOpenDetailsModal(trip)}
+                                className="p-1.5 sm:p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all hover:shadow-md text-lg sm:text-xl"
+                                title="Xem/Nhập chi tiết chi phí & odo"
+                              >
+                                💰
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setOutsideTrip(trip);
+                                  setOutsideForm({
+                                    startTime: "",
+                                    endTime: "",
+                                    destination: "",
+                                    odoFrom: "",
+                                    odoTo: "",
+                                    fee: "",
+                                    purpose: "",
+                                  });
+                                  setShowOutsideModal(true);
+                                }}
+                                className="p-1.5 sm:p-2 rounded-lg bg-orange-100 text-orange-600 hover:bg-orange-200 transition-all hover:shadow-md text-lg sm:text-xl"
+                                title="Nhập thông tin chạy ngoài"
+                              >
+                                🌐
+                              </button>
+                            </div>
                           </td>
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
                             {trip.completed ? (
@@ -1134,7 +1421,6 @@ function DriverLogbook() {
             </div>
           </>
         )}
-
         {/* Add Trip Form View */}
         {currentView === "add" && (
           <div className="bg-white sm:rounded-2xl shadow-2xl w-full min-h-screen sm:min-h-auto flex flex-col">
@@ -1168,25 +1454,72 @@ function DriverLogbook() {
               <div className="space-y-6">
                 {/* Driver, Phone & Vehicle */}
                 <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 sm:p-6 border border-blue-100">
-                  <h3 className="text-xs sm:text-sm font-bold text-blue-900 mb-3 sm:mb-4 flex items-center gap-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-blue-900 mb-1 sm:mb-2 flex items-center gap-2">
                     <span>👤</span>
                     <span>Thông Tin Tài Xế & Xe</span>
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  <p className="text-xs text-blue-600 mb-3 sm:mb-4 flex items-center gap-1">
+                    💡 Gõ tên tài xế để tự động điền thông tin từ database
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
                         <span className="text-red-500">*</span>
                         <span>Tên Tài Xế</span>
                       </label>
-                      <input
-                        type="text"
-                        value={newTrip.driverName}
-                        onChange={(e) =>
-                          setNewTrip({ ...newTrip, driverName: e.target.value })
-                        }
-                        className="w-full border-2 border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-blue-300"
-                        placeholder="VD: Nguyễn Văn A"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={newTrip.driverName}
+                          onChange={(e) =>
+                            handleDriverNameChange(e.target.value)
+                          }
+                          onFocus={() => {
+                            if (newTrip.driverName.trim().length > 0) {
+                              const filtered = driversList.filter((driver) =>
+                                driver.name
+                                  .toLowerCase()
+                                  .includes(newTrip.driverName.toLowerCase())
+                              );
+                              if (filtered.length > 0) {
+                                setDriverSuggestions(filtered);
+                                setShowSuggestions(true);
+                              }
+                            }
+                          }}
+                          disabled={!!newTrip.vehicleType}
+                          className={`w-full border-2 border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base font-medium ${
+                            newTrip.vehicleType
+                              ? "bg-gray-100 text-gray-600 cursor-not-allowed"
+                              : "bg-white hover:border-blue-300"
+                          }`}
+                          placeholder="VD: Nguyễn Văn A"
+                          autoComplete="off"
+                        />
+                        {showSuggestions && driverSuggestions.length > 0 && (
+                          <div className="absolute top-full left-0 right-0 bg-white border-2 border-blue-300 rounded-lg mt-1 max-h-48 overflow-y-auto z-50 shadow-lg">
+                            {driverSuggestions.map((driver, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleSelectDriver(driver)}
+                                className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 hover:bg-blue-50 border-b border-blue-100 last:border-b-0 transition-colors"
+                              >
+                                <div className="font-semibold text-gray-800 text-sm sm:text-base">
+                                  👤 {driver.name}
+                                </div>
+                                <div className="text-xs text-gray-600 flex gap-3 mt-1">
+                                  <span>📞 {driver.phone}</span>
+                                  <span>🚙 {driver.vehicleNumber}</span>
+                                  {driver.vehicleType && (
+                                    <span>🚛 {driver.vehicleType}</span>
+                                  )}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div>
@@ -1200,7 +1533,12 @@ function DriverLogbook() {
                         onChange={(e) =>
                           setNewTrip({ ...newTrip, phone: e.target.value })
                         }
-                        className="w-full border-2 border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-blue-300"
+                        disabled={!!newTrip.vehicleType}
+                        className={`w-full border-2 border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base font-medium ${
+                          newTrip.vehicleType
+                            ? "bg-gray-100 text-gray-600 cursor-not-allowed"
+                            : "bg-white hover:border-blue-300"
+                        }`}
                         placeholder="VD: 0901234567"
                       />
                     </div>
@@ -1219,9 +1557,35 @@ function DriverLogbook() {
                             vehicleNumber: e.target.value,
                           })
                         }
-                        className="w-full border-2 border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-blue-300"
+                        disabled={!!newTrip.vehicleType}
+                        className={`w-full border-2 border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base font-medium ${
+                          newTrip.vehicleType
+                            ? "bg-gray-100 text-gray-600 cursor-not-allowed"
+                            : "bg-white hover:border-blue-300"
+                        }`}
                         placeholder="VD: 51A-12345"
                       />
+                    </div>
+
+                    <div>
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
+                        <span>🚛</span>
+                        <span>Loại Xe</span>
+                      </label>
+                      <select
+                        value={newTrip.vehicleType}
+                        onChange={(e) =>
+                          handleVehicleTypeChange(e.target.value)
+                        }
+                        className="w-full border-2 border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-blue-300"
+                      >
+                        <option value="">Chọn loại xe...</option>
+                        {VEHICLE_TYPES.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -1428,7 +1792,7 @@ function DriverLogbook() {
                       <span>👤</span>
                       <span>Thông Tin Tài Xế & Xe</span>
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
                           <span className="text-red-500">*</span>
@@ -1508,6 +1872,39 @@ function DriverLogbook() {
                           }`}
                           placeholder="VD: 51A-12345"
                         />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <span>🚛</span>
+                          <span>Loại Xe</span>
+                        </label>
+                        <select
+                          value={newTrip.vehicleType}
+                          onChange={(e) =>
+                            setNewTrip({
+                              ...newTrip,
+                              vehicleType: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                          }
+                          className={`w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium ${
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white hover:border-blue-300"
+                          }`}
+                        >
+                          <option value="">Chọn loại xe...</option>
+                          {VEHICLE_TYPES.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -1744,7 +2141,258 @@ function DriverLogbook() {
             </div>
           </div>
         )}
+        {/* Drivers Management View */}
+        {currentView === "drivers" && (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+            <div className="bg-white sm:rounded-2xl shadow-2xl w-full min-h-screen sm:min-h-auto">
+              <div className="sticky top-0 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-4 py-4 sm:px-8 sm:py-6 flex items-center justify-between sm:rounded-t-2xl shadow-lg z-10">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <button
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition-all text-lg sm:text-xl"
+                    title="Menu"
+                  >
+                    ☰
+                  </button>
+                  <h2 className="text-lg sm:text-2xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                    <span className="text-2xl sm:text-3xl">👥</span>
+                    <span>Quản Lý Tài Xế</span>
+                  </h2>
+                </div>
+                {isAdminOrHR && (
+                  <button
+                    onClick={handleAddDriver}
+                    className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-sm sm:text-base font-bold text-white bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+                  >
+                    <span className="text-lg">➕</span>
+                    <span className="hidden sm:inline">Thêm Tài Xế</span>
+                  </button>
+                )}
+              </div>
 
+              <div className="p-4 sm:p-8">
+                {Object.keys(drivers).length === 0 ? (
+                  <div className="text-center py-16">
+                    <p className="text-gray-400 text-lg mb-2">
+                      👥 Chưa có tài xế nào
+                    </p>
+                    <p className="text-gray-300 text-sm">
+                      Nhấn "Thêm Tài Xế" để bắt đầu
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.entries(drivers).map(([id, driver]) => (
+                      <div
+                        key={id}
+                        className="bg-gradient-to-br from-white to-blue-50 rounded-xl p-5 border-2 border-blue-200 hover:border-blue-400 shadow-md hover:shadow-xl transition-all"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 flex items-center justify-center text-white font-bold text-xl">
+                              {driver.name[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-gray-800 text-lg">
+                                {driver.name}
+                              </h3>
+                              <p className="text-xs text-gray-500">
+                                {driver.lastUpdated
+                                  ? new Date(
+                                      driver.lastUpdated
+                                    ).toLocaleDateString("vi-VN")
+                                  : ""}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-gray-600">📞</span>
+                            <a
+                              href={`tel:${driver.phone}`}
+                              className="text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              {driver.phone}
+                            </a>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-gray-600">🚙</span>
+                            <span className="text-gray-800 font-medium">
+                              {driver.vehicleNumber}
+                            </span>
+                          </div>
+                          {driver.vehicleType && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-gray-600">🚛</span>
+                              <span className="text-gray-700">
+                                {driver.vehicleType}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {isAdminOrHR && (
+                          <div className="flex gap-2 pt-3 border-t border-blue-200">
+                            <button
+                              onClick={() => handleEditDriver(id, driver)}
+                              className="flex-1 px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 font-semibold text-sm transition-all flex items-center justify-center gap-1"
+                            >
+                              <span>✏️</span>
+                              <span>Sửa</span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDeleteDriver(id, driver.name)
+                              }
+                              className="flex-1 px-3 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold text-sm transition-all flex items-center justify-center gap-1"
+                            >
+                              <span>🗑️</span>
+                              <span>Xóa</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Driver Modal */}
+        {showDriverModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+              <div className="bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-4 rounded-t-2xl flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <span className="text-2xl">
+                    {editingDriverId ? "✏️" : "➕"}
+                  </span>
+                  <span>
+                    {editingDriverId ? "Chỉnh Sửa Tài Xế" : "Thêm Tài Xế Mới"}
+                  </span>
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowDriverModal(false);
+                    setDriverForm({
+                      name: "",
+                      phone: "",
+                      vehicleNumber: "",
+                      vehicleType: "",
+                    });
+                    setEditingDriverId(null);
+                  }}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full w-8 h-8 flex items-center justify-center transition-all"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                    <span className="text-red-500">*</span>
+                    <span>Tên Tài Xế</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={driverForm.name}
+                    onChange={(e) =>
+                      setDriverForm({ ...driverForm, name: e.target.value })
+                    }
+                    className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium bg-white"
+                    placeholder="VD: Nguyễn Văn A"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                    <span className="text-red-500">*</span>
+                    <span>📞 Số Điện Thoại</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={driverForm.phone}
+                    onChange={(e) =>
+                      setDriverForm({ ...driverForm, phone: e.target.value })
+                    }
+                    className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium bg-white"
+                    placeholder="VD: 0901234567"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                    <span className="text-red-500">*</span>
+                    <span>🚙 Biển Số Xe</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={driverForm.vehicleNumber}
+                    onChange={(e) =>
+                      setDriverForm({
+                        ...driverForm,
+                        vehicleNumber: e.target.value,
+                      })
+                    }
+                    className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium bg-white"
+                    placeholder="VD: 51A-12345"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                    <span>🚛 Loại Xe</span>
+                  </label>
+                  <select
+                    value={driverForm.vehicleType}
+                    onChange={(e) =>
+                      setDriverForm({
+                        ...driverForm,
+                        vehicleType: e.target.value,
+                      })
+                    }
+                    className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base font-medium bg-white"
+                  >
+                    <option value="">Chọn loại xe...</option>
+                    {VEHICLE_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex gap-3 justify-end border-t">
+                <button
+                  onClick={() => {
+                    setShowDriverModal(false);
+                    setDriverForm({
+                      name: "",
+                      phone: "",
+                      vehicleNumber: "",
+                      vehicleType: "",
+                    });
+                    setEditingDriverId(null);
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold transition-all"
+                >
+                  ❌ Hủy
+                </button>
+                <button
+                  onClick={handleSaveDriver}
+                  className="px-4 py-2 rounded-lg font-bold bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 transition-all shadow-md hover:shadow-lg"
+                >
+                  {editingDriverId ? "💾 Cập Nhật" : "➕ Thêm Mới"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Details Modal */}
         {showDetailsModal && detailsTrip && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
@@ -2009,11 +2657,6 @@ function DriverLogbook() {
                       />
                     </div>
                   </div>
-
-                  <p className="text-xs text-gray-500">
-                    💡 Dữ liệu được lưu dạng cấu trúc trong Firebase (kèm văn
-                    bản cũ) để dễ tái sử dụng.
-                  </p>
                 </div>
               </div>
 
@@ -2038,6 +2681,290 @@ function DriverLogbook() {
             </div>
           </div>
         )}
+        {/* Outside Modal */}
+        {showOutsideModal && outsideTrip && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl border shadow-md w-full max-w-2xl flex flex-col overflow-hidden">
+              <div className="sticky top-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between sm:rounded-t-xl">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <span>🌐</span>
+                  <span className="uppercase">Bảng chạy ngoài</span>
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowOutsideModal(false);
+                    setOutsideTrip(null);
+                    setOutsideForm({
+                      startTime: "",
+                      endTime: "",
+                      destination: "",
+                      odoFrom: "",
+                      odoTo: "",
+                      fee: "",
+                      purpose: "",
+                    });
+                  }}
+                  className="text-gray-600 hover:bg-gray-100 rounded-full w-9 h-9 flex items-center justify-center"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                {/* Thông tin chuyến đi */}
+                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-5 rounded-xl border border-orange-300 shadow-sm">
+                  <h3 className="font-bold text-orange-900 mb-4 text-base flex items-center gap-2">
+                    <span>📋</span>
+                    <span>Thông tin chuyến đi</span>
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="flex flex-col">
+                      <span className="text-orange-600 font-semibold text-xs uppercase tracking-wide mb-1">
+                        Tài xế
+                      </span>
+                      <span className="text-gray-800 font-bold text-lg">
+                        {outsideTrip.driverName}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-orange-600 font-semibold text-xs uppercase tracking-wide mb-1">
+                        Biển số xe
+                      </span>
+                      <span className="text-gray-800 font-bold text-lg">
+                        {outsideTrip.vehicleNumber}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-orange-600 font-semibold text-xs uppercase tracking-wide mb-1">
+                        Số điện thoại
+                      </span>
+                      <span className="text-gray-800 font-bold text-lg">
+                        {outsideTrip.phoneNumber || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-orange-600 font-semibold text-xs uppercase tracking-wide mb-1">
+                        Điểm đi
+                      </span>
+                      <span className="text-gray-800 font-bold text-lg">
+                        {outsideTrip.departure || "N/A"}
+                      </span>
+                    </div>
+                    <div className="col-span-2 flex flex-col">
+                      <span className="text-orange-600 font-semibold text-xs uppercase tracking-wide mb-1">
+                        Điểm đến
+                      </span>
+                      <span className="text-gray-800 font-bold text-lg">
+                        {outsideTrip.destination}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form chi tiết chạy ngoài */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span>📝</span>
+                    <h3 className="text-sm font-bold text-gray-800">
+                      Chi Tiết Chạy Ngoài
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Thời gian từ - đến */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Thời gian (từ - đến)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="time"
+                          value={outsideForm.startTime}
+                          onChange={(e) =>
+                            setOutsideForm((p) => ({
+                              ...p,
+                              startTime: e.target.value,
+                            }))
+                          }
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                        />
+                        <input
+                          type="time"
+                          value={outsideForm.endTime}
+                          onChange={(e) =>
+                            setOutsideForm((p) => ({
+                              ...p,
+                              endTime: e.target.value,
+                            }))
+                          }
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Nơi đến */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Nơi đến
+                      </label>
+                      <input
+                        type="text"
+                        value={outsideForm.destination}
+                        onChange={(e) =>
+                          setOutsideForm((p) => ({
+                            ...p,
+                            destination: e.target.value,
+                          }))
+                        }
+                        placeholder="VD: Kho A, Công trình B..."
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                      />
+                    </div>
+
+                    {/* Odo từ - đến */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Odo (từ - đến)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={outsideForm.odoFrom}
+                          onChange={(e) =>
+                            setOutsideForm((p) => ({
+                              ...p,
+                              odoFrom: e.target.value,
+                            }))
+                          }
+                          placeholder="Odo từ"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                        />
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={outsideForm.odoTo}
+                          onChange={(e) =>
+                            setOutsideForm((p) => ({
+                              ...p,
+                              odoTo: e.target.value,
+                            }))
+                          }
+                          placeholder="Odo đến"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Số KM = odo đến - odo từ */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Số KM (tự tính)
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={(() => {
+                          const a = parseFloat(outsideForm.odoFrom);
+                          const b = parseFloat(outsideForm.odoTo);
+                          return !isNaN(a) && !isNaN(b) ? b - a : "";
+                        })()}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-700 text-sm"
+                      />
+                    </div>
+
+                    {/* Chạy ngoài */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        💵 Chạy ngoài (đ)
+                      </label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={outsideForm.fee}
+                        onChange={(e) =>
+                          setOutsideForm((p) => ({
+                            ...p,
+                            fee: e.target.value,
+                          }))
+                        }
+                        placeholder="VD: 200000"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                      />
+                    </div>
+
+                    {/* Mục đích chạy ngoài */}
+                    <div className="md:col-span-2 bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        📍 Mục đích chạy ngoài
+                      </label>
+                      <textarea
+                        value={outsideForm.purpose}
+                        onChange={(e) =>
+                          setOutsideForm((p) => ({
+                            ...p,
+                            purpose: e.target.value,
+                          }))
+                        }
+                        rows={3}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm resize-y"
+                        placeholder="VD: Vận chuyển linh kiện, giao hàng..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="sticky bottom-0 bg-gray-50 px-4 py-3 sm:px-6 sm:py-4 flex gap-3 justify-end sm:rounded-b-xl border-t pb-[env(safe-area-inset-bottom)]">
+                <button
+                  onClick={() => {
+                    setShowOutsideModal(false);
+                    setOutsideTrip(null);
+                    setOutsideForm({
+                      startTime: "",
+                      endTime: "",
+                      destination: "",
+                      odoFrom: "",
+                      odoTo: "",
+                      fee: "",
+                      purpose: "",
+                    });
+                  }}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                >
+                  ❌ Hủy
+                </button>
+                <button
+                  onClick={() => {
+                    if (outsideForm.fee || outsideForm.purpose) {
+                      setAlert({
+                        show: true,
+                        type: "success",
+                        message: `✅ Lưu thông tin chạy ngoài: ${
+                          outsideForm.fee ? outsideForm.fee + "đ" : ""
+                        } - ${outsideForm.purpose}`,
+                      });
+                    }
+                    setShowOutsideModal(false);
+                    setOutsideTrip(null);
+                    setOutsideForm({
+                      startTime: "",
+                      endTime: "",
+                      destination: "",
+                      odoFrom: "",
+                      odoTo: "",
+                      fee: "",
+                      purpose: "",
+                    });
+                  }}
+                  className="px-4 py-2 rounded-lg font-semibold bg-orange-600 text-white hover:bg-orange-700"
+                >
+                  💾 Lưu Chạy Ngoài
+                </button>
+              </div>
+            </div>
+          </div>
+        )}{" "}
       </div>
     </>
   );
