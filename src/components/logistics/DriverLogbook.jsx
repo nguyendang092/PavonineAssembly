@@ -902,17 +902,28 @@ function DriverLogbook() {
       )}
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-8 text-slate-900">
-        {/* Alert */}
+        {/* Toast Notification - Fixed position */}
         {alert.show && (
-          <div
-            className={`mb-4 p-3 rounded-lg font-medium flex items-center gap-2 shadow-sm ${
-              alert.type === "success"
-                ? "bg-green-50 text-green-700 border border-green-200"
-                : "bg-red-50 text-red-700 border border-red-200"
-            }`}
-          >
-            <span>{alert.type === "success" ? "✅" : "❌"}</span>
-            {alert.message}
+          <div className="fixed top-4 right-4 z-50 transition-all duration-300 ease-in-out transform">
+            <div
+              className={`min-w-[300px] max-w-md p-4 rounded-xl font-medium flex items-center gap-3 shadow-2xl border-2 ${
+                alert.type === "success"
+                  ? "bg-green-50 text-green-800 border-green-300"
+                  : "bg-red-50 text-red-800 border-red-300"
+              }`}
+            >
+              <span className="text-2xl flex-shrink-0">
+                {alert.type === "success" ? "✅" : "❌"}
+              </span>
+              <span className="flex-1">{alert.message}</span>
+              <button
+                onClick={() => setAlert({ show: false, type: "", message: "" })}
+                className="flex-shrink-0 w-6 h-6 rounded-full hover:bg-black/10 flex items-center justify-center transition-colors text-sm"
+                title="Đóng"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         )}
         {/* Vehicle Schedule View - Airport Style Board */}
@@ -957,220 +968,328 @@ function DriverLogbook() {
               minute: "2-digit",
             });
 
+            // Tạo danh sách trạng thái xe
+            const vehicleStatuses = driversList.map((driver) => {
+              const vehicleTrips = permissionFiltered.filter(
+                (t) =>
+                  t.vehicleNumber === driver.vehicleNumber &&
+                  t.startDate === selectedDate
+              );
+
+              const hasSchedule = vehicleTrips.length > 0;
+              const firstTrip = vehicleTrips[0];
+
+              return {
+                vehicleNumber: driver.vehicleNumber,
+                vehicleType: driver.vehicleType,
+                driverName: driver.name,
+                hasSchedule,
+                tripInfo: hasSchedule
+                  ? {
+                      destination: firstTrip.destination,
+                      startTime: firstTrip.startTime,
+                      departure: firstTrip.departure,
+                      tripCount: vehicleTrips.length,
+                    }
+                  : null,
+              };
+            });
+
             return (
-              <div className="rounded-3xl overflow-hidden border border-transparent shadow-2xl bg-white">
-                {/* Board Header - Airport Style */}
-                <div className="bg-gradient-to-r from-indigo-600 via-blue-500 to-cyan-500 text-white px-3 sm:px-4 md:px-6 py-2 sm:py-3 border-b border-blue-100/30">
-                  {/* Row 1: Menu button, Title, Time */}
-                  <div className="flex items-center justify-between gap-2 sm:gap-3">
-                    {/* Left: Menu Button + Title */}
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                      <button
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-blue-500 text-white hover:bg-blue-400 transition-colors text-lg sm:text-xl"
-                        title="Menu"
-                      >
-                        ☰
-                      </button>
-                      <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-                        <span className="text-xl sm:text-2xl md:text-3xl flex-shrink-0">
-                          🚗
-                        </span>
-                        <div className="min-w-0">
-                          <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold truncate">
-                            LỊCH CHUYẾN ĐI
-                          </h2>
-                          <p className="text-blue-100 text-xs hidden sm:block">
-                            Departure Board
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Current Time */}
-                    <div className="flex-shrink-0 text-right">
-                      <div className="text-lg sm:text-2xl md:text-3xl font-mono font-bold tracking-wider">
-                        {currentTime}
-                      </div>
-                      <p className="text-blue-100 text-xs">30s</p>
-                    </div>
+              <div className="space-y-4">
+                {/* Vehicle Status Cards */}
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-3 flex items-center justify-between">
+                    <h3 className="text-white font-bold text-sm sm:text-base flex items-center gap-2">
+                      <span className="text-xl">🚗</span>
+                      <span>
+                        Trạng Thái Xe -{" "}
+                        {new Date(selectedDate).toLocaleDateString("vi-VN")}
+                      </span>
+                    </h3>
+                    <span className="text-white/80 text-xs">
+                      {vehicleStatuses.filter((v) => v.hasSchedule).length}/
+                      {vehicleStatuses.length} xe có lịch
+                    </span>
                   </div>
-                </div>
-
-                {/* Controls - Sort & Filter */}
-                <div className="flex flex-col sm:flex-row justify-between items-stretch gap-3 px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100/40">
-                  {/* Left: Sort Options */}
-                  <div className="flex gap-1 sm:gap-2 flex-wrap items-center">
-                    {[
-                      { value: "time", label: "⏰ Giờ" },
-                      { value: "vehicle", label: "🚗 Xe" },
-                      { value: "driver", label: "👤 Tài Xế" },
-                      { value: "status", label: "📊 Trạng Thái" },
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setSortBy(option.value)}
-                        className={`px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-sm font-semibold transition ${
-                          sortBy === option.value
-                            ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
-                            : "bg-white text-slate-700 border border-slate-200 hover:border-indigo-300 hover:shadow-sm"
+                  <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {vehicleStatuses.map((vehicle) => (
+                      <div
+                        key={vehicle.vehicleNumber}
+                        className={`p-3 rounded-lg border-2 transition-all hover:shadow-md ${
+                          vehicle.hasSchedule
+                            ? "bg-blue-50 border-blue-300"
+                            : "bg-gray-50 border-gray-300"
                         }`}
                       >
-                        {option.label}
-                      </button>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">
+                              {vehicle.hasSchedule ? "🚙" : "🏢"}
+                            </span>
+                            <div>
+                              <div className="font-bold text-sm text-gray-800">
+                                {vehicle.vehicleNumber}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {vehicle.vehicleType || "N/A"}
+                              </div>
+                            </div>
+                          </div>
+                          {vehicle.hasSchedule &&
+                            vehicle.tripInfo.tripCount > 1 && (
+                              <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                                {vehicle.tripInfo.tripCount}
+                              </span>
+                            )}
+                        </div>
+                        <div className="text-xs">
+                          {vehicle.hasSchedule ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1 text-blue-700 font-semibold">
+                                <span>📍</span>
+                                <span className="truncate">
+                                  {vehicle.tripInfo.destination}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 text-gray-600">
+                                <span>⏰</span>
+                                <span>{vehicle.tripInfo.startTime}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 italic truncate">
+                                👤 {vehicle.driverName}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-gray-600 font-medium flex items-center gap-1">
+                              <span>🏢</span>
+                              <span>Đang ở công ty</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     ))}
                   </div>
-
-                  {/* Right: Filter Row - Vehicle, Date, Actions */}
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-end sm:items-center">
-                    {/* Vehicle Select */}
-                    <div className="flex flex-col gap-1 w-full sm:w-auto">
-                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                        <span>🚙</span>
-                        <span>Xe</span>
-                      </label>
-                      <select
-                        value={selectedVehicle}
-                        onChange={(e) => setSelectedVehicle(e.target.value)}
-                        className="border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all hover:border-blue-400"
-                      >
-                        <option value="">Tất cả xe</option>
-                        {Array.from(
-                          new Set(
-                            trips.map((t) => t.vehicleNumber).filter(Boolean)
-                          )
-                        )
-                          .sort()
-                          .map((v) => (
-                            <option key={v} value={v}>
-                              {v}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
-                    {/* Date Input */}
-                    <div className="flex flex-col gap-1 w-full sm:w-auto">
-                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                        <span>📅</span>
-                        <span>Ngày</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all hover:border-blue-400"
-                      />
-                    </div>
-                  </div>
                 </div>
 
-                {/* Table Header */}
-                <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 bg-blue-600 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3">
-                  <div className="truncate">⏰ GIỜ ĐI</div>
-                  <div className="truncate">🚗 XE</div>
-                  <div className="truncate hidden sm:block">🚛 LOẠI XE</div>
-                  <div className="truncate hidden sm:block">👤 TÀI XẾ</div>
-                  <div className="truncate hidden md:block">📱 SỐ ĐT</div>
-                  <div className="truncate hidden sm:block">📍 ĐI</div>
-                  <div className="truncate">🏁 ĐẾN</div>
-                  <div className="truncate text-xs">📊 TRẠNG THÁI</div>
-                  <div className="truncate hidden md:block">📝 GHI CHÚ</div>
-                </div>
-
-                {/* Rows */}
-                {sorted.length === 0 ? (
-                  <div className="px-3 sm:px-4 md:px-6 py-8 sm:py-12 text-center">
-                    <p className="text-gray-400 text-base sm:text-lg">
-                      🛫 Không có chuyến đi nào
-                    </p>
-                    <p className="text-gray-300 text-xs sm:text-sm mt-2">
-                      Chọn ngày hoặc xe khác để xem lịch
-                    </p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-gray-200">
-                    {sorted.map((trip, idx) => {
-                      const status = getStatus(trip);
-                      const scheduled = formatTime(
-                        trip.startDate,
-                        trip.startTime
-                      );
-                      const estimated =
-                        trip.endDate && trip.endTime
-                          ? formatTime(trip.endDate, trip.endTime)
-                          : "-";
-
-                      const baseZebra =
-                        idx % 2 === 0 ? "bg-gray-800" : "bg-gray-500";
-                      const rowBgColor = baseZebra;
-
-                      return (
-                        <div
-                          key={`board-${trip.id}`}
-                          className={`grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
+                {/* Board Schedule */}
+                <div className="rounded-3xl overflow-hidden border border-transparent shadow-2xl bg-white">
+                  {/* Board Header - Airport Style */}
+                  <div className="bg-gradient-to-r from-indigo-600 via-blue-500 to-cyan-500 text-white px-3 sm:px-4 md:px-6 py-2 sm:py-3 border-b border-blue-100/30">
+                    {/* Row 1: Menu button, Title, Time */}
+                    <div className="flex items-center justify-between gap-2 sm:gap-3">
+                      {/* Left: Menu Button + Title */}
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <button
+                          onClick={() => setSidebarOpen(!sidebarOpen)}
+                          className="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-blue-500 text-white hover:bg-blue-400 transition-colors text-lg sm:text-xl"
+                          title="Menu"
                         >
-                          {/* Time */}
-                          <div className="font-mono font-bold text-yellow-300">
-                            <div className="truncate">{scheduled}</div>
-                            {estimated !== "-" && (
-                              <div className="text-xs text-pink-300 mt-0.5">
-                                ← {estimated}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Vehicle */}
-                          <div className="text-white font-bold truncate">
-                            {trip.vehicleNumber || "N/A"}
-                          </div>
-
-                          {/* Vehicle Type */}
-                          <div className="text-yellow-200 font-semibold truncate hidden sm:block">
-                            {trip.vehicleType || "-"}
-                          </div>
-
-                          {/* Driver */}
-                          <div className="text-white font-bold truncate hidden sm:block">
-                            {trip.driverName || "-"}
-                          </div>
-
-                          {/* Phone */}
-                          <div className="text-white font-bold truncate hidden md:block text-xs">
-                            {trip.phone || "-"}
-                          </div>
-
-                          {/* Departure */}
-                          <div className="text-white font-bold truncate hidden sm:block">
-                            {trip.departure || "-"}
-                          </div>
-
-                          {/* Destination */}
-                          <div className="text-white font-bold truncate">
-                            {trip.destination || "-"}
-                          </div>
-
-                          {/* Status */}
-                          <div>
-                            <StatusBadge trip={trip} />
-                          </div>
-
-                          {/* Notes */}
-                          <div className="text-xs text-gray-200 truncate hidden md:block">
-                            {trip.notes ||
-                              (trip.totalKm ? `${trip.totalKm} km` : "-")}
+                          ☰
+                        </button>
+                        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+                          <span className="text-xl sm:text-2xl md:text-3xl flex-shrink-0">
+                            🚗
+                          </span>
+                          <div className="min-w-0">
+                            <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold truncate">
+                              LỊCH CHUYẾN ĐI
+                            </h2>
+                            <p className="text-blue-100 text-xs hidden sm:block">
+                              Departure Board
+                            </p>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      </div>
 
-                {/* Footer */}
-                <div className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-50 to-indigo-50 text-xs sm:text-sm text-slate-600 text-center border-t border-blue-100/40">
-                  💡 Tổng <span className="font-bold">{sorted.length}</span>{" "}
-                  chuyến | Cập nhật tự động mỗi 30s
+                      {/* Right: Current Time */}
+                      <div className="flex-shrink-0 text-right">
+                        <div className="text-lg sm:text-2xl md:text-3xl font-mono font-bold tracking-wider">
+                          {currentTime}
+                        </div>
+                        <p className="text-blue-100 text-xs">30s</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Controls - Sort & Filter */}
+                  <div className="flex flex-col sm:flex-row justify-between items-stretch gap-3 px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100/40">
+                    {/* Left: Sort Options */}
+                    <div className="flex gap-1 sm:gap-2 flex-wrap items-center">
+                      {[
+                        { value: "time", label: "⏰ Giờ" },
+                        { value: "vehicle", label: "🚗 Xe" },
+                        { value: "driver", label: "👤 Tài Xế" },
+                        { value: "status", label: "📊 Trạng Thái" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setSortBy(option.value)}
+                          className={`px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-sm font-semibold transition ${
+                            sortBy === option.value
+                              ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
+                              : "bg-white text-slate-700 border border-slate-200 hover:border-indigo-300 hover:shadow-sm"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Right: Filter Row - Vehicle, Date, Actions */}
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-end sm:items-center">
+                      {/* Vehicle Select */}
+                      <div className="flex flex-col gap-1 w-full sm:w-auto">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                          <span>🚙</span>
+                          <span>Xe</span>
+                        </label>
+                        <select
+                          value={selectedVehicle}
+                          onChange={(e) => setSelectedVehicle(e.target.value)}
+                          className="border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all hover:border-blue-400"
+                        >
+                          <option value="">Tất cả xe</option>
+                          {Array.from(
+                            new Set(
+                              permissionFiltered
+                                .map((t) => t.vehicleNumber)
+                                .filter(Boolean)
+                            )
+                          )
+                            .sort()
+                            .map((v) => (
+                              <option key={v} value={v}>
+                                {v}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      {/* Date Input */}
+                      <div className="flex flex-col gap-1 w-full sm:w-auto">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                          <span>📅</span>
+                          <span>Ngày</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          className="border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all hover:border-blue-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Table Header */}
+                  <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 bg-blue-600 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3">
+                    <div className="truncate">⏰ GIỜ ĐI</div>
+                    <div className="truncate">🚗 XE</div>
+                    <div className="truncate hidden sm:block">🚛 LOẠI XE</div>
+                    <div className="truncate hidden sm:block">👤 TÀI XẾ</div>
+                    <div className="truncate hidden md:block">📱 SỐ ĐT</div>
+                    <div className="truncate hidden sm:block">📍 ĐI</div>
+                    <div className="truncate">🏁 ĐẾN</div>
+                    <div className="truncate text-xs">📊 TRẠNG THÁI</div>
+                    <div className="truncate hidden md:block">📝 GHI CHÚ</div>
+                  </div>
+
+                  {/* Rows */}
+                  {sorted.length === 0 ? (
+                    <div className="px-3 sm:px-4 md:px-6 py-8 sm:py-12 text-center">
+                      <p className="text-gray-400 text-base sm:text-lg">
+                        🛫 Không có chuyến đi nào
+                      </p>
+                      <p className="text-gray-300 text-xs sm:text-sm mt-2">
+                        Chọn ngày hoặc xe khác để xem lịch
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-200">
+                      {sorted.map((trip, idx) => {
+                        const status = getStatus(trip);
+                        const scheduled = formatTime(
+                          trip.startDate,
+                          trip.startTime
+                        );
+                        const estimated =
+                          trip.endDate && trip.endTime
+                            ? formatTime(trip.endDate, trip.endTime)
+                            : "-";
+
+                        const baseZebra =
+                          idx % 2 === 0 ? "bg-gray-800" : "bg-gray-500";
+                        const rowBgColor = baseZebra;
+
+                        return (
+                          <div
+                            key={`board-${trip.id}`}
+                            className={`grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
+                          >
+                            {/* Time */}
+                            <div className="font-mono font-bold text-yellow-300">
+                              <div className="truncate">{scheduled}</div>
+                              {estimated !== "-" && (
+                                <div className="text-xs text-pink-300 mt-0.5">
+                                  ← {estimated}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Vehicle */}
+                            <div className="text-white font-bold truncate">
+                              {trip.vehicleNumber || "N/A"}
+                            </div>
+
+                            {/* Vehicle Type */}
+                            <div className="text-yellow-200 font-semibold truncate hidden sm:block">
+                              {trip.vehicleType || "-"}
+                            </div>
+
+                            {/* Driver */}
+                            <div className="text-white font-bold truncate hidden sm:block">
+                              {trip.driverName || "-"}
+                            </div>
+
+                            {/* Phone */}
+                            <div className="text-white font-bold truncate hidden md:block text-xs">
+                              {trip.phone || "-"}
+                            </div>
+
+                            {/* Departure */}
+                            <div className="text-white font-bold truncate hidden sm:block">
+                              {trip.departure || "-"}
+                            </div>
+
+                            {/* Destination */}
+                            <div className="text-white font-bold truncate">
+                              {trip.destination || "-"}
+                            </div>
+
+                            {/* Status */}
+                            <div>
+                              <StatusBadge trip={trip} />
+                            </div>
+
+                            {/* Notes */}
+                            <div className="text-xs text-gray-200 truncate hidden md:block">
+                              {trip.notes ||
+                                (trip.totalKm ? `${trip.totalKm} km` : "-")}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-50 to-indigo-50 text-xs sm:text-sm text-slate-600 text-center border-t border-blue-100/40">
+                    💡 Tổng <span className="font-bold">{sorted.length}</span>{" "}
+                    chuyến | Cập nhật tự động mỗi 30s
+                  </div>
                 </div>
+                {/* End Board Schedule */}
               </div>
             );
           })()}
@@ -1396,14 +1515,42 @@ function DriverLogbook() {
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
-                                onClick={() => handleOpenDetailsModal(trip)}
-                                className="p-1.5 sm:p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all hover:shadow-md text-lg sm:text-xl"
-                                title="Xem/Nhập chi tiết chi phí & odo"
+                                onClick={() => {
+                                  if (!isAdminOrHR) {
+                                    setAlert({
+                                      show: true,
+                                      type: "error",
+                                      message:
+                                        "❌ Chỉ Admin/HR mới có quyền nhập chi tiết chi phí",
+                                    });
+                                    return;
+                                  }
+                                  handleOpenDetailsModal(trip);
+                                }}
+                                className={`p-1.5 sm:p-2 rounded-lg transition-all hover:shadow-md text-lg sm:text-xl ${
+                                  isAdminOrHR
+                                    ? "bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer"
+                                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                }`}
+                                title={
+                                  isAdminOrHR
+                                    ? "Xem/Nhập chi tiết chi phí & odo"
+                                    : "Chỉ Admin/HR mới có quyền nhập"
+                                }
                               >
                                 💰
                               </button>
                               <button
                                 onClick={() => {
+                                  if (!isAdminOrHR) {
+                                    setAlert({
+                                      show: true,
+                                      type: "error",
+                                      message:
+                                        "❌ Chỉ Admin/HR mới có quyền nhập thông tin chạy ngoài",
+                                    });
+                                    return;
+                                  }
                                   setOutsideTrip(trip);
                                   setOutsideForm({
                                     startTime: "",
@@ -1416,8 +1563,16 @@ function DriverLogbook() {
                                   });
                                   setShowOutsideModal(true);
                                 }}
-                                className="p-1.5 sm:p-2 rounded-lg bg-orange-100 text-orange-600 hover:bg-orange-200 transition-all hover:shadow-md text-lg sm:text-xl"
-                                title="Nhập thông tin chạy ngoài"
+                                className={`p-1.5 sm:p-2 rounded-lg transition-all hover:shadow-md text-lg sm:text-xl ${
+                                  isAdminOrHR
+                                    ? "bg-orange-100 text-orange-600 hover:bg-orange-200 cursor-pointer"
+                                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                }`}
+                                title={
+                                  isAdminOrHR
+                                    ? "Nhập thông tin chạy ngoài"
+                                    : "Chỉ Admin/HR mới có quyền nhập"
+                                }
                               >
                                 🌐
                               </button>
