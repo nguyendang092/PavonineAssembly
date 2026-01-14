@@ -969,31 +969,39 @@ function DriverLogbook() {
             });
 
             // Tạo danh sách trạng thái xe
-            const vehicleStatuses = driversList.map((driver) => {
-              const vehicleTrips = permissionFiltered.filter(
-                (t) =>
-                  t.vehicleNumber === driver.vehicleNumber &&
-                  t.startDate === selectedDate
-              );
+            const vehicleStatuses = driversList
+              .filter((driver) => {
+                // Lọc xe 72A-875.15 nếu user không có quyền
+                if (driver.vehicleNumber === RESTRICTED_VEHICLE) {
+                  return canViewRestrictedVehicle;
+                }
+                return true;
+              })
+              .map((driver) => {
+                const vehicleTrips = permissionFiltered.filter(
+                  (t) =>
+                    t.vehicleNumber === driver.vehicleNumber &&
+                    t.startDate === selectedDate
+                );
 
-              const hasSchedule = vehicleTrips.length > 0;
-              const firstTrip = vehicleTrips[0];
+                const hasSchedule = vehicleTrips.length > 0;
+                const firstTrip = vehicleTrips[0];
 
-              return {
-                vehicleNumber: driver.vehicleNumber,
-                vehicleType: driver.vehicleType,
-                driverName: driver.name,
-                hasSchedule,
-                tripInfo: hasSchedule
-                  ? {
-                      destination: firstTrip.destination,
-                      startTime: firstTrip.startTime,
-                      departure: firstTrip.departure,
-                      tripCount: vehicleTrips.length,
-                    }
-                  : null,
-              };
-            });
+                return {
+                  vehicleNumber: driver.vehicleNumber,
+                  vehicleType: driver.vehicleType,
+                  driverName: driver.name,
+                  hasSchedule,
+                  tripInfo: hasSchedule
+                    ? {
+                        destination: firstTrip.destination,
+                        startTime: firstTrip.startTime,
+                        departure: firstTrip.departure,
+                        tripCount: vehicleTrips.length,
+                      }
+                    : null,
+                };
+              });
 
             return (
               <div className="space-y-4">
