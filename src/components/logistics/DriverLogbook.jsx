@@ -154,6 +154,35 @@ function DriverLogbook() {
     );
   }, [user?.email]);
 
+  // Danh sách users được phép xem xe 72A-875.15
+  const RESTRICTED_VEHICLE = "72A-875.15";
+  const allowedUsersFor72A = React.useMemo(() => {
+    return [
+      "admin@gmail.com",
+      // Thêm email của các users được phép xem xe này
+      // Ví dụ: "user1@gmail.com", "user2@gmail.com"
+    ];
+  }, []);
+
+  // Kiểm tra user có quyền xem xe 72A-875.15 không
+  const canViewRestrictedVehicle = React.useMemo(() => {
+    if (!user?.email) return false;
+    return isAdminOrHR || allowedUsersFor72A.includes(user.email.toLowerCase());
+  }, [user?.email, isAdminOrHR, allowedUsersFor72A]);
+
+  // Hàm filter trips dựa trên quyền truy cập
+  const filterTripsByPermission = React.useCallback(
+    (tripsList) => {
+      return tripsList.filter((trip) => {
+        // Nếu không phải xe bị hạn chế, cho phép xem
+        if (trip.vehicleNumber !== RESTRICTED_VEHICLE) return true;
+        // Nếu là xe bị hạn chế, chỉ cho phép nếu user có quyền
+        return canViewRestrictedVehicle;
+      });
+    },
+    [canViewRestrictedVehicle]
+  );
+
   // Detect duplicate booking: same vehicle + same start date/time
   const isDuplicateBooking = React.useMemo(() => {
     if (!newTrip.vehicleNumber || !newTrip.startDate || !newTrip.startTime)
@@ -435,17 +464,34 @@ function DriverLogbook() {
 
     try {
       const tripRef = ref(db, `driverTrips/${trip.id}`);
-      await update(tripRef, {
-        ...trip,
-        completed: true,
-        endDate: new Date().toISOString().split("T")[0],
-        endTime: new Date().toTimeString().slice(0, 5),
-      });
-      setAlert({
-        show: true,
-        type: "success",
-        message: "✅ Đánh dấu hoàn tất thành công",
-      });
+
+      // Nếu đã hoàn tất, bỏ check (uncheck)
+      if (trip.completed) {
+        await update(tripRef, {
+          ...trip,
+          completed: false,
+          endDate: "",
+          endTime: "",
+        });
+        setAlert({
+          show: true,
+          type: "success",
+          message: "✅ Bỏ đánh dấu hoàn tất thành công",
+        });
+      } else {
+        // Nếu chưa hoàn tất, đánh dấu hoàn tất
+        await update(tripRef, {
+          ...trip,
+          completed: true,
+          endDate: new Date().toISOString().split("T")[0],
+          endTime: new Date().toTimeString().slice(0, 5),
+        });
+        setAlert({
+          show: true,
+          type: "success",
+          message: "✅ Đánh dấu hoàn tất thành công",
+        });
+      }
     } catch (error) {
       setAlert({
         show: true,
@@ -746,8 +792,13 @@ function DriverLogbook() {
     }
   }, [newTrip.startKm, newTrip.endKm]);
 
-  const completedCount = trips.filter((t) => t.completed).length;
-  const filteredTrips = trips.filter((trip) => {
+  // Lọc trips theo quyền truy cập trước
+  const permissionFilteredTrips = filterTripsByPermission(trips);
+
+  const completedCount = permissionFilteredTrips.filter(
+    (t) => t.completed
+  ).length;
+  const filteredTrips = permissionFilteredTrips.filter((trip) => {
     if (filterTab === "ongoing") return !trip.completed;
     if (filterTab === "completed") return trip.completed;
     return true;
@@ -867,8 +918,11 @@ function DriverLogbook() {
         {/* Vehicle Schedule View - Airport Style Board */}
         {currentView === "schedule" &&
           (() => {
+            // Filter trips theo quyền truy cập trước
+            const permissionFiltered = filterTripsByPermission(trips);
+
             // Filter trips
-            const filtered = trips
+            const filtered = permissionFiltered
               .filter(
                 (t) =>
                   (!selectedVehicle || t.vehicleNumber === selectedVehicle) &&
@@ -1139,7 +1193,7 @@ function DriverLogbook() {
                     : "text-slate-700 hover:text-indigo-600"
                 }`}
               >
-                All({trips.length})
+                All({permissionFilteredTrips.length})
               </button>
               <button
                 onClick={() => setFilterTab("ongoing")}
@@ -1149,7 +1203,8 @@ function DriverLogbook() {
                     : "text-slate-700 hover:text-indigo-600"
                 }`}
               >
-                Waiting({trips.filter((t) => !t.completed).length})
+                Waiting(
+                {permissionFilteredTrips.filter((t) => !t.completed).length})
               </button>
               <button
                 onClick={() => setFilterTab("completed")}
@@ -1159,7 +1214,8 @@ function DriverLogbook() {
                     : "text-slate-700 hover:text-indigo-600"
                 }`}
               >
-                Completed ({trips.filter((t) => t.completed).length})
+                Completed (
+                {permissionFilteredTrips.filter((t) => t.completed).length})
               </button>
             </div>
 
@@ -1230,17 +1286,17 @@ function DriverLogbook() {
                                 type="checkbox"
                                 checked={trip.completed}
                                 onChange={() => handleCompleteTrip(trip)}
-                                disabled={trip.completed || !isAdminOrHR}
+                                disabled={!isAdminOrHR}
                                 className={`w-4 h-4 sm:w-5 sm:h-5 rounded ${
-                                  trip.completed || !isAdminOrHR
+                                  !isAdminOrHR
                                     ? "text-green-600 cursor-not-allowed opacity-70"
                                     : "text-blue-600 cursor-pointer"
                                 }`}
                                 title={
-                                  trip.completed
-                                    ? "Chuyến đi đã hoàn tất"
-                                    : !isAdminOrHR
+                                  !isAdminOrHR
                                     ? "Chỉ Admin/HR mới có quyền đánh dấu hoàn tất"
+                                    : trip.completed
+                                    ? "Click để bỏ đánh dấu hoàn tất"
                                     : "Click để đánh dấu hoàn tất"
                                 }
                               />
