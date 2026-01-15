@@ -338,7 +338,7 @@ function DriverLogbook() {
       setAlert({
         show: true,
         type: "error",
-        message: "❌ Chỉ Admin/HR mới có quyền chỉnh sửa chuyến đi",
+        message: "Bạn không có quyền chỉnh sửa chuyến đi",
       });
       return;
     }
@@ -353,7 +353,7 @@ function DriverLogbook() {
       setAlert({
         show: true,
         type: "error",
-        message: "❌ Chỉ Admin/HR mới có quyền xóa chuyến đi",
+        message: "Bạn không có quyền xóa chuyến đi",
       });
       return;
     }
@@ -382,7 +382,7 @@ function DriverLogbook() {
       setAlert({
         show: true,
         type: "error",
-        message: "❌ Chỉ Admin/HR mới có quyền thêm/sửa chuyến đi",
+        message: "Bạn không có quyền thêm/sửa chuyến đi",
       });
       return;
     }
@@ -460,7 +460,7 @@ function DriverLogbook() {
       setAlert({
         show: true,
         type: "error",
-        message: "❌ Chỉ Admin/HR mới có quyền đánh dấu hoàn tất",
+        message: "Bạn không có quyền đánh dấu hoàn tất",
       });
       return;
     }
@@ -552,7 +552,7 @@ function DriverLogbook() {
       setAlert({
         show: true,
         type: "error",
-        message: "❌ Chỉ Admin/HR mới có quyền chỉnh sửa tài xế",
+        message: "Bạn không có quyền chỉnh sửa tài xế",
       });
       return;
     }
@@ -571,7 +571,7 @@ function DriverLogbook() {
       setAlert({
         show: true,
         type: "error",
-        message: "❌ Chỉ Admin/HR mới có quyền xóa tài xế",
+        message: "Bạn không có quyền xóa tài xế",
       });
       return;
     }
@@ -600,7 +600,7 @@ function DriverLogbook() {
       setAlert({
         show: true,
         type: "error",
-        message: "❌ Chỉ Admin/HR mới có quyền thêm/sửa tài xế",
+        message: "Bạn không có quyền thêm/sửa tài xế",
       });
       return;
     }
@@ -1058,7 +1058,6 @@ function DriverLogbook() {
                       {[
                         { value: "time", label: "⏰ Giờ" },
                         { value: "vehicle", label: "🚗 Xe" },
-                        { value: "driver", label: "👤 Tài Xế" },
                         { value: "status", label: "📊 Trạng Thái" },
                       ].map((option) => (
                         <button
@@ -1122,16 +1121,14 @@ function DriverLogbook() {
                   </div>
 
                   {/* Table Header */}
-                  <div className="grid grid-cols-10 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3 sticky top-0 z-10 shadow-md">
+                  <div className="grid grid-cols-9 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3 sticky top-0 z-10 shadow-md">
                     <div className="truncate col-span-1 hidden sm:block text-center">
                       🚛 LOẠI XE
                     </div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
                       🚗 BS XE
                     </div>
-                    <div className="truncate col-span-1 hidden sm:block text-center">
-                      👤 TÀI XẾ
-                    </div>
+
                     <div className="truncate col-span-1 hidden md:block text-center">
                       📱 ĐT
                     </div>
@@ -1180,7 +1177,7 @@ function DriverLogbook() {
                         return (
                           <div
                             key={`board-${trip.id}`}
-                            className={`grid grid-cols-10 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
+                            className={`grid grid-cols-9 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
                           >
                             {/* Vehicle Type */}
                             <div className="text-yellow-200 font-semibold truncate hidden sm:block col-span-1 text-center">
@@ -1190,11 +1187,6 @@ function DriverLogbook() {
                             {/* Biển Số */}
                             <div className="text-white font-bold truncate hidden sm:block col-span-1 text-center">
                               {trip.vehicleNumber || "N/A"}
-                            </div>
-
-                            {/* Driver */}
-                            <div className="text-white font-bold truncate hidden sm:block col-span-1 text-center">
-                              {trip.driverName || "-"}
                             </div>
 
                             {/* Phone */}
@@ -1487,7 +1479,7 @@ function DriverLogbook() {
                                       show: true,
                                       type: "error",
                                       message:
-                                        "❌ Chỉ Admin/HR mới có quyền nhập chi tiết chi phí",
+                                        "Bạn không có quyền nhập thông tin này",
                                     });
                                     return;
                                   }
@@ -1513,7 +1505,7 @@ function DriverLogbook() {
                                       show: true,
                                       type: "error",
                                       message:
-                                        "❌ Chỉ Admin/HR mới có quyền nhập thông tin chạy ngoài",
+                                        "Bạn không có quyền nhập thông tin này",
                                     });
                                     return;
                                   }
@@ -2688,7 +2680,7 @@ function DriverLogbook() {
                         Số điện thoại
                       </span>
                       <span className="text-gray-800 font-bold text-lg">
-                        {detailsTrip.phoneNumber || "N/A"}
+                        {detailsTrip.phone || "N/A"}
                       </span>
                     </div>
                     <div className="flex flex-col">
@@ -2928,11 +2920,11 @@ function DriverLogbook() {
         )}
         {/* Outside Modal */}
         {showOutsideModal && outsideTrip && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl border shadow-md w-full max-w-2xl flex flex-col overflow-hidden">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
+            <div className="bg-white sm:rounded-xl border shadow-md w-full h-full sm:max-w-2xl sm:max-h-[90vh] flex flex-col overflow-hidden">
               <div className="sticky top-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between sm:rounded-t-xl">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <span>🌐</span>
+                  <span>💰</span>
                   <span className="uppercase">Bảng chạy ngoài</span>
                 </h2>
                 <button
@@ -2984,7 +2976,7 @@ function DriverLogbook() {
                         Số điện thoại
                       </span>
                       <span className="text-gray-800 font-bold text-lg">
-                        {outsideTrip.phoneNumber || "N/A"}
+                        {outsideTrip.phone || "N/A"}
                       </span>
                     </div>
                     <div className="flex flex-col">
@@ -3118,42 +3110,83 @@ function DriverLogbook() {
                       />
                     </div>
 
-                    {/* Chạy ngoài */}
+                    {/* Phí cầu đường */}
                     <div className="bg-white rounded-lg p-4 border border-slate-200">
                       <label className="text-xs font-bold text-gray-700 mb-2 block">
-                        💵 Chạy ngoài (đ)
+                        Phí cầu đường (đ)
                       </label>
                       <input
                         type="number"
                         inputMode="numeric"
-                        value={outsideForm.fee}
+                        value={detailsForm.tollFee}
                         onChange={(e) =>
-                          setOutsideForm((p) => ({
+                          setDetailsForm((p) => ({
                             ...p,
-                            fee: e.target.value,
+                            tollFee: e.target.value,
                           }))
                         }
-                        placeholder="VD: 200000"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                        placeholder="VD: 500000"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
                       />
                     </div>
 
-                    {/* Mục đích chạy ngoài */}
+                    {/* Tiền ăn */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Tiền ăn (đ)
+                      </label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={detailsForm.mealFee}
+                        onChange={(e) =>
+                          setDetailsForm((p) => ({
+                            ...p,
+                            mealFee: e.target.value,
+                          }))
+                        }
+                        placeholder="VD: 150000"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                      />
+                    </div>
+
+                    {/* Giờ tăng ca */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                        Giờ tăng ca
+                      </label>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.5"
+                        value={detailsForm.overtimeHours}
+                        onChange={(e) =>
+                          setDetailsForm((p) => ({
+                            ...p,
+                            overtimeHours: e.target.value,
+                          }))
+                        }
+                        placeholder="VD: 2"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                      />
+                    </div>
+
+                    {/* Ghi chú */}
                     <div className="md:col-span-2 bg-white rounded-lg p-4 border border-slate-200">
                       <label className="text-xs font-bold text-gray-700 mb-2 block">
-                        📍 Mục đích chạy ngoài
+                        Ghi chú
                       </label>
                       <textarea
-                        value={outsideForm.purpose}
+                        value={detailsForm.notes}
                         onChange={(e) =>
-                          setOutsideForm((p) => ({
+                          setDetailsForm((p) => ({
                             ...p,
-                            purpose: e.target.value,
+                            notes: e.target.value,
                           }))
                         }
                         rows={3}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm resize-y"
-                        placeholder="VD: Vận chuyển linh kiện, giao hàng..."
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm resize-y"
+                        placeholder="Ghi chú thêm..."
                       />
                     </div>
                   </div>
