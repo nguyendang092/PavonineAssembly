@@ -48,7 +48,7 @@ function StatusBadge({ trip }) {
   const config = statusConfig[status] || statusConfig.SCHEDULED;
   return (
     <div
-      className={`px-3 py-1 rounded-full text-xs font-bold ${config.color} flex items-center gap-1 w-fit`}
+      className={`px-3 py-1 rounded-full text-xs font-bold ${config.color} flex items-center justify-center gap-1 w-fit mx-auto`}
     >
       <span>{config.icon}</span>
       <span>{config.label}</span>
@@ -1122,17 +1122,16 @@ function DriverLogbook() {
                   </div>
 
                   {/* Table Header */}
-                  <div className="grid grid-cols-12 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3 sticky top-0 z-10 shadow-md">
+                  <div className="grid grid-cols-10 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3 sticky top-0 z-10 shadow-md">
                     <div className="truncate col-span-1 hidden sm:block text-center">
                       🚛 LOẠI XE
                     </div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
-                      🚛 BS XE
+                      🚗 BS XE
                     </div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
                       👤 TÀI XẾ
                     </div>
-                    <div className="truncate col-span-1 text-center">🚗 XE</div>
                     <div className="truncate col-span-1 hidden md:block text-center">
                       📱 ĐT
                     </div>
@@ -1143,11 +1142,8 @@ function DriverLogbook() {
                       🏁 ĐẾN
                     </div>
                     <div className="truncate col-span-1 text-center">⏰ ĐI</div>
-                    <div className="truncate col-span-1 hidden sm:block text-center text-xs">
-                      ⏰ ĐẶT
-                    </div>
                     <div className="truncate col-span-1 hidden md:block text-center text-xs">
-                      ⏰ YC
+                      🏢 BP YC
                     </div>
                     <div className="truncate col-span-1 text-center">📊 TT</div>
                     <div className="truncate col-span-1 hidden md:block text-center">
@@ -1184,7 +1180,7 @@ function DriverLogbook() {
                         return (
                           <div
                             key={`board-${trip.id}`}
-                            className={`grid grid-cols-12 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
+                            className={`grid grid-cols-10 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
                           >
                             {/* Vehicle Type */}
                             <div className="text-yellow-200 font-semibold truncate hidden sm:block col-span-1 text-center">
@@ -1199,11 +1195,6 @@ function DriverLogbook() {
                             {/* Driver */}
                             <div className="text-white font-bold truncate hidden sm:block col-span-1 text-center">
                               {trip.driverName || "-"}
-                            </div>
-
-                            {/* Vehicle */}
-                            <div className="text-white font-bold truncate col-span-1 text-center">
-                              {trip.vehicleNumber || "N/A"}
                             </div>
 
                             {/* Phone */}
@@ -1228,14 +1219,7 @@ function DriverLogbook() {
                               </div>
                             </div>
 
-                            {/* Request Time */}
-                            <div className="text-cyan-300 font-semibold truncate hidden sm:block col-span-1 text-center text-xs">
-                              {trip.requestTime
-                                ? trip.requestTime.split("T")[1] || "-"
-                                : "-"}
-                            </div>
-
-                            {/* Department Request */}
+                            {/* Department Request - Bộ phận yêu cầu */}
                             <div className="text-orange-300 font-semibold truncate hidden md:block col-span-1 text-center text-xs">
                               {trip.departmentRequest || "-"}
                             </div>
@@ -1372,6 +1356,7 @@ function DriverLogbook() {
                           key={trip.id}
                           className="transition-colors odd:bg-gray-900 even:bg-gray-700 hover:bg-gray-800 text-white text-xs sm:text-sm"
                         >
+                          {/* ✓ - Checkbox */}
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
                             <div className="flex items-center justify-center">
                               <input
@@ -1394,6 +1379,7 @@ function DriverLogbook() {
                               />
                             </div>
                           </td>
+                          {/* Tài Xế */}
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden sm:table-cell">
                             <div className="flex items-center gap-1 sm:gap-2 justify-center">
                               <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-indigo-200 to-blue-200 border border-indigo-300 flex items-center justify-center text-indigo-700 font-semibold text-xs sm:text-sm flex-shrink-0">
@@ -1404,6 +1390,7 @@ function DriverLogbook() {
                               </span>
                             </div>
                           </td>
+                          {/* ĐT - Phone */}
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
                             {trip.phone ? (
                               <a
@@ -1416,16 +1403,19 @@ function DriverLogbook() {
                               <span className="text-slate-400">-</span>
                             )}
                           </td>
+                          {/* Xe - Vehicle Number */}
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
                             <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 inline-block truncate">
                               {trip.vehicleNumber || "N/A"}
                             </span>
                           </td>
+                          {/* Loại Xe - Vehicle Type */}
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
                             <span className="text-white font-medium text-xs sm:text-sm truncate">
                               {trip.vehicleType || "-"}
                             </span>
                           </td>
+                          {/* Tuyến - Route (Departure → Destination) */}
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden lg:table-cell">
                             <div className="text-xs sm:text-sm text-white">
                               <p className="font-semibold text-white truncate">
@@ -1439,6 +1429,7 @@ function DriverLogbook() {
                               )}
                             </div>
                           </td>
+                          {/* Km - Kilometers */}
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden sm:table-cell">
                             <div className="text-xs sm:text-sm text-white">
                               <p className="text-gray-300 font-medium">
@@ -1465,6 +1456,7 @@ function DriverLogbook() {
                               )}
                             </div>
                           </td>
+                          {/* Thời Gian - Time */}
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
                             <div className="text-xs sm:text-sm text-white">
                               <p className="text-gray-300 font-medium">
@@ -1485,6 +1477,7 @@ function DriverLogbook() {
                               )}
                             </div>
                           </td>
+                          {/* Hành Động - Actions (💰 🌐) */}
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
@@ -1551,6 +1544,7 @@ function DriverLogbook() {
                               </button>
                             </div>
                           </td>
+                          {/* Trạng thái - Status */}
                           <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
                             {trip.completed ? (
                               <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200 inline-block">
@@ -1562,6 +1556,7 @@ function DriverLogbook() {
                               </span>
                             )}
                           </td>
+                          {/* Thao Tác - Edit/Delete (Admin/HR only) */}
                           {isAdminOrHR && (
                             <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4">
                               <div className="flex items-center justify-center gap-1 sm:gap-2">
