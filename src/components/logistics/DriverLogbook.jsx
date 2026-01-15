@@ -24,7 +24,7 @@ function getStatus(trip) {
   return "ONBOARD";
 }
 
-function StatusBadge({ trip }) {
+function StatusBadge({ trip, mobile = false }) {
   const status = getStatus(trip);
   const statusConfig = {
     SCHEDULED: {
@@ -46,6 +46,17 @@ function StatusBadge({ trip }) {
   };
 
   const config = statusConfig[status] || statusConfig.SCHEDULED;
+
+  // Mobile: chỉ hiển thị icon
+  if (mobile) {
+    return (
+      <div className="text-xl" title={config.label}>
+        {config.icon}
+      </div>
+    );
+  }
+
+  // Desktop: hiển thị đầy đủ
   return (
     <div
       className={`px-3 py-1 rounded-full text-xs font-bold ${config.color} flex items-center justify-center gap-1 w-fit mx-auto`}
@@ -1052,9 +1063,9 @@ function DriverLogbook() {
                   </div>
 
                   {/* Controls - Sort & Filter */}
-                  <div className="flex flex-col sm:flex-row justify-between items-stretch gap-3 px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100/40">
+                  <div className="flex flex-col sm:flex-row justify-between items-stretch gap-3 px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100/40 w-full">
                     {/* Left: Sort Options */}
-                    <div className="flex gap-1 sm:gap-2 flex-wrap items-center">
+                    <div className="flex gap-1 sm:gap-2 flex-wrap items-center flex-1">
                       {[
                         { value: "time", label: "⏰ Giờ" },
                         { value: "vehicle", label: "🚗 Xe" },
@@ -1075,7 +1086,7 @@ function DriverLogbook() {
                     </div>
 
                     {/* Right: Filter Row - Vehicle, Date, Actions */}
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-end sm:items-center">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-end sm:items-center flex-1 sm:justify-end">
                       {/* Vehicle Select */}
                       <div className="flex flex-col gap-1 w-full sm:w-auto">
                         <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
@@ -1121,30 +1132,24 @@ function DriverLogbook() {
                   </div>
 
                   {/* Table Header */}
-                  <div className="grid grid-cols-9 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3 sticky top-0 z-10 shadow-md">
+                  <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs font-bold px-2 sm:px-3 md:px-4 py-2 sm:py-3 sticky top-0 z-10 shadow-md w-full">
+                    <div className="truncate col-span-1 text-center">🚗 XE</div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
-                      🚛 LOẠI XE
+                      👤 TÀI
                     </div>
-                    <div className="truncate col-span-1 hidden sm:block text-center">
-                      🚗 BS XE
-                    </div>
-
                     <div className="truncate col-span-1 hidden md:block text-center">
                       📱 ĐT
-                    </div>
-                    <div className="truncate col-span-1 hidden sm:block text-center">
-                      📍 ĐI
                     </div>
                     <div className="truncate col-span-1 text-center">
                       🏁 ĐẾN
                     </div>
                     <div className="truncate col-span-1 text-center">⏰ ĐI</div>
-                    <div className="truncate col-span-1 hidden md:block text-center text-xs">
-                      🏢 BP YC
+                    <div className="truncate col-span-1 hidden md:block text-center">
+                      🏢 BP
                     </div>
                     <div className="truncate col-span-1 text-center">📊 TT</div>
                     <div className="truncate col-span-1 hidden md:block text-center">
-                      📝 GHI CHÚ
+                      📝 GHI
                     </div>
                   </div>
                   {/* Rows */}
@@ -1177,54 +1182,40 @@ function DriverLogbook() {
                         return (
                           <div
                             key={`board-${trip.id}`}
-                            className={`grid grid-cols-9 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
+                            className={`grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 px-2 sm:px-3 md:px-4 py-2 sm:py-3 items-center text-xs ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md w-full`}
                           >
-                            {/* Vehicle Type */}
-                            <div className="text-yellow-200 font-semibold truncate hidden sm:block col-span-1 text-center">
-                              {trip.vehicleType || "-"}
-                            </div>
-
-                            {/* Biển Số */}
-                            <div className="text-white font-bold truncate hidden sm:block col-span-1 text-center">
+                            {/* XE */}
+                            <div className="text-white font-bold truncate col-span-1 text-center">
                               {trip.vehicleNumber || "N/A"}
                             </div>
-
-                            {/* Phone */}
-                            <div className="text-white font-bold truncate hidden md:block col-span-1 text-center text-xs">
+                            {/* TÀI */}
+                            <div className="text-white font-bold truncate hidden sm:block col-span-1 text-center">
+                              {trip.driverName || "-"}
+                            </div>
+                            {/* ĐT */}
+                            <div className="text-white font-bold truncate hidden md:block col-span-1 text-center">
                               {trip.phone || "-"}
                             </div>
-
-                            {/* Departure */}
-                            <div className="text-white font-bold truncate hidden sm:block col-span-1 text-center">
-                              {trip.departure || "-"}
-                            </div>
-
-                            {/* Destination */}
+                            {/* ĐẾN */}
                             <div className="text-white font-bold truncate col-span-1 text-center">
                               {trip.destination || "-"}
                             </div>
-
-                            {/* Start Time */}
+                            {/* ĐI */}
                             <div className="font-mono font-bold text-yellow-300 col-span-1 text-center">
-                              <div className="truncate">
-                                {formatTime(trip.startDate, trip.startTime)}
-                              </div>
+                              {formatTime(trip.startDate, trip.startTime)}
                             </div>
-
-                            {/* Department Request - Bộ phận yêu cầu */}
-                            <div className="text-orange-300 font-semibold truncate hidden md:block col-span-1 text-center text-xs">
+                            {/* BP */}
+                            <div className="text-orange-300 font-semibold truncate hidden md:block col-span-1 text-center">
                               {trip.departmentRequest || "-"}
                             </div>
-
-                            {/* Status */}
+                            {/* TT */}
                             <div className="col-span-1 text-center">
-                              <StatusBadge trip={trip} />
+                              <StatusBadge trip={trip} mobile={true} />
                             </div>
-
-                            {/* Notes */}
-                            <div className="text-xs text-gray-200 truncate hidden md:block col-span-1 text-center">
+                            {/* GHI */}
+                            <div className="text-gray-200 truncate hidden md:block col-span-1 text-center">
                               {trip.notes ||
-                                (trip.totalKm ? `${trip.totalKm} km` : "-")}
+                                (trip.totalKm ? `${trip.totalKm}km` : "-")}
                             </div>
                           </div>
                         );
@@ -1255,34 +1246,34 @@ function DriverLogbook() {
               </button>
               <button
                 onClick={() => setFilterTab("all")}
-                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
                   filterTab === "all"
                     ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
                     : "text-slate-700 hover:text-indigo-600"
                 }`}
               >
-                All({permissionFilteredTrips.length})
+                All ({permissionFilteredTrips.length})
               </button>
               <button
                 onClick={() => setFilterTab("ongoing")}
-                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
                   filterTab === "ongoing"
                     ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
                     : "text-slate-700 hover:text-indigo-600"
                 }`}
               >
-                Đi công tác(
+                Chạy (
                 {permissionFilteredTrips.filter((t) => !t.completed).length})
               </button>
               <button
                 onClick={() => setFilterTab("completed")}
-                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
                   filterTab === "completed"
                     ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
                     : "text-slate-700 hover:text-indigo-600"
                 }`}
               >
-                Completed (
+                Xong (
                 {permissionFilteredTrips.filter((t) => t.completed).length})
               </button>
             </div>
@@ -1305,39 +1296,39 @@ function DriverLogbook() {
                   <table className="w-full">
                     <thead className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-b border-indigo-100/30">
                       <tr className="uppercase tracking-widest text-xs sm:text-sm font-bold">
-                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
+                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
                           ✓
                         </th>
-                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden sm:table-cell">
+                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell text-xs">
                           Tài Xế
                         </th>
-                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
+                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
                           ĐT
                         </th>
-                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
+                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
                           Xe
                         </th>
-                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
-                          Loại Xe
+                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
+                          Loại
                         </th>
-                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden lg:table-cell">
+                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell text-xs">
                           Tuyến
                         </th>
-                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden sm:table-cell">
+                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell text-xs">
                           Km
                         </th>
-                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
-                          Thời Gian
+                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
+                          Thời
                         </th>
-                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
-                          Hành Động
+                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
+                          Hành
                         </th>
-                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center text-xs">
-                          Trạng thái
+                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
+                          TT
                         </th>
                         {isAdminOrHR && (
-                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center w-16 sm:w-20">
-                            Thao Tác
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs w-12 sm:w-16">
+                            Thao
                           </th>
                         )}
                       </tr>
@@ -1349,14 +1340,14 @@ function DriverLogbook() {
                           className="transition-colors odd:bg-gray-900 even:bg-gray-700 hover:bg-gray-800 text-white text-xs sm:text-sm"
                         >
                           {/* ✓ - Checkbox */}
-                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
+                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
                             <div className="flex items-center justify-center">
                               <input
                                 type="checkbox"
                                 checked={trip.completed}
                                 onChange={() => handleCompleteTrip(trip)}
                                 disabled={!isAdminOrHR}
-                                className={`w-4 h-4 sm:w-5 sm:h-5 rounded ${
+                                className={`w-3 h-3 sm:w-4 sm:h-4 rounded ${
                                   !isAdminOrHR
                                     ? "text-green-600 cursor-not-allowed opacity-70"
                                     : "text-blue-600 cursor-pointer"
@@ -1372,44 +1363,44 @@ function DriverLogbook() {
                             </div>
                           </td>
                           {/* Tài Xế */}
-                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden sm:table-cell">
-                            <div className="flex items-center gap-1 sm:gap-2 justify-center">
-                              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-indigo-200 to-blue-200 border border-indigo-300 flex items-center justify-center text-indigo-700 font-semibold text-xs sm:text-sm flex-shrink-0">
+                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">
+                            <div className="flex items-center gap-1 justify-center">
+                              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-indigo-200 to-blue-200 border border-indigo-300 flex items-center justify-center text-indigo-700 font-semibold text-xs flex-shrink-0">
                                 {(trip.driverName || "?")[0].toUpperCase()}
                               </div>
-                              <span className="font-bold text-white hidden md:inline truncate">
+                              <span className="font-bold text-white hidden md:inline truncate text-xs">
                                 {trip.driverName}
                               </span>
                             </div>
                           </td>
                           {/* ĐT - Phone */}
-                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
+                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
                             {trip.phone ? (
                               <a
                                 href={`tel:${trip.phone}`}
-                                className="text-white hover:text-yellow-400 font-semibold text-xs sm:text-sm truncate"
+                                className="text-white hover:text-yellow-400 font-semibold text-xs truncate"
                               >
                                 {trip.phone}
                               </a>
                             ) : (
-                              <span className="text-slate-400">-</span>
+                              <span className="text-slate-400 text-xs">-</span>
                             )}
                           </td>
                           {/* Xe - Vehicle Number */}
-                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
-                            <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 inline-block truncate">
+                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                            <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 inline-block truncate">
                               {trip.vehicleNumber || "N/A"}
                             </span>
                           </td>
                           {/* Loại Xe - Vehicle Type */}
-                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
-                            <span className="text-white font-medium text-xs sm:text-sm truncate">
+                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
+                            <span className="text-white font-medium text-xs truncate">
                               {trip.vehicleType || "-"}
                             </span>
                           </td>
                           {/* Tuyến - Route (Departure → Destination) */}
-                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden lg:table-cell">
-                            <div className="text-xs sm:text-sm text-white">
+                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell">
+                            <div className="text-xs text-white">
                               <p className="font-semibold text-white truncate">
                                 📍 {trip.departure || "N/A"} →{" "}
                                 {trip.destination}
@@ -1422,8 +1413,8 @@ function DriverLogbook() {
                             </div>
                           </td>
                           {/* Km - Kilometers */}
-                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden sm:table-cell">
-                            <div className="text-xs sm:text-sm text-white">
+                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">
+                            <div className="text-xs text-white">
                               <p className="text-gray-300 font-medium">
                                 {trip.startKm || 0}km
                               </p>
@@ -1449,10 +1440,10 @@ function DriverLogbook() {
                             </div>
                           </td>
                           {/* Thời Gian - Time */}
-                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center hidden md:table-cell">
-                            <div className="text-xs sm:text-sm text-white">
+                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
+                            <div className="text-xs text-white">
                               <p className="text-gray-300 font-medium">
-                                <span className="font-semibold text-white">
+                                <span className="font-semibold text-white text-xs">
                                   {new Date(trip.startDate).toLocaleDateString(
                                     "vi-VN",
                                     { month: "short", day: "numeric" }
@@ -1470,8 +1461,8 @@ function DriverLogbook() {
                             </div>
                           </td>
                           {/* Hành Động - Actions (💰 🌐) */}
-                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
+                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                            <div className="flex items-center justify-center gap-0.5">
                               <button
                                 onClick={() => {
                                   if (!isAdminOrHR) {
@@ -1485,15 +1476,15 @@ function DriverLogbook() {
                                   }
                                   handleOpenDetailsModal(trip);
                                 }}
-                                className={`p-1.5 sm:p-2 rounded-lg transition-all hover:shadow-md text-lg sm:text-xl ${
+                                className={`p-1 sm:p-1.5 rounded transition-all text-sm sm:text-base ${
                                   isAdminOrHR
                                     ? "bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer"
                                     : "bg-gray-100 text-gray-400 cursor-not-allowed"
                                 }`}
                                 title={
                                   isAdminOrHR
-                                    ? "Xem/Nhập chi tiết chi phí & odo"
-                                    : "Chỉ Admin/HR mới có quyền nhập"
+                                    ? "Chi tiết chi phí"
+                                    : "Chỉ Admin/HR"
                                 }
                               >
                                 💰
@@ -1521,15 +1512,13 @@ function DriverLogbook() {
                                   });
                                   setShowOutsideModal(true);
                                 }}
-                                className={`p-1.5 sm:p-2 rounded-lg transition-all hover:shadow-md text-lg sm:text-xl ${
+                                className={`p-1 sm:p-1.5 rounded transition-all text-sm sm:text-base ${
                                   isAdminOrHR
                                     ? "bg-orange-100 text-orange-600 hover:bg-orange-200 cursor-pointer"
                                     : "bg-gray-100 text-gray-400 cursor-not-allowed"
                                 }`}
                                 title={
-                                  isAdminOrHR
-                                    ? "Nhập thông tin chạy ngoài"
-                                    : "Chỉ Admin/HR mới có quyền nhập"
+                                  isAdminOrHR ? "Chạy ngoài" : "Chỉ Admin/HR"
                                 }
                               >
                                 🌐
@@ -1537,33 +1526,31 @@ function DriverLogbook() {
                             </div>
                           </td>
                           {/* Trạng thái - Status */}
-                          <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4 text-center">
+                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
                             {trip.completed ? (
-                              <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200 inline-block">
+                              <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200 inline-block">
                                 ✓
                               </span>
                             ) : (
-                              <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 inline-block">
+                              <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 inline-block">
                                 x
                               </span>
                             )}
                           </td>
                           {/* Thao Tác - Edit/Delete (Admin/HR only) */}
                           {isAdminOrHR && (
-                            <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-4">
-                              <div className="flex items-center justify-center gap-1 sm:gap-2">
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3">
+                              <div className="flex items-center justify-center gap-0.5">
                                 <button
                                   onClick={() => handleEdit(trip)}
                                   disabled={trip.completed}
-                                  className={`p-1.5 sm:p-2 rounded transition-all text-lg sm:text-xl ${
+                                  className={`p-1 sm:p-1.5 rounded text-sm sm:text-base ${
                                     trip.completed
                                       ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                      : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200 hover:shadow-md"
+                                      : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
                                   }`}
                                   title={
-                                    trip.completed
-                                      ? "Không thể chỉnh sửa"
-                                      : "Chỉnh sửa"
+                                    trip.completed ? "Không thể sửa" : "Sửa"
                                   }
                                 >
                                   ✏️
@@ -1571,12 +1558,12 @@ function DriverLogbook() {
                                 <button
                                   onClick={() => handleDelete(trip.id)}
                                   disabled={!isAdminOrHR}
-                                  className={`p-1.5 sm:p-2 rounded transition-all text-lg sm:text-xl ${
+                                  className={`p-1 sm:p-1.5 rounded text-sm sm:text-base ${
                                     isAdminOrHR
-                                      ? "bg-red-100 text-red-600 hover:bg-red-200 hover:shadow-md"
+                                      ? "bg-red-100 text-red-600 hover:bg-red-200"
                                       : "bg-slate-100 text-slate-400 cursor-not-allowed"
                                   }`}
-                                  title={isAdminOrHR ? "Xóa" : "Chỉ admin/HR"}
+                                  title={isAdminOrHR ? "Xóa" : "Admin/HR"}
                                 >
                                   🗑️
                                 </button>
