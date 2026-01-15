@@ -33,12 +33,12 @@ function StatusBadge({ trip }) {
       icon: "📅",
     },
     ONBOARD: {
-      label: "Waiting",
+      label: "Đi công tác",
       color: "bg-amber-100 text-amber-700",
       icon: "🚗",
     },
     ARRIVED: {
-      label: "Completed",
+      label: "Đang ở công ty",
       color: "bg-green-100 text-green-700",
       icon: "✅",
     },
@@ -126,6 +126,9 @@ function DriverLogbook() {
     notes: "",
     expenseDetails: "",
     completed: false,
+    requestTime: new Date().toISOString().slice(0, 16),
+    departmentRequest: "",
+    status: "scheduled",
   });
   // Board/List view toggle
   const [viewMode, setViewMode] = useState("list");
@@ -520,6 +523,9 @@ function DriverLogbook() {
       notes: "",
       expenseDetails: "",
       completed: false,
+      requestTime: new Date().toISOString().slice(0, 16),
+      departmentRequest: "",
+      status: "scheduled",
     });
     setEditingId(null);
   };
@@ -1005,81 +1011,6 @@ function DriverLogbook() {
 
             return (
               <div className="space-y-4">
-                {/* Vehicle Status Cards */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-                  <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-3 flex items-center justify-between">
-                    <h3 className="text-white font-bold text-sm sm:text-base flex items-center gap-2">
-                      <span className="text-xl">🚗</span>
-                      <span>
-                        Trạng Thái Xe -{" "}
-                        {new Date(selectedDate).toLocaleDateString("vi-VN")}
-                      </span>
-                    </h3>
-                    <span className="text-white/80 text-xs">
-                      {vehicleStatuses.filter((v) => v.hasSchedule).length}/
-                      {vehicleStatuses.length} xe có lịch
-                    </span>
-                  </div>
-                  <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {vehicleStatuses.map((vehicle) => (
-                      <div
-                        key={vehicle.vehicleNumber}
-                        className={`p-3 rounded-lg border-2 transition-all hover:shadow-md ${
-                          vehicle.hasSchedule
-                            ? "bg-blue-50 border-blue-300"
-                            : "bg-gray-50 border-gray-300"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">
-                              {vehicle.hasSchedule ? "🚙" : "🏢"}
-                            </span>
-                            <div>
-                              <div className="font-bold text-sm text-gray-800">
-                                {vehicle.vehicleNumber}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {vehicle.vehicleType || "N/A"}
-                              </div>
-                            </div>
-                          </div>
-                          {vehicle.hasSchedule &&
-                            vehicle.tripInfo.tripCount > 1 && (
-                              <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">
-                                {vehicle.tripInfo.tripCount}
-                              </span>
-                            )}
-                        </div>
-                        <div className="text-xs">
-                          {vehicle.hasSchedule ? (
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-1 text-blue-700 font-semibold">
-                                <span>📍</span>
-                                <span className="truncate">
-                                  {vehicle.tripInfo.destination}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <span>⏰</span>
-                                <span>{vehicle.tripInfo.startTime}</span>
-                              </div>
-                              <div className="text-xs text-gray-500 italic truncate">
-                                👤 {vehicle.driverName}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="text-gray-600 font-medium flex items-center gap-1">
-                              <span>🏢</span>
-                              <span>Đang ở công ty</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Board Schedule */}
                 <div className="rounded-3xl overflow-hidden border border-transparent shadow-2xl bg-white">
                   {/* Board Header - Airport Style */}
@@ -1191,18 +1122,38 @@ function DriverLogbook() {
                   </div>
 
                   {/* Table Header */}
-                  <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 bg-blue-600 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3">
-                    <div className="truncate">⏰ GIỜ ĐI</div>
-                    <div className="truncate">🚗 XE</div>
-                    <div className="truncate hidden sm:block">🚛 LOẠI XE</div>
-                    <div className="truncate hidden sm:block">👤 TÀI XẾ</div>
-                    <div className="truncate hidden md:block">📱 SỐ ĐT</div>
-                    <div className="truncate hidden sm:block">📍 ĐI</div>
-                    <div className="truncate">🏁 ĐẾN</div>
-                    <div className="truncate text-xs">📊 TRẠNG THÁI</div>
-                    <div className="truncate hidden md:block">📝 GHI CHÚ</div>
+                  <div className="grid grid-cols-12 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs sm:text-sm font-bold px-3 sm:px-4 md:px-6 py-2 sm:py-3 sticky top-0 z-10 shadow-md">
+                    <div className="truncate col-span-1 hidden sm:block text-center">
+                      🚛 LOẠI XE
+                    </div>
+                    <div className="truncate col-span-1 hidden sm:block text-center">
+                      🚛 BS XE
+                    </div>
+                    <div className="truncate col-span-1 hidden sm:block text-center">
+                      👤 TÀI XẾ
+                    </div>
+                    <div className="truncate col-span-1 text-center">🚗 XE</div>
+                    <div className="truncate col-span-1 hidden md:block text-center">
+                      📱 ĐT
+                    </div>
+                    <div className="truncate col-span-1 hidden sm:block text-center">
+                      📍 ĐI
+                    </div>
+                    <div className="truncate col-span-1 text-center">
+                      🏁 ĐẾN
+                    </div>
+                    <div className="truncate col-span-1 text-center">⏰ ĐI</div>
+                    <div className="truncate col-span-1 hidden sm:block text-center text-xs">
+                      ⏰ ĐẶT
+                    </div>
+                    <div className="truncate col-span-1 hidden md:block text-center text-xs">
+                      ⏰ YC
+                    </div>
+                    <div className="truncate col-span-1 text-center">📊 TT</div>
+                    <div className="truncate col-span-1 hidden md:block text-center">
+                      📝 GHI CHÚ
+                    </div>
                   </div>
-
                   {/* Rows */}
                   {sorted.length === 0 ? (
                     <div className="px-3 sm:px-4 md:px-6 py-8 sm:py-12 text-center">
@@ -1233,55 +1184,69 @@ function DriverLogbook() {
                         return (
                           <div
                             key={`board-${trip.id}`}
-                            className={`grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
+                            className={`grid grid-cols-12 gap-1 sm:gap-2 md:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 items-center text-xs sm:text-sm ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md`}
                           >
-                            {/* Time */}
-                            <div className="font-mono font-bold text-yellow-300">
-                              <div className="truncate">{scheduled}</div>
-                              {estimated !== "-" && (
-                                <div className="text-xs text-pink-300 mt-0.5">
-                                  ← {estimated}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Vehicle */}
-                            <div className="text-white font-bold truncate">
-                              {trip.vehicleNumber || "N/A"}
-                            </div>
-
                             {/* Vehicle Type */}
-                            <div className="text-yellow-200 font-semibold truncate hidden sm:block">
+                            <div className="text-yellow-200 font-semibold truncate hidden sm:block col-span-1 text-center">
                               {trip.vehicleType || "-"}
                             </div>
 
+                            {/* Biển Số */}
+                            <div className="text-white font-bold truncate hidden sm:block col-span-1 text-center">
+                              {trip.vehicleNumber || "N/A"}
+                            </div>
+
                             {/* Driver */}
-                            <div className="text-white font-bold truncate hidden sm:block">
+                            <div className="text-white font-bold truncate hidden sm:block col-span-1 text-center">
                               {trip.driverName || "-"}
                             </div>
 
+                            {/* Vehicle */}
+                            <div className="text-white font-bold truncate col-span-1 text-center">
+                              {trip.vehicleNumber || "N/A"}
+                            </div>
+
                             {/* Phone */}
-                            <div className="text-white font-bold truncate hidden md:block text-xs">
+                            <div className="text-white font-bold truncate hidden md:block col-span-1 text-center text-xs">
                               {trip.phone || "-"}
                             </div>
 
                             {/* Departure */}
-                            <div className="text-white font-bold truncate hidden sm:block">
+                            <div className="text-white font-bold truncate hidden sm:block col-span-1 text-center">
                               {trip.departure || "-"}
                             </div>
 
                             {/* Destination */}
-                            <div className="text-white font-bold truncate">
+                            <div className="text-white font-bold truncate col-span-1 text-center">
                               {trip.destination || "-"}
                             </div>
 
+                            {/* Start Time */}
+                            <div className="font-mono font-bold text-yellow-300 col-span-1 text-center">
+                              <div className="truncate">
+                                {formatTime(trip.startDate, trip.startTime)}
+                              </div>
+                            </div>
+
+                            {/* Request Time */}
+                            <div className="text-cyan-300 font-semibold truncate hidden sm:block col-span-1 text-center text-xs">
+                              {trip.requestTime
+                                ? trip.requestTime.split("T")[1] || "-"
+                                : "-"}
+                            </div>
+
+                            {/* Department Request */}
+                            <div className="text-orange-300 font-semibold truncate hidden md:block col-span-1 text-center text-xs">
+                              {trip.departmentRequest || "-"}
+                            </div>
+
                             {/* Status */}
-                            <div>
+                            <div className="col-span-1 text-center">
                               <StatusBadge trip={trip} />
                             </div>
 
                             {/* Notes */}
-                            <div className="text-xs text-gray-200 truncate hidden md:block">
+                            <div className="text-xs text-gray-200 truncate hidden md:block col-span-1 text-center">
                               {trip.notes ||
                                 (trip.totalKm ? `${trip.totalKm} km` : "-")}
                             </div>
@@ -1330,7 +1295,7 @@ function DriverLogbook() {
                     : "text-slate-700 hover:text-indigo-600"
                 }`}
               >
-                Waiting(
+                Đi công tác(
                 {permissionFilteredTrips.filter((t) => !t.completed).length})
               </button>
               <button
@@ -1948,6 +1913,72 @@ function DriverLogbook() {
                     className="w-full border-2 border-cyan-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-cyan-300"
                     placeholder="VD: Giao hàng, Công tác, ..."
                   />
+                </div>
+
+                {/* Request Time & Department Request */}
+                <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl p-4 sm:p-6 border border-orange-100">
+                  <h3 className="text-xs sm:text-sm font-bold text-orange-900 mb-3 sm:mb-4 flex items-center gap-2">
+                    <span>📋</span>
+                    <span>Thông Tin Đặt Xe</span>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
+                        <span>⏰</span>
+                        <span>Thời Gian Đặt</span>
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={newTrip.requestTime}
+                        onChange={(e) =>
+                          setNewTrip({
+                            ...newTrip,
+                            requestTime: e.target.value,
+                          })
+                        }
+                        className="w-full border-2 border-orange-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-orange-300"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
+                        <span>🏢</span>
+                        <span>Bộ Phận Yêu Cầu</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newTrip.departmentRequest}
+                        onChange={(e) =>
+                          setNewTrip({
+                            ...newTrip,
+                            departmentRequest: e.target.value,
+                          })
+                        }
+                        className="w-full border-2 border-orange-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-orange-300"
+                        placeholder="VD: Bộ phận Bán hàng"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-4 sm:p-6 border border-emerald-100">
+                  <label className="text-xs sm:text-sm font-bold text-emerald-900 mb-2 sm:mb-3 flex items-center gap-2">
+                    <span>📊</span>
+                    <span>Trạng Thái Chuyến Đi</span>
+                  </label>
+                  <select
+                    value={newTrip.status}
+                    onChange={(e) =>
+                      setNewTrip({ ...newTrip, status: e.target.value })
+                    }
+                    className="w-full border-2 border-emerald-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-emerald-300"
+                  >
+                    <option value="scheduled">📅 Lên Lịch</option>
+                    <option value="onboard">🚗 Đang Chạy</option>
+                    <option value="arrived">✅ Đã Đến</option>
+                    <option value="cancelled">❌ Hủy</option>
+                  </select>
                 </div>
               </div>
             </div>
