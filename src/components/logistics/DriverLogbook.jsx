@@ -1132,8 +1132,11 @@ function DriverLogbook() {
                   </div>
 
                   {/* Table Header */}
-                  <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs font-bold px-2 sm:px-3 md:px-4 py-2 sm:py-3 sticky top-0 z-10 shadow-md w-full">
+                  <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs font-bold px-2 sm:px-3 md:px-4 py-2 sm:py-3 sticky top-0 z-10 shadow-md w-full">
                     <div className="truncate col-span-1 text-center">🚗 XE</div>
+                    <div className="truncate col-span-1 hidden sm:block text-center">
+                      📦 LOẠI
+                    </div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
                       👤 TÀI
                     </div>
@@ -1182,11 +1185,15 @@ function DriverLogbook() {
                         return (
                           <div
                             key={`board-${trip.id}`}
-                            className={`grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 px-2 sm:px-3 md:px-4 py-2 sm:py-3 items-center text-xs ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md w-full`}
+                            className={`grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1 sm:gap-2 md:gap-3 px-2 sm:px-3 md:px-4 py-2 sm:py-3 items-center text-xs ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md w-full`}
                           >
                             {/* XE */}
                             <div className="text-white font-bold truncate col-span-1 text-center">
                               {trip.vehicleNumber || "N/A"}
+                            </div>
+                            {/* LOẠI */}
+                            <div className="text-blue-200 font-semibold truncate hidden sm:block col-span-1 text-center">
+                              {trip.vehicleType || "-"}
                             </div>
                             {/* TÀI */}
                             <div className="text-white font-bold truncate hidden sm:block col-span-1 text-center">
