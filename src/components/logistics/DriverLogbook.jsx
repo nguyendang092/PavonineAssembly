@@ -1065,7 +1065,7 @@ function DriverLogbook() {
                   {/* Controls - Sort & Filter */}
                   <div className="flex flex-col sm:flex-row justify-between items-stretch gap-3 px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100/40 w-full">
                     {/* Left: Sort Options */}
-                    <div className="flex gap-1 sm:gap-2 flex-wrap items-center flex-1">
+                    <div className="flex gap-1 sm:gap-2 flex-wrap items-center sm:flex-1">
                       {[
                         { value: "time", label: "⏰ Giờ" },
                         { value: "vehicle", label: "🚗 Xe" },
@@ -1086,7 +1086,7 @@ function DriverLogbook() {
                     </div>
 
                     {/* Right: Filter Row - Vehicle, Date, Actions */}
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-end sm:items-center flex-1 sm:justify-end">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-end sm:items-center w-full sm:w-auto sm:justify-end">
                       {/* Vehicle Select */}
                       <div className="flex flex-col gap-1 w-full sm:w-auto">
                         <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
