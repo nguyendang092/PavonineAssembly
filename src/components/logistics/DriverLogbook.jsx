@@ -1540,7 +1540,7 @@ function DriverLogbook() {
                               )}
                             </div>
                           </td>
-                          {/* Hành Động - Actions (💰 🌐) */}
+                          {/* Hành Động - Actions (� 🛣️) */}
                           <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
                             <div className="flex items-center justify-center gap-0.5">
                               <button
@@ -1567,7 +1567,7 @@ function DriverLogbook() {
                                     : "Chỉ Admin/HR"
                                 }
                               >
-                                💰
+                                💵
                               </button>
                               <button
                                 onClick={() => {
@@ -1601,7 +1601,7 @@ function DriverLogbook() {
                                   isAdminOrHR ? "Chạy ngoài" : "Chỉ Admin/HR"
                                 }
                               >
-                                🌐
+                                🛣️
                               </button>
                             </div>
                           </td>
