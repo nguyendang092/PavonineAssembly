@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 import { useTranslation } from "react-i18next";
 import { useUser } from "../../contexts/UserContext";
 import { db, ref, onValue, set, update, remove } from "../../services/firebase";
@@ -821,6 +822,71 @@ function DriverLogbook() {
     return true;
   });
 
+  // Export completed trips to Excel
+  const handleExportCompletedTrips = () => {
+    try {
+      const completedTrips = permissionFilteredTrips.filter((t) => t.completed);
+
+      if (completedTrips.length === 0) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "❌ Không có chuyến xe hoàn tất để xuất",
+        });
+        return;
+      }
+
+      const rows = completedTrips.map((t, idx) => ({
+        STT: idx + 1,
+        TaiXe: t.driverName || "",
+        DienThoai: t.phone || "",
+        BienSoXe: t.vehicleNumber || "",
+        LoaiXe: t.vehicleType || "",
+        DiemDi: t.departure || "",
+        DiemDen: t.destination || "",
+        NgayDi: t.startDate || "",
+        GioDi: t.startTime || "",
+        NgayVe: t.endDate || "",
+        GioVe: t.endTime || "",
+        OdoBatDau:
+          t?.details?.odoFrom != null ? t.details.odoFrom : t.startKm || "",
+        OdoKetThuc: t?.details?.odoTo != null ? t.details.odoTo : t.endKm || "",
+        TongKm:
+          t?.details?.totalKm != null
+            ? t.details.totalKm
+            : t.totalKm ||
+              (t.endKm && t.startKm
+                ? parseFloat(t.endKm) - parseFloat(t.startKm)
+                : ""),
+        BoPhanDat: t.departmentRequest || "",
+        GhiChu: t.notes || "",
+        PhiCauDuong: t?.details?.tollFee != null ? t.details.tollFee : "",
+        PhiAnUong: t?.details?.mealFee != null ? t.details.mealFee : "",
+        TangCaGio:
+          t?.details?.overtimeHours != null ? t.details.overtimeHours : "",
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "CompletedTrips");
+      const dateStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `driver_trips_completed_${dateStr}.xlsx`);
+
+      setAlert({
+        show: true,
+        type: "success",
+        message: "✅ Xuất Excel thành công",
+      });
+    } catch (error) {
+      console.error("Export trips error:", error);
+      setAlert({
+        show: true,
+        type: "error",
+        message: `❌ Lỗi xuất Excel: ${error.message}`,
+      });
+    }
+  };
+
   return (
     <>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
@@ -1283,6 +1349,15 @@ function DriverLogbook() {
                 Xong (
                 {permissionFilteredTrips.filter((t) => t.completed).length})
               </button>
+              <div className="ml-auto">
+                <button
+                  onClick={handleExportCompletedTrips}
+                  className="px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow"
+                  title="Xuất chuyến đã hoàn tất"
+                >
+                  📥 Xuất Excel
+                </button>
+              </div>
             </div>
 
             {/* Trips Table */}
@@ -1412,11 +1487,7 @@ function DriverLogbook() {
                                 📍 {trip.departure || "N/A"} →{" "}
                                 {trip.destination}
                               </p>
-                              {trip.purpose && (
-                                <p className="text-gray-300 text-xs truncate">
-                                  🎯 {trip.purpose}
-                                </p>
-                              )}
+                              {/* Purpose removed per request */}
                             </div>
                           </td>
                           {/* Km - Kilometers */}
@@ -1878,23 +1949,6 @@ function DriverLogbook() {
                     </div>
                   </div>
                 )}
-
-                {/* Purpose */}
-                <div className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-xl p-4 sm:p-6 border border-cyan-100">
-                  <label className="text-xs sm:text-sm font-bold text-cyan-900 mb-2 sm:mb-3 flex items-center gap-2">
-                    <span>🎯</span>
-                    <span>Mục Đích Chuyến Đi</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newTrip.purpose}
-                    onChange={(e) =>
-                      setNewTrip({ ...newTrip, purpose: e.target.value })
-                    }
-                    className="w-full border-2 border-cyan-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-cyan-300"
-                    placeholder="VD: Giao hàng, Công tác, ..."
-                  />
-                </div>
 
                 {/* Request Time & Department Request */}
                 <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl p-4 sm:p-6 border border-orange-100">
