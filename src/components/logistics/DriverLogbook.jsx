@@ -1207,12 +1207,14 @@ function DriverLogbook() {
                       📱 ĐT
                     </div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
-                      📍ĐI
+                      ĐI TỪ
                     </div>
                     <div className="truncate col-span-1 text-center">
                       🏁 ĐẾN
                     </div>
-                    <div className="truncate col-span-1 text-center">⏰ ĐI</div>
+                    <div className="truncate col-span-1 text-center">
+                      ⏰ THỜI GIAN ĐI
+                    </div>
                     <div className="truncate col-span-1 hidden md:block text-center">
                       🏢 BP
                     </div>
@@ -1349,7 +1351,7 @@ function DriverLogbook() {
                 Xong (
                 {permissionFilteredTrips.filter((t) => t.completed).length})
               </button>
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-2">
                 <button
                   onClick={handleExportCompletedTrips}
                   className="px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow"
@@ -1400,17 +1402,17 @@ function DriverLogbook() {
                           Km
                         </th>
                         <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
-                          Thời
+                          Thời gian
                         </th>
                         <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
-                          Hành
+                          Hành động
                         </th>
                         <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
                           TT
                         </th>
                         {isAdminOrHR && (
                           <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs w-12 sm:w-16">
-                            Thao
+                            Chức năng
                           </th>
                         )}
                       </tr>
