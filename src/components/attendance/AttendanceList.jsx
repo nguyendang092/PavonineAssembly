@@ -56,6 +56,7 @@ function AttendanceList() {
   const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
   const [savingGioVao, setSavingGioVao] = useState({}); // Track which gioVao is being saved
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
+  const [filterMaBoPhanSearch, setFilterMaBoPhanSearch] = useState("");
   const [filterGenderSearch, setFilterGenderSearch] = useState("");
   const [filterShiftSearch, setFilterShiftSearch] = useState("");
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
@@ -69,7 +70,7 @@ function AttendanceList() {
   const [modalFilterOpen, setModalFilterOpen] = useState(false);
   const [modalGioiTinhFilter, setModalGioiTinhFilter] = useState([]);
   const [modalDepartmentListFilter, setModalDepartmentListFilter] = useState(
-    []
+    [],
   );
   const [modalExpandedSections, setModalExpandedSections] = useState({});
   const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
@@ -117,7 +118,7 @@ function AttendanceList() {
       const data = snapshot.val();
       if (data && typeof data === "object") {
         const userMapping = Object.values(data).find(
-          (mapping) => mapping.email === user.email
+          (mapping) => mapping.email === user.email,
         );
         if (userMapping) {
           // Support both old format (department: string) and new format (departments: array)
@@ -180,10 +181,10 @@ function AttendanceList() {
 
       const empDept = (employee.boPhan || "").trim().toLowerCase();
       return userDepartments.some(
-        (dept) => (dept || "").trim().toLowerCase() === empDept
+        (dept) => (dept || "").trim().toLowerCase() === empDept,
       );
     },
-    [user, userDepartments]
+    [user, userDepartments],
   );
 
   // Close print dropdown when clicking outside
@@ -248,16 +249,16 @@ function AttendanceList() {
   const modalUniqueGenders = useMemo(
     () =>
       Array.from(
-        new Set(filteredEmployees.map((e) => e.gioiTinh).filter(Boolean))
+        new Set(filteredEmployees.map((e) => e.gioiTinh).filter(Boolean)),
       ),
-    [filteredEmployees]
+    [filteredEmployees],
   );
   const modalUniqueDepartments = useMemo(
     () =>
       Array.from(
-        new Set(filteredEmployees.map((e) => e.boPhan).filter(Boolean))
+        new Set(filteredEmployees.map((e) => e.boPhan).filter(Boolean)),
       ),
-    [filteredEmployees]
+    [filteredEmployees],
   );
   const modalFilteredEmployees = useMemo(() => {
     return filteredEmployees.filter((emp) => {
@@ -477,7 +478,7 @@ function AttendanceList() {
       setEditing(emp.id);
       setShowModal(true);
     },
-    [user]
+    [user],
   );
 
   // Handle delete
@@ -508,7 +509,7 @@ function AttendanceList() {
         });
       }
     },
-    [user, selectedDate]
+    [user, selectedDate],
   );
 
   // Handle upload Excel
@@ -563,7 +564,7 @@ function AttendanceList() {
             y && m && d
               ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(
                   2,
-                  "0"
+                  "0",
                 )}`
               : "";
 
@@ -583,7 +584,7 @@ function AttendanceList() {
             return fmt(
               value.getUTCFullYear(),
               value.getUTCMonth() + 1,
-              value.getUTCDate()
+              value.getUTCDate(),
             );
           }
 
@@ -616,7 +617,7 @@ function AttendanceList() {
               dec: 12,
             };
             const dmyText = str.match(
-              /^(\d{1,2})[-\s]?([a-zA-Z]{3})[-\s]?(\d{2,4})$/i
+              /^(\d{1,2})[-\s]?([a-zA-Z]{3})[-\s]?(\d{2,4})$/i,
             );
             if (dmyText) {
               const day = +dmyText[1];
@@ -704,7 +705,7 @@ function AttendanceList() {
           if (isDuplicate) {
             // Update existing employee with new data, chỉ cập nhật gioVao nếu giá trị mới không rỗng
             const existingKey = Object.keys(existingData).find(
-              (k) => existingData[k].mnv === newEmp.mnv
+              (k) => existingData[k].mnv === newEmp.mnv,
             );
             if (existingKey) {
               const oldEmp = mergedData[existingKey] || {};
@@ -823,7 +824,7 @@ function AttendanceList() {
         });
       }
     },
-    [user, selectedDate]
+    [user, selectedDate],
   );
 
   // Handle delete all data for selected date
@@ -922,7 +923,7 @@ function AttendanceList() {
       const dateInfoCell = worksheet.getCell("A2");
       const overtimeDate = new Date(selectedDate);
       dateInfoCell.value = `Ngày/Date: ${overtimeDate.toLocaleDateString(
-        "vi-VN"
+        "vi-VN",
       )}`;
       dateInfoCell.font = { bold: true, size: 11 };
       dateInfoCell.alignment = { vertical: "middle", horizontal: "center" };
@@ -1712,10 +1713,10 @@ function AttendanceList() {
           <td>${emp.mnv || ""}</td>
           <td>${emp.mvt || ""}</td>
           <td class="name">${emp.hoVaTen || ""}${
-        isBirthday
-          ? ' <span title="Sinh nhật tháng này" style="margin-left:4px;font-size:8px;">🎂</span>'
-          : ""
-      }</td>
+            isBirthday
+              ? ' <span title="Sinh nhật tháng này" style="margin-left:4px;font-size:8px;">🎂</span>'
+              : ""
+          }</td>
             <td>${gioiTinh}</td>
             <td>${emp.ngayThangNamSinh || ""}</td>
             <td>${emp.maBoPhan || ""}</td>
@@ -1778,7 +1779,7 @@ function AttendanceList() {
       const dateInfoCell = worksheet.getCell("A2");
       const overtimeDate = new Date(selectedDate);
       dateInfoCell.value = `Ngày/Date: ${overtimeDate.toLocaleDateString(
-        "vi-VN"
+        "vi-VN",
       )}`;
       dateInfoCell.font = { bold: true, size: 11 };
       dateInfoCell.alignment = { vertical: "middle", horizontal: "center" };
@@ -2176,8 +2177,8 @@ function AttendanceList() {
                                           code
                                             .toLowerCase()
                                             .includes(
-                                              filterMaBoPhanSearch.toLowerCase()
-                                            )
+                                              filterMaBoPhanSearch.toLowerCase(),
+                                            ),
                                         ).length
                                       }
                                       onChange={(e) => {
@@ -2187,8 +2188,8 @@ function AttendanceList() {
                                               code
                                                 .toLowerCase()
                                                 .includes(
-                                                  filterMaBoPhanSearch.toLowerCase()
-                                                )
+                                                  filterMaBoPhanSearch.toLowerCase(),
+                                                ),
                                             ),
                                           ]);
                                         } else {
@@ -2204,8 +2205,8 @@ function AttendanceList() {
                                       code
                                         .toLowerCase()
                                         .includes(
-                                          filterMaBoPhanSearch.toLowerCase()
-                                        )
+                                          filterMaBoPhanSearch.toLowerCase(),
+                                        ),
                                     )
                                     .map((code) => (
                                       <label
@@ -2215,7 +2216,7 @@ function AttendanceList() {
                                         <input
                                           type="checkbox"
                                           checked={maBoPhanFilter.includes(
-                                            code
+                                            code,
                                           )}
                                           onChange={(e) => {
                                             if (e.target.checked) {
@@ -2226,8 +2227,8 @@ function AttendanceList() {
                                             } else {
                                               setMaBoPhanFilter(
                                                 maBoPhanFilter.filter(
-                                                  (m) => m !== code
-                                                )
+                                                  (m) => m !== code,
+                                                ),
                                               );
                                             }
                                           }}
@@ -2291,8 +2292,8 @@ function AttendanceList() {
                                           dept
                                             .toLowerCase()
                                             .includes(
-                                              filterDepartmentSearch.toLowerCase()
-                                            )
+                                              filterDepartmentSearch.toLowerCase(),
+                                            ),
                                         ).length
                                       }
                                       onChange={(e) => {
@@ -2302,8 +2303,8 @@ function AttendanceList() {
                                               dept
                                                 .toLowerCase()
                                                 .includes(
-                                                  filterDepartmentSearch.toLowerCase()
-                                                )
+                                                  filterDepartmentSearch.toLowerCase(),
+                                                ),
                                             ),
                                           ]);
                                         } else {
@@ -2319,8 +2320,8 @@ function AttendanceList() {
                                       dept
                                         .toLowerCase()
                                         .includes(
-                                          filterDepartmentSearch.toLowerCase()
-                                        )
+                                          filterDepartmentSearch.toLowerCase(),
+                                        ),
                                     )
                                     .map((dept) => (
                                       <label
@@ -2330,7 +2331,7 @@ function AttendanceList() {
                                         <input
                                           type="checkbox"
                                           checked={departmentListFilter.includes(
-                                            dept
+                                            dept,
                                           )}
                                           onChange={(e) => {
                                             if (e.target.checked) {
@@ -2341,8 +2342,8 @@ function AttendanceList() {
                                             } else {
                                               setDepartmentListFilter(
                                                 departmentListFilter.filter(
-                                                  (d) => d !== dept
-                                                )
+                                                  (d) => d !== dept,
+                                                ),
                                               );
                                             }
                                           }}
@@ -2418,8 +2419,8 @@ function AttendanceList() {
                                       gender
                                         .toLowerCase()
                                         .includes(
-                                          filterGenderSearch.toLowerCase()
-                                        )
+                                          filterGenderSearch.toLowerCase(),
+                                        ),
                                     )
                                     .map((gender) => (
                                       <label
@@ -2429,7 +2430,7 @@ function AttendanceList() {
                                         <input
                                           type="checkbox"
                                           checked={gioiTinhFilter.includes(
-                                            gender
+                                            gender,
                                           )}
                                           onChange={(e) => {
                                             if (e.target.checked) {
@@ -2440,8 +2441,8 @@ function AttendanceList() {
                                             } else {
                                               setGioiTinhFilter(
                                                 gioiTinhFilter.filter(
-                                                  (g) => g !== gender
-                                                )
+                                                  (g) => g !== gender,
+                                                ),
                                               );
                                             }
                                           }}
@@ -2517,8 +2518,8 @@ function AttendanceList() {
                                       shift
                                         .toLowerCase()
                                         .includes(
-                                          filterShiftSearch.toLowerCase()
-                                        )
+                                          filterShiftSearch.toLowerCase(),
+                                        ),
                                     )
                                     .map((shift) => (
                                       <label
@@ -2528,7 +2529,7 @@ function AttendanceList() {
                                         <input
                                           type="checkbox"
                                           checked={caLamViecFilter.includes(
-                                            shift
+                                            shift,
                                           )}
                                           onChange={(e) => {
                                             if (e.target.checked) {
@@ -2539,8 +2540,8 @@ function AttendanceList() {
                                             } else {
                                               setCaLamViecFilter(
                                                 caLamViecFilter.filter(
-                                                  (s) => s !== shift
-                                                )
+                                                  (s) => s !== shift,
+                                                ),
                                               );
                                             }
                                           }}
@@ -2648,7 +2649,7 @@ function AttendanceList() {
                     <button
                       onClick={() => {
                         const exportButton = document.querySelector(
-                          '[title="📥 Xuất Excel"]'
+                          '[title="📥 Xuất Excel"]',
                         );
                         if (exportButton) exportButton.click();
                         setActionDropdownOpen(false);
@@ -3084,7 +3085,7 @@ function AttendanceList() {
                                   <input
                                     type="checkbox"
                                     checked={modalDepartmentListFilter.includes(
-                                      dept
+                                      dept,
                                     )}
                                     onChange={(e) => {
                                       if (e.target.checked) {
@@ -3095,8 +3096,8 @@ function AttendanceList() {
                                       } else {
                                         setModalDepartmentListFilter(
                                           modalDepartmentListFilter.filter(
-                                            (d) => d !== dept
-                                          )
+                                            (d) => d !== dept,
+                                          ),
                                         );
                                       }
                                     }}
@@ -3145,7 +3146,7 @@ function AttendanceList() {
                                   <input
                                     type="checkbox"
                                     checked={modalGioiTinhFilter.includes(
-                                      gender
+                                      gender,
                                     )}
                                     onChange={(e) => {
                                       if (e.target.checked) {
@@ -3156,8 +3157,8 @@ function AttendanceList() {
                                       } else {
                                         setModalGioiTinhFilter(
                                           modalGioiTinhFilter.filter(
-                                            (g) => g !== gender
-                                          )
+                                            (g) => g !== gender,
+                                          ),
                                         );
                                       }
                                     }}
@@ -3450,7 +3451,7 @@ function AttendanceList() {
                                 try {
                                   const empRef = ref(
                                     db,
-                                    `attendance/${selectedDate}/${emp.id}`
+                                    `attendance/${selectedDate}/${emp.id}`,
                                   );
                                   await set(empRef, { ...emp, gioVao: value });
                                   setEditingGioVao((prev) => {
@@ -3535,7 +3536,7 @@ function AttendanceList() {
                                 try {
                                   const empRef = ref(
                                     db,
-                                    `attendance/${selectedDate}/${emp.id}`
+                                    `attendance/${selectedDate}/${emp.id}`,
                                   );
                                   await set(empRef, {
                                     ...emp,

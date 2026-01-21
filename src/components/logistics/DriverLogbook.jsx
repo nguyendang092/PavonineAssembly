@@ -87,8 +87,7 @@ function DriverLogbook() {
   const [editingId, setEditingId] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsTrip, setDetailsTrip] = useState(null);
-  const [showOutsideModal, setShowOutsideModal] = useState(false);
-  const [outsideTrip, setOutsideTrip] = useState(null);
+  const [selectedOutsideTripId, setSelectedOutsideTripId] = useState("");
   const [outsideForm, setOutsideForm] = useState({
     startTime: "",
     endTime: "",
@@ -98,6 +97,42 @@ function DriverLogbook() {
     fee: "",
     purpose: "",
   });
+  const [outsideTripForm, setOutsideTripForm] = useState({
+    driverName: "",
+    phone: "",
+    vehicleNumber: "",
+    departure: "",
+    destination: "",
+    startDate: new Date().toISOString().split("T")[0],
+    startTime: new Date().toTimeString().slice(0, 5),
+    notes: "",
+  });
+
+  const resetOutsideForm = React.useCallback(() => {
+    setOutsideForm({
+      startTime: "",
+      endTime: "",
+      destination: "",
+      odoFrom: "",
+      odoTo: "",
+      fee: "",
+      purpose: "",
+    });
+  }, []);
+
+  const resetOutsideTripForm = React.useCallback(() => {
+    setOutsideTripForm({
+      driverName: "",
+      phone: "",
+      vehicleNumber: "",
+      startDate: new Date().toISOString().split("T")[0],
+      startTime: new Date().toTimeString().slice(0, 5),
+      destination: "",
+      notes: "",
+    });
+  }, []);
+  const [showMobileDetailModal, setShowMobileDetailModal] = useState(false);
+  const [mobileDetailTrip, setMobileDetailTrip] = useState(null);
   const [tempDetails, setTempDetails] = useState("");
   const [detailsForm, setDetailsForm] = useState({
     startTime: "",
@@ -118,7 +153,7 @@ function DriverLogbook() {
   const [filterStatus, setFilterStatus] = useState("all"); // all, scheduled, onboard, arrived
   const [selectedVehicle, setSelectedVehicle] = useState("");
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
   const [newTrip, setNewTrip] = useState({
     driverName: user?.name || "",
@@ -195,7 +230,7 @@ function DriverLogbook() {
         return canViewRestrictedVehicle;
       });
     },
-    [canViewRestrictedVehicle]
+    [canViewRestrictedVehicle],
   );
 
   // Detect duplicate booking: same vehicle + same start date/time
@@ -207,7 +242,7 @@ function DriverLogbook() {
         t.vehicleNumber === newTrip.vehicleNumber &&
         t.startDate === newTrip.startDate &&
         t.startTime === newTrip.startTime &&
-        t.id !== editingId
+        t.id !== editingId,
     );
   }, [
     newTrip.vehicleNumber,
@@ -225,7 +260,7 @@ function DriverLogbook() {
       if (data && typeof data === "object") {
         const arr = Object.entries(data).map(([id, trip]) => ({ id, ...trip }));
         setTrips(
-          arr.sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
+          arr.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)),
         );
       } else {
         setTrips([]);
@@ -256,13 +291,73 @@ function DriverLogbook() {
     const unsubscribe = onValue(driversRef, (snapshot) => {
       const data = snapshot.val();
       if (data && typeof data === "object") {
-        setDrivers(data);
+        // Normalize driver fields to avoid missing display when DB uses different keys
+        const normalized = Object.fromEntries(
+          Object.entries(data).map(([id, driver]) => {
+            const name = driver.name || driver.fullName || driver.ten || "";
+            const phone =
+              driver.phone || driver.phoneNumber || driver.sdt || "";
+            const vehicleNumber =
+              driver.vehicleNumber ||
+              driver.licensePlate ||
+              driver.biensoxe ||
+              "";
+            const vehicleType =
+              driver.vehicleType || driver.type || driver.loai || "";
+
+            return [
+              id,
+              {
+                ...driver,
+                name,
+                phone,
+                vehicleNumber,
+                vehicleType,
+              },
+            ];
+          }),
+        );
+        setDrivers(normalized);
       } else {
         setDrivers({});
       }
     });
     return () => unsubscribe();
   }, []);
+
+  // Lấy thông tin xe của user hiện tại từ các chuyến đi gần nhất
+  const userVehicleInfo = React.useMemo(() => {
+    if (!user?.name || trips.length === 0) return null;
+
+    // Tìm chuyến đi gần nhất của user
+    const userTrips = trips.filter(
+      (trip) => trip.driverName?.toLowerCase() === user.name?.toLowerCase(),
+    );
+
+    if (userTrips.length === 0) return null;
+
+    // Lấy chuyến đi mới nhất
+    const latestTrip = userTrips[0];
+    return {
+      vehicleNumber: latestTrip.vehicleNumber,
+      driverName: latestTrip.driverName,
+      phone: latestTrip.phone || "",
+      departure: latestTrip.departure || "Công ty",
+    };
+  }, [user?.name, trips]);
+
+  // Tự động điền thông tin xe vào form khi có userVehicleInfo
+  useEffect(() => {
+    if (userVehicleInfo && currentView === "expenses") {
+      setOutsideTripForm((prev) => ({
+        ...prev,
+        vehicleNumber: userVehicleInfo.vehicleNumber || prev.vehicleNumber,
+        driverName: userVehicleInfo.driverName || user?.name || prev.driverName,
+        phone: userVehicleInfo.phone || prev.phone,
+        departure: userVehicleInfo.departure || prev.departure,
+      }));
+    }
+  }, [userVehicleInfo, currentView, user?.name]);
 
   // Convert drivers object to array for filtering
   const driversList = React.useMemo(() => {
@@ -272,19 +367,27 @@ function DriverLogbook() {
     }));
   }, [drivers]);
 
+  // Get unique vehicle numbers for dropdown
+  const vehicleList = React.useMemo(() => {
+    const vehicles = driversList
+      .map((driver) => driver.vehicleNumber)
+      .filter(Boolean); // Remove null/undefined
+    return [...new Set(vehicles)].sort(); // Unique and sorted
+  }, [driversList]);
+
   // Handle driver name input change with autocomplete
   const handleDriverNameChange = (value) => {
     setNewTrip({ ...newTrip, driverName: value });
 
     if (value.trim().length > 0) {
       let filtered = driversList.filter((driver) =>
-        driver.name.toLowerCase().includes(value.toLowerCase())
+        driver.name.toLowerCase().includes(value.toLowerCase()),
       );
 
       // Filter by vehicle type if selected
       if (newTrip.vehicleType) {
         filtered = filtered.filter(
-          (driver) => driver.vehicleType === newTrip.vehicleType
+          (driver) => driver.vehicleType === newTrip.vehicleType,
         );
       }
 
@@ -314,7 +417,7 @@ function DriverLogbook() {
     if (vehicleType) {
       // Find drivers with this vehicle type
       const matchingDrivers = driversList.filter(
-        (driver) => driver.vehicleType === vehicleType
+        (driver) => driver.vehicleType === vehicleType,
       );
 
       if (matchingDrivers.length > 0) {
@@ -738,6 +841,146 @@ function DriverLogbook() {
     }
   };
 
+  const handleSaveOutsideExpense = async () => {
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "Bạn không có quyền thêm chi phí ngoài",
+      });
+      return;
+    }
+
+    const targetTrip = permissionFilteredTrips.find(
+      (t) => t.id === selectedOutsideTripId,
+    );
+
+    if (!targetTrip) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Vui lòng chọn chuyến đi để nhập chi phí ngoài",
+      });
+      return;
+    }
+
+    if (!outsideForm.destination) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Vui lòng nhập nơi đến cho chi phí ngoài",
+      });
+      return;
+    }
+
+    const parseNum = (v) => {
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const odoFromNum = parseNum(outsideForm.odoFrom);
+    const odoToNum = parseNum(outsideForm.odoTo);
+    const totalKmNum =
+      odoFromNum != null && odoToNum != null ? odoToNum - odoFromNum : null;
+
+    try {
+      const expenseRef = ref(
+        db,
+        `driverTrips/${targetTrip.id}/outsideTrips/${Date.now()}`,
+      );
+
+      await set(expenseRef, {
+        startTime: outsideForm.startTime || null,
+        endTime: outsideForm.endTime || null,
+        destination: outsideForm.destination?.trim() || null,
+        odoFrom: odoFromNum,
+        odoTo: odoToNum,
+        totalKm: totalKmNum,
+        fee: parseNum(outsideForm.fee),
+        purpose: outsideForm.purpose?.trim() || null,
+        createdAt: new Date().toISOString(),
+        createdBy: user?.email || null,
+      });
+
+      setAlert({
+        show: true,
+        type: "success",
+        message: "✅ Đã lưu chi phí ngoài",
+      });
+      resetOutsideForm();
+    } catch (error) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: `❌ Lỗi lưu chi phí ngoài: ${error.message}`,
+      });
+    }
+  };
+
+  const handleCreateOutsideTrip = async () => {
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "Bạn không có quyền thêm chuyến phát sinh",
+      });
+      return;
+    }
+
+    if (!outsideTripForm.driverName || !outsideTripForm.vehicleNumber) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Vui lòng nhập Tài xế và Biển số xe",
+      });
+      return;
+    }
+
+    try {
+      const newId = Date.now().toString();
+      const tripRef = ref(db, `driverTrips/${newId}`);
+
+      await set(tripRef, {
+        driverName: outsideTripForm.driverName,
+        phone: outsideTripForm.phone || "",
+        vehicleNumber: outsideTripForm.vehicleNumber,
+        vehicleType: "",
+        departure: "",
+        destination: outsideTripForm.destination || "",
+        startKm: "",
+        endKm: "",
+        totalKm: "",
+        startDate: outsideTripForm.startDate,
+        startTime: outsideTripForm.startTime,
+        endDate: "",
+        endTime: "",
+        notes: outsideTripForm.notes || "",
+        expenseDetails: "",
+        completed: false,
+        requestTime: new Date().toISOString().slice(0, 16),
+        departmentRequest: "",
+        status: "scheduled",
+        outsideOnly: true,
+        createdAt: new Date().toISOString(),
+        createdBy: user?.email || null,
+      });
+
+      setSelectedOutsideTripId(newId);
+      resetOutsideTripForm();
+      setAlert({
+        show: true,
+        type: "success",
+        message: "✅ Đã tạo chuyến phát sinh",
+      });
+    } catch (error) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: `❌ Lỗi tạo chuyến phát sinh: ${error.message}`,
+      });
+    }
+  };
+
   // Reset/prefill structured details form when opening details modal
   useEffect(() => {
     if (showDetailsModal && detailsTrip) {
@@ -761,6 +1004,30 @@ function DriverLogbook() {
       });
     }
   }, [showDetailsModal, detailsTrip]);
+
+  // Load details form data when opening mobile detail modal
+  useEffect(() => {
+    if (showMobileDetailModal && mobileDetailTrip) {
+      const d = mobileDetailTrip.details || {};
+      setDetailsForm({
+        startTime: d.startTime || "",
+        endTime: d.endTime || "",
+        destination: d.destination || "",
+        odoFrom:
+          d.odoFrom != null && d.odoFrom !== undefined ? String(d.odoFrom) : "",
+        odoTo: d.odoTo != null && d.odoTo !== undefined ? String(d.odoTo) : "",
+        tollFee:
+          d.tollFee != null && d.tollFee !== undefined ? String(d.tollFee) : "",
+        mealFee:
+          d.mealFee != null && d.mealFee !== undefined ? String(d.mealFee) : "",
+        overtimeHours:
+          d.overtimeHours != null && d.overtimeHours !== undefined
+            ? String(d.overtimeHours)
+            : "",
+        notes: d.notes || "",
+      });
+    }
+  }, [showMobileDetailModal, mobileDetailTrip]);
 
   // Keep original tempDetails in sync (no logic change) from structured inputs
   useEffect(() => {
@@ -813,14 +1080,55 @@ function DriverLogbook() {
   // Lọc trips theo quyền truy cập trước
   const permissionFilteredTrips = filterTripsByPermission(trips);
 
+  // Tự chọn chuyến đầu tiên khi vào màn Chi phí ngoài
+  useEffect(() => {
+    if (currentView !== "expenses" || permissionFilteredTrips.length === 0)
+      return;
+
+    if (!selectedOutsideTripId) {
+      setSelectedOutsideTripId(permissionFilteredTrips[0].id);
+      return;
+    }
+
+    if (!permissionFilteredTrips.some((t) => t.id === selectedOutsideTripId)) {
+      setSelectedOutsideTripId(permissionFilteredTrips[0].id);
+    }
+  }, [currentView, permissionFilteredTrips, selectedOutsideTripId]);
+
+  // Reset form mỗi lần đổi chuyến hoặc mở tab Chi phí ngoài
+  useEffect(() => {
+    if (currentView === "expenses") {
+      resetOutsideForm();
+      resetOutsideTripForm();
+    }
+  }, [
+    currentView,
+    selectedOutsideTripId,
+    resetOutsideForm,
+    resetOutsideTripForm,
+  ]);
+
+  const selectedOutsideTrip = React.useMemo(() => {
+    return (
+      permissionFilteredTrips.find((t) => t.id === selectedOutsideTripId) ||
+      null
+    );
+  }, [permissionFilteredTrips, selectedOutsideTripId]);
+
   const completedCount = permissionFilteredTrips.filter(
-    (t) => t.completed
+    (t) => t.completed,
   ).length;
   const filteredTrips = permissionFilteredTrips.filter((trip) => {
     if (filterTab === "ongoing") return !trip.completed;
     if (filterTab === "completed") return trip.completed;
     return true;
   });
+
+  const tripsWithOutside = React.useMemo(() => {
+    return permissionFilteredTrips.filter(
+      (t) => t.outsideTrips && Object.keys(t.outsideTrips).length > 0,
+    );
+  }, [permissionFilteredTrips]);
 
   // Export completed trips to Excel
   const handleExportCompletedTrips = () => {
@@ -932,6 +1240,21 @@ function DriverLogbook() {
               CHI TIẾT CHUYẾN ĐI
             </button>
             {isAdminOrHR && (
+              <button
+                onClick={() => {
+                  setCurrentView("expenses");
+                  setSidebarOpen(false);
+                }}
+                className={`w-full px-4 py-3.5 rounded-lg font-bold transition-all duration-200 ${
+                  currentView === "expenses"
+                    ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg hover:shadow-xl"
+                    : "text-slate-700 bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-300 hover:border-indigo-400 shadow-sm hover:shadow-md hover:from-indigo-50 hover:to-blue-100"
+                }`}
+              >
+                💰 CHI PHÍ NGOÀI
+              </button>
+            )}
+            {isAdminOrHR && (
               <>
                 <button
                   onClick={() => {
@@ -1020,7 +1343,7 @@ function DriverLogbook() {
               .filter(
                 (t) =>
                   (!selectedVehicle || t.vehicleNumber === selectedVehicle) &&
-                  t.startDate === selectedDate
+                  t.startDate === selectedDate,
               )
               .filter((trip) => {
                 if (filterStatus === "all") return true;
@@ -1035,7 +1358,7 @@ function DriverLogbook() {
                   return (a.startTime || "").localeCompare(b.startTime || "");
                 case "vehicle":
                   return (a.vehicleNumber || "").localeCompare(
-                    b.vehicleNumber || ""
+                    b.vehicleNumber || "",
                   );
                 case "driver":
                   return (a.driverName || "").localeCompare(b.driverName || "");
@@ -1064,7 +1387,7 @@ function DriverLogbook() {
                 const vehicleTrips = permissionFiltered.filter(
                   (t) =>
                     t.vehicleNumber === driver.vehicleNumber &&
-                    t.startDate === selectedDate
+                    t.startDate === selectedDate,
                 );
 
                 const hasSchedule = vehicleTrips.length > 0;
@@ -1169,8 +1492,8 @@ function DriverLogbook() {
                             new Set(
                               permissionFiltered
                                 .map((t) => t.vehicleNumber)
-                                .filter(Boolean)
-                            )
+                                .filter(Boolean),
+                            ),
                           )
                             .sort()
                             .map((v) => (
@@ -1198,8 +1521,10 @@ function DriverLogbook() {
                   </div>
 
                   {/* Table Header */}
-                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs font-bold px-2 sm:px-3 md:px-4 py-2 sm:py-3 sticky top-0 z-10 shadow-md w-full">
-                    <div className="truncate col-span-1 text-center">🚗 XE</div>
+                  <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-10 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs font-bold px-2 sm:px-3 md:px-4 py-2 sm:py-3 sticky top-0 z-10 shadow-md w-full">
+                    <div className="truncate col-span-1 text-center text-[10px] sm:text-xs">
+                      🚗 XE
+                    </div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
                       📦 LOẠI
                     </div>
@@ -1209,18 +1534,23 @@ function DriverLogbook() {
                     <div className="truncate col-span-1 hidden sm:block text-center">
                       ĐI TỪ
                     </div>
-                    <div className="truncate col-span-1 text-center">
-                      🏁 ĐẾN
+                    <div className="truncate col-span-1.5 sm:col-span-1 text-center text-[10px] sm:text-xs">
+                      👤 TÀI XẾ
                     </div>
-                    <div className="truncate col-span-1 text-center">
+                    <div className="truncate col-span-1 text-center text-[10px] sm:text-xs">
                       ⏰ THỜI GIAN ĐI
                     </div>
                     <div className="truncate col-span-1 hidden md:block text-center">
                       🏢 BP
                     </div>
-                    <div className="truncate col-span-1 text-center">📊 TT</div>
+                    <div className="truncate col-span-1 hidden sm:block text-center">
+                      📊 TT
+                    </div>
                     <div className="truncate col-span-1 hidden md:block text-center">
-                      📝 GHI
+                      📝 GHI CHÚ
+                    </div>
+                    <div className="truncate col-span-1 text-center text-[10px] sm:text-xs">
+                      📋 CHI TIẾT
                     </div>
                   </div>
                   {/* Rows */}
@@ -1239,24 +1569,22 @@ function DriverLogbook() {
                         const status = getStatus(trip);
                         const scheduled = formatTime(
                           trip.startDate,
-                          trip.startTime
+                          trip.startTime,
                         );
                         const estimated =
                           trip.endDate && trip.endTime
                             ? formatTime(trip.endDate, trip.endTime)
                             : "-";
-
                         const baseZebra =
                           idx % 2 === 0 ? "bg-gray-800" : "bg-gray-500";
                         const rowBgColor = baseZebra;
-
                         return (
                           <div
                             key={`board-${trip.id}`}
-                            className={`grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-1 sm:gap-2 md:gap-3 px-2 sm:px-3 md:px-4 py-2 sm:py-3 items-center text-xs ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md w-full`}
+                            className={`grid grid-cols-4 sm:grid-cols-7 md:grid-cols-10 gap-1 sm:gap-2 md:gap-3 px-2 sm:px-3 md:px-4 py-2 sm:py-3 items-center text-xs ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md w-full`}
                           >
                             {/* XE */}
-                            <div className="text-white font-bold truncate col-span-1 text-center">
+                            <div className="text-white text-xs sm:text-sm font-semibold sm:font-bold truncate col-span-1 text-center">
                               {trip.vehicleNumber || "N/A"}
                             </div>
                             {/* LOẠI */}
@@ -1271,9 +1599,9 @@ function DriverLogbook() {
                             <div className="text-white font-bold truncate hidden md:block col-span-1 text-center">
                               {trip.departure || "-"}
                             </div>
-                            {/* ĐẾN */}
-                            <div className="text-white font-bold truncate col-span-1 text-center">
-                              {trip.destination || "-"}
+                            {/* TÀI XẾ */}
+                            <div className="text-white font-bold col-span-1.5 sm:col-span-1 text-center">
+                              {trip.driverName || "-"}
                             </div>
                             {/* ĐI */}
                             <div className="font-mono font-bold text-yellow-300 col-span-1 text-center">
@@ -1284,13 +1612,26 @@ function DriverLogbook() {
                               {trip.departmentRequest || "-"}
                             </div>
                             {/* TT */}
-                            <div className="col-span-1 text-center">
+                            <div className="col-span-1 hidden sm:block text-center">
                               <StatusBadge trip={trip} mobile={true} />
                             </div>
                             {/* GHI */}
                             <div className="text-gray-200 truncate hidden md:block col-span-1 text-center">
                               {trip.notes ||
                                 (trip.totalKm ? `${trip.totalKm}km` : "-")}
+                            </div>
+                            {/* XEM CHI TIẾT */}
+                            <div className="col-span-1 text-center">
+                              <button
+                                onClick={() => {
+                                  setMobileDetailTrip(trip);
+                                  setShowMobileDetailModal(true);
+                                }}
+                                className="px-2 py-1 bg-gradient-to-r from-indigo-500 to-blue-500 text-white rounded text-xs font-semibold hover:from-indigo-600 hover:to-blue-600 transition-all shadow-sm"
+                                title="Xem chi tiết chuyến đi"
+                              >
+                                📋
+                              </button>
                             </div>
                           </div>
                         );
@@ -1371,178 +1712,62 @@ function DriverLogbook() {
                     {filterTab === "ongoing"
                       ? "Không có chuyến đi đang chạy"
                       : filterTab === "completed"
-                      ? "Chưa có chuyến đi nào hoàn tất"
-                      : "Chưa có chuyến đi nào"}
+                        ? "Chưa có chuyến đi nào hoàn tất"
+                        : "Chưa có chuyến đi nào"}
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-b border-indigo-100/30">
-                      <tr className="uppercase tracking-widest text-xs sm:text-sm font-bold">
-                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
-                          ✓
-                        </th>
-                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell text-xs">
-                          Tài Xế
-                        </th>
-                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
-                          ĐT
-                        </th>
-                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
-                          Xe
-                        </th>
-                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
-                          Loại
-                        </th>
-                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell text-xs">
-                          Tuyến
-                        </th>
-                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell text-xs">
-                          Km
-                        </th>
-                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
-                          Thời gian
-                        </th>
-                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
-                          Hành động
-                        </th>
-                        <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
-                          TT
-                        </th>
-                        {isAdminOrHR && (
-                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs w-12 sm:w-16">
-                            Chức năng
-                          </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200/50">
-                      {filteredTrips.map((trip) => (
-                        <tr
-                          key={trip.id}
-                          className="transition-colors odd:bg-gray-900 even:bg-gray-700 hover:bg-gray-800 text-white text-xs sm:text-sm"
-                        >
-                          {/* ✓ - Checkbox */}
-                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
-                            <div className="flex items-center justify-center">
-                              <input
-                                type="checkbox"
-                                checked={trip.completed}
-                                onChange={() => handleCompleteTrip(trip)}
-                                disabled={!isAdminOrHR}
-                                className={`w-3 h-3 sm:w-4 sm:h-4 rounded ${
-                                  !isAdminOrHR
-                                    ? "text-green-600 cursor-not-allowed opacity-70"
-                                    : "text-blue-600 cursor-pointer"
-                                }`}
-                                title={
-                                  !isAdminOrHR
-                                    ? "Chỉ Admin/HR mới có quyền đánh dấu hoàn tất"
-                                    : trip.completed
-                                    ? "Click để bỏ đánh dấu hoàn tất"
-                                    : "Click để đánh dấu hoàn tất"
-                                }
-                              />
-                            </div>
-                          </td>
-                          {/* Tài Xế */}
-                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">
-                            <div className="flex items-center gap-1 justify-center">
-                              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-indigo-200 to-blue-200 border border-indigo-300 flex items-center justify-center text-indigo-700 font-semibold text-xs flex-shrink-0">
-                                {(trip.driverName || "?")[0].toUpperCase()}
-                              </div>
-                              <span className="font-bold text-white hidden md:inline truncate text-xs">
-                                {trip.driverName}
+                <>
+                  {/* Mobile Card View */}
+                  <div className="md:hidden divide-y divide-slate-200">
+                    {filteredTrips.map((trip) => (
+                      <div
+                        key={trip.id}
+                        className="p-4 hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          {/* Left: Main Info */}
+                          <div className="flex-1 min-w-0 space-y-2">
+                            {/* Biển số xe */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl">🚗</span>
+                              <span className="font-bold text-lg text-indigo-700">
+                                {trip.vehicleNumber || "N/A"}
                               </span>
                             </div>
-                          </td>
-                          {/* ĐT - Phone */}
-                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
-                            {trip.phone ? (
-                              <a
-                                href={`tel:${trip.phone}`}
-                                className="text-white hover:text-yellow-400 font-semibold text-xs truncate"
-                              >
-                                {trip.phone}
-                              </a>
-                            ) : (
-                              <span className="text-slate-400 text-xs">-</span>
-                            )}
-                          </td>
-                          {/* Xe - Vehicle Number */}
-                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
-                            <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 inline-block truncate">
-                              {trip.vehicleNumber || "N/A"}
-                            </span>
-                          </td>
-                          {/* Loại Xe - Vehicle Type */}
-                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
-                            <span className="text-white font-medium text-xs truncate">
-                              {trip.vehicleType || "-"}
-                            </span>
-                          </td>
-                          {/* Tuyến - Route (Departure → Destination) */}
-                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell">
-                            <div className="text-xs text-white">
-                              <p className="font-semibold text-white truncate">
-                                📍 {trip.departure || "N/A"} →{" "}
-                                {trip.destination}
-                              </p>
-                              {/* Purpose removed per request */}
+
+                            {/* Tên tài xế */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">👤</span>
+                              <span className="font-semibold text-slate-700">
+                                {trip.driverName || "N/A"}
+                              </span>
                             </div>
-                          </td>
-                          {/* Km - Kilometers */}
-                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">
-                            <div className="text-xs text-white">
-                              <p className="text-gray-300 font-medium">
-                                {trip.startKm || 0}km
-                              </p>
-                              {trip.endKm && (
-                                <>
-                                  <p className="text-gray-300 text-xs">
-                                    →
-                                    <span className="font-bold text-white">
-                                      {trip.endKm}
-                                    </span>
-                                    km
-                                  </p>
-                                  <p className="text-white font-bold text-xs">
-                                    Δ
-                                    <span className="text-cyan-300">
-                                      {trip.totalKm ||
-                                        parseFloat(trip.endKm) -
-                                          parseFloat(trip.startKm)}
-                                    </span>
-                                  </p>
-                                </>
-                              )}
+
+                            {/* Thời gian */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">⏰</span>
+                              <span className="text-sm text-slate-600">
+                                {new Date(trip.startDate).toLocaleDateString(
+                                  "vi-VN",
+                                )}
+                                {trip.startTime && ` - ${trip.startTime}`}
+                              </span>
                             </div>
-                          </td>
-                          {/* Thời Gian - Time */}
-                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
-                            <div className="text-xs text-white">
-                              <p className="text-gray-300 font-medium">
-                                <span className="font-semibold text-white text-xs">
-                                  {new Date(trip.startDate).toLocaleDateString(
-                                    "vi-VN",
-                                    { month: "short", day: "numeric" }
-                                  )}
-                                </span>
-                              </p>
-                              {trip.completed && trip.endDate && (
-                                <p className="text-green-400 font-medium text-xs">
-                                  {new Date(trip.endDate).toLocaleDateString(
-                                    "vi-VN",
-                                    { month: "short", day: "numeric" }
-                                  )}
-                                </p>
-                              )}
-                            </div>
-                          </td>
-                          {/* Hành Động - Actions (� 🛣️) */}
-                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
-                            <div className="flex items-center justify-center gap-0.5">
+
+                            {/* Nút xem chi tiết */}
+                            <button
+                              onClick={() => {
+                                setMobileDetailTrip(trip);
+                                setShowMobileDetailModal(true);
+                              }}
+                              className="mt-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg font-semibold text-sm shadow-md hover:from-indigo-700 hover:to-blue-700 transition-all"
+                            >
+                              📋 Xem Chi Tiết
+                            </button>
+
+                            {/* Hành động (mobile) */}
+                            <div className="flex items-center gap-2 flex-wrap pt-1">
                               <button
                                 onClick={() => {
                                   if (!isAdminOrHR) {
@@ -1556,9 +1781,9 @@ function DriverLogbook() {
                                   }
                                   handleOpenDetailsModal(trip);
                                 }}
-                                className={`p-1 sm:p-1.5 rounded transition-all text-sm sm:text-base ${
+                                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all shadow-sm ${
                                   isAdminOrHR
-                                    ? "bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer"
+                                    ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
                                     : "bg-gray-100 text-gray-400 cursor-not-allowed"
                                 }`}
                                 title={
@@ -1567,94 +1792,297 @@ function DriverLogbook() {
                                     : "Chỉ Admin/HR"
                                 }
                               >
-                                💵
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (!isAdminOrHR) {
-                                    setAlert({
-                                      show: true,
-                                      type: "error",
-                                      message:
-                                        "Bạn không có quyền nhập thông tin này",
-                                    });
-                                    return;
-                                  }
-                                  setOutsideTrip(trip);
-                                  setOutsideForm({
-                                    startTime: "",
-                                    endTime: "",
-                                    destination: "",
-                                    odoFrom: "",
-                                    odoTo: "",
-                                    fee: "",
-                                    purpose: "",
-                                  });
-                                  setShowOutsideModal(true);
-                                }}
-                                className={`p-1 sm:p-1.5 rounded transition-all text-sm sm:text-base ${
-                                  isAdminOrHR
-                                    ? "bg-orange-100 text-orange-600 hover:bg-orange-200 cursor-pointer"
-                                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                }`}
-                                title={
-                                  isAdminOrHR ? "Chạy ngoài" : "Chỉ Admin/HR"
-                                }
-                              >
-                                🛣️
+                                💵 Chi phí
                               </button>
                             </div>
-                          </td>
-                          {/* Trạng thái - Status */}
-                          <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                          </div>
+
+                          {/* Right: Status & Checkbox */}
+                          <div className="flex flex-col items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={trip.completed}
+                              onChange={() => handleCompleteTrip(trip)}
+                              disabled={!isAdminOrHR}
+                              className={`w-5 h-5 rounded ${
+                                !isAdminOrHR
+                                  ? "text-green-600 cursor-not-allowed opacity-70"
+                                  : "text-blue-600 cursor-pointer"
+                              }`}
+                              title={
+                                !isAdminOrHR
+                                  ? "Chỉ Admin/HR mới có quyền đánh dấu hoàn tất"
+                                  : trip.completed
+                                    ? "Click để bỏ đánh dấu hoàn tất"
+                                    : "Click để đánh dấu hoàn tất"
+                              }
+                            />
                             {trip.completed ? (
-                              <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200 inline-block">
+                              <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
                                 ✓
                               </span>
                             ) : (
-                              <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 inline-block">
+                              <span className="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
                                 x
                               </span>
                             )}
-                          </td>
-                          {/* Thao Tác - Edit/Delete (Admin/HR only) */}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-b border-indigo-100/30">
+                        <tr className="uppercase tracking-widest text-xs sm:text-sm font-bold">
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
+                            ✓
+                          </th>
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell text-xs">
+                            Tài Xế
+                          </th>
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
+                            ĐT
+                          </th>
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
+                            Xe
+                          </th>
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
+                            Loại
+                          </th>
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell text-xs">
+                            Tuyến
+                          </th>
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell text-xs">
+                            Km
+                          </th>
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
+                            Thời gian
+                          </th>
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
+                            Hành động
+                          </th>
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs">
+                            TT
+                          </th>
                           {isAdminOrHR && (
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3">
-                              <div className="flex items-center justify-center gap-0.5">
-                                <button
-                                  onClick={() => handleEdit(trip)}
-                                  disabled={trip.completed}
-                                  className={`p-1 sm:p-1.5 rounded text-sm sm:text-base ${
-                                    trip.completed
-                                      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                      : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                            <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs w-12 sm:w-16">
+                              Chức năng
+                            </th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200/50">
+                        {filteredTrips.map((trip) => (
+                          <tr
+                            key={trip.id}
+                            className="transition-colors odd:bg-gray-900 even:bg-gray-700 hover:bg-gray-800 text-white text-xs sm:text-sm"
+                          >
+                            {/* ✓ - Checkbox */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                              <div className="flex items-center justify-center">
+                                <input
+                                  type="checkbox"
+                                  checked={trip.completed}
+                                  onChange={() => handleCompleteTrip(trip)}
+                                  disabled={!isAdminOrHR}
+                                  className={`w-3 h-3 sm:w-4 sm:h-4 rounded ${
+                                    !isAdminOrHR
+                                      ? "text-green-600 cursor-not-allowed opacity-70"
+                                      : "text-blue-600 cursor-pointer"
                                   }`}
                                   title={
-                                    trip.completed ? "Không thể sửa" : "Sửa"
+                                    !isAdminOrHR
+                                      ? "Chỉ Admin/HR mới có quyền đánh dấu hoàn tất"
+                                      : trip.completed
+                                        ? "Click để bỏ đánh dấu hoàn tất"
+                                        : "Click để đánh dấu hoàn tất"
+                                  }
+                                />
+                              </div>
+                            </td>
+                            {/* Tài Xế */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">
+                              <div className="flex items-center gap-1 justify-center">
+                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-indigo-200 to-blue-200 border border-indigo-300 flex items-center justify-center text-indigo-700 font-semibold text-xs flex-shrink-0">
+                                  {(trip.driverName || "?")[0].toUpperCase()}
+                                </div>
+                                <span className="font-bold text-white hidden md:inline truncate text-xs">
+                                  {trip.driverName}
+                                </span>
+                              </div>
+                            </td>
+                            {/* ĐT - Phone */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
+                              {trip.phone ? (
+                                <a
+                                  href={`tel:${trip.phone}`}
+                                  className="text-white hover:text-yellow-400 font-semibold text-xs truncate"
+                                >
+                                  {trip.phone}
+                                </a>
+                              ) : (
+                                <span className="text-slate-400 text-xs">
+                                  -
+                                </span>
+                              )}
+                            </td>
+                            {/* Xe - Vehicle Number */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                              <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 inline-block truncate">
+                                {trip.vehicleNumber || "N/A"}
+                              </span>
+                            </td>
+                            {/* Loại Xe - Vehicle Type */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
+                              <span className="text-white font-medium text-xs truncate">
+                                {trip.vehicleType || "-"}
+                              </span>
+                            </td>
+                            {/* Tuyến - Route (Departure → Destination) */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell">
+                              <div className="text-xs text-white">
+                                <p className="font-semibold text-white truncate">
+                                  📍 {trip.departure || "N/A"} →{" "}
+                                  {trip.destination}
+                                </p>
+                                {/* Purpose removed per request */}
+                              </div>
+                            </td>
+                            {/* Km - Kilometers */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">
+                              <div className="text-xs text-white">
+                                <p className="text-gray-300 font-medium">
+                                  {trip.startKm || 0}km
+                                </p>
+                                {trip.endKm && (
+                                  <>
+                                    <p className="text-gray-300 text-xs">
+                                      →
+                                      <span className="font-bold text-white">
+                                        {trip.endKm}
+                                      </span>
+                                      km
+                                    </p>
+                                    <p className="text-white font-bold text-xs">
+                                      Δ
+                                      <span className="text-cyan-300">
+                                        {trip.totalKm ||
+                                          parseFloat(trip.endKm) -
+                                            parseFloat(trip.startKm)}
+                                      </span>
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            {/* Thời Gian - Time */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
+                              <div className="text-xs text-white">
+                                <p className="text-gray-300 font-medium">
+                                  <span className="font-semibold text-white text-xs">
+                                    {new Date(
+                                      trip.startDate,
+                                    ).toLocaleDateString("vi-VN", {
+                                      month: "short",
+                                      day: "numeric",
+                                    })}
+                                  </span>
+                                </p>
+                                {trip.completed && trip.endDate && (
+                                  <p className="text-green-400 font-medium text-xs">
+                                    {new Date(trip.endDate).toLocaleDateString(
+                                      "vi-VN",
+                                      { month: "short", day: "numeric" },
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                            </td>
+                            {/* Hành Động - Actions (� 🛣️) */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                              <div className="flex items-center justify-center gap-0.5">
+                                <button
+                                  onClick={() => {
+                                    if (!isAdminOrHR) {
+                                      setAlert({
+                                        show: true,
+                                        type: "error",
+                                        message:
+                                          "Bạn không có quyền nhập thông tin này",
+                                      });
+                                      return;
+                                    }
+                                    handleOpenDetailsModal(trip);
+                                  }}
+                                  className={`p-1 sm:p-1.5 rounded transition-all text-sm sm:text-base ${
+                                    isAdminOrHR
+                                      ? "bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer"
+                                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                  }`}
+                                  title={
+                                    isAdminOrHR
+                                      ? "Chi tiết chi phí"
+                                      : "Chỉ Admin/HR"
                                   }
                                 >
-                                  ✏️
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(trip.id)}
-                                  disabled={!isAdminOrHR}
-                                  className={`p-1 sm:p-1.5 rounded text-sm sm:text-base ${
-                                    isAdminOrHR
-                                      ? "bg-red-100 text-red-600 hover:bg-red-200"
-                                      : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                  }`}
-                                  title={isAdminOrHR ? "Xóa" : "Admin/HR"}
-                                >
-                                  🗑️
+                                  💵
                                 </button>
                               </div>
                             </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                            {/* Trạng thái - Status */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                              {trip.completed ? (
+                                <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200 inline-block">
+                                  ✓
+                                </span>
+                              ) : (
+                                <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 inline-block">
+                                  x
+                                </span>
+                              )}
+                            </td>
+                            {/* Thao Tác - Edit/Delete (Admin/HR only) */}
+                            {isAdminOrHR && (
+                              <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3">
+                                <div className="flex items-center justify-center gap-0.5">
+                                  <button
+                                    onClick={() => handleEdit(trip)}
+                                    disabled={trip.completed}
+                                    className={`p-1 sm:p-1.5 rounded text-sm sm:text-base ${
+                                      trip.completed
+                                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                        : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                                    }`}
+                                    title={
+                                      trip.completed ? "Không thể sửa" : "Sửa"
+                                    }
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(trip.id)}
+                                    disabled={!isAdminOrHR}
+                                    className={`p-1 sm:p-1.5 rounded text-sm sm:text-base ${
+                                      isAdminOrHR
+                                        ? "bg-red-100 text-red-600 hover:bg-red-200"
+                                        : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                    }`}
+                                    title={isAdminOrHR ? "Xóa" : "Admin/HR"}
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </div>
           </>
@@ -1717,7 +2145,7 @@ function DriverLogbook() {
                               const filtered = driversList.filter((driver) =>
                                 driver.name
                                   .toLowerCase()
-                                  .includes(newTrip.driverName.toLowerCase())
+                                  .includes(newTrip.driverName.toLowerCase()),
                               );
                               if (filtered.length > 0) {
                                 setDriverSuggestions(filtered);
@@ -2347,32 +2775,6 @@ function DriverLogbook() {
                     </div>
                   )}
 
-                  {/* Purpose */}
-                  <div className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-xl p-6 border border-cyan-100">
-                    <label className="text-sm font-bold text-cyan-900 mb-3 flex items-center gap-2">
-                      <span>🎯</span>
-                      <span>Mục Đích Chuyến Đi</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newTrip.purpose}
-                      onChange={(e) =>
-                        setNewTrip({ ...newTrip, purpose: e.target.value })
-                      }
-                      disabled={
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                      }
-                      className={`w-full border-2 border-cyan-200 rounded-lg px-4 py-3 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none transition-all text-base font-medium ${
-                        editingId &&
-                        trips.find((t) => t.id === editingId)?.completed
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : "bg-white hover:border-cyan-300"
-                      }`}
-                      placeholder="VD: Giao hàng, Công tác, ..."
-                    />
-                  </div>
-
                   {/* Notes */}
                   <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-xl p-6 border border-indigo-100">
                     <label className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
@@ -2477,16 +2879,19 @@ function DriverLogbook() {
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 flex items-center justify-center text-white font-bold text-xl">
-                              {driver.name[0].toUpperCase()}
+                              {(driver.name || "?")
+                                .toString()
+                                .slice(0, 1)
+                                .toUpperCase()}
                             </div>
                             <div>
                               <h3 className="font-bold text-gray-800 text-lg">
-                                {driver.name}
+                                {driver.name || "Chưa đặt tên"}
                               </h3>
                               <p className="text-xs text-gray-500">
                                 {driver.lastUpdated
                                   ? new Date(
-                                      driver.lastUpdated
+                                      driver.lastUpdated,
                                     ).toLocaleDateString("vi-VN")
                                   : ""}
                               </p>
@@ -2680,6 +3085,401 @@ function DriverLogbook() {
             </div>
           </div>
         )}
+        {/* Expenses Management View */}
+        {currentView === "expenses" && !isAdminOrHR && (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50 to-amber-100 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md">
+              <div className="text-6xl mb-4">🔒</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Quyền hạn không đủ
+              </h2>
+              <p className="text-gray-700 mb-4">
+                Chỉ quản trị viên và nhân viên HR mới có thể xem và quản lý chi
+                phí ngoài. Vui lòng liên hệ quản trị viên nếu bạn cần trợ giúp.
+              </p>
+              <button
+                onClick={() => setCurrentView("schedule")}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all"
+              >
+                Quay lại
+              </button>
+            </div>
+          </div>
+        )}
+        {currentView === "expenses" && isAdminOrHR && (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50 to-amber-100">
+            <div className="bg-white sm:rounded-2xl shadow-2xl w-full min-h-screen sm:min-h-auto">
+              <div className="sticky top-0 bg-gradient-to-r from-orange-600 via-amber-500 to-yellow-500 px-4 py-4 sm:px-8 sm:py-6 flex items-center justify-between sm:rounded-t-2xl shadow-lg z-10">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <button
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition-all text-lg sm:text-xl"
+                    title="Menu"
+                  >
+                    ☰
+                  </button>
+                  <h2 className="text-lg sm:text-2xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                    <span className="text-2xl sm:text-3xl">💰</span>
+                    <span>Chi Phí Ngoài</span>
+                  </h2>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6">
+                {user && (
+                  <div className="bg-white rounded-xl border border-blue-200 shadow-sm p-4 sm:p-6 space-y-4">
+                    <div>
+                      <h3 className="text-blue-800 font-bold text-lg flex items-center gap-2 mb-4">
+                        <span>➕</span>
+                        <span>Tạo Chuyến Đi Phát Sinh</span>
+                      </h3>
+                      <p className="text-sm text-blue-600 mb-4">
+                        Chọn xe để tự động điền thông tin tài xế
+                      </p>
+                      {userVehicleInfo && (
+                        <div className="bg-green-50 border border-green-300 rounded-lg p-3 mb-4">
+                          <p className="text-xs text-green-700 flex items-center gap-2">
+                            <span>✓</span>
+                            <span>
+                              Gợi ý: Xe {userVehicleInfo.vehicleNumber} -{" "}
+                              {userVehicleInfo.driverName}
+                            </span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Tên tài xế */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-blue-800">
+                          Tên tài xế
+                        </label>
+                        <input
+                          type="text"
+                          value={outsideTripForm.driverName}
+                          onChange={(e) =>
+                            setOutsideTripForm((p) => ({
+                              ...p,
+                              driverName: e.target.value,
+                            }))
+                          }
+                          placeholder="VD: Nguyễn Văn A"
+                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                        />
+                      </div>
+                      {/* Số điện thoại */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-blue-800">
+                          Số điện thoại
+                        </label>
+                        <input
+                          type="tel"
+                          value={outsideTripForm.phone}
+                          onChange={(e) =>
+                            setOutsideTripForm((p) => ({
+                              ...p,
+                              phone: e.target.value,
+                            }))
+                          }
+                          placeholder="VD: 0912345678"
+                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                        />
+                      </div>
+                      {/* Thông tin chuyến đi */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-blue-800">
+                          Biển số xe
+                        </label>
+                        <select
+                          value={outsideTripForm.vehicleNumber}
+                          onChange={(e) => {
+                            const selectedVehicle = e.target.value;
+                            setOutsideTripForm((p) => ({
+                              ...p,
+                              vehicleNumber: selectedVehicle,
+                            }));
+
+                            // Tự động điền thông tin tài xế khi chọn xe
+                            if (selectedVehicle) {
+                              // Ưu tiên lấy từ chuyến đi gần nhất
+                              const tripWithVehicle = trips.find(
+                                (trip) =>
+                                  trip.vehicleNumber === selectedVehicle,
+                              );
+
+                              if (tripWithVehicle) {
+                                setOutsideTripForm((p) => ({
+                                  ...p,
+                                  driverName:
+                                    tripWithVehicle.driverName || p.driverName,
+                                  phone: tripWithVehicle.phone || p.phone,
+                                  departure:
+                                    tripWithVehicle.departure || p.departure,
+                                }));
+                              } else {
+                                // Nếu chưa có chuyến đi, lấy từ danh sách tài xế
+                                const driverWithVehicle = driversList.find(
+                                  (d) => d.vehicleNumber === selectedVehicle,
+                                );
+                                if (driverWithVehicle) {
+                                  setOutsideTripForm((p) => ({
+                                    ...p,
+                                    driverName:
+                                      driverWithVehicle.name || p.driverName,
+                                    phone: driverWithVehicle.phone || p.phone,
+                                    departure: p.departure, // không có departure trong driver
+                                  }));
+                                }
+                              }
+                            }
+                          }}
+                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none bg-white"
+                        >
+                          <option value="">-- Chọn xe --</option>
+                          {vehicleList.map((vehicle) => (
+                            <option key={vehicle} value={vehicle}>
+                              {vehicle}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-blue-800">
+                          Điểm đi
+                        </label>
+                        <input
+                          type="text"
+                          value={outsideTripForm.departure}
+                          onChange={(e) =>
+                            setOutsideTripForm((p) => ({
+                              ...p,
+                              departure: e.target.value,
+                            }))
+                          }
+                          placeholder="VD: Công ty"
+                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-blue-800">
+                          Điểm đến
+                        </label>
+                        <input
+                          type="text"
+                          value={outsideTripForm.destination}
+                          onChange={(e) =>
+                            setOutsideTripForm((p) => ({
+                              ...p,
+                              destination: e.target.value,
+                            }))
+                          }
+                          placeholder="VD: Kho hàng A"
+                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-blue-800">
+                          Ngày chạy
+                        </label>
+                        <input
+                          type="date"
+                          value={outsideTripForm.startDate}
+                          onChange={(e) =>
+                            setOutsideTripForm((p) => ({
+                              ...p,
+                              startDate: e.target.value,
+                            }))
+                          }
+                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                        />
+                      </div>
+
+                      {/* Chi phí */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-blue-800">
+                          Odo từ (km)
+                        </label>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={outsideForm.odoFrom}
+                          onChange={(e) =>
+                            setOutsideForm((p) => ({
+                              ...p,
+                              odoFrom: e.target.value,
+                            }))
+                          }
+                          placeholder="VD: 1000"
+                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-blue-800">
+                          Odo đến (km)
+                        </label>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={outsideForm.odoTo}
+                          onChange={(e) =>
+                            setOutsideForm((p) => ({
+                              ...p,
+                              odoTo: e.target.value,
+                            }))
+                          }
+                          placeholder="VD: 1100"
+                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-blue-800">
+                          Phí chạy (đ)
+                        </label>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={outsideForm.fee}
+                          onChange={(e) =>
+                            setOutsideForm((p) => ({
+                              ...p,
+                              fee: e.target.value,
+                            }))
+                          }
+                          placeholder="VD: 200000"
+                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-xs font-bold text-blue-800">
+                          Ghi chú
+                        </label>
+                        <textarea
+                          value={outsideForm.purpose}
+                          onChange={(e) =>
+                            setOutsideForm((p) => ({
+                              ...p,
+                              purpose: e.target.value,
+                            }))
+                          }
+                          rows={2}
+                          placeholder="Ghi chú thêm (không bắt buộc)"
+                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none resize-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setOutsideTripForm({
+                            vehicleNumber: "",
+                            departure: "",
+                            destination: "",
+                            startDate: new Date().toISOString().split("T")[0],
+                          });
+                          resetOutsideForm();
+                        }}
+                        className="px-4 py-2 rounded-lg font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      >
+                        Xóa
+                      </button>
+                      <button
+                        onClick={handleCreateOutsideTrip}
+                        className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                      >
+                        ➕ Tạo & Lưu
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {tripsWithOutside.length === 0 ? (
+                  <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-6 text-center">
+                    <p className="text-orange-700 font-bold text-lg mb-2">
+                      🚗 Chưa có chi phí ngoài
+                    </p>
+                    <p className="text-orange-600 text-sm">
+                      Nhập chi phí ngoài bằng form bên trên.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {tripsWithOutside.map((trip) =>
+                      Object.entries(trip.outsideTrips || {}).map(
+                        ([expenseId, expense]) => (
+                          <div
+                            key={`${trip.id}-${expenseId}`}
+                            className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-4 border border-orange-200 shadow-sm hover:shadow-md transition-all"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-orange-600 font-bold">
+                                    🚗 {trip.vehicleNumber}
+                                  </span>
+                                  <span className="text-gray-600 font-semibold">
+                                    | {trip.driverName}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                  <div>
+                                    <span className="text-orange-600 font-semibold text-xs">
+                                      ⏰ Thời gian
+                                    </span>
+                                    <p className="text-gray-800 font-bold">
+                                      {expense.startTime || "-"} ~{" "}
+                                      {expense.endTime || "-"}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <span className="text-orange-600 font-semibold text-xs">
+                                      📍 Nơi đến
+                                    </span>
+                                    <p className="text-gray-800 font-bold">
+                                      {expense.destination || "-"}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <span className="text-orange-600 font-semibold text-xs">
+                                      📏 KM
+                                    </span>
+                                    <p className="text-gray-800 font-bold">
+                                      {expense.odoFrom} → {expense.odoTo} ={" "}
+                                      {expense.totalKm ?? "-"} km
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <span className="text-orange-600 font-semibold text-xs">
+                                      💳 Phí
+                                    </span>
+                                    <p className="text-gray-800 font-bold">
+                                      {expense.fee || "-"} đ
+                                    </p>
+                                  </div>
+                                </div>
+                                {expense.purpose && (
+                                  <div>
+                                    <span className="text-orange-600 font-semibold text-xs">
+                                      📝 Ghi chú
+                                    </span>
+                                    <p className="text-gray-800 text-sm">
+                                      {expense.purpose}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ),
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {/* Details Modal */}
         {showDetailsModal && detailsTrip && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
@@ -2700,6 +3500,22 @@ function DriverLogbook() {
                   ✕
                 </button>
               </div>
+
+              {!user ||
+                (!isAdminOrHR && (
+                  <div className="bg-amber-50 border-l-4 border-amber-500 rounded-lg p-4 mb-4 flex items-start gap-3">
+                    <div className="text-xl mt-0.5">⚠️</div>
+                    <div>
+                      <h4 className="font-bold text-amber-900 mb-1">
+                        Quyền xem chỉ
+                      </h4>
+                      <p className="text-sm text-amber-800">
+                        Bạn không có quyền chỉnh sửa. Chỉ quản trị viên và HR
+                        mới có thể lưu thay đổi.
+                      </p>
+                    </div>
+                  </div>
+                ))}
 
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                 {/* Thông tin chuyến đi */}
@@ -2770,6 +3586,7 @@ function DriverLogbook() {
                       <div className="grid grid-cols-2 gap-2">
                         <input
                           type="time"
+                          disabled={!user || !isAdminOrHR}
                           value={detailsForm.startTime}
                           onChange={(e) =>
                             setDetailsForm((p) => ({
@@ -2777,10 +3594,11 @@ function DriverLogbook() {
                               startTime: e.target.value,
                             }))
                           }
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
                         <input
                           type="time"
+                          disabled={!user || !isAdminOrHR}
                           value={detailsForm.endTime}
                           onChange={(e) =>
                             setDetailsForm((p) => ({
@@ -2788,7 +3606,7 @@ function DriverLogbook() {
                               endTime: e.target.value,
                             }))
                           }
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -2800,6 +3618,7 @@ function DriverLogbook() {
                       </label>
                       <input
                         type="text"
+                        disabled={!user || !isAdminOrHR}
                         value={detailsForm.destination}
                         onChange={(e) =>
                           setDetailsForm((p) => ({
@@ -2808,7 +3627,7 @@ function DriverLogbook() {
                           }))
                         }
                         placeholder="VD: Kho A, Công trình B..."
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
 
@@ -2821,6 +3640,7 @@ function DriverLogbook() {
                         <input
                           type="number"
                           inputMode="decimal"
+                          disabled={!user || !isAdminOrHR}
                           value={detailsForm.odoFrom}
                           onChange={(e) =>
                             setDetailsForm((p) => ({
@@ -2829,11 +3649,12 @@ function DriverLogbook() {
                             }))
                           }
                           placeholder="Odo từ"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
                         <input
                           type="number"
                           inputMode="decimal"
+                          disabled={!user || !isAdminOrHR}
                           value={detailsForm.odoTo}
                           onChange={(e) =>
                             setDetailsForm((p) => ({
@@ -2842,7 +3663,7 @@ function DriverLogbook() {
                             }))
                           }
                           placeholder="Odo đến"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -2872,6 +3693,7 @@ function DriverLogbook() {
                       <input
                         type="number"
                         inputMode="numeric"
+                        disabled={!user || !isAdminOrHR}
                         value={detailsForm.tollFee}
                         onChange={(e) =>
                           setDetailsForm((p) => ({
@@ -2880,7 +3702,7 @@ function DriverLogbook() {
                           }))
                         }
                         placeholder="VD: 500000"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
 
@@ -2892,6 +3714,7 @@ function DriverLogbook() {
                       <input
                         type="number"
                         inputMode="numeric"
+                        disabled={!user || !isAdminOrHR}
                         value={detailsForm.mealFee}
                         onChange={(e) =>
                           setDetailsForm((p) => ({
@@ -2900,7 +3723,7 @@ function DriverLogbook() {
                           }))
                         }
                         placeholder="VD: 150000"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
 
@@ -2913,6 +3736,7 @@ function DriverLogbook() {
                         type="number"
                         inputMode="decimal"
                         step="0.5"
+                        disabled={!user || !isAdminOrHR}
                         value={detailsForm.overtimeHours}
                         onChange={(e) =>
                           setDetailsForm((p) => ({
@@ -2921,7 +3745,7 @@ function DriverLogbook() {
                           }))
                         }
                         placeholder="VD: 2"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
 
@@ -2931,6 +3755,7 @@ function DriverLogbook() {
                         Ghi chú
                       </label>
                       <textarea
+                        disabled={!user || !isAdminOrHR}
                         value={detailsForm.notes}
                         onChange={(e) =>
                           setDetailsForm((p) => ({
@@ -2939,7 +3764,7 @@ function DriverLogbook() {
                           }))
                         }
                         rows={3}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm resize-y"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm resize-y disabled:bg-gray-100 disabled:cursor-not-allowed"
                         placeholder="Ghi chú thêm..."
                       />
                     </div>
@@ -2947,227 +3772,352 @@ function DriverLogbook() {
                 </div>
               </div>
 
-              <div className="sticky bottom-0 bg-gray-50 px-4 py-3 sm:px-6 sm:py-4 flex gap-3 justify-end sm:rounded-b-xl border-t pb-[env(safe-area-inset-bottom)]">
-                <button
-                  onClick={() => {
-                    setShowDetailsModal(false);
-                    setDetailsTrip(null);
-                    setTempDetails("");
-                  }}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
-                >
-                  ❌ Hủy
-                </button>
-                <button
-                  onClick={handleSaveDetails}
-                  className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700"
-                >
-                  💾 Lưu Chi Tiết
-                </button>
-              </div>
+              {user && isAdminOrHR && (
+                <div className="sticky bottom-0 bg-gray-50 px-4 py-3 sm:px-6 sm:py-4 flex gap-3 justify-end sm:rounded-b-xl border-t pb-[env(safe-area-inset-bottom)]">
+                  <button
+                    onClick={() => {
+                      setShowDetailsModal(false);
+                      setDetailsTrip(null);
+                      setTempDetails("");
+                    }}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                  >
+                    ❌ Hủy
+                  </button>
+                  <button
+                    onClick={handleSaveDetails}
+                    className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    💾 Lưu Chi Tiết
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
-        {/* Outside Modal */}
-        {showOutsideModal && outsideTrip && (
+        {/* Mobile Detail Modal */}
+        {showMobileDetailModal && mobileDetailTrip && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
             <div className="bg-white sm:rounded-xl border shadow-md w-full h-full sm:max-w-2xl sm:max-h-[90vh] flex flex-col overflow-hidden">
-              <div className="sticky top-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between sm:rounded-t-xl">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <span>💰</span>
-                  <span className="uppercase">Bảng chạy ngoài</span>
+              {/* Header */}
+              <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between sm:rounded-t-xl shadow-lg">
+                <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+                  <span>📋</span>
+                  <span>Chi Tiết Chuyến Đi</span>
                 </h2>
                 <button
                   onClick={() => {
-                    setShowOutsideModal(false);
-                    setOutsideTrip(null);
-                    setOutsideForm({
-                      startTime: "",
-                      endTime: "",
-                      destination: "",
-                      odoFrom: "",
-                      odoTo: "",
-                      fee: "",
-                      purpose: "",
-                    });
+                    setShowMobileDetailModal(false);
+                    setMobileDetailTrip(null);
                   }}
-                  className="text-gray-600 hover:bg-gray-100 rounded-full w-9 h-9 flex items-center justify-center"
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full w-9 h-9 flex items-center justify-center transition-all"
                 >
                   ✕
                 </button>
               </div>
 
+              {/* Content */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                {/* Thông tin chuyến đi */}
-                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-5 rounded-xl border border-orange-300 shadow-sm">
-                  <h3 className="font-bold text-orange-900 mb-4 text-base flex items-center gap-2">
-                    <span>📋</span>
-                    <span>Thông tin chuyến đi</span>
-                  </h3>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="flex flex-col">
-                      <span className="text-orange-600 font-semibold text-xs uppercase tracking-wide mb-1">
-                        Tài xế
-                      </span>
-                      <span className="text-gray-800 font-bold text-lg">
-                        {outsideTrip.driverName}
-                      </span>
+                {!user ||
+                  (!isAdminOrHR && (
+                    <div className="bg-amber-50 border-l-4 border-amber-500 rounded-lg p-4 mb-4 flex items-start gap-3">
+                      <div className="text-xl mt-0.5">⚠️</div>
+                      <div>
+                        <h4 className="font-bold text-amber-900 mb-1">
+                          Quyền xem chỉ
+                        </h4>
+                        <p className="text-sm text-amber-800">
+                          Bạn không có quyền chỉnh sửa. Chỉ quản trị viên và HR
+                          mới có thể lưu thay đổi.
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-orange-600 font-semibold text-xs uppercase tracking-wide mb-1">
+                  ))}
+
+                {/* Thông tin cơ bản */}
+                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 rounded-xl border border-indigo-200 shadow-sm">
+                  <h3 className="font-bold text-indigo-900 mb-3 text-base flex items-center gap-2">
+                    <span>🚗</span>
+                    <span>Thông Tin Cơ Bản</span>
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-indigo-600 font-semibold text-xs uppercase">
                         Biển số xe
                       </span>
                       <span className="text-gray-800 font-bold text-lg">
-                        {outsideTrip.vehicleNumber}
+                        {mobileDetailTrip.vehicleNumber || "N/A"}
                       </span>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-orange-600 font-semibold text-xs uppercase tracking-wide mb-1">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-indigo-600 font-semibold text-xs uppercase">
+                        Loại xe
+                      </span>
+                      <span className="text-gray-800 font-semibold">
+                        {mobileDetailTrip.vehicleType || "-"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-indigo-600 font-semibold text-xs uppercase">
+                        Tên tài xế
+                      </span>
+                      <span className="text-gray-800 font-bold text-lg">
+                        {mobileDetailTrip.driverName || "-"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-indigo-600 font-semibold text-xs uppercase">
                         Số điện thoại
                       </span>
-                      <span className="text-gray-800 font-bold text-lg">
-                        {outsideTrip.phone || "N/A"}
-                      </span>
+                      <a
+                        href={`tel:${mobileDetailTrip.phone}`}
+                        className="text-blue-600 font-semibold text-lg hover:underline"
+                      >
+                        {mobileDetailTrip.phone || "-"}
+                      </a>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-orange-600 font-semibold text-xs uppercase tracking-wide mb-1">
+                  </div>
+                </div>
+
+                {/* Thông tin tuyến đường */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200 shadow-sm">
+                  <h3 className="font-bold text-green-900 mb-3 text-base flex items-center gap-2">
+                    <span>🗺️</span>
+                    <span>Thông Tin Tuyến Đường</span>
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-green-600 font-semibold text-xs uppercase">
                         Điểm đi
                       </span>
-                      <span className="text-gray-800 font-bold text-lg">
-                        {outsideTrip.departure || "N/A"}
+                      <span className="text-gray-800 font-semibold text-base">
+                        📍 {mobileDetailTrip.departure || "-"}
                       </span>
                     </div>
-                    <div className="col-span-2 flex flex-col">
-                      <span className="text-orange-600 font-semibold text-xs uppercase tracking-wide mb-1">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-green-600 font-semibold text-xs uppercase">
                         Điểm đến
                       </span>
-                      <span className="text-gray-800 font-bold text-lg">
-                        {outsideTrip.destination}
+                      <span className="text-gray-800 font-semibold text-base">
+                        🏁 {mobileDetailTrip.destination || "-"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-green-600 font-semibold text-xs uppercase">
+                        Bộ phận yêu cầu
+                      </span>
+                      <span className="text-gray-800 font-medium">
+                        {mobileDetailTrip.departmentRequest || "-"}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Form chi tiết chạy ngoài */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <span>📝</span>
-                    <h3 className="text-sm font-bold text-gray-800">
-                      Chi Tiết Chạy Ngoài
-                    </h3>
+                {/* Thông tin thời gian */}
+                <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-xl border border-amber-200 shadow-sm">
+                  <h3 className="font-bold text-amber-900 mb-3 text-base flex items-center gap-2">
+                    <span>⏰</span>
+                    <span>Thông Tin Thời Gian</span>
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-amber-600 font-semibold text-xs uppercase">
+                        Ngày đi
+                      </span>
+                      <span className="text-gray-800 font-bold text-base">
+                        {new Date(
+                          mobileDetailTrip.startDate,
+                        ).toLocaleDateString("vi-VN")}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-amber-600 font-semibold text-xs uppercase">
+                        Giờ đi
+                      </span>
+                      <span className="text-gray-800 font-bold text-base">
+                        {mobileDetailTrip.startTime || "-"}
+                      </span>
+                    </div>
+                    {mobileDetailTrip.endDate && (
+                      <>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-amber-600 font-semibold text-xs uppercase">
+                            Ngày về
+                          </span>
+                          <span className="text-gray-800 font-bold text-base">
+                            {new Date(
+                              mobileDetailTrip.endDate,
+                            ).toLocaleDateString("vi-VN")}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-amber-600 font-semibold text-xs uppercase">
+                            Giờ về
+                          </span>
+                          <span className="text-gray-800 font-bold text-base">
+                            {mobileDetailTrip.endTime || "-"}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Thời gian từ - đến */}
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                      <label className="text-xs font-bold text-gray-700 mb-2 block">
-                        Thời gian (từ - đến)
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
+                {/* Chi phí (nếu có) */}
+                {mobileDetailTrip.expenseDetails && (
+                  <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border border-red-200 shadow-sm">
+                    <h3 className="font-bold text-red-900 mb-3 text-base flex items-center gap-2">
+                      <span>💰</span>
+                      <span>Chi Phí</span>
+                    </h3>
+                    <div className="text-gray-800 whitespace-pre-wrap">
+                      {mobileDetailTrip.expenseDetails}
+                    </div>
+                  </div>
+                )}
+
+                {/* Ghi chú */}
+                {mobileDetailTrip.notes && (
+                  <div className="bg-gradient-to-r from-slate-50 to-gray-50 p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 className="font-bold text-slate-900 mb-3 text-base flex items-center gap-2">
+                      <span>📝</span>
+                      <span>Ghi Chú</span>
+                    </h3>
+                    <div className="text-gray-800 whitespace-pre-wrap">
+                      {mobileDetailTrip.notes}
+                    </div>
+                  </div>
+                )}
+
+                {/* Form chi tiết chi phí */}
+                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-xl border border-orange-200 shadow-sm">
+                  <h3 className="font-bold text-orange-900 mb-3 text-base flex items-center gap-2">
+                    <span>💰</span>
+                    <span>Chi Tiết Chi Phí & Số Odo</span>
+                  </h3>
+                  <div className="space-y-3">
+                    {/* Giờ đi - giờ về */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-orange-700">
+                          Giờ đi
+                        </label>
                         <input
                           type="time"
-                          value={outsideForm.startTime}
+                          disabled={!user || !isAdminOrHR}
+                          value={detailsForm.startTime}
                           onChange={(e) =>
-                            setOutsideForm((p) => ({
+                            setDetailsForm((p) => ({
                               ...p,
                               startTime: e.target.value,
                             }))
                           }
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                          className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                         />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-orange-700">
+                          Giờ về
+                        </label>
                         <input
                           type="time"
-                          value={outsideForm.endTime}
+                          disabled={!user || !isAdminOrHR}
+                          value={detailsForm.endTime}
                           onChange={(e) =>
-                            setOutsideForm((p) => ({
+                            setDetailsForm((p) => ({
                               ...p,
                               endTime: e.target.value,
                             }))
                           }
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                          className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                         />
                       </div>
                     </div>
-
                     {/* Nơi đến */}
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-bold text-orange-700">
                         Nơi đến
                       </label>
                       <input
                         type="text"
-                        value={outsideForm.destination}
+                        disabled={!user || !isAdminOrHR}
+                        value={detailsForm.destination}
                         onChange={(e) =>
-                          setOutsideForm((p) => ({
+                          setDetailsForm((p) => ({
                             ...p,
                             destination: e.target.value,
                           }))
                         }
-                        placeholder="VD: Kho A, Công trình B..."
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                        placeholder="VD: Kho hàng, Công trình A..."
+                        className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                       />
                     </div>
-
                     {/* Odo từ - đến */}
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                      <label className="text-xs font-bold text-gray-700 mb-2 block">
-                        Odo (từ - đến)
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-orange-700">
+                          Odo từ (km)
+                        </label>
                         <input
                           type="number"
                           inputMode="decimal"
-                          value={outsideForm.odoFrom}
+                          disabled={!user || !isAdminOrHR}
+                          value={detailsForm.odoFrom}
                           onChange={(e) =>
-                            setOutsideForm((p) => ({
+                            setDetailsForm((p) => ({
                               ...p,
                               odoFrom: e.target.value,
                             }))
                           }
-                          placeholder="Odo từ"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                          placeholder="VD: 1000"
+                          className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                         />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-orange-700">
+                          Odo đến (km)
+                        </label>
                         <input
                           type="number"
                           inputMode="decimal"
-                          value={outsideForm.odoTo}
+                          disabled={!user || !isAdminOrHR}
+                          value={detailsForm.odoTo}
                           onChange={(e) =>
-                            setOutsideForm((p) => ({
+                            setDetailsForm((p) => ({
                               ...p,
                               odoTo: e.target.value,
                             }))
                           }
-                          placeholder="Odo đến"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 outline-none text-sm"
+                          placeholder="VD: 1100"
+                          className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                         />
                       </div>
                     </div>
-
-                    {/* Số KM = odo đến - odo từ */}
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                    {/* Số KM tự tính */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-bold text-orange-700">
                         Số KM (tự tính)
                       </label>
                       <input
                         type="text"
                         readOnly
                         value={(() => {
-                          const a = parseFloat(outsideForm.odoFrom);
-                          const b = parseFloat(outsideForm.odoTo);
-                          return !isNaN(a) && !isNaN(b) ? b - a : "";
+                          const from = parseFloat(detailsForm.odoFrom);
+                          const to = parseFloat(detailsForm.odoTo);
+                          return !isNaN(from) && !isNaN(to) ? to - from : "";
                         })()}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-700 text-sm"
+                        className="w-full border border-orange-300 rounded-lg px-3 py-2 bg-orange-50 text-gray-800 font-bold text-sm"
+                        placeholder="Tự động tính"
                       />
                     </div>
-
-                    {/* Phí cầu đường */}
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-bold text-orange-700">
                         Phí cầu đường (đ)
                       </label>
                       <input
                         type="number"
                         inputMode="numeric"
+                        disabled={!user || !isAdminOrHR}
                         value={detailsForm.tollFee}
                         onChange={(e) =>
                           setDetailsForm((p) => ({
@@ -3175,19 +4125,18 @@ function DriverLogbook() {
                             tollFee: e.target.value,
                           }))
                         }
-                        placeholder="VD: 500000"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                        placeholder="VD: 50000"
+                        className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                       />
                     </div>
-
-                    {/* Tiền ăn */}
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-bold text-orange-700">
                         Tiền ăn (đ)
                       </label>
                       <input
                         type="number"
                         inputMode="numeric"
+                        disabled={!user || !isAdminOrHR}
                         value={detailsForm.mealFee}
                         onChange={(e) =>
                           setDetailsForm((p) => ({
@@ -3195,20 +4144,19 @@ function DriverLogbook() {
                             mealFee: e.target.value,
                           }))
                         }
-                        placeholder="VD: 150000"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                        placeholder="VD: 100000"
+                        className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                       />
                     </div>
-
-                    {/* Giờ tăng ca */}
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                      <label className="text-xs font-bold text-gray-700 mb-2 block">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-bold text-orange-700">
                         Giờ tăng ca
                       </label>
                       <input
                         type="number"
                         inputMode="decimal"
                         step="0.5"
+                        disabled={!user || !isAdminOrHR}
                         value={detailsForm.overtimeHours}
                         onChange={(e) =>
                           setDetailsForm((p) => ({
@@ -3217,78 +4165,109 @@ function DriverLogbook() {
                           }))
                         }
                         placeholder="VD: 2"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
-                      />
-                    </div>
-
-                    {/* Ghi chú */}
-                    <div className="md:col-span-2 bg-white rounded-lg p-4 border border-slate-200">
-                      <label className="text-xs font-bold text-gray-700 mb-2 block">
-                        Ghi chú
-                      </label>
-                      <textarea
-                        value={detailsForm.notes}
-                        onChange={(e) =>
-                          setDetailsForm((p) => ({
-                            ...p,
-                            notes: e.target.value,
-                          }))
-                        }
-                        rows={3}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm resize-y"
-                        placeholder="Ghi chú thêm..."
+                        className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
                 </div>
+
+                {/* Trạng thái */}
+                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200 shadow-sm">
+                  <h3 className="font-bold text-blue-900 mb-3 text-base flex items-center gap-2">
+                    <span>📌</span>
+                    <span>Trạng Thái</span>
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    {mobileDetailTrip.completed ? (
+                      <span className="px-4 py-2 rounded-lg text-sm font-bold bg-green-100 text-green-700 border-2 border-green-300 inline-flex items-center gap-2">
+                        <span>✓</span>
+                        <span>Đã hoàn tất</span>
+                      </span>
+                    ) : (
+                      <span className="px-4 py-2 rounded-lg text-sm font-bold bg-amber-100 text-amber-700 border-2 border-amber-300 inline-flex items-center gap-2">
+                        <span>⏳</span>
+                        <span>Đang chạy</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
+              {/* Footer */}
               <div className="sticky bottom-0 bg-gray-50 px-4 py-3 sm:px-6 sm:py-4 flex gap-3 justify-end sm:rounded-b-xl border-t pb-[env(safe-area-inset-bottom)]">
                 <button
                   onClick={() => {
-                    setShowOutsideModal(false);
-                    setOutsideTrip(null);
-                    setOutsideForm({
-                      startTime: "",
-                      endTime: "",
-                      destination: "",
-                      odoFrom: "",
-                      odoTo: "",
-                      fee: "",
-                      purpose: "",
-                    });
+                    setShowMobileDetailModal(false);
+                    setMobileDetailTrip(null);
                   }}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                  className="flex-1 sm:flex-none px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition-all"
                 >
                   ❌ Hủy
                 </button>
-                <button
-                  onClick={() => {
-                    if (outsideForm.fee || outsideForm.purpose) {
-                      setAlert({
-                        show: true,
-                        type: "success",
-                        message: `✅ Lưu thông tin chạy ngoài: ${
-                          outsideForm.fee ? outsideForm.fee + "đ" : ""
-                        } - ${outsideForm.purpose}`,
-                      });
-                    }
-                    setShowOutsideModal(false);
-                    setOutsideTrip(null);
-                    setOutsideForm({
-                      startTime: "",
-                      endTime: "",
-                      destination: "",
-                      odoFrom: "",
-                      odoTo: "",
-                      fee: "",
-                      purpose: "",
-                    });
-                  }}
-                  className="px-4 py-2 rounded-lg font-semibold bg-orange-600 text-white hover:bg-orange-700"
-                >
-                  💾 Lưu Chạy Ngoài
-                </button>
+                {user && isAdminOrHR && (
+                  <button
+                    onClick={() => {
+                      setDetailsTrip(mobileDetailTrip);
+                      // Gọi hàm lưu sau khi set detailsTrip
+                      setTimeout(async () => {
+                        if (!mobileDetailTrip) return;
+                        try {
+                          const tripRef = ref(
+                            db,
+                            `driverTrips/${mobileDetailTrip.id}`,
+                          );
+
+                          const parseNum = (v) => {
+                            const n = parseFloat(v);
+                            return Number.isFinite(n) ? n : null;
+                          };
+
+                          const odoFromNum = parseNum(detailsForm.odoFrom);
+                          const odoToNum = parseNum(detailsForm.odoTo);
+                          const totalKmNum =
+                            odoFromNum != null && odoToNum != null
+                              ? odoToNum - odoFromNum
+                              : null;
+
+                          const detailsPayload = {
+                            startTime: detailsForm.startTime || null,
+                            endTime: detailsForm.endTime || null,
+                            destination:
+                              detailsForm.destination?.trim() || null,
+                            odoFrom: odoFromNum,
+                            odoTo: odoToNum,
+                            totalKm: totalKmNum,
+                            tollFee: parseNum(detailsForm.tollFee),
+                            mealFee: parseNum(detailsForm.mealFee),
+                            overtimeHours: parseNum(detailsForm.overtimeHours),
+                            notes: detailsForm.notes?.trim() || null,
+                          };
+
+                          await update(tripRef, {
+                            details: detailsPayload,
+                          });
+
+                          setAlert({
+                            show: true,
+                            type: "success",
+                            message: "✅ Lưu chi tiết chuyến đi thành công",
+                          });
+                          setShowMobileDetailModal(false);
+                          setMobileDetailTrip(null);
+                        } catch (error) {
+                          setAlert({
+                            show: true,
+                            type: "error",
+                            message: `❌ Lỗi: ${error.message}`,
+                          });
+                        }
+                      }, 0);
+                    }}
+                    className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 font-semibold shadow-md transition-all"
+                  >
+                    💾 Lưu Chi Tiết
+                  </button>
+                )}
               </div>
             </div>
           </div>
