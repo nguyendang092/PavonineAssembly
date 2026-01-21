@@ -455,8 +455,10 @@ export default function Navbar({ user, setUser }) {
                     ? user.name[0].toUpperCase()
                     : user.email[0].toUpperCase()}
                 </span>
-                <span>{user.name || user.email}</span>
-                <span>▼</span>
+                <span className="user-name-text">
+                  {user.name || user.email}
+                </span>
+                <span className="user-dropdown-arrow">▼</span>
               </button>
               {userDropdownOpen && (
                 <div className="user-dropdown-menu">

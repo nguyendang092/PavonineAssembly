@@ -3214,10 +3214,6 @@ function DriverLogbook() {
                           value={outsideTripForm.vehicleNumber}
                           onChange={(e) => {
                             const selectedVehicle = e.target.value;
-                            setOutsideTripForm((p) => ({
-                              ...p,
-                              vehicleNumber: selectedVehicle,
-                            }));
 
                             // Tự động điền thông tin tài xế khi chọn xe
                             if (selectedVehicle) {
@@ -3230,6 +3226,7 @@ function DriverLogbook() {
                               if (tripWithVehicle) {
                                 setOutsideTripForm((p) => ({
                                   ...p,
+                                  vehicleNumber: selectedVehicle,
                                   driverName:
                                     tripWithVehicle.driverName || p.driverName,
                                   phone: tripWithVehicle.phone || p.phone,
@@ -3244,13 +3241,26 @@ function DriverLogbook() {
                                 if (driverWithVehicle) {
                                   setOutsideTripForm((p) => ({
                                     ...p,
+                                    vehicleNumber: selectedVehicle,
                                     driverName:
                                       driverWithVehicle.name || p.driverName,
                                     phone: driverWithVehicle.phone || p.phone,
-                                    departure: p.departure, // không có departure trong driver
+                                    departure: p.departure,
+                                  }));
+                                } else {
+                                  // Không tìm thấy thông tin tài xế, chỉ set xe
+                                  setOutsideTripForm((p) => ({
+                                    ...p,
+                                    vehicleNumber: selectedVehicle,
                                   }));
                                 }
                               }
+                            } else {
+                              // Nếu bỏ chọn xe (chọn "-- Chọn xe --")
+                              setOutsideTripForm((p) => ({
+                                ...p,
+                                vehicleNumber: "",
+                              }));
                             }
                           }}
                           className="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none bg-white transition-all"

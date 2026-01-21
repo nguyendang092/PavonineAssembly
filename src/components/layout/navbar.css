@@ -698,6 +698,27 @@ body {
         display: none;
     }
 
+    /* Ẩn tên user và mũi tên dropdown trên mobile */
+    .user-dropdown-btn .user-name-text {
+        display: none;
+    }
+
+    .user-dropdown-btn .user-dropdown-arrow {
+        display: none;
+    }
+
+    .user-dropdown-btn {
+        padding: 6px;
+        min-width: 40px;
+        justify-content: center;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+
     .lang-selector {
         padding: 5px 8px;
     }
