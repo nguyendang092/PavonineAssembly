@@ -3206,7 +3206,7 @@ function DriverLogbook() {
                         />
                       </div>
                       {/* Thông tin chuyến đi */}
-                      <div className="space-y-2">
+                      <div className="space-y-2 relative z-20">
                         <label className="text-xs font-bold text-orange-700 uppercase tracking-wide">
                           Biển số xe
                         </label>

@@ -11,6 +11,19 @@ build/
 # Firebase admin SDK key (bí mật)
 pavoassembly-firebase-adminsdk-fbsvc-b1bb591592.json
 
+# Android keystore và signing config (QUAN TRỌNG - KHÔNG COMMIT!)
+*.jks
+*.keystore
+android/key.properties
+android/app/release/
+android/app/debug/
+
+# iOS certificates và provisioning profiles
+ios/App/GoogleService-Info.plist
+*.mobileprovision
+*.p12
+*.certSigningRequest
+
 # BFG report và file jar công cụ
 ..bfg-report/
 bfg-1.14.0.jar
