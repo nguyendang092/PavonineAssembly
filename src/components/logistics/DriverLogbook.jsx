@@ -455,16 +455,34 @@ function DriverLogbook() {
     };
   }, [user?.name, trips]);
 
-  // Tự động điền thông tin xe vào form khi có userVehicleInfo
+  // Tự động điền thông tin xe vào form khi mở view expenses (chỉ chạy 1 lần)
+  const hasAutoFilledRef = React.useRef(false);
+
   useEffect(() => {
-    if (userVehicleInfo && currentView === "expenses") {
-      setOutsideTripForm((prev) => ({
-        ...prev,
-        vehicleNumber: userVehicleInfo.vehicleNumber || prev.vehicleNumber,
-        driverName: userVehicleInfo.driverName || user?.name || prev.driverName,
-        phone: userVehicleInfo.phone || prev.phone,
-        departure: userVehicleInfo.departure || prev.departure,
-      }));
+    if (
+      currentView === "expenses" &&
+      userVehicleInfo &&
+      !hasAutoFilledRef.current
+    ) {
+      setOutsideTripForm((prev) => {
+        // Chỉ auto-fill nếu form đang trống
+        if (!prev.vehicleNumber && !prev.driverName) {
+          hasAutoFilledRef.current = true;
+          return {
+            ...prev,
+            vehicleNumber: userVehicleInfo.vehicleNumber || "",
+            driverName: userVehicleInfo.driverName || user?.name || "",
+            phone: userVehicleInfo.phone || "",
+            departure: userVehicleInfo.departure || "",
+          };
+        }
+        return prev;
+      });
+    }
+
+    // Reset flag khi rời khỏi view expenses
+    if (currentView !== "expenses") {
+      hasAutoFilledRef.current = false;
     }
   }, [userVehicleInfo, currentView, user?.name]);
 
