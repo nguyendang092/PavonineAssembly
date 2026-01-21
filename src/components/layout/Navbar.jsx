@@ -54,6 +54,7 @@ export default function Navbar({ user, setUser }) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [langPopupOpen, setLangPopupOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileDropdowns, setMobileDropdowns] = useState({});
 
   const handleChangeLanguage = (lang) => {
     setLanguage(lang);
@@ -82,6 +83,14 @@ export default function Navbar({ user, setUser }) {
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
+    setMobileDropdowns({});
+  };
+
+  const toggleMobileDropdown = (key) => {
+    setMobileDropdowns((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
   // Đóng dropdown user khi click ngoài
@@ -150,53 +159,125 @@ export default function Navbar({ user, setUser }) {
           <ul>
             {menuConfig.map((item) => {
               if (item.type === "dropdown") {
-                return item.children.map((child) => {
-                  if (child.type === "nested" && child.children) {
-                    return child.children.map((subChild) => {
-                      if (subChild.type === "nested" && subChild.children) {
-                        return subChild.children.map((deepChild) => (
-                          <li key={deepChild.key}>
+                return (
+                  <li key={item.key} className="mobile-dropdown">
+                    <button
+                      className="mobile-dropdown-toggle"
+                      onClick={() => toggleMobileDropdown(item.key)}
+                    >
+                      <span>{t(item.label)}</span>
+                      <span
+                        className={`mobile-arrow ${mobileDropdowns[item.key] ? "open" : ""}`}
+                      >
+                        ▼
+                      </span>
+                    </button>
+                    <ul
+                      className={`mobile-dropdown-content ${mobileDropdowns[item.key] ? "open" : ""}`}
+                    >
+                      {item.children.map((child) => {
+                        if (child.type === "nested" && child.children) {
+                          return (
+                            <li
+                              key={child.key}
+                              className="mobile-nested-dropdown"
+                            >
+                              <button
+                                className="mobile-dropdown-toggle nested"
+                                onClick={() => toggleMobileDropdown(child.key)}
+                              >
+                                <span>{t(child.label)}</span>
+                                <span
+                                  className={`mobile-arrow ${mobileDropdowns[child.key] ? "open" : ""}`}
+                                >
+                                  ▼
+                                </span>
+                              </button>
+                              <ul
+                                className={`mobile-dropdown-content ${mobileDropdowns[child.key] ? "open" : ""}`}
+                              >
+                                {child.children.map((subChild) => {
+                                  if (
+                                    subChild.type === "nested" &&
+                                    subChild.children
+                                  ) {
+                                    return (
+                                      <li
+                                        key={subChild.key}
+                                        className="mobile-nested-dropdown"
+                                      >
+                                        <button
+                                          className="mobile-dropdown-toggle nested"
+                                          onClick={() =>
+                                            toggleMobileDropdown(subChild.key)
+                                          }
+                                        >
+                                          <span>{t(subChild.label)}</span>
+                                          <span
+                                            className={`mobile-arrow ${mobileDropdowns[subChild.key] ? "open" : ""}`}
+                                          >
+                                            ▼
+                                          </span>
+                                        </button>
+                                        <ul
+                                          className={`mobile-dropdown-content ${mobileDropdowns[subChild.key] ? "open" : ""}`}
+                                        >
+                                          {subChild.children.map(
+                                            (deepChild) => (
+                                              <li key={deepChild.key}>
+                                                <Link
+                                                  to={deepChild.path}
+                                                  onClick={() => {
+                                                    setActiveLeaderKey(
+                                                      deepChild.key,
+                                                    );
+                                                    closeMobileMenu();
+                                                  }}
+                                                >
+                                                  {t(deepChild.label)}
+                                                </Link>
+                                              </li>
+                                            ),
+                                          )}
+                                        </ul>
+                                      </li>
+                                    );
+                                  }
+                                  return (
+                                    <li key={subChild.key}>
+                                      <Link
+                                        to={subChild.path}
+                                        onClick={() => {
+                                          setActiveLeaderKey(subChild.key);
+                                          closeMobileMenu();
+                                        }}
+                                      >
+                                        {t(subChild.label)}
+                                      </Link>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </li>
+                          );
+                        }
+                        return (
+                          <li key={child.key}>
                             <Link
-                              to={deepChild.path}
+                              to={child.path}
                               onClick={() => {
-                                setActiveLeaderKey(deepChild.key);
+                                setActiveLeaderKey(child.key);
                                 closeMobileMenu();
                               }}
                             >
-                              {t(deepChild.label)}
+                              {t(child.label)}
                             </Link>
                           </li>
-                        ));
-                      }
-                      return (
-                        <li key={subChild.key}>
-                          <Link
-                            to={subChild.path}
-                            onClick={() => {
-                              setActiveLeaderKey(subChild.key);
-                              closeMobileMenu();
-                            }}
-                          >
-                            {t(subChild.label)}
-                          </Link>
-                        </li>
-                      );
-                    });
-                  }
-                  return (
-                    <li key={child.key}>
-                      <Link
-                        to={child.path}
-                        onClick={() => {
-                          setActiveLeaderKey(child.key);
-                          closeMobileMenu();
-                        }}
-                      >
-                        {t(child.label)}
-                      </Link>
-                    </li>
-                  );
-                });
+                        );
+                      })}
+                    </ul>
+                  </li>
+                );
               }
               return (
                 <li key={item.key}>
@@ -294,7 +375,7 @@ export default function Navbar({ user, setUser }) {
                                                 to={deepSub.path}
                                                 onClick={() => {
                                                   setActiveLeaderKey(
-                                                    deepSub.key
+                                                    deepSub.key,
                                                   );
                                                   setIsOpen(false);
                                                 }}

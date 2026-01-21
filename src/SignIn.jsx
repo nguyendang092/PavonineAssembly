@@ -46,8 +46,11 @@ export default function SignIn({ onSignIn, onClose }) {
   // Hide hamburger menu when SignIn is open
   useEffect(() => {
     document.body.classList.add("signin-open");
+    // Prevent body scroll on mobile
+    document.documentElement.style.overflow = "hidden";
     return () => {
       document.body.classList.remove("signin-open");
+      document.documentElement.style.overflow = "auto";
     };
   }, []);
 
@@ -94,7 +97,7 @@ export default function SignIn({ onSignIn, onClose }) {
       const userCredential = await signInWithEmailAndPassword(
         auth,
         signInEmail,
-        signInPassword
+        signInPassword,
       );
       const user = userCredential.user;
       const name = user.displayName || user.email;
@@ -103,7 +106,7 @@ export default function SignIn({ onSignIn, onClose }) {
       const expire = Date.now() + 300000;
       localStorage.setItem(
         "userLogin",
-        JSON.stringify({ email: user.email, name, expire })
+        JSON.stringify({ email: user.email, name, expire }),
       );
       setTimeout(() => {
         localStorage.removeItem("userLogin");
@@ -132,13 +135,13 @@ export default function SignIn({ onSignIn, onClose }) {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         signUpEmail,
-        signUpPassword
+        signUpPassword,
       );
       await updateProfile(userCredential.user, { displayName: signUpName });
       await logUserAction(
         userCredential.user.email,
         "signup",
-        t("signIn.signupSuccess")
+        t("signIn.signupSuccess"),
       );
       if (onSignIn)
         onSignIn({ email: userCredential.user.email, name: signUpName });

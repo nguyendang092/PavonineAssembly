@@ -5,7 +5,14 @@ import { useUser } from "../../contexts/UserContext";
 import { db, ref, onValue, set, update, remove } from "../../services/firebase";
 import Sidebar from "../layout/Sidebar";
 
-// Helper functions for ScheduleBoard
+// ============ HELPER FUNCTIONS ============
+
+// ============ DATE/TIME UTILITIES ============
+const getTodayString = () => new Date().toISOString().split("T")[0];
+const getNowTime = () => new Date().toTimeString().slice(0, 5);
+const getCurrentDateTimeString = () => new Date().toISOString().slice(0, 16);
+const getCurrentISOString = () => new Date().toISOString();
+
 function formatTime(dateStr, timeStr) {
   if (!dateStr || !timeStr) return "-";
   try {
@@ -25,30 +32,44 @@ function getStatus(trip) {
   return "ONBOARD";
 }
 
+const STATUS_CONFIG = {
+  SCHEDULED: {
+    label: "Đã Lên Lịch",
+    color: "bg-blue-100 text-blue-700",
+    icon: "📅",
+  },
+  ONBOARD: {
+    label: "Đi công tác",
+    color: "bg-amber-100 text-amber-700",
+    icon: "🚗",
+  },
+  ARRIVED: {
+    label: "Đang ở công ty",
+    color: "bg-green-100 text-green-700",
+    icon: "✅",
+  },
+  DELAYED: { label: "Chậm", color: "bg-red-100 text-red-700", icon: "⚠️" },
+};
+
+// Parse float safely
+const parseNum = (v) => {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+// Format number with comma separator
+const formatNumberDisplay = (value) => {
+  if (!value || value === "") return "";
+  return Number(value).toLocaleString("vi-VN");
+};
+
+// Clean number input (remove comma and dot)
+const cleanNumberInput = (value) => value.replace(/,/g, "").replace(/\./g, "");
+
 function StatusBadge({ trip, mobile = false }) {
   const status = getStatus(trip);
-  const statusConfig = {
-    SCHEDULED: {
-      label: "Đã Lên Lịch",
-      color: "bg-blue-100 text-blue-700",
-      icon: "📅",
-    },
-    ONBOARD: {
-      label: "Đi công tác",
-      color: "bg-amber-100 text-amber-700",
-      icon: "🚗",
-    },
-    ARRIVED: {
-      label: "Đang ở công ty",
-      color: "bg-green-100 text-green-700",
-      icon: "✅",
-    },
-    DELAYED: { label: "Chậm", color: "bg-red-100 text-red-700", icon: "⚠️" },
-  };
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.SCHEDULED;
 
-  const config = statusConfig[status] || statusConfig.SCHEDULED;
-
-  // Mobile: chỉ hiển thị icon
   if (mobile) {
     return (
       <div className="text-xl" title={config.label}>
@@ -57,7 +78,6 @@ function StatusBadge({ trip, mobile = false }) {
     );
   }
 
-  // Desktop: hiển thị đầy đủ
   return (
     <div
       className={`px-3 py-1 rounded-full text-xs font-bold ${config.color} flex items-center justify-center gap-1 w-fit mx-auto`}
@@ -68,7 +88,6 @@ function StatusBadge({ trip, mobile = false }) {
   );
 }
 
-// Vehicle type options
 const VEHICLE_TYPES = [
   "Black Sedona",
   "White Sedona",
@@ -77,39 +96,14 @@ const VEHICLE_TYPES = [
   "Carnival HYB",
 ];
 
-function DriverLogbook() {
-  const { t } = useTranslation();
-  const { user } = useUser();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentView, setCurrentView] = useState("schedule"); // schedule, trips, drivers
-  const [trips, setTrips] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [detailsTrip, setDetailsTrip] = useState(null);
-  const [selectedOutsideTripId, setSelectedOutsideTripId] = useState("");
-  const [outsideForm, setOutsideForm] = useState({
-    startTime: "",
-    endTime: "",
-    destination: "",
-    odoFrom: "",
-    odoTo: "",
-    fee: "",
-    purpose: "",
-  });
-  const [outsideTripForm, setOutsideTripForm] = useState({
-    driverName: "",
-    phone: "",
-    vehicleNumber: "",
-    departure: "",
-    destination: "",
-    startDate: new Date().toISOString().split("T")[0],
-    startTime: new Date().toTimeString().slice(0, 5),
-    notes: "",
-  });
+// ============ FORM INITIAL STATES ============
+const getFormInitialStates = (user) => {
+  const TODAY = getTodayString();
+  const NOW_TIME = getNowTime();
+  const REQUEST_TIME = getCurrentDateTimeString();
 
-  const resetOutsideForm = React.useCallback(() => {
-    setOutsideForm({
+  return {
+    OUTSIDE_FORM: {
       startTime: "",
       endTime: "",
       destination: "",
@@ -117,68 +111,168 @@ function DriverLogbook() {
       odoTo: "",
       fee: "",
       purpose: "",
-    });
-  }, []);
-
-  const resetOutsideTripForm = React.useCallback(() => {
-    setOutsideTripForm({
+    },
+    DETAILS_FORM: {
+      startTime: "",
+      endTime: "",
+      destination: "",
+      odoFrom: "",
+      odoTo: "",
+      tollFee: "",
+      mealFee: "",
+      overtimeHours: "",
+      notes: "",
+    },
+    OUTSIDE_TRIP_FORM: {
       driverName: "",
       phone: "",
       vehicleNumber: "",
-      startDate: new Date().toISOString().split("T")[0],
-      startTime: new Date().toTimeString().slice(0, 5),
+      departure: "",
       destination: "",
+      startDate: TODAY,
+      startTime: NOW_TIME,
       notes: "",
-    });
-  }, []);
+    },
+    NEW_TRIP: {
+      driverName: user?.name || "",
+      phone: "",
+      vehicleNumber: "",
+      vehicleType: "",
+      departure: "",
+      destination: "",
+      startKm: "",
+      endKm: "",
+      totalKm: "",
+      startDate: TODAY,
+      startTime: NOW_TIME,
+      endDate: "",
+      endTime: "",
+      purpose: "",
+      notes: "",
+      expenseDetails: "",
+      completed: false,
+      requestTime: REQUEST_TIME,
+      departmentRequest: "",
+      status: "scheduled",
+    },
+    DRIVER_FORM: {
+      name: "",
+      phone: "",
+      vehicleNumber: "",
+      vehicleType: "",
+    },
+  };
+};
+
+// ============ VALIDATION & UTILITY FUNCTIONS ============
+const createDetailFormFromTrip = (trip) => {
+  const d = trip?.details || {};
+  return {
+    startTime: d.startTime || "",
+    endTime: d.endTime || "",
+    destination: d.destination || "",
+    odoFrom:
+      d.odoFrom != null && d.odoFrom !== undefined ? String(d.odoFrom) : "",
+    odoTo: d.odoTo != null && d.odoTo !== undefined ? String(d.odoTo) : "",
+    tollFee:
+      d.tollFee != null && d.tollFee !== undefined ? String(d.tollFee) : "",
+    mealFee:
+      d.mealFee != null && d.mealFee !== undefined ? String(d.mealFee) : "",
+    overtimeHours:
+      d.overtimeHours != null && d.overtimeHours !== undefined
+        ? String(d.overtimeHours)
+        : "",
+    notes: d.notes || "",
+  };
+};
+
+const calculateTotalKm = (odoFrom, odoTo) => {
+  const from = parseNum(odoFrom);
+  const to = parseNum(odoTo);
+  return from != null && to != null ? to - from : null;
+};
+
+const validateRequiredFields = (fields, fieldNames) => {
+  return fields.every((f) => f && (typeof f !== "string" || f.trim()));
+};
+
+const showAlert = (setAlert, type, message) => {
+  setAlert({ show: true, type, message });
+};
+
+// Form update utilities for cleaner onChange handlers
+const createFormUpdater = (setter) => (field, value) => {
+  setter((prev) => ({ ...prev, [field]: value }));
+};
+
+// Numeric input handler that formats display but stores raw value
+const createNumericInputHandler = (setter, field) => (value) => {
+  const cleaned = cleanNumberInput(value);
+  setter((prev) => ({ ...prev, [field]: cleaned }));
+};
+
+// Filter utilities
+const filterByTab = (trips, tab) => {
+  if (tab === "ongoing") return trips.filter((t) => !t.completed);
+  if (tab === "completed") return trips.filter((t) => t.completed);
+  return trips;
+};
+
+const countByStatus = (trips, status) => {
+  return trips.filter((t) =>
+    status === "completed"
+      ? t.completed
+      : status === "ongoing"
+        ? !t.completed
+        : true,
+  ).length;
+};
+
+// Firebase object to array conversion
+const objectToArray = (obj) => {
+  if (!obj || typeof obj !== "object") return [];
+  return Object.entries(obj).map(([id, item]) => ({ id, ...item }));
+};
+
+function DriverLogbook() {
+  const { t } = useTranslation();
+  const { user } = useUser();
+  const formInitials = getFormInitialStates(user);
+
+  // ============ STATE DECLARATIONS ============
+  // UI states
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentView, setCurrentView] = useState("schedule");
+  const [viewMode, setViewMode] = useState("list");
+  const [alert, setAlert] = useState({ show: false, type: "", message: "" });
+
+  // Trip data states
+  const [trips, setTrips] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [detailsTrip, setDetailsTrip] = useState(null);
   const [showMobileDetailModal, setShowMobileDetailModal] = useState(false);
   const [mobileDetailTrip, setMobileDetailTrip] = useState(null);
   const [tempDetails, setTempDetails] = useState("");
-  const [detailsForm, setDetailsForm] = useState({
-    startTime: "",
-    endTime: "",
-    destination: "",
-    odoFrom: "",
-    odoTo: "",
-    tollFee: "",
-    mealFee: "",
-    overtimeHours: "",
-    notes: "",
-  });
-  const [alert, setAlert] = useState({ show: false, type: "", message: "" });
-  const [filterTab, setFilterTab] = useState("all"); // all, ongoing, completed
-  // ScheduleBoard states
-  const [boardNow, setBoardNow] = useState(new Date());
-  const [sortBy, setSortBy] = useState("time"); // time, vehicle, driver, status
-  const [filterStatus, setFilterStatus] = useState("all"); // all, scheduled, onboard, arrived
-  const [selectedVehicle, setSelectedVehicle] = useState("");
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0],
+  const [selectedOutsideTripId, setSelectedOutsideTripId] = useState("");
+
+  // Form states
+  const [outsideForm, setOutsideForm] = useState(formInitials.OUTSIDE_FORM);
+  const [outsideTripForm, setOutsideTripForm] = useState(
+    formInitials.OUTSIDE_TRIP_FORM,
   );
-  const [newTrip, setNewTrip] = useState({
-    driverName: user?.name || "",
-    phone: "",
-    vehicleNumber: "",
-    vehicleType: "",
-    departure: "",
-    destination: "",
-    startKm: "",
-    endKm: "",
-    totalKm: "",
-    startDate: new Date().toISOString().split("T")[0],
-    startTime: new Date().toTimeString().slice(0, 5),
-    endDate: "",
-    endTime: "",
-    purpose: "",
-    notes: "",
-    expenseDetails: "",
-    completed: false,
-    requestTime: new Date().toISOString().slice(0, 16),
-    departmentRequest: "",
-    status: "scheduled",
-  });
-  // Board/List view toggle
-  const [viewMode, setViewMode] = useState("list");
+  const [detailsForm, setDetailsForm] = useState(formInitials.DETAILS_FORM);
+  const [newTrip, setNewTrip] = useState(formInitials.NEW_TRIP);
+  const [driverForm, setDriverForm] = useState(formInitials.DRIVER_FORM);
+
+  // Filter/Sort states
+  const [filterTab, setFilterTab] = useState("all");
+  const [boardNow, setBoardNow] = useState(new Date());
+  const [sortBy, setSortBy] = useState("time");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [selectedVehicle, setSelectedVehicle] = useState("");
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
 
   // Autocomplete states
   const [driverSuggestions, setDriverSuggestions] = useState([]);
@@ -188,12 +282,31 @@ function DriverLogbook() {
   // Driver management states
   const [showDriverModal, setShowDriverModal] = useState(false);
   const [editingDriverId, setEditingDriverId] = useState(null);
-  const [driverForm, setDriverForm] = useState({
-    name: "",
-    phone: "",
-    vehicleNumber: "",
-    vehicleType: "",
-  });
+
+  // ============ FORM RESET UTILITIES ============
+  const resetFormByName = React.useCallback(
+    (formName) => {
+      const resetFuncs = {
+        outsideForm: () => setOutsideForm(formInitials.OUTSIDE_FORM),
+        outsideTripForm: () =>
+          setOutsideTripForm(formInitials.OUTSIDE_TRIP_FORM),
+        detailsForm: () => setDetailsForm(formInitials.DETAILS_FORM),
+        newTrip: () => setNewTrip(formInitials.NEW_TRIP),
+        driverForm: () => setDriverForm(formInitials.DRIVER_FORM),
+      };
+      resetFuncs[formName]?.();
+    },
+    [formInitials],
+  );
+
+  const resetOutsideForm = React.useCallback(
+    () => resetFormByName("outsideForm"),
+    [resetFormByName],
+  );
+  const resetOutsideTripForm = React.useCallback(
+    () => resetFormByName("outsideTripForm"),
+    [resetFormByName],
+  );
 
   // Check if user is admin or HR
   const isAdminOrHR = React.useMemo(() => {
@@ -257,14 +370,10 @@ function DriverLogbook() {
     const tripsRef = ref(db, "driverTrips");
     const unsubscribe = onValue(tripsRef, (snapshot) => {
       const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, trip]) => ({ id, ...trip }));
-        setTrips(
-          arr.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)),
-        );
-      } else {
-        setTrips([]);
-      }
+      const arr = objectToArray(data);
+      setTrips(
+        arr.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)),
+      );
     });
     return () => unsubscribe();
   }, []);
@@ -796,15 +905,12 @@ function DriverLogbook() {
     try {
       const tripRef = ref(db, `driverTrips/${detailsTrip.id}`);
 
-      const parseNum = (v) => {
-        const n = parseFloat(v);
-        return Number.isFinite(n) ? n : null;
-      };
-
       const odoFromNum = parseNum(detailsForm.odoFrom);
       const odoToNum = parseNum(detailsForm.odoTo);
-      const totalKmNum =
-        odoFromNum != null && odoToNum != null ? odoToNum - odoFromNum : null;
+      const totalKmNum = calculateTotalKm(
+        detailsForm.odoFrom,
+        detailsForm.odoTo,
+      );
 
       const detailsPayload = {
         startTime: detailsForm.startTime || null,
@@ -824,66 +930,50 @@ function DriverLogbook() {
         details: detailsPayload,
       });
 
-      setAlert({
-        show: true,
-        type: "success",
-        message: "✅ Cập nhật chi tiết thành công",
-      });
+      showAlert(setAlert, "success", "✅ Cập nhật chi tiết thành công");
       setShowDetailsModal(false);
       setDetailsTrip(null);
       setTempDetails("");
     } catch (error) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: `❌ Lỗi: ${error.message}`,
-      });
+      showAlert(setAlert, "error", `❌ Lỗi: ${error.message}`);
     }
   };
 
   const handleSaveOutsideExpense = async () => {
     if (!isAdminOrHR) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: "Bạn không có quyền thêm chi phí ngoài",
-      });
+      showAlert(setAlert, "error", "Bạn không có quyền thêm chi phí ngoài");
       return;
     }
 
     const targetTrip = permissionFilteredTrips.find(
       (t) => t.id === selectedOutsideTripId,
     );
-
     if (!targetTrip) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: "❌ Vui lòng chọn chuyến đi để nhập chi phí ngoài",
-      });
+      showAlert(
+        setAlert,
+        "error",
+        "❌ Vui lòng chọn chuyến đi để nhập chi phí ngoài",
+      );
       return;
     }
 
     if (!outsideForm.destination) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: "❌ Vui lòng nhập nơi đến cho chi phí ngoài",
-      });
+      showAlert(
+        setAlert,
+        "error",
+        "❌ Vui lòng nhập nơi đến cho chi phí ngoài",
+      );
       return;
     }
 
-    const parseNum = (v) => {
-      const n = parseFloat(v);
-      return Number.isFinite(n) ? n : null;
-    };
-
-    const odoFromNum = parseNum(outsideForm.odoFrom);
-    const odoToNum = parseNum(outsideForm.odoTo);
-    const totalKmNum =
-      odoFromNum != null && odoToNum != null ? odoToNum - odoFromNum : null;
-
     try {
+      const odoFromNum = parseNum(outsideForm.odoFrom);
+      const odoToNum = parseNum(outsideForm.odoTo);
+      const totalKmNum = calculateTotalKm(
+        outsideForm.odoFrom,
+        outsideForm.odoTo,
+      );
+
       const expenseRef = ref(
         db,
         `driverTrips/${targetTrip.id}/outsideTrips/${Date.now()}`,
@@ -902,37 +992,30 @@ function DriverLogbook() {
         createdBy: user?.email || null,
       });
 
-      setAlert({
-        show: true,
-        type: "success",
-        message: "✅ Đã lưu chi phí ngoài",
-      });
+      showAlert(setAlert, "success", "✅ Đã lưu chi phí ngoài");
       resetOutsideForm();
     } catch (error) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: `❌ Lỗi lưu chi phí ngoài: ${error.message}`,
-      });
+      showAlert(
+        setAlert,
+        "error",
+        `❌ Lỗi lưu chi phí ngoài: ${error.message}`,
+      );
     }
   };
 
   const handleCreateOutsideTrip = async () => {
     if (!isAdminOrHR) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: "Bạn không có quyền thêm chuyến phát sinh",
-      });
+      showAlert(setAlert, "error", "Bạn không có quyền thêm chuyến phát sinh");
       return;
     }
 
-    if (!outsideTripForm.driverName || !outsideTripForm.vehicleNumber) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: "❌ Vui lòng nhập Tài xế và Biển số xe",
-      });
+    if (
+      !validateRequiredFields(
+        [outsideTripForm.driverName, outsideTripForm.vehicleNumber],
+        ["Tài xế", "Biển số xe"],
+      )
+    ) {
+      showAlert(setAlert, "error", "❌ Vui lòng nhập Tài xế và Biển số xe");
       return;
     }
 
@@ -967,65 +1050,27 @@ function DriverLogbook() {
 
       setSelectedOutsideTripId(newId);
       resetOutsideTripForm();
-      setAlert({
-        show: true,
-        type: "success",
-        message: "✅ Đã tạo chuyến phát sinh",
-      });
+      showAlert(setAlert, "success", "✅ Đã tạo chuyến phát sinh");
     } catch (error) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: `❌ Lỗi tạo chuyến phát sinh: ${error.message}`,
-      });
+      showAlert(
+        setAlert,
+        "error",
+        `❌ Lỗi tạo chuyến phát sinh: ${error.message}`,
+      );
     }
   };
 
   // Reset/prefill structured details form when opening details modal
   useEffect(() => {
     if (showDetailsModal && detailsTrip) {
-      const d = detailsTrip.details || {};
-      setDetailsForm({
-        startTime: d.startTime || "",
-        endTime: d.endTime || "",
-        destination: d.destination || "",
-        odoFrom:
-          d.odoFrom != null && d.odoFrom !== undefined ? String(d.odoFrom) : "",
-        odoTo: d.odoTo != null && d.odoTo !== undefined ? String(d.odoTo) : "",
-        tollFee:
-          d.tollFee != null && d.tollFee !== undefined ? String(d.tollFee) : "",
-        mealFee:
-          d.mealFee != null && d.mealFee !== undefined ? String(d.mealFee) : "",
-        overtimeHours:
-          d.overtimeHours != null && d.overtimeHours !== undefined
-            ? String(d.overtimeHours)
-            : "",
-        notes: d.notes || "",
-      });
+      setDetailsForm(createDetailFormFromTrip(detailsTrip));
     }
   }, [showDetailsModal, detailsTrip]);
 
   // Load details form data when opening mobile detail modal
   useEffect(() => {
     if (showMobileDetailModal && mobileDetailTrip) {
-      const d = mobileDetailTrip.details || {};
-      setDetailsForm({
-        startTime: d.startTime || "",
-        endTime: d.endTime || "",
-        destination: d.destination || "",
-        odoFrom:
-          d.odoFrom != null && d.odoFrom !== undefined ? String(d.odoFrom) : "",
-        odoTo: d.odoTo != null && d.odoTo !== undefined ? String(d.odoTo) : "",
-        tollFee:
-          d.tollFee != null && d.tollFee !== undefined ? String(d.tollFee) : "",
-        mealFee:
-          d.mealFee != null && d.mealFee !== undefined ? String(d.mealFee) : "",
-        overtimeHours:
-          d.overtimeHours != null && d.overtimeHours !== undefined
-            ? String(d.overtimeHours)
-            : "",
-        notes: d.notes || "",
-      });
+      setDetailsForm(createDetailFormFromTrip(mobileDetailTrip));
     }
   }, [showMobileDetailModal, mobileDetailTrip]);
 
@@ -1078,7 +1123,9 @@ function DriverLogbook() {
   }, [newTrip.startKm, newTrip.endKm]);
 
   // Lọc trips theo quyền truy cập trước
-  const permissionFilteredTrips = filterTripsByPermission(trips);
+  const permissionFilteredTrips = React.useMemo(() => {
+    return filterTripsByPermission(trips);
+  }, [trips, canViewRestrictedVehicle]);
 
   // Tự chọn chuyến đầu tiên khi vào màn Chi phí ngoài
   useEffect(() => {
@@ -1115,14 +1162,15 @@ function DriverLogbook() {
     );
   }, [permissionFilteredTrips, selectedOutsideTripId]);
 
-  const completedCount = permissionFilteredTrips.filter(
-    (t) => t.completed,
-  ).length;
-  const filteredTrips = permissionFilteredTrips.filter((trip) => {
-    if (filterTab === "ongoing") return !trip.completed;
-    if (filterTab === "completed") return trip.completed;
-    return true;
-  });
+  const completedCount = React.useMemo(
+    () => permissionFilteredTrips.filter((t) => t.completed).length,
+    [permissionFilteredTrips],
+  );
+
+  const filteredTrips = React.useMemo(
+    () => filterByTab(permissionFilteredTrips, filterTab),
+    [permissionFilteredTrips, filterTab],
+  );
 
   const tripsWithOutside = React.useMemo(() => {
     return permissionFilteredTrips.filter(
@@ -1765,36 +1813,6 @@ function DriverLogbook() {
                             >
                               📋 Xem Chi Tiết
                             </button>
-
-                            {/* Hành động (mobile) */}
-                            <div className="flex items-center gap-2 flex-wrap pt-1">
-                              <button
-                                onClick={() => {
-                                  if (!isAdminOrHR) {
-                                    setAlert({
-                                      show: true,
-                                      type: "error",
-                                      message:
-                                        "Bạn không có quyền nhập thông tin này",
-                                    });
-                                    return;
-                                  }
-                                  handleOpenDetailsModal(trip);
-                                }}
-                                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all shadow-sm ${
-                                  isAdminOrHR
-                                    ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                }`}
-                                title={
-                                  isAdminOrHR
-                                    ? "Chi tiết chi phí"
-                                    : "Chỉ Admin/HR"
-                                }
-                              >
-                                💵 Chi phí
-                              </button>
-                            </div>
                           </div>
 
                           {/* Right: Status & Checkbox */}
@@ -3127,32 +3145,33 @@ function DriverLogbook() {
 
               <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6">
                 {user && (
-                  <div className="bg-white rounded-xl border border-blue-200 shadow-sm p-4 sm:p-6 space-y-4">
-                    <div>
-                      <h3 className="text-blue-800 font-bold text-lg flex items-center gap-2 mb-4">
-                        <span>➕</span>
+                  <div className="bg-gradient-to-br from-white via-orange-50 to-amber-50 rounded-2xl border-2 border-orange-300 shadow-xl p-4 sm:p-6 space-y-4">
+                    <div className="bg-gradient-to-r from-orange-600 to-amber-500 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 rounded-t-2xl px-4 sm:px-6 py-4 mb-4">
+                      <h3 className="text-white font-bold text-lg sm:text-xl flex items-center gap-2">
+                        <span className="text-2xl">➕</span>
                         <span>Tạo Chuyến Đi Phát Sinh</span>
                       </h3>
-                      <p className="text-sm text-blue-600 mb-4">
+                      <p className="text-sm text-orange-100 mt-1">
                         Chọn xe để tự động điền thông tin tài xế
                       </p>
-                      {userVehicleInfo && (
-                        <div className="bg-green-50 border border-green-300 rounded-lg p-3 mb-4">
-                          <p className="text-xs text-green-700 flex items-center gap-2">
-                            <span>✓</span>
-                            <span>
-                              Gợi ý: Xe {userVehicleInfo.vehicleNumber} -{" "}
-                              {userVehicleInfo.driverName}
-                            </span>
-                          </p>
-                        </div>
-                      )}
                     </div>
+
+                    {userVehicleInfo && (
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-4 shadow-sm">
+                        <p className="text-sm text-green-800 font-semibold flex items-center gap-2">
+                          <span className="text-xl">✓</span>
+                          <span>
+                            Gợi ý: Xe {userVehicleInfo.vehicleNumber} -{" "}
+                            {userVehicleInfo.driverName}
+                          </span>
+                        </p>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Tên tài xế */}
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-blue-800">
+                        <label className="text-xs font-bold text-orange-700 uppercase tracking-wide">
                           Tên tài xế
                         </label>
                         <input
@@ -3165,12 +3184,12 @@ function DriverLogbook() {
                             }))
                           }
                           placeholder="VD: Nguyễn Văn A"
-                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                          className="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none bg-white transition-all"
                         />
                       </div>
                       {/* Số điện thoại */}
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-blue-800">
+                        <label className="text-xs font-bold text-orange-700 uppercase tracking-wide">
                           Số điện thoại
                         </label>
                         <input
@@ -3183,12 +3202,12 @@ function DriverLogbook() {
                             }))
                           }
                           placeholder="VD: 0912345678"
-                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                          className="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none bg-white transition-all"
                         />
                       </div>
                       {/* Thông tin chuyến đi */}
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-blue-800">
+                        <label className="text-xs font-bold text-orange-700 uppercase tracking-wide">
                           Biển số xe
                         </label>
                         <select
@@ -3234,7 +3253,7 @@ function DriverLogbook() {
                               }
                             }
                           }}
-                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none bg-white"
+                          className="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none bg-white transition-all"
                         >
                           <option value="">-- Chọn xe --</option>
                           {vehicleList.map((vehicle) => (
@@ -3245,7 +3264,7 @@ function DriverLogbook() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-blue-800">
+                        <label className="text-xs font-bold text-orange-700 uppercase tracking-wide">
                           Điểm đi
                         </label>
                         <input
@@ -3258,11 +3277,11 @@ function DriverLogbook() {
                             }))
                           }
                           placeholder="VD: Công ty"
-                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                          className="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none bg-white transition-all"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-blue-800">
+                        <label className="text-xs font-bold text-orange-700 uppercase tracking-wide">
                           Điểm đến
                         </label>
                         <input
@@ -3275,11 +3294,11 @@ function DriverLogbook() {
                             }))
                           }
                           placeholder="VD: Kho hàng A"
-                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                          className="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none bg-white transition-all"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-blue-800">
+                        <label className="text-xs font-bold text-orange-700 uppercase tracking-wide">
                           Ngày chạy
                         </label>
                         <input
@@ -3291,67 +3310,75 @@ function DriverLogbook() {
                               startDate: e.target.value,
                             }))
                           }
-                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                          className="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none bg-white transition-all"
                         />
                       </div>
 
-                      {/* Chi phí */}
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-blue-800">
-                          Odo từ (km)
-                        </label>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          value={outsideForm.odoFrom}
-                          onChange={(e) =>
-                            setOutsideForm((p) => ({
-                              ...p,
-                              odoFrom: e.target.value,
-                            }))
-                          }
-                          placeholder="VD: 1000"
-                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-blue-800">
-                          Odo đến (km)
-                        </label>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          value={outsideForm.odoTo}
-                          onChange={(e) =>
-                            setOutsideForm((p) => ({
-                              ...p,
-                              odoTo: e.target.value,
-                            }))
-                          }
-                          placeholder="VD: 1100"
-                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-blue-800">
-                          Phí chạy (đ)
-                        </label>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          value={outsideForm.fee}
-                          onChange={(e) =>
-                            setOutsideForm((p) => ({
-                              ...p,
-                              fee: e.target.value,
-                            }))
-                          }
-                          placeholder="VD: 200000"
-                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
-                        />
+                      {/* Chi phí - Phần nổi bật */}
+                      <div className="md:col-span-2 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border-2 border-amber-300 shadow-inner">
+                        <h4 className="text-amber-800 font-bold text-sm mb-3 flex items-center gap-2">
+                          <span className="text-lg">💰</span>
+                          <span>THÔNG TIN CHI PHÍ</span>
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-amber-700 uppercase tracking-wide">
+                              Odo từ (km)
+                            </label>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              value={outsideForm.odoFrom}
+                              onChange={(e) =>
+                                setOutsideForm((p) => ({
+                                  ...p,
+                                  odoFrom: e.target.value,
+                                }))
+                              }
+                              placeholder="VD: 1000"
+                              className="w-full border-2 border-amber-300 rounded-lg px-3 py-2 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none bg-white transition-all"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-amber-700 uppercase tracking-wide">
+                              Odo đến (km)
+                            </label>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              value={outsideForm.odoTo}
+                              onChange={(e) =>
+                                setOutsideForm((p) => ({
+                                  ...p,
+                                  odoTo: e.target.value,
+                                }))
+                              }
+                              placeholder="VD: 1100"
+                              className="w-full border-2 border-amber-300 rounded-lg px-3 py-2 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none bg-white transition-all"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-amber-700 uppercase tracking-wide">
+                              Phí chạy (đ)
+                            </label>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={outsideForm.fee}
+                              onChange={(e) =>
+                                setOutsideForm((p) => ({
+                                  ...p,
+                                  fee: e.target.value,
+                                }))
+                              }
+                              placeholder="VD: 200,000"
+                              className="w-full border-2 border-amber-300 rounded-lg px-3 py-2 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none bg-white transition-all"
+                            />
+                          </div>
+                        </div>
                       </div>
                       <div className="md:col-span-2 space-y-2">
-                        <label className="text-xs font-bold text-blue-800">
+                        <label className="text-xs font-bold text-orange-700 uppercase tracking-wide">
                           Ghi chú
                         </label>
                         <textarea
@@ -3362,14 +3389,14 @@ function DriverLogbook() {
                               purpose: e.target.value,
                             }))
                           }
-                          rows={2}
+                          rows={3}
                           placeholder="Ghi chú thêm (không bắt buộc)"
-                          className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none resize-none"
+                          className="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none resize-none bg-white transition-all"
                         />
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-3 pt-4 border-t-2 border-orange-200">
                       <button
                         onClick={() => {
                           setOutsideTripForm({
@@ -3380,13 +3407,13 @@ function DriverLogbook() {
                           });
                           resetOutsideForm();
                         }}
-                        className="px-4 py-2 rounded-lg font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        className="px-5 py-2.5 rounded-xl font-bold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 transition-all shadow-md hover:shadow-lg"
                       >
-                        Xóa
+                        🗑️ Xóa
                       </button>
                       <button
                         onClick={handleCreateOutsideTrip}
-                        className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                        className="px-6 py-2.5 rounded-xl font-bold bg-gradient-to-r from-orange-600 to-amber-500 text-white hover:from-orange-700 hover:to-amber-600 transition-all shadow-lg hover:shadow-xl"
                       >
                         ➕ Tạo & Lưu
                       </button>
@@ -3963,19 +3990,6 @@ function DriverLogbook() {
                   </div>
                 </div>
 
-                {/* Chi phí (nếu có) */}
-                {mobileDetailTrip.expenseDetails && (
-                  <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border border-red-200 shadow-sm">
-                    <h3 className="font-bold text-red-900 mb-3 text-base flex items-center gap-2">
-                      <span>💰</span>
-                      <span>Chi Phí</span>
-                    </h3>
-                    <div className="text-gray-800 whitespace-pre-wrap">
-                      {mobileDetailTrip.expenseDetails}
-                    </div>
-                  </div>
-                )}
-
                 {/* Ghi chú */}
                 {mobileDetailTrip.notes && (
                   <div className="bg-gradient-to-r from-slate-50 to-gray-50 p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -4059,17 +4073,23 @@ function DriverLogbook() {
                           Odo từ (km)
                         </label>
                         <input
-                          type="number"
+                          type="text"
                           inputMode="decimal"
                           disabled={!user || !isAdminOrHR}
-                          value={detailsForm.odoFrom}
-                          onChange={(e) =>
-                            setDetailsForm((p) => ({
-                              ...p,
-                              odoFrom: e.target.value,
-                            }))
+                          value={
+                            detailsForm.odoFrom && detailsForm.odoFrom !== ""
+                              ? Number(detailsForm.odoFrom).toLocaleString(
+                                  "vi-VN",
+                                )
+                              : ""
                           }
-                          placeholder="VD: 1000"
+                          onChange={(e) => {
+                            const value = e.target.value
+                              .replace(/,/g, "")
+                              .replace(/\./g, "");
+                            setDetailsForm((p) => ({ ...p, odoFrom: value }));
+                          }}
+                          placeholder="VD: 1,000"
                           className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                         />
                       </div>
@@ -4078,17 +4098,31 @@ function DriverLogbook() {
                           Odo đến (km)
                         </label>
                         <input
-                          type="number"
+                          type="text"
                           inputMode="decimal"
                           disabled={!user || !isAdminOrHR}
-                          value={detailsForm.odoTo}
-                          onChange={(e) =>
-                            setDetailsForm((p) => ({
-                              ...p,
-                              odoTo: e.target.value,
-                            }))
+                          value={
+                            detailsForm.odoTo !== "" &&
+                            detailsForm.odoTo != null
+                              ? Number(detailsForm.odoTo).toLocaleString(
+                                  "vi-VN",
+                                )
+                              : ""
                           }
-                          placeholder="VD: 1100"
+                          onChange={(e) => {
+                            const value = e.target.value
+                              .replace(/,/g, "")
+                              .replace(/\./g, "");
+                            if (value === "") {
+                              setDetailsForm((p) => ({ ...p, odoTo: "" }));
+                            } else if (!isNaN(value)) {
+                              setDetailsForm((p) => ({
+                                ...p,
+                                odoTo: Number(value),
+                              }));
+                            }
+                          }}
+                          placeholder="VD: 1,100"
                           className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                         />
                       </div>
@@ -4102,9 +4136,13 @@ function DriverLogbook() {
                         type="text"
                         readOnly
                         value={(() => {
-                          const from = parseFloat(detailsForm.odoFrom);
-                          const to = parseFloat(detailsForm.odoTo);
-                          return !isNaN(from) && !isNaN(to) ? to - from : "";
+                          const from = Number(detailsForm.odoFrom);
+                          const to = Number(detailsForm.odoTo);
+                          const km =
+                            !isNaN(from) && !isNaN(to) && from > 0 && to > 0
+                              ? to - from
+                              : "";
+                          return km ? km.toLocaleString("vi-VN") : "";
                         })()}
                         className="w-full border border-orange-300 rounded-lg px-3 py-2 bg-orange-50 text-gray-800 font-bold text-sm"
                         placeholder="Tự động tính"
@@ -4115,17 +4153,23 @@ function DriverLogbook() {
                         Phí cầu đường (đ)
                       </label>
                       <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
                         disabled={!user || !isAdminOrHR}
-                        value={detailsForm.tollFee}
-                        onChange={(e) =>
-                          setDetailsForm((p) => ({
-                            ...p,
-                            tollFee: e.target.value,
-                          }))
+                        value={
+                          detailsForm.tollFee && detailsForm.tollFee !== ""
+                            ? Number(detailsForm.tollFee).toLocaleString(
+                                "vi-VN",
+                              )
+                            : ""
                         }
-                        placeholder="VD: 50000"
+                        onChange={(e) => {
+                          const value = e.target.value
+                            .replace(/,/g, "")
+                            .replace(/\./g, "");
+                          setDetailsForm((p) => ({ ...p, tollFee: value }));
+                        }}
+                        placeholder="VD: 50,000"
                         className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                       />
                     </div>
@@ -4134,17 +4178,23 @@ function DriverLogbook() {
                         Tiền ăn (đ)
                       </label>
                       <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
                         disabled={!user || !isAdminOrHR}
-                        value={detailsForm.mealFee}
-                        onChange={(e) =>
-                          setDetailsForm((p) => ({
-                            ...p,
-                            mealFee: e.target.value,
-                          }))
+                        value={
+                          detailsForm.mealFee && detailsForm.mealFee !== ""
+                            ? Number(detailsForm.mealFee).toLocaleString(
+                                "vi-VN",
+                              )
+                            : ""
                         }
-                        placeholder="VD: 100000"
+                        onChange={(e) => {
+                          const value = e.target.value
+                            .replace(/,/g, "")
+                            .replace(/\./g, "");
+                          setDetailsForm((p) => ({ ...p, mealFee: value }));
+                        }}
+                        placeholder="VD: 100,000"
                         className="w-full border border-orange-300 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none text-sm disabled:bg-orange-50 disabled:cursor-not-allowed"
                       />
                     </div>
@@ -4157,7 +4207,7 @@ function DriverLogbook() {
                         inputMode="decimal"
                         step="0.5"
                         disabled={!user || !isAdminOrHR}
-                        value={detailsForm.overtimeHours}
+                        value={detailsForm.overtimeHours || ""}
                         onChange={(e) =>
                           setDetailsForm((p) => ({
                             ...p,
