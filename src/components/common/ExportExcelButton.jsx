@@ -352,7 +352,12 @@ export default function ExportExcelButton({
   };
 
   return (
-    <button onClick={handleClick} className={className}>
+    <button
+      onClick={handleClick}
+      className={className}
+      title={title}
+      aria-label={title}
+    >
       {title}
     </button>
   );
