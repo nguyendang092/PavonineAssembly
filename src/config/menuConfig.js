@@ -70,6 +70,11 @@ export const menuConfig = [
                 path: "/attendance-dashboard",
               },
               {
+                key: "attendanceTable",
+                label: "navbar.attendanceTable",
+                path: "/attendance-table",
+              },
+              {
                 key: "userDepartment",
                 label: "navbar.userDepartment",
                 path: "/user-department",
@@ -155,6 +160,7 @@ export const routeConfig = [
   { path: "/performance", element: "PerformanceChart" },
   { path: "/attendance-list", element: "AttendanceList" },
   { path: "/attendance-dashboard", element: "AttendanceDashboard" },
+  { path: "/attendance-table", element: "AttendanceTable" },
   { path: "/user-department", element: "UserDepartmentManager" },
   { path: "/inventory", element: "Inventory" },
   { path: "/downloads", element: "Downloads" },

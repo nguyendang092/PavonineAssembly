@@ -21,6 +21,7 @@ import MoldManager from "./components/inventory/MoldManager";
 import PerformanceChart from "./components/dashboard/PerformanceChart";
 import AttendanceList from "./components/attendance/AttendanceList";
 import AttendanceDashboardContainer from "./components/attendance/AttendanceDashboardContainer";
+import AttendanceTable from "./components/attendance/AttendanceTable";
 import Downloads from "./components/common/Downloads";
 import UserDepartmentManager from "./components/employee/UserDepartmentManager";
 import MaintenanceChecklist from "./components/maintenance/MaintenanceChecklist";
@@ -151,6 +152,9 @@ const App = () => {
                     break;
                   case "AttendanceDashboard":
                     Element = AttendanceDashboardContainer;
+                    break;
+                  case "AttendanceTable":
+                    Element = AttendanceTable;
                     break;
                   case "Downloads":
                     Element = Downloads;

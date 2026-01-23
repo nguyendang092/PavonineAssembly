@@ -740,7 +740,7 @@ function AttendanceDashboard({
                         ? ((data.present / data.total) * 100).toFixed(1)
                         : 0;
                     const maxTotal = Math.max(
-                      ...Object.values(stats.byDepartment).map((d) => d.total)
+                      ...Object.values(stats.byDepartment).map((d) => d.total),
                     );
                     const widthPercent =
                       maxTotal > 0 ? (data.total / maxTotal) * 100 : 0;
