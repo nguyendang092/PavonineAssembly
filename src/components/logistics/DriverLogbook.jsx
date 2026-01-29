@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
+import { toPng } from "html-to-image";
 import { useTranslation } from "react-i18next";
 import { useUser } from "../../contexts/UserContext";
 import { db, ref, onValue, set, update, remove } from "../../services/firebase";
@@ -10,7 +11,6 @@ import Sidebar from "../layout/Sidebar";
 // ============ DATE/TIME UTILITIES ============
 const getTodayString = () => new Date().toISOString().split("T")[0];
 const getNowTime = () => new Date().toTimeString().slice(0, 5);
-const getCurrentDateTimeString = () => new Date().toISOString().slice(0, 16);
 const getCurrentISOString = () => new Date().toISOString();
 
 function formatTime(dateStr, timeStr) {
@@ -89,19 +89,17 @@ function StatusBadge({ trip, mobile = false }) {
 }
 
 const VEHICLE_TYPES = [
-  "Black Sedona",
-  "White Sedona",
-  "Truck",
-  "Carnival",
-  "Carnival HYB",
+  "01. Black Sedona",
+  "02. White Sedona",
+  "03. Truck",
+  "04. Carnival",
+  "05. Carnival HYB",
 ];
 
 // ============ FORM INITIAL STATES ============
 const getFormInitialStates = (user) => {
   const TODAY = getTodayString();
   const NOW_TIME = getNowTime();
-  const REQUEST_TIME = getCurrentDateTimeString();
-
   return {
     OUTSIDE_FORM: {
       startTime: "",
@@ -128,6 +126,7 @@ const getFormInitialStates = (user) => {
     },
     OUTSIDE_TRIP_FORM: {
       driverName: "",
+
       phone: "",
       vehicleNumber: "",
       departure: "",
@@ -143,6 +142,7 @@ const getFormInitialStates = (user) => {
       vehicleType: "",
       departure: "",
       destination: "",
+      requesterName: "",
       startKm: "",
       endKm: "",
       totalKm: "",
@@ -154,7 +154,6 @@ const getFormInitialStates = (user) => {
       notes: "",
       expenseDetails: "",
       completed: false,
-      requestTime: REQUEST_TIME,
       departmentRequest: "",
       status: "scheduled",
     },
@@ -259,6 +258,9 @@ function DriverLogbook() {
   const [mobileDetailTrip, setMobileDetailTrip] = useState(null);
   const [tempDetails, setTempDetails] = useState("");
   const [selectedOutsideTripId, setSelectedOutsideTripId] = useState("");
+  const excelInputRef = React.useRef(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const tripImageRef = React.useRef(null);
 
   // Form states
   const [outsideForm, setOutsideForm] = useState(formInitials.OUTSIDE_FORM);
@@ -588,7 +590,9 @@ function DriverLogbook() {
       return;
     }
 
-    setNewTrip(trip);
+    // Merge with defaults to ensure new fields (e.g., requesterName) exist
+    const defaults = getFormInitialStates(user).NEW_TRIP;
+    setNewTrip({ ...defaults, ...trip });
     setEditingId(trip.id);
     setShowModal(true);
   };
@@ -757,6 +761,7 @@ function DriverLogbook() {
       vehicleType: "",
       departure: "",
       destination: "",
+      requesterName: "",
       startKm: "",
       endKm: "",
       totalKm: "",
@@ -768,7 +773,6 @@ function DriverLogbook() {
       notes: "",
       expenseDetails: "",
       completed: false,
-      requestTime: new Date().toISOString().slice(0, 16),
       departmentRequest: "",
       status: "scheduled",
     });
@@ -1064,7 +1068,6 @@ function DriverLogbook() {
         notes: outsideTripForm.notes || "",
         expenseDetails: "",
         completed: false,
-        requestTime: new Date().toISOString().slice(0, 16),
         departmentRequest: "",
         status: "scheduled",
         outsideOnly: true,
@@ -1276,6 +1279,382 @@ function DriverLogbook() {
         type: "error",
         message: `❌ Lỗi xuất Excel: ${error.message}`,
       });
+    }
+  };
+
+  const handleDownloadExcelTemplate = () => {
+    const headers = [
+      "DriverName",
+      "Phone",
+      "VehicleNumber",
+      "VehicleType",
+      "Departure",
+      "Destination",
+      "StartDate",
+      "StartTime",
+      "EndDate",
+      "EndTime",
+      "Notes",
+      "DepartmentRequest",
+      "RequesterName",
+      "Status",
+      "Completed",
+    ];
+
+    const exampleRow = [
+      "Nguyen Van A",
+      "0901234567",
+      "51A-12345",
+      "Sedona",
+      "Cong ty",
+      "TP. Ho Chi Minh",
+      "2024-12-31",
+      "08:00",
+      "2024-12-31",
+      "17:30",
+      "Ghi chu them",
+      "Bo phan Kinh doanh",
+      "Nguyen Van B",
+      "scheduled",
+      "FALSE",
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "driver_trips_template.xlsx");
+    setAlert({
+      show: true,
+      type: "success",
+      message: "✅ Đã tạo file Excel mẫu",
+    });
+  };
+
+  const handleImportTripsFromExcel = async (event) => {
+    if (!isAdminOrHR) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "❌ Chỉ Admin/HR được phép nhập Excel",
+      });
+      if (excelInputRef.current) excelInputRef.current.value = "";
+      return;
+    }
+
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const firstSheet = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[firstSheet];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+      if (!rows || rows.length === 0) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "❌ File Excel trống hoặc sai định dạng",
+        });
+        return;
+      }
+
+      const normalizeDate = (value) => {
+        if (!value && value !== 0) return "";
+
+        // Excel serial number
+        if (typeof value === "number") {
+          const serial = XLSX.SSF?.parse_date_code?.(value);
+          if (serial) {
+            const yyyy = serial.y.toString().padStart(4, "0");
+            const mm = serial.m.toString().padStart(2, "0");
+            const dd = serial.d.toString().padStart(2, "0");
+            return `${yyyy}-${mm}-${dd}`;
+          }
+          const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+          if (!Number.isNaN(date.getTime())) {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, "0");
+            const dd = String(date.getDate()).padStart(2, "0");
+            return `${yyyy}-${mm}-${dd}`;
+          }
+          return "";
+        }
+
+        // String inputs: prefer direct yyyy-mm-dd to avoid timezone shift
+        const str = String(value).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+        // Numeric string (Excel serial stored as text)
+        if (/^\d+(\.\d+)?$/.test(str)) {
+          const num = Number(str);
+          if (Number.isFinite(num)) {
+            const serial = XLSX.SSF?.parse_date_code?.(num);
+            if (serial) {
+              const yyyy = serial.y.toString().padStart(4, "0");
+              const mm = serial.m.toString().padStart(2, "0");
+              const dd = serial.d.toString().padStart(2, "0");
+              return `${yyyy}-${mm}-${dd}`;
+            }
+            const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+            if (!Number.isNaN(date.getTime())) {
+              const yyyy = date.getFullYear();
+              const mm = String(date.getMonth() + 1).padStart(2, "0");
+              const dd = String(date.getDate()).padStart(2, "0");
+              return `${yyyy}-${mm}-${dd}`;
+            }
+          }
+        }
+
+        const parsed = new Date(str.replace(/\//g, "-"));
+        if (Number.isNaN(parsed.getTime())) return "";
+        const yyyy = parsed.getFullYear();
+        const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+        const dd = String(parsed.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
+      };
+
+      const normalizeTime = (value) => {
+        if (!value && value !== 0) return "";
+        if (typeof value === "number") {
+          const totalSeconds = Math.round(value * 24 * 60 * 60);
+          const hours = Math.floor(totalSeconds / 3600) % 24;
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
+          return `${hours.toString().padStart(2, "0")}:${minutes
+            .toString()
+            .padStart(2, "0")}`;
+        }
+
+        const str = String(value).trim();
+        if (!str) return "";
+        const date = new Date(`1970-01-01T${str}`);
+        return Number.isNaN(date.getTime())
+          ? str
+          : date.toTimeString().slice(0, 5);
+      };
+
+      const pickValue = (row, keys) => {
+        for (const key of keys) {
+          if (row[key] !== undefined && row[key] !== null) {
+            const val = String(row[key]).trim();
+            if (val !== "") return val;
+          }
+        }
+        return "";
+      };
+
+      const existingKeys = new Set(
+        trips.map(
+          (t) =>
+            `${(t.vehicleNumber || "").trim()}|${t.startDate}|${t.startTime}`,
+        ),
+      );
+      const seenKeys = new Set(existingKeys);
+
+      const normalizedTrips = rows.reduce((acc, row) => {
+        const driverName = pickValue(row, [
+          "DriverName",
+          "TaiXe",
+          "Tên tài xế",
+        ]);
+        const destination = pickValue(row, [
+          "Destination",
+          "DiemDen",
+          "Điểm đến",
+          "Diem den",
+        ]);
+        const startDate = normalizeDate(
+          pickValue(row, ["StartDate", "NgayDi", "Ngày đi", "Ngay di"]),
+        );
+        const startTime = normalizeTime(
+          pickValue(row, ["StartTime", "GioDi", "Giờ đi", "Gio di"]),
+        );
+
+        if (!driverName || !destination || !startDate || !startTime) return acc;
+
+        const vehicleNumber = pickValue(row, [
+          "VehicleNumber",
+          "BienSoXe",
+          "Bienso",
+          "Biển số",
+        ]);
+        const endDate = normalizeDate(
+          pickValue(row, [
+            "EndDate",
+            "NgayVe",
+            "Ngày về",
+            "Ngay ve",
+            "Ngày kết thúc",
+          ]),
+        );
+        const endTime = normalizeTime(
+          pickValue(row, [
+            "EndTime",
+            "GioVe",
+            "Giờ về",
+            "Gio ve",
+            "Giờ kết thúc",
+          ]),
+        );
+
+        const startKmRaw = pickValue(row, [
+          "StartKm",
+          "OdoBatDau",
+          "Odo start",
+        ]);
+        const endKmRaw = pickValue(row, ["EndKm", "OdoKetThuc", "Odo end"]);
+        const totalKmRaw = pickValue(row, ["TotalKm", "TongKm", "Tổng km"]);
+
+        const startKmParsed = parseNum(startKmRaw);
+        const endKmParsed = parseNum(endKmRaw);
+        const totalKmParsed = parseNum(totalKmRaw);
+
+        const autoTotalKm =
+          startKmParsed != null && endKmParsed != null
+            ? endKmParsed - startKmParsed
+            : null;
+
+        const statusRaw = pickValue(row, [
+          "Status",
+          "TrangThai",
+          "Trạng thái",
+          "Trạng thái chuyến đi",
+        ])
+          .toLowerCase()
+          .trim();
+        const status = [
+          "scheduled",
+          "onboard",
+          "arrived",
+          "cancelled",
+        ].includes(statusRaw)
+          ? statusRaw
+          : "scheduled";
+
+        const completedRaw = pickValue(row, [
+          "Completed",
+          "HoanTat",
+          "Hoàn tất",
+        ]);
+        const completed = ["true", "yes", "1", "x", "done"].includes(
+          completedRaw.toLowerCase(),
+        );
+
+        const key = `${vehicleNumber}|${startDate}|${startTime}`;
+        if (vehicleNumber && seenKeys.has(key)) return acc;
+        if (vehicleNumber) seenKeys.add(key);
+
+        const defaults = getFormInitialStates(user).NEW_TRIP;
+
+        const tripData = {
+          ...defaults,
+          driverName,
+          phone: pickValue(row, ["Phone", "SoDienThoai", "Sdt"]),
+          vehicleNumber,
+          vehicleType: pickValue(row, ["VehicleType", "LoaiXe", "Loại xe"]),
+          departure:
+            pickValue(row, ["Departure", "DiemDi", "Điểm đi", "Diem di"]) ||
+            defaults.departure,
+          destination,
+          startDate,
+          startTime,
+          endDate: endDate || "",
+          endTime: endTime || "",
+          notes: pickValue(row, ["Notes", "GhiChu", "Ghi chú"]),
+          departmentRequest: pickValue(row, [
+            "DepartmentRequest",
+            "BoPhanYeuCau",
+            "Bộ phận yêu cầu",
+          ]),
+          requesterName: pickValue(row, [
+            "RequesterName",
+            "NguoiYeuCau",
+            "Người yêu cầu",
+            "Nguoi dat",
+            "Người đặt",
+          ]),
+          startKm: startKmParsed != null ? startKmParsed : startKmRaw,
+          endKm: endKmParsed != null ? endKmParsed : endKmRaw,
+          totalKm: autoTotalKm != null ? autoTotalKm : (totalKmParsed ?? ""),
+          expenseDetails: pickValue(row, [
+            "ExpenseDetails",
+            "ChiPhi",
+            "Chi phí",
+          ]),
+          status,
+          completed,
+        };
+
+        if (tripData.completed) {
+          tripData.endDate = tripData.endDate || tripData.startDate;
+          tripData.endTime = tripData.endTime || tripData.startTime;
+        }
+
+        acc.push(tripData);
+        return acc;
+      }, []);
+
+      if (normalizedTrips.length === 0) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "❌ Không có dòng hợp lệ để nhập",
+        });
+        return;
+      }
+
+      const now = Date.now();
+
+      const tripPromises = normalizedTrips.map((trip, idx) => {
+        const tripId = `${now}_${idx}`;
+        const tripRef = ref(db, `driverTrips/${tripId}`);
+        return set(tripRef, trip);
+      });
+
+      const driverPromises = normalizedTrips
+        .filter((trip) => trip.driverName && trip.phone && trip.vehicleNumber)
+        .map((trip) => {
+          const driverKey = trip.driverName.toLowerCase().replace(/\s+/g, "_");
+          const driverRef = ref(db, `drivers/${driverKey}`);
+          return set(driverRef, {
+            name: trip.driverName,
+            phone: trip.phone,
+            vehicleNumber: trip.vehicleNumber,
+            vehicleType: trip.vehicleType || "",
+            lastUpdated: new Date().toISOString(),
+          });
+        });
+
+      await Promise.all([...tripPromises, ...driverPromises]);
+
+      setAlert({
+        show: true,
+        type: "success",
+        message: `✅ Đã nhập ${normalizedTrips.length} chuyến từ Excel${
+          rows.length !== normalizedTrips.length
+            ? ` (bỏ qua ${rows.length - normalizedTrips.length} dòng thiếu dữ liệu/trùng)`
+            : ""
+        }`,
+      });
+      setCurrentView("trips");
+    } catch (error) {
+      console.error("Import trips error:", error);
+      setAlert({
+        show: true,
+        type: "error",
+        message: `❌ Lỗi nhập Excel: ${error.message}`,
+      });
+    } finally {
+      setIsImporting(false);
+      if (excelInputRef.current) {
+        excelInputRef.current.value = "";
+      }
+      if (event?.target) {
+        event.target.value = "";
+      }
     }
   };
 
@@ -1605,7 +1984,7 @@ function DriverLogbook() {
                   </div>
 
                   {/* Table Header */}
-                  <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-10 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs font-bold px-2 sm:px-3 md:px-4 py-2 sm:py-3 sticky top-0 z-10 shadow-md w-full">
+                  <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-11 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs font-bold px-2 sm:px-3 md:px-4 py-2 sm:py-3 sticky top-0 z-10 shadow-md w-full">
                     <div className="truncate col-span-1 text-center text-[10px] sm:text-xs">
                       🚗 XE
                     </div>
@@ -1626,6 +2005,9 @@ function DriverLogbook() {
                     </div>
                     <div className="truncate col-span-1 hidden md:block text-center">
                       🏢 BP
+                    </div>
+                    <div className="truncate col-span-1 hidden md:block text-center">
+                      🙋 YÊU CẦU
                     </div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
                       📊 TT
@@ -1665,7 +2047,7 @@ function DriverLogbook() {
                         return (
                           <div
                             key={`board-${trip.id}`}
-                            className={`grid grid-cols-4 sm:grid-cols-7 md:grid-cols-10 gap-1 sm:gap-2 md:gap-3 px-2 sm:px-3 md:px-4 py-2 sm:py-3 items-center text-xs ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md w-full`}
+                            className={`grid grid-cols-4 sm:grid-cols-7 md:grid-cols-11 gap-1 sm:gap-2 md:gap-3 px-2 sm:px-3 md:px-4 py-2 sm:py-3 items-center text-xs ${rowBgColor} transition border-l-4 border-yellow-400 hover:shadow-md w-full`}
                           >
                             {/* XE */}
                             <div className="text-white text-xs sm:text-sm font-semibold sm:font-bold truncate col-span-1 text-center">
@@ -1694,6 +2076,9 @@ function DriverLogbook() {
                             {/* BP */}
                             <div className="text-orange-300 font-semibold truncate hidden md:block col-span-1 text-center">
                               {trip.departmentRequest || "-"}
+                            </div>
+                            <div className="text-orange-100 font-semibold truncate hidden md:block col-span-1 text-center">
+                              {trip.requesterName || "-"}
                             </div>
                             {/* TT */}
                             <div className="col-span-1 hidden sm:block text-center">
@@ -1777,6 +2162,32 @@ function DriverLogbook() {
                 {permissionFilteredTrips.filter((t) => t.completed).length})
               </button>
               <div className="ml-auto flex items-center gap-2">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  ref={excelInputRef}
+                  onChange={handleImportTripsFromExcel}
+                  className="hidden"
+                />
+                <button
+                  onClick={handleDownloadExcelTemplate}
+                  className="px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200 shadow"
+                  title="Tải file mẫu Excel"
+                >
+                  ⬇️ Mẫu Excel
+                </button>
+                <button
+                  onClick={() => excelInputRef.current?.click()}
+                  disabled={isImporting}
+                  className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border shadow flex items-center gap-1 ${
+                    isImporting
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
+                      : "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+                  }`}
+                  title="Nhập chuyến đi từ Excel"
+                >
+                  {isImporting ? "⏳ Đang nhập..." : "⬆️ Nhập Excel"}
+                </button>
                 <button
                   onClick={handleExportCompletedTrips}
                   className="px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow"
@@ -1825,6 +2236,13 @@ function DriverLogbook() {
                               <span className="text-xl">👤</span>
                               <span className="font-semibold text-slate-700">
                                 {trip.driverName || "N/A"}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">🙋</span>
+                              <span className="text-sm text-slate-700 font-semibold">
+                                {trip.requesterName || "(chưa nhập)"}
                               </span>
                             </div>
 
@@ -1911,6 +2329,9 @@ function DriverLogbook() {
                           </th>
                           <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell text-xs">
                             Km
+                          </th>
+                          <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell text-xs">
+                            Người YC
                           </th>
                           <th className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell text-xs">
                             Thời gian
@@ -2031,6 +2452,12 @@ function DriverLogbook() {
                                   </>
                                 )}
                               </div>
+                            </td>
+                            {/* Người yêu cầu */}
+                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell">
+                              <span className="text-white font-medium text-xs truncate">
+                                {trip.requesterName || "-"}
+                              </span>
                             </td>
                             {/* Thời Gian - Time */}
                             <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
@@ -2443,24 +2870,6 @@ function DriverLogbook() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
-                        <span>⏰</span>
-                        <span>Thời Gian Đặt</span>
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={newTrip.requestTime}
-                        onChange={(e) =>
-                          setNewTrip({
-                            ...newTrip,
-                            requestTime: e.target.value,
-                          })
-                        }
-                        className="w-full border-2 border-orange-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-orange-300"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
                         <span>🏢</span>
                         <span>Bộ Phận Yêu Cầu</span>
                       </label>
@@ -2475,6 +2884,24 @@ function DriverLogbook() {
                         }
                         className="w-full border-2 border-orange-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-orange-300"
                         placeholder="VD: Bộ phận Bán hàng"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs sm:text-sm font-bold text-gray-800 mb-1 sm:mb-2 flex items-center gap-2">
+                        <span>🙋</span>
+                        <span>Người Yêu Cầu</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newTrip.requesterName || ""}
+                        onChange={(e) =>
+                          setNewTrip({
+                            ...newTrip,
+                            requesterName: e.target.value,
+                          })
+                        }
+                        className="w-full border-2 border-orange-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all text-sm sm:text-base font-medium bg-white hover:border-orange-300"
+                        placeholder="VD: Nguyễn Văn B"
                       />
                     </div>
                   </div>
@@ -2828,6 +3255,70 @@ function DriverLogbook() {
                       </div>
                     </div>
                   )}
+
+                  {/* Booking Info */}
+                  <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl p-6 border border-orange-100">
+                    <h3 className="text-sm font-bold text-orange-900 mb-4 flex items-center gap-2">
+                      <span>📋</span>
+                      <span>Thông Tin Đặt Xe</span>
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <span>🏢</span>
+                          <span>Bộ Phận Yêu Cầu</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newTrip.departmentRequest}
+                          onChange={(e) =>
+                            setNewTrip({
+                              ...newTrip,
+                              departmentRequest: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                          }
+                          className={`w-full border-2 border-orange-200 rounded-lg px-4 py-3 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all text-base font-medium ${
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white hover:border-orange-300"
+                          }`}
+                          placeholder="VD: Bộ phận Bán hàng"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <span>🙋</span>
+                          <span>Người Yêu Cầu</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newTrip.requesterName || ""}
+                          onChange={(e) =>
+                            setNewTrip({
+                              ...newTrip,
+                              requesterName: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                          }
+                          className={`w-full border-2 border-orange-200 rounded-lg px-4 py-3 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all text-base font-medium ${
+                            editingId &&
+                            trips.find((t) => t.id === editingId)?.completed
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white hover:border-orange-300"
+                          }`}
+                          placeholder="VD: Nguyễn Văn B"
+                        />
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Notes */}
                   <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-xl p-6 border border-indigo-100">
@@ -4018,6 +4509,14 @@ function DriverLogbook() {
                       </span>
                       <span className="text-gray-800 font-medium">
                         {mobileDetailTrip.departmentRequest || "-"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-green-600 font-semibold text-xs uppercase">
+                        Người yêu cầu
+                      </span>
+                      <span className="text-gray-800 font-medium">
+                        {mobileDetailTrip.requesterName || "-"}
                       </span>
                     </div>
                   </div>

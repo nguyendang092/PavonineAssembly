@@ -165,6 +165,7 @@ function AttendanceTable() {
       { wch: 12 },
       { wch: 14 },
       { wch: 26 },
+
       { wch: 18 },
       { wch: 14 },
       { wch: 14 },
