@@ -2162,32 +2162,36 @@ function DriverLogbook() {
                 {permissionFilteredTrips.filter((t) => t.completed).length})
               </button>
               <div className="ml-auto flex items-center gap-2">
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  ref={excelInputRef}
-                  onChange={handleImportTripsFromExcel}
-                  className="hidden"
-                />
-                <button
-                  onClick={handleDownloadExcelTemplate}
-                  className="px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200 shadow"
-                  title="Tải file mẫu Excel"
-                >
-                  ⬇️ Mẫu Excel
-                </button>
-                <button
-                  onClick={() => excelInputRef.current?.click()}
-                  disabled={isImporting}
-                  className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border shadow flex items-center gap-1 ${
-                    isImporting
-                      ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
-                      : "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
-                  }`}
-                  title="Nhập chuyến đi từ Excel"
-                >
-                  {isImporting ? "⏳ Đang nhập..." : "⬆️ Nhập Excel"}
-                </button>
+                {isAdminOrHR && (
+                  <>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      ref={excelInputRef}
+                      onChange={handleImportTripsFromExcel}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={handleDownloadExcelTemplate}
+                      className="px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200 shadow"
+                      title="Tải file mẫu Excel"
+                    >
+                      ⬇️ Template
+                    </button>
+                    <button
+                      onClick={() => excelInputRef.current?.click()}
+                      disabled={isImporting}
+                      className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border shadow flex items-center gap-1 ${
+                        isImporting
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
+                          : "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+                      }`}
+                      title="Nhập chuyến đi từ Excel"
+                    >
+                      {isImporting ? "⏳ Đang nhập..." : "⬆️ Upload"}
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={handleExportCompletedTrips}
                   className="px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow"
