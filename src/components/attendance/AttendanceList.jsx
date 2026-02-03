@@ -56,14 +56,11 @@ function AttendanceList() {
   const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
   const [savingGioVao, setSavingGioVao] = useState({}); // Track which gioVao is being saved
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
-  const [filterMaBoPhanSearch, setFilterMaBoPhanSearch] = useState("");
   const [filterGenderSearch, setFilterGenderSearch] = useState("");
-  const [filterShiftSearch, setFilterShiftSearch] = useState("");
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
   const [gioiTinhFilter, setGioiTinhFilter] = useState([]); // Filter by gender
   const [departmentListFilter, setDepartmentListFilter] = useState([]); // Filter by department in filter section
-  const [maBoPhanFilter, setMaBoPhanFilter] = useState([]); // Filter by department code (mã BP)
-  const [caLamViecFilter, setCaLamViecFilter] = useState([]); // Filter by shift
+  const [gioVaoFilter, setGioVaoFilter] = useState([]); // Filter by entry time status (chưa chấm công, đã chấm công)
   const [expandedSections, setExpandedSections] = useState({}); // Track which sections are expanded
   const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   // Overtime modal-specific filters
@@ -221,13 +218,14 @@ function AttendanceList() {
         !departmentListFilter.includes(emp.boPhan)
       )
         return false;
-      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
-        return false;
-      if (
-        caLamViecFilter.length > 0 &&
-        !caLamViecFilter.includes(emp.caLamViec)
-      )
-        return false;
+      // Filter by entry time status
+      if (gioVaoFilter.length > 0) {
+        const hasGioVao = emp.gioVao && emp.gioVao.trim() !== "";
+        const isCheckedIn = "đã_chấm_công";
+        const isNotCheckedIn = "chưa_chấm_công";
+        if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;
+        if (!hasGioVao && !gioVaoFilter.includes(isNotCheckedIn)) return false;
+      }
       if (!q) return true;
       return (
         (emp.hoVaTen || "").toLowerCase().includes(q) ||
@@ -241,8 +239,7 @@ function AttendanceList() {
     departmentFilter,
     gioiTinhFilter,
     departmentListFilter,
-    maBoPhanFilter,
-    caLamViecFilter,
+    gioVaoFilter,
   ]);
 
   // Overtime modal: derive unique options and apply modal filters from filteredEmployees
@@ -283,17 +280,10 @@ function AttendanceList() {
       // Apply other filters except Department
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
         continue;
-      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
-        continue;
-      if (
-        caLamViecFilter.length > 0 &&
-        !caLamViecFilter.includes(emp.caLamViec)
-      )
-        continue;
       if (emp.boPhan) depts.add(emp.boPhan);
     }
     return Array.from(depts);
-  }, [employees, gioiTinhFilter, maBoPhanFilter, caLamViecFilter]);
+  }, [employees, gioiTinhFilter]);
 
   // Filtered list for 'bù công' (gioVao là giờ, không phải loại như PN, PO...)
   const buCongEmployees = useMemo(() => {
@@ -340,40 +330,12 @@ function AttendanceList() {
         !departmentListFilter.includes(emp.boPhan)
       )
         continue;
-      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
-        continue;
-      if (
-        caLamViecFilter.length > 0 &&
-        !caLamViecFilter.includes(emp.caLamViec)
-      )
-        continue;
       if (emp.gioiTinh) genders.add(emp.gioiTinh);
     }
     return Array.from(genders).sort();
-  }, [employees, departmentListFilter, maBoPhanFilter, caLamViecFilter]);
+  }, [employees, departmentListFilter]);
 
   // Get unique mã BP codes (cascading filter - based on other selected filters)
-  const maBoPhanList = useMemo(() => {
-    const maBoPhanCodes = new Set();
-    for (const emp of employees) {
-      // Apply other filters except mã BP
-      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
-        continue;
-      if (
-        departmentListFilter.length > 0 &&
-        !departmentListFilter.includes(emp.boPhan)
-      )
-        continue;
-      if (
-        caLamViecFilter.length > 0 &&
-        !caLamViecFilter.includes(emp.caLamViec)
-      )
-        continue;
-      if (emp.maBoPhan) maBoPhanCodes.add(emp.maBoPhan);
-    }
-    return Array.from(maBoPhanCodes).sort();
-  }, [employees, gioiTinhFilter, departmentListFilter, caLamViecFilter]);
-
   // Get unique shifts (cascading filter - based on other selected filters)
   const shiftList = useMemo(() => {
     const shifts = new Set();
@@ -386,12 +348,10 @@ function AttendanceList() {
         !departmentListFilter.includes(emp.boPhan)
       )
         continue;
-      if (maBoPhanFilter.length > 0 && !maBoPhanFilter.includes(emp.maBoPhan))
-        continue;
       if (emp.caLamViec) shifts.add(emp.caLamViec);
     }
     return Array.from(shifts).sort();
-  }, [employees, gioiTinhFilter, departmentListFilter, maBoPhanFilter]);
+  }, [employees, gioiTinhFilter, departmentListFilter]);
 
   // Filter departments based on search
   const filteredDepartments = useMemo(() => {
@@ -2092,8 +2052,7 @@ function AttendanceList() {
                 className={`px-4 py-2 rounded font-bold text-sm shadow transition flex items-center gap-2 ${
                   gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
-                  maBoPhanFilter.length > 0 ||
-                  caLamViecFilter.length > 0
+                  gioVaoFilter.length > 0
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-gray-600 text-white hover:bg-gray-700"
                 }`}
@@ -2102,8 +2061,7 @@ function AttendanceList() {
                 <span className="text-xs">
                   {gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
-                  maBoPhanFilter.length > 0 ||
-                  caLamViecFilter.length > 0
+                  gioVaoFilter.length > 0
                     ? "✓"
                     : ""}
                 </span>
@@ -2129,121 +2087,6 @@ function AttendanceList() {
 
                     {/* Content */}
                     <div className="p-4 overflow-y-auto flex-1">
-                      {/* Mã BP (Department Code) Filter Section */}
-                      <div className="mb-3">
-                        <button
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              maBoPhan: !prev.maBoPhan,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-purple-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-purple-500 text-base">
-                              🏷️
-                            </span>
-                            <span>Mã BP</span>
-                          </span>
-                          <span className="text-purple-600 font-bold">
-                            {expandedSections.maBoPhan ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.maBoPhan && (
-                          <div className="border-2 border-purple-100 rounded-lg mt-2 bg-gradient-to-b from-white to-purple-50/30 shadow-inner">
-                            <input
-                              type="text"
-                              value={filterMaBoPhanSearch}
-                              onChange={(e) =>
-                                setFilterMaBoPhanSearch(e.target.value)
-                              }
-                              placeholder="🔍 Tìm mã..."
-                              className="w-full border-b border-purple-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                            />
-                            <div className="max-h-40 overflow-y-auto">
-                              {maBoPhanList.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                  Không có dữ liệu
-                                </div>
-                              ) : (
-                                <>
-                                  <label className="flex items-center px-3 py-2 hover:bg-purple-50 cursor-pointer text-sm border-b-2 border-purple-200 bg-purple-50/50 font-semibold">
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        maBoPhanFilter.length ===
-                                        maBoPhanList.filter((code) =>
-                                          code
-                                            .toLowerCase()
-                                            .includes(
-                                              filterMaBoPhanSearch.toLowerCase(),
-                                            ),
-                                        ).length
-                                      }
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setMaBoPhanFilter([
-                                            ...maBoPhanList.filter((code) =>
-                                              code
-                                                .toLowerCase()
-                                                .includes(
-                                                  filterMaBoPhanSearch.toLowerCase(),
-                                                ),
-                                            ),
-                                          ]);
-                                        } else {
-                                          setMaBoPhanFilter([]);
-                                        }
-                                      }}
-                                      className="mr-2 w-4 h-4 cursor-pointer"
-                                    />
-                                    ✓ Chọn tất cả
-                                  </label>
-                                  {maBoPhanList
-                                    .filter((code) =>
-                                      code
-                                        .toLowerCase()
-                                        .includes(
-                                          filterMaBoPhanSearch.toLowerCase(),
-                                        ),
-                                    )
-                                    .map((code) => (
-                                      <label
-                                        key={code}
-                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={maBoPhanFilter.includes(
-                                            code,
-                                          )}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              setMaBoPhanFilter([
-                                                ...maBoPhanFilter,
-                                                code,
-                                              ]);
-                                            } else {
-                                              setMaBoPhanFilter(
-                                                maBoPhanFilter.filter(
-                                                  (m) => m !== code,
-                                                ),
-                                              );
-                                            }
-                                          }}
-                                          className="mr-2 w-4 h-4 cursor-pointer"
-                                        />
-                                        {code}
-                                      </label>
-                                    ))}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
                       {/* Department Filter Section */}
                       <div className="mb-3">
                         <button
@@ -2458,100 +2301,78 @@ function AttendanceList() {
                         )}
                       </div>
 
-                      {/* Shift Filter Section */}
+                      {/* Entry Time Filter Section */}
                       <div className="mb-3">
                         <button
                           onClick={() => {
                             setExpandedSections((prev) => ({
                               ...prev,
-                              shift: !prev.shift,
+                              gioVao: !prev.gioVao,
                             }));
                           }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-red-200"
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-indigo-200"
                         >
                           <span className="flex items-center gap-2">
-                            <span className="text-red-500 text-base">🕐</span>
-                            <span>Ca làm việc</span>
+                            <span className="text-indigo-500 text-base">
+                              ⏰
+                            </span>
+                            <span>Thời gian vào</span>
                           </span>
-                          <span className="text-red-600 font-bold">
-                            {expandedSections.shift ? "▼" : "▶"}
+                          <span className="text-indigo-600 font-bold">
+                            {expandedSections.gioVao ? "▼" : "▶"}
                           </span>
                         </button>
-                        {expandedSections.shift && (
-                          <div className="border-2 border-red-100 rounded-lg mt-2 bg-gradient-to-b from-white to-red-50/30 shadow-inner">
-                            <input
-                              type="text"
-                              value={filterShiftSearch}
-                              onChange={(e) =>
-                                setFilterShiftSearch(e.target.value)
-                              }
-                              placeholder="🔍 Tìm ca làm việc..."
-                              className="w-full border-b border-red-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                            />
+                        {expandedSections.gioVao && (
+                          <div className="border-2 border-indigo-100 rounded-lg mt-2 bg-gradient-to-b from-white to-indigo-50/30 shadow-inner">
                             <div className="max-h-40 overflow-y-auto">
-                              {shiftList.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                  Không có dữ liệu
-                                </div>
-                              ) : (
-                                <>
-                                  <label className="flex items-center px-3 py-2 hover:bg-red-50 cursor-pointer text-sm border-b-2 border-red-200 bg-red-50/50 font-semibold">
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        caLamViecFilter.length ===
-                                        shiftList.length
-                                      }
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setCaLamViecFilter([...shiftList]);
-                                        } else {
-                                          setCaLamViecFilter([]);
-                                        }
-                                      }}
-                                      className="mr-2 w-4 h-4 cursor-pointer"
-                                    />
-                                    ✓ Chọn tất cả
-                                  </label>
-                                  {shiftList
-                                    .filter((shift) =>
-                                      shift
-                                        .toLowerCase()
-                                        .includes(
-                                          filterShiftSearch.toLowerCase(),
+                              <label className="flex items-center px-3 py-2 hover:bg-indigo-50 cursor-pointer text-sm border-b border-indigo-200 bg-indigo-50/50 font-semibold">
+                                <input
+                                  type="checkbox"
+                                  checked={gioVaoFilter.includes(
+                                    "đã_chấm_công",
+                                  )}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setGioVaoFilter([
+                                        ...gioVaoFilter,
+                                        "đã_chấm_công",
+                                      ]);
+                                    } else {
+                                      setGioVaoFilter(
+                                        gioVaoFilter.filter(
+                                          (g) => g !== "đã_chấm_công",
                                         ),
-                                    )
-                                    .map((shift) => (
-                                      <label
-                                        key={shift}
-                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={caLamViecFilter.includes(
-                                            shift,
-                                          )}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              setCaLamViecFilter([
-                                                ...caLamViecFilter,
-                                                shift,
-                                              ]);
-                                            } else {
-                                              setCaLamViecFilter(
-                                                caLamViecFilter.filter(
-                                                  (s) => s !== shift,
-                                                ),
-                                              );
-                                            }
-                                          }}
-                                          className="mr-2 w-4 h-4 cursor-pointer"
-                                        />
-                                        {shift}
-                                      </label>
-                                    ))}
-                                </>
-                              )}
+                                      );
+                                    }
+                                  }}
+                                  className="mr-2 w-4 h-4 cursor-pointer"
+                                />
+                                ✅ Đã chấm công
+                              </label>
+                              <label className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100">
+                                <input
+                                  type="checkbox"
+                                  checked={gioVaoFilter.includes(
+                                    "chưa_chấm_công",
+                                  )}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setGioVaoFilter([
+                                        ...gioVaoFilter,
+                                        "chưa_chấm_công",
+                                      ]);
+                                    } else {
+                                      setGioVaoFilter(
+                                        gioVaoFilter.filter(
+                                          (g) => g !== "chưa_chấm_công",
+                                        ),
+                                      );
+                                    }
+                                  }}
+                                  className="mr-2 w-4 h-4 cursor-pointer"
+                                />
+                                ❎ Chưa chấm công
+                              </label>
                             </div>
                           </div>
                         )}
@@ -2564,8 +2385,7 @@ function AttendanceList() {
                         onClick={() => {
                           setGioiTinhFilter([]);
                           setDepartmentListFilter([]);
-                          setMaBoPhanFilter([]);
-                          setCaLamViecFilter([]);
+                          setGioVaoFilter([]);
                           setExpandedSections({});
                           setFilterSearchTerm("");
                         }}
