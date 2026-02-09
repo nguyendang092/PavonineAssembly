@@ -46,6 +46,11 @@ export const menuConfig = [
             label: "navbar.caiTien",
             path: "/performance",
           },
+          {
+            key: "qrCodeGenerator",
+            label: "navbar.qrCodeGenerator",
+            path: "/qr-code-generator",
+          },
         ],
       },
 
@@ -158,6 +163,7 @@ export const routeConfig = [
   { path: "/employ/:leader", element: "Employ" },
   { path: "/mold", element: "MoldManager" },
   { path: "/performance", element: "PerformanceChart" },
+  { path: "/qr-code-generator", element: "QRCodeGenerator" },
   { path: "/attendance-list", element: "AttendanceList" },
   { path: "/attendance-dashboard", element: "AttendanceDashboard" },
   { path: "/attendance-table", element: "AttendanceTable" },

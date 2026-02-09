@@ -19,6 +19,7 @@ import Metandeco from "./components/common/Metandeco";
 import { routeConfig } from "./config/menuConfig";
 import MoldManager from "./components/inventory/MoldManager";
 import PerformanceChart from "./components/dashboard/PerformanceChart";
+import QRCodeGenerator from "./components/common/QRCodeGenerator";
 import AttendanceList from "./components/attendance/AttendanceList";
 import AttendanceDashboardContainer from "./components/attendance/AttendanceDashboardContainer";
 import AttendanceTable from "./components/attendance/AttendanceTable";
@@ -146,6 +147,9 @@ const App = () => {
                     break;
                   case "PerformanceChart":
                     Element = PerformanceChart;
+                    break;
+                  case "QRCodeGenerator":
+                    Element = QRCodeGenerator;
                     break;
                   case "AttendanceList":
                     Element = AttendanceList;
