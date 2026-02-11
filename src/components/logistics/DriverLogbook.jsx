@@ -230,6 +230,26 @@ const countByStatus = (trips, status) => {
   ).length;
 };
 
+// Group trips by date
+const groupTripsByDate = (trips) => {
+  const grouped = {};
+  trips.forEach((trip) => {
+    const date = trip.startDate || getTodayString();
+    if (!grouped[date]) {
+      grouped[date] = [];
+    }
+    grouped[date].push(trip);
+  });
+
+  // Sort dates in descending order (newest first)
+  return Object.keys(grouped)
+    .sort((a, b) => new Date(b) - new Date(a))
+    .reduce((acc, date) => {
+      acc[date] = grouped[date];
+      return acc;
+    }, {});
+};
+
 // Firebase object to array conversion
 const objectToArray = (obj) => {
   if (!obj || typeof obj !== "object") return [];
@@ -278,6 +298,7 @@ function DriverLogbook() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedVehicle, setSelectedVehicle] = useState("");
   const [selectedDate, setSelectedDate] = useState(getTodayString());
+  const [tripsFilterDate, setTripsFilterDate] = useState(getTodayString());
 
   // Autocomplete states
   const [driverSuggestions, setDriverSuggestions] = useState([]);
@@ -1206,10 +1227,14 @@ function DriverLogbook() {
     [permissionFilteredTrips],
   );
 
-  const filteredTrips = React.useMemo(
-    () => filterByTab(permissionFilteredTrips, filterTab),
-    [permissionFilteredTrips, filterTab],
-  );
+  const filteredTrips = React.useMemo(() => {
+    let trips = filterByTab(permissionFilteredTrips, filterTab);
+    // Filter by date if selected
+    if (tripsFilterDate) {
+      trips = trips.filter((t) => t.startDate === tripsFilterDate);
+    }
+    return trips;
+  }, [permissionFilteredTrips, filterTab, tripsFilterDate]);
 
   const tripsWithOutside = React.useMemo(() => {
     return permissionFilteredTrips.filter(
@@ -2121,84 +2146,118 @@ function DriverLogbook() {
         {currentView === "trips" && (
           <>
             {/* Filter Tabs */}
-            <div className="mb-4 flex gap-2 bg-white p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 transition-colors flex-shrink-0 text-lg sm:text-xl"
-                title="Menu"
-              >
-                ☰
-              </button>
-              <button
-                onClick={() => setFilterTab("all")}
-                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                  filterTab === "all"
-                    ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
-                    : "text-slate-700 hover:text-indigo-600"
-                }`}
-              >
-                All ({permissionFilteredTrips.length})
-              </button>
-              <button
-                onClick={() => setFilterTab("ongoing")}
-                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                  filterTab === "ongoing"
-                    ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
-                    : "text-slate-700 hover:text-indigo-600"
-                }`}
-              >
-                Chạy (
-                {permissionFilteredTrips.filter((t) => !t.completed).length})
-              </button>
-              <button
-                onClick={() => setFilterTab("completed")}
-                className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                  filterTab === "completed"
-                    ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
-                    : "text-slate-700 hover:text-indigo-600"
-                }`}
-              >
-                Xong (
-                {permissionFilteredTrips.filter((t) => t.completed).length})
-              </button>
-              <div className="ml-auto flex items-center gap-2">
-                {isAdminOrHR && (
-                  <>
-                    <input
-                      type="file"
-                      accept=".xlsx,.xls"
-                      ref={excelInputRef}
-                      onChange={handleImportTripsFromExcel}
-                      className="hidden"
-                    />
-                    <button
-                      onClick={handleDownloadExcelTemplate}
-                      className="px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200 shadow"
-                      title="Tải file mẫu Excel"
-                    >
-                      ⬇️ Template
-                    </button>
-                    <button
-                      onClick={() => excelInputRef.current?.click()}
-                      disabled={isImporting}
-                      className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border shadow flex items-center gap-1 ${
-                        isImporting
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
-                          : "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
-                      }`}
-                      title="Nhập chuyến đi từ Excel"
-                    >
-                      {isImporting ? "⏳ Đang nhập..." : "⬆️ Upload"}
-                    </button>
-                  </>
-                )}
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row bg-white p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm">
+              {/* Row 1: Menu & Tabs */}
+              <div className="flex gap-2 w-full">
                 <button
-                  onClick={handleExportCompletedTrips}
-                  className="px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow"
-                  title="Xuất chuyến đã hoàn tất"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 transition-colors flex-shrink-0 text-lg sm:text-xl"
+                  title="Menu"
                 >
-                  📥 Xuất Excel
+                  ☰
                 </button>
+                <button
+                  onClick={() => setFilterTab("all")}
+                  className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                    filterTab === "all"
+                      ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
+                      : "text-slate-700 hover:text-indigo-600"
+                  }`}
+                >
+                  All ({permissionFilteredTrips.length})
+                </button>
+                <button
+                  onClick={() => setFilterTab("ongoing")}
+                  className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                    filterTab === "ongoing"
+                      ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
+                      : "text-slate-700 hover:text-indigo-600"
+                  }`}
+                >
+                  Chạy (
+                  {permissionFilteredTrips.filter((t) => !t.completed).length})
+                </button>
+                <button
+                  onClick={() => setFilterTab("completed")}
+                  className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                    filterTab === "completed"
+                      ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
+                      : "text-slate-700 hover:text-indigo-600"
+                  }`}
+                >
+                  Xong (
+                  {permissionFilteredTrips.filter((t) => t.completed).length})
+                </button>
+              </div>
+
+              {/* Row 2: Date Filter & Actions */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-center w-full">
+                {/* Date Filter */}
+                <div className="flex items-center gap-1 flex-1 sm:flex-initial">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1 whitespace-nowrap">
+                    <span>📅</span>
+                    <span>Ngày:</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={tripsFilterDate}
+                    onChange={(e) => setTripsFilterDate(e.target.value)}
+                    className="flex-1 sm:flex-initial px-2 py-1.5 rounded text-xs border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100 outline-none"
+                    title="Chọn ngày để lọc chuyến đi"
+                  />
+                  {tripsFilterDate && (
+                    <button
+                      onClick={() => setTripsFilterDate("")}
+                      className="px-2 py-1.5 text-xs bg-slate-200 text-slate-700 hover:bg-slate-300 rounded transition-colors flex-shrink-0"
+                      title="Xóa bộ lọc ngày"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-1 sm:gap-2 sm:ml-auto flex-wrap">
+                  {isAdminOrHR && (
+                    <>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        ref={excelInputRef}
+                        onChange={handleImportTripsFromExcel}
+                        className="hidden"
+                      />
+                      <button
+                        onClick={handleDownloadExcelTemplate}
+                        className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200 shadow whitespace-nowrap"
+                        title="Tải file mẫu Excel"
+                      >
+                        ⬇️ Template
+                      </button>
+                      <button
+                        onClick={() => excelInputRef.current?.click()}
+                        disabled={isImporting}
+                        className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold border shadow flex items-center gap-1 whitespace-nowrap ${
+                          isImporting
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
+                            : "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+                        }`}
+                        title="Nhập chuyến đi từ Excel"
+                      >
+                        {isImporting ? "⏳" : "⬆️"}
+                        <span className="hidden sm:inline">Upload</span>
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={handleExportCompletedTrips}
+                    className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow whitespace-nowrap"
+                    title="Xuất chuyến đã hoàn tất"
+                  >
+                    📥
+                    <span className="hidden sm:inline">Xuất</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2217,95 +2276,166 @@ function DriverLogbook() {
                 </div>
               ) : (
                 <>
-                  {/* Mobile Card View */}
-                  <div className="md:hidden divide-y divide-slate-200">
-                    {filteredTrips.map((trip) => (
-                      <div
-                        key={trip.id}
-                        className="p-4 hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          {/* Left: Main Info */}
-                          <div className="flex-1 min-w-0 space-y-2">
-                            {/* Biển số xe */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-2xl">🚗</span>
-                              <span className="font-bold text-lg text-indigo-700">
-                                {trip.vehicleNumber || "N/A"}
-                              </span>
+                  {/* Mobile Card View - Grouped by Date */}
+                  <div className="md:hidden space-y-3 sm:space-y-4">
+                    {(() => {
+                      const groupedTrips = groupTripsByDate(filteredTrips);
+                      return Object.entries(groupedTrips).map(
+                        ([date, tripsForDate]) => {
+                          const dateObj = new Date(date);
+                          const formattedDate = dateObj.toLocaleDateString(
+                            "vi-VN",
+                            {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            },
+                          );
+                          return (
+                            <div key={date} className="pt-2 sm:pt-3">
+                              {/* Date Header */}
+                              <div className="px-3 sm:px-4 pb-2 sm:pb-3 mb-2 sm:mb-3 border-b-2 border-indigo-300 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg py-2 sm:py-3 sticky top-0 z-10">
+                                <h3 className="text-xs sm:text-sm lg:text-base font-bold text-indigo-900 flex items-center gap-2 flex-wrap">
+                                  <span className="text-base sm:text-lg">
+                                    📅
+                                  </span>
+                                  <span className="truncate">
+                                    {formattedDate}
+                                  </span>
+                                  <span className="text-xs font-semibold bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full ml-auto flex-shrink-0">
+                                    {tripsForDate.length} chuyến
+                                  </span>
+                                </h3>
+                              </div>
+                              {/* Trips for this date */}
+                              <div className="divide-y divide-slate-200 border border-slate-200 rounded-lg overflow-hidden">
+                                {tripsForDate.map((trip) => (
+                                  <div
+                                    key={trip.id}
+                                    className="p-3 sm:p-4 hover:bg-slate-50 transition-colors"
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      {/* Left: Main Info */}
+                                      <div className="flex-1 min-w-0 space-y-2">
+                                        {/* Biển số xe */}
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xl sm:text-2xl">
+                                            🚗
+                                          </span>
+                                          <span className="font-bold text-base sm:text-lg text-indigo-700 truncate">
+                                            {trip.vehicleNumber || "N/A"}
+                                          </span>
+                                        </div>
+
+                                        {/* Tên tài xế */}
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-lg">👤</span>
+                                          <span className="font-semibold text-sm text-slate-700 truncate">
+                                            {trip.driverName || "N/A"}
+                                          </span>
+                                        </div>
+
+                                        {/* Người yêu cầu */}
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-lg">🙋</span>
+                                          <span className="text-xs sm:text-sm text-slate-700 font-semibold truncate">
+                                            {trip.requesterName ||
+                                              "(chưa nhập)"}
+                                          </span>
+                                        </div>
+
+                                        {/* Tuyến đường */}
+                                        <div className="flex items-start gap-2">
+                                          <span className="text-lg flex-shrink-0">
+                                            🗺️
+                                          </span>
+                                          <div className="min-w-0 text-xs sm:text-sm text-slate-600">
+                                            <div className="truncate">
+                                              {trip.departure || "N/A"} →{" "}
+                                              {trip.destination || "N/A"}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* Thời gian */}
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-lg flex-shrink-0">
+                                            ⏰
+                                          </span>
+                                          <span className="text-xs sm:text-sm text-slate-600">
+                                            {trip.startTime || "(chưa nhập)"}
+                                          </span>
+                                        </div>
+
+                                        {/* KM */}
+                                        {(trip.startKm || trip.endKm) && (
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-lg flex-shrink-0">
+                                              📏
+                                            </span>
+                                            <span className="text-xs sm:text-sm text-slate-600 font-semibold">
+                                              {trip.startKm || 0}km →{" "}
+                                              {trip.endKm || "?"}km
+                                              {trip.totalKm &&
+                                                ` (Δ${trip.totalKm}km)`}
+                                            </span>
+                                          </div>
+                                        )}
+
+                                        {/* Nút xem chi tiết */}
+                                        <button
+                                          onClick={() => {
+                                            setMobileDetailTrip(trip);
+                                            setShowMobileDetailModal(true);
+                                          }}
+                                          className="mt-2 w-full px-3 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg font-semibold text-xs sm:text-sm shadow-md hover:from-indigo-700 hover:to-blue-700 transition-all"
+                                        >
+                                          📋 Xem Chi Tiết
+                                        </button>
+                                      </div>
+
+                                      {/* Right: Status & Checkbox */}
+                                      <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                                        <input
+                                          type="checkbox"
+                                          checked={trip.completed}
+                                          onChange={() =>
+                                            handleCompleteTrip(trip)
+                                          }
+                                          disabled={!isAdminOrHR}
+                                          className={`w-5 h-5 rounded ${
+                                            !isAdminOrHR
+                                              ? "text-green-600 cursor-not-allowed opacity-70"
+                                              : "text-blue-600 cursor-pointer"
+                                          }`}
+                                          title={
+                                            !isAdminOrHR
+                                              ? "Chỉ Admin/HR mới có quyền đánh dấu hoàn tất"
+                                              : trip.completed
+                                                ? "Click để bỏ đánh dấu hoàn tất"
+                                                : "Click để đánh dấu hoàn tất"
+                                          }
+                                        />
+                                        {trip.completed ? (
+                                          <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">
+                                            ✓ Xong
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 whitespace-nowrap">
+                                            ⏳ Chạy
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-
-                            {/* Tên tài xế */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">👤</span>
-                              <span className="font-semibold text-slate-700">
-                                {trip.driverName || "N/A"}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">🙋</span>
-                              <span className="text-sm text-slate-700 font-semibold">
-                                {trip.requesterName || "(chưa nhập)"}
-                              </span>
-                            </div>
-
-                            {/* Thời gian */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">⏰</span>
-                              <span className="text-sm text-slate-600">
-                                {new Date(trip.startDate).toLocaleDateString(
-                                  "vi-VN",
-                                )}
-                                {trip.startTime && ` - ${trip.startTime}`}
-                              </span>
-                            </div>
-
-                            {/* Nút xem chi tiết */}
-                            <button
-                              onClick={() => {
-                                setMobileDetailTrip(trip);
-                                setShowMobileDetailModal(true);
-                              }}
-                              className="mt-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg font-semibold text-sm shadow-md hover:from-indigo-700 hover:to-blue-700 transition-all"
-                            >
-                              📋 Xem Chi Tiết
-                            </button>
-                          </div>
-
-                          {/* Right: Status & Checkbox */}
-                          <div className="flex flex-col items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={trip.completed}
-                              onChange={() => handleCompleteTrip(trip)}
-                              disabled={!isAdminOrHR}
-                              className={`w-5 h-5 rounded ${
-                                !isAdminOrHR
-                                  ? "text-green-600 cursor-not-allowed opacity-70"
-                                  : "text-blue-600 cursor-pointer"
-                              }`}
-                              title={
-                                !isAdminOrHR
-                                  ? "Chỉ Admin/HR mới có quyền đánh dấu hoàn tất"
-                                  : trip.completed
-                                    ? "Click để bỏ đánh dấu hoàn tất"
-                                    : "Click để đánh dấu hoàn tất"
-                              }
-                            />
-                            {trip.completed ? (
-                              <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
-                                ✓
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                                x
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                          );
+                        },
+                      );
+                    })()}
                   </div>
 
                   {/* Desktop Table View */}
@@ -2354,216 +2484,253 @@ function DriverLogbook() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200/50">
-                        {filteredTrips.map((trip) => (
-                          <tr
-                            key={trip.id}
-                            className="transition-colors odd:bg-gray-900 even:bg-gray-700 hover:bg-gray-800 text-white text-xs sm:text-sm"
-                          >
-                            {/* ✓ - Checkbox */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
-                              <div className="flex items-center justify-center">
-                                <input
-                                  type="checkbox"
-                                  checked={trip.completed}
-                                  onChange={() => handleCompleteTrip(trip)}
-                                  disabled={!isAdminOrHR}
-                                  className={`w-3 h-3 sm:w-4 sm:h-4 rounded ${
-                                    !isAdminOrHR
-                                      ? "text-green-600 cursor-not-allowed opacity-70"
-                                      : "text-blue-600 cursor-pointer"
-                                  }`}
-                                  title={
-                                    !isAdminOrHR
-                                      ? "Chỉ Admin/HR mới có quyền đánh dấu hoàn tất"
-                                      : trip.completed
-                                        ? "Click để bỏ đánh dấu hoàn tất"
-                                        : "Click để đánh dấu hoàn tất"
-                                  }
-                                />
-                              </div>
-                            </td>
-                            {/* Tài Xế */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">
-                              <div className="flex items-center gap-1 justify-center">
-                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-indigo-200 to-blue-200 border border-indigo-300 flex items-center justify-center text-indigo-700 font-semibold text-xs flex-shrink-0">
-                                  {(trip.driverName || "?")[0].toUpperCase()}
-                                </div>
-                                <span className="font-bold text-white hidden md:inline truncate text-xs">
-                                  {trip.driverName}
-                                </span>
-                              </div>
-                            </td>
-                            {/* ĐT - Phone */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
-                              {trip.phone ? (
-                                <a
-                                  href={`tel:${trip.phone}`}
-                                  className="text-white hover:text-yellow-400 font-semibold text-xs truncate"
+                        {(() => {
+                          const groupedTrips = groupTripsByDate(filteredTrips);
+                          return Object.entries(groupedTrips).flatMap(
+                            ([date, tripsForDate]) => {
+                              const dateObj = new Date(date);
+                              const formattedDate = dateObj.toLocaleDateString(
+                                "vi-VN",
+                                {
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                },
+                              );
+                              return [
+                                // Date header row
+                                <tr
+                                  key={`date-${date}`}
+                                  className="bg-gradient-to-r from-indigo-100 to-blue-100 border-b-2 border-indigo-300"
                                 >
-                                  {trip.phone}
-                                </a>
-                              ) : (
-                                <span className="text-slate-400 text-xs">
-                                  -
-                                </span>
-                              )}
-                            </td>
-                            {/* Xe - Vehicle Number */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
-                              <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 inline-block truncate">
-                                {trip.vehicleNumber || "N/A"}
-                              </span>
-                            </td>
-                            {/* Loại Xe - Vehicle Type */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
-                              <span className="text-white font-medium text-xs truncate">
-                                {trip.vehicleType || "-"}
-                              </span>
-                            </td>
-                            {/* Tuyến - Route (Departure → Destination) */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell">
-                              <div className="text-xs text-white">
-                                <p className="font-semibold text-white truncate">
-                                  📍 {trip.departure || "N/A"} →{" "}
-                                  {trip.destination}
-                                </p>
-                                {/* Purpose removed per request */}
-                              </div>
-                            </td>
-                            {/* Km - Kilometers */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">
-                              <div className="text-xs text-white">
-                                <p className="text-gray-300 font-medium">
-                                  {trip.startKm || 0}km
-                                </p>
-                                {trip.endKm && (
-                                  <>
-                                    <p className="text-gray-300 text-xs">
-                                      →
-                                      <span className="font-bold text-white">
-                                        {trip.endKm}
+                                  <td
+                                    colSpan={isAdminOrHR ? 12 : 11}
+                                    className="px-3 py-3 text-sm font-bold text-indigo-900 flex items-center gap-2"
+                                  >
+                                    <span className="text-lg">📅</span>
+                                    <span>{formattedDate}</span>
+                                    <span className="text-xs font-semibold bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full ml-auto mr-4">
+                                      {tripsForDate.length} chuyến
+                                    </span>
+                                  </td>
+                                </tr>,
+                                // Trip rows for this date
+                                ...tripsForDate.map((trip) => (
+                                  <tr
+                                    key={trip.id}
+                                    className="transition-colors odd:bg-gray-900 even:bg-gray-700 hover:bg-gray-800 text-white text-xs sm:text-sm"
+                                  >
+                                    {/* ✓ - Checkbox */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                                      <div className="flex items-center justify-center">
+                                        <input
+                                          type="checkbox"
+                                          checked={trip.completed}
+                                          onChange={() =>
+                                            handleCompleteTrip(trip)
+                                          }
+                                          disabled={!isAdminOrHR}
+                                          className={`w-3 h-3 sm:w-4 sm:h-4 rounded ${
+                                            !isAdminOrHR
+                                              ? "text-green-600 cursor-not-allowed opacity-70"
+                                              : "text-blue-600 cursor-pointer"
+                                          }`}
+                                          title={
+                                            !isAdminOrHR
+                                              ? "Chỉ Admin/HR mới có quyền đánh dấu hoàn tất"
+                                              : trip.completed
+                                                ? "Click để bỏ đánh dấu hoàn tất"
+                                                : "Click để đánh dấu hoàn tất"
+                                          }
+                                        />
+                                      </div>
+                                    </td>
+                                    {/* Tài Xế */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">
+                                      <div className="flex items-center gap-1 justify-center">
+                                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-indigo-200 to-blue-200 border border-indigo-300 flex items-center justify-center text-indigo-700 font-semibold text-xs flex-shrink-0">
+                                          {(trip.driverName ||
+                                            "?")[0].toUpperCase()}
+                                        </div>
+                                        <span className="font-bold text-white hidden md:inline truncate text-xs">
+                                          {trip.driverName}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    {/* ĐT - Phone */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
+                                      {trip.phone ? (
+                                        <a
+                                          href={`tel:${trip.phone}`}
+                                          className="text-white hover:text-yellow-400 font-semibold text-xs truncate"
+                                        >
+                                          {trip.phone}
+                                        </a>
+                                      ) : (
+                                        <span className="text-slate-400 text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </td>
+                                    {/* Xe - Vehicle Number */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                                      <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 inline-block truncate">
+                                        {trip.vehicleNumber || "N/A"}
                                       </span>
-                                      km
-                                    </p>
-                                    <p className="text-white font-bold text-xs">
-                                      Δ
-                                      <span className="text-cyan-300">
-                                        {trip.totalKm ||
-                                          parseFloat(trip.endKm) -
-                                            parseFloat(trip.startKm)}
+                                    </td>
+                                    {/* Loại Xe - Vehicle Type */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
+                                      <span className="text-white font-medium text-xs truncate">
+                                        {trip.vehicleType || "-"}
                                       </span>
-                                    </p>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                            {/* Người yêu cầu */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell">
-                              <span className="text-white font-medium text-xs truncate">
-                                {trip.requesterName || "-"}
-                              </span>
-                            </td>
-                            {/* Thời Gian - Time */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
-                              <div className="text-xs text-white">
-                                <p className="text-gray-300 font-medium">
-                                  <span className="font-semibold text-white text-xs">
-                                    {new Date(
-                                      trip.startDate,
-                                    ).toLocaleDateString("vi-VN", {
-                                      month: "short",
-                                      day: "numeric",
-                                    })}
-                                  </span>
-                                </p>
-                                {trip.completed && trip.endDate && (
-                                  <p className="text-green-400 font-medium text-xs">
-                                    {new Date(trip.endDate).toLocaleDateString(
-                                      "vi-VN",
-                                      { month: "short", day: "numeric" },
+                                    </td>
+                                    {/* Tuyến - Route (Departure → Destination) */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell">
+                                      <div className="text-xs text-white">
+                                        <p className="font-semibold text-white truncate">
+                                          📍 {trip.departure || "N/A"} →{" "}
+                                          {trip.destination}
+                                        </p>
+                                        {/* Purpose removed per request */}
+                                      </div>
+                                    </td>
+                                    {/* Km - Kilometers */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">
+                                      <div className="text-xs text-white">
+                                        <p className="text-gray-300 font-medium">
+                                          {trip.startKm || 0}km
+                                        </p>
+                                        {trip.endKm && (
+                                          <>
+                                            <p className="text-gray-300 text-xs">
+                                              →
+                                              <span className="font-bold text-white">
+                                                {trip.endKm}
+                                              </span>
+                                              km
+                                            </p>
+                                            <p className="text-white font-bold text-xs">
+                                              Δ
+                                              <span className="text-cyan-300">
+                                                {trip.totalKm ||
+                                                  parseFloat(trip.endKm) -
+                                                    parseFloat(trip.startKm)}
+                                              </span>
+                                            </p>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                    {/* Người yêu cầu */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden lg:table-cell">
+                                      <span className="text-white font-medium text-xs truncate">
+                                        {trip.requesterName || "-"}
+                                      </span>
+                                    </td>
+                                    {/* Thời Gian - Time */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center hidden md:table-cell">
+                                      <div className="text-xs text-white">
+                                        <p className="text-gray-300 font-medium">
+                                          <span className="font-semibold text-white text-xs">
+                                            {trip.startTime || "-"}
+                                          </span>
+                                        </p>
+                                        {trip.completed && trip.endTime && (
+                                          <p className="text-green-400 font-medium text-xs">
+                                            {trip.endTime}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </td>
+                                    {/* Hành Động - Actions (💵) */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                                      <div className="flex items-center justify-center gap-0.5">
+                                        <button
+                                          onClick={() => {
+                                            if (!isAdminOrHR) {
+                                              setAlert({
+                                                show: true,
+                                                type: "error",
+                                                message:
+                                                  "Bạn không có quyền nhập thông tin này",
+                                              });
+                                              return;
+                                            }
+                                            handleOpenDetailsModal(trip);
+                                          }}
+                                          className={`p-1 sm:p-1.5 rounded transition-all text-sm sm:text-base ${
+                                            isAdminOrHR
+                                              ? "bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer"
+                                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                          }`}
+                                          title={
+                                            isAdminOrHR
+                                              ? "Chi tiết chi phí"
+                                              : "Chỉ Admin/HR"
+                                          }
+                                        >
+                                          💵
+                                        </button>
+                                      </div>
+                                    </td>
+                                    {/* Trạng thái - Status */}
+                                    <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
+                                      {trip.completed ? (
+                                        <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200 inline-block">
+                                          ✓
+                                        </span>
+                                      ) : (
+                                        <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 inline-block">
+                                          x
+                                        </span>
+                                      )}
+                                    </td>
+                                    {/* Thao Tác - Edit/Delete (Admin/HR only) */}
+                                    {isAdminOrHR && (
+                                      <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3">
+                                        <div className="flex items-center justify-center gap-0.5">
+                                          <button
+                                            onClick={() => handleEdit(trip)}
+                                            disabled={trip.completed}
+                                            className={`p-1 sm:p-1.5 rounded text-sm sm:text-base ${
+                                              trip.completed
+                                                ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                                : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                                            }`}
+                                            title={
+                                              trip.completed
+                                                ? "Không thể sửa"
+                                                : "Sửa"
+                                            }
+                                          >
+                                            ✏️
+                                          </button>
+                                          <button
+                                            onClick={() =>
+                                              handleDelete(trip.id)
+                                            }
+                                            disabled={!isAdminOrHR}
+                                            className={`p-1 sm:p-1.5 rounded text-sm sm:text-base ${
+                                              isAdminOrHR
+                                                ? "bg-red-100 text-red-600 hover:bg-red-200"
+                                                : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                            }`}
+                                            title={
+                                              isAdminOrHR ? "Xóa" : "Admin/HR"
+                                            }
+                                          >
+                                            🗑️
+                                          </button>
+                                        </div>
+                                      </td>
                                     )}
-                                  </p>
-                                )}
-                              </div>
-                            </td>
-                            {/* Hành Động - Actions (� 🛣️) */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
-                              <div className="flex items-center justify-center gap-0.5">
-                                <button
-                                  onClick={() => {
-                                    if (!isAdminOrHR) {
-                                      setAlert({
-                                        show: true,
-                                        type: "error",
-                                        message:
-                                          "Bạn không có quyền nhập thông tin này",
-                                      });
-                                      return;
-                                    }
-                                    handleOpenDetailsModal(trip);
-                                  }}
-                                  className={`p-1 sm:p-1.5 rounded transition-all text-sm sm:text-base ${
-                                    isAdminOrHR
-                                      ? "bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer"
-                                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                  }`}
-                                  title={
-                                    isAdminOrHR
-                                      ? "Chi tiết chi phí"
-                                      : "Chỉ Admin/HR"
-                                  }
-                                >
-                                  💵
-                                </button>
-                              </div>
-                            </td>
-                            {/* Trạng thái - Status */}
-                            <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center">
-                              {trip.completed ? (
-                                <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-200 inline-block">
-                                  ✓
-                                </span>
-                              ) : (
-                                <span className="px-1 sm:px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 inline-block">
-                                  x
-                                </span>
-                              )}
-                            </td>
-                            {/* Thao Tác - Edit/Delete (Admin/HR only) */}
-                            {isAdminOrHR && (
-                              <td className="px-1 sm:px-2 md:px-3 py-2 sm:py-3">
-                                <div className="flex items-center justify-center gap-0.5">
-                                  <button
-                                    onClick={() => handleEdit(trip)}
-                                    disabled={trip.completed}
-                                    className={`p-1 sm:p-1.5 rounded text-sm sm:text-base ${
-                                      trip.completed
-                                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                        : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
-                                    }`}
-                                    title={
-                                      trip.completed ? "Không thể sửa" : "Sửa"
-                                    }
-                                  >
-                                    ✏️
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(trip.id)}
-                                    disabled={!isAdminOrHR}
-                                    className={`p-1 sm:p-1.5 rounded text-sm sm:text-base ${
-                                      isAdminOrHR
-                                        ? "bg-red-100 text-red-600 hover:bg-red-200"
-                                        : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                    }`}
-                                    title={isAdminOrHR ? "Xóa" : "Admin/HR"}
-                                  >
-                                    🗑️
-                                  </button>
-                                </div>
-                              </td>
-                            )}
-                          </tr>
-                        ))}
+                                  </tr>
+                                )),
+                              ];
+                            },
+                          );
+                        })()}
                       </tbody>
                     </table>
                   </div>

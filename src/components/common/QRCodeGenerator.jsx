@@ -3,12 +3,45 @@ import QRCode from "qrcode";
 
 function QRCodeGenerator() {
   const [qrValue, setQrValue] = useState("BN96-63323A DZ9M");
-  const [qrSize, setQrSize] = useState(280);
+  const [qrSize, setQrSize] = useState(200);
   const [fgColor, setFgColor] = useState("#000000");
   const [bgColor, setBgColor] = useState("#ffffff");
   const [toast, setToast] = useState("");
   const ERROR_LEVEL = "H";
   const canvasRef = useRef();
+
+  // Validate and fix hex color
+  const validateHexColor = (color) => {
+    // If empty, return default black
+    if (!color) return "#000000";
+
+    // Remove spaces
+    color = color.trim();
+
+    // If it doesn't start with #, add it
+    if (!color.startsWith("#")) {
+      color = "#" + color;
+    }
+
+    // Remove everything after # except hex chars
+    const match = color.match(/#([0-9a-fA-F]*)/);
+    if (!match || !match[1]) return "#000000";
+
+    let hex = match[1].toUpperCase();
+
+    // Handle shorthand (3 chars) and convert to full (6 chars)
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+
+    // Ensure exactly 6 characters
+    if (hex.length !== 6) {
+      // Pad or truncate to 6
+      hex = (hex + "000000").substring(0, 6);
+    }
+
+    return "#" + hex;
+  };
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -20,10 +53,13 @@ function QRCodeGenerator() {
       return;
     }
 
+    const validFgColor = validateHexColor(fgColor);
+    const validBgColor = validateHexColor(bgColor);
+
     QRCode.toCanvas(canvasRef.current, qrValue, {
       width: qrSize,
       margin: 2,
-      color: { dark: fgColor, light: bgColor },
+      color: { dark: validFgColor, light: validBgColor },
       errorCorrectionLevel: ERROR_LEVEL,
     }).catch((err) => console.error(err));
   }, [qrValue, qrSize, fgColor, bgColor]);
@@ -37,6 +73,9 @@ function QRCodeGenerator() {
   const handleDownloadQR = async (format = "png") => {
     if (!canvasRef.current) return showToast("Không có QR để tải");
     try {
+      const validFgColor = validateHexColor(fgColor);
+      const validBgColor = validateHexColor(bgColor);
+
       if (format === "png") {
         const image = canvasRef.current.toDataURL("image/png");
         const link = document.createElement("a");
@@ -47,7 +86,7 @@ function QRCodeGenerator() {
         const svg = await QRCode.toString(qrValue, {
           width: qrSize,
           margin: 2,
-          color: { dark: fgColor, light: bgColor },
+          color: { dark: validFgColor, light: validBgColor },
           errorCorrectionLevel: ERROR_LEVEL,
           type: "image/svg+xml",
         });
@@ -101,7 +140,7 @@ function QRCodeGenerator() {
               PAVONINE QR Code Creator
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              Tạo tem code dành cho bộ phận Assembly
+              Tạo code xe dành cho bộ phận Assembly.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -162,12 +201,16 @@ function QRCodeGenerator() {
                         <input
                           type="color"
                           value={fgColor}
-                          onChange={(e) => setFgColor(e.target.value)}
+                          onChange={(e) =>
+                            setFgColor(validateHexColor(e.target.value))
+                          }
                           className="w-12 h-10 p-0 appearance-none border-0 bg-transparent"
                         />
                         <input
                           value={fgColor}
-                          onChange={(e) => setFgColor(e.target.value)}
+                          onChange={(e) =>
+                            setFgColor(validateHexColor(e.target.value))
+                          }
                           className="flex-1 px-3 py-2 h-10 border-0 font-mono text-sm"
                         />
                       </div>
@@ -180,12 +223,16 @@ function QRCodeGenerator() {
                         <input
                           type="color"
                           value={bgColor}
-                          onChange={(e) => setBgColor(e.target.value)}
+                          onChange={(e) =>
+                            setBgColor(validateHexColor(e.target.value))
+                          }
                           className="w-12 h-10 p-0 appearance-none border-0 bg-transparent"
                         />
                         <input
                           value={bgColor}
-                          onChange={(e) => setBgColor(e.target.value)}
+                          onChange={(e) =>
+                            setBgColor(validateHexColor(e.target.value))
+                          }
                           className="flex-1 px-3 py-2 h-10 border-0 font-mono text-sm"
                         />
                       </div>
