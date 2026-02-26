@@ -1896,6 +1896,81 @@ function AttendanceList() {
     }
   }, [modalFilteredEmployees, selectedDate]);
 
+  // Export Bu Cong Excel
+  const handleExportBuCongExcel = useCallback(async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Danh Sach Bu Cong");
+
+      // Set column widths
+      worksheet.columns = [
+        { width: 8 },
+        { width: 12 },
+        { width: 20 },
+        { width: 20 },
+        { width: 12 },
+        { width: 12 },
+      ];
+
+      // Add header row
+      const headerRow = worksheet.addRow([
+        "STT",
+        "MNV",
+        "Họ và tên",
+        "Bộ phận",
+        "Giờ vào",
+        "Giờ ra",
+      ]);
+      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      headerRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF1976D2" },
+      };
+      headerRow.alignment = { horizontal: "center", vertical: "middle" };
+      headerRow.height = 18;
+
+      // Add data rows
+      buCongEmployees.forEach((emp, idx) => {
+        const dataRow = worksheet.addRow([
+          idx + 1,
+          emp.mnv || "",
+          emp.hoVaTen || "",
+          emp.boPhan || "",
+          emp.gioVao || "",
+          emp.gioRa || "",
+        ]);
+        dataRow.alignment = { horizontal: "center", vertical: "middle" };
+        dataRow.height = 16;
+      });
+
+      // Generate file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `bu-cong-${selectedDate}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      setAlert({
+        show: true,
+        type: "success",
+        message: `✅ Xuất danh sách bù công thành công! ${buCongEmployees.length} nhân viên.`,
+      });
+    } catch (error) {
+      console.error("Error exporting Bu Cong Excel:", error);
+      setAlert({
+        show: true,
+        type: "error",
+        message: `❌ Xuất danh sách bù công thất bại! ${error.message || ""}`,
+      });
+    }
+  }, [buCongEmployees, selectedDate]);
+
   return (
     <>
       {/* Sidebar */}
@@ -1940,7 +2015,11 @@ function AttendanceList() {
               </div>
               <div className="flex items-center gap-4">
                 <BirthdayCakeBell employees={allEmployees} />
-                <NotificationBell count={buCongEmployees.length}>
+                <NotificationBell
+                  count={buCongEmployees.length}
+                  onExport={handleExportBuCongExcel}
+                  exportLabel="⬇ Xuất Excel"
+                >
                   {/* Danh sách nhân viên bù công */}
                   {buCongEmployees.length === 0 ? (
                     <div

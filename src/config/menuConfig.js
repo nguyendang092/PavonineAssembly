@@ -97,11 +97,11 @@ export const menuConfig = [
                 label: "navbar.maintenance",
                 path: "/maintenance",
               },
-              {
-                key: "driverLogbook",
-                label: "navbar.driverLogbook",
-                path: "/driver-logbook",
-              },
+              // {
+              //   key: "driverLogbook",
+              //   label: "navbar.driverLogbook",
+              //   path: "/driver-logbook",
+              // },
             ],
           },
           {

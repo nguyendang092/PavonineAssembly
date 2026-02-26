@@ -59,8 +59,20 @@ function AttendanceTable() {
     setLoading(true);
     const unsubscribers = [];
     const allData = {};
-    let loadedCount = 0;
+    const initialLoaded = new Set();
     const totalDates = dates.length;
+
+    const sortAndSet = () => {
+      const merged = Object.values(allData)
+        .flat()
+        .sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          if (dateA.getTime() !== dateB.getTime()) return dateA - dateB;
+          return (a.hoVaTen || "").localeCompare(b.hoVaTen || "");
+        });
+      setAttendanceData(merged);
+    };
 
     dates.forEach((date) => {
       const attendanceRef = ref(db, `attendance/${date}`);
@@ -78,28 +90,22 @@ function AttendanceTable() {
             allData[date] = [];
           }
 
-          loadedCount += 1;
-          if (loadedCount === totalDates) {
-            const merged = Object.values(allData)
-              .flat()
-              .sort((a, b) => {
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
-                if (dateA.getTime() !== dateB.getTime()) {
-                  return dateA - dateB;
-                }
-                return (a.hoVaTen || "").localeCompare(b.hoVaTen || "");
-              });
+          // Always update the merged data when any date changes
+          sortAndSet();
 
-            setAttendanceData(merged);
-            setLoading(false);
+          // Track first-time loads to clear the loading indicator correctly
+          if (!initialLoaded.has(date)) {
+            initialLoaded.add(date);
+            if (initialLoaded.size === totalDates) {
+              setLoading(false);
+            }
           }
         },
         (error) => {
           console.error("Error fetching attendance data", error);
-          loadedCount += 1;
-          if (loadedCount === totalDates) {
-            setLoading(false);
+          if (!initialLoaded.has(date)) {
+            initialLoaded.add(date);
+            if (initialLoaded.size === totalDates) setLoading(false);
           }
         },
       );
@@ -108,7 +114,13 @@ function AttendanceTable() {
     });
 
     return () => {
-      unsubscribers.forEach((unsubscribe) => unsubscribe());
+      unsubscribers.forEach((unsubscribe) => {
+        try {
+          unsubscribe();
+        } catch (e) {
+          // ignore
+        }
+      });
     };
   }, [startDate, endDate]);
 

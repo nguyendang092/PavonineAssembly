@@ -7,6 +7,8 @@ export default function NotificationBell({
   count = 0,
   children,
   title = "DANH SÁCH NHÂN VIÊN BÙ CÔNG",
+  onExport,
+  exportLabel = "⬇ Xuất Excel",
 }) {
   const [open, setOpen] = useState(false);
 
@@ -82,9 +84,57 @@ export default function NotificationBell({
             fontWeight: 700,
             textAlign: "center",
             letterSpacing: 0.2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
           {title}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {onExport && (
+              <button
+                onClick={onExport}
+                style={{
+                  padding: "6px 12px",
+                  backgroundColor: "#1976d2",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.target.style.backgroundColor = "#0d47a1")
+                }
+                onMouseLeave={(e) =>
+                  (e.target.style.backgroundColor = "#1976d2")
+                }
+              >
+                {exportLabel}
+              </button>
+            )}
+            <button
+              onClick={() => setOpen(false)}
+              style={{
+                padding: "4px 10px",
+                backgroundColor: "#ff6b6b",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "16px",
+                fontWeight: "600",
+                transition: "background 0.2s",
+                minWidth: "36px",
+              }}
+              onMouseEnter={(e) => (e.target.style.backgroundColor = "#ee5a52")}
+              onMouseLeave={(e) => (e.target.style.backgroundColor = "#ff6b6b")}
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <div
           style={{
@@ -108,24 +158,6 @@ export default function NotificationBell({
             </div>
           )}
         </div>
-        <button
-          onClick={() => setOpen(false)}
-          style={{
-            margin: "10px auto 12px auto",
-            padding: "6px 24px",
-            borderRadius: 8,
-            background: "#1976d2",
-            color: "#fff",
-            fontWeight: 600,
-            border: "none",
-            fontSize: 15,
-            cursor: "pointer",
-            boxShadow: "0 1px 4px rgba(25,118,210,0.08)",
-            transition: "background 0.2s",
-          }}
-        >
-          Đóng
-        </button>
       </div>
     </>
   );

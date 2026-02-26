@@ -8,7 +8,8 @@ function QRCodeGenerator() {
   const [bgColor, setBgColor] = useState("#ffffff");
   const [toast, setToast] = useState("");
   const ERROR_LEVEL = "H";
-  const canvasRef = useRef();
+  const canvasRef = useRef(null);
+  const toastTimeoutRef = useRef(null);
 
   // Validate and fix hex color
   const validateHexColor = (color) => {
@@ -66,9 +67,25 @@ function QRCodeGenerator() {
 
   const showToast = (msg = "", ms = 1800) => {
     setToast(msg);
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = null;
+    }
     if (!msg) return;
-    setTimeout(() => setToast(""), ms);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast("");
+      toastTimeoutRef.current = null;
+    }, ms);
   };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+        toastTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const handleDownloadQR = async (format = "png") => {
     if (!canvasRef.current) return showToast("Không có QR để tải");
@@ -81,7 +98,10 @@ function QRCodeGenerator() {
         const link = document.createElement("a");
         link.href = image;
         link.download = `qrcode-${Date.now()}.png`;
+        link.style.display = "none";
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
       } else if (format === "svg") {
         const svg = await QRCode.toString(qrValue, {
           width: qrSize,
@@ -95,7 +115,10 @@ function QRCodeGenerator() {
         const link = document.createElement("a");
         link.href = url;
         link.download = `qrcode-${Date.now()}.svg`;
+        link.style.display = "none";
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
         URL.revokeObjectURL(url);
       }
       showToast("Đã tải xuống");

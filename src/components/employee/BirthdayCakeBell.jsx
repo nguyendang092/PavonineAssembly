@@ -1,11 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import "./BirthdayCakeBell.css";
+import ExcelJS from "exceljs";
 
 // Nhận employees (danh sách nhân viên) làm prop
 export default function BirthdayCakeBell({ employees }) {
   const [open, setOpen] = useState(false);
   const now = new Date();
+  const listRef = useRef(null);
 
   // Lọc ra những nhân viên có sinh nhật trong tháng hiện tại
   const birthdayList = useMemo(() => {
@@ -38,6 +40,80 @@ export default function BirthdayCakeBell({ employees }) {
     });
   }, [employees, now]);
 
+  const excelData = useMemo(
+    () =>
+      birthdayList.map((emp, idx) => ({
+        "#": idx + 1,
+        "Họ và tên": emp.hoVaTen || "",
+        "Ngày sinh": emp.ngayThangNamSinh || "",
+        "Bộ phận": emp.boPhan || "",
+        "Mã NV": emp.mnv || "",
+      })),
+    [birthdayList],
+  );
+
+  const handleExportExcel = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet(
+        `SinhNhatThang${now.getMonth() + 1}`,
+      );
+
+      // Set column widths
+      worksheet.columns = [
+        { width: 8 },
+        { width: 20 },
+        { width: 15 },
+        { width: 20 },
+        { width: 12 },
+      ];
+
+      // Add header row
+      const headerRow = worksheet.addRow([
+        "#",
+        "Họ và tên",
+        "Ngày sinh",
+        "Bộ phận",
+        "Mã NV",
+      ]);
+      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      headerRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE43C7D" },
+      };
+      headerRow.alignment = { horizontal: "center", vertical: "middle" };
+      headerRow.height = 18;
+
+      // Add data rows
+      excelData.forEach((row) => {
+        const dataRow = worksheet.addRow([
+          row["#"],
+          row["Họ và tên"],
+          row["Ngày sinh"],
+          row["Bộ phận"],
+          row["Mã NV"],
+        ]);
+        dataRow.alignment = { horizontal: "center", vertical: "middle" };
+        dataRow.height = 16;
+      });
+
+      // Generate file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `birthday-list-${now.getMonth() + 1}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error exporting Excel:", error);
+    }
+  };
+
   return (
     <div>
       {ReactDOM.createPortal(
@@ -65,7 +141,7 @@ export default function BirthdayCakeBell({ employees }) {
             </span>
           )}
         </button>,
-        document.body
+        document.body,
       )}
 
       {open &&
@@ -108,6 +184,9 @@ export default function BirthdayCakeBell({ employees }) {
                 <div
                   className="birthday-cake-bell-list-title"
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                     fontSize: 17,
                     marginBottom: 14,
                     color: "#e43c7d",
@@ -116,7 +195,57 @@ export default function BirthdayCakeBell({ employees }) {
                     letterSpacing: 0.2,
                   }}
                 >
-                  🎂 Danh sách sinh nhật tháng {now.getMonth() + 1}
+                  <span>🎂 Danh sách sinh nhật tháng {now.getMonth() + 1}</span>
+                  <div
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                  >
+                    <button
+                      onClick={handleExportExcel}
+                      className="birthday-download-btn"
+                      style={{
+                        padding: "6px 12px",
+                        backgroundColor: "#e43c7d",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        transition: "background 0.2s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.target.style.backgroundColor = "#d02a6b")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.target.style.backgroundColor = "#e43c7d")
+                      }
+                    >
+                      ⬇ Xuất Excel
+                    </button>
+                    <button
+                      onClick={() => setOpen(false)}
+                      style={{
+                        padding: "4px 10px",
+                        backgroundColor: "#ff6b6b",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        transition: "background 0.2s",
+                        minWidth: "36px",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.target.style.backgroundColor = "#ee5a52")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.target.style.backgroundColor = "#ff6b6b")
+                      }
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
                 {birthdayList.length === 0 ? (
                   <div
@@ -138,6 +267,7 @@ export default function BirthdayCakeBell({ employees }) {
                       overflowY: "auto",
                       paddingBottom: 8,
                     }}
+                    ref={listRef}
                   >
                     <table
                       className="birthday-cake-table"
@@ -283,7 +413,7 @@ export default function BirthdayCakeBell({ employees }) {
               </div>
             </div>
           </>,
-          document.body
+          document.body,
         )}
     </div>
   );
