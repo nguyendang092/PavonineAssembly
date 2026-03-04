@@ -16,6 +16,10 @@ function MaintenanceChecklist() {
   const [editingId, setEditingId] = useState(null);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [filterTab, setFilterTab] = useState("all"); // all, pending, completed
+  const [filterDate, setFilterDate] = useState(
+    new Date().toISOString().split("T")[0],
+  ); // Default to today
+  const [showPendingPopup, setShowPendingPopup] = useState(false);
 
   // Check if user is admin (for viewing history)
   const isAdmin =
@@ -34,8 +38,8 @@ function MaintenanceChecklist() {
     completedTime: "",
     duration: "",
     assignedTo: user?.displayName || "",
-    department: "",
-    location: "",
+    department: "", // bộ phận phụ trách
+    requestingDepartment: "", // bộ phận yêu cầu
     priority: "medium", // low, medium, high, urgent
     category: "general", // general, mechanical, electrical, cleaning, inspection
   });
@@ -48,7 +52,7 @@ function MaintenanceChecklist() {
       if (data && typeof data === "object") {
         const arr = Object.entries(data).map(([id, task]) => ({ id, ...task }));
         setMaintenanceTasks(
-          arr.sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
+          arr.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)),
         );
       } else {
         setMaintenanceTasks([]);
@@ -65,6 +69,20 @@ function MaintenanceChecklist() {
     }, 4000);
     return () => clearTimeout(timer);
   }, [alert.show]);
+
+  // Show pending tasks popup on first load
+  useEffect(() => {
+    if (user && maintenanceTasks.length > 0) {
+      const pendingTasks = maintenanceTasks.filter((task) => !task.completed);
+      if (pendingTasks.length > 0) {
+        // Delay popup to ensure smooth load
+        const timer = setTimeout(() => {
+          setShowPendingPopup(true);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user, maintenanceTasks.length]); // Only trigger when user exists and tasks are loaded
 
   // Log history
   const logHistory = async (action, taskId, taskName, details = "") => {
@@ -114,7 +132,7 @@ function MaintenanceChecklist() {
           "edit",
           editingId,
           newTask.name,
-          `Cập nhật: ${newTask.description || "Không có mô tả"}`
+          `Cập nhật: ${newTask.description || "Không có mô tả"}`,
         );
 
         setAlert({
@@ -133,7 +151,7 @@ function MaintenanceChecklist() {
           "add",
           taskId,
           newTask.name,
-          `Thêm mới: ${newTask.description || "Không có mô tả"}`
+          `Thêm mới: ${newTask.description || "Không có mô tả"}`,
         );
 
         setAlert({
@@ -166,7 +184,7 @@ function MaintenanceChecklist() {
       const durationMs = endDateTime - startDateTime;
       const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(2);
       const duration = `${Math.floor(durationHours)} giờ ${Math.round(
-        (durationHours % 1) * 60
+        (durationHours % 1) * 60,
       )} phút`;
 
       try {
@@ -232,7 +250,7 @@ function MaintenanceChecklist() {
           "delete",
           id,
           task?.name || "Không rõ",
-          `Xóa công việc: ${task?.description || "Không có mô tả"}`
+          `Xóa công việc: ${task?.description || "Không có mô tả"}`,
         );
 
         setAlert({
@@ -262,7 +280,7 @@ function MaintenanceChecklist() {
       duration: "",
       assignedTo: user?.displayName || "",
       department: "",
-      location: "",
+      requestingDepartment: "",
       priority: "medium",
       category: "general",
     });
@@ -280,11 +298,16 @@ function MaintenanceChecklist() {
       ? Math.round((completedCount / maintenanceTasks.length) * 100)
       : 0;
 
-  // Filter tasks based on tab
+  // Filter tasks based on tab and date
   const filteredTasks = maintenanceTasks.filter((task) => {
-    if (filterTab === "pending") return !task.completed;
-    if (filterTab === "completed") return task.completed;
-    return true; // all
+    // Check tab filter
+    if (filterTab === "pending" && task.completed) return false;
+    if (filterTab === "completed" && !task.completed) return false;
+
+    // Check date filter
+    if (filterDate && task.startDate !== filterDate) return false;
+
+    return true;
   });
 
   // Helper functions
@@ -396,7 +419,7 @@ function MaintenanceChecklist() {
                     <span>Xem Lịch Sử</span>
                   </button>
                 )}
-                {isHR ? (
+                {isHR && (
                   <button
                     onClick={openNewTaskModal}
                     className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2"
@@ -404,14 +427,6 @@ function MaintenanceChecklist() {
                     <span className="text-xl">➕</span>
                     <span>Thêm Công Việc</span>
                   </button>
-                ) : (
-                  <div
-                    className="px-6 py-3 bg-gray-400 text-white font-bold rounded-xl flex items-center gap-2 cursor-not-allowed opacity-60"
-                    title="Chỉ HR mới có quyền thêm công việc"
-                  >
-                    <span className="text-xl">🔒</span>
-                    <span>Chỉ HR Được Thêm</span>
-                  </div>
                 )}
               </div>
             </div>
@@ -435,7 +450,7 @@ function MaintenanceChecklist() {
 
           <div className="bg-white rounded-2xl shadow-xl p-6 mb-6 border-t-4 border-indigo-600">
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6 mb-6">
               <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
                 <div className="flex items-center justify-between">
                   <div>
@@ -447,32 +462,6 @@ function MaintenanceChecklist() {
                     </p>
                   </div>
                   <div className="text-5xl opacity-20">📊</div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-green-100 text-sm font-medium mb-1">
-                      Đã Hoàn Tất
-                    </p>
-                    <p className="text-4xl font-extrabold">{completedCount}</p>
-                  </div>
-                  <div className="text-5xl opacity-20">✅</div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-orange-100 text-sm font-medium mb-1">
-                      Đang Thực Hiện
-                    </p>
-                    <p className="text-4xl font-extrabold">
-                      {maintenanceTasks.length - completedCount}
-                    </p>
-                  </div>
-                  <div className="text-5xl opacity-20">⏳</div>
                 </div>
               </div>
 
@@ -497,38 +486,64 @@ function MaintenanceChecklist() {
               </div>
             </div>
             {/* Filter Tabs */}
-            <div className="bg-white rounded-2xl shadow-lg p-2 mb-6">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setFilterTab("all")}
-                  className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
-                    filterTab === "all"
-                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  Tất Cả ({maintenanceTasks.length})
-                </button>
-                <button
-                  onClick={() => setFilterTab("pending")}
-                  className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
-                    filterTab === "pending"
-                      ? "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  Đang Thực Hiện ({maintenanceTasks.length - completedCount})
-                </button>
-                <button
-                  onClick={() => setFilterTab("completed")}
-                  className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
-                    filterTab === "completed"
-                      ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  Đã Hoàn Tất ({completedCount})
-                </button>
+            <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="flex gap-2 flex-1">
+                  <button
+                    onClick={() => setFilterTab("all")}
+                    className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
+                      filterTab === "all"
+                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    Tất Cả ({maintenanceTasks.length})
+                  </button>
+                  <button
+                    onClick={() => setFilterTab("pending")}
+                    className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
+                      filterTab === "pending"
+                        ? "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    Đang Thực Hiện ({maintenanceTasks.length - completedCount})
+                  </button>
+                  <button
+                    onClick={() => setFilterTab("completed")}
+                    className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
+                      filterTab === "completed"
+                        ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    Đã Hoàn Tất ({completedCount})
+                  </button>
+                </div>
+
+                {/* Date Filter */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-bold text-gray-700 whitespace-nowrap">
+                    📅 Lọc theo ngày:
+                  </label>
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all"
+                  />
+                  <button
+                    onClick={() => setFilterDate("")}
+                    className={`px-4 py-3 rounded-xl font-bold transition-all ${
+                      filterDate === ""
+                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                        : "bg-gray-400 text-white hover:bg-gray-500"
+                    }`}
+                    title="Hiển thị toàn bộ công việc"
+                  >
+                    Toàn Bộ
+                  </button>
+                </div>
               </div>
             </div>
             {/* Tasks Table */}
@@ -540,8 +555,8 @@ function MaintenanceChecklist() {
                     {filterTab === "pending"
                       ? "Không có công việc đang thực hiện"
                       : filterTab === "completed"
-                      ? "Chưa có công việc nào hoàn tất"
-                      : "Chưa có công việc bảo trì nào"}
+                        ? "Chưa có công việc nào hoàn tất"
+                        : "Chưa có công việc bảo trì nào"}
                   </p>
                 </div>
               ) : (
@@ -556,20 +571,13 @@ function MaintenanceChecklist() {
                           Công Việc
                         </th>
                         <th className="px-4 py-4 text-left text-sm font-bold uppercase">
-                          Loại
-                        </th>
-                        <th className="px-4 py-4 text-left text-sm font-bold uppercase">
-                          Ưu Tiên
+                          Bộ phận phụ trách
                         </th>
                         <th className="px-4 py-4 text-left text-sm font-bold uppercase">
                           Người Phụ Trách
                         </th>
                         <th className="px-4 py-4 text-left text-sm font-bold uppercase">
                           Bộ Phận Yêu cầu
-                        </th>
-                        <th className="px-4 py-4 text-left text-sm font-bold uppercase">
-                          {" "}
-                          Vị Trí
                         </th>
                         <th className="px-4 py-4 text-left text-sm font-bold uppercase">
                           {" "}
@@ -630,25 +638,8 @@ function MaintenanceChecklist() {
                             </div>
                           </td>
                           <td className="px-4 py-4">
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
-                              {getCategoryIcon(task.category || "general")}
-                              {getCategoryName(task.category || "general")}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span
-                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold border ${getPriorityColor(
-                                task.priority || "medium"
-                              )}`}
-                            >
-                              {getPriorityIcon(task.priority || "medium")}
-                              {task.priority === "urgent"
-                                ? "Khẩn"
-                                : task.priority === "high"
-                                ? "Cao"
-                                : task.priority === "low"
-                                ? "Thấp"
-                                : "Trung bình"}
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-800">
+                              🏢 {task.department || "Chưa xác định"}
                             </span>
                           </td>
                           <td className="px-4 py-4">
@@ -662,13 +653,8 @@ function MaintenanceChecklist() {
                             </div>
                           </td>
                           <td className="px-4 py-4">
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-800">
-                              🏢 {task.department || "Chưa xác định"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4">
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800">
-                              📍 {task.location || "Chưa xác định"}
+                              📍 {task.requestingDepartment || "Chưa xác định"}
                             </span>
                           </td>
                           <td className="px-4 py-4">
@@ -676,7 +662,7 @@ function MaintenanceChecklist() {
                               <p className="text-gray-600">
                                 <span className="font-semibold">Bắt đầu:</span>{" "}
                                 {new Date(task.startDate).toLocaleDateString(
-                                  "vi-VN"
+                                  "vi-VN",
                                 )}{" "}
                                 {task.startTime}
                               </p>
@@ -687,7 +673,7 @@ function MaintenanceChecklist() {
                                       Hoàn tất:
                                     </span>{" "}
                                     {new Date(
-                                      task.completedDate
+                                      task.completedDate,
                                     ).toLocaleDateString("vi-VN")}{" "}
                                     {task.completedTime}
                                   </p>
@@ -723,8 +709,8 @@ function MaintenanceChecklist() {
                                   !isHR
                                     ? "Chỉ HR mới có quyền chỉnh sửa"
                                     : task.completed
-                                    ? "Không thể chỉnh sửa công việc đã hoàn tất"
-                                    : "Chỉnh sửa"
+                                      ? "Không thể chỉnh sửa công việc đã hoàn tất"
+                                      : "Chỉnh sửa"
                                 }
                               >
                                 ✏️
@@ -811,17 +797,17 @@ function MaintenanceChecklist() {
                     />
                   </div>
 
-                  {/* Category and Priority */}
+                  {/* Department and Requesting Department */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                        <span>📂</span>
-                        <span>Loại Công Việc</span>
+                        <span>🏢</span>
+                        <span>Bộ phận phụ trách</span>
                       </label>
                       <select
-                        value={newTask.category}
+                        value={newTask.department}
                         onChange={(e) =>
-                          setNewTask({ ...newTask, category: e.target.value })
+                          setNewTask({ ...newTask, department: e.target.value })
                         }
                         disabled={
                           editingId &&
@@ -836,26 +822,33 @@ function MaintenanceChecklist() {
                             : ""
                         }`}
                       >
-                        <option value="general">📄 Chung</option>
-                        <option value="mechanical">⚙️ Cơ khí</option>
-                        <option value="electrical">⚡ Điện</option>
-                        <option value="cleaning">🧹 Vệ sinh</option>
-                        <option value="inspection">🔍 Kiểm tra</option>
-                        <option value="outsourcing">
-                          🔧 Sửa chữa bên ngoài
-                        </option>
+                        <option value="">-- Chọn bộ phận --</option>
+                        <option value="BT">Bảo trì</option>
+                        <option value="MC">MC</option>
+                        <option value="QC">QC</option>
+                        <option value="PRESS">PRESS</option>
+                        <option value="HAIR LINE">HAIR LINE</option>
+                        <option value="ANODIZING">ANODIZING</option>
+                        <option value="ASSEMBLY">ASSEMBLY</option>
+                        <option value="HR">HR</option>
+                        <option value="PRODUCTION">PRODUCTION</option>
+                        <option value="SALES">SALES</option>
+                        <option value="PURCHASING">PURCHASING</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                        <span>⚡</span>
-                        <span>Mức Độ Ưu Tiên</span>
+                        <span>📋</span>
+                        <span>Bộ Phận Yêu cầu</span>
                       </label>
                       <select
-                        value={newTask.priority}
+                        value={newTask.requestingDepartment}
                         onChange={(e) =>
-                          setNewTask({ ...newTask, priority: e.target.value })
+                          setNewTask({
+                            ...newTask,
+                            requestingDepartment: e.target.value,
+                          })
                         }
                         disabled={
                           editingId &&
@@ -870,10 +863,18 @@ function MaintenanceChecklist() {
                             : ""
                         }`}
                       >
-                        <option value="low">📋 Thấp</option>
-                        <option value="medium">📌 Trung bình</option>
-                        <option value="high">⚠️ Cao</option>
-                        <option value="urgent">🚨 Khẩn cấp</option>
+                        <option value="">-- Chọn bộ phận --</option>
+                        <option value="BT">Bảo trì</option>
+                        <option value="MC">MC</option>
+                        <option value="QC">QC</option>
+                        <option value="PRESS">PRESS</option>
+                        <option value="HAIR LINE">HAIR LINE</option>
+                        <option value="ANODIZING">ANODIZING</option>
+                        <option value="ASSEMBLY">ASSEMBLY</option>
+                        <option value="HR">HR</option>
+                        <option value="PRODUCTION">PRODUCTION</option>
+                        <option value="SALES">SALES</option>
+                        <option value="PURCHASING">PURCHASING</option>
                       </select>
                     </div>
                   </div>
@@ -965,79 +966,17 @@ function MaintenanceChecklist() {
                     </div>
                   </div>
 
-                  {/* Assigned To and Department */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                        <span>👤</span>
-                        <span>Người Phụ Trách</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={newTask.assignedTo}
-                        onChange={(e) =>
-                          setNewTask({ ...newTask, assignedTo: e.target.value })
-                        }
-                        disabled={
-                          editingId &&
-                          maintenanceTasks.find((t) => t.id === editingId)
-                            ?.completed
-                        }
-                        className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
-                          editingId &&
-                          maintenanceTasks.find((t) => t.id === editingId)
-                            ?.completed
-                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                            : ""
-                        }`}
-                        placeholder="Tên người phụ trách..."
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                        <span>🏢</span>
-                        <span>Bộ Phận</span>
-                      </label>
-                      <select
-                        value={newTask.department}
-                        onChange={(e) =>
-                          setNewTask({ ...newTask, department: e.target.value })
-                        }
-                        disabled={
-                          editingId &&
-                          maintenanceTasks.find((t) => t.id === editingId)
-                            ?.completed
-                        }
-                        className={`w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-base ${
-                          editingId &&
-                          maintenanceTasks.find((t) => t.id === editingId)
-                            ?.completed
-                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                            : ""
-                        }`}
-                      >
-                        <option value="">-- Chọn bộ phận --</option>
-                        <option value="PRESS">PRESS</option>
-                        <option value="MC">MC</option>
-                        <option value="HAIRLINE">HAIRLINE</option>
-                        <option value="ANODIZING">ANODIZING</option>
-                        <option value="ASSEMBLY">ASSEMBLY</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Location */}
+                  {/* Assigned To */}
                   <div>
                     <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                      <span>📍</span>
-                      <span>Vị Trí</span>
+                      <span>👤</span>
+                      <span>Người Phụ Trách</span>
                     </label>
                     <input
                       type="text"
-                      value={newTask.location}
+                      value={newTask.assignedTo}
                       onChange={(e) =>
-                        setNewTask({ ...newTask, location: e.target.value })
+                        setNewTask({ ...newTask, assignedTo: e.target.value })
                       }
                       disabled={
                         editingId &&
@@ -1051,7 +990,7 @@ function MaintenanceChecklist() {
                           ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                           : ""
                       }`}
-                      placeholder="VD: Tầng 1, Khu A, Máy số 5..."
+                      placeholder="Tên người phụ trách..."
                     />
                   </div>
                 </div>
@@ -1080,6 +1019,133 @@ function MaintenanceChecklist() {
           {/* History Modal */}
           {showHistory && (
             <MaintenanceHistory onClose={() => setShowHistory(false)} />
+          )}
+
+          {/* Pending Tasks Popup */}
+          {showPendingPopup && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="sticky top-0 bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 px-6 py-5 flex items-center justify-between rounded-t-2xl">
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                    <span className="text-3xl animate-bounce">⚠️</span>
+                    <span>Công Việc Chưa Hoàn Tất</span>
+                  </h2>
+                  <button
+                    onClick={() => setShowPendingPopup(false)}
+                    className="text-white text-2xl font-bold hover:bg-white hover:text-red-600 rounded-full w-10 h-10 flex items-center justify-center transition-all transform hover:rotate-90"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="p-6">
+                  <div className="mb-4 p-4 bg-orange-50 border-l-4 border-orange-500 rounded-lg">
+                    <p className="text-gray-700 font-medium">
+                      📋 Hiện có{" "}
+                      <span className="font-bold text-orange-600">
+                        {maintenanceTasks.filter((t) => !t.completed).length}
+                      </span>{" "}
+                      công việc đang chờ xử lý
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                    {maintenanceTasks
+                      .filter((task) => !task.completed)
+                      .sort((a, b) => {
+                        // Sort by priority: urgent > high > medium > low
+                        const priorityOrder = {
+                          urgent: 0,
+                          high: 1,
+                          medium: 2,
+                          low: 3,
+                        };
+                        return (
+                          priorityOrder[a.priority || "medium"] -
+                          priorityOrder[b.priority || "medium"]
+                        );
+                      })
+                      .map((task, index) => (
+                        <div
+                          key={task.id}
+                          className="p-4 rounded-xl border-2 border-gray-300 shadow-md hover:shadow-lg transition-all bg-white"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-bold text-gray-800 text-lg">
+                                  {task.name}
+                                </h3>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600 mb-2">
+                                {task.description && (
+                                  <div className="col-span-2">
+                                    <span className="font-semibold">
+                                      Mô tả:
+                                    </span>{" "}
+                                    {task.description}
+                                  </div>
+                                )}
+                                {task.department && (
+                                  <div>
+                                    <span className="font-semibold">
+                                      BP phụ trách:
+                                    </span>{" "}
+                                    {task.department}
+                                  </div>
+                                )}
+                                {task.requestingDepartment && (
+                                  <div>
+                                    <span className="font-semibold">
+                                      BP yêu cầu:
+                                    </span>{" "}
+                                    {task.requestingDepartment}
+                                  </div>
+                                )}
+                                {task.startDate && (
+                                  <div>
+                                    <span className="font-semibold">
+                                      Ngày bắt đầu:
+                                    </span>{" "}
+                                    {task.startDate} {task.startTime}
+                                  </div>
+                                )}
+                                {task.assignedTo && (
+                                  <div>
+                                    <span className="font-semibold">
+                                      Người phụ trách:
+                                    </span>{" "}
+                                    {task.assignedTo}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+
+                  <div className="mt-6 flex gap-3 justify-end">
+                    <button
+                      onClick={() => {
+                        setShowPendingPopup(false);
+                        setFilterTab("pending");
+                      }}
+                      className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl hover:shadow-xl transition-all font-bold shadow-lg transform hover:scale-105"
+                    >
+                      📋 Xem Chi Tiết
+                    </button>
+                    <button
+                      onClick={() => setShowPendingPopup(false)}
+                      className="px-6 py-3 bg-gray-400 text-white rounded-xl hover:bg-gray-500 transition-all font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
+                    >
+                      ✓ Đã Hiểu
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

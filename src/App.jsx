@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useLayoutEffect } from "react";
 import SeasonEffect from "./components/common/SeasonEffect";
+// firebase for global data fetching
+import { db, ref, onValue } from "./services/firebase";
 import Employ from "./components/employee/Employ";
 import Toast from "./components/common/Toast";
 import Navbar from "./components/layout/Navbar";
@@ -23,6 +25,7 @@ import QRCodeGenerator from "./components/common/QRCodeGenerator";
 import AttendanceList from "./components/attendance/AttendanceList";
 import AttendanceDashboardContainer from "./components/attendance/AttendanceDashboardContainer";
 import AttendanceTable from "./components/attendance/AttendanceTable";
+import SeasonalStaffAttendance from "./components/attendance/SeasonalStaffAttendance";
 import Downloads from "./components/common/Downloads";
 import UserDepartmentManager from "./components/employee/UserDepartmentManager";
 import MaintenanceChecklist from "./components/maintenance/MaintenanceChecklist";
@@ -33,7 +36,6 @@ import {
   Route,
   Navigate,
   useLocation,
-  useNavigate,
 } from "react-router-dom";
 import "./styles/App.css";
 
@@ -51,6 +53,13 @@ const App = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [user, setUser] = useState(null);
   const { setLoading } = useLoading();
+
+  // departments the currently logged in user has access to
+  const [userDepartments, setUserDepartments] = useState([]);
+  // maintenance tasks belonging to those departments
+  const [deptTasks, setDeptTasks] = useState([]);
+  // whether the popup has been shown
+  const [showDeptPopup, setShowDeptPopup] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -70,6 +79,80 @@ const App = () => {
     }
     setTimeout(() => setLoading(false), 800);
   }, []);
+
+  // load departments for the logged-in user
+  useEffect(() => {
+    if (!user?.email) {
+      setUserDepartments([]);
+      return;
+    }
+    const userDeptsRef = ref(db, "userDepartments");
+    const unsubscribe = onValue(userDeptsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && typeof data === "object") {
+        const mapping = Object.values(data).find((m) => {
+          if (!m.email || !user.email) return false;
+          return (
+            m.email.trim().toLowerCase() === user.email.trim().toLowerCase()
+          );
+        });
+        if (mapping) {
+          const depts =
+            mapping.departments ||
+            (mapping.department ? [mapping.department] : []);
+          setUserDepartments(depts);
+        } else {
+          setUserDepartments([]);
+        }
+      } else {
+        setUserDepartments([]);
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // reset popup whenever user logs in/out so it can show again
+  useEffect(() => {
+    setShowDeptPopup(false);
+  }, [user]);
+
+  // when departments change, read maintenance tasks and show popup/toast
+  useEffect(() => {
+    if (!userDepartments || userDepartments.length === 0) {
+      setDeptTasks([]);
+      return;
+    }
+    const tasksRef = ref(db, "maintenance");
+    const unsubscribe = onValue(tasksRef, (snapshot) => {
+      const data = snapshot.val();
+      console.log("[maintenance watch] userDepartments", userDepartments);
+      if (data && typeof data === "object") {
+        const arr = Object.entries(data).map(([id, t]) => ({ id, ...t }));
+        const relevant = arr.filter((t) => {
+          if (!t.department) return false;
+          const taskDept = (t.department || "").trim().toLowerCase();
+          return (
+            !t.completed &&
+            userDepartments.some(
+              (d) => (d || "").trim().toLowerCase() === taskDept,
+            )
+          );
+        });
+        console.log("[maintenance watch] relevant tasks", relevant);
+        setDeptTasks(relevant);
+        if (relevant.length > 0 && !showDeptPopup) {
+          // display once when tasks exist
+          setShowDeptPopup(true);
+          setToastMessage(
+            `⚠️ Có ${relevant.length} công việc bảo trì cho bộ phận của bạn. Vào trang Bảo trì để kiểm tra.`,
+          );
+        }
+      } else {
+        setDeptTasks([]);
+      }
+    });
+    return () => unsubscribe();
+  }, [userDepartments, showDeptPopup]);
 
   const showToast = (message) => {
     setToastMessage(message);
@@ -113,6 +196,38 @@ const App = () => {
 
           {/* Nội dung chính */}
           <div className="pt-16 overflow-hidden flex-1">
+            {/* department-specific maintenance popup */}
+            {showDeptPopup && deptTasks.length > 0 && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded-2xl max-w-lg w-full">
+                  <h3 className="text-xl font-bold mb-4">
+                    📌 Công việc bảo trì dành cho bộ phận của bạn
+                  </h3>
+                  <ul className="list-disc pl-5 text-left mb-4 max-h-64 overflow-auto">
+                    {deptTasks.map((t) => (
+                      <li key={t.id}>{t.name}</li>
+                    ))}
+                  </ul>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setShowDeptPopup(false)}
+                      className="mt-2 px-4 py-2 bg-gray-400 text-white rounded-xl hover:bg-gray-500"
+                    >
+                      Đóng
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowDeptPopup(false);
+                        window.location.href = "/maintenance";
+                      }}
+                      className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
+                    >
+                      Xem chi tiết
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <Routes>
               <Route path="/" element={<Navigate to="/normal" replace />} />
               {routeConfig.map((r) => {
@@ -159,6 +274,9 @@ const App = () => {
                     break;
                   case "AttendanceTable":
                     Element = AttendanceTable;
+                    break;
+                  case "SeasonalStaffAttendance":
+                    Element = SeasonalStaffAttendance;
                     break;
                   case "Downloads":
                     Element = Downloads;

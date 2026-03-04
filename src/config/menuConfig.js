@@ -70,6 +70,11 @@ export const menuConfig = [
                 path: "/attendance-list",
               },
               {
+                key: "seasonalStaffAttendance",
+                label: "navbar.seasonalStaffAttendance",
+                path: "/seasonal-staff-attendance",
+              },
+              {
                 key: "attendanceDashboard",
                 label: "navbar.attendanceDashboard",
                 path: "/attendance-dashboard",
@@ -167,6 +172,7 @@ export const routeConfig = [
   { path: "/attendance-list", element: "AttendanceList" },
   { path: "/attendance-dashboard", element: "AttendanceDashboard" },
   { path: "/attendance-table", element: "AttendanceTable" },
+  { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
   { path: "/user-department", element: "UserDepartmentManager" },
   { path: "/inventory", element: "Inventory" },
   { path: "/downloads", element: "Downloads" },
