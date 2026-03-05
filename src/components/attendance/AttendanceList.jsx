@@ -14,6 +14,7 @@ import {
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import ExportExcelButton from "../common/ExportExcelButton";
+import UnifiedModal from "../common/UnifiedModal";
 // import BirthdayCake from "./BirthdayCake";
 import BirthdayCakeBell from "../employee/BirthdayCakeBell";
 import NotificationBell from "../common/NotificationBell";
@@ -72,6 +73,9 @@ function AttendanceList() {
   const [modalExpandedSections, setModalExpandedSections] = useState({});
   const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
   const [actionDropdownOpen, setActionDropdownOpen] = useState(false);
+  const [showUnattendedPopup, setShowUnattendedPopup] = useState(false);
+  const [unattendedPopupDismissed, setUnattendedPopupDismissed] =
+    useState(false);
   const [form, setForm] = useState({
     id: "",
     stt: "",
@@ -100,6 +104,16 @@ function AttendanceList() {
     }
     setGioVaoFilter([quickNoCheckInFilterValue]);
   };
+
+  const unattendedEmployees = useMemo(
+    () =>
+      employees.filter((emp) => {
+        const hasGioVao = emp.gioVao && emp.gioVao.trim() !== "";
+        const hasCaLamViec = emp.caLamViec && emp.caLamViec.trim() !== "";
+        return !hasGioVao && !hasCaLamViec;
+      }),
+    [employees],
+  );
 
   // Lấy toàn bộ danh sách nhân viên từ nhánh employees
   useEffect(() => {
@@ -164,6 +178,26 @@ function AttendanceList() {
     });
     return () => unsubscribe();
   }, [selectedDate]);
+
+  useEffect(() => {
+    setShowUnattendedPopup(false);
+    setUnattendedPopupDismissed(false);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (unattendedPopupDismissed) return;
+
+    if (unattendedEmployees.length === 0) {
+      setShowUnattendedPopup(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setShowUnattendedPopup(true);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [unattendedEmployees, unattendedPopupDismissed]);
 
   // Auto-hide alert after 3s
   useEffect(() => {
@@ -234,10 +268,14 @@ function AttendanceList() {
       // Filter by entry time status
       if (gioVaoFilter.length > 0) {
         const hasGioVao = emp.gioVao && emp.gioVao.trim() !== "";
+        const hasCaLamViec = emp.caLamViec && emp.caLamViec.trim() !== "";
         const isCheckedIn = "đã_chấm_công";
-        const isNotCheckedIn = "chưa_chấm_công";
+        const isNotCheckedIn = !hasGioVao && !hasCaLamViec;
+
         if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;
-        if (!hasGioVao && !gioVaoFilter.includes(isNotCheckedIn)) return false;
+        if (isNotCheckedIn && !gioVaoFilter.includes("chưa_chấm_công"))
+          return false;
+        if (!hasGioVao && !isNotCheckedIn) return false;
       }
       if (!q) return true;
       return (
@@ -2118,6 +2156,93 @@ function AttendanceList() {
             {alert.message}
           </div>
         )}
+
+        {/* Popup nhân viên chưa điểm danh - sử dụng UnifiedModal */}
+        <UnifiedModal
+          isOpen={showUnattendedPopup && unattendedEmployees.length > 0}
+          onClose={() => {
+            setShowUnattendedPopup(false);
+            setUnattendedPopupDismissed(true);
+          }}
+          variant="primary"
+          title="Nhân viên chưa điểm danh"
+          size="lg"
+          actions={[
+            {
+              label: "Đóng",
+              onClick: () => {
+                setShowUnattendedPopup(false);
+                setUnattendedPopupDismissed(true);
+              },
+              variant: "secondary",
+            },
+            {
+              label: "Lọc nhanh",
+              onClick: () => {
+                setGioVaoFilter([quickNoCheckInFilterValue]);
+                setShowUnattendedPopup(false);
+                setUnattendedPopupDismissed(true);
+              },
+              variant: "primary",
+            },
+          ]}
+        >
+          <p className="text-sm text-gray-700 mb-4">
+            Hiện có{" "}
+            <span className="font-bold text-amber-600">
+              {unattendedEmployees.length}
+            </span>{" "}
+            nhân viên chưa có thời gian vào trong ngày{" "}
+            <span className="font-bold text-amber-600">
+              {new Date(selectedDate).toLocaleDateString("vi-VN")}
+            </span>
+            .
+          </p>
+
+          <div className="overflow-x-auto border rounded-lg shadow-sm">
+            <table className="w-full text-sm">
+              <thead className="bg-gradient-to-r from-blue-700 to-blue-400 text-white sticky top-0">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
+                    STT
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
+                    MNV
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
+                    Họ và tên
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
+                    Bộ phận
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {unattendedEmployees.map((emp, idx) => (
+                  <tr
+                    key={emp.id}
+                    className={`transition-colors hover:bg-blue-50 ${
+                      idx % 2 === 0 ? "bg-gray-50" : "bg-white"
+                    }`}
+                  >
+                    <td className="px-4 py-3 text-gray-700 font-medium">
+                      {idx + 1}
+                    </td>
+                    <td className="px-4 py-3 text-blue-600 font-semibold">
+                      {emp.mnv || "--"}
+                    </td>
+                    <td className="px-4 py-3 text-gray-800 font-medium">
+                      {emp.hoVaTen || "--"}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {emp.boPhan || "--"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </UnifiedModal>
 
         {/* Filters and Actions */}
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between mb-4">
