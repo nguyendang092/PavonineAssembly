@@ -1617,8 +1617,8 @@ function SeasonalStaffAttendance() {
     </table>
     
     <div class="header">
-      <h1>DANH SÁCH NHÂN VIÊN HIỆN DIỆN</h1>
-      <div class="subtitle">List of Active Employees</div>
+      <h1>DANH SÁCH NHÂN VIÊN THỜI VỤ HIỆN DIỆN</h1>
+      <div class="subtitle">List of Active Seasonal Employees</div>
       <div class="date">Ngày/Date: ${dateStr}</div>
     </div>
 
@@ -2004,10 +2004,10 @@ function SeasonalStaffAttendance() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-3xl font-extrabold text-[#1e293b] uppercase tracking-wide">
-                  DANH SÁCH NHÂN VIÊN HIỆN DIỆN
+                  DANH SÁCH NHÂN VIÊN THỜI VỤ HIỆN DIỆN
                 </h1>
                 <p className="text-base text-gray-600 mt-1">
-                  List of Active Employees
+                  List of Active Seasonal Employees
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
                   Ngày/Date: {new Date().toLocaleDateString("vi-VN")}

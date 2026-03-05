@@ -88,6 +88,19 @@ function AttendanceList() {
     chamCong: "",
   });
 
+  const quickNoCheckInFilterValue = "chưa_chấm_công";
+  const isQuickNoCheckInActive =
+    gioVaoFilter.length === 1 &&
+    gioVaoFilter.includes(quickNoCheckInFilterValue);
+
+  const handleQuickNoCheckInFilter = () => {
+    if (isQuickNoCheckInActive) {
+      setGioVaoFilter([]);
+      return;
+    }
+    setGioVaoFilter([quickNoCheckInFilterValue]);
+  };
+
   // Lấy toàn bộ danh sách nhân viên từ nhánh employees
   useEffect(() => {
     const empRef = ref(db, "employees");
@@ -2145,7 +2158,6 @@ function AttendanceList() {
                     : ""}
                 </span>
               </button>
-
               {/* Filter Modal Dialog */}
               {filterOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
@@ -2495,6 +2507,17 @@ function AttendanceList() {
                 </div>
               )}
             </div>
+            <button
+              type="button"
+              onClick={handleQuickNoCheckInFilter}
+              className={`px-4 py-2 rounded font-bold text-sm shadow transition ${
+                isQuickNoCheckInActive
+                  ? "bg-amber-600 text-white hover:bg-amber-700"
+                  : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+              }`}
+            >
+              🔍 Lọc nhanh
+            </button>
 
             <button
               onClick={handleOvertimeButton}

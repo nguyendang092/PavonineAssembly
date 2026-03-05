@@ -56,10 +56,6 @@ const App = () => {
 
   // departments the currently logged in user has access to
   const [userDepartments, setUserDepartments] = useState([]);
-  // maintenance tasks belonging to those departments
-  const [deptTasks, setDeptTasks] = useState([]);
-  // whether the popup has been shown
-  const [showDeptPopup, setShowDeptPopup] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -111,49 +107,6 @@ const App = () => {
     return () => unsubscribe();
   }, [user]);
 
-  // reset popup whenever user logs in/out so it can show again
-  useEffect(() => {
-    setShowDeptPopup(false);
-  }, [user]);
-
-  // when departments change, read maintenance tasks and show popup/toast
-  useEffect(() => {
-    if (!userDepartments || userDepartments.length === 0) {
-      setDeptTasks([]);
-      return;
-    }
-    const tasksRef = ref(db, "maintenance");
-    const unsubscribe = onValue(tasksRef, (snapshot) => {
-      const data = snapshot.val();
-      console.log("[maintenance watch] userDepartments", userDepartments);
-      if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, t]) => ({ id, ...t }));
-        const relevant = arr.filter((t) => {
-          if (!t.department) return false;
-          const taskDept = (t.department || "").trim().toLowerCase();
-          return (
-            !t.completed &&
-            userDepartments.some(
-              (d) => (d || "").trim().toLowerCase() === taskDept,
-            )
-          );
-        });
-        console.log("[maintenance watch] relevant tasks", relevant);
-        setDeptTasks(relevant);
-        if (relevant.length > 0 && !showDeptPopup) {
-          // display once when tasks exist
-          setShowDeptPopup(true);
-          setToastMessage(
-            `⚠️ Có ${relevant.length} công việc bảo trì cho bộ phận của bạn. Vào trang Bảo trì để kiểm tra.`,
-          );
-        }
-      } else {
-        setDeptTasks([]);
-      }
-    });
-    return () => unsubscribe();
-  }, [userDepartments, showDeptPopup]);
-
   const showToast = (message) => {
     setToastMessage(message);
   };
@@ -196,38 +149,6 @@ const App = () => {
 
           {/* Nội dung chính */}
           <div className="pt-16 overflow-hidden flex-1">
-            {/* department-specific maintenance popup */}
-            {showDeptPopup && deptTasks.length > 0 && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white p-6 rounded-2xl max-w-lg w-full">
-                  <h3 className="text-xl font-bold mb-4">
-                    📌 Công việc bảo trì dành cho bộ phận của bạn
-                  </h3>
-                  <ul className="list-disc pl-5 text-left mb-4 max-h-64 overflow-auto">
-                    {deptTasks.map((t) => (
-                      <li key={t.id}>{t.name}</li>
-                    ))}
-                  </ul>
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => setShowDeptPopup(false)}
-                      className="mt-2 px-4 py-2 bg-gray-400 text-white rounded-xl hover:bg-gray-500"
-                    >
-                      Đóng
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowDeptPopup(false);
-                        window.location.href = "/maintenance";
-                      }}
-                      className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
-                    >
-                      Xem chi tiết
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
             <Routes>
               <Route path="/" element={<Navigate to="/normal" replace />} />
               {routeConfig.map((r) => {

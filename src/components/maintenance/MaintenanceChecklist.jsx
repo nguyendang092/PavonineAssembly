@@ -450,7 +450,7 @@ function MaintenanceChecklist() {
 
           <div className="bg-white rounded-2xl shadow-xl p-6 mb-6 border-t-4 border-indigo-600">
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
               <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
                 <div className="flex items-center justify-between">
                   <div>
@@ -462,6 +462,32 @@ function MaintenanceChecklist() {
                     </p>
                   </div>
                   <div className="text-5xl opacity-20">📊</div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100 text-sm font-medium mb-1">
+                      Đã Hoàn Tất
+                    </p>
+                    <p className="text-4xl font-extrabold">{completedCount}</p>
+                  </div>
+                  <div className="text-5xl opacity-20">✅</div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-100 text-sm font-medium mb-1">
+                      Đang Thực Hiện
+                    </p>
+                    <p className="text-4xl font-extrabold">
+                      {maintenanceTasks.length - completedCount}
+                    </p>
+                  </div>
+                  <div className="text-5xl opacity-20">⏳</div>
                 </div>
               </div>
 
@@ -1039,16 +1065,6 @@ function MaintenanceChecklist() {
                 </div>
 
                 <div className="p-6">
-                  <div className="mb-4 p-4 bg-orange-50 border-l-4 border-orange-500 rounded-lg">
-                    <p className="text-gray-700 font-medium">
-                      📋 Hiện có{" "}
-                      <span className="font-bold text-orange-600">
-                        {maintenanceTasks.filter((t) => !t.completed).length}
-                      </span>{" "}
-                      công việc đang chờ xử lý
-                    </p>
-                  </div>
-
                   <div className="space-y-3 max-h-[60vh] overflow-y-auto">
                     {maintenanceTasks
                       .filter((task) => !task.completed)
