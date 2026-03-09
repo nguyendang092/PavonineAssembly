@@ -1994,9 +1994,9 @@ function SeasonalStaffAttendance() {
 
       {/* Main Content */}
       <div
-        className={`p-4 md:p-8 transition-all duration-300 ${
-          sidebarOpen ? "ml-72" : "ml-0"
-        }`}
+        className={`p-4 md:p-8 transitio
+          
+          n-all duration-300 ${sidebarOpen ? "ml-72" : "ml-0"}`}
       >
         {/* Header */}
         <div className="mb-6">

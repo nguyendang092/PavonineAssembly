@@ -97,6 +97,14 @@ function AttendanceList() {
     gioVaoFilter.length === 1 &&
     gioVaoFilter.includes(quickNoCheckInFilterValue);
 
+  // Chuẩn hóa tên bộ phận để lọc ổn định (tránh lệch hoa/thường, khoảng trắng).
+  const normalizeDepartment = useCallback((value) => {
+    return String(value || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  }, []);
+
   const handleQuickNoCheckInFilter = () => {
     if (isQuickNoCheckInActive) {
       setGioVaoFilter([]);
@@ -121,7 +129,7 @@ function AttendanceList() {
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
       if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, emp]) => ({ id, ...emp }));
+        const arr = Object.entries(data).map(([id, emp]) => ({ ...emp, id }));
         setAllEmployees(arr);
       } else {
         setAllEmployees([]);
@@ -166,10 +174,7 @@ function AttendanceList() {
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
       if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, emp]) => ({
-          id,
-          ...emp,
-        }));
+        const arr = Object.entries(data).map(([id, emp]) => ({ ...emp, id }));
         arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
         setEmployees(arr);
       } else {
@@ -256,14 +261,18 @@ function AttendanceList() {
   // Filter employees
   const filteredEmployees = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
+    const selectedDeptKeys = new Set(
+      departmentListFilter.map((dept) => normalizeDepartment(dept)),
+    );
     return employees.filter((emp) => {
-      if (departmentFilter && emp.boPhan !== departmentFilter) return false;
+      const empDeptKey = normalizeDepartment(emp.boPhan);
+      const departmentFilterKey = normalizeDepartment(departmentFilter);
+
+      if (departmentFilterKey && empDeptKey !== departmentFilterKey)
+        return false;
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
         return false;
-      if (
-        departmentListFilter.length > 0 &&
-        !departmentListFilter.includes(emp.boPhan)
-      )
+      if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
         return false;
       // Filter by entry time status
       if (gioVaoFilter.length > 0) {
@@ -291,6 +300,7 @@ function AttendanceList() {
     gioiTinhFilter,
     departmentListFilter,
     gioVaoFilter,
+    normalizeDepartment,
   ]);
 
   // Overtime modal: derive unique options and apply modal filters from filteredEmployees
@@ -309,32 +319,46 @@ function AttendanceList() {
     [filteredEmployees],
   );
   const modalFilteredEmployees = useMemo(() => {
+    const modalSelectedDeptKeys = new Set(
+      modalDepartmentListFilter.map((dept) => normalizeDepartment(dept)),
+    );
     return filteredEmployees.filter((emp) => {
+      const empDeptKey = normalizeDepartment(emp.boPhan);
       if (
         modalGioiTinhFilter.length > 0 &&
         !modalGioiTinhFilter.includes(emp.gioiTinh)
       )
         return false;
       if (
-        modalDepartmentListFilter.length > 0 &&
-        !modalDepartmentListFilter.includes(emp.boPhan)
+        modalSelectedDeptKeys.size > 0 &&
+        !modalSelectedDeptKeys.has(empDeptKey)
       )
         return false;
       return true;
     });
-  }, [filteredEmployees, modalGioiTinhFilter, modalDepartmentListFilter]);
+  }, [
+    filteredEmployees,
+    modalGioiTinhFilter,
+    modalDepartmentListFilter,
+    normalizeDepartment,
+  ]);
 
   // Get unique departments (cascading filter - based on other selected filters)
   const departments = useMemo(() => {
-    const depts = new Set();
+    const deptMap = new Map();
     for (const emp of employees) {
       // Apply other filters except Department
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
         continue;
-      if (emp.boPhan) depts.add(emp.boPhan);
+      const deptLabel = String(emp.boPhan || "").trim();
+      const deptKey = normalizeDepartment(deptLabel);
+      if (!deptKey) continue;
+      if (!deptMap.has(deptKey)) {
+        deptMap.set(deptKey, deptLabel);
+      }
     }
-    return Array.from(depts);
-  }, [employees, gioiTinhFilter]);
+    return Array.from(deptMap.values());
+  }, [employees, gioiTinhFilter, normalizeDepartment]);
 
   // Filtered list for 'bù công' (gioVao là giờ, không phải loại như PN, PO...)
   const buCongEmployees = useMemo(() => {
@@ -374,35 +398,37 @@ function AttendanceList() {
   // Get unique genders (cascading filter - based on other selected filters)
   const genderList = useMemo(() => {
     const genders = new Set();
+    const selectedDeptKeys = new Set(
+      departmentListFilter.map((dept) => normalizeDepartment(dept)),
+    );
     for (const emp of employees) {
       // Apply other filters except Gender
-      if (
-        departmentListFilter.length > 0 &&
-        !departmentListFilter.includes(emp.boPhan)
-      )
+      const empDeptKey = normalizeDepartment(emp.boPhan);
+      if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
         continue;
       if (emp.gioiTinh) genders.add(emp.gioiTinh);
     }
     return Array.from(genders).sort();
-  }, [employees, departmentListFilter]);
+  }, [employees, departmentListFilter, normalizeDepartment]);
 
   // Get unique mã BP codes (cascading filter - based on other selected filters)
   // Get unique shifts (cascading filter - based on other selected filters)
   const shiftList = useMemo(() => {
     const shifts = new Set();
+    const selectedDeptKeys = new Set(
+      departmentListFilter.map((dept) => normalizeDepartment(dept)),
+    );
     for (const emp of employees) {
       // Apply other filters except Shift
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
         continue;
-      if (
-        departmentListFilter.length > 0 &&
-        !departmentListFilter.includes(emp.boPhan)
-      )
+      const empDeptKey = normalizeDepartment(emp.boPhan);
+      if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
         continue;
       if (emp.caLamViec) shifts.add(emp.caLamViec);
     }
     return Array.from(shifts).sort();
-  }, [employees, gioiTinhFilter, departmentListFilter]);
+  }, [employees, gioiTinhFilter, departmentListFilter, normalizeDepartment]);
 
   // Filter departments based on search
   const filteredDepartments = useMemo(() => {
@@ -652,6 +678,17 @@ function AttendanceList() {
         const attendanceRef = ref(db, `attendance/${selectedDate}`);
         const dataToUpload = {};
 
+        // Chuẩn hóa MNV để tránh lệch kiểu dữ liệu (number/string) gây trùng.
+        const normalizeMNV = (value) => {
+          if (value === undefined || value === null) return "";
+          const strValue = String(value).trim();
+          if (!strValue) return "";
+          const numericValue = Number(strValue);
+          return Number.isFinite(numericValue)
+            ? String(numericValue)
+            : strValue;
+        };
+
         dataRows.forEach((row, index) => {
           // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu, Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc, Chấm công
           const [
@@ -677,6 +714,17 @@ function AttendanceList() {
           const mnvNum = Number(mnv);
           if (!Number.isFinite(mnvNum) || mnvNum === 0) return;
 
+          const normalizedMNV = normalizeMNV(mnvNum);
+          if (!normalizedMNV) return;
+
+          // Trong cùng 1 file, nếu trùng MNV thì lấy dòng xuất hiện sau cùng.
+          const existingUploadKey = Object.keys(dataToUpload).find(
+            (k) => normalizeMNV(dataToUpload[k]?.mnv) === normalizedMNV,
+          );
+          if (existingUploadKey) {
+            delete dataToUpload[existingUploadKey];
+          }
+
           const empKey = `emp_${index}`;
           const sttNum = Number.isFinite(Number(stt))
             ? Number(stt)
@@ -685,7 +733,7 @@ function AttendanceList() {
           dataToUpload[empKey] = {
             id: empKey,
             stt: sttNum,
-            mnv: String(mnvNum),
+            mnv: normalizedMNV,
             mvt: mvt || "",
             hoVaTen: hoVaTen || "",
             gioiTinh: gioiTinh || "YES",
@@ -706,22 +754,30 @@ function AttendanceList() {
         // Get existing data to merge and check for duplicates
         const snapshot = await get(attendanceRef);
         const existingData = snapshot.val() || {};
-        const existingMNVs = Object.values(existingData).map((emp) => emp.mnv);
+        const existingKeyByMNV = {};
+        Object.entries(existingData).forEach(([key, emp]) => {
+          const normalizedMNV = normalizeMNV(emp?.mnv);
+          if (normalizedMNV && !existingKeyByMNV[normalizedMNV]) {
+            existingKeyByMNV[normalizedMNV] = key;
+          }
+        });
 
         // Merge new data with existing data, avoiding duplicates
         const mergedData = { ...existingData };
 
         Object.entries(dataToUpload).forEach(([key, newEmp]) => {
-          const isDuplicate = existingMNVs.includes(newEmp.mnv);
+          const normalizedNewMNV = normalizeMNV(newEmp?.mnv);
+          const existingKey = existingKeyByMNV[normalizedNewMNV];
+          const isDuplicate = Boolean(existingKey);
           if (isDuplicate) {
             // Update existing employee with new data, chỉ cập nhật gioVao nếu giá trị mới không rỗng
-            const existingKey = Object.keys(existingData).find(
-              (k) => existingData[k].mnv === newEmp.mnv,
-            );
             if (existingKey) {
               const oldEmp = mergedData[existingKey] || {};
               const mergedEmp = { ...oldEmp };
               Object.keys(newEmp).forEach((field) => {
+                // Giữ nguyên id cũ theo key Firebase, tránh lệch id và render sai dòng.
+                if (field === "id") return;
+
                 if (field === "gioVao") {
                   const newValue = newEmp[field];
                   if (
@@ -744,6 +800,9 @@ function AttendanceList() {
           } else {
             // Add new employee
             mergedData[key] = newEmp;
+            if (normalizedNewMNV) {
+              existingKeyByMNV[normalizedNewMNV] = key;
+            }
             uploadedCount++;
           }
         });
@@ -758,12 +817,14 @@ function AttendanceList() {
         // Tạo map theo mnv để dễ tra cứu
         const employeesByMNV = {};
         Object.values(employeesData).forEach((emp) => {
-          if (emp.mnv) employeesByMNV[emp.mnv] = emp;
+          const normalizedMNV = normalizeMNV(emp?.mnv);
+          if (normalizedMNV) employeesByMNV[normalizedMNV] = emp;
         });
         // Merge hoặc thêm mới
         Object.values(dataToUpload).forEach((newEmp) => {
-          if (newEmp.mnv) {
-            const oldEmp = employeesByMNV[newEmp.mnv] || {};
+          const normalizedMNV = normalizeMNV(newEmp?.mnv);
+          if (normalizedMNV) {
+            const oldEmp = employeesByMNV[normalizedMNV] || {};
             const mergedEmp = { ...oldEmp };
             Object.keys(newEmp).forEach((key) => {
               if (key === "gioVao") {
@@ -799,7 +860,10 @@ function AttendanceList() {
                 }
               }
             });
-            employeesByMNV[newEmp.mnv] = mergedEmp;
+            employeesByMNV[normalizedMNV] = {
+              ...mergedEmp,
+              mnv: normalizedMNV,
+            };
           }
         });
         // Lưu lại employees (dạng object với key là mnv)

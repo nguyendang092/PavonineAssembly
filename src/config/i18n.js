@@ -101,6 +101,8 @@ const resources = {
         inventory: "Kiểm kê",
         maintenance: "Nhật ký bảo trì",
         driverLogbook: "Nhật ký xe",
+        usageGuideAdmin: "Hướng dẫn sử dụng",
+        usageGuideBlog: "📖 Hướng dẫn",
         ocr: "Ảnh",
         GA: "GA",
         ADMIN: "ADMIN",
@@ -541,6 +543,8 @@ const resources = {
         inventory: "재고 실사",
         maintenance: "유지보수",
         driverLogbook: "운전 일지",
+        usageGuideAdmin: "사용 가이드",
+        usageGuideBlog: "📖 가이드",
       },
       temperatureMonitor: {
         dashboard: "대시보드",

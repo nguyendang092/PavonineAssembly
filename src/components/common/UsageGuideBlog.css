@@ -1,0 +1,355 @@
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Dark Mode Support */
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* Rich Color Backgrounds */
+.bg-gradient-blue {
+  background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #2563eb 100%);
+}
+
+.bg-gradient-green {
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+}
+
+.bg-gradient-amber {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+}
+
+.bg-gradient-purple {
+  background: linear-gradient(135deg, #a855f7 0%, #9333ea 50%, #7e22ce 100%);
+}
+
+/* Blog Content - Light Mode (default) */
+.blog-content {
+  line-height: 1.8;
+  word-break: break-word;
+}
+
+.blog-content h1,
+.blog-content h2,
+.blog-content h3,
+.blog-content h4 {
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  color: #1e293b;
+}
+
+.dark .blog-content h1,
+.dark .blog-content h2,
+.dark .blog-content h3,
+.dark .blog-content h4 {
+  color: #f1f5f9;
+}
+
+.blog-content h1 {
+  font-size: 1.875em;
+}
+
+.blog-content h2 {
+  font-size: 1.5em;
+}
+
+.blog-content h3 {
+  font-size: 1.25em;
+}
+
+.blog-content p {
+  margin: 0.75em 0;
+}
+
+.blog-content ul,
+.blog-content ol {
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+.blog-content li {
+  margin: 0.5em 0;
+}
+
+.blog-content code {
+  background: #f1f5f9;
+  color: #1e293b;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "Courier New", monospace;
+  font-size: 0.9em;
+}
+
+.dark .blog-content code {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.blog-content pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.blog-content pre code {
+  background: none;
+  padding: 0;
+  color: #e2e8f0;
+}
+
+.dark .blog-content pre {
+  background: #0f172a;
+  border: 1px solid #334155;
+}
+
+.blog-content blockquote {
+  border-left: 4px solid #3b82f6;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background: #f0f9ff;
+  color: #1e40af;
+}
+
+.dark .blog-content blockquote {
+  border-left-color: #60a5fa;
+  background: #0c4a6e;
+  color: #bfdbfe;
+}
+
+.blog-content a {
+  color: #2563eb;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.blog-content a:hover {
+  color: #1d4ed8;
+}
+
+.dark .blog-content a {
+  color: #60a5fa;
+}
+
+.dark .blog-content a:hover {
+  color: #93c5fd;
+}
+
+.blog-content img,
+.blog-content video,
+.blog-content iframe {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 1em 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark .blog-content img,
+.dark .blog-content video,
+.dark .blog-content iframe {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.blog-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.blog-content table th,
+.blog-content table td {
+  border: 1px solid #e2e8f0;
+  padding: 0.75em;
+  text-align: left;
+}
+
+.blog-content table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.dark .blog-content table th,
+.dark .blog-content table td {
+  border-color: #475569;
+}
+
+.dark .blog-content table th {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+.blog-content strong {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dark .blog-content strong {
+  color: #f1f5f9;
+}
+
+.blog-content em {
+  font-style: italic;
+  color: #475569;
+}
+
+.dark .blog-content em {
+  color: #cbd5e1;
+}
+
+.blog-content sup,
+.blog-content sub {
+  font-size: 0.8em;
+  line-height: 0;
+}
+
+.blog-content sup {
+  vertical-align: super;
+}
+
+.blog-content sub {
+  vertical-align: sub;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #2563eb, #7c3aed);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #475569, #6366f1);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #64748b, #818cf8);
+}
+
+/* Smooth transitions for all interactive elements */
+.transition-colors {
+  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+}
+
+.transition-all {
+  transition: all 0.2s;
+}
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .blog-content {
+    font-size: 0.95rem;
+  }
+
+  .blog-content h1 {
+    font-size: 1.5em;
+  }
+
+  .blog-content h2 {
+    font-size: 1.25em;
+  }
+
+  .blog-content h3 {
+    font-size: 1.1em;
+  }
+}
+
+/* Vibrant Badge & Accent Colors */
+.badge-blue {
+  background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
+  color: white;
+}
+
+.badge-green {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.badge-amber {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.badge-purple {
+  background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  color: white;
+}
+
+/* Card Shadows with Colors */
+.shadow-blue {
+  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+}
+
+.shadow-green {
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+}
+
+.shadow-amber {
+  box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3);
+}
+
+.shadow-purple {
+  box-shadow: 0 8px 16px rgba(168, 85, 247, 0.3);
+}
+
+.dark .shadow-blue {
+  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2);
+}
+
+.dark .shadow-green {
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.2);
+}
+
+.dark .shadow-amber {
+  box-shadow: 0 8px 16px rgba(245, 158, 11, 0.2);
+}
+
+.dark .shadow-purple {
+  box-shadow: 0 8px 16px rgba(168, 85, 247, 0.2);
+}

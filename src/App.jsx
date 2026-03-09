@@ -30,6 +30,8 @@ import Downloads from "./components/common/Downloads";
 import UserDepartmentManager from "./components/employee/UserDepartmentManager";
 import MaintenanceChecklist from "./components/maintenance/MaintenanceChecklist";
 import DriverLogbook from "./components/logistics/DriverLogbook";
+import AdminUsageGuide from "./components/common/AdminUsageGuide";
+import UsageGuideBlog from "./components/common/UsageGuideBlog";
 import {
   BrowserRouter as Router,
   Routes,
@@ -207,6 +209,12 @@ const App = () => {
                     break;
                   case "DriverLogbook":
                     Element = DriverLogbook;
+                    break;
+                  case "AdminUsageGuide":
+                    Element = AdminUsageGuide;
+                    break;
+                  case "UsageGuideBlog":
+                    Element = UsageGuideBlog;
                     break;
                   // case "Inventory":
                   //   Element = Inventory;
