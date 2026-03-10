@@ -20,6 +20,7 @@ import BirthdayCakeBell from "../employee/BirthdayCakeBell";
 import NotificationBell from "../common/NotificationBell";
 import Sidebar from "../layout/Sidebar";
 import CenterPortal from "../common/CenterPortal";
+import MissingEmployeesModal from "./MissingEmployeesModal";
 
 function AttendanceList() {
   // State for alert messages
@@ -91,6 +92,13 @@ function AttendanceList() {
     caLamViec: "",
     chamCong: "",
   });
+
+  // States for comparing with previous day
+  const [previousDayEmployees, setPreviousDayEmployees] = useState([]);
+  const [showMissingEmployeesModal, setShowMissingEmployeesModal] =
+    useState(false);
+  const [missingEmployees, setMissingEmployees] = useState([]);
+  const [filterMenuDropdownOpen, setFilterMenuDropdownOpen] = useState(false);
 
   const quickNoCheckInFilterValue = "chưa_chấm_công";
   const isQuickNoCheckInActive =
@@ -204,6 +212,40 @@ function AttendanceList() {
     return () => clearTimeout(timer);
   }, [unattendedEmployees, unattendedPopupDismissed]);
 
+  // Load previous day employees and detect missing ones
+  useEffect(() => {
+    const getPreviousDate = (dateStr) => {
+      const date = new Date(dateStr);
+      date.setDate(date.getDate() - 1);
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const previousDate = getPreviousDate(selectedDate);
+    const empRef = ref(db, `attendance/${previousDate}`);
+
+    const unsubscribe = onValue(empRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && typeof data === "object") {
+        const arr = Object.entries(data).map(([id, emp]) => ({ ...emp, id }));
+        setPreviousDayEmployees(arr);
+
+        // Calculate missing employees
+        const currentMnvSet = new Set(employees.map((e) => e.mnv));
+        const previousMnvSet = new Set(arr.map((e) => e.mnv));
+        const missing = arr.filter((e) => !currentMnvSet.has(e.mnv));
+        setMissingEmployees(missing);
+      } else {
+        setPreviousDayEmployees([]);
+        setMissingEmployees([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [selectedDate, employees]);
+
   // Auto-hide alert after 3s
   useEffect(() => {
     if (alert.show) {
@@ -246,6 +288,17 @@ function AttendanceList() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [printDropdownOpen]);
+
+  // Close filter menu dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterMenuDropdownOpen && !event.target.closest(".relative")) {
+        setFilterMenuDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [filterMenuDropdownOpen]);
 
   // Close action dropdown when clicking outside
   useEffect(() => {
@@ -2308,6 +2361,16 @@ function AttendanceList() {
           </div>
         </UnifiedModal>
 
+        {/* Modal hiển thị nhân viên bị mất so với ngày hôm trước */}
+        <MissingEmployeesModal
+          isOpen={showMissingEmployeesModal}
+          onClose={() => setShowMissingEmployeesModal(false)}
+          missingEmployees={missingEmployees}
+          previousDayEmployees={previousDayEmployees}
+          employees={employees}
+          selectedDate={selectedDate}
+        />
+
         {/* Filters and Actions */}
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between mb-4">
           <div className="flex flex-wrap gap-2">
@@ -2326,27 +2389,147 @@ function AttendanceList() {
             />
           </div>
           <div className="flex gap-2">
-            {/* Filter Button */}
+            {/* Filter Dropdown Menu */}
             <div className="relative">
               <button
-                onClick={() => setFilterOpen(!filterOpen)}
+                onClick={() =>
+                  setFilterMenuDropdownOpen(!filterMenuDropdownOpen)
+                }
                 className={`px-4 py-2 rounded font-bold text-sm shadow transition flex items-center gap-2 ${
                   gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
-                  gioVaoFilter.length > 0
+                  gioVaoFilter.length > 0 ||
+                  isQuickNoCheckInActive ||
+                  missingEmployees.length > 0
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-gray-600 text-white hover:bg-gray-700"
                 }`}
               >
-                🔍 Lọc
+                🔽 Bộ lọc
                 <span className="text-xs">
                   {gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
-                  gioVaoFilter.length > 0
+                  gioVaoFilter.length > 0 ||
+                  isQuickNoCheckInActive
                     ? "✓"
                     : ""}
                 </span>
               </button>
+
+              {/* Dropdown Menu */}
+              {filterMenuDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border border-gray-200 z-40">
+                  {/* Bộ lọc nâng cao */}
+                  <button
+                    onClick={() => {
+                      setFilterOpen(true);
+                      setFilterMenuDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-3 hover:bg-blue-50 border-b flex items-center gap-3 transition ${
+                      gioiTinhFilter.length > 0 ||
+                      departmentListFilter.length > 0 ||
+                      gioVaoFilter.length > 0
+                        ? "bg-blue-50 text-blue-700 font-semibold"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    <span className="text-lg">🔍</span>
+                    <div className="flex-1">
+                      <div className="font-semibold">Bộ lọc nâng cao</div>
+                      <div className="text-xs text-gray-500">
+                        Bộ phận, Giới tính, Thời gian
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Lọc nhanh */}
+                  <button
+                    onClick={() => {
+                      handleQuickNoCheckInFilter();
+                      setFilterMenuDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-3 hover:bg-amber-50 border-b flex items-center gap-3 transition ${
+                      isQuickNoCheckInActive
+                        ? "bg-amber-50 text-amber-700 font-semibold"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    <span className="text-lg">⚡</span>
+                    <div className="flex-1">
+                      <div className="font-semibold">Lọc nhanh</div>
+                      <div className="text-xs text-gray-500">
+                        Chưa chấm công
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Nhân viên bị mất */}
+                  {missingEmployees.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setShowMissingEmployeesModal(true);
+                        setFilterMenuDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-red-50 flex items-center gap-3 transition bg-red-50 text-red-700 font-semibold"
+                    >
+                      <span className="text-lg">📋</span>
+                      <div className="flex-1">
+                        <div className="font-semibold text-sm">
+                          Nhân viên nghỉ việc
+                        </div>
+                        <div className="text-xs text-red-600">
+                          {missingEmployees.length} người
+                        </div>
+                      </div>
+                      <span className="ml-2 px-2 py-1 bg-red-600 text-white rounded-full text-xs font-bold">
+                        {missingEmployees.length}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Tăng ca */}
+                  <button
+                    onClick={() => {
+                      handleOvertimeButton();
+                      setFilterMenuDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-orange-50 border-t flex items-center gap-3 transition text-gray-700"
+                  >
+                    <span className="text-lg">⏰</span>
+                    <div className="flex-1">
+                      <div className="font-semibold">Tăng ca</div>
+                      <div className="text-xs text-gray-500">
+                        Đăng ký tăng ca ngày
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Clear Filter */}
+                  {(gioiTinhFilter.length > 0 ||
+                    departmentListFilter.length > 0 ||
+                    gioVaoFilter.length > 0) && (
+                    <button
+                      onClick={() => {
+                        setGioiTinhFilter([]);
+                        setDepartmentListFilter([]);
+                        setGioVaoFilter([]);
+                        setSearchTerm("");
+                        setFilterMenuDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-red-50 border-t flex items-center gap-3 transition text-gray-700"
+                    >
+                      <span className="text-lg">🗑️</span>
+                      <div className="flex-1">
+                        <div className="font-semibold">Xóa lọc</div>
+                        <div className="text-xs text-gray-500">
+                          Reset tất cả bộ lọc
+                        </div>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Filter Modal Dialog */}
               {filterOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
@@ -2696,24 +2879,6 @@ function AttendanceList() {
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              onClick={handleQuickNoCheckInFilter}
-              className={`px-4 py-2 rounded font-bold text-sm shadow transition ${
-                isQuickNoCheckInActive
-                  ? "bg-amber-600 text-white hover:bg-amber-700"
-                  : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-              }`}
-            >
-              🔍 Lọc nhanh
-            </button>
-
-            <button
-              onClick={handleOvertimeButton}
-              className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition"
-            >
-              ⏰ Tăng ca
-            </button>
 
             {/* Action Dropdown (Upload/Export/Add) */}
             {user && (
