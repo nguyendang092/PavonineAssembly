@@ -11,6 +11,7 @@ import {
   update,
   get,
 } from "../../services/firebase";
+import { query, orderByKey, startAt, endAt } from "firebase/database";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import ExportExcelButton from "../common/ExportExcelButton";
@@ -52,6 +53,7 @@ function AttendanceList() {
 
   const [employees, setEmployees] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]); // Danh sách toàn bộ nhân viên
+  const [leaveUsed, setLeaveUsed] = useState({}); // mnv -> số ngày phép năm đã sử dụng trong năm
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
   const [editing, setEditing] = useState(null);
   const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
@@ -256,6 +258,42 @@ function AttendanceList() {
     }
   }, [alert.show]);
 
+  // Tính phép năm đã sử dụng trong năm hiện tại từ dữ liệu chấm công
+  useEffect(() => {
+    const year = new Date().getFullYear();
+    const startDateKey = `${year}-01-01`;
+    const endDateKey = `${year}-12-31`;
+    const yearQuery = query(
+      ref(db, "attendance"),
+      orderByKey(),
+      startAt(startDateKey),
+      endAt(endDateKey),
+    );
+    get(yearQuery).then((snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        setLeaveUsed({});
+        return;
+      }
+      const stats = {};
+      Object.values(data).forEach((dayData) => {
+        if (!dayData || typeof dayData !== "object") return;
+        Object.values(dayData).forEach((emp) => {
+          const gioVao = (emp?.gioVao || "").trim().toUpperCase();
+          const mnv = String(emp?.mnv || "");
+          if (!mnv) return;
+          if (!stats[mnv]) stats[mnv] = 0;
+          if (gioVao === "PN") {
+            stats[mnv] += 1;
+          } else if (["1/2PN", "PN1/2", "1/2 PN", "PN 1/2"].includes(gioVao)) {
+            stats[mnv] += 0.5;
+          }
+        });
+      });
+      setLeaveUsed(stats);
+    });
+  }, []);
+
   // Check if user can edit this employee's data
   const canEditEmployee = useCallback(
     (employee) => {
@@ -447,6 +485,15 @@ function AttendanceList() {
       return false;
     });
   }, [filteredEmployees]);
+
+  // Lookup map: mnv -> employee record từ employees node (để lấy phepNam)
+  const allEmployeesByMnv = useMemo(() => {
+    const map = {};
+    allEmployees.forEach((emp) => {
+      if (emp.mnv) map[String(emp.mnv)] = emp;
+    });
+    return map;
+  }, [allEmployees]);
 
   // Get unique genders (cascading filter - based on other selected filters)
   const genderList = useMemo(() => {
@@ -3628,6 +3675,15 @@ function AttendanceList() {
                 <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Chấm công
                 </th>
+                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                  Phép năm
+                </th>
+                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                  Phép đã dùng
+                </th>
+                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                  Phép còn lại
+                </th>
                 {user && (
                   <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                     Hành động
@@ -3862,6 +3918,41 @@ function AttendanceList() {
                     <span className="text-gray-700 font-medium">
                       {emp.chamCong || "--"}
                     </span>
+                  </td>
+                  <td className="px-3 py-3 text-sm text-center font-semibold text-blue-700">
+                    {allEmployeesByMnv[String(emp.mnv)]?.phepNam ?? "--"}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-center font-semibold text-orange-600">
+                    {leaveUsed[String(emp.mnv)] != null
+                      ? leaveUsed[String(emp.mnv)]
+                      : "--"}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-center font-bold">
+                    {(() => {
+                      const quota = Number(
+                        allEmployeesByMnv[String(emp.mnv)]?.phepNam,
+                      );
+                      if (
+                        isNaN(quota) ||
+                        allEmployeesByMnv[String(emp.mnv)]?.phepNam == null
+                      )
+                        return <span className="text-gray-400">--</span>;
+                      const used = leaveUsed[String(emp.mnv)] ?? 0;
+                      const remaining = quota - used;
+                      return (
+                        <span
+                          className={
+                            remaining < 0
+                              ? "text-red-600"
+                              : remaining === 0
+                                ? "text-gray-400"
+                                : "text-green-600"
+                          }
+                        >
+                          {remaining}
+                        </span>
+                      );
+                    })()}
                   </td>
                   {user &&
                     (user.email === "admin@gmail.com" ||
