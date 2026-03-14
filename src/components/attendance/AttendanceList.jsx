@@ -11,6 +11,7 @@ import {
   update,
   get,
 } from "../../services/firebase";
+import { query, orderByKey, startAt, endAt } from "firebase/database";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import ExportExcelButton from "../common/ExportExcelButton";
@@ -21,7 +22,6 @@ import NotificationBell from "../common/NotificationBell";
 import Sidebar from "../layout/Sidebar";
 import CenterPortal from "../common/CenterPortal";
 import MissingEmployeesModal from "./MissingEmployeesModal";
-import AnnualLeaveExcelUpload from "./AnnualLeaveExcelUpload";
 
 function AttendanceList() {
   // State for alert messages
@@ -53,6 +53,7 @@ function AttendanceList() {
 
   const [employees, setEmployees] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]); // Danh sách toàn bộ nhân viên
+  const [leaveUsed, setLeaveUsed] = useState({}); // mnv -> số ngày phép năm đã sử dụng trong năm
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
   const [editing, setEditing] = useState(null);
   const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
@@ -257,6 +258,42 @@ function AttendanceList() {
     }
   }, [alert.show]);
 
+  // Tính phép năm đã sử dụng trong năm hiện tại từ dữ liệu chấm công
+  useEffect(() => {
+    const year = new Date().getFullYear();
+    const startDateKey = `${year}-01-01`;
+    const endDateKey = `${year}-12-31`;
+    const yearQuery = query(
+      ref(db, "attendance"),
+      orderByKey(),
+      startAt(startDateKey),
+      endAt(endDateKey),
+    );
+    get(yearQuery).then((snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        setLeaveUsed({});
+        return;
+      }
+      const stats = {};
+      Object.values(data).forEach((dayData) => {
+        if (!dayData || typeof dayData !== "object") return;
+        Object.values(dayData).forEach((emp) => {
+          const gioVao = (emp?.gioVao || "").trim().toUpperCase();
+          const mnv = String(emp?.mnv || "");
+          if (!mnv) return;
+          if (!stats[mnv]) stats[mnv] = 0;
+          if (gioVao === "PN") {
+            stats[mnv] += 1;
+          } else if (["1/2PN", "PN1/2", "1/2 PN", "PN 1/2"].includes(gioVao)) {
+            stats[mnv] += 0.5;
+          }
+        });
+      });
+      setLeaveUsed(stats);
+    });
+  }, []);
+
   // Check if user can edit this employee's data
   const canEditEmployee = useCallback(
     (employee) => {
@@ -432,6 +469,7 @@ function AttendanceList() {
       "PC",
       "PT",
       "DS",
+      "NV",
     ];
     return filteredEmployees.filter((emp) => {
       const gioVao = (emp.gioVao || "").trim().toUpperCase();
@@ -1868,7 +1906,7 @@ function AttendanceList() {
             <td>${emp.maBoPhan || ""}</td>
             <td class="dept">${emp.boPhan || ""}</td>
             <td style="${
-              ["PN", "TS", "PO"].includes(emp.gioVao)
+              ["PN", "TS", "PO", "NV"].includes(emp.gioVao)
                 ? "color:#c41e3a;font-weight:bold;"
                 : ""
             }">${emp.gioVao || ""}</td>
@@ -2940,11 +2978,6 @@ function AttendanceList() {
                         />
                       </label>
                     )}
-                    <AnnualLeaveExcelUpload
-                      user={user}
-                      onAlert={setAlert}
-                      onUploaded={() => setActionDropdownOpen(false)}
-                    />
                     <button
                       onClick={() => {
                         const exportButton = document.querySelector(
@@ -3900,14 +3933,9 @@ function AttendanceList() {
                     {allEmployeesByMnv[String(emp.mnv)]?.phepNam ?? "--"}
                   </td>
                   <td className="px-3 py-3 text-sm text-center font-semibold text-orange-600">
-                    {(() => {
-                      const uploadedUsed = Number(
-                        allEmployeesByMnv[String(emp.mnv)]?.phepNamUsedFromFile,
-                      );
-                      return Number.isFinite(uploadedUsed)
-                        ? uploadedUsed
-                        : "--";
-                    })()}
+                    {leaveUsed[String(emp.mnv)] != null
+                      ? leaveUsed[String(emp.mnv)]
+                      : "--"}
                   </td>
                   <td className="px-3 py-3 text-sm text-center font-bold">
                     {(() => {
@@ -3919,12 +3947,7 @@ function AttendanceList() {
                         allEmployeesByMnv[String(emp.mnv)]?.phepNam == null
                       )
                         return <span className="text-gray-400">--</span>;
-                      const uploadedUsed = Number(
-                        allEmployeesByMnv[String(emp.mnv)]?.phepNamUsedFromFile,
-                      );
-                      const used = Number.isFinite(uploadedUsed)
-                        ? uploadedUsed
-                        : 0;
+                      const used = leaveUsed[String(emp.mnv)] ?? 0;
                       const remaining = quota - used;
                       return (
                         <span

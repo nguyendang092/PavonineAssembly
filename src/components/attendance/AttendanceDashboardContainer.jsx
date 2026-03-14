@@ -2,14 +2,14 @@ import React, { useEffect, useState } from "react";
 import AttendanceDashboard, {
   PRODUCTION_DEPARTMENTS,
 } from "./AttendanceDashboard";
-import { useUser } from '../../contexts/UserContext';
-import { db, ref, onValue } from '../../services/firebase';
+import { useUser } from "../../contexts/UserContext";
+import { db, ref, onValue } from "../../services/firebase";
 
 const AttendanceDashboardContainer = () => {
   const { user } = useUser();
   const [employees, setEmployees] = useState([]);
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().slice(0, 10)
+    new Date().toISOString().slice(0, 10),
   );
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("all");
