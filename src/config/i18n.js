@@ -157,6 +157,8 @@ const resources = {
         Anodizing: "ANODIZING",
         Assembly: "ASSEMBLY",
         Press: " PRESS",
+        Purchasing: "PURCHASING",
+        Purchasing: "PURCHASING",
         "Hair Line": "HAIRLINE",
         "CO KHI CONG NGHIEP HAI AU": "CO KHI CONG NGHIEP HAI AU",
         "MTS VIET NAM CO_,LTD": "MTS VIET NAM CO_,LTD",
