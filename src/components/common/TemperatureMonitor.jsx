@@ -26,7 +26,7 @@ const TemperatureMonitor = () => {
   const [searchMachine, setSearchMachine] = useState("");
   const [areasLoading, setAreasLoading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() =>
-    format(new Date(), "yyyy-MM")
+    format(new Date(), "yyyy-MM"),
   );
   const [showAreas, setShowAreas] = useState(false);
   const [showMonthInput, setShowMonthInput] = useState(false);
@@ -67,7 +67,7 @@ const TemperatureMonitor = () => {
       },
       (err) => {
         if (!ignore) setAreasLoading(false);
-      }
+      },
     );
     return () => {
       ignore = true;
@@ -92,20 +92,20 @@ const TemperatureMonitor = () => {
   const filteredMachines = useMemo(() => {
     if (!debouncedSearch) return machines;
     return machines.filter((m) =>
-      m.toLowerCase().includes(debouncedSearch.toLowerCase())
+      m.toLowerCase().includes(debouncedSearch.toLowerCase()),
     );
   }, [machines, debouncedSearch]);
   const totalMachinePages = useMemo(
     () => Math.ceil(filteredMachines.length / PAGE_SIZE),
-    [filteredMachines.length]
+    [filteredMachines.length],
   );
   const pagedMachines = useMemo(
     () =>
       filteredMachines.slice(
         (machinePage - 1) * PAGE_SIZE,
-        machinePage * PAGE_SIZE
+        machinePage * PAGE_SIZE,
       ),
-    [filteredMachines, machinePage]
+    [filteredMachines, machinePage],
   );
 
   useEffect(() => {
@@ -126,7 +126,7 @@ const TemperatureMonitor = () => {
     // Kiểm tra trùng tên không phân biệt hoa thường
     if (
       currentMachines.some(
-        (m) => m.trim().toLowerCase() === trimmedNew.toLowerCase()
+        (m) => m.trim().toLowerCase() === trimmedNew.toLowerCase(),
       )
     ) {
       alert(t("temperatureMonitor.machineExists"));
@@ -135,7 +135,7 @@ const TemperatureMonitor = () => {
     setIsLoading(true);
     try {
       const updatedMachines = currentMachines.map((m) =>
-        m === oldName ? trimmedNew : m
+        m === oldName ? trimmedNew : m,
       );
       await update(ref(db, `areas/${selectedArea}`), {
         machines: updatedMachines,
@@ -144,7 +144,7 @@ const TemperatureMonitor = () => {
       const oldRef = ref(db, `temperature_monitor/${selectedArea}/${oldName}`);
       const newRef = ref(
         db,
-        `temperature_monitor/${selectedArea}/${trimmedNew}`
+        `temperature_monitor/${selectedArea}/${trimmedNew}`,
       );
       const snapshot = await get(oldRef);
       if (snapshot.exists()) {
@@ -153,14 +153,14 @@ const TemperatureMonitor = () => {
         setEditingMachine(null);
         setEditMachineName("");
         showToast(
-          t("temperatureMonitor.renamed", { oldName, newName: trimmedNew })
+          t("temperatureMonitor.renamed", { oldName, newName: trimmedNew }),
         );
         // Ghi log đổi tên máy
         if (user && user.email) {
           await logUserAction(
             user.email,
             "edit_machine",
-            `Đổi tên máy từ ${oldName} sang ${trimmedNew} tại khu vực ${selectedArea}`
+            `Đổi tên máy từ ${oldName} sang ${trimmedNew} tại khu vực ${selectedArea}`,
           );
         }
       } else {
@@ -180,20 +180,20 @@ const TemperatureMonitor = () => {
     setIsLoading(true);
     try {
       const updatedMachines = areas[selectedArea]?.machines.filter(
-        (m) => m !== machineName
+        (m) => m !== machineName,
       );
       await update(ref(db, `areas/${selectedArea}`), {
         machines: updatedMachines,
       });
       await remove(
-        ref(db, `temperature_monitor/${selectedArea}/${machineName}`)
+        ref(db, `temperature_monitor/${selectedArea}/${machineName}`),
       );
       // Ghi log xóa máy
       if (user && user.email) {
         await logUserAction(
           user.email,
           "delete_machine",
-          `Xóa máy ${machineName} tại khu vực ${selectedArea}`
+          `Xóa máy ${machineName} tại khu vực ${selectedArea}`,
         );
       }
     } catch (error) {
@@ -221,7 +221,7 @@ const TemperatureMonitor = () => {
     // Kiểm tra trùng tên không phân biệt hoa thường
     if (
       existingMachines.some(
-        (m) => m.trim().toLowerCase() === trimmedMachine.toLowerCase()
+        (m) => m.trim().toLowerCase() === trimmedMachine.toLowerCase(),
       )
     ) {
       alert(t("temperatureMonitor.machineExists"));
@@ -235,7 +235,7 @@ const TemperatureMonitor = () => {
       });
       await set(
         ref(db, `temperature_monitor/${selectedArea}/${trimmedMachine}`),
-        {}
+        {},
       );
       setNewMachineName("");
       setIsAddingMachine(false);
@@ -244,7 +244,7 @@ const TemperatureMonitor = () => {
         await logUserAction(
           user.email,
           "add_machine",
-          `Thêm máy ${trimmedMachine} tại khu vực ${selectedArea}`
+          `Thêm máy ${trimmedMachine} tại khu vực ${selectedArea}`,
         );
       }
     } catch (error) {
