@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { db } from '../../services/firebase';
+import { db } from "../../services/firebase";
 import { ref, get } from "firebase/database";
 import { getDay, getDaysInMonth } from "date-fns";
 import {
@@ -32,8 +32,8 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
   const { t } = useTranslation();
 
   const getThreshold = () => {
-    if (type === "temperature") return { min: 25, max: 35 };
-    if (type === "humidity") return { min: 60, max: 85 };
+    if (type === "temperature") return { min: 17, max: 28 };
+    if (type === "humidity") return { min: 40, max: 75 };
     return { min: -Infinity, max: Infinity };
   };
 
@@ -62,12 +62,12 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
         get(
           ref(
             db,
-            `temperature_monitor/${selectedArea}/${machine}/${selectedMonth}/${type}`
-          )
+            `temperature_monitor/${selectedArea}/${machine}/${selectedMonth}/${type}`,
+          ),
         ).then((snapshot) => ({
           machine,
           data: snapshot.exists() ? snapshot.val() : null,
-        }))
+        })),
       );
 
       const results = await Promise.all(promises);
@@ -96,7 +96,7 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
       });
 
       const sortedData = Object.values(result).sort(
-        (a, b) => parseInt(a.day) - parseInt(b.day)
+        (a, b) => parseInt(a.day) - parseInt(b.day),
       );
       if (isMounted) {
         setChartData(sortedData);
