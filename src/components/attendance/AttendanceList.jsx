@@ -2143,14 +2143,14 @@ function AttendanceList() {
                   Ngày/Date: {new Date().toLocaleDateString("vi-VN")}
                 </p>
               </div>
-              <div className="flex items-center gap-4">
+              {/*<div className="flex items-center gap-4">
                 <BirthdayCakeBell employees={allEmployees} />
                 <NotificationBell
                   count={buCongEmployees.length}
                   onExport={handleExportBuCongExcel}
                   exportLabel="⬇ Xuất Excel"
                 >
-                  {/* Danh sách nhân viên bù công */}
+                  Danh sách nhân viên bù công
                   {buCongEmployees.length === 0 ? (
                     <div
                       style={{
@@ -2218,7 +2218,7 @@ function AttendanceList() {
                     </div>
                   )}
                 </NotificationBell>
-              </div>
+              </div>  */}
             </div>
           </div>
         </div>
@@ -2340,7 +2340,7 @@ function AttendanceList() {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="border rounded-md h-9 px-3 text-sm bg-white font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300"
+              className="w-full sm:w-auto border rounded-md h-9 px-3 text-sm bg-white font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300"
             />
             <input
               type="text"
@@ -2350,14 +2350,14 @@ function AttendanceList() {
               className="w-full sm:w-48 border rounded-md h-9 px-3 text-sm focus:ring-2 focus:ring-blue-200"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:justify-end">
             {/* Filter Dropdown Menu */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none min-w-[110px]">
               <button
                 onClick={() =>
                   setFilterMenuDropdownOpen(!filterMenuDropdownOpen)
                 }
-                className={`px-4 py-2 rounded font-bold text-sm shadow transition flex items-center gap-2 ${
+                className={`w-full px-3 sm:px-4 py-2 rounded font-bold text-sm shadow transition flex items-center justify-center gap-2 ${
                   gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
                   gioVaoFilter.length > 0 ||
@@ -2380,7 +2380,7 @@ function AttendanceList() {
 
               {/* Dropdown Menu */}
               {filterMenuDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border border-gray-200 z-40">
+                <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-full sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border border-gray-200 z-40">
                   {/* Bộ lọc nâng cao */}
                   <button
                     onClick={() => {
@@ -2844,10 +2844,10 @@ function AttendanceList() {
 
             {/* Action Dropdown (Upload/Export/Add) */}
             {user && (
-              <div className="relative action-dropdown">
+              <div className="relative action-dropdown flex-1 sm:flex-none min-w-[110px]">
                 <button
                   onClick={() => setActionDropdownOpen(!actionDropdownOpen)}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center gap-1"
+                  className="w-full px-3 sm:px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center justify-center gap-1"
                 >
                   ⚙️ Chức năng
                   <span className="text-xs">
@@ -2855,7 +2855,7 @@ function AttendanceList() {
                   </span>
                 </button>
                 {actionDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-50 overflow-hidden animate-fadeIn">
+                  <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-full sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-50 overflow-hidden animate-fadeIn">
                     {(user.email === "admin@gmail.com" ||
                       user.email === "hr@pavonine.net") && (
                       <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
@@ -2985,16 +2985,16 @@ function AttendanceList() {
             )}
 
             {/* Print Dropdown */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none min-w-[110px]">
               <button
                 onClick={() => setPrintDropdownOpen(!printDropdownOpen)}
-                className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition flex items-center gap-1"
+                className="w-full px-3 sm:px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition flex items-center justify-center gap-1"
               >
                 🖨️ In
                 <span className="text-xs">{printDropdownOpen ? "▲" : "▼"}</span>
               </button>
               {printDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-blue-200 z-50 overflow-hidden animate-fadeIn">
+                <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-full sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border-2 border-blue-200 z-50 overflow-hidden animate-fadeIn">
                   <button
                     onClick={() => {
                       handlePrintOvertimeList();
@@ -3547,55 +3547,58 @@ function AttendanceList() {
         )}
 
         {/* Table */}
-        <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
-          <table className="w-full border-collapse min-w-[1200px]">
+        <div className="overflow-x-hidden md:overflow-x-auto bg-white rounded-lg shadow-lg">
+          <p className="px-4 pb-2 text-xs font-medium text-amber-500 text-end">
+            Lưu ý: Phép năm chưa tính tháng hiện tại.
+          </p>
+          <table className="w-full table-fixed md:table-auto border-collapse min-w-full md:min-w-[1200px]">
             <thead>
               <tr
                 style={{
                   background: "linear-gradient(to right, #3b82f6, #8b5cf6)",
                 }}
               >
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="hidden md:table-cell px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   STT
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   MNV
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="hidden md:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   MVT
                 </th>
-                <th className="px-4 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="px-2 md:px-4 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Họ và tên
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="hidden md:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Giới tính
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="hidden md:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Ngày tháng năm sinh
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="hidden lg:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Mã BP
                 </th>
-                <th className="px-4 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="hidden md:table-cell px-4 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Bộ phận
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Thời gian vào
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="hidden md:table-cell px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Thời gian ra
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Phép năm
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="hidden md:table-cell px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Ca làm việc
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                <th className="hidden md:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Chấm công
                 </th>
                 {user && (
-                  <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                  <th className="hidden md:table-cell px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                     Hành động
                   </th>
                 )}
@@ -3609,19 +3612,19 @@ function AttendanceList() {
                     idx % 2 === 0 ? "bg-blue-100" : "bg-white"
                   }`}
                 >
-                  <td className="px-3 py-3 text-sm text-center font-bold text-gray-700">
+                  <td className="hidden md:table-cell px-2 md:px-3 py-2.5 md:py-3 text-xs md:text-sm text-center font-bold text-gray-700">
                     {emp.stt || idx + 1}
                   </td>
-                  <td className="px-3 py-3 text-sm text-center font-bold text-blue-600">
+                  <td className="px-2 md:px-3 py-2.5 md:py-3 text-xs md:text-sm text-center font-bold text-blue-600 whitespace-nowrap">
                     {emp.mnv}
                   </td>
-                  <td className="px-3 py-3 text-sm text-center font-semibold text-gray-700">
+                  <td className="hidden md:table-cell px-3 py-3 text-sm text-center font-semibold text-gray-700">
                     {emp.mvt}
                   </td>
-                  <td className="px-4 py-3 text-sm text-center font-bold text-gray-800">
+                  <td className="px-2 md:px-4 py-2.5 md:py-3 text-xs md:text-sm text-left md:text-center font-bold text-gray-800 break-words whitespace-normal leading-tight">
                     {emp.hoVaTen}
                   </td>
-                  <td className="px-3 py-3 text-sm text-center">
+                  <td className="hidden md:table-cell px-3 py-3 text-sm text-center">
                     <span
                       className={`px-3 py-1.5 rounded-full text-sm font-bold ${
                         emp.gioiTinh === "YES"
@@ -3632,19 +3635,19 @@ function AttendanceList() {
                       {emp.gioiTinh}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-sm text-center font-semibold text-gray-700">
+                  <td className="hidden md:table-cell px-3 py-3 text-sm text-center font-semibold text-gray-700">
                     {emp.ngayThangNamSinh}
                   </td>
-                  <td className="px-3 py-3 text-sm text-center font-bold text-gray-700">
+                  <td className="hidden lg:table-cell px-3 py-3 text-sm text-center font-bold text-gray-700">
                     {emp.maBoPhan}
                   </td>
-                  <td className="px-4 py-3 text-sm text-center font-semibold text-gray-700">
+                  <td className="hidden md:table-cell px-4 py-3 text-sm text-center font-semibold text-gray-700">
                     {emp.boPhan}
                   </td>
-                  <td className="px-3 py-3 text-sm text-center">
+                  <td className="px-2 md:px-3 py-2.5 md:py-3 text-xs md:text-sm text-center">
                     {emp.gioVao ? (
                       <span
-                        className={`font-bold text-base ${
+                        className={`font-bold text-sm md:text-base ${
                           /^\d{1,2}:\d{2}$/.test(emp.gioVao)
                             ? "text-green-600"
                             : "text-red-600"
@@ -3653,10 +3656,10 @@ function AttendanceList() {
                         {emp.gioVao}
                       </span>
                     ) : canEditEmployee(emp) ? (
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-1 md:gap-2">
                         <select
                           disabled={savingGioVao[emp.id]}
-                          className="border rounded px-2 py-1 text-sm text-red-700 font-bold focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full max-w-[94px] md:max-w-none border rounded px-1.5 md:px-2 py-1 text-[11px] md:text-sm text-red-700 font-bold focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
                           value={editingGioVao[emp.id] || ""}
                           onChange={(e) => {
                             setEditingGioVao((prev) => ({
@@ -3723,7 +3726,7 @@ function AttendanceList() {
                                 }
                               }
                             }}
-                            className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-1.5 md:px-2 py-1 bg-green-500 text-white rounded text-[10px] md:text-xs hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {savingGioVao[emp.id] ? "⏳" : "✓"}
                           </button>
@@ -3737,17 +3740,17 @@ function AttendanceList() {
                       <span className="text-gray-400 italic">--</span>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-sm text-center">
+                  <td className="hidden md:table-cell px-2 md:px-3 py-2.5 md:py-3 text-xs md:text-sm text-center min-w-[90px]">
                     <span className="text-red-600 font-bold text-base">
                       {emp.gioRa}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-sm text-center">
-                    <span className="text-sm text-gray-700 font-bold">
+                  <td className="px-2 md:px-3 py-2.5 md:py-3 text-xs md:text-sm text-center">
+                    <span className="text-xs md:text-sm text-gray-700 font-bold">
                       {String(emp.pnTon ?? emp.phepNam ?? "").trim() || "--"}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-sm text-center">
+                  <td className="hidden md:table-cell px-2 md:px-3 py-2.5 md:py-3 text-xs md:text-sm text-center min-w-[130px]">
                     {emp.caLamViec ? (
                       <span className="text-blue-600 font-bold text-base">
                         {emp.caLamViec}
@@ -3830,7 +3833,7 @@ function AttendanceList() {
                       <span className="text-gray-400 italic">--</span>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-sm text-center">
+                  <td className="hidden md:table-cell px-3 py-3 text-sm text-center">
                     <span className="text-gray-700 font-medium">
                       {emp.chamCong || "--"}
                     </span>
@@ -3838,18 +3841,18 @@ function AttendanceList() {
                   {user &&
                     (user.email === "admin@gmail.com" ||
                       user.email === "hr@pavonine.net") && (
-                      <td className="px-2 py-2 text-center">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="hidden md:table-cell px-2 py-2 text-center min-w-[120px]">
+                        <div className="flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2">
                           <button
                             onClick={() => handleEdit(emp)}
-                            className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md"
+                            className="w-full md:w-auto px-2.5 md:px-3 py-1.5 bg-blue-500 text-white rounded-md text-[11px] md:text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md whitespace-nowrap"
                             title="Chỉnh sửa"
                           >
                             ✏️ Sửa
                           </button>
                           <button
                             onClick={() => handleDelete(emp.id)}
-                            className="px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
+                            className="w-full md:w-auto px-2.5 md:px-3 py-1.5 bg-red-500 text-white rounded-md text-[11px] md:text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md whitespace-nowrap"
                             title="Xóa"
                           >
                             🗑️ Xóa
@@ -3865,7 +3868,7 @@ function AttendanceList() {
 
         {/* Summary */}
         <div className="mt-6 bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-600">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <div className="flex items-center flex-wrap gap-2 mt-1">
                 <span className="text-sm font-bold text-gray-700 flex items-center">
@@ -3875,7 +3878,7 @@ function AttendanceList() {
                   </span>
                 </span>
                 {/* Đếm số lượng từng loại nhân viên (PO, PN, ...) */}
-                <div className="flex flex-wrap gap-2 ml-4">
+                <div className="flex flex-wrap gap-2 sm:ml-4">
                   {(() => {
                     // Đếm số lượng theo trường 'gioVao' (thời gian vào)
                     const timeCounts = {};
@@ -3904,7 +3907,7 @@ function AttendanceList() {
                 </div>
               </div>
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 self-start sm:self-auto">
               Ngày: {new Date(selectedDate).toLocaleDateString("vi-VN")}
             </p>
           </div>
