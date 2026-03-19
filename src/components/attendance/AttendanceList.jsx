@@ -3586,13 +3586,13 @@ function AttendanceList() {
                   Thời gian ra
                 </th>
                 <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                  Phép năm
+                </th>
+                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Ca làm việc
                 </th>
                 <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Chấm công
-                </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Phép năm
                 </th>
                 {user && (
                   <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
@@ -3743,6 +3743,11 @@ function AttendanceList() {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-sm text-center">
+                    <span className="text-sm text-gray-700 font-bold">
+                      {String(emp.pnTon ?? emp.phepNam ?? "").trim() || "--"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-sm text-center">
                     {emp.caLamViec ? (
                       <span className="text-blue-600 font-bold text-base">
                         {emp.caLamViec}
@@ -3828,11 +3833,6 @@ function AttendanceList() {
                   <td className="px-3 py-3 text-sm text-center">
                     <span className="text-gray-700 font-medium">
                       {emp.chamCong || "--"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-sm text-center">
-                    <span className="text-sm text-gray-700 font-bold">
-                      {String(emp.pnTon ?? emp.phepNam ?? "").trim() || "--"}
                     </span>
                   </td>
                   {user &&
