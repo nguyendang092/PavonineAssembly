@@ -15,7 +15,6 @@ import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import ExportExcelButton from "../common/ExportExcelButton";
 // import BirthdayCake from "./BirthdayCake";
-import BirthdayCakeBell from "../employee/BirthdayCakeBell";
 import NotificationBell from "../common/NotificationBell";
 import Sidebar from "../layout/Sidebar";
 import CenterPortal from "../common/CenterPortal";
@@ -49,7 +48,6 @@ function SeasonalStaffAttendance() {
   const { user } = useUser();
 
   const [employees, setEmployees] = useState([]);
-  const [allEmployees, setAllEmployees] = useState([]); // Danh sách toàn bộ nhân viên
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
   const [editing, setEditing] = useState(null);
   const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
@@ -87,21 +85,6 @@ function SeasonalStaffAttendance() {
     caLamViec: "",
     chamCong: "",
   });
-
-  // Lấy toàn bộ danh sách nhân viên từ nhánh employees
-  useEffect(() => {
-    const empRef = ref(db, "seasonalEmployees");
-    const unsubscribe = onValue(empRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, emp]) => ({ id, ...emp }));
-        setAllEmployees(arr);
-      } else {
-        setAllEmployees([]);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
 
   // Load user's department permissions
   useEffect(() => {
@@ -601,6 +584,41 @@ function SeasonalStaffAttendance() {
         const attendanceRef = ref(db, `seasonalAttendance/${selectedDate}`);
         const dataToUpload = {};
 
+        // Chuẩn hóa MNV để tránh lệch kiểu dữ liệu (number/string) gây trùng.
+        const normalizeMNV = (value) => {
+          if (value === undefined || value === null) return "";
+          const strValue = String(value).trim();
+          if (!strValue) return "";
+          const numericValue = Number(strValue);
+          return Number.isFinite(numericValue)
+            ? String(numericValue)
+            : strValue;
+        };
+
+        const mergeEmployeeFields = (oldEmp, newEmp) => {
+          const mergedEmp = { ...oldEmp };
+          Object.keys(newEmp).forEach((field) => {
+            if (field === "id") return;
+
+            if (field === "gioVao") {
+              const newValue = newEmp[field];
+              if (
+                newValue !== undefined &&
+                newValue !== null &&
+                newValue !== ""
+              ) {
+                mergedEmp[field] = newValue;
+              }
+              return;
+            }
+
+            if (newEmp[field] !== undefined && newEmp[field] !== "") {
+              mergedEmp[field] = newEmp[field];
+            }
+          });
+          return mergedEmp;
+        };
+
         dataRows.forEach((row, index) => {
           // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu, Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc, Chấm công
           const [
@@ -626,6 +644,17 @@ function SeasonalStaffAttendance() {
           const mnvNum = Number(mnv);
           if (!Number.isFinite(mnvNum) || mnvNum === 0) return;
 
+          const normalizedMNV = normalizeMNV(mnvNum);
+          if (!normalizedMNV) return;
+
+          // Trong cùng 1 file, nếu trùng MNV thì lấy dòng xuất hiện sau cùng.
+          const existingUploadKey = Object.keys(dataToUpload).find(
+            (k) => normalizeMNV(dataToUpload[k]?.mnv) === normalizedMNV,
+          );
+          if (existingUploadKey) {
+            delete dataToUpload[existingUploadKey];
+          }
+
           const empKey = `emp_${index}`;
           const sttNum = Number.isFinite(Number(stt))
             ? Number(stt)
@@ -634,7 +663,7 @@ function SeasonalStaffAttendance() {
           dataToUpload[empKey] = {
             id: empKey,
             stt: sttNum,
-            mnv: String(mnvNum),
+            mnv: normalizedMNV,
             mvt: mvt || "",
             hoVaTen: hoVaTen || "",
             gioiTinh: gioiTinh || "YES",
@@ -655,44 +684,36 @@ function SeasonalStaffAttendance() {
         // Get existing data to merge and check for duplicates
         const snapshot = await get(attendanceRef);
         const existingData = snapshot.val() || {};
-        const existingMNVs = Object.values(existingData).map((emp) => emp.mnv);
+        const existingKeyByMNV = {};
+        Object.entries(existingData).forEach(([key, emp]) => {
+          const normalizedMNV = normalizeMNV(emp?.mnv);
+          if (normalizedMNV && !existingKeyByMNV[normalizedMNV]) {
+            existingKeyByMNV[normalizedMNV] = key;
+          }
+        });
 
         // Merge new data with existing data, avoiding duplicates
         const mergedData = { ...existingData };
 
         Object.entries(dataToUpload).forEach(([key, newEmp]) => {
-          const isDuplicate = existingMNVs.includes(newEmp.mnv);
+          const normalizedNewMNV = normalizeMNV(newEmp?.mnv);
+          const existingKey = existingKeyByMNV[normalizedNewMNV];
+          const isDuplicate = Boolean(existingKey);
+
           if (isDuplicate) {
             // Update existing employee with new data, chỉ cập nhật gioVao nếu giá trị mới không rỗng
-            const existingKey = Object.keys(existingData).find(
-              (k) => existingData[k].mnv === newEmp.mnv,
-            );
             if (existingKey) {
               const oldEmp = mergedData[existingKey] || {};
-              const mergedEmp = { ...oldEmp };
-              Object.keys(newEmp).forEach((field) => {
-                if (field === "gioVao") {
-                  const newValue = newEmp[field];
-                  if (
-                    newValue !== undefined &&
-                    newValue !== null &&
-                    newValue !== ""
-                  ) {
-                    mergedEmp[field] = newValue;
-                  }
-                  // Nếu giá trị mới rỗng, giữ nguyên giá trị cũ
-                } else {
-                  if (newEmp[field] !== undefined && newEmp[field] !== "") {
-                    mergedEmp[field] = newEmp[field];
-                  }
-                }
-              });
+              const mergedEmp = mergeEmployeeFields(oldEmp, newEmp);
               mergedData[existingKey] = mergedEmp;
             }
             duplicateCount++;
           } else {
             // Add new employee
             mergedData[key] = newEmp;
+            if (normalizedNewMNV) {
+              existingKeyByMNV[normalizedNewMNV] = key;
+            }
             uploadedCount++;
           }
         });
@@ -700,61 +721,63 @@ function SeasonalStaffAttendance() {
         // Save merged data (attendance)
         await set(attendanceRef, mergedData);
 
-        // --- Cập nhật nhánh employees ---
-        const employeesRef = ref(db, "seasonalEmployees");
+        // --- Cập nhật nhánh seasonalEmployees theo selectedDate ---
+        const employeesRef = ref(db, `seasonalEmployees/${selectedDate}`);
         const employeesSnap = await get(employeesRef);
         const employeesData = employeesSnap.val() || {};
         // Tạo map theo mnv để dễ tra cứu
         const employeesByMNV = {};
         Object.values(employeesData).forEach((emp) => {
-          if (emp.mnv) employeesByMNV[emp.mnv] = emp;
+          const normalizedMNV = normalizeMNV(emp?.mnv);
+          if (normalizedMNV) employeesByMNV[normalizedMNV] = emp;
         });
+
+        const specialCodes = new Set([
+          "PN",
+          "1/2PN",
+          "KP",
+          "KL",
+          "TN",
+          "PC",
+          "PT",
+          "PO",
+          "TS",
+          "DS",
+        ]);
+
         // Merge hoặc thêm mới
         Object.values(dataToUpload).forEach((newEmp) => {
-          if (newEmp.mnv) {
-            const oldEmp = employeesByMNV[newEmp.mnv] || {};
-            const mergedEmp = { ...oldEmp };
-            Object.keys(newEmp).forEach((key) => {
-              if (key === "gioVao") {
-                const specialCodes = [
-                  "PN",
-                  "1/2PN",
-                  "KP",
-                  "KL",
-                  "TN",
-                  "PC",
-                  "PT",
-                  "PO",
-                  "TS",
-                  "DS",
-                ];
-                const newValue = newEmp[key];
-                if (
-                  newValue === undefined ||
-                  newValue === null ||
-                  newValue === ""
-                ) {
-                  // Nếu giá trị mới rỗng, giữ nguyên giá trị cũ
-                  // Không làm gì
-                } else if (specialCodes.includes(newValue)) {
-                  mergedEmp[key] = newValue;
-                } else {
-                  // Nếu là chuỗi giờ (dạng HH:mm hoặc HH:mm:ss) hoặc số, vẫn cập nhật
-                  mergedEmp[key] = newValue;
-                }
-              } else {
-                if (newEmp[key] !== undefined && newEmp[key] !== "") {
-                  mergedEmp[key] = newEmp[key];
-                }
-              }
-            });
-            employeesByMNV[newEmp.mnv] = mergedEmp;
+          const normalizedMNV = normalizeMNV(newEmp?.mnv);
+          if (!normalizedMNV) return;
+
+          const oldEmp = employeesByMNV[normalizedMNV] || {};
+          const mergedEmp = mergeEmployeeFields(oldEmp, newEmp);
+
+          const gioVaoNormalized = String(mergedEmp.gioVao || "")
+            .trim()
+            .toUpperCase()
+            .replace(/\s+/g, "");
+          if (specialCodes.has(gioVaoNormalized)) {
+            mergedEmp.gioVao =
+              gioVaoNormalized === "1/2PN" ? "1/2PN" : gioVaoNormalized;
           }
+
+          employeesByMNV[normalizedMNV] = {
+            ...mergedEmp,
+            mnv: normalizedMNV,
+          };
         });
+
         // Lưu lại employees (dạng object với key là mnv)
         const employeesToSave = {};
         Object.values(employeesByMNV).forEach((emp) => {
-          employeesToSave[emp.mnv] = emp;
+          const normalizedMNV = normalizeMNV(emp?.mnv);
+          if (normalizedMNV) {
+            employeesToSave[normalizedMNV] = {
+              ...emp,
+              mnv: normalizedMNV,
+            };
+          }
         });
         await set(employeesRef, employeesToSave);
 
@@ -1994,9 +2017,7 @@ function SeasonalStaffAttendance() {
 
       {/* Main Content */}
       <div
-        className={`p-4 md:p-8 transitio
-          
-          n-all duration-300 ${sidebarOpen ? "ml-72" : "ml-0"}`}
+        className={`p-4 md:p-8 transition-all duration-300 ${sidebarOpen ? "ml-72" : "ml-0"}`}
       >
         {/* Header */}
         <div className="mb-6">
@@ -2014,7 +2035,6 @@ function SeasonalStaffAttendance() {
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <BirthdayCakeBell employees={allEmployees} />
                 <NotificationBell
                   count={buCongEmployees.length}
                   onExport={handleExportBuCongExcel}

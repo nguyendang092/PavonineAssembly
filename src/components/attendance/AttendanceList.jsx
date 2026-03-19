@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+﻿import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "../../contexts/UserContext";
 import {
@@ -22,6 +22,8 @@ import NotificationBell from "../common/NotificationBell";
 import Sidebar from "../layout/Sidebar";
 import CenterPortal from "../common/CenterPortal";
 import MissingEmployeesModal from "./MissingEmployeesModal";
+import AnnualLeaveUpload from "./AnnualLeaveUpload";
+import AnnualLeaveDetail from "./AnnualLeaveDetail";
 
 function AttendanceList() {
   // State for alert messages
@@ -910,69 +912,6 @@ function AttendanceList() {
 
         // Save merged data (attendance)
         await set(attendanceRef, mergedData);
-
-        // --- Cập nhật nhánh employees ---
-        const employeesRef = ref(db, "employees");
-        const employeesSnap = await get(employeesRef);
-        const employeesData = employeesSnap.val() || {};
-        // Tạo map theo mnv để dễ tra cứu
-        const employeesByMNV = {};
-        Object.values(employeesData).forEach((emp) => {
-          const normalizedMNV = normalizeMNV(emp?.mnv);
-          if (normalizedMNV) employeesByMNV[normalizedMNV] = emp;
-        });
-        // Merge hoặc thêm mới
-        Object.values(dataToUpload).forEach((newEmp) => {
-          const normalizedMNV = normalizeMNV(newEmp?.mnv);
-          if (normalizedMNV) {
-            const oldEmp = employeesByMNV[normalizedMNV] || {};
-            const mergedEmp = { ...oldEmp };
-            Object.keys(newEmp).forEach((key) => {
-              if (key === "gioVao") {
-                const specialCodes = [
-                  "PN",
-                  "1/2PN",
-                  "KP",
-                  "KL",
-                  "TN",
-                  "PC",
-                  "PT",
-                  "PO",
-                  "TS",
-                  "DS",
-                ];
-                const newValue = newEmp[key];
-                if (
-                  newValue === undefined ||
-                  newValue === null ||
-                  newValue === ""
-                ) {
-                  // Nếu giá trị mới rỗng, giữ nguyên giá trị cũ
-                  // Không làm gì
-                } else if (specialCodes.includes(newValue)) {
-                  mergedEmp[key] = newValue;
-                } else {
-                  // Nếu là chuỗi giờ (dạng HH:mm hoặc HH:mm:ss) hoặc số, vẫn cập nhật
-                  mergedEmp[key] = newValue;
-                }
-              } else {
-                if (newEmp[key] !== undefined && newEmp[key] !== "") {
-                  mergedEmp[key] = newEmp[key];
-                }
-              }
-            });
-            employeesByMNV[normalizedMNV] = {
-              ...mergedEmp,
-              mnv: normalizedMNV,
-            };
-          }
-        });
-        // Lưu lại employees (dạng object với key là mnv)
-        const employeesToSave = {};
-        Object.values(employeesByMNV).forEach((emp) => {
-          employeesToSave[emp.mnv] = emp;
-        });
-        await set(employeesRef, employeesToSave);
 
         // Show result message
         let message = `✅ Upload thành công ${uploadedCount} nhân viên mới`;
@@ -2978,6 +2917,11 @@ function AttendanceList() {
                         />
                       </label>
                     )}
+                    <AnnualLeaveUpload
+                      user={user}
+                      setAlert={setAlert}
+                      onClose={() => setActionDropdownOpen(false)}
+                    />
                     <button
                       onClick={() => {
                         const exportButton = document.querySelector(
@@ -3687,12 +3631,6 @@ function AttendanceList() {
                 <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Phép năm
                 </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Phép đã dùng
-                </th>
-                <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Phép còn lại
-                </th>
                 {user && (
                   <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                     Hành động
@@ -3929,41 +3867,11 @@ function AttendanceList() {
                       {emp.chamCong || "--"}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-sm text-center font-semibold text-blue-700">
-                    {allEmployeesByMnv[String(emp.mnv)]?.phepNam ?? "--"}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-center font-semibold text-orange-600">
-                    {leaveUsed[String(emp.mnv)] != null
-                      ? leaveUsed[String(emp.mnv)]
-                      : "--"}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-center font-bold">
-                    {(() => {
-                      const quota = Number(
-                        allEmployeesByMnv[String(emp.mnv)]?.phepNam,
-                      );
-                      if (
-                        isNaN(quota) ||
-                        allEmployeesByMnv[String(emp.mnv)]?.phepNam == null
-                      )
-                        return <span className="text-gray-400">--</span>;
-                      const used = leaveUsed[String(emp.mnv)] ?? 0;
-                      const remaining = quota - used;
-                      return (
-                        <span
-                          className={
-                            remaining < 0
-                              ? "text-red-600"
-                              : remaining === 0
-                                ? "text-gray-400"
-                                : "text-green-600"
-                          }
-                        >
-                          {remaining}
-                        </span>
-                      );
-                    })()}
-                  </td>
+                  <AnnualLeaveDetail
+                    emp={emp}
+                    allEmployeesByMnv={allEmployeesByMnv}
+                    leaveUsed={leaveUsed}
+                  />
                   {user &&
                     (user.email === "admin@gmail.com" ||
                       user.email === "hr@pavonine.net") && (
