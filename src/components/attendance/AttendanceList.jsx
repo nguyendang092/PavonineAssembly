@@ -11,7 +11,6 @@ import {
   update,
   get,
 } from "../../services/firebase";
-import { query, orderByKey, startAt, endAt } from "firebase/database";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import ExportExcelButton from "../common/ExportExcelButton";
@@ -22,8 +21,6 @@ import NotificationBell from "../common/NotificationBell";
 import Sidebar from "../layout/Sidebar";
 import CenterPortal from "../common/CenterPortal";
 import MissingEmployeesModal from "./MissingEmployeesModal";
-import AnnualLeaveUpload from "./AnnualLeaveUpload";
-import AnnualLeaveDetail from "./AnnualLeaveDetail";
 
 function AttendanceList() {
   // State for alert messages
@@ -55,7 +52,6 @@ function AttendanceList() {
 
   const [employees, setEmployees] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]); // Danh sách toàn bộ nhân viên
-  const [leaveUsed, setLeaveUsed] = useState({}); // mnv -> số ngày phép năm đã sử dụng trong năm
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
   const [editing, setEditing] = useState(null);
   const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
@@ -95,6 +91,7 @@ function AttendanceList() {
     gioRa: "",
     caLamViec: "",
     chamCong: "",
+    pnTon: "",
   });
 
   // States for comparing with previous day
@@ -259,42 +256,6 @@ function AttendanceList() {
       return () => clearTimeout(timer);
     }
   }, [alert.show]);
-
-  // Tính phép năm đã sử dụng trong năm hiện tại từ dữ liệu chấm công
-  useEffect(() => {
-    const year = new Date().getFullYear();
-    const startDateKey = `${year}-01-01`;
-    const endDateKey = `${year}-12-31`;
-    const yearQuery = query(
-      ref(db, "attendance"),
-      orderByKey(),
-      startAt(startDateKey),
-      endAt(endDateKey),
-    );
-    get(yearQuery).then((snapshot) => {
-      const data = snapshot.val();
-      if (!data) {
-        setLeaveUsed({});
-        return;
-      }
-      const stats = {};
-      Object.values(data).forEach((dayData) => {
-        if (!dayData || typeof dayData !== "object") return;
-        Object.values(dayData).forEach((emp) => {
-          const gioVao = (emp?.gioVao || "").trim().toUpperCase();
-          const mnv = String(emp?.mnv || "");
-          if (!mnv) return;
-          if (!stats[mnv]) stats[mnv] = 0;
-          if (gioVao === "PN") {
-            stats[mnv] += 1;
-          } else if (["1/2PN", "PN1/2", "1/2 PN", "PN 1/2"].includes(gioVao)) {
-            stats[mnv] += 0.5;
-          }
-        });
-      });
-      setLeaveUsed(stats);
-    });
-  }, []);
 
   // Check if user can edit this employee's data
   const canEditEmployee = useCallback(
@@ -489,15 +450,6 @@ function AttendanceList() {
     });
   }, [filteredEmployees]);
 
-  // Lookup map: mnv -> employee record từ employees node (để lấy phepNam)
-  const allEmployeesByMnv = useMemo(() => {
-    const map = {};
-    allEmployees.forEach((emp) => {
-      if (emp.mnv) map[String(emp.mnv)] = emp;
-    });
-    return map;
-  }, [allEmployees]);
-
   // Get unique genders (cascading filter - based on other selected filters)
   const genderList = useMemo(() => {
     const genders = new Set();
@@ -593,6 +545,7 @@ function AttendanceList() {
         gioRa: "",
         caLamViec: "",
         chamCong: "",
+        pnTon: "",
       });
     } catch (err) {
       setAlert({
@@ -792,8 +745,20 @@ function AttendanceList() {
             : strValue;
         };
 
+        const getFirstNonEmptyValue = (...values) => {
+          for (const value of values) {
+            if (value !== undefined && value !== null) {
+              const text = String(value).trim();
+              if (text !== "") return text;
+            }
+          }
+          return "";
+        };
+
         dataRows.forEach((row, index) => {
-          // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu, Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc, Chấm công
+          // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu,
+          // Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc, Chấm công,
+          // ... , PN tồn (ưu tiên cột P nếu có)
           const [
             stt,
             mnv,
@@ -808,6 +773,7 @@ function AttendanceList() {
             caLamViec,
             chamCong,
           ] = row;
+          const pnTon = getFirstNonEmptyValue(row[12], row[15]);
 
           // Bỏ qua dòng trống hoàn toàn
           const hasValue = row.some((cell) => String(cell || "").trim() !== "");
@@ -847,6 +813,7 @@ function AttendanceList() {
             gioRa: gioRa || "",
             caLamViec: caLamViec || "",
             chamCong: chamCong || "",
+            pnTon,
           };
         });
 
@@ -2917,11 +2884,6 @@ function AttendanceList() {
                         />
                       </label>
                     )}
-                    <AnnualLeaveUpload
-                      user={user}
-                      setAlert={setAlert}
-                      onClose={() => setActionDropdownOpen(false)}
-                    />
                     <button
                       onClick={() => {
                         const exportButton = document.querySelector(
@@ -2960,6 +2922,7 @@ function AttendanceList() {
                           gioRa: "",
                           caLamViec: "",
                           chamCong: "",
+                          pnTon: "",
                         });
                         setEditing(null);
                         setShowModal(true);
@@ -3867,11 +3830,11 @@ function AttendanceList() {
                       {emp.chamCong || "--"}
                     </span>
                   </td>
-                  <AnnualLeaveDetail
-                    emp={emp}
-                    allEmployeesByMnv={allEmployeesByMnv}
-                    leaveUsed={leaveUsed}
-                  />
+                  <td className="px-3 py-3 text-sm text-center">
+                    <span className="text-sm text-gray-700 font-bold">
+                      {String(emp.pnTon ?? emp.phepNam ?? "").trim() || "--"}
+                    </span>
+                  </td>
                   {user &&
                     (user.email === "admin@gmail.com" ||
                       user.email === "hr@pavonine.net") && (
