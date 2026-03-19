@@ -721,66 +721,6 @@ function SeasonalStaffAttendance() {
         // Save merged data (attendance)
         await set(attendanceRef, mergedData);
 
-        // --- Cập nhật nhánh seasonalEmployees theo selectedDate ---
-        const employeesRef = ref(db, `seasonalEmployees/${selectedDate}`);
-        const employeesSnap = await get(employeesRef);
-        const employeesData = employeesSnap.val() || {};
-        // Tạo map theo mnv để dễ tra cứu
-        const employeesByMNV = {};
-        Object.values(employeesData).forEach((emp) => {
-          const normalizedMNV = normalizeMNV(emp?.mnv);
-          if (normalizedMNV) employeesByMNV[normalizedMNV] = emp;
-        });
-
-        const specialCodes = new Set([
-          "PN",
-          "1/2PN",
-          "KP",
-          "KL",
-          "TN",
-          "PC",
-          "PT",
-          "PO",
-          "TS",
-          "DS",
-        ]);
-
-        // Merge hoặc thêm mới
-        Object.values(dataToUpload).forEach((newEmp) => {
-          const normalizedMNV = normalizeMNV(newEmp?.mnv);
-          if (!normalizedMNV) return;
-
-          const oldEmp = employeesByMNV[normalizedMNV] || {};
-          const mergedEmp = mergeEmployeeFields(oldEmp, newEmp);
-
-          const gioVaoNormalized = String(mergedEmp.gioVao || "")
-            .trim()
-            .toUpperCase()
-            .replace(/\s+/g, "");
-          if (specialCodes.has(gioVaoNormalized)) {
-            mergedEmp.gioVao =
-              gioVaoNormalized === "1/2PN" ? "1/2PN" : gioVaoNormalized;
-          }
-
-          employeesByMNV[normalizedMNV] = {
-            ...mergedEmp,
-            mnv: normalizedMNV,
-          };
-        });
-
-        // Lưu lại employees (dạng object với key là mnv)
-        const employeesToSave = {};
-        Object.values(employeesByMNV).forEach((emp) => {
-          const normalizedMNV = normalizeMNV(emp?.mnv);
-          if (normalizedMNV) {
-            employeesToSave[normalizedMNV] = {
-              ...emp,
-              mnv: normalizedMNV,
-            };
-          }
-        });
-        await set(employeesRef, employeesToSave);
-
         // Show result message
         let message = `✅ Upload thành công ${uploadedCount} nhân viên mới`;
         if (duplicateCount > 0) {
@@ -831,11 +771,10 @@ function SeasonalStaffAttendance() {
       return;
     }
     // Hiển thị dialog xác nhận với thông tin ngày
-    const confirmMessage = `⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu chấm công ngày ${selectedDate}?\n\nSố lượng: ${employees.length} nhân viên\n\nHành động này KHÔNG THỂ HOÀN TÁC!`;
+    const confirmMessage = `⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu chấm công ngày ${selectedDate}?\n\nNhánh bị xóa: Nhân viên thời vụ/${selectedDate}\nSố lượng: ${employees.length} nhân viên\n\nThao tác này CHỈ xóa DS ở Nhân viên thời vụ/${selectedDate}, không xóa nhánh khác.\n\nHành động này KHÔNG THỂ HOÀN TÁC!`;
     if (!window.confirm(confirmMessage)) return;
     // Xác nhận lần 2
-    const finalConfirm =
-      "Nhập 'XOA' (viết hoa) để xác nhận xóa toàn bộ dữ liệu:";
+    const finalConfirm = `Nhập 'XOA' (viết hoa) để xác nhận xóa nhánh Nhân viên thời vụ/${selectedDate}:`;
     const userInput = window.prompt(finalConfirm);
     if (userInput !== "XOA") {
       setAlert({
@@ -851,7 +790,7 @@ function SeasonalStaffAttendance() {
       setAlert({
         show: true,
         type: "success",
-        message: `✅ Đã xóa toàn bộ ${employees.length} bản ghi của ngày ${selectedDate}`,
+        message: `✅ Đã xóa toàn bộ ${employees.length} bản ghi trong seasonalAttendance/${selectedDate}`,
       });
     } catch (err) {
       console.error("Delete all data error:", err);
@@ -2033,81 +1972,6 @@ function SeasonalStaffAttendance() {
                 <p className="text-sm text-gray-500 mt-2">
                   Ngày/Date: {new Date().toLocaleDateString("vi-VN")}
                 </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <NotificationBell
-                  count={buCongEmployees.length}
-                  onExport={handleExportBuCongExcel}
-                  exportLabel="⬇ Xuất Excel"
-                >
-                  {/* Danh sách nhân viên bù công */}
-                  {buCongEmployees.length === 0 ? (
-                    <div
-                      style={{
-                        textAlign: "center",
-                        color: "#888",
-                        fontSize: 14,
-                        padding: 20,
-                      }}
-                    >
-                      Không có nhân viên bù công nào
-                    </div>
-                  ) : (
-                    <div style={{ maxHeight: 600, overflow: "auto" }}>
-                      <table
-                        style={{
-                          width: "100%",
-                          minWidth: 600,
-                          borderCollapse: "collapse",
-                          fontSize: 14,
-                        }}
-                      >
-                        <thead
-                          style={{
-                            position: "sticky",
-                            top: 0,
-                            background: "#e3f2fd",
-                            zIndex: 1,
-                          }}
-                        >
-                          <tr>
-                            <th style={{ padding: 8 }}>STT</th>
-                            <th style={{ padding: 8 }}>MNV</th>
-                            <th style={{ padding: 8 }}>Họ và tên</th>
-                            <th style={{ padding: 8 }}>Bộ phận</th>
-                            <th style={{ padding: 8 }}>Giờ vào</th>
-                            <th style={{ padding: 8 }}>Giờ ra</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {buCongEmployees.map((emp, idx) => (
-                            <tr
-                              key={emp.id}
-                              style={{
-                                background: idx % 2 === 0 ? "#f8fbff" : "#fff",
-                              }}
-                            >
-                              <td style={{ textAlign: "center", padding: 8 }}>
-                                {idx + 1}
-                              </td>
-                              <td style={{ textAlign: "center", padding: 8 }}>
-                                {emp.mnv}
-                              </td>
-                              <td style={{ padding: 8 }}>{emp.hoVaTen}</td>
-                              <td style={{ padding: 8 }}>{emp.boPhan}</td>
-                              <td style={{ textAlign: "center", padding: 8 }}>
-                                {emp.gioVao}
-                              </td>
-                              <td style={{ textAlign: "center", padding: 8 }}>
-                                {emp.gioRa || "-"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </NotificationBell>
               </div>
             </div>
           </div>
