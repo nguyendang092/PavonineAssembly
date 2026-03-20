@@ -6,7 +6,6 @@
     padding: 0;
     box-sizing: border-box;
     font-family: 'Poppins', sans-serif;
-    color: #fff;
 }
 
 .auth-container {
@@ -224,8 +223,12 @@
 .auth-wrapper .regi-link {
     text-align: center;
     font-size: 14px;
-    color: #fff;
+    color: #374151;
     margin-top: 20px;
+}
+
+.auth-wrapper .regi-link p {
+    color: #374151;
 }
 
 .auth-wrapper .regi-link a {
@@ -237,6 +240,24 @@
 
 .auth-wrapper .regi-link a:hover {
     text-decoration: underline;
+}
+
+/* Input icon alignment for all breakpoints */
+.auth-wrapper .input-box .input-icon {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    line-height: 1;
+    color: #000;
+    pointer-events: none;
+    transition: color 0.3s ease;
+}
+
+.auth-wrapper .input-box input:focus ~ .input-icon,
+.auth-wrapper .input-box input:valid ~ .input-icon {
+    color: #764ba2;
 }
 
 .auth-wrapper .info-content {
@@ -562,6 +583,191 @@ body.signin-open button[class*="fixed left-4 top-20"] {
 
     .auth-wrapper .regi-link a:hover {
         text-decoration: underline;
+    }
+
+    /* Reusable utility styles */
+    .input-icon {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 18px;
+        color: #000;
+        transition: color 0.3s ease;
+    }
+
+    .auth-wrapper .input-box input:focus ~ .input-icon,
+    .auth-wrapper .input-box input:valid ~ .input-icon {
+        color: #764ba2;
+    }
+
+    .error-message {
+        color: red;
+        font-size: 14px;
+        margin-bottom: 10px;
+        text-align: center;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Reset Modal Styles */
+    .reset-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 1rem;
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .reset-modal-content {
+        background-color: white;
+        padding: clamp(1.5rem, 4vw, 2.5rem);
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        max-width: 400px;
+        width: 100%;
+        animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .reset-modal-title {
+        margin-bottom: 1.25rem;
+        text-align: center;
+        font-size: clamp(1.125rem, 4vw, 1.5rem);
+        color: #333;
+    }
+
+    .reset-success-message {
+        background-color: #d4edda;
+        color: #155724;
+        padding: clamp(0.5rem, 2vw, 0.75rem);
+        border-radius: 5px;
+        margin-bottom: 1rem;
+        text-align: center;
+        font-size: clamp(0.875rem, 2vw, 1rem);
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .reset-input-wrapper {
+        margin-bottom: 1.25rem;
+        position: relative;
+    }
+
+    .reset-email-input {
+        width: 100%;
+        padding: clamp(0.5rem, 2vw, 0.625rem);
+        font-size: clamp(0.875rem, 2vw, 1rem);
+        border: 2px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+        background-color: #fff;
+        color: #111827;
+        transition: border-color 0.3s ease;
+    }
+
+    .reset-email-input::placeholder {
+        color: #6b7280;
+    }
+
+    .reset-email-input:focus {
+        outline: none;
+        border-color: #764ba2;
+    }
+
+    .reset-error-message {
+        color: red;
+        font-size: clamp(0.75rem, 2vw, 0.875rem);
+        margin-bottom: 1rem;
+        text-align: center;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .reset-button-group {
+        display: flex;
+        gap: 0.625rem;
+        margin-top: 1.5rem;
+        flex-direction: auto;
+    }
+
+    @media (max-width: 400px) {
+        .reset-button-group {
+            flex-direction: column;
+        }
+    }
+
+    .reset-submit-btn,
+    .reset-cancel-btn {
+        flex: 1;
+        padding: clamp(0.5rem, 2vw, 0.625rem);
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: clamp(0.875rem, 2vw, 1rem);
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .reset-submit-btn {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .reset-submit-btn:hover:not(:disabled) {
+        background-color: #0056b3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 86, 179, 0.3);
+    }
+
+    .reset-submit-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .reset-cancel-btn {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .reset-cancel-btn:hover {
+        background-color: #545b62;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(84, 91, 98, 0.3);
     }
 
     /* Close button adjustment */

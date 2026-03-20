@@ -72,10 +72,31 @@ export default function Sidebar({
     };
   }, [isOpen]);
 
+  // Close sidebar when SignIn modal is opened
+  useEffect(() => {
+    if (!isOpen || !onCloseRef.current) return;
+
+    const closeIfSignInOpen = () => {
+      if (document.body.classList.contains("signin-open")) {
+        onCloseRef.current?.();
+      }
+    };
+
+    closeIfSignInOpen();
+
+    const observer = new MutationObserver(closeIfSignInOpen);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, [isOpen]);
+
   return (
     <div
       ref={containerRef}
-      className={`w-80 fixed left-0 text-white p-6 shadow z-20 overflow-y-auto isolate space-y-6 transition-transform duration-300 ${
+      className={`app-sidebar w-80 fixed left-0 text-white p-6 shadow z-20 overflow-y-auto isolate space-y-6 transition-transform duration-300 ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       } ${className}`}
       style={{

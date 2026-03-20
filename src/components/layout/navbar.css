@@ -6,6 +6,7 @@ body {
 .navbar {
     position: relative;
     display: flex;
+    width: 100%;
     padding: 2px;
     background: #000000cb;
     justify-content: space-around;
@@ -317,43 +318,30 @@ body {
 .lang-selector {
     display: flex;
     align-items: center;
-    cursor: pointer;
 }
 
-.flag-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+.language-dropdown {
+    padding: 8px 12px;
+    background-color: white;
+    color: #000;
     border: 2px solid #d1d5db;
-    background-size: cover;
-    background-position: center;
-    transition: border-color 0.2s ease;
-}
-
-.flag-icon:hover {
-    border-color: #8b5cf6;
-}
-
-.lang-popup {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 8px);
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 8px;
-    display: flex;
-    gap: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-}
-
-.lang-popup .flag-icon {
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-family: inherit;
+    min-width: 140px;
 }
 
-.lang-popup .flag-icon.active {
+.language-dropdown:hover {
     border-color: #8b5cf6;
+}
+
+.language-dropdown:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
 #hamburger-menu,
@@ -369,10 +357,15 @@ body {
 
     .navbar {
         padding: 8px 15px;
+        gap: 8px;
         justify-content: space-between;
         position: sticky;
         top: 0;
         z-index: 1000;
+    }
+
+    .nav-logo {
+        flex-shrink: 0;
     }
 
     #hamburger-menu {
@@ -395,6 +388,7 @@ body {
     }
 
     .user-controls {
+        flex-shrink: 0;
         gap: 8px;
     }
 
@@ -409,12 +403,14 @@ body {
     }
 
     .lang-selector {
-        padding: 6px 10px;
+        padding: 0;
     }
 
-    .lang-selector img {
-        width: 20px;
-        height: 20px;
+    .language-dropdown {
+        min-width: 102px;
+        max-width: 102px;
+        padding: 7px 8px;
+        font-size: 12px;
     }
 
     #mobile-menu {
@@ -434,7 +430,12 @@ body {
         z-index: 9999;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        padding: 80px 20px 40px 20px;
+        padding: calc(72px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)) 20px;
+    }
+
+    .mobile-nav-items {
+        width: 100%;
+        max-width: 720px;
     }
 
     #mobile-menu.active {
@@ -445,6 +446,11 @@ body {
         padding: 0px;
         margin: 0;
         width: 100%;
+    }
+
+    .mobile-nav-items a,
+    .mobile-nav-items button {
+        overflow-wrap: anywhere;
     }
 
     .mobile-nav-items > ul > li {
@@ -458,10 +464,11 @@ body {
 
     /* Mobile dropdown styles */
     .mobile-dropdown {
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: rgba(15, 23, 42, 0.55);
         border-radius: 12px;
         overflow: hidden;
         margin: 8px 0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.16);
     }
 
     .mobile-dropdown-toggle {
@@ -472,22 +479,23 @@ body {
         padding: 14px 20px;
         background: none;
         border: none;
-        color: white;
+        color: #f8fafc;
         font-size: 18px;
         font-weight: 700;
         cursor: pointer;
         text-align: left;
         transition: background-color 0.3s ease;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.28);
     }
 
     .mobile-dropdown-toggle:active {
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: rgba(2, 6, 23, 0.35);
     }
 
     .mobile-dropdown-toggle.nested {
         font-size: 16px;
         padding: 12px 20px;
-        background-color: rgba(0, 0, 0, 0.1);
+        background-color: rgba(2, 6, 23, 0.22);
     }
 
     .mobile-arrow {
@@ -504,11 +512,11 @@ body {
         max-height: 0;
         overflow: hidden;
         transition: max-height 0.3s ease;
-        background-color: rgba(0, 0, 0, 0.15);
+        background-color: rgba(2, 6, 23, 0.32);
     }
 
     .mobile-dropdown-content.open {
-        max-height: 1000px;
+        max-height: 1600px;
     }
 
     .mobile-dropdown-content > li {
@@ -519,7 +527,7 @@ body {
     .mobile-dropdown-content > li > a {
         display: block;
         padding: 12px 20px 12px 30px;
-        color: white;
+        color: #f8fafc;
         text-decoration: none;
         font-size: 16px;
         font-weight: 500;
@@ -527,11 +535,11 @@ body {
     }
 
     .mobile-dropdown-content > li > a:active {
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: rgba(2, 6, 23, 0.35);
     }
 
     .mobile-nested-dropdown {
-        background-color: rgba(0, 0, 0, 0.1);
+        background-color: rgba(2, 6, 23, 0.2);
     }
 
     .mobile-nested-dropdown .mobile-dropdown-content > li > a {
@@ -546,14 +554,15 @@ body {
 
     /* Direct link items (không có dropdown) */
     .mobile-nav-items > ul > li:not(.mobile-dropdown) {
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: rgba(15, 23, 42, 0.55);
         border-radius: 12px;
         padding: 0;
         margin: 8px 0;
+        border: 1px solid rgba(255, 255, 255, 0.16);
     }
 
     .mobile-nav-items > ul > li:not(.mobile-dropdown):active {
-        background-color: rgba(255, 255, 255, 0.2);
+        background-color: rgba(2, 6, 23, 0.35);
     }
 
     .mobile-nav-items > ul > li:not(.mobile-dropdown) > a {
@@ -563,7 +572,7 @@ body {
 
     .mobile-nav-items > ul > li > a,
     .mobile-nav-items > ul > li > button {
-        color: white;
+        color: #f8fafc;
         text-decoration: none;
         background: none;
         border: none;
@@ -574,6 +583,7 @@ body {
         letter-spacing: 0.5px;
         width: 100%;
         text-align: left;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.28);
     }
 
     .mobile-nav-button {
@@ -635,7 +645,7 @@ body {
         cursor: pointer;
         font-size: 44px;
         position: fixed;
-        top: 15px;
+        top: calc(8px + env(safe-area-inset-top));
         right: 15px;
         width: 50px;
         height: 50px;
@@ -720,7 +730,14 @@ body {
     }
 
     .lang-selector {
-        padding: 5px 8px;
+        padding: 0;
+    }
+
+    .language-dropdown {
+        min-width: 86px;
+        max-width: 86px;
+        padding: 6px;
+        font-size: 11px;
     }
 
     .lang-selector img {
@@ -759,6 +776,6 @@ body {
     }
 
     #mobile-menu {
-        padding: 70px 16px 30px 16px;
+        padding: calc(66px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)) 16px;
     }
 }

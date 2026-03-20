@@ -131,16 +131,15 @@ export const menuConfig = [
                 label: "navbar.certificate2",
                 path: "/bangkhen2",
               },
+              {
+                key: "honorBoard",
+                label: "navbar.honorBoard",
+                path: "/honor-board",
+              },
             ],
-          },
-          {
-            key: "honorBoard",
-            label: "navbar.honorBoard",
-            path: "/honor-board",
           },
         ],
       },
-
       {
         key: "download",
         label: "navbar.download",

@@ -10,10 +10,10 @@ import "./navbar.css";
 
 export default function Navbar({ user, setUser }) {
   const { t, i18n } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
   const [language, setLanguage] = useState(i18n.language || "vi");
   const [activeLeaderKey, setActiveLeaderKey] = useState("bieudo");
   const location = useLocation();
+
   // Đồng bộ activeLeaderKey với route
   useEffect(() => {
     let foundKey = null;
@@ -32,37 +32,28 @@ export default function Navbar({ user, setUser }) {
     }
     if (foundKey) setActiveLeaderKey(foundKey);
   }, [location.pathname]);
-  // Dropdown state động cho tất cả dropdown
-  const [dropdownOpen, setDropdownOpen] = useState({});
-  const dropdownTimers = useRef({});
 
-  const flagMap = {
-    vi: "https://flagcdn.com/w40/vn.png",
-    ko: "https://flagcdn.com/w40/kr.png",
+  const languageOptions = {
+    vi: "Tiếng Việt",
+    ko: "한국어",
   };
 
-  const toggleMenu = () => setIsOpen(!isOpen);
   const navigate = useNavigate();
-  const handleSelect = (key, path) => {
-    setActiveLeaderKey(key);
-    setIsOpen(false);
-    if (path) navigate(path);
-  };
-
   const [signInOpen, setSignInOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [langPopupOpen, setLangPopupOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileDropdowns, setMobileDropdowns] = useState({});
 
   const handleChangeLanguage = (lang) => {
     setLanguage(lang);
     i18n.changeLanguage(lang);
-    setLangPopupOpen(false);
   };
 
-  const handleSignIn = () => setSignInOpen(true);
+  const handleSignIn = () => {
+    closeMobileMenu();
+    setSignInOpen(true);
+  };
 
   const handleSignInSuccess = (userInfo) => {
     if (setUser) setUser(userInfo);
@@ -77,9 +68,7 @@ export default function Navbar({ user, setUser }) {
     if (setUser) setUser(null);
   };
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
+  const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
@@ -104,39 +93,20 @@ export default function Navbar({ user, setUser }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [userDropdownOpen]);
 
-  // Đóng lang popup khi click ngoài
-  useEffect(() => {
-    if (!langPopupOpen) return;
-    const handleClick = (e) => {
-      if (!e.target.closest(".lang-selector")) setLangPopupOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [langPopupOpen]);
-
   // Lock scroll when mobile menu open
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
     }
     return () => {
       document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
     };
   }, [mobileMenuOpen]);
-
-  // Hàm mở/đóng dropdown động
-  const openDropdown = (key) => {
-    if (dropdownTimers.current[key]) clearTimeout(dropdownTimers.current[key]);
-    setDropdownOpen((prev) => ({ ...prev, [key]: true }));
-  };
-  const closeDropdown = (key) => {
-    if (dropdownTimers.current[key]) clearTimeout(dropdownTimers.current[key]);
-    dropdownTimers.current[key] = setTimeout(() => {
-      setDropdownOpen((prev) => ({ ...prev, [key]: false }));
-    }, 300);
-  };
 
   return (
     <>
@@ -284,7 +254,7 @@ export default function Navbar({ user, setUser }) {
                   <Link
                     to={item.path}
                     onClick={() => {
-                      handleSelect(item.key);
+                      setActiveLeaderKey(item.key);
                       closeMobileMenu();
                     }}
                   >
@@ -377,7 +347,6 @@ export default function Navbar({ user, setUser }) {
                                                   setActiveLeaderKey(
                                                     deepSub.key,
                                                   );
-                                                  setIsOpen(false);
                                                 }}
                                               >
                                                 {t(deepSub.label)}
@@ -394,7 +363,6 @@ export default function Navbar({ user, setUser }) {
                                         to={sub.path}
                                         onClick={() => {
                                           setActiveLeaderKey(sub.key);
-                                          setIsOpen(false);
                                         }}
                                       >
                                         {t(sub.label)}
@@ -418,7 +386,6 @@ export default function Navbar({ user, setUser }) {
                               to={child.path}
                               onClick={() => {
                                 setActiveLeaderKey(child.key);
-                                setIsOpen(false);
                               }}
                             >
                               {t(child.label)}
@@ -433,7 +400,10 @@ export default function Navbar({ user, setUser }) {
 
               return (
                 <li key={item.key}>
-                  <Link to={item.path} onClick={() => handleSelect(item.key)}>
+                  <Link
+                    to={item.path}
+                    onClick={() => setActiveLeaderKey(item.key)}
+                  >
                     {t(item.label)}
                   </Link>
                 </li>
@@ -492,25 +462,17 @@ export default function Navbar({ user, setUser }) {
 
           {/* Language Selector */}
           <div className="lang-selector">
-            <div
-              className="flag-icon"
-              style={{ backgroundImage: `url(${flagMap[language]})` }}
-              onClick={() => setLangPopupOpen(!langPopupOpen)}
-            />
-            {langPopupOpen && (
-              <div className="lang-popup">
-                {Object.entries(flagMap).map(([langKey, flagUrl]) => (
-                  <div
-                    key={langKey}
-                    className={`flag-icon ${
-                      language === langKey ? "active" : ""
-                    }`}
-                    style={{ backgroundImage: `url(${flagUrl})` }}
-                    onClick={() => handleChangeLanguage(langKey)}
-                  />
-                ))}
-              </div>
-            )}
+            <select
+              value={language}
+              onChange={(e) => handleChangeLanguage(e.target.value)}
+              className="language-dropdown"
+            >
+              {Object.entries(languageOptions).map(([langKey, langLabel]) => (
+                <option key={langKey} value={langKey}>
+                  {langLabel}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </nav>

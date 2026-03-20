@@ -12,18 +12,49 @@ import "../public/css/auth.css";
 
 export default function SignIn({ onSignIn, onClose }) {
   const { t } = useTranslation();
-  const [isActive, setIsActive] = useState(false);
-  const [showReset, setShowReset] = useState(false);
-  // Tách state cho từng form
-  const [signInEmail, setSignInEmail] = useState("");
-  const [signInPassword, setSignInPassword] = useState("");
-  const [signUpName, setSignUpName] = useState("");
-  const [signUpEmail, setSignUpEmail] = useState("");
-  const [signUpPassword, setSignUpPassword] = useState("");
-  const [resetEmail, setResetEmail] = useState("");
+
+  // Consolidated form state - reduces from 6 setters to 1
+  const [formState, setFormState] = useState({
+    signInEmail: "",
+    signInPassword: "",
+    signUpName: "",
+    signUpEmail: "",
+    signUpPassword: "",
+    resetEmail: "",
+  });
+
+  // Consolidated UI state - reduces from 3 setters to 1
+  const [uiState, setUiState] = useState({
+    isActive: false,
+    showReset: false,
+    loading: false,
+  });
+
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+
+  // Helper to update form fields efficiently
+  const updateForm = (field, value) => {
+    setFormState((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Helper to update UI state
+  const updateUI = (field, value) => {
+    setUiState((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Helper to clear entire form on successful submit
+  const clearForm = () => {
+    setFormState((prev) => ({
+      ...prev,
+      signInEmail: "",
+      signInPassword: "",
+      signUpName: "",
+      signUpEmail: "",
+      signUpPassword: "",
+      resetEmail: "",
+    }));
+  };
 
   // Auto login if session exists
   useEffect(() => {
@@ -43,10 +74,9 @@ export default function SignIn({ onSignIn, onClose }) {
     }
   }, []);
 
-  // Hide hamburger menu when SignIn is open
+  // Hide hamburger menu when SignIn is open / manage body scroll
   useEffect(() => {
     document.body.classList.add("signin-open");
-    // Prevent body scroll on mobile
     document.documentElement.style.overflow = "hidden";
     return () => {
       document.body.classList.remove("signin-open");
@@ -54,107 +84,121 @@ export default function SignIn({ onSignIn, onClose }) {
     };
   }, []);
 
-  // Đặt lại mật khẩu
+  // Auto-hide reset success message after 3 seconds
+  useEffect(() => {
+    if (resetSuccess) {
+      const timer = setTimeout(() => setResetSuccess(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [resetSuccess]);
+
+  // Password Reset Handler
   const handlePasswordReset = async (e) => {
     e.preventDefault();
     setError("");
-    setResetSuccess(false);
-    setLoading(true);
+    updateUI("loading", true);
+
+    if (!formState.resetEmail) {
+      setError(t("signIn.requireEmailReset"));
+      updateUI("loading", false);
+      return;
+    }
+
     try {
-      if (!resetEmail) {
-        setError(t("signIn.requireEmailReset"));
-        setLoading(false);
-        return;
-      }
       const auth = getAuth();
-      await sendPasswordResetEmail(auth, resetEmail);
+      await sendPasswordResetEmail(auth, formState.resetEmail);
       setResetSuccess(true);
-      setResetEmail("");
-      setError("");
-      setTimeout(() => {
-        setShowReset(false);
-        setResetSuccess(false);
-      }, 3000);
+      updateForm("resetEmail", "");
+      logUserAction("password_reset_sent", { email: formState.resetEmail });
     } catch (err) {
       setError(t("signIn.resetFail"));
     } finally {
-      setLoading(false);
+      updateUI("loading", false);
     }
   };
 
-  // Đăng nhập
+  // Sign In Handler
   const handleSignIn = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    updateUI("loading", true);
+
+    if (!formState.signInEmail || !formState.signInPassword) {
+      setError(t("signIn.requiredFields"));
+      updateUI("loading", false);
+      return;
+    }
+
     try {
-      if (!signInEmail || !signInPassword) {
-        setError(t("signIn.requireEmailPassword"));
-        setLoading(false);
-        return;
-      }
       const auth = getAuth();
       const userCredential = await signInWithEmailAndPassword(
         auth,
-        signInEmail,
-        signInPassword,
+        formState.signInEmail,
+        formState.signInPassword,
       );
-      const user = userCredential.user;
-      const name = user.displayName || user.email;
-      await logUserAction(user.email, "login", t("signIn.loginSuccess"));
-      if (onSignIn) onSignIn({ email: user.email, name });
-      const expire = Date.now() + 300000;
+      const TTL = 5 * 60 * 1000; // 5 minutes
       localStorage.setItem(
         "userLogin",
-        JSON.stringify({ email: user.email, name, expire }),
+        JSON.stringify({
+          email: userCredential.user.email,
+          name: userCredential.user.displayName,
+          expire: Date.now() + TTL,
+        }),
       );
-      setTimeout(() => {
-        localStorage.removeItem("userLogin");
-        if (onClose) onClose();
-      }, 300000);
+      logUserAction("sign_in", { email: formState.signInEmail });
+      if (onSignIn) onSignIn({ email: formState.signInEmail });
+      clearForm();
       if (onClose) onClose();
     } catch (err) {
-      setError(t("signIn.loginFail"));
+      setError(t("signIn.signinfail"));
     } finally {
-      setLoading(false);
+      updateUI("loading", false);
     }
   };
 
-  // Đăng ký
+  // Sign Up Handler
   const handleSignUp = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    updateUI("loading", true);
+
+    if (
+      !formState.signUpEmail ||
+      !formState.signUpPassword ||
+      !formState.signUpName
+    ) {
+      setError(t("signIn.requiredFields"));
+      updateUI("loading", false);
+      return;
+    }
+
     try {
-      if (!signUpEmail || !signUpPassword || !signUpName) {
-        setError(t("signIn.requireAllFields"));
-        setLoading(false);
-        return;
-      }
       const auth = getAuth();
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        signUpEmail,
-        signUpPassword,
+        formState.signUpEmail,
+        formState.signUpPassword,
       );
-      await updateProfile(userCredential.user, { displayName: signUpName });
-      await logUserAction(
-        userCredential.user.email,
-        "signup",
-        t("signIn.signupSuccess"),
+      await updateProfile(userCredential.user, {
+        displayName: formState.signUpName,
+      });
+      logUserAction("sign_up", { email: formState.signUpEmail });
+
+      const TTL = 5 * 60 * 1000; // 5 minutes
+      localStorage.setItem(
+        "userLogin",
+        JSON.stringify({
+          email: userCredential.user.email,
+          name: formState.signUpName,
+          expire: Date.now() + TTL,
+        }),
       );
-      if (onSignIn)
-        onSignIn({ email: userCredential.user.email, name: signUpName });
-      setIsActive(false);
-      setError("");
-      setSignUpName("");
-      setSignUpEmail("");
-      setSignUpPassword("");
+      clearForm();
       if (onClose) onClose();
     } catch (err) {
       setError(t("signIn.signupFail"));
     } finally {
-      setLoading(false);
+      updateUI("loading", false);
     }
   };
 
@@ -163,7 +207,7 @@ export default function SignIn({ onSignIn, onClose }) {
       <button className="close-btn" onClick={onClose}>
         ×
       </button>
-      <div className={`auth-wrapper ${isActive ? "active" : ""}`}>
+      <div className={`auth-wrapper ${uiState.isActive ? "active" : ""}`}>
         <div className="curved-shape"></div>
         <div className="curved-shape2"></div>
 
@@ -180,22 +224,11 @@ export default function SignIn({ onSignIn, onClose }) {
               <input
                 type="email"
                 required
-                value={signInEmail}
-                onChange={(e) => setSignInEmail(e.target.value)}
+                value={formState.signInEmail}
+                onChange={(e) => updateForm("signInEmail", e.target.value)}
               />
               <label>{t("signIn.email")}</label>
-              <span
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontSize: "18px",
-                  color: "#000",
-                }}
-              >
-                👤
-              </span>
+              <span className="input-icon">👤</span>
             </div>
 
             <div
@@ -205,34 +238,17 @@ export default function SignIn({ onSignIn, onClose }) {
               <input
                 type="password"
                 required
-                value={signInPassword}
-                onChange={(e) => setSignInPassword(e.target.value)}
+                value={formState.signInPassword}
+                onChange={(e) => updateForm("signInPassword", e.target.value)}
               />
               <label>{t("signIn.password")}</label>
-              <span
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontSize: "18px",
-                  color: "#000",
-                }}
-              >
-                🔐
-              </span>
+              <span className="input-icon">🔐</span>
             </div>
 
-            {error && !isActive && (
+            {error && !uiState.isActive && (
               <div
-                className="animation"
-                style={{
-                  "--D": 3,
-                  "--S": 24,
-                  color: "red",
-                  fontSize: "14px",
-                  marginBottom: "10px",
-                }}
+                className="animation error-message"
+                style={{ "--D": 3, "--S": 24 }}
               >
                 {error}
               </div>
@@ -242,8 +258,8 @@ export default function SignIn({ onSignIn, onClose }) {
               className="input-box animation"
               style={{ "--D": 3, "--S": 24 }}
             >
-              <button className="btn" type="submit" disabled={loading}>
-                {loading ? t("signIn.signingIn") : t("signIn.login")}
+              <button className="btn" type="submit" disabled={uiState.loading}>
+                {uiState.loading ? t("signIn.signingIn") : t("signIn.login")}
               </button>
             </div>
 
@@ -256,7 +272,7 @@ export default function SignIn({ onSignIn, onClose }) {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    setShowReset(true);
+                    updateUI("showReset", true);
                     setError("");
                   }}
                   style={{ fontSize: "14px", color: "#007bff" }}
@@ -264,13 +280,14 @@ export default function SignIn({ onSignIn, onClose }) {
                   {t("signIn.forgotPassword")}
                 </a>
                 <br />
+                <br />
                 {t("signIn.noAccount")} <br />
                 <a
                   href="#"
                   className="SignUpLink"
                   onClick={(e) => {
                     e.preventDefault();
-                    setIsActive(true);
+                    updateUI("isActive", true);
                     setError("");
                   }}
                 >
@@ -304,22 +321,11 @@ export default function SignIn({ onSignIn, onClose }) {
               <input
                 type="text"
                 required
-                value={signUpName}
-                onChange={(e) => setSignUpName(e.target.value)}
+                value={formState.signUpName}
+                onChange={(e) => updateForm("signUpName", e.target.value)}
               />
               <label>{t("signIn.displayName")}</label>
-              <span
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontSize: "18px",
-                  color: "#000",
-                }}
-              >
-                👤
-              </span>
+              <span className="input-icon">👤</span>
             </div>
 
             <div
@@ -329,22 +335,11 @@ export default function SignIn({ onSignIn, onClose }) {
               <input
                 type="email"
                 required
-                value={signUpEmail}
-                onChange={(e) => setSignUpEmail(e.target.value)}
+                value={formState.signUpEmail}
+                onChange={(e) => updateForm("signUpEmail", e.target.value)}
               />
               <label>{t("signIn.email")}</label>
-              <span
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontSize: "18px",
-                  color: "#000",
-                }}
-              >
-                ✉️
-              </span>
+              <span className="input-icon">✉️</span>
             </div>
 
             <div
@@ -354,34 +349,17 @@ export default function SignIn({ onSignIn, onClose }) {
               <input
                 type="password"
                 required
-                value={signUpPassword}
-                onChange={(e) => setSignUpPassword(e.target.value)}
+                value={formState.signUpPassword}
+                onChange={(e) => updateForm("signUpPassword", e.target.value)}
               />
               <label>{t("signIn.password")}</label>
-              <span
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontSize: "18px",
-                  color: "#000",
-                }}
-              >
-                🔐
-              </span>
+              <span className="input-icon">🔐</span>
             </div>
 
-            {error && isActive && (
+            {error && uiState.isActive && (
               <div
-                className="animation"
-                style={{
-                  "--li": 20,
-                  "--S": 4,
-                  color: "red",
-                  fontSize: "14px",
-                  marginBottom: "10px",
-                }}
+                className="animation error-message"
+                style={{ "--li": 20, "--S": 4 }}
               >
                 {error}
               </div>
@@ -391,8 +369,8 @@ export default function SignIn({ onSignIn, onClose }) {
               className="input-box animation"
               style={{ "--li": 20, "--S": 4 }}
             >
-              <button className="btn" type="submit" disabled={loading}>
-                {loading ? t("signIn.signingUp") : t("signIn.signup")}
+              <button className="btn" type="submit" disabled={uiState.loading}>
+                {uiState.loading ? t("signIn.signingUp") : t("signIn.signup")}
               </button>
             </div>
 
@@ -407,7 +385,7 @@ export default function SignIn({ onSignIn, onClose }) {
                   className="SignInLink"
                   onClick={(e) => {
                     e.preventDefault();
-                    setIsActive(false);
+                    updateUI("isActive", false);
                     setError("");
                   }}
                 >
@@ -429,135 +407,57 @@ export default function SignIn({ onSignIn, onClose }) {
         </div>
 
         {/* Reset Password Modal */}
-        {showReset && (
+        {uiState.showReset && (
           <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 9999,
-              padding: "1rem",
-            }}
+            className="reset-modal-overlay"
             onClick={() => {
-              setShowReset(false);
+              updateUI("showReset", false);
               setResetSuccess(false);
               setError("");
             }}
           >
             <div
-              style={{
-                backgroundColor: "white",
-                padding: "clamp(1.5rem, 4vw, 2.5rem)",
-                borderRadius: "10px",
-                boxShadow: "0 5px 15px rgba(0, 0, 0, 0.3)",
-                maxWidth: "400px",
-                width: "100%",
-              }}
+              className="reset-modal-content"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2
-                style={{
-                  marginBottom: "1.25rem",
-                  textAlign: "center",
-                  fontSize: "clamp(1.125rem, 4vw, 1.5rem)",
-                }}
-              >
-                {t("signIn.sendReset")}
-              </h2>
+              <h2 className="reset-modal-title">{t("signIn.sendReset")}</h2>
               {resetSuccess && (
-                <div
-                  style={{
-                    backgroundColor: "#d4edda",
-                    color: "#155724",
-                    padding: "clamp(0.5rem, 2vw, 0.75rem)",
-                    borderRadius: "5px",
-                    marginBottom: "1rem",
-                    textAlign: "center",
-                    fontSize: "clamp(0.875rem, 2vw, 1rem)",
-                  }}
-                >
+                <div className="reset-success-message">
                   {t("signIn.resetSent")}
                 </div>
               )}
               <form onSubmit={handlePasswordReset}>
-                <div style={{ marginBottom: "1.25rem", position: "relative" }}>
+                <div className="reset-input-wrapper">
                   <input
                     type="email"
                     required
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
+                    value={formState.resetEmail}
+                    onChange={(e) => updateForm("resetEmail", e.target.value)}
                     placeholder={t("signIn.email")}
-                    style={{
-                      width: "100%",
-                      padding: "clamp(0.5rem, 2vw, 0.625rem)",
-                      fontSize: "clamp(0.875rem, 2vw, 1rem)",
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
-                      boxSizing: "border-box",
-                    }}
+                    className="reset-email-input"
                   />
                 </div>
                 {error && !resetSuccess && (
-                  <div
-                    style={{
-                      color: "red",
-                      fontSize: "clamp(0.75rem, 2vw, 0.875rem)",
-                      marginBottom: "1rem",
-                      textAlign: "center",
-                    }}
-                  >
-                    {error}
-                  </div>
+                  <div className="reset-error-message">{error}</div>
                 )}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.625rem",
-                    marginTop: "1.5rem",
-                    flexDirection: window.innerWidth < 400 ? "column" : "row",
-                  }}
-                >
+                <div className="reset-button-group">
                   <button
                     type="submit"
-                    disabled={loading || resetSuccess}
-                    style={{
-                      flex: 1,
-                      padding: "clamp(0.5rem, 2vw, 0.625rem)",
-                      backgroundColor: "#007bff",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "5px",
-                      cursor: "pointer",
-                      fontSize: "clamp(0.875rem, 2vw, 1rem)",
-                      fontWeight: "bold",
-                    }}
+                    disabled={uiState.loading || resetSuccess}
+                    className="reset-submit-btn"
                   >
-                    {loading ? "Đang gửi..." : t("signIn.sendReset")}
+                    {uiState.loading
+                      ? t("signIn.sending")
+                      : t("signIn.sendReset")}
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      setShowReset(false);
+                      updateUI("showReset", false);
                       setResetSuccess(false);
                       setError("");
                     }}
-                    style={{
-                      flex: 1,
-                      padding: "clamp(0.5rem, 2vw, 0.625rem)",
-                      backgroundColor: "#6c757d",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "5px",
-                      cursor: "pointer",
-                      fontSize: "clamp(0.875rem, 2vw, 1rem)",
-                      fontWeight: "bold",
-                    }}
+                    className="reset-cancel-btn"
                   >
                     {t("signIn.cancel")}
                   </button>

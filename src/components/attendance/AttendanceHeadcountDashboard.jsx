@@ -557,7 +557,7 @@ function AttendanceHeadcountDashboard({
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">
-                인원 현황
+                근태현황
               </h1>
               <p className="text-sm text-slate-600 mt-1">
                 공정별 인력 현황을 추적하고 정규직과 일용직을 구분합니다

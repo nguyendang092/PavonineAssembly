@@ -25,6 +25,7 @@ const resources = {
         loading: "Đang tải dữ liệu...",
       },
       signIn: {
+        cancel: "Hủy",
         login: "Đăng nhập",
         signup: "Đăng ký",
         signingIn: "Đang đăng nhập...",
@@ -36,7 +37,7 @@ const resources = {
         orSignupWithEmail: "hoặc đăng ký bằng email",
         forgotPassword: "Quên mật khẩu?",
         haveAccount: "Đã có tài khoản? Đăng nhập",
-        noAccount: "Đăng ký tài khoản",
+        noAccount: "Chưa có tài khoản? Đăng ký",
         requireEmailPassword: "Vui lòng nhập email và mật khẩu.",
         requireAllFields: "Vui lòng nhập đầy đủ tên, email và mật khẩu.",
         requireEmailReset: "Vui lòng nhập email để đặt lại mật khẩu.",
@@ -47,7 +48,7 @@ const resources = {
         resetSent: "Đã gửi email đặt lại mật khẩu. Vui lòng kiểm tra hộp thư.",
         resetFail:
           "Không gửi được email đặt lại mật khẩu. Vui lòng kiểm tra lại email.",
-        sendReset: "Gửi email đặt lại mật khẩu",
+        sendReset: "Gửi email",
         sending: "Đang gửi...",
         backToLogin: "Quay lại đăng nhập",
         enterEmailReset: "Nhập email để đặt lại mật khẩu",
@@ -253,6 +254,7 @@ const resources = {
         "KHO VẬT TƯ": "KHO VẬT TƯ",
         "PHÒNG LẠNH": "PHÒNG LẠNH",
         WAREHOUSE: "WAREHOUSE",
+        KHO: "KHO",
       },
       attendanceModal: {
         leader: "Leader",
@@ -697,6 +699,11 @@ const resources = {
         "ASSY_3 CỬA RA VÀO": "ASSY_3 출입문",
         "ASSY_5 CỬA RA VÀO": "ASSY-5 출입문",
         "ASSY_4 CỬA RA VÀO": "ASSY-4 출입문",
+        "KHO NGUYÊN LIỆU": "원자재 창고",
+        "KHO VẬT TƯ": "자재 창고",
+        "PHÒNG LẠNH": "냉동실",
+        WAREHOUSE: "창고",
+        KHO: "창고",
       },
       attendanceModal: {
         leader: "리더",
