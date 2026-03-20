@@ -92,7 +92,7 @@ const resources = {
         caiTien: "Cải tiến",
         qrCodeGenerator: "Tạo QR Code",
         attendance: "Điểm danh",
-        attendanceDashboard: "Dashboard Điểm Danh",
+        attendanceDashboard: "Thống kê điểm danh",
         attendanceTable: "Thời gian chấm công",
         seasonalStaffAttendance: "Điểm danh NV thời vụ",
         userDepartment: "Phân quyền User",

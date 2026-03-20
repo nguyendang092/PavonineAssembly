@@ -92,23 +92,23 @@ export const menuConfig = [
               },
             ],
           },
-          {
-            key: "GA",
-            label: "navbar.GA",
-            type: "nested",
-            children: [
-              {
-                key: "maintenance",
-                label: "navbar.maintenance",
-                path: "/maintenance",
-              },
-              // {
-              //   key: "driverLogbook",
-              //   label: "navbar.driverLogbook",
-              //   path: "/driver-logbook",
-              // },
-            ],
-          },
+          // {
+          //   key: "GA",
+          //   label: "navbar.GA",
+          //   type: "nested",
+          //   children: [
+          //     {
+          //       key: "maintenance",
+          //       label: "navbar.maintenance",
+          //       path: "/maintenance",
+          //     },
+          //     // {
+          //     //   key: "driverLogbook",
+          //     //   label: "navbar.driverLogbook",
+          //     //   path: "/driver-logbook",
+          //     // },
+          //   ],
+          // },
           {
             key: "usageGuideAdmin",
             label: "navbar.usageGuideAdmin",
