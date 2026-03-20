@@ -3,6 +3,11 @@ import { toPng } from "html-to-image";
 
 const DEPARTMENT_CONFIG = [
   {
+    key: "extrusion",
+    label: "압출",
+    aliases: ["extrusion factory", "압출"],
+  },
+  {
     key: "press",
     label: "PRESS",
     aliases: ["press"],
@@ -21,11 +26,6 @@ const DEPARTMENT_CONFIG = [
     key: "anodizing",
     label: "아노다이징",
     aliases: ["anodizing", "ano", "아노다이징"],
-  },
-  {
-    key: "extrusion",
-    label: "압출",
-    aliases: ["extrusion factory", "압출"],
   },
   {
     key: "assembly",
