@@ -129,6 +129,13 @@ const SummaryRow = ({
   nightNote,
   onDayNoteCommit,
   onNightNoteCommit,
+  editableHeadcount,
+  overrideDayCount,
+  overrideNightCount,
+  onDayCountCommit,
+  onNightCountCommit,
+  processRowSpan,
+  hideProcessCell,
 }) => {
   const textClass = isMuted ? "text-slate-400" : "text-slate-800";
   const numberClass = isMuted ? "text-slate-400" : "text-slate-900";
@@ -139,6 +146,10 @@ const SummaryRow = ({
   );
   const [draftDayNote, setDraftDayNote] = useState(dayNote || "");
   const [draftNightNote, setDraftNightNote] = useState(nightNote || "");
+  const [draftDayCount, setDraftDayCount] = useState(overrideDayCount ?? "");
+  const [draftNightCount, setDraftNightCount] = useState(
+    overrideNightCount ?? "",
+  );
 
   useEffect(() => {
     setDraftRequired(
@@ -155,6 +166,14 @@ const SummaryRow = ({
   useEffect(() => {
     setDraftNightNote(nightNote || "");
   }, [nightNote]);
+
+  useEffect(() => {
+    setDraftDayCount(overrideDayCount ?? "");
+  }, [overrideDayCount]);
+
+  useEffect(() => {
+    setDraftNightCount(overrideNightCount ?? "");
+  }, [overrideNightCount]);
 
   const commitRequired = () => {
     if (!editableRequired || !onRequiredCommit) return;
@@ -174,6 +193,34 @@ const SummaryRow = ({
   const commitNightNote = () => {
     if (!editableNotes || !onNightNoteCommit) return;
     onNightNoteCommit(draftNightNote);
+  };
+
+  const commitDayCount = () => {
+    if (!editableHeadcount || !onDayCountCommit) return;
+    if (draftDayCount === "") {
+      onDayCountCommit("");
+      return;
+    }
+    const parsed = Number(draftDayCount);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      setDraftDayCount(overrideDayCount ?? "");
+      return;
+    }
+    onDayCountCommit(Math.round(parsed));
+  };
+
+  const commitNightCount = () => {
+    if (!editableHeadcount || !onNightCountCommit) return;
+    if (draftNightCount === "") {
+      onNightCountCommit("");
+      return;
+    }
+    const parsed = Number(draftNightCount);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      setDraftNightCount(overrideNightCount ?? "");
+      return;
+    }
+    onNightCountCommit(Math.round(parsed));
   };
 
   const renderNoteCell = (value, setValue, onCommit, fallbackNote) => {
@@ -199,13 +246,20 @@ const SummaryRow = ({
   };
 
   return (
-    <tr className={isMuted ? "bg-slate-50" : "bg-white"}>
-      <td
-        className={`px-3 py-3 border border-slate-300 font-semibold ${textClass}`}
-      >
-        {processLabel}
-      </td>
-      <td className="px-3 py-3 border border-slate-300 text-center font-bold bg-amber-100 text-slate-900">
+    <tr
+      className={
+        isMuted ? "bg-slate-50" : "bg-white hover:bg-slate-50 transition-colors"
+      }
+    >
+      {!hideProcessCell && (
+        <td
+          rowSpan={processRowSpan || 1}
+          className={`px-4 py-3 border border-slate-200 font-bold text-slate-900 ${processRowSpan > 1 ? "align-middle" : ""}`}
+        >
+          {processLabel}
+        </td>
+      )}
+      <td className="px-4 py-3 border border-slate-200 text-center font-bold bg-blue-50 text-slate-900">
         {editableRequired ? (
           <input
             type="number"
@@ -218,72 +272,106 @@ const SummaryRow = ({
                 e.currentTarget.blur();
               }
             }}
-            className="w-20 text-center rounded border border-amber-300 bg-white px-2 py-1"
+            className="w-20 text-center rounded border border-blue-300 bg-white px-2 py-1"
           />
         ) : (
           required
         )}
       </td>
       <td
-        className={`px-3 py-3 border border-slate-300 text-center font-bold ${numberClass}`}
+        className={`px-4 py-3 border border-slate-200 text-center font-bold ${numberClass}`}
       >
         {current}
       </td>
       <td
-        className={`px-3 py-3 border border-slate-300 text-center font-bold ${
+        className={`px-4 py-3 border border-slate-200 text-center font-bold ${
           shortage < 0
-            ? "text-red-700 bg-rose-100"
-            : "text-emerald-700 bg-emerald-50"
+            ? "text-red-600 bg-red-50"
+            : "text-emerald-600 bg-emerald-50"
         }`}
       >
         {shortage}
       </td>
       <td
-        className={`px-3 py-3 border border-slate-300 font-semibold ${textClass}`}
+        className={`px-4 py-3 border border-slate-200 font-bold text-slate-700`}
       >
         {category}
       </td>
 
       <td
-        className={`px-3 py-3 border border-slate-300 text-center font-bold ${numberClass}`}
+        className={`px-4 py-3 border border-slate-200 text-center font-bold ${numberClass}`}
       >
-        {dayStats.total}
+        {editableHeadcount ? (
+          <input
+            type="number"
+            min="0"
+            value={draftDayCount}
+            onChange={(e) => setDraftDayCount(e.target.value)}
+            onBlur={commitDayCount}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            placeholder={String(dayStats.total)}
+            className="w-16 text-center rounded border border-slate-300 bg-white px-2 py-1"
+          />
+        ) : overrideDayCount != null && overrideDayCount !== "" ? (
+          Number(overrideDayCount)
+        ) : (
+          dayStats.total
+        )}
       </td>
-      <td className="px-3 py-3 border border-slate-300 text-center font-bold text-red-600">
+      <td className="px-4 py-3 border border-slate-200 text-center font-bold text-red-600">
         {dayStats.absent}
       </td>
       <td
-        className={`px-3 py-3 border border-slate-300 text-center font-bold ${numberClass}`}
+        className={`px-4 py-3 border border-slate-200 text-center font-bold ${numberClass}`}
       >
         {dayStats.present}
       </td>
-      <td className="px-3 py-3 border border-slate-300 text-center font-bold text-red-600">
+      <td className="px-4 py-3 border border-slate-200 text-center font-bold text-red-600">
         {dayStats.absentRate}
       </td>
       <td
-        className={`px-3 py-3 border border-slate-300 text-left ${textClass}`}
+        className={`px-4 py-3 border border-slate-200 text-left text-slate-700`}
       >
         {renderNoteCell(draftDayNote, setDraftDayNote, commitDayNote, dayNote)}
       </td>
 
       <td
-        className={`px-3 py-3 border border-slate-300 text-center font-bold ${numberClass}`}
+        className={`px-4 py-3 border border-slate-200 text-center font-bold ${numberClass}`}
       >
-        {nightStats.total}
+        {editableHeadcount ? (
+          <input
+            type="number"
+            min="0"
+            value={draftNightCount}
+            onChange={(e) => setDraftNightCount(e.target.value)}
+            onBlur={commitNightCount}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            placeholder={String(nightStats.total)}
+            className="w-16 text-center rounded border border-slate-300 bg-white px-2 py-1"
+          />
+        ) : overrideNightCount != null && overrideNightCount !== "" ? (
+          Number(overrideNightCount)
+        ) : (
+          nightStats.total
+        )}
       </td>
-      <td className="px-3 py-3 border border-slate-300 text-center font-bold text-red-600">
+      <td className="px-4 py-3 border border-slate-200 text-center font-bold text-red-600">
         {nightStats.absent}
       </td>
       <td
-        className={`px-3 py-3 border border-slate-300 text-center font-bold ${numberClass}`}
+        className={`px-4 py-3 border border-slate-200 text-center font-bold ${numberClass}`}
       >
         {nightStats.present}
       </td>
-      <td className="px-3 py-3 border border-slate-300 text-center font-bold text-red-600">
+      <td className="px-4 py-3 border border-slate-200 text-center font-bold text-red-600">
         {nightStats.absentRate}
       </td>
       <td
-        className={`px-3 py-3 border border-slate-300 text-left ${textClass}`}
+        className={`px-4 py-3 border border-slate-200 text-left text-slate-700`}
       >
         {renderNoteCell(
           draftNightNote,
@@ -505,81 +593,81 @@ function AttendanceHeadcountDashboard({
             </div>
           ) : (
             <div className="overflow-auto">
-              <table className="min-w-[1600px] w-full border-collapse text-sm">
+              <table className="min-w-[1600px] w-full border-collapse text-sm bg-white">
                 <thead>
-                  <tr className="bg-[#d9e2d3] text-slate-900">
+                  <tr className="bg-slate-700 text-white">
                     <th
                       rowSpan={2}
-                      className="px-3 py-3 border border-slate-400 min-w-[130px]"
+                      className="px-4 py-3 border border-slate-600 min-w-[130px] font-bold text-sm"
                     >
                       공정
                     </th>
                     <th
                       rowSpan={2}
-                      className="px-3 py-3 border border-slate-400 min-w-[95px]"
+                      className="px-4 py-3 border border-slate-600 min-w-[95px] font-bold text-sm"
                     >
                       총 필요인원
                     </th>
                     <th
                       rowSpan={2}
-                      className="px-3 py-3 border border-slate-400 min-w-[90px]"
+                      className="px-4 py-3 border border-slate-600 min-w-[90px] font-bold text-sm"
                     >
                       현재 인원
                     </th>
                     <th
                       rowSpan={2}
-                      className="px-3 py-3 border border-slate-400 min-w-[90px]"
+                      className="px-4 py-3 border border-slate-600 min-w-[90px] font-bold text-sm"
                     >
                       부족 인원
                     </th>
                     <th
                       rowSpan={2}
-                      className="px-3 py-3 border border-slate-400 min-w-[90px]"
+                      className="px-4 py-3 border border-slate-600 min-w-[90px] font-bold text-sm"
                     >
                       구분
                     </th>
                     <th
                       colSpan={5}
-                      className="px-3 py-3 border border-slate-400 min-w-[540px]"
+                      className="px-4 py-3 border border-slate-600 min-w-[540px] font-bold text-sm"
                     >
                       주간 근무
                     </th>
                     <th
                       colSpan={5}
-                      className="px-3 py-3 border border-slate-400 min-w-[540px]"
+                      className="px-4 py-3 border border-slate-600 min-w-[540px] font-bold text-sm"
                     >
                       야간 근무
                     </th>
                   </tr>
-                  <tr className="bg-[#d9e2d3] text-slate-900">
-                    <th className="px-3 py-2 border border-slate-400 min-w-[70px]">
+                  <tr className="bg-slate-600 text-white">
+                    <th className="px-4 py-2 border border-slate-600 min-w-[70px] font-bold text-xs">
                       인원
                     </th>
-                    <th className="px-3 py-2 border border-slate-400 min-w-[80px]">
+                    <th className="px-4 py-2 border border-slate-600 min-w-[80px] font-bold text-xs">
                       결근/연차
                     </th>
-                    <th className="px-3 py-2 border border-slate-400 min-w-[80px]">
+                    <th className="px-4 py-2 border border-slate-600 min-w-[80px] font-bold text-xs">
                       출근 인원
                     </th>
-                    <th className="px-3 py-2 border border-slate-400 min-w-[80px]">
+                    <th className="px-4 py-2 border border-slate-600 min-w-[80px] font-bold text-xs">
                       결근율
                     </th>
-                    <th className="px-3 py-2 border border-slate-400 min-w-[200px]">
+                    <th className="px-4 py-2 border border-slate-600 min-w-[200px] font-bold text-xs">
                       비고
                     </th>
-                    <th className="px-3 py-2 border border-slate-400 min-w-[70px]">
+                    <th className="px-4 py-2 border border-slate-600 min-w-[70px] font-bold text-xs">
                       인원
                     </th>
-                    <th className="px-3 py-2 border border-slate-400 min-w-[80px]">
+                    <th className="px-4 py-2 border border-slate-600 min-w-[80px] font-bold text-xs">
                       결근/연차
                     </th>
-                    <th className="px-3 py-2 border border-slate-400 min-w-[80px]">
+                    <th className="px-4 py-2 border border-slate-600 min-w-[80px] font-bold text-xs">
                       출근 인원
                     </th>
-                    <th className="px-3 py-2 border border-slate-400 min-w-[80px]">
+                    <th className="px-4 py-2 border border-slate-600 min-w-[80px] font-bold text-xs">
                       결근율
                     </th>
-                    <th className="px-3 py-2 border border-slate-400 min-w-[200px]">
+                    <th className="px-4 py-2 border border-slate-600 min-w-[200px] font-bold text-xs">
                       비고
                     </th>
                   </tr>
@@ -589,6 +677,7 @@ function AttendanceHeadcountDashboard({
                     <React.Fragment key={row.key}>
                       <SummaryRow
                         processLabel={row.label}
+                        processRowSpan={2}
                         required={row.required}
                         current={row.current}
                         shortage={row.shortage}
@@ -614,6 +703,7 @@ function AttendanceHeadcountDashboard({
                       />
                       <SummaryRow
                         processLabel=""
+                        hideProcessCell={true}
                         required=""
                         current=""
                         shortage=""
@@ -621,6 +711,22 @@ function AttendanceHeadcountDashboard({
                         dayStats={row.seasonalStats.day}
                         nightStats={row.seasonalStats.night}
                         isMuted={true}
+                        editableHeadcount={canEditRequired}
+                        overrideDayCount={
+                          notesByKey?.[`${row.key}_seasonal_day_count`] || ""
+                        }
+                        overrideNightCount={
+                          notesByKey?.[`${row.key}_seasonal_night_count`] || ""
+                        }
+                        onDayCountCommit={(value) =>
+                          onNoteChange?.(`${row.key}_seasonal_day_count`, value)
+                        }
+                        onNightCountCommit={(value) =>
+                          onNoteChange?.(
+                            `${row.key}_seasonal_night_count`,
+                            value,
+                          )
+                        }
                         editableNotes={canEditRequired}
                         dayNote={notesByKey?.[`${row.key}_seasonal_day`] || ""}
                         nightNote={
@@ -657,46 +763,46 @@ function AttendanceHeadcountDashboard({
                     nightStats={totals.seasonal.night}
                     isMuted={true}
                   />
-                  <tr className="bg-blue-900 text-white font-bold">
-                    <td className="px-3 py-3 border border-blue-950">TOTAL</td>
-                    <td className="px-3 py-3 border border-blue-950 text-center">
+                  <tr className="bg-slate-800 text-white font-bold">
+                    <td className="px-4 py-3 border border-slate-700">TOTAL</td>
+                    <td className="px-4 py-3 border border-slate-700 text-center">
                       {totals.required}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center">
+                    <td className="px-4 py-3 border border-slate-700 text-center">
                       {totals.current}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center">
+                    <td className="px-4 py-3 border border-slate-700 text-center">
                       {totals.shortage}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950">합계</td>
-                    <td className="px-3 py-3 border border-blue-950 text-center">
+                    <td className="px-4 py-3 border border-slate-700">합계</td>
+                    <td className="px-4 py-3 border border-slate-700 text-center">
                       {totals.grand.day.total}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center text-red-200">
+                    <td className="px-4 py-3 border border-slate-700 text-center text-orange-300">
                       {totals.grand.day.absent}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center">
+                    <td className="px-4 py-3 border border-slate-700 text-center">
                       {totals.grand.day.present}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center text-red-200">
+                    <td className="px-4 py-3 border border-slate-700 text-center text-orange-300">
                       {totals.grand.day.absentRate}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center">
+                    <td className="px-4 py-3 border border-slate-700 text-center">
                       -
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center">
+                    <td className="px-4 py-3 border border-slate-700 text-center">
                       {totals.grand.night.total}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center text-red-200">
+                    <td className="px-4 py-3 border border-slate-700 text-center text-orange-300">
                       {totals.grand.night.absent}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center">
+                    <td className="px-4 py-3 border border-slate-700 text-center">
                       {totals.grand.night.present}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center text-red-200">
+                    <td className="px-4 py-3 border border-slate-700 text-center text-orange-300">
                       {totals.grand.night.absentRate}
                     </td>
-                    <td className="px-3 py-3 border border-blue-950 text-center">
+                    <td className="px-4 py-3 border border-slate-700 text-center">
                       -
                     </td>
                   </tr>
