@@ -23,6 +23,11 @@ const DEPARTMENT_CONFIG = [
     aliases: ["anodizing", "ano", "아노다이징"],
   },
   {
+    key: "extrusion",
+    label: "압출",
+    aliases: ["extrusion factory", "압출"],
+  },
+  {
     key: "assembly",
     label: "조립 ASSY",
     aliases: ["tu", "pmf", "ohf", "komsa", "flip", "deco", "assy-1"],
@@ -50,6 +55,14 @@ const normalizeText = (value) =>
     .trim()
     .toLowerCase();
 
+const isMaternityLeave = (emp) => {
+  const gioVao = normalizeText(emp?.gioVao)
+    .replace(/["'`’‘.,;:!?]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return gioVao === "thai sản" || gioVao === "thai san";
+};
+
 const isAbsentEmployee = (emp) => {
   const chamCong = normalizeText(emp?.chamCong).toUpperCase();
   const gioVao = String(emp?.gioVao || "").trim();
@@ -67,12 +80,7 @@ const isNightShift = (emp) => {
   if (caLamViec.includes("đêm") || caLamViec.includes("dem")) return true;
   if (caLamViec.includes("night")) return true;
 
-  const gioVao = String(emp?.gioVao || "").trim();
-  const matched = gioVao.match(/^([01]?\d|2[0-3]):([0-5]\d)/);
-  if (!matched) return false;
-  const hour = Number(matched[1]);
-
-  return hour >= 19 || hour <= 5;
+  return false;
 };
 
 const buildStats = (records) => {
@@ -339,8 +347,12 @@ function AttendanceHeadcountDashboard({
 
   const rows = useMemo(() => {
     return DEPARTMENT_CONFIG.map((dept) => {
-      const regular = filterByAliases(filteredRegular, dept.aliases);
-      const seasonal = filterByAliases(filteredSeasonal, dept.aliases);
+      const regular = filterByAliases(filteredRegular, dept.aliases).filter(
+        (emp) => !isMaternityLeave(emp),
+      );
+      const seasonal = filterByAliases(filteredSeasonal, dept.aliases).filter(
+        (emp) => !isMaternityLeave(emp),
+      );
       const current = regular.length + seasonal.length;
       const requiredInput = Number(requiredByDepartment?.[dept.key]);
       const required =
@@ -348,13 +360,29 @@ function AttendanceHeadcountDashboard({
           ? requiredInput
           : current;
 
+      const regularStats =
+        dept.key === "extrusion"
+          ? {
+              day: buildStats(regular),
+              night: buildStats([]),
+            }
+          : splitShiftStats(regular);
+
+      const seasonalStats =
+        dept.key === "extrusion"
+          ? {
+              day: buildStats(seasonal),
+              night: buildStats([]),
+            }
+          : splitShiftStats(seasonal);
+
       return {
         ...dept,
         required,
         current,
         shortage: current - required,
-        regularStats: splitShiftStats(regular),
-        seasonalStats: splitShiftStats(seasonal),
+        regularStats,
+        seasonalStats,
       };
     });
   }, [filteredRegular, filteredSeasonal, requiredByDepartment]);
