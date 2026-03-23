@@ -46,11 +46,6 @@ export const menuConfig = [
             label: "navbar.caiTien",
             path: "/performance",
           },
-          {
-            key: "qrCodeGenerator",
-            label: "navbar.qrCodeGenerator",
-            path: "/qr-code-generator",
-          },
         ],
       },
 
@@ -110,12 +105,6 @@ export const menuConfig = [
           //   ],
           // },
           {
-            key: "usageGuideAdmin",
-            label: "navbar.usageGuideAdmin",
-            path: "/usage-guide-admin",
-            adminOnly: true,
-          },
-          {
             key: "certificate",
             label: "navbar.certificate",
             type: "nested",
@@ -150,11 +139,6 @@ export const menuConfig = [
             label: "navbar.files",
             path: "/downloads",
           },
-          {
-            key: "usageGuideBlog",
-            label: "navbar.usageGuideBlog",
-            path: "/usage-guide",
-          },
         ],
       },
     ],
@@ -188,6 +172,4 @@ export const routeConfig = [
   { path: "/downloads", element: "Downloads" },
   { path: "/maintenance", element: "MaintenanceChecklist" },
   { path: "/driver-logbook", element: "DriverLogbook" },
-  { path: "/usage-guide-admin", element: "AdminUsageGuide" },
-  { path: "/usage-guide", element: "UsageGuideBlog" },
 ];

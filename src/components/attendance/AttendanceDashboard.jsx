@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 // Danh sách các bộ phận thuộc sản xuất
 export const PRODUCTION_DEPARTMENTS = [
@@ -27,6 +28,7 @@ function AttendanceDashboard({
   departmentFilter,
   PRIORITY_DEPARTMENTS,
 }) {
+  const { t } = useTranslation();
   // Tạo filteredEmployees dựa trên globalFilter
   const filteredEmployees = useMemo(() => {
     if (!Array.isArray(employees)) return [];
@@ -182,7 +184,9 @@ function AttendanceDashboard({
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <p className="text-gray-600">Vui lòng đăng nhập để xem dashboard</p>
+          <p className="text-gray-600">
+            {t("attendanceDashboard.pleaseLogin")}
+          </p>
         </div>
       </div>
     );
@@ -196,15 +200,15 @@ function AttendanceDashboard({
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                📊 Dashboard Báo Cáo Điểm Danh
+                {t("attendanceDashboard.title")}
               </h1>
               <p className="text-gray-600">
-                Tổng quan thống kê chấm công theo ngày
+                {t("attendanceDashboard.subtitle")}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm font-semibold text-gray-700">
-                Ngày:
+                {t("attendanceDashboard.dateLabel")}
               </label>
               <input
                 type="date"
@@ -224,7 +228,7 @@ function AttendanceDashboard({
               }`}
               onClick={() => setGlobalFilter("all")}
             >
-              Tổng tất cả
+              {t("attendanceDashboard.filterAll")}
             </button>
             <button
               className={`px-4 py-2 rounded-full font-semibold border transition-all duration-200 ${
@@ -234,7 +238,7 @@ function AttendanceDashboard({
               }`}
               onClick={() => setGlobalFilter("sanxuat")}
             >
-              Sản xuất
+              {t("attendanceDashboard.filterProduction")}
             </button>
           </div>
         </div>
@@ -242,7 +246,7 @@ function AttendanceDashboard({
         {loading ? (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
+            <p className="mt-4 text-gray-600">{t("loading.loading")}</p>
           </div>
         ) : (
           <>
@@ -258,7 +262,7 @@ function AttendanceDashboard({
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                        Tổng số
+                        {t("attendanceDashboard.cardTotalLabel")}
                       </p>
                       <p className="text-4xl font-bold text-gray-800 group-hover:scale-110 transition-transform">
                         {stats.total}
@@ -267,7 +271,7 @@ function AttendanceDashboard({
                   </div>
                   <div className="mt-4 pt-3 border-t border-gray-200">
                     <p className="text-xs text-gray-600">
-                      Tổng nhân viên hôm nay
+                      {t("attendanceDashboard.cardTotalFooter")}
                     </p>
                   </div>
                 </div>
@@ -283,7 +287,7 @@ function AttendanceDashboard({
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">
-                        Có mặt
+                        {t("attendanceDashboard.cardPresentLabel")}
                       </p>
                       <p className="text-4xl font-bold text-green-600 group-hover:scale-110 transition-transform">
                         {stats.present}
@@ -292,7 +296,9 @@ function AttendanceDashboard({
                   </div>
                   <div className="mt-4 pt-3 border-t border-green-200">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-600">Đã điểm danh</p>
+                      <p className="text-xs text-gray-600">
+                        {t("attendanceDashboard.cardPresentFooter")}
+                      </p>
                       <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
                         {stats.total > 0
                           ? ((stats.present / stats.total) * 100).toFixed(0)
@@ -314,7 +320,7 @@ function AttendanceDashboard({
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">
-                        Vắng mặt
+                        {t("attendanceDashboard.cardAbsentLabel")}
                       </p>
                       <p className="text-4xl font-bold text-red-600 group-hover:scale-110 transition-transform">
                         {stats.absent}
@@ -323,7 +329,9 @@ function AttendanceDashboard({
                   </div>
                   <div className="mt-4 pt-3 border-t border-red-200">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-600">Chưa điểm danh</p>
+                      <p className="text-xs text-gray-600">
+                        {t("attendanceDashboard.cardAbsentFooter")}
+                      </p>
                       <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">
                         {stats.total > 0
                           ? ((stats.absent / stats.total) * 100).toFixed(0)
@@ -345,7 +353,7 @@ function AttendanceDashboard({
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">
-                        Tỷ lệ
+                        {t("attendanceDashboard.cardRateLabel")}
                       </p>
                       <p className="text-4xl font-bold text-blue-600 group-hover:scale-110 transition-transform">
                         {stats.presentRate}%
@@ -370,17 +378,17 @@ function AttendanceDashboard({
               <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg p-6 border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-gray-800">
-                    👫 Thống kê theo giới tính
+                    {t("attendanceDashboard.genderSection")}
                   </h2>
                   <span className="px-3 py-1 text-xs font-bold bg-gray-100 text-gray-600 rounded-full">
-                    Tổng: {genderTotal}
+                    {t("attendanceDashboard.genderTotal", { n: genderTotal })}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     {
-                      label: "Nam",
+                      label: t("attendanceDashboard.male"),
                       value: stats.male,
                       color: "from-blue-500 to-blue-600",
                       bg: "bg-blue-50",
@@ -388,7 +396,7 @@ function AttendanceDashboard({
                       icon: "👨",
                     },
                     {
-                      label: "Nữ",
+                      label: t("attendanceDashboard.female"),
                       value: stats.female,
                       color: "from-pink-500 to-pink-600",
                       bg: "bg-pink-50",
@@ -429,7 +437,9 @@ function AttendanceDashboard({
                         </div>
                         <div className="relative z-10">
                           <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-gray-600">Tỷ lệ</span>
+                            <span className="text-gray-600">
+                              {t("attendanceDashboard.cardRateLabel")}
+                            </span>
                             <span className={`font-bold ${g.text}`}>
                               {percent}%
                             </span>
@@ -451,10 +461,12 @@ function AttendanceDashboard({
               <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg p-6 border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-gray-800">
-                    🕐 Thống kê theo ca làm việc
+                    {t("attendanceDashboard.shiftSection")}
                   </h2>
                   <span className="px-3 py-1 text-xs font-bold bg-blue-50 text-blue-700 rounded-full">
-                    {shiftEntries.length} ca
+                    {t("attendanceDashboard.shifts", {
+                      n: shiftEntries.length,
+                    })}
                   </span>
                 </div>
 
@@ -479,7 +491,7 @@ function AttendanceDashboard({
                                 {shift}
                               </span>
                               <span className="px-2 py-0.5 text-[11px] font-bold bg-gray-100 text-gray-600 rounded-full">
-                                {count} người
+                                {t("attendanceDashboard.people", { count })}
                               </span>
                             </div>
                             <span className="text-xs font-bold text-blue-600">

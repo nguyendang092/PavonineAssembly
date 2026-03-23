@@ -66,9 +66,9 @@ const formatNumberDisplay = (value) => {
 // Clean number input (remove comma and dot)
 const cleanNumberInput = (value) => value.replace(/,/g, "").replace(/\./g, "");
 
-function StatusBadge({ trip, mobile = false }) {
+function StatusBadge({ trip, mobile = false, statusConfig = STATUS_CONFIG }) {
   const status = getStatus(trip);
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG.SCHEDULED;
+  const config = statusConfig[status] || statusConfig.SCHEDULED;
 
   if (mobile) {
     return (
@@ -260,6 +260,32 @@ function DriverLogbook() {
   const { t } = useTranslation();
   const { user } = useUser();
   const formInitials = React.useMemo(() => getFormInitialStates(user), [user]);
+  const tl = React.useCallback(
+    (key, defaultValue, options = {}) =>
+      t(`driverLogbook.${key}`, { defaultValue, ...options }),
+    [t],
+  );
+  const statusConfig = React.useMemo(
+    () => ({
+      SCHEDULED: {
+        ...STATUS_CONFIG.SCHEDULED,
+        label: tl("statusScheduled", "Đã Lên Lịch"),
+      },
+      ONBOARD: {
+        ...STATUS_CONFIG.ONBOARD,
+        label: tl("statusOnboard", "Đi công tác"),
+      },
+      ARRIVED: {
+        ...STATUS_CONFIG.ARRIVED,
+        label: tl("statusArrived", "Đang ở công ty"),
+      },
+      DELAYED: {
+        ...STATUS_CONFIG.DELAYED,
+        label: tl("statusDelayed", "Chậm"),
+      },
+    }),
+    [tl],
+  );
 
   // ============ STATE DECLARATIONS ============
   // UI states
@@ -1658,11 +1684,19 @@ function DriverLogbook() {
       setAlert({
         show: true,
         type: "success",
-        message: `✅ Đã nhập ${normalizedTrips.length} chuyến từ Excel${
+        message:
           rows.length !== normalizedTrips.length
-            ? ` (bỏ qua ${rows.length - normalizedTrips.length} dòng thiếu dữ liệu/trùng)`
-            : ""
-        }`,
+            ? tl(
+                "importSuccessWithSkipped",
+                "✅ Đã nhập {{count}} chuyến từ Excel (bỏ qua {{skipped}} dòng thiếu dữ liệu/trùng)",
+                {
+                  count: normalizedTrips.length,
+                  skipped: rows.length - normalizedTrips.length,
+                },
+              )
+            : tl("importSuccess", "✅ Đã nhập {{count}} chuyến từ Excel", {
+                count: normalizedTrips.length,
+              }),
       });
       setCurrentView("trips");
     } catch (error) {
@@ -1670,7 +1704,9 @@ function DriverLogbook() {
       setAlert({
         show: true,
         type: "error",
-        message: `❌ Lỗi nhập Excel: ${error.message}`,
+        message: tl("importError", "❌ Lỗi nhập Excel: {{error}}", {
+          error: error.message,
+        }),
       });
     } finally {
       setIsImporting(false);
@@ -1692,6 +1728,9 @@ function DriverLogbook() {
             <span className="text-2xl">🚚</span>
             <div>
               <h1 className="text-lg font-bold">Quản Lý Chuyến Đi</h1>
+              <h1 className="text-lg font-bold">
+                {tl("title", "Quản Lý Chuyến Đi")}
+              </h1>
               <p className="text-xs text-blue-100">Driver Logbook</p>
             </div>
           </div>
@@ -1699,7 +1738,7 @@ function DriverLogbook() {
           {/* Main Navigation */}
           <div className="px-4 py-5 space-y-3 flex-shrink-0">
             <p className="text-xs font-bold text-slate-600 uppercase tracking-widest px-3 mb-3">
-              📋 Chuyên Mục
+              📋 {tl("sectionTitle", "Chuyên Mục")}
             </p>
             <button
               onClick={() => {
@@ -1712,7 +1751,7 @@ function DriverLogbook() {
                   : "text-slate-700 bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-300 hover:border-indigo-400 shadow-sm hover:shadow-md hover:from-indigo-50 hover:to-blue-100"
               }`}
             >
-              DANH SÁCH CHUYẾN ĐI
+              {tl("navSchedule", "DANH SÁCH CHUYẾN ĐI")}
             </button>
             <button
               onClick={() => {
@@ -1725,7 +1764,7 @@ function DriverLogbook() {
                   : "text-slate-700 bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-300 hover:border-indigo-400 shadow-sm hover:shadow-md hover:from-indigo-50 hover:to-blue-100"
               }`}
             >
-              CHI TIẾT CHUYẾN ĐI
+              {tl("navTrips", "CHI TIẾT CHUYẾN ĐI")}
             </button>
             {isAdminOrHR && (
               <button
@@ -1739,7 +1778,7 @@ function DriverLogbook() {
                     : "text-slate-700 bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-300 hover:border-indigo-400 shadow-sm hover:shadow-md hover:from-indigo-50 hover:to-blue-100"
                 }`}
               >
-                💰 CHI PHÍ NGOÀI
+                💰 {tl("navExpenses", "CHI PHÍ NGOÀI")}
               </button>
             )}
             {isAdminOrHR && (
@@ -1755,7 +1794,7 @@ function DriverLogbook() {
                       : "text-slate-700 bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-300 hover:border-indigo-400 shadow-sm hover:shadow-md hover:from-indigo-50 hover:to-blue-100"
                   }`}
                 >
-                  THÊM CHUYẾN MỚI
+                  {tl("navAddTrip", "THÊM CHUYẾN MỚI")}
                 </button>
                 <button
                   onClick={() => {
@@ -1768,7 +1807,7 @@ function DriverLogbook() {
                       : "text-slate-700 bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-300 hover:border-indigo-400 shadow-sm hover:shadow-md hover:from-indigo-50 hover:to-blue-100"
                   }`}
                 >
-                  QUẢN LÝ TÀI XẾ
+                  {tl("navDrivers", "QUẢN LÝ TÀI XẾ")}
                 </button>
               </>
             )}
@@ -1782,8 +1821,10 @@ function DriverLogbook() {
 
           {/* Footer Info */}
           <div className="px-4 py-4 bg-blue-50 border-t border-slate-200 text-xs text-slate-600 text-center rounded-lg m-3">
-            <p className="font-semibold">💡 Mẹo</p>
-            <p className="mt-1">Sử dụng bộ lọc để tìm chuyến đi nhanh hơn</p>
+            <p className="font-semibold">💡 {tl("tipTitle", "Mẹo")}</p>
+            <p className="mt-1">
+              {tl("tipDesc", "Sử dụng bộ lọc để tìm chuyến đi nhanh hơn")}
+            </p>
           </div>
         </div>
       </Sidebar>
@@ -1813,7 +1854,7 @@ function DriverLogbook() {
               <button
                 onClick={() => setAlert({ show: false, type: "", message: "" })}
                 className="flex-shrink-0 w-6 h-6 rounded-full hover:bg-black/10 flex items-center justify-center transition-colors text-sm"
-                title="Đóng"
+                title={tl("close", "Đóng")}
               >
                 ✕
               </button>
@@ -1920,7 +1961,7 @@ function DriverLogbook() {
                           </span>
                           <div className="min-w-0">
                             <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold truncate">
-                              LỊCH CHUYẾN ĐI
+                              {tl("scheduleTitle", "LỊCH CHUYẾN ĐI")}
                             </h2>
                             <p className="text-blue-100 text-xs hidden sm:block">
                               Departure Board
@@ -1944,9 +1985,15 @@ function DriverLogbook() {
                     {/* Left: Sort Options */}
                     <div className="flex gap-1 sm:gap-2 flex-wrap items-center sm:flex-1">
                       {[
-                        { value: "time", label: "⏰ Giờ" },
-                        { value: "vehicle", label: "🚗 Xe" },
-                        { value: "status", label: "📊 Trạng Thái" },
+                        { value: "time", label: `⏰ ${tl("sortTime", "Giờ")}` },
+                        {
+                          value: "vehicle",
+                          label: `🚗 ${tl("sortVehicle", "Xe")}`,
+                        },
+                        {
+                          value: "status",
+                          label: `📊 ${tl("sortStatus", "Trạng Thái")}`,
+                        },
                       ].map((option) => (
                         <button
                           key={option.value}
@@ -1968,8 +2015,11 @@ function DriverLogbook() {
                       <div className="flex flex-col gap-1 w-full sm:w-auto">
                         <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
                           <span>🚙</span>
-                          <span>Xe</span>
+                          <span>{tl("vehicleLabel", "Xe")}</span>
                         </label>
+                        <option value="">
+                          {tl("allVehicles", "Tất cả xe")}
+                        </option>
                         <select
                           value={selectedVehicle}
                           onChange={(e) => setSelectedVehicle(e.target.value)}
@@ -1996,7 +2046,7 @@ function DriverLogbook() {
                       <div className="flex flex-col gap-1 w-full sm:w-auto">
                         <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
                           <span>📅</span>
-                          <span>Ngày</span>
+                          <span>{tl("dateLabel", "Ngày")}</span>
                         </label>
                         <input
                           type="date"
@@ -2011,47 +2061,50 @@ function DriverLogbook() {
                   {/* Table Header */}
                   <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-11 gap-1 sm:gap-2 md:gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-blue-50 text-xs font-bold px-2 sm:px-3 md:px-4 py-2 sm:py-3 sticky top-0 z-10 shadow-md w-full">
                     <div className="truncate col-span-1 text-center text-[10px] sm:text-xs">
-                      🚗 XE
+                      🚗 {tl("headerVehicle", "XE")}
                     </div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
-                      📦 LOẠI
+                      📦 {tl("headerType", "LOẠI")}
                     </div>
                     <div className="truncate col-span-1 hidden md:block text-center">
-                      📱 ĐT
+                      📱 {tl("headerPhone", "ĐT")}
                     </div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
-                      ĐI TỪ
+                      {tl("headerFrom", "ĐI TỪ")}
                     </div>
                     <div className="truncate col-span-1.5 sm:col-span-1 text-center text-[10px] sm:text-xs">
-                      👤 TÀI XẾ
+                      👤 {tl("headerDriver", "TÀI XẾ")}
                     </div>
                     <div className="truncate col-span-1 text-center text-[10px] sm:text-xs">
-                      ⏰ THỜI GIAN ĐI
+                      ⏰ {tl("headerStartTime", "THỜI GIAN ĐI")}
                     </div>
                     <div className="truncate col-span-1 hidden md:block text-center">
-                      🏢 BP
+                      🏢 {tl("headerDepartment", "BP")}
                     </div>
                     <div className="truncate col-span-1 hidden md:block text-center">
-                      🙋 YÊU CẦU
+                      🙋 {tl("headerRequester", "YÊU CẦU")}
                     </div>
                     <div className="truncate col-span-1 hidden sm:block text-center">
-                      📊 TT
+                      📊 {tl("headerStatus", "TT")}
                     </div>
                     <div className="truncate col-span-1 hidden md:block text-center">
-                      📝 GHI CHÚ
+                      📝 {tl("headerNotes", "GHI CHÚ")}
                     </div>
                     <div className="truncate col-span-1 text-center text-[10px] sm:text-xs">
-                      📋 CHI TIẾT
+                      📋 {tl("headerDetails", "CHI TIẾT")}
                     </div>
                   </div>
                   {/* Rows */}
                   {sorted.length === 0 ? (
                     <div className="px-3 sm:px-4 md:px-6 py-8 sm:py-12 text-center">
                       <p className="text-gray-400 text-base sm:text-lg">
-                        🛫 Không có chuyến đi nào
+                        🛫 {tl("noTrips", "Không có chuyến đi nào")}
                       </p>
                       <p className="text-gray-300 text-xs sm:text-sm mt-2">
-                        Chọn ngày hoặc xe khác để xem lịch
+                        {tl(
+                          "noTripsHint",
+                          "Chọn ngày hoặc xe khác để xem lịch",
+                        )}
                       </p>
                     </div>
                   ) : (
@@ -2174,7 +2227,7 @@ function DriverLogbook() {
                       : "text-slate-700 hover:text-indigo-600"
                   }`}
                 >
-                  Chạy (
+                  {tl("tabOngoing", "Chạy")} (
                   {permissionFilteredTrips.filter((t) => !t.completed).length})
                 </button>
                 <button
@@ -2185,7 +2238,7 @@ function DriverLogbook() {
                       : "text-slate-700 hover:text-indigo-600"
                   }`}
                 >
-                  Xong (
+                  {tl("tabCompleted", "Xong")} (
                   {permissionFilteredTrips.filter((t) => t.completed).length})
                 </button>
               </div>
@@ -2196,20 +2249,23 @@ function DriverLogbook() {
                 <div className="flex items-center gap-1 flex-1 sm:flex-initial">
                   <label className="text-xs font-bold text-slate-700 flex items-center gap-1 whitespace-nowrap">
                     <span>📅</span>
-                    <span>Ngày:</span>
+                    <span>{tl("dateLabel", "Ngày")}:</span>
                   </label>
                   <input
                     type="date"
                     value={tripsFilterDate}
                     onChange={(e) => setTripsFilterDate(e.target.value)}
                     className="flex-1 sm:flex-initial px-2 py-1.5 rounded text-xs border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100 outline-none"
-                    title="Chọn ngày để lọc chuyến đi"
+                    title={tl(
+                      "chooseDateToFilter",
+                      "Chọn ngày để lọc chuyến đi",
+                    )}
                   />
                   {tripsFilterDate && (
                     <button
                       onClick={() => setTripsFilterDate("")}
                       className="px-2 py-1.5 text-xs bg-slate-200 text-slate-700 hover:bg-slate-300 rounded transition-colors flex-shrink-0"
-                      title="Xóa bộ lọc ngày"
+                      title={tl("clearDateFilter", "Xóa bộ lọc ngày")}
                     >
                       ✕
                     </button>
@@ -2230,7 +2286,7 @@ function DriverLogbook() {
                       <button
                         onClick={handleDownloadExcelTemplate}
                         className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200 shadow whitespace-nowrap"
-                        title="Tải file mẫu Excel"
+                        title={tl("downloadTemplate", "Tải file mẫu Excel")}
                       >
                         ⬇️ Template
                       </button>
@@ -2242,20 +2298,24 @@ function DriverLogbook() {
                             ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
                             : "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
                         }`}
-                        title="Nhập chuyến đi từ Excel"
+                        title={tl("importExcel", "Nhập chuyến đi từ Excel")}
                       >
                         {isImporting ? "⏳" : "⬆️"}
-                        <span className="hidden sm:inline">Upload</span>
+                        <span className="hidden sm:inline">
+                          {tl("upload", "Upload")}
+                        </span>
                       </button>
                     </>
                   )}
                   <button
                     onClick={handleExportCompletedTrips}
                     className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow whitespace-nowrap"
-                    title="Xuất chuyến đã hoàn tất"
+                    title={tl("exportCompleted", "Xuất chuyến đã hoàn tất")}
                   >
                     📥
-                    <span className="hidden sm:inline">Xuất</span>
+                    <span className="hidden sm:inline">
+                      {tl("export", "Xuất")}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -2268,10 +2328,13 @@ function DriverLogbook() {
                   <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">🚗</div>
                   <p className="text-slate-600 text-base sm:text-xl font-semibold">
                     {filterTab === "ongoing"
-                      ? "Không có chuyến đi đang chạy"
+                      ? tl("noRunningTrips", "Không có chuyến đi đang chạy")
                       : filterTab === "completed"
-                        ? "Chưa có chuyến đi nào hoàn tất"
-                        : "Chưa có chuyến đi nào"}
+                        ? tl(
+                            "noCompletedTrips",
+                            "Chưa có chuyến đi nào hoàn tất",
+                          )
+                        : tl("noTripsYet", "Chưa có chuyến đi nào")}
                   </p>
                 </div>
               ) : (

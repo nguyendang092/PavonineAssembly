@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
 import { db, ref, onValue } from "../../services/firebase";
 
 function AttendanceTable() {
+  const { t } = useTranslation();
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(() => {
@@ -162,13 +164,13 @@ function AttendanceTable() {
     if (!filteredData.length) return;
 
     const rows = filteredData.map((record, idx) => ({
-      STT: idx + 1,
-      Ngay: formatDate(record.date),
-      "Mã nhân viên": record.mnv || "",
-      "Họ & tên": record.hoVaTen || "",
-      "Bộ phận": record.boPhan || "",
-      "Thời gian vào": formatTime(record.gioVao),
-      "Thời gian ra": formatTime(record.gioRa),
+      [t("attendanceTable.colIndex")]: idx + 1,
+      [t("attendanceTable.colDate")]: formatDate(record.date),
+      [t("attendanceTable.colEmployeeCode")]: record.mnv || "",
+      [t("attendanceTable.colName")]: record.hoVaTen || "",
+      [t("attendanceTable.colDepartment")]: record.boPhan || "",
+      [t("attendanceTable.colTimeIn")]: formatTime(record.gioVao),
+      [t("attendanceTable.colTimeOut")]: formatTime(record.gioRa),
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -195,19 +197,17 @@ function AttendanceTable() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-emerald-200 uppercase tracking-wide">
-              Báo cáo thời gian
+              {t("attendanceTable.reportLabel")}
             </p>
             <h1 className="text-3xl font-bold text-gray-50 mt-1">
-              Bảng Chấm Công
+              {t("attendanceTable.title")}
             </h1>
-            <p className="text-gray-300">
-              Xem chi tiết thời gian vào - ra của nhân viên
-            </p>
+            <p className="text-gray-300">{t("attendanceTable.description")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="px-3 py-2 bg-white rounded-lg shadow-sm border border-slate-200 text-sm text-slate-700 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              {filteredData.length} bản ghi
+              {t("attendanceTable.records", { count: filteredData.length })}
             </div>
             <button
               type="button"
@@ -228,7 +228,7 @@ function AttendanceTable() {
                   d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
                 />
               </svg>
-              Xuất Excel
+              {t("attendanceTable.exportExcel")}
             </button>
           </div>
         </div>
@@ -250,7 +250,7 @@ function AttendanceTable() {
                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                   />
                 </svg>
-                Từ ngày
+                {t("attendanceTable.fromDate")}
               </label>
               <input
                 type="date"
@@ -275,7 +275,7 @@ function AttendanceTable() {
                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                   />
                 </svg>
-                Đến ngày
+                {t("attendanceTable.toDate")}
               </label>
               <input
                 type="date"
@@ -300,14 +300,14 @@ function AttendanceTable() {
                     d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                   />
                 </svg>
-                Bộ phận
+                {t("attendanceTable.department")}
               </label>
               <select
                 value={departmentFilter}
                 onChange={(e) => setDepartmentFilter(e.target.value)}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white shadow-sm"
               >
-                <option value="">Tất cả bộ phận</option>
+                <option value="">{t("attendanceTable.allDepartments")}</option>
                 {departments.map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
@@ -336,7 +336,7 @@ function AttendanceTable() {
               </div>
               <div>
                 <p className="text-xs text-slate-700 font-semibold uppercase tracking-wide">
-                  Tổng số bản ghi
+                  {t("attendanceTable.totalRecords")}
                 </p>
                 <p className="text-xl font-bold text-slate-900">
                   {filteredData.length}
@@ -361,7 +361,7 @@ function AttendanceTable() {
               </div>
               <div>
                 <p className="text-xs text-slate-700 font-semibold uppercase tracking-wide">
-                  Khoảng thời gian
+                  {t("attendanceTable.dateRange")}
                 </p>
                 <p className="text-xl font-bold text-slate-900">
                   {formatDate(startDate)} - {formatDate(endDate)}
@@ -376,7 +376,7 @@ function AttendanceTable() {
             <div className="p-12 text-center">
               <div className="inline-block h-12 w-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
               <p className="mt-4 text-slate-600 font-medium">
-                Đang tải dữ liệu...
+                {t("loading.loading")}
               </p>
             </div>
           ) : filteredData.length === 0 ? (
@@ -395,7 +395,7 @@ function AttendanceTable() {
                 />
               </svg>
               <p className="mt-4 text-slate-500 font-medium">
-                Không có dữ liệu chấm công
+                {t("attendanceTable.noData")}
               </p>
             </div>
           ) : (
@@ -404,25 +404,25 @@ function AttendanceTable() {
                 <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
                   <tr>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.08em]">
-                      STT
+                      {t("attendanceTable.colIndex")}
                     </th>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.08em]">
-                      Ngày
+                      {t("attendanceTable.colDate")}
                     </th>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.08em]">
-                      Mã nhân viên
+                      {t("attendanceTable.colEmployeeCode")}
                     </th>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.08em]">
-                      Họ & tên
+                      {t("attendanceTable.colName")}
                     </th>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.08em]">
-                      Bộ phận
+                      {t("attendanceTable.colDepartment")}
                     </th>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.08em]">
-                      Thời gian vào
+                      {t("attendanceTable.colTimeIn")}
                     </th>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.08em]">
-                      Thời gian ra
+                      {t("attendanceTable.colTimeOut")}
                     </th>
                   </tr>
                 </thead>

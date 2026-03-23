@@ -48,7 +48,22 @@ export default function Navbar({ user, setUser }) {
   const handleChangeLanguage = (lang) => {
     setLanguage(lang);
     i18n.changeLanguage(lang);
+    localStorage.setItem("appLanguage", lang);
   };
+
+  useEffect(() => {
+    const syncLanguage = (lng) => {
+      const normalizedLanguage = lng?.startsWith("ko") ? "ko" : "vi";
+      setLanguage(normalizedLanguage);
+    };
+
+    syncLanguage(i18n.language);
+    i18n.on("languageChanged", syncLanguage);
+
+    return () => {
+      i18n.off("languageChanged", syncLanguage);
+    };
+  }, [i18n]);
 
   const handleSignIn = () => {
     closeMobileMenu();

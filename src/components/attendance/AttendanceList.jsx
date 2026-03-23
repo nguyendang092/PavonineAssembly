@@ -18,9 +18,32 @@ import UnifiedModal from "../common/UnifiedModal";
 // import BirthdayCake from "./BirthdayCake";
 import BirthdayCakeBell from "../employee/BirthdayCakeBell";
 import NotificationBell from "../common/NotificationBell";
-import Sidebar from "../layout/Sidebar";
 import CenterPortal from "../common/CenterPortal";
 import MissingEmployeesModal from "./MissingEmployeesModal";
+
+const getDateKeyBySubtractDays = (dateStr, daysBack = 1) => {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() - daysBack);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const findNearestPreviousAttendanceData = async (
+  baseDateStr,
+  maxLookbackDays = 14,
+) => {
+  for (let i = 1; i <= maxLookbackDays; i++) {
+    const dateKey = getDateKeyBySubtractDays(baseDateStr, i);
+    const snap = await get(ref(db, `attendance/${dateKey}`));
+    const data = snap.val();
+    if (data && typeof data === "object" && Object.keys(data).length > 0) {
+      return { dateKey, data };
+    }
+  }
+  return null;
+};
 
 function AttendanceList() {
   // State for alert messages
@@ -29,8 +52,6 @@ function AttendanceList() {
   const [showModal, setShowModal] = useState(false);
   // State for main filter modal open/close
   const [filterOpen, setFilterOpen] = useState(false);
-  // State for sidebar open/close
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   // State for department search input in filter
   const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
   // State for single department filter (if used)
@@ -47,11 +68,16 @@ function AttendanceList() {
     const dd = String(today.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
   });
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useUser();
+  const tl = useCallback(
+    (key, defaultValue, options = {}) =>
+      t(`attendanceList.${key}`, { defaultValue, ...options }),
+    [t],
+  );
+  const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
 
   const [employees, setEmployees] = useState([]);
-  const [allEmployees, setAllEmployees] = useState([]); // Danh sách toàn bộ nhân viên
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
   const [editing, setEditing] = useState(null);
   const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
@@ -106,6 +132,17 @@ function AttendanceList() {
     gioVaoFilter.length === 1 &&
     gioVaoFilter.includes(quickNoCheckInFilterValue);
 
+  // Lookup map: mnv → pnTon từ ngày hôm trước, dùng làm fallback khi ngày hiện tại chưa có phép năm tồn
+  const prevDayPnTonMap = useMemo(() => {
+    const map = {};
+    for (const emp of previousDayEmployees) {
+      const key = String(emp.mnv || "").trim();
+      const val = String(emp.pnTon ?? emp.phepNam ?? "").trim();
+      if (key && val) map[key] = val;
+    }
+    return map;
+  }, [previousDayEmployees]);
+
   // Chuẩn hóa tên bộ phận để lọc ổn định (tránh lệch hoa/thường, khoảng trắng).
   const normalizeDepartment = useCallback((value) => {
     return String(value || "")
@@ -131,21 +168,6 @@ function AttendanceList() {
       }),
     [employees],
   );
-
-  // Lấy toàn bộ danh sách nhân viên từ nhánh employees
-  useEffect(() => {
-    const empRef = ref(db, "employees");
-    const unsubscribe = onValue(empRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, emp]) => ({ ...emp, id }));
-        setAllEmployees(arr);
-      } else {
-        setAllEmployees([]);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
 
   // Load user's department permissions
   useEffect(() => {
@@ -213,38 +235,39 @@ function AttendanceList() {
     return () => clearTimeout(timer);
   }, [unattendedEmployees, unattendedPopupDismissed]);
 
-  // Load previous day employees and detect missing ones
+  // Load nearest previous employees and detect missing ones
   useEffect(() => {
-    const getPreviousDate = (dateStr) => {
-      const date = new Date(dateStr);
-      date.setDate(date.getDate() - 1);
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, "0");
-      const dd = String(date.getDate()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}`;
-    };
+    let cancelled = false;
 
-    const previousDate = getPreviousDate(selectedDate);
-    const empRef = ref(db, `attendance/${previousDate}`);
+    const loadNearestPreviousEmployees = async () => {
+      const previousResult = await findNearestPreviousAttendanceData(
+        selectedDate,
+        14,
+      );
+      if (cancelled) return;
 
-    const unsubscribe = onValue(empRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, emp]) => ({ ...emp, id }));
+      if (previousResult?.data && typeof previousResult.data === "object") {
+        const arr = Object.entries(previousResult.data).map(([id, emp]) => ({
+          ...emp,
+          id,
+        }));
         setPreviousDayEmployees(arr);
 
         // Calculate missing employees
         const currentMnvSet = new Set(employees.map((e) => e.mnv));
-        const previousMnvSet = new Set(arr.map((e) => e.mnv));
         const missing = arr.filter((e) => !currentMnvSet.has(e.mnv));
         setMissingEmployees(missing);
       } else {
         setPreviousDayEmployees([]);
         setMissingEmployees([]);
       }
-    });
+    };
 
-    return () => unsubscribe();
+    loadNearestPreviousEmployees();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedDate, employees]);
 
   // Auto-hide alert after 3s
@@ -505,7 +528,7 @@ function AttendanceList() {
       setAlert({
         show: true,
         type: "error",
-        message: "Vui lòng đăng nhập để thực hiện thao tác này",
+        message: t("attendanceList.pleaseLogin"),
       });
       return;
     }
@@ -518,7 +541,7 @@ function AttendanceList() {
         setAlert({
           show: true,
           type: "success",
-          message: "✅ Cập nhật thành công",
+          message: t("attendanceList.updateSuccess"),
         });
         setEditing(null);
       } else {
@@ -528,7 +551,7 @@ function AttendanceList() {
         setAlert({
           show: true,
           type: "success",
-          message: "✅ Thêm mới thành công",
+          message: t("attendanceList.addSuccess"),
         });
       }
       setForm({
@@ -551,7 +574,7 @@ function AttendanceList() {
       setAlert({
         show: true,
         type: "error",
-        message: "❌ Có lỗi xảy ra!",
+        message: t("attendanceList.error"),
       });
     }
   };
@@ -563,7 +586,7 @@ function AttendanceList() {
         setAlert({
           show: true,
           type: "error",
-          message: "Vui lòng đăng nhập để thực hiện thao tác này",
+          message: t("attendanceList.pleaseLogin"),
         });
         return;
       }
@@ -581,24 +604,26 @@ function AttendanceList() {
         setAlert({
           show: true,
           type: "error",
-          message: "Vui lòng đăng nhập để thực hiện thao tác này",
+          message: t("attendanceList.pleaseLogin"),
         });
         return;
       }
-      if (!window.confirm("Bạn có chắc muốn xóa nhân viên này?")) return;
+      if (!window.confirm(t("attendanceList.deleteConfirm"))) return;
 
       try {
         await remove(ref(db, `attendance/${selectedDate}/${id}`));
         setAlert({
           show: true,
           type: "success",
-          message: "✅ Xóa thành công",
+          message: t("attendanceList.deleteSuccess", {
+            component: "attendance",
+          }),
         });
       } catch (err) {
         setAlert({
           show: true,
           type: "error",
-          message: "❌ Xóa thất bại",
+          message: t("common.deleteFail"),
         });
       }
     },
@@ -612,7 +637,7 @@ function AttendanceList() {
         setAlert({
           show: true,
           type: "error",
-          message: "Vui lòng đăng nhập để thực hiện thao tác này",
+          message: t("attendanceList.pleaseLogin"),
         });
         return;
       }
@@ -629,7 +654,7 @@ function AttendanceList() {
         });
 
         if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-          throw new Error("File Excel không có sheet");
+          throw new Error(t("attendanceList.excelNoSheet"));
         }
 
         const sheetName = workbook.SheetNames[0];
@@ -643,7 +668,7 @@ function AttendanceList() {
         });
 
         if (!Array.isArray(rows) || rows.length <= 2) {
-          throw new Error("File trống hoặc không đọc được dữ liệu");
+          throw new Error(t("attendanceList.excelEmpty"));
         }
 
         // Bỏ 2 dòng tiêu đề, phần còn lại là dữ liệu
@@ -821,6 +846,19 @@ function AttendanceList() {
         let uploadedCount = 0;
         let duplicateCount = 0;
 
+        // Lấy pnTon từ ngày gần nhất trước selectedDate để carry-forward nếu Excel không có
+        const previousResult = await findNearestPreviousAttendanceData(
+          selectedDate,
+          14,
+        );
+        const prevData = previousResult?.data || {};
+        const prevPnTonByMNV = {};
+        Object.values(prevData).forEach((emp) => {
+          const key = normalizeMNV(emp?.mnv);
+          const val = String(emp?.pnTon ?? emp?.phepNam ?? "").trim();
+          if (key && val) prevPnTonByMNV[key] = val;
+        });
+
         // Get existing data to merge and check for duplicates
         const snapshot = await get(attendanceRef);
         const existingData = snapshot.val() || {};
@@ -865,10 +903,20 @@ function AttendanceList() {
                 }
               });
               mergedData[existingKey] = mergedEmp;
+              // Carry-forward pnTon từ hôm trước nếu hôm nay chưa có
+              if (!mergedEmp.pnTon && !mergedEmp.phepNam) {
+                const prevVal = prevPnTonByMNV[normalizedNewMNV];
+                if (prevVal) mergedData[existingKey].pnTon = prevVal;
+              }
             }
             duplicateCount++;
           } else {
             // Add new employee
+            // Carry-forward pnTon từ hôm trước nếu Excel không có
+            if (!newEmp.pnTon && !newEmp.phepNam) {
+              const prevVal = prevPnTonByMNV[normalizeMNV(newEmp?.mnv)];
+              if (prevVal) newEmp = { ...newEmp, pnTon: prevVal };
+            }
             mergedData[key] = newEmp;
             if (normalizedNewMNV) {
               existingKeyByMNV[normalizedNewMNV] = key;
@@ -900,9 +948,9 @@ function AttendanceList() {
         setAlert({
           show: true,
           type: "error",
-          message:
-            "❌ Lỗi khi upload file: " +
-            (err?.message || "Vui lòng kiểm tra định dạng file"),
+          message: t("attendanceList.uploadError", {
+            error: err?.message || t("attendanceList.uploadCheckFormat"),
+          }),
         });
       }
     },
@@ -915,7 +963,7 @@ function AttendanceList() {
       setAlert({
         show: true,
         type: "error",
-        message: "Vui lòng đăng nhập để thực hiện thao tác này",
+        message: t("attendanceList.pleaseLogin"),
       });
       return;
     }
@@ -925,22 +973,24 @@ function AttendanceList() {
       setAlert({
         show: true,
         type: "error",
-        message: "Chỉ admin hoặc HR mới được phép xóa toàn bộ dữ liệu!",
+        message: t("attendanceList.adminOrHROnly"),
       });
       return;
     }
     // Hiển thị dialog xác nhận với thông tin ngày
-    const confirmMessage = `⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu chấm công ngày ${selectedDate}?\n\nSố lượng: ${employees.length} nhân viên\n\nHành động này KHÔNG THỂ HOÀN TÁC!`;
+    const confirmMessage = t("attendanceList.deleteAllConfirm", {
+      date: selectedDate,
+      count: employees.length,
+    });
     if (!window.confirm(confirmMessage)) return;
     // Xác nhận lần 2
-    const finalConfirm =
-      "Nhập 'XOA' (viết hoa) để xác nhận xóa toàn bộ dữ liệu:";
+    const finalConfirm = t("attendanceList.deleteAllConfirm2");
     const userInput = window.prompt(finalConfirm);
     if (userInput !== "XOA") {
       setAlert({
         show: true,
         type: "info",
-        message: "❌ Đã hủy thao tác xóa",
+        message: t("attendanceList.cancelDelete"),
       });
       return;
     }
@@ -950,15 +1000,19 @@ function AttendanceList() {
       setAlert({
         show: true,
         type: "success",
-        message: `✅ Đã xóa toàn bộ ${employees.length} bản ghi của ngày ${selectedDate}`,
+        message: t("attendanceList.deleteAllSuccess", {
+          count: employees.length,
+          date: selectedDate,
+        }),
       });
     } catch (err) {
       console.error("Delete all data error:", err);
       setAlert({
         show: true,
         type: "error",
-        message:
-          "❌ Lỗi khi xóa dữ liệu: " + (err?.message || "Vui lòng thử lại"),
+        message: t("attendanceList.deleteAllError", {
+          error: err?.message || t("attendanceList.tryAgain"),
+        }),
       });
     }
   }, [user, selectedDate, employees.length]);
@@ -972,7 +1026,7 @@ function AttendanceList() {
         setAlert({
           show: true,
           type: "error",
-          message: "⚠️ Không có nhân viên trong danh sách!",
+          message: t("attendanceList.noEmployees"),
         });
         return;
       }
@@ -1146,14 +1200,18 @@ function AttendanceList() {
       setAlert({
         show: true,
         type: "success",
-        message: `✅ Xuất biểu mẫu tăng ca thành công! ${filteredEmployees.length} nhân viên.`,
+        message: t("attendanceList.overtimeSuccess", {
+          count: filteredEmployees.length,
+        }),
       });
     } catch (err) {
       console.error("Export Overtime Form Error:", err);
       setAlert({
         show: true,
         type: "error",
-        message: `❌ Xuất biểu mẫu tăng ca thất bại! ${err.message || ""}`,
+        message: t("attendanceList.overtimeError", {
+          error: err.message || "",
+        }),
       });
     }
   }, [filteredEmployees, selectedDate]);
@@ -1211,12 +1269,12 @@ function AttendanceList() {
       setAlert({
         show: true,
         type: "error",
-        message: "⚠️ Không có nhân viên trong danh sách!",
+        message: t("attendanceList.noEmployees"),
       });
       return;
     }
     setShowOvertimeModal(true);
-  }, [filteredEmployees]);
+  }, [filteredEmployees, t]);
 
   // Print overtime list (from modal)
   const handlePrintOvertimeList = useCallback(() => {
@@ -1224,20 +1282,21 @@ function AttendanceList() {
       setAlert({
         show: true,
         type: "error",
-        message: "⚠️ Không có nhân viên trong danh sách!",
+        message: t("attendanceList.noEmployees"),
       });
       return;
     }
 
-    const overtimeDate = new Date(selectedDate).toLocaleDateString("vi-VN");
+    const overtimeDate = new Date(selectedDate).toLocaleDateString(
+      displayLocale,
+    );
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       setAlert({
         show: true,
         type: "error",
-        message:
-          "❌ Không thể mở cửa sổ in. Vui lòng kiểm tra cài đặt trình duyệt!",
+        message: t("attendanceList.printWindowBlocked"),
       });
       return;
     }
@@ -1517,7 +1576,9 @@ function AttendanceList() {
     setAlert({
       show: true,
       type: "success",
-      message: `✅ Mở cửa sổ in danh sách tăng ca (${modalFilteredEmployees.length} nhân viên)`,
+      message: t("attendanceList.printOvertimeOpened", {
+        count: modalFilteredEmployees.length,
+      }),
     });
   }, [modalFilteredEmployees, selectedDate]);
 
@@ -1527,19 +1588,18 @@ function AttendanceList() {
       setAlert({
         show: true,
         type: "error",
-        message: "⚠️ Không có nhân viên trong danh sách!",
+        message: t("attendanceList.noEmployees"),
       });
       return;
     }
 
-    const dateStr = new Date(selectedDate).toLocaleDateString("vi-VN");
+    const dateStr = new Date(selectedDate).toLocaleDateString(displayLocale);
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       setAlert({
         show: true,
         type: "error",
-        message:
-          "❌ Không thể mở cửa sổ in. Vui lòng kiểm tra cài đặt trình duyệt!",
+        message: t("attendanceList.printWindowBlocked"),
       });
       return;
     }
@@ -1837,7 +1897,9 @@ function AttendanceList() {
     setAlert({
       show: true,
       type: "success",
-      message: `✅ Mở cửa sổ in danh sách chấm công (${filteredEmployees.length} nhân viên)`,
+      message: t("attendanceList.printAttendanceOpened", {
+        count: filteredEmployees.length,
+      }),
     });
   }, [filteredEmployees, selectedDate]);
 
@@ -2103,122 +2165,24 @@ function AttendanceList() {
 
   return (
     <>
-      {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Toggle Button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed left-4 top-20 z-50 w-12 h-12 flex items-center justify-center rounded-full shadow-lg bg-black text-white hover:bg-gray-900 transition"
-      >
-        {sidebarOpen ? "✕" : "☰"}
-      </button>
-
       {/* Main Content */}
-      <div
-        className={`p-4 md:p-8 transition-all duration-300 ${
-          sidebarOpen ? "ml-72" : "ml-0"
-        }`}
-      >
+      <div className="p-4 md:p-8 transition-all duration-300">
         {/* Header */}
         <div className="mb-6">
           <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-600">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-3xl font-extrabold text-[#1e293b] uppercase tracking-wide">
-                  DANH SÁCH NHÂN VIÊN HIỆN DIỆN
+                  {tl("activeEmployeesTitle", "DANH SÁCH NHÂN VIÊN HIỆN DIỆN")}
                 </h1>
                 <p className="text-base text-gray-600 mt-1">
-                  List of Active Employees
+                  {tl("activeEmployeesSubtitle", "List of Active Employees")}
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Ngày/Date: {new Date().toLocaleDateString("vi-VN")}
+                  {tl("dateLabel", "Ngày/Date")}:{" "}
+                  {new Date().toLocaleDateString(displayLocale)}
                 </p>
               </div>
-              {/*<div className="flex items-center gap-4">
-                <BirthdayCakeBell employees={allEmployees} />
-                <NotificationBell
-                  count={buCongEmployees.length}
-                  onExport={handleExportBuCongExcel}
-                  exportLabel="⬇ Xuất Excel"
-                >
-                  Danh sách nhân viên bù công
-                  {buCongEmployees.length === 0 ? (
-                    <div
-                      style={{
-                        textAlign: "center",
-                        color: "#888",
-                        fontSize: 14,
-                        padding: 20,
-                      }}
-                    >
-                      Không có nhân viên bù công nào
-                    </div>
-                  ) : (
-                    <div style={{ maxHeight: 600, overflow: "auto" }}>
-                      <table
-                        style={{
-                          width: "100%",
-                          minWidth: 600,
-                          borderCollapse: "collapse",
-                          fontSize: 14,
-                        }}
-                      >
-                        <thead
-                          style={{
-                            position: "sticky",
-                            top: 0,
-                            background: "#e3f2fd",
-                            zIndex: 1,
-                          }}
-                        >
-                          <tr>
-                            <th style={{ padding: 8 }}>STT</th>
-                            <th style={{ padding: 8 }}>MNV</th>
-                            <th style={{ padding: 8 }}>Họ và tên</th>
-                            <th style={{ padding: 8 }}>Bộ phận</th>
-                            <th style={{ padding: 8 }}>Giờ vào</th>
-                            <th style={{ padding: 8 }}>Giờ ra</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {buCongEmployees.map((emp, idx) => (
-                            <tr
-                              key={emp.id}
-                              style={{
-                                background: idx % 2 === 0 ? "#f8fbff" : "#fff",
-                              }}
-                            >
-                              <td style={{ textAlign: "center", padding: 8 }}>
-                                {idx + 1}
-                              </td>
-                              <td style={{ textAlign: "center", padding: 8 }}>
-                                {emp.mnv}
-                              </td>
-                              <td style={{ padding: 8 }}>{emp.hoVaTen}</td>
-                              <td style={{ padding: 8 }}>{emp.boPhan}</td>
-                              <td style={{ textAlign: "center", padding: 8 }}>
-                                {emp.gioVao}
-                              </td>
-                              <td style={{ textAlign: "center", padding: 8 }}>
-                                {emp.gioRa || "-"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </NotificationBell>
-              </div>  */}
             </div>
           </div>
         </div>
@@ -2244,11 +2208,11 @@ function AttendanceList() {
             setUnattendedPopupDismissed(true);
           }}
           variant="primary"
-          title="Nhân viên chưa điểm danh"
+          title={tl("unattendedTitle", "Nhân viên chưa điểm danh")}
           size="lg"
           actions={[
             {
-              label: "Đóng",
+              label: t("attendanceList.close"),
               onClick: () => {
                 setShowUnattendedPopup(false);
                 setUnattendedPopupDismissed(true);
@@ -2256,7 +2220,7 @@ function AttendanceList() {
               variant: "secondary",
             },
             {
-              label: "Lọc nhanh",
+              label: t("attendanceList.quickFilter"),
               onClick: () => {
                 setGioVaoFilter([quickNoCheckInFilterValue]);
                 setShowUnattendedPopup(false);
@@ -2267,15 +2231,14 @@ function AttendanceList() {
           ]}
         >
           <p className="text-sm text-gray-700 mb-4">
-            Hiện có{" "}
-            <span className="font-bold text-amber-600">
-              {unattendedEmployees.length}
-            </span>{" "}
-            nhân viên chưa có thời gian vào trong ngày{" "}
-            <span className="font-bold text-amber-600">
-              {new Date(selectedDate).toLocaleDateString("vi-VN")}
-            </span>
-            .
+            {tl(
+              "unattendedSummary",
+              "Hiện có {{count}} nhân viên chưa có thời gian vào trong ngày {{date}}.",
+              {
+                count: unattendedEmployees.length,
+                date: new Date(selectedDate).toLocaleDateString(displayLocale),
+              },
+            )}
           </p>
 
           <div className="overflow-x-auto border rounded-lg shadow-sm">
@@ -2283,16 +2246,16 @@ function AttendanceList() {
               <thead className="bg-gradient-to-r from-blue-700 to-blue-400 text-white sticky top-0">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
-                    STT
+                    {tl("colIndex", "STT")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
-                    MNV
+                    {tl("colCode", "MNV")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
-                    Họ và tên
+                    {tl("colName", "Họ và tên")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
-                    Bộ phận
+                    {tl("colDepartment", "Bộ phận")}
                   </th>
                 </tr>
               </thead>
@@ -2346,18 +2309,109 @@ function AttendanceList() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="🔍 Tìm kiếm..."
+              placeholder={t("attendanceList.searchPlaceholder")}
               className="w-full sm:w-48 border rounded-md h-9 px-3 text-sm focus:ring-2 focus:ring-blue-200"
             />
           </div>
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:justify-end">
+          <div className="flex flex-wrap items-stretch gap-2 w-full sm:w-auto sm:justify-end">
+            <div className="flex-1 sm:flex-none min-w-[44px]">
+              <BirthdayCakeBell selectedDate={selectedDate} inline />
+            </div>
+            <div className="flex-1 sm:flex-none min-w-[44px]">
+              <NotificationBell
+                inline
+                count={buCongEmployees.length}
+                onExport={handleExportBuCongExcel}
+                exportLabel={t("attendanceList.export")}
+              >
+                {buCongEmployees.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      color: "#888",
+                      fontSize: 14,
+                      padding: 20,
+                    }}
+                  >
+                    {t("attendanceList.noCompensationEmployees", {
+                      defaultValue: "Không có nhân viên bù công nào",
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ maxHeight: 600, overflow: "auto" }}>
+                    <table
+                      style={{
+                        width: "100%",
+                        minWidth: 600,
+                        borderCollapse: "collapse",
+                        fontSize: 14,
+                      }}
+                    >
+                      <thead
+                        style={{
+                          position: "sticky",
+                          top: 0,
+                          background: "#e3f2fd",
+                          zIndex: 1,
+                        }}
+                      >
+                        <tr>
+                          <th style={{ padding: 8 }}>
+                            {tl("colIndex", "STT")}
+                          </th>
+                          <th style={{ padding: 8 }}>{tl("colCode", "MNV")}</th>
+                          <th style={{ padding: 8 }}>
+                            {tl("colName", "Họ và tên")}
+                          </th>
+                          <th style={{ padding: 8 }}>
+                            {tl("colDepartment", "Bộ phận")}
+                          </th>
+                          <th style={{ padding: 8 }}>
+                            {tl("colTimeIn", "Giờ vào")}
+                          </th>
+                          <th style={{ padding: 8 }}>
+                            {tl("colTimeOut", "Giờ ra")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {buCongEmployees.map((emp, idx) => (
+                          <tr
+                            key={emp.id}
+                            style={{
+                              background: idx % 2 === 0 ? "#f8fbff" : "#fff",
+                            }}
+                          >
+                            <td style={{ textAlign: "center", padding: 8 }}>
+                              {idx + 1}
+                            </td>
+                            <td style={{ textAlign: "center", padding: 8 }}>
+                              {emp.mnv}
+                            </td>
+                            <td style={{ padding: 8 }}>{emp.hoVaTen}</td>
+                            <td style={{ padding: 8 }}>{emp.boPhan}</td>
+                            <td style={{ textAlign: "center", padding: 8 }}>
+                              {emp.gioVao}
+                            </td>
+                            <td style={{ textAlign: "center", padding: 8 }}>
+                              {emp.gioRa || "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </NotificationBell>
+            </div>
+
             {/* Filter Dropdown Menu */}
             <div className="relative flex-1 sm:flex-none min-w-[110px]">
               <button
                 onClick={() =>
                   setFilterMenuDropdownOpen(!filterMenuDropdownOpen)
                 }
-                className={`w-full px-3 sm:px-4 py-2 rounded font-bold text-sm shadow transition flex items-center justify-center gap-2 ${
+                className={`w-full px-3 sm:px-4 py-2 rounded-lg border border-slate-300 font-bold text-sm shadow transition flex items-center justify-center gap-2 ${
                   gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
                   gioVaoFilter.length > 0 ||
@@ -2367,7 +2421,7 @@ function AttendanceList() {
                     : "bg-gray-600 text-white hover:bg-gray-700"
                 }`}
               >
-                🔽 Bộ lọc
+                🔽 {tl("filter", "Bộ lọc")}
                 <span className="text-xs">
                   {gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
@@ -2397,9 +2451,14 @@ function AttendanceList() {
                   >
                     <span className="text-lg">🔍</span>
                     <div className="flex-1">
-                      <div className="font-semibold">Bộ lọc nâng cao</div>
+                      <div className="font-semibold">
+                        {t("attendanceList.advancedFilter")}
+                      </div>
                       <div className="text-xs text-gray-500">
-                        Bộ phận, Giới tính, Thời gian
+                        {tl(
+                          "advancedFilterDesc",
+                          "Bộ phận, Giới tính, Thời gian",
+                        )}
                       </div>
                     </div>
                   </button>
@@ -2418,9 +2477,11 @@ function AttendanceList() {
                   >
                     <span className="text-lg">⚡</span>
                     <div className="flex-1">
-                      <div className="font-semibold">Lọc nhanh</div>
+                      <div className="font-semibold">
+                        {t("attendanceList.quickFilter")}
+                      </div>
                       <div className="text-xs text-gray-500">
-                        Chưa chấm công
+                        {tl("notCheckedIn", "Nhân viên chưa điểm danh")}
                       </div>
                     </div>
                   </button>
@@ -2437,10 +2498,12 @@ function AttendanceList() {
                       <span className="text-lg">📋</span>
                       <div className="flex-1">
                         <div className="font-semibold text-sm">
-                          Nhân viên nghỉ việc
+                          {tl("missingEmployees", "Nhân viên nghỉ việc")}
                         </div>
                         <div className="text-xs text-red-600">
-                          {missingEmployees.length} người
+                          {tl("peopleCount", "{{count}} người", {
+                            count: missingEmployees.length,
+                          })}
                         </div>
                       </div>
                       <span className="ml-2 px-2 py-1 bg-red-600 text-white rounded-full text-xs font-bold">
@@ -2459,9 +2522,11 @@ function AttendanceList() {
                   >
                     <span className="text-lg">⏰</span>
                     <div className="flex-1">
-                      <div className="font-semibold">Tăng ca</div>
+                      <div className="font-semibold">
+                        {t("attendanceList.overtime")}
+                      </div>
                       <div className="text-xs text-gray-500">
-                        Đăng ký tăng ca ngày
+                        {tl("registerDailyOvertime", "Đăng ký tăng ca ngày")}
                       </div>
                     </div>
                   </button>
@@ -2482,9 +2547,11 @@ function AttendanceList() {
                     >
                       <span className="text-lg">🗑️</span>
                       <div className="flex-1">
-                        <div className="font-semibold">Xóa lọc</div>
+                        <div className="font-semibold">
+                          {t("attendanceList.clearFilter")}
+                        </div>
                         <div className="text-xs text-gray-500">
-                          Reset tất cả bộ lọc
+                          {tl("resetAllFilters", "Reset tất cả bộ lọc")}
                         </div>
                       </div>
                     </button>
@@ -2502,10 +2569,13 @@ function AttendanceList() {
                       <div className="relative z-10">
                         <h3 className="font-bold text-white text-xl flex items-center gap-2">
                           <span className="text-2xl">🔍</span>
-                          Bộ lọc nâng cao
+                          {t("attendanceList.advancedFilter")}
                         </h3>
                         <p className="text-xs text-blue-50 mt-1.5 font-medium">
-                          Chọn điều kiện lọc • Kết quả tự động cập nhật
+                          {tl(
+                            "advancedFilterAutoUpdate",
+                            "Chọn điều kiện lọc • Kết quả tự động cập nhật",
+                          )}
                         </p>
                       </div>
                     </div>
@@ -2527,7 +2597,7 @@ function AttendanceList() {
                             <span className="text-orange-500 text-base">
                               🏢
                             </span>
-                            <span>Bộ phận</span>
+                            <span>{tl("department", "Bộ phận")}</span>
                           </span>
                           <span className="text-orange-600 font-bold">
                             {expandedSections.department ? "▼" : "▶"}
@@ -2541,13 +2611,13 @@ function AttendanceList() {
                               onChange={(e) =>
                                 setFilterDepartmentSearch(e.target.value)
                               }
-                              placeholder="🔍 Tìm bộ phận..."
+                              placeholder={t("attendanceList.searchDepartment")}
                               className="w-full border-b border-orange-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                             />
                             <div className="max-h-40 overflow-y-auto">
                               {departments.length === 0 ? (
                                 <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                  Không có dữ liệu
+                                  {tl("noData", "Không có dữ liệu")}
                                 </div>
                               ) : (
                                 <>
@@ -2640,7 +2710,7 @@ function AttendanceList() {
                         >
                           <span className="flex items-center gap-2">
                             <span className="text-green-500 text-base">⚧️</span>
-                            <span>Giới tính</span>
+                            <span>{tl("gender", "Giới tính")}</span>
                           </span>
                           <span className="text-green-600 font-bold">
                             {expandedSections.gender ? "▼" : "▶"}
@@ -2654,13 +2724,13 @@ function AttendanceList() {
                               onChange={(e) =>
                                 setFilterGenderSearch(e.target.value)
                               }
-                              placeholder="🔍 Tìm giới tính..."
+                              placeholder={t("attendanceList.searchGender")}
                               className="w-full border-b border-green-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                             />
                             <div className="max-h-40 overflow-y-auto">
                               {genderList.length === 0 ? (
                                 <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                  Không có dữ liệu
+                                  {tl("noData", "Không có dữ liệu")}
                                 </div>
                               ) : (
                                 <>
@@ -2716,7 +2786,9 @@ function AttendanceList() {
                                           }}
                                           className="mr-2 w-4 h-4 cursor-pointer"
                                         />
-                                        {gender === "YES" ? "Nữ" : "Nam"}
+                                        {gender === "YES"
+                                          ? t("attendanceList.femaleLabel")
+                                          : t("attendanceList.maleLabel")}
                                       </label>
                                     ))}
                                 </>
@@ -2741,7 +2813,7 @@ function AttendanceList() {
                             <span className="text-indigo-500 text-base">
                               ⏰
                             </span>
-                            <span>Thời gian vào</span>
+                            <span>{tl("timeIn", "Thời gian vào")}</span>
                           </span>
                           <span className="text-indigo-600 font-bold">
                             {expandedSections.gioVao ? "▼" : "▶"}
@@ -2772,7 +2844,7 @@ function AttendanceList() {
                                   }}
                                   className="mr-2 w-4 h-4 cursor-pointer"
                                 />
-                                ✅ Đã chấm công
+                                ✅ {tl("checkedIn", "Đã chấm công")}
                               </label>
                               <label className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100">
                                 <input
@@ -2796,7 +2868,7 @@ function AttendanceList() {
                                   }}
                                   className="mr-2 w-4 h-4 cursor-pointer"
                                 />
-                                ❎ Chưa chấm công
+                                ❎ {tl("notCheckedInShort", "Chưa chấm công")}
                               </label>
                             </div>
                           </div>
@@ -2816,7 +2888,7 @@ function AttendanceList() {
                         }}
                         className="px-5 py-2.5 rounded-lg text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow"
                       >
-                        🗑️ Xóa tất cả
+                        🗑️ {tl("clearAll", "Xóa tất cả")}
                       </button>
                       <button
                         onClick={() => {
@@ -2825,7 +2897,7 @@ function AttendanceList() {
                         }}
                         className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                       >
-                        ✖️ Hủy
+                        ✖️ {t("attendanceList.cancel", { defaultValue: "Hủy" })}
                       </button>
                       <button
                         onClick={() => {
@@ -2834,7 +2906,7 @@ function AttendanceList() {
                         }}
                         className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                       >
-                        ✓ Áp dụng
+                        ✓ {tl("apply", "Áp dụng")}
                       </button>
                     </div>
                   </div>
@@ -2849,7 +2921,7 @@ function AttendanceList() {
                   onClick={() => setActionDropdownOpen(!actionDropdownOpen)}
                   className="w-full px-3 sm:px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center justify-center gap-1"
                 >
-                  ⚙️ Chức năng
+                  ⚙️ {tl("actionsMenu", "Chức năng")}
                   <span className="text-xs">
                     {actionDropdownOpen ? "▲" : "▼"}
                   </span>
@@ -2864,10 +2936,11 @@ function AttendanceList() {
                         </span>
                         <div className="flex flex-col">
                           <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                            Upload Excel theo ngày
+                            {tl("uploadExcelByDate", "Upload Excel theo ngày")}
                           </span>
                           <span className="text-xs text-gray-500 mt-0.5">
-                            Import dữ liệu cho ngày:{" "}
+                            {tl("importDataForDate", "Import dữ liệu cho ngày")}
+                            :{" "}
                             <span className="font-bold text-blue-600">
                               {selectedDate}
                             </span>
@@ -2899,7 +2972,9 @@ function AttendanceList() {
                       </span>
                       <div className="flex flex-col">
                         <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                          Xuất Excel
+                          {t("attendanceList.export", {
+                            defaultValue: "Xuất Excel",
+                          })}
                         </span>
                         <span className="text-xs text-gray-500 mt-0.5">
                           Export to Excel file
@@ -2935,7 +3010,7 @@ function AttendanceList() {
                       </span>
                       <div className="flex flex-col">
                         <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                          Thêm mới
+                          {tl("addNew", "Thêm mới")}
                         </span>
                         <span className="text-xs text-gray-500 mt-0.5">
                           Add new employee
@@ -2957,7 +3032,7 @@ function AttendanceList() {
                           </span>
                           <div className="flex flex-col">
                             <span className="font-bold text-red-600 text-sm group-hover:text-red-700 transition-colors">
-                              Xóa toàn bộ dữ liệu
+                              {tl("deleteAllData", "Xóa toàn bộ dữ liệu")}
                             </span>
                             <span className="text-xs text-gray-500 mt-0.5">
                               Delete all data for {selectedDate}
@@ -2990,7 +3065,7 @@ function AttendanceList() {
                 onClick={() => setPrintDropdownOpen(!printDropdownOpen)}
                 className="w-full px-3 sm:px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition flex items-center justify-center gap-1"
               >
-                🖨️ In
+                🖨️ {tl("print", "In")}
                 <span className="text-xs">{printDropdownOpen ? "▲" : "▼"}</span>
               </button>
               {printDropdownOpen && (
@@ -3007,7 +3082,7 @@ function AttendanceList() {
                     </span>
                     <div className="flex flex-col">
                       <span className="font-bold text-gray-800 text-sm group-hover:text-blue-700 transition-colors">
-                        In đăng ký tăng ca
+                        {tl("printOvertimeRegistration", "In đăng ký tăng ca")}
                       </span>
                       <span className="text-xs text-gray-500 mt-0.5">
                         Overtime registration form
@@ -3026,7 +3101,7 @@ function AttendanceList() {
                     </span>
                     <div className="flex flex-col">
                       <span className="font-bold text-gray-800 text-sm group-hover:text-blue-700 transition-colors">
-                        In danh sách chấm công
+                        {tl("printAttendanceList", "In danh sách chấm công")}
                       </span>
                       <span className="text-xs text-gray-500 mt-0.5">
                         Attendance list report
@@ -3051,7 +3126,9 @@ function AttendanceList() {
                 ×
               </button>
               <h2 className="text-xl font-extrabold mb-6 text-black tracking-wide text-center drop-shadow uppercase">
-                {editing ? "Cập nhật nhân viên" : "Thêm nhân viên mới"}
+                {editing
+                  ? tl("updateEmployee", "Cập nhật nhân viên")
+                  : tl("addEmployee", "Thêm nhân viên mới")}
               </h2>
               <form
                 onSubmit={handleSubmit}
@@ -3059,7 +3136,7 @@ function AttendanceList() {
               >
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    STT
+                    {tl("stt", "STT")}
                   </label>
                   <input
                     type="number"
@@ -3071,7 +3148,7 @@ function AttendanceList() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    MNV *
+                    {tl("mnv", "MNV")} *
                   </label>
                   <input
                     type="text"
@@ -3084,7 +3161,7 @@ function AttendanceList() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    MVT
+                    {tl("mvt", "MVT")}
                   </label>
                   <input
                     type="text"
@@ -3096,7 +3173,7 @@ function AttendanceList() {
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Họ và tên *
+                    {tl("fullName", "Họ và tên")}
                   </label>
                   <input
                     type="text"
@@ -3109,7 +3186,7 @@ function AttendanceList() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Giới tính
+                    {tl("gender", "Giới tính")}
                   </label>
                   <select
                     name="gioiTinh"
@@ -3117,13 +3194,13 @@ function AttendanceList() {
                     onChange={handleChange}
                     className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
                   >
-                    <option value="YES">YES (Nữ)</option>
-                    <option value="NO">NO (Nam)</option>
+                    <option value="YES">{t("attendanceList.female")}</option>
+                    <option value="NO">{t("attendanceList.male")}</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Ngày tháng năm sinh
+                    {tl("dateOfBirth", "Ngày tháng năm sinh")}
                   </label>
                   <input
                     type="date"
@@ -3135,7 +3212,7 @@ function AttendanceList() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Mã bộ phận
+                    {tl("departmentCode", "Mã BP")}
                   </label>
                   <input
                     type="text"
@@ -3147,7 +3224,7 @@ function AttendanceList() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Bộ phận *
+                    {tl("departmentRequired", "Bộ phận")}
                   </label>
                   <input
                     type="text"
@@ -3160,7 +3237,7 @@ function AttendanceList() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Giờ vào
+                    {tl("timeIn", "Giờ vào")}
                   </label>
                   <input
                     type="text"
@@ -3173,7 +3250,7 @@ function AttendanceList() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Giờ ra
+                    {tl("timeOut", "Giờ ra")}
                   </label>
                   <input
                     type="time"
@@ -3185,7 +3262,7 @@ function AttendanceList() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Ca làm việc
+                    {tl("workShift", "Ca làm việc")}
                   </label>
                   <input
                     type="text"
@@ -3197,7 +3274,7 @@ function AttendanceList() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Chấm công
+                    {tl("attendance", "Chấm công")}
                   </label>
                   <input
                     type="text"
@@ -3211,7 +3288,9 @@ function AttendanceList() {
                   type="submit"
                   className="sm:col-span-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-extrabold text-base mt-2 shadow-lg hover:from-blue-700 hover:to-purple-700 active:scale-95 transition-all duration-150 tracking-wide"
                 >
-                  {editing ? "Cập nhật" : "Thêm mới"}
+                  {editing
+                    ? t("attendanceList.btnUpdate")
+                    : t("attendanceList.btnAdd")}
                 </button>
               </form>
             </div>
@@ -3229,10 +3308,13 @@ function AttendanceList() {
                 ×
               </button>
               <h2 className="text-lg font-bold mb-4 text-[#1e293b]">
-                Biểu mẫu đăng ký tăng ca
+                {t("attendanceList.overtimeFormTitle", {
+                  defaultValue: "Biểu mẫu đăng ký tăng ca",
+                })}
               </h2>
               <p className="text-sm text-gray-600 mb-4">
-                Ngày: {new Date(selectedDate).toLocaleDateString("vi-VN")}
+                {tl("dateLabel", "Ngày/Date")}:{" "}
+                {new Date(selectedDate).toLocaleDateString(displayLocale)}
               </p>
 
               {/* Filter and Export */}
@@ -3259,13 +3341,13 @@ function AttendanceList() {
                     onClick={handlePrintOvertimeList}
                     className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition whitespace-nowrap"
                   >
-                    🖨️ In danh sách
+                    🖨️ {tl("printList", "In danh sách")}
                   </button>
                   <button
                     onClick={handleExportOvertimeForm}
                     className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition whitespace-nowrap"
                   >
-                    ⬇️ Xuất biểu mẫu Excel
+                    ⬇️ {tl("exportOvertimeExcel", "Xuất biểu mẫu Excel")}
                   </button>
                 </div>
               </div>
@@ -3279,10 +3361,13 @@ function AttendanceList() {
                       <div className="relative z-10">
                         <h3 className="font-bold text-white text-xl flex items-center gap-2">
                           <span className="text-2xl">🔍</span>
-                          Bộ lọc nâng cao
+                          {t("attendanceList.advancedFilter")}
                         </h3>
                         <p className="text-xs text-blue-50 mt-1.5 font-medium">
-                          Chọn điều kiện lọc • Áp dụng cho danh sách trong modal
+                          {tl(
+                            "advancedFilterModalDesc",
+                            "Chọn điều kiện lọc • Áp dụng cho danh sách trong modal",
+                          )}
                         </p>
                       </div>
                     </div>
@@ -3302,7 +3387,7 @@ function AttendanceList() {
                         >
                           <span className="flex items-center gap-2">
                             <span className="text-blue-500 text-base">🏢</span>
-                            <span>Bộ phận</span>
+                            <span>{tl("department", "Bộ phận")}</span>
                           </span>
                           <span className="text-blue-600 font-bold">
                             {modalExpandedSections.dept ? "▼" : "▶"}
@@ -3313,7 +3398,7 @@ function AttendanceList() {
                             {modalUniqueDepartments.length === 0 ? (
                               <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
                                 <span className="animate-spin">⏳</span>
-                                Không có dữ liệu
+                                {tl("noData", "Không có dữ liệu")}
                               </div>
                             ) : (
                               modalUniqueDepartments.map((dept) => (
@@ -3342,7 +3427,7 @@ function AttendanceList() {
                                     }}
                                     className="mr-2 w-4 h-4 cursor-pointer"
                                   />
-                                  {dept || "(Không rõ)"}
+                                  {dept || tl("unknown", "(Không rõ)")}
                                 </label>
                               ))
                             )}
@@ -3363,7 +3448,7 @@ function AttendanceList() {
                         >
                           <span className="flex items-center gap-2">
                             <span className="text-green-500 text-base">⚧️</span>
-                            <span>Giới tính</span>
+                            <span>{tl("gender", "Giới tính")}</span>
                           </span>
                           <span className="text-green-600 font-bold">
                             {modalExpandedSections.gender ? "▼" : "▶"}
@@ -3374,7 +3459,7 @@ function AttendanceList() {
                             {modalUniqueGenders.length === 0 ? (
                               <div className="px-3 py-2 text-sm text-gray-500 italic flex items-center gap-2">
                                 <span className="animate-spin">⏳</span>
-                                Không có dữ liệu
+                                {tl("noData", "Không có dữ liệu")}
                               </div>
                             ) : (
                               modalUniqueGenders.map((gender) => (
@@ -3403,7 +3488,7 @@ function AttendanceList() {
                                     }}
                                     className="mr-2 w-4 h-4 cursor-pointer"
                                   />
-                                  {gender || "(Không rõ)"}
+                                  {gender || tl("unknown", "(Không rõ)")}
                                 </label>
                               ))
                             )}
@@ -3421,13 +3506,13 @@ function AttendanceList() {
                         }}
                         className="px-3 py-2 text-xs rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 font-medium"
                       >
-                        Xóa bộ lọc
+                        {tl("clearFilter", "Xóa bộ lọc")}
                       </button>
                       <button
                         onClick={() => setModalFilterOpen(false)}
                         className="px-3 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow font-medium"
                       >
-                        Đóng
+                        {t("attendanceList.close")}
                       </button>
                     </div>
                   </div>
@@ -3461,7 +3546,7 @@ function AttendanceList() {
                         Mã BP
                       </th>
                       <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
-                        Bộ phận
+                        {t("attendanceList.excelHeaderDept")}
                       </th>
                       <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[110px]">
                         Tổng thời gian làm thêm giờ
@@ -3486,7 +3571,9 @@ function AttendanceList() {
                         Số giờ làm thêm
                       </th>
                       <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center min-w-[100px]">
-                        Ghi chú
+                        {t("attendanceList.excelHeaderRemark", {
+                          defaultValue: "Ghi chú",
+                        })}
                       </th>
                     </tr>
                   </thead>
@@ -3549,7 +3636,7 @@ function AttendanceList() {
         {/* Table */}
         <div className="overflow-x-hidden md:overflow-x-auto bg-white rounded-lg shadow-lg">
           <p className="px-4 pb-2 text-xs font-medium text-amber-500 text-end">
-            Lưu ý: Phép năm chưa tính tháng hiện tại.
+            {tl("yearLeaveNote", "Lưu ý: Phép năm chưa tính tháng hiện tại.")}
           </p>
           <table className="w-full table-fixed md:table-auto border-collapse min-w-full md:min-w-[1200px]">
             <thead>
@@ -3559,47 +3646,47 @@ function AttendanceList() {
                 }}
               >
                 <th className="hidden md:table-cell px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  STT
+                  {tl("stt", "STT")}
                 </th>
                 <th className="px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  MNV
+                  {tl("mnv", "MNV")}
                 </th>
                 <th className="hidden md:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  MVT
+                  {tl("mvt", "MVT")}
                 </th>
                 <th className="px-2 md:px-4 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Họ và tên
+                  {tl("fullName", "Họ và tên")}
                 </th>
                 <th className="hidden md:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Giới tính
+                  {tl("gender", "Giới tính")}
                 </th>
                 <th className="hidden md:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Ngày tháng năm sinh
+                  {tl("dateOfBirth", "Ngày tháng năm sinh")}
                 </th>
                 <th className="hidden lg:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Mã BP
+                  {tl("departmentCode", "Mã BP")}
                 </th>
                 <th className="hidden md:table-cell px-4 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Bộ phận
+                  {tl("department", "Bộ phận")}
                 </th>
                 <th className="px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Thời gian vào
+                  {tl("timeIn", "Thời gian vào")}
                 </th>
                 <th className="hidden md:table-cell px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Thời gian ra
+                  {tl("timeOut", "Thời gian ra")}
                 </th>
                 <th className="px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Phép năm
+                  {tl("annualLeave", "Phép năm")}
                 </th>
                 <th className="hidden md:table-cell px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Ca làm việc
+                  {tl("workShift", "Ca làm việc")}
                 </th>
                 <th className="hidden md:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Chấm công
+                  {tl("attendance", "Chấm công")}
                 </th>
                 {user && (
                   <th className="hidden md:table-cell px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                    Hành động
+                    {tl("actions", "Hành động")}
                   </th>
                 )}
               </tr>
@@ -3668,7 +3755,9 @@ function AttendanceList() {
                             }));
                           }}
                         >
-                          <option value="">Chọn loại</option>
+                          <option value="">
+                            {tl("chooseType", "Chọn loại")}
+                          </option>
                           <option value="Có đi làm">Có</option>
                           <option value="Vào trễ">Vào trễ</option>
                           <option value="Phép năm">PN</option>
@@ -3708,14 +3797,17 @@ function AttendanceList() {
                                   setAlert({
                                     show: true,
                                     type: "success",
-                                    message: "✅ Cập nhật thành công",
+                                    message: t("attendanceList.updateSuccess"),
                                   });
                                 } catch (err) {
                                   console.error("Save gioVao error:", err);
                                   setAlert({
                                     show: true,
                                     type: "error",
-                                    message: "❌ Cập nhật thất bại",
+                                    message: tl(
+                                      "updateFail",
+                                      "❌ Cập nhật thất bại",
+                                    ),
                                   });
                                 } finally {
                                   setSavingGioVao((prev) => {
@@ -3734,7 +3826,7 @@ function AttendanceList() {
                       </div>
                     ) : user ? (
                       <span className="text-gray-400 italic text-xs">
-                        🔒 Không được phép chỉnh sửa
+                        🔒 {tl("cannotEdit", "Không được phép chỉnh sửa")}
                       </span>
                     ) : (
                       <span className="text-gray-400 italic">--</span>
@@ -3747,7 +3839,9 @@ function AttendanceList() {
                   </td>
                   <td className="px-2 md:px-3 py-2.5 md:py-3 text-xs md:text-sm text-center">
                     <span className="text-xs md:text-sm text-gray-700 font-bold">
-                      {String(emp.pnTon ?? emp.phepNam ?? "").trim() || "--"}
+                      {String(emp.pnTon ?? emp.phepNam ?? "").trim() ||
+                        prevDayPnTonMap[String(emp.mnv || "").trim()] ||
+                        "--"}
                     </span>
                   </td>
                   <td className="hidden md:table-cell px-2 md:px-3 py-2.5 md:py-3 text-xs md:text-sm text-center min-w-[130px]">
@@ -3768,7 +3862,9 @@ function AttendanceList() {
                             }));
                           }}
                         >
-                          <option value="">Chọn ca</option>
+                          <option value="">
+                            {tl("chooseShift", "Chọn ca")}
+                          </option>
                           <option value="Ca đêm">Ca đêm</option>
                           <option value="Ca 1">Ca 1</option>
                           <option value="Ca 2">Ca 2</option>
@@ -3801,14 +3897,17 @@ function AttendanceList() {
                                   setAlert({
                                     show: true,
                                     type: "success",
-                                    message: "✅ Cập nhật thành công",
+                                    message: t("attendanceList.updateSuccess"),
                                   });
                                 } catch (err) {
                                   console.error("Save caLamViec error:", err);
                                   setAlert({
                                     show: true,
                                     type: "error",
-                                    message: "❌ Cập nhật thất bại",
+                                    message: tl(
+                                      "updateFail",
+                                      "❌ Cập nhật thất bại",
+                                    ),
                                   });
                                 } finally {
                                   setSavingCaLamViec((prev) => {
@@ -3827,7 +3926,7 @@ function AttendanceList() {
                       </div>
                     ) : user ? (
                       <span className="text-gray-400 italic text-xs">
-                        🔒 Không được phép chỉnh sửa
+                        🔒 {tl("cannotEdit", "Không được phép chỉnh sửa")}
                       </span>
                     ) : (
                       <span className="text-gray-400 italic">--</span>
@@ -3872,7 +3971,7 @@ function AttendanceList() {
             <div>
               <div className="flex items-center flex-wrap gap-2 mt-1">
                 <span className="text-sm font-bold text-gray-700 flex items-center">
-                  📊 Tổng số nhân viên:
+                  📊 {tl("totalEmployees", "Tổng số nhân viên")}:
                   <span className="ml-2 text-lg text-blue-600">
                     {filteredEmployees.length}
                   </span>
@@ -3900,7 +3999,7 @@ function AttendanceList() {
                       ))
                     ) : (
                       <span className="italic text-gray-400">
-                        Không có phân loại
+                        {tl("noClassification", "Không có phân loại")}
                       </span>
                     );
                   })()}
@@ -3908,7 +4007,8 @@ function AttendanceList() {
               </div>
             </div>
             <p className="text-xs text-gray-500 self-start sm:self-auto">
-              Ngày: {new Date(selectedDate).toLocaleDateString("vi-VN")}
+              {tl("date", "Ngày")}:{" "}
+              {new Date(selectedDate).toLocaleDateString(displayLocale)}
             </p>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import UnifiedModal from "../common/UnifiedModal";
 
 /**
@@ -18,6 +19,7 @@ function MissingEmployeesModal({
   employees = [],
   selectedDate = "",
 }) {
+  const { t } = useTranslation();
   // Hàm tính ngày hôm trước
   const getPreviousDate = (dateStr) => {
     if (!dateStr) return "";
@@ -38,11 +40,13 @@ function MissingEmployeesModal({
       isOpen={isOpen}
       onClose={onClose}
       variant="warning"
-      title={`Nhân viên nghỉ việc (${missingEmployees.length})`}
+      title={t("missingEmployees.modalTitle", {
+        count: missingEmployees.length,
+      })}
       size="lg"
       actions={[
         {
-          label: "Đóng",
+          label: t("common.close"),
           onClick: onClose,
           variant: "secondary",
         },
@@ -50,25 +54,25 @@ function MissingEmployeesModal({
     >
       {/* Thông tin tóm tắt */}
       <p className="text-sm text-gray-700 mb-4">
-        Ngày hôm trước ({previousDateStr}):{" "}
+        {t("missingEmployees.prevDay", { date: previousDateStr })}{" "}
         <span className="font-bold text-red-600">
           {previousDayEmployees.length}
         </span>{" "}
-        nhân viên
+        {t("missingEmployees.employees")}
       </p>
       <p className="text-sm text-gray-700 mb-4">
-        Ngày hôm nay ({currentDateStr}):{" "}
+        {t("missingEmployees.today", { date: currentDateStr })}{" "}
         <span className="font-bold text-green-600">{employees.length}</span>{" "}
-        nhân viên
+        {t("missingEmployees.employees")}
       </p>
       <p className="text-sm text-gray-700 mb-6 pb-4 border-b border-gray-200">
-        Nhân viên nghỉ việc:{" "}
+        {t("missingEmployees.resignedEmployees")}{" "}
         <span className="font-bold text-red-600">
           {missingEmployees.length}
         </span>
         {missingEmployees.length > 0 && (
           <span className="text-xs text-gray-500 ml-2">
-            (có thể đã nghỉ việc)
+            {t("missingEmployees.mayHaveResigned")}
           </span>
         )}
       </p>
@@ -76,7 +80,7 @@ function MissingEmployeesModal({
       {/* Nội dung chính */}
       {missingEmployees.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          ✅ Không có nhân viên bị mất - tất cả nhân viên vẫn còn
+          {t("missingEmployees.noMissing")}
         </div>
       ) : (
         <div className="overflow-x-auto border rounded-lg shadow-sm">

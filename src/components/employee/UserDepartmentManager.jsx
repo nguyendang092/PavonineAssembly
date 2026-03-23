@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useUser } from '../../contexts/UserContext';
-import { db, ref, set, onValue, remove } from '../../services/firebase';
+import { useTranslation } from "react-i18next";
+import { useUser } from "../../contexts/UserContext";
+import { db, ref, set, onValue, remove } from "../../services/firebase";
 
 function UserDepartmentManager() {
+  const { t } = useTranslation();
   const { user } = useUser();
   const [userDepartments, setUserDepartments] = useState([]);
   const [availableDepartments, setAvailableDepartments] = useState([]);
@@ -181,9 +183,7 @@ function UserDepartmentManager() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <p className="text-gray-600">
-            Vui lòng đăng nhập để truy cập trang này
-          </p>
+          <p className="text-gray-600">{t("userDeptManager.pleaseLogin")}</p>
         </div>
       </div>
     );
@@ -194,11 +194,9 @@ function UserDepartmentManager() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 text-center">
           <p className="text-red-600 font-bold text-xl mb-2">
-            ⛔ Truy cập bị từ chối
+            {t("userDeptManager.accessDenied")}
           </p>
-          <p className="text-gray-600">
-            Chỉ admin mới có quyền truy cập trang này
-          </p>
+          <p className="text-gray-600">{t("userDeptManager.adminOnly")}</p>
         </div>
       </div>
     );
@@ -214,8 +212,8 @@ function UserDepartmentManager() {
               alert.type === "success"
                 ? "bg-green-500 text-white"
                 : alert.type === "error"
-                ? "bg-red-500 text-white"
-                : "bg-blue-500 text-white"
+                  ? "bg-red-500 text-white"
+                  : "bg-blue-500 text-white"
             }`}
           >
             {alert.message}
@@ -225,11 +223,9 @@ function UserDepartmentManager() {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            🔑 Quản lý Quyền User - Bộ Phận
+            {t("userDeptManager.title")}
           </h1>
-          <p className="text-gray-600">
-            Liên kết user với bộ phận để phân quyền chỉnh sửa dữ liệu chấm công
-          </p>
+          <p className="text-gray-600">{t("userDeptManager.description")}</p>
         </div>
 
         {/* Form */}
@@ -239,7 +235,7 @@ function UserDepartmentManager() {
               {/* Email */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email User *
+                  {t("userDeptManager.emailLabel")}
                 </label>
                 <input
                   type="email"
@@ -257,7 +253,9 @@ function UserDepartmentManager() {
                   type="submit"
                   className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
                 >
-                  {editing ? "💾 Cập nhật" : "➕ Thêm"}
+                  {editing
+                    ? t("userDeptManager.btnUpdate")
+                    : t("userDeptManager.btnAdd")}
                 </button>
                 {editing && (
                   <button
@@ -274,12 +272,14 @@ function UserDepartmentManager() {
               {/* Bộ phận */}
               <div className="md:col-span-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Bộ phận * ({form.departments.length} đã chọn)
+                  {t("userDeptManager.deptLabel", {
+                    count: form.departments.length,
+                  })}
                 </label>
                 <div className="border border-gray-300 rounded-lg p-2 max-h-40 overflow-y-auto bg-gray-50">
                   {availableDepartments.length === 0 ? (
                     <p className="text-gray-500 italic text-xs p-2">
-                      Đang tải danh sách bộ phận...
+                      {t("userDeptManager.loadingDepts")}
                     </p>
                   ) : (
                     <div className="grid grid-cols-7 gap-3">
@@ -302,7 +302,7 @@ function UserDepartmentManager() {
                 </div>
                 {form.departments.length === 0 && (
                   <p className="text-xs text-red-500 mt-1">
-                    Bạn phải chọn ít nhất 1 bộ phận
+                    {t("userDeptManager.minOneDept")}
                   </p>
                 )}
               </div>
@@ -314,7 +314,9 @@ function UserDepartmentManager() {
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-800">
-              📋 Danh sách mapping ({userDepartments.length})
+              {t("userDeptManager.tableTitle", {
+                count: userDepartments.length,
+              })}
             </h2>
           </div>
           <div className="overflow-x-auto">
@@ -322,19 +324,19 @@ function UserDepartmentManager() {
               <thead className="bg-gray-100">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Email
+                    {t("userDeptManager.colEmail")}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Bộ phận
+                    {t("userDeptManager.colDept")}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Mô tả
+                    {t("userDeptManager.colDesc")}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Cập nhật bởi
+                    {t("userDeptManager.colUpdatedBy")}
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Thao tác
+                    {t("userDeptManager.colActions")}
                   </th>
                 </tr>
               </thead>

@@ -1,13 +1,15 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   getAuth,
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth";
-import { logUserAction } from '../../utils/userLog';
+import { logUserAction } from "../../utils/userLog";
 
 export default function ChangePasswordModal({ onClose }) {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,26 +22,27 @@ export default function ChangePasswordModal({ onClose }) {
     setError("");
     setSuccess("");
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError("Vui lòng nhập đầy đủ thông tin.");
+      setError(t("changePassword.requireAll"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("Mật khẩu mới không khớp.");
+      setError(t("changePassword.mismatch"));
       return;
     }
     setLoading(true);
     try {
       const auth = getAuth();
       const user = auth.currentUser;
-      if (!user || !user.email) throw new Error("Không tìm thấy người dùng.");
+      if (!user || !user.email)
+        throw new Error(t("changePassword.userNotFound"));
       // Re-authenticate
       const credential = EmailAuthProvider.credential(
         user.email,
-        currentPassword
+        currentPassword,
       );
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPassword);
-      setSuccess("Đổi mật khẩu thành công!");
+      setSuccess(t("changePassword.success"));
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -47,10 +50,10 @@ export default function ChangePasswordModal({ onClose }) {
       await logUserAction(
         user.email,
         "change_password",
-        "Đổi mật khẩu thành công"
+        "Đổi mật khẩu thành công",
       );
     } catch (err) {
-      setError("Đổi mật khẩu thất bại. Vui lòng kiểm tra lại thông tin.");
+      setError(t("changePassword.fail"));
     } finally {
       setLoading(false);
     }
@@ -70,7 +73,7 @@ export default function ChangePasswordModal({ onClose }) {
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">
-              Mật khẩu hiện tại
+              {t("changePassword.currentPassword")}
             </label>
             <input
               type="password"
@@ -82,7 +85,7 @@ export default function ChangePasswordModal({ onClose }) {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
-              Mật khẩu mới
+              {t("changePassword.newPassword")}
             </label>
             <input
               type="password"
@@ -94,7 +97,7 @@ export default function ChangePasswordModal({ onClose }) {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
-              Nhập lại mật khẩu mới
+              {t("changePassword.confirmPassword")}
             </label>
             <input
               type="password"
@@ -111,7 +114,9 @@ export default function ChangePasswordModal({ onClose }) {
             className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 transition"
             disabled={loading}
           >
-            {loading ? "Đang đổi mật khẩu..." : "Đổi mật khẩu"}
+            {loading
+              ? t("changePassword.changing")
+              : t("changePassword.submit")}
           </button>
         </form>
       </div>

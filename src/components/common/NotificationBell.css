@@ -1,83 +1,111 @@
-/* ===== Bell button ===== */
-.birthday-cake-bell-btn {
-  border: none;
+.noti-bell-trigger {
+  position: relative;
+  border: 1px solid #c7dcff;
+  background: linear-gradient(180deg, #ffffff, #f0f7ff);
+  color: #1459a6;
+  box-shadow: 0 6px 16px rgba(20, 89, 166, 0.14);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
-.birthday-cake-bell-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 18px rgba(25, 118, 210, 0.25);
+.noti-bell-trigger:hover {
+  transform: translateY(-1px);
+  border-color: #95bfff;
+  box-shadow: 0 10px 20px rgba(20, 89, 166, 0.2);
 }
 
-/* ===== Bell shake ===== */
-@keyframes bell-shake {
-  0% { transform: rotate(0deg); }
-  20% { transform: rotate(-10deg); }
-  40% { transform: rotate(10deg); }
-  60% { transform: rotate(-6deg); }
-  80% { transform: rotate(6deg); }
-  100% { transform: rotate(0deg); }
+.noti-bell-trigger--floating {
+  position: fixed;
+  top: 182px;
+  right: 104px;
+  z-index: 2147483647;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
 }
 
-.birthday-cake-bell-shake span {
-  display: inline-block;
-  animation: bell-shake 1.5s infinite;
+.noti-bell-trigger--inline {
+  width: 44px;
+  min-height: 40px;
+  border-radius: 10px;
+}
+
+.noti-bell-icon {
+  display: inline-flex;
+  font-size: 22px;
+  line-height: 1;
   transform-origin: top center;
-}
-.notification-bell-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  background: linear-gradient(135deg, #f71c2e, #f71c2e);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.4);
-}
-/* ===== Badge ===== */
-.birthday-cake-bell-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  background: linear-gradient(135deg, #f336e3, #f336e3);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.4);
+  animation: noti-bell-shake 1.6s ease-in-out infinite;
 }
 
-/* ===== Overlay ===== */
-.birthday-cake-bell-overlay {
+@keyframes noti-bell-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(-12deg);
+  }
+  40% {
+    transform: rotate(12deg);
+  }
+  60% {
+    transform: rotate(-7deg);
+  }
+  80% {
+    transform: rotate(7deg);
+  }
+}
+
+.noti-bell-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
+}
+
+.noti-bell-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.48);
   backdrop-filter: blur(2px);
+  z-index: 2147483646;
 }
 
-/* ===== Popup ===== */
-.birthday-cake-bell-list {
-  background: #ffffff;
-  border-radius: 18px;
-  overflow: hidden;
-  animation: popup-fade 0.25s ease;
+.noti-bell-popup {
+  position: fixed;
+  top: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92vw, 820px);
+  max-height: min(82vh, 860px);
+  padding: 16px;
+  background: linear-gradient(180deg, #f4f9ff 0%, #f8fbff 100%);
+  border-radius: 20px;
+  border: 1px solid #bfdbfe;
+  box-shadow: 0 20px 46px rgba(15, 76, 129, 0.22);
+  z-index: 2147483647;
+  animation: noti-popup-fade 0.22s ease;
 }
 
-@keyframes popup-fade {
+@keyframes noti-popup-fade {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
+    transform: translateX(-50%) translateY(-8px);
   }
   to {
     opacity: 1;
@@ -85,28 +113,153 @@
   }
 }
 
-/* ===== Scrollbar ===== */
-.birthday-cake-bell-list ::-webkit-scrollbar {
+.noti-bell-shell {
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.noti-bell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.noti-bell-title {
+  color: #1e40af;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.noti-bell-header-actions,
+.noti-bell-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.noti-bell-btn {
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+.noti-bell-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.95);
+}
+
+.noti-bell-btn--export {
+  padding: 6px 12px;
+  background: #2563eb;
+  color: #fff;
+}
+
+.noti-bell-btn--close {
+  min-width: 36px;
+  padding: 4px 10px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 16px;
+}
+
+.noti-bell-content {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: min(66vh, 690px);
+  padding-bottom: 2px;
+}
+
+.noti-bell-empty {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+  padding: 24px 0;
+}
+
+.noti-bell-content table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08);
+}
+
+.noti-bell-content thead tr {
+  background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 100%) !important;
+}
+
+.noti-bell-content th {
+  padding: 9px 10px !important;
+  text-align: center;
+  color: #1e40af;
+  font-weight: 700;
+  font-size: 12px;
+  border-bottom: 1px solid #93c5fd;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.noti-bell-content td {
+  padding: 8px 10px !important;
+  text-align: center;
+  color: #334155;
+  border-bottom: 1px solid #eff6ff;
+}
+
+.noti-bell-content tbody tr:nth-child(even) {
+  background: #fbfdff !important;
+}
+
+.noti-bell-content tbody tr:hover {
+  background: #eef6ff !important;
+}
+
+.noti-bell-content::-webkit-scrollbar {
   width: 8px;
 }
 
-.birthday-cake-bell-list ::-webkit-scrollbar-track {
-  background: #f1f6fc;
+.noti-bell-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
 }
 
-.notification-bell-list ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #1d79f1, #1d79f1);
+.noti-bell-content::-webkit-scrollbar-thumb {
+  background: #93c5fd;
   border-radius: 8px;
 }
 
-.birthday-cake-bell-list ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #f336e3, #f336e3);
-  border-radius: 8px;
-}
-.notification-bell-list button:hover {
-  background: #1d79f1;
-}
-/* ===== Close button hover ===== */
-.birthday-cake-bell-list button:hover {
-  background: #f336e3;
+@media (max-width: 640px) {
+  .noti-bell-popup {
+    top: 66px;
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 100px);
+    padding: 12px;
+  }
+
+  .noti-bell-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .noti-bell-title {
+    font-size: 15px;
+  }
+
+  .noti-bell-content th,
+  .noti-bell-content td {
+    padding: 7px !important;
+    font-size: 12px;
+  }
 }

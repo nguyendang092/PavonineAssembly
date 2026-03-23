@@ -1,17 +1,72 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom";
 import "./BirthdayCakeBell.css";
 import ExcelJS from "exceljs";
+import { db, ref, onValue } from "../../services/firebase";
 
-// Nhận employees (danh sách nhân viên) làm prop
-export default function BirthdayCakeBell({ employees }) {
+// Lấy dữ liệu từ attendance/{selectedDate}
+export default function BirthdayCakeBell({ selectedDate, inline = false }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [attendanceEmployees, setAttendanceEmployees] = useState([]);
   const now = new Date();
   const listRef = useRef(null);
 
+  useEffect(() => {
+    if (!selectedDate) {
+      setAttendanceEmployees([]);
+      return;
+    }
+
+    const attendanceRef = ref(db, `attendance/${selectedDate}`);
+    const unsubscribe = onValue(attendanceRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && typeof data === "object") {
+        const arr = Object.entries(data).map(([id, emp]) => ({ id, ...emp }));
+        setAttendanceEmployees(arr);
+      } else {
+        setAttendanceEmployees([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const body = document.body;
+    const currentCount = Number(body.dataset.popupLockCount || "0");
+
+    if (currentCount === 0) {
+      body.dataset.popupLockOverflow = body.style.overflow || "";
+      body.dataset.popupLockTouchAction = body.style.touchAction || "";
+      body.style.overflow = "hidden";
+      body.style.touchAction = "none";
+    }
+
+    body.dataset.popupLockCount = String(currentCount + 1);
+
+    return () => {
+      const count = Number(body.dataset.popupLockCount || "1");
+      const nextCount = Math.max(0, count - 1);
+
+      if (nextCount === 0) {
+        body.style.overflow = body.dataset.popupLockOverflow || "";
+        body.style.touchAction = body.dataset.popupLockTouchAction || "";
+        delete body.dataset.popupLockCount;
+        delete body.dataset.popupLockOverflow;
+        delete body.dataset.popupLockTouchAction;
+      } else {
+        body.dataset.popupLockCount = String(nextCount);
+      }
+    };
+  }, [open]);
+
   // Lọc ra những nhân viên có sinh nhật trong tháng hiện tại
   const birthdayList = useMemo(() => {
-    const filtered = employees.filter((emp) => {
+    const filtered = attendanceEmployees.filter((emp) => {
       if (!emp.ngayThangNamSinh) return false;
       let dateObj;
       if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(emp.ngayThangNamSinh)) {
@@ -38,7 +93,7 @@ export default function BirthdayCakeBell({ employees }) {
       // If same department, sort by name
       return (a.hoVaTen || "").localeCompare(b.hoVaTen || "");
     });
-  }, [employees, now]);
+  }, [attendanceEmployees, now]);
 
   const excelData = useMemo(
     () =>
@@ -56,7 +111,7 @@ export default function BirthdayCakeBell({ employees }) {
     try {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet(
-        `SinhNhatThang${now.getMonth() + 1}`,
+        t("birthdayCakeBell.popupTitle", { month: now.getMonth() + 1 }),
       );
 
       // Set column widths
@@ -70,11 +125,11 @@ export default function BirthdayCakeBell({ employees }) {
 
       // Add header row
       const headerRow = worksheet.addRow([
-        "#",
-        "Họ và tên",
-        "Ngày sinh",
-        "Bộ phận",
-        "Mã NV",
+        t("birthdayCakeBell.colIndex"),
+        t("birthdayCakeBell.colName"),
+        t("birthdayCakeBell.colBirthdate"),
+        t("birthdayCakeBell.colDepartment"),
+        t("birthdayCakeBell.colCode"),
       ]);
       headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
       headerRow.fill = {
@@ -116,294 +171,112 @@ export default function BirthdayCakeBell({ employees }) {
 
   return (
     <div>
-      {ReactDOM.createPortal(
+      {inline ? (
         <button
-          className="birthday-cake-bell-btn birthday-cake-bell-shake"
-          title="Xem danh sách sinh nhật tháng này"
+          className="bday-bell-trigger bday-bell-trigger--inline"
+          title={t("birthdayCakeBell.buttonTitle")}
           onClick={() => setOpen((o) => !o)}
-          style={{
-            position: "fixed",
-            top: 114,
-            right: 104,
-            zIndex: 2147483647,
-            background: "#fff",
-            borderRadius: 32,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            padding: 8,
-          }}
         >
-          <span role="img" aria-label="birthday-cake" style={{ fontSize: 24 }}>
+          <span
+            role="img"
+            aria-label="birthday-cake"
+            className="bday-bell-icon"
+          >
             🎂
           </span>
           {birthdayList.length > 0 && (
-            <span className="birthday-cake-bell-badge">
-              {birthdayList.length}
-            </span>
+            <span className="bday-bell-badge">{birthdayList.length}</span>
           )}
-        </button>,
-        document.body,
+        </button>
+      ) : (
+        ReactDOM.createPortal(
+          <button
+            className="bday-bell-trigger bday-bell-trigger--floating"
+            title={t("birthdayCakeBell.buttonTitle")}
+            onClick={() => setOpen((o) => !o)}
+          >
+            <span
+              role="img"
+              aria-label="birthday-cake"
+              className="bday-bell-icon"
+            >
+              🎂
+            </span>
+            {birthdayList.length > 0 && (
+              <span className="bday-bell-badge">{birthdayList.length}</span>
+            )}
+          </button>,
+          document.body,
+        )
       )}
 
       {open &&
         ReactDOM.createPortal(
           <>
-            <div
-              className="birthday-cake-bell-overlay"
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100vw",
-                height: "100vh",
-                background: "rgba(0,0,0,0.55)",
-                zIndex: 2147483646,
-              }}
-              onClick={() => setOpen(false)}
-            />
-            <div
-              className="birthday-cake-bell-list"
-              style={{
-                minWidth: 700,
-                maxWidth: 700,
-                padding: 20,
-                zIndex: 2147483647,
-                position: "fixed",
-                top: 120,
-                left: "50%",
-                transform: "translateX(-50%)",
-                margin: "0 auto",
-                display: "flex",
-                justifyContent: "center",
-                background: "#fff0f6",
-                borderRadius: 18,
-                boxShadow: "0 8px 32px rgba(255, 77, 109, 0.18)",
-                border: "1.5px solid #ffe0ec",
-              }}
-            >
-              <div style={{ width: "100%", maxWidth: 700 }}>
-                <div
-                  className="birthday-cake-bell-list-title"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    fontSize: 17,
-                    marginBottom: 14,
-                    color: "#e43c7d",
-                    fontWeight: 700,
-                    textAlign: "center",
-                    letterSpacing: 0.2,
-                  }}
-                >
-                  <span>🎂 Danh sách sinh nhật tháng {now.getMonth() + 1}</span>
-                  <div
-                    style={{ display: "flex", gap: 8, alignItems: "center" }}
-                  >
+            <div className="bday-bell-overlay" onClick={() => setOpen(false)} />
+            <div className="bday-bell-popup">
+              <div className="bday-bell-shell">
+                <div className="bday-bell-header">
+                  <span className="bday-bell-title uppercase">
+                    {t("birthdayCakeBell.popupTitle", {
+                      month: now.getMonth() + 1,
+                    })}
+                  </span>
+                  <div className="bday-bell-header-actions">
                     <button
                       onClick={handleExportExcel}
-                      className="birthday-download-btn"
-                      style={{
-                        padding: "6px 12px",
-                        backgroundColor: "#e43c7d",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontSize: "13px",
-                        fontWeight: "600",
-                        transition: "background 0.2s",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.target.style.backgroundColor = "#d02a6b")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.target.style.backgroundColor = "#e43c7d")
-                      }
+                      className="bday-bell-btn bday-bell-btn--export"
                     >
-                      ⬇ Xuất Excel
+                      {t("birthdayCakeBell.exportExcel")}
                     </button>
                     <button
                       onClick={() => setOpen(false)}
-                      style={{
-                        padding: "4px 10px",
-                        backgroundColor: "#ff6b6b",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontSize: "16px",
-                        fontWeight: "600",
-                        transition: "background 0.2s",
-                        minWidth: "36px",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.target.style.backgroundColor = "#ee5a52")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.target.style.backgroundColor = "#ff6b6b")
-                      }
+                      className="bday-bell-btn bday-bell-btn--close"
                     >
                       ✕
                     </button>
                   </div>
                 </div>
                 {birthdayList.length === 0 ? (
-                  <div
-                    className="birthday-cake-bell-empty"
-                    style={{
-                      textAlign: "center",
-                      color: "#888",
-                      fontSize: 14,
-                      padding: "18px 0",
-                    }}
-                  >
-                    Không có ai sinh nhật tháng này
+                  <div className="bday-bell-empty">
+                    {t("birthdayCakeBell.noBirthdays")}
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      overflowX: "auto",
-                      maxHeight: 700,
-                      overflowY: "auto",
-                      paddingBottom: 8,
-                    }}
-                    ref={listRef}
-                  >
-                    <table
-                      className="birthday-cake-table"
-                      style={{
-                        width: "100%",
-                        borderCollapse: "collapse",
-                        fontSize: 14,
-                        background: "#fff",
-                        borderRadius: 12,
-                        boxShadow: "0 2px 8px rgba(255,77,109,0.07)",
-                        overflow: "hidden",
-                      }}
-                    >
+                  <div className="bday-bell-scroll" ref={listRef}>
+                    <table className="bday-bell-table">
                       <thead>
-                        <tr style={{ background: "#ffe0ec" }}>
-                          <th
-                            style={{
-                              padding: 7,
-                              border: "none",
-                              color: "#e43c7d",
-                              fontWeight: 700,
-                              fontSize: 13,
-                              borderTopLeftRadius: 12,
-                              textAlign: "center",
-                            }}
-                          >
-                            #
+                        <tr className="bday-bell-table-head-row">
+                          <th className="bday-bell-th">
+                            {t("birthdayCakeBell.colIndex")}
                           </th>
-                          <th
-                            style={{
-                              padding: 7,
-                              border: "none",
-                              color: "#e43c7d",
-                              fontWeight: 700,
-                              fontSize: 13,
-                              textAlign: "center",
-                            }}
-                          >
-                            Họ và tên
+                          <th className="bday-bell-th">
+                            {t("birthdayCakeBell.colName")}
                           </th>
-                          <th
-                            style={{
-                              padding: 7,
-                              border: "none",
-                              color: "#e43c7d",
-                              fontWeight: 700,
-                              fontSize: 13,
-                              textAlign: "center",
-                            }}
-                          >
-                            Ngày sinh
+                          <th className="bday-bell-th">
+                            {t("birthdayCakeBell.colBirthdate")}
                           </th>
-                          <th
-                            style={{
-                              padding: 7,
-                              border: "none",
-                              color: "#e43c7d",
-                              fontWeight: 700,
-                              fontSize: 13,
-                              textAlign: "center",
-                            }}
-                          >
-                            Bộ phận
+                          <th className="bday-bell-th">
+                            {t("birthdayCakeBell.colDepartment")}
                           </th>
-                          <th
-                            style={{
-                              padding: 7,
-                              border: "none",
-                              color: "#e43c7d",
-                              fontWeight: 700,
-                              fontSize: 13,
-                              borderTopRightRadius: 12,
-                              textAlign: "center",
-                            }}
-                          >
-                            Mã NV
+                          <th className="bday-bell-th">
+                            {t("birthdayCakeBell.colCode")}
                           </th>
                         </tr>
                       </thead>
                       <tbody>
                         {birthdayList.map((emp, idx) => (
-                          <tr
-                            key={emp.id}
-                            style={{
-                              background: idx % 2 === 0 ? "#fff6fa" : "#fff",
-                              transition: "background 0.2s",
-                            }}
-                          >
-                            <td
-                              style={{
-                                textAlign: "center",
-                                padding: 7,
-                                fontWeight: 600,
-                                color: "#e43c7d",
-                                border: "none",
-                              }}
-                            >
+                          <tr key={emp.id} className="bday-bell-row">
+                            <td className="bday-bell-td bday-bell-td--index">
                               {idx + 1}
                             </td>
-                            <td
-                              style={{
-                                textAlign: "center",
-                                padding: 7,
-                                fontWeight: 500,
-                                border: "none",
-                              }}
-                            >
+                            <td className="bday-bell-td bday-bell-td--name">
                               {emp.hoVaTen}
                             </td>
-                            <td
-                              style={{
-                                textAlign: "center",
-                                padding: 7,
-                                border: "none",
-                              }}
-                            >
+                            <td className="bday-bell-td">
                               {emp.ngayThangNamSinh}
                             </td>
-                            <td
-                              style={{
-                                textAlign: "center",
-                                padding: 7,
-                                border: "none",
-                              }}
-                            >
-                              {emp.boPhan || ""}
-                            </td>
-                            <td
-                              style={{
-                                textAlign: "center",
-                                padding: 7,
-                                border: "none",
-                              }}
-                            >
-                              {emp.mnv || ""}
-                            </td>
+                            <td className="bday-bell-td">{emp.boPhan || ""}</td>
+                            <td className="bday-bell-td">{emp.mnv || ""}</td>
                           </tr>
                         ))}
                       </tbody>
