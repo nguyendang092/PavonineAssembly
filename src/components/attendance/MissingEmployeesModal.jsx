@@ -58,16 +58,18 @@ function MissingEmployeesModal({
     : "";
 
   const historicalItems = useMemo(() => {
-    return historicalSuspectedEmployees.map((emp) => {
-      const code = normalizeEmployeeCode(emp.employeeCode || emp.mnv);
-      const isConfirmed =
-        !!code && confirmationMap[code]?.status === "confirmed";
-      return {
-        ...emp,
-        employeeCode: code,
-        isConfirmed,
-      };
-    });
+    return historicalSuspectedEmployees
+      .map((emp) => {
+        const code = normalizeEmployeeCode(emp.employeeCode || emp.mnv);
+        const isConfirmed =
+          !!code && confirmationMap[code]?.status === "confirmed";
+        return {
+          ...emp,
+          employeeCode: code,
+          isConfirmed,
+        };
+      })
+      .filter((emp) => !emp.isConfirmed);
   }, [historicalSuspectedEmployees, confirmationMap]);
 
   const selectedHistoricalCodeList = useMemo(() => {
@@ -215,16 +217,11 @@ function MissingEmployeesModal({
                       </td>
                       {isConfirmedTable && (
                         <td className="px-4 py-3 text-xs text-slate-600">
-                          <div className="font-semibold text-slate-700">
-                            {confirmation.confirmedBy || "--"}
-                          </div>
-                          <div>
-                            {confirmation.confirmedAt
-                              ? new Date(
-                                  confirmation.confirmedAt,
-                                ).toLocaleString("vi-VN")
-                              : "--"}
-                          </div>
+                          {confirmation.confirmedAt
+                            ? new Date(confirmation.confirmedAt).toLocaleString(
+                                "vi-VN",
+                              )
+                            : "--"}
                         </td>
                       )}
                       {canManageConfirmation && (
@@ -278,33 +275,31 @@ function MissingEmployeesModal({
       </p>
 
       {missingEmployees.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          Không có nhân viên bị mất khỏi bảng chấm công.
+        <div className="text-center py-6 text-gray-500">
+          Không có nhân viên bị mất khỏi bảng chấm công ngày này.
         </div>
       ) : (
-        <>
-          {renderTable({
-            title: "Danh sách nhân viên nghỉ việc",
-            description:
-              "Từ dữ liệu chấm công: không có chấm công trong ngày hiện tại.",
-            employeesToRender: suspectedEmployees,
-            variant: "amber",
-            actionLabel: "Xác nhận nghỉ ngang",
-            onAction: onConfirmEmployee,
-          })}
-
-          {renderTable({
-            title: "Đã xác nhận nghỉ việc",
-            description:
-              "Từ dữ liệu chấm công: danh sách đã được HR/Admin xác nhận.",
-            employeesToRender: confirmedEmployees,
-            variant: "green",
-            actionLabel: "Hủy xác nhận",
-            onAction: onUnconfirmEmployee,
-            isConfirmedTable: true,
-          })}
-        </>
+        renderTable({
+          title: "Danh sách nhân viên nghỉ việc",
+          description:
+            "Từ dữ liệu chấm công: không có chấm công trong ngày hiện tại.",
+          employeesToRender: suspectedEmployees,
+          variant: "amber",
+          actionLabel: "Xác nhận nghỉ ngang",
+          onAction: onConfirmEmployee,
+        })
       )}
+
+      {renderTable({
+        title: "Đã xác nhận nghỉ việc",
+        description:
+          "Danh sách toàn bộ nhân viên đã được HR/Admin xác nhận nghỉ không thông báo.",
+        employeesToRender: confirmedEmployees,
+        variant: "green",
+        actionLabel: "Hủy xác nhận",
+        onAction: onUnconfirmEmployee,
+        isConfirmedTable: true,
+      })}
 
       <div className="mt-8 border-t border-slate-200 pt-6">
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

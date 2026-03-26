@@ -191,13 +191,16 @@ function AttendanceList() {
   );
 
   const confirmedMissingEmployees = useMemo(() => {
-    return missingEmployees.filter((emp) => {
-      const code = normalizeEmployeeCode(emp.mnv);
-      return (
-        code && confirmedUnannouncedResignations[code]?.status === "confirmed"
-      );
-    });
-  }, [missingEmployees, confirmedUnannouncedResignations]);
+    return Object.values(confirmedUnannouncedResignations)
+      .filter((rec) => rec?.status === "confirmed")
+      .map((rec) => ({
+        mnv: rec.employeeCode,
+        hoVaTen: rec.employeeName,
+        boPhan: rec.department,
+        ngayThangNamSinh: rec.birthDate,
+        ...rec,
+      }));
+  }, [confirmedUnannouncedResignations]);
 
   const suspectedUnannouncedEmployees = useMemo(() => {
     return missingEmployees.filter((emp) => {
