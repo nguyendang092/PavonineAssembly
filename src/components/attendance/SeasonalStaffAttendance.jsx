@@ -19,6 +19,8 @@ import NotificationBell from "../common/NotificationBell";
 import Sidebar from "../layout/Sidebar";
 import CenterPortal from "../common/CenterPortal";
 
+const normalizeTextValue = (value) => String(value ?? "").trim();
+
 function SeasonalStaffAttendance() {
   // State for alert messages
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
@@ -203,7 +205,7 @@ function SeasonalStaffAttendance() {
         return false;
       // Filter by entry time status
       if (gioVaoFilter.length > 0) {
-        const hasGioVao = emp.gioVao && emp.gioVao.trim() !== "";
+        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
         const isCheckedIn = "đã_chấm_công";
         const isNotCheckedIn = "chưa_chấm_công";
         if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;

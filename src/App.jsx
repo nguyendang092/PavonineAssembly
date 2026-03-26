@@ -1,43 +1,75 @@
-import React, { useEffect, useState, useLayoutEffect } from "react";
-import SeasonEffect from "./components/common/SeasonEffect";
+import React, {
+  useEffect,
+  useState,
+  useLayoutEffect,
+  useMemo,
+  Suspense,
+  lazy,
+} from "react";
 // firebase for global data fetching
 import { db, ref, onValue } from "./services/firebase";
-import Employ from "./components/employee/Employ";
 import Toast from "./components/common/Toast";
 import Navbar from "./components/layout/Navbar";
-import TemperatureMonitor from "./components/common/TemperatureMonitor";
 import BackToTop from "./components/common/BackToTop";
 import Footer from "./components/layout/Footer";
 import "./config/i18n";
-import WorkplaceChart from "./components/dashboard/WorkplaceChart";
-import ModelProductionChart from "./components/dashboard/ModelProductionChart";
 import { UserContext } from "./contexts/UserContext";
-import NGWorkplaceChart from "./components/dashboard/NGWorkplaceChart";
 import { useLoading } from "./contexts/LoadingContext";
-import CertificateGenerator1 from "./components/common/CertificateGenerator1";
-import CertificateGenerator2 from "./components/common/CertificateGenerator2";
-import HonorBoard from "./components/employee/HonorBoard";
-import Metandeco from "./components/common/Metandeco";
 import { routeConfig } from "./config/menuConfig";
-import MoldManager from "./components/inventory/MoldManager";
-import PerformanceChart from "./components/dashboard/PerformanceChart";
-import QRCodeGenerator from "./components/common/QRCodeGenerator";
-import AttendanceList from "./components/attendance/AttendanceList";
-import AttendanceDashboardContainer from "./components/attendance/AttendanceDashboardContainer";
-import AttendanceTable from "./components/attendance/AttendanceTable";
-import SeasonalStaffAttendance from "./components/attendance/SeasonalStaffAttendance";
-import Downloads from "./components/common/Downloads";
-import UserDepartmentManager from "./components/employee/UserDepartmentManager";
-import MaintenanceChecklist from "./components/maintenance/MaintenanceChecklist";
-import DriverLogbook from "./components/logistics/DriverLogbook";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
-  useLocation,
 } from "react-router-dom";
 import "./styles/App.css";
+
+const WorkplaceChart = lazy(
+  () => import("./components/dashboard/WorkplaceChart"),
+);
+const NGWorkplaceChart = lazy(
+  () => import("./components/dashboard/NGWorkplaceChart"),
+);
+const CertificateGenerator1 = lazy(
+  () => import("./components/common/CertificateGenerator1"),
+);
+const CertificateGenerator2 = lazy(
+  () => import("./components/common/CertificateGenerator2"),
+);
+const HonorBoard = lazy(() => import("./components/employee/HonorBoard"));
+const TemperatureMonitor = lazy(
+  () => import("./components/common/TemperatureMonitor"),
+);
+const Employ = lazy(() => import("./components/employee/Employ"));
+const MoldManager = lazy(() => import("./components/inventory/MoldManager"));
+const PerformanceChart = lazy(
+  () => import("./components/dashboard/PerformanceChart"),
+);
+const QRCodeGenerator = lazy(
+  () => import("./components/common/QRCodeGenerator"),
+);
+const AttendanceList = lazy(
+  () => import("./components/attendance/AttendanceList"),
+);
+const AttendanceDashboardContainer = lazy(
+  () => import("./components/attendance/AttendanceDashboardContainer"),
+);
+const AttendanceTable = lazy(
+  () => import("./components/attendance/AttendanceTable"),
+);
+const SeasonalStaffAttendance = lazy(
+  () => import("./components/attendance/SeasonalStaffAttendance"),
+);
+const Downloads = lazy(() => import("./components/common/Downloads"));
+const UserDepartmentManager = lazy(
+  () => import("./components/employee/UserDepartmentManager"),
+);
+const MaintenanceChecklist = lazy(
+  () => import("./components/maintenance/MaintenanceChecklist"),
+);
+const DriverLogbook = lazy(
+  () => import("./components/logistics/DriverLogbook"),
+);
 
 const App = () => {
   // Bỏ logic tự động chuyển về /normal khi refresh
@@ -130,6 +162,30 @@ const App = () => {
   // Chọn hiệu ứng theo mùa ở đây, ví dụ: 'snow' hoặc 'newyear'
   const [seasonEffect, setSeasonEffect] = useState("snow"); // hoặc 'newyear'
 
+  const routeElements = useMemo(
+    () => ({
+      WorkplaceChart: <WorkplaceChart />,
+      NGWorkplaceChart: <NGWorkplaceChart />,
+      CertificateGenerator1: <CertificateGenerator1 />,
+      CertificateGenerator2: <CertificateGenerator2 />,
+      HonorBoard: <HonorBoard />,
+      TemperatureMonitor: <TemperatureMonitor />,
+      MoldManager: <MoldManager />,
+      PerformanceChart: <PerformanceChart />,
+      QRCodeGenerator: <QRCodeGenerator />,
+      AttendanceList: <AttendanceList />,
+      AttendanceDashboard: <AttendanceDashboardContainer />,
+      AttendanceTable: <AttendanceTable />,
+      SeasonalStaffAttendance: <SeasonalStaffAttendance />,
+      Downloads: <Downloads />,
+      MaintenanceChecklist: <MaintenanceChecklist />,
+      DriverLogbook: <DriverLogbook />,
+      UserDepartmentManager: <UserDepartmentManager />,
+      Employ: <Employ showToast={showToast} />,
+    }),
+    [],
+  );
+
   return (
     <UserContext.Provider value={{ user, setUser }}>
       <Router>
@@ -149,85 +205,24 @@ const App = () => {
 
           {/* Nội dung chính */}
           <div className="pt-16 overflow-hidden flex-1">
-            <Routes>
-              <Route path="/" element={<Navigate to="/normal" replace />} />
-              {routeConfig.map((r) => {
-                let Element;
-                switch (r.element) {
-                  case "WorkplaceChart":
-                    Element = WorkplaceChart;
-                    break;
-                  case "NGWorkplaceChart":
-                    Element = NGWorkplaceChart;
-                    break;
-                  case "ModelProductionChart":
-                    Element = ModelProductionChart;
-                    break;
-                  // case "Metandeco":
-                  //   Element = Metandeco;
-                  //   break;
-                  case "CertificateGenerator1":
-                    Element = CertificateGenerator1;
-                    break;
-                  case "CertificateGenerator2":
-                    Element = CertificateGenerator2;
-                    break;
-                  case "HonorBoard":
-                    Element = HonorBoard;
-                    break;
-                  case "TemperatureMonitor":
-                    Element = TemperatureMonitor;
-                    break;
-                  case "MoldManager":
-                    Element = MoldManager;
-                    break;
-                  case "PerformanceChart":
-                    Element = PerformanceChart;
-                    break;
-                  case "QRCodeGenerator":
-                    Element = QRCodeGenerator;
-                    break;
-                  case "AttendanceList":
-                    Element = AttendanceList;
-                    break;
-                  case "AttendanceDashboard":
-                    Element = AttendanceDashboardContainer;
-                    break;
-                  case "AttendanceTable":
-                    Element = AttendanceTable;
-                    break;
-                  case "SeasonalStaffAttendance":
-                    Element = SeasonalStaffAttendance;
-                    break;
-                  case "Downloads":
-                    Element = Downloads;
-                    break;
-                  case "MaintenanceChecklist":
-                    Element = MaintenanceChecklist;
-                    break;
-                  case "DriverLogbook":
-                    Element = DriverLogbook;
-                    break;
-                  // case "Inventory":
-                  //   Element = Inventory;
-                  //   break;
-                  case "UserDepartmentManager":
-                    Element = UserDepartmentManager;
-                    break;
-                  case "Employ":
-                    Element = (props) => (
-                      <Employ {...props} showToast={showToast} />
-                    );
-                    break;
-                  default:
-                    Element = null;
-                }
-                return Element ? (
-                  <Route key={r.path} path={r.path} element={<Element />} />
-                ) : null;
-              })}
-              <Route path="*" element={<Navigate to="/normal" replace />} />
-            </Routes>
+            <Suspense
+              fallback={
+                <div className="h-[60vh] flex items-center justify-center text-gray-500 text-lg">
+                  Loading...
+                </div>
+              }
+            >
+              <Routes>
+                <Route path="/" element={<Navigate to="/normal" replace />} />
+                {routeConfig.map((r) => {
+                  const element = routeElements[r.element];
+                  return element ? (
+                    <Route key={r.path} path={r.path} element={element} />
+                  ) : null;
+                })}
+                <Route path="*" element={<Navigate to="/normal" replace />} />
+              </Routes>
+            </Suspense>
           </div>
 
           {/* Footer */}

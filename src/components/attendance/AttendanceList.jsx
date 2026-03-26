@@ -45,7 +45,23 @@ const findNearestPreviousAttendanceData = async (
   return null;
 };
 
+const normalizeEmployeeCode = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  // Keep a stable key across number/string formats (e.g. "0012" and 12).
+  if (/^\d+$/.test(raw)) {
+    const asNumber = Number(raw);
+    return Number.isFinite(asNumber) ? String(asNumber) : raw;
+  }
+
+  return raw.toUpperCase();
+};
+
+const normalizeTextValue = (value) => String(value ?? "").trim();
+
 function AttendanceList() {
+  const todayKey = new Date().toISOString().slice(0, 10);
   // State for alert messages
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   // State for add/edit modal open/close
@@ -61,13 +77,7 @@ function AttendanceList() {
   // State for user department permissions
   const [userDepartments, setUserDepartments] = useState(null);
   // State for selected date (default to today)
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  });
+  const [selectedDate, setSelectedDate] = useState(todayKey);
   const { t, i18n } = useTranslation();
   const { user } = useUser();
   const tl = useCallback(
@@ -122,9 +132,20 @@ function AttendanceList() {
 
   // States for comparing with previous day
   const [previousDayEmployees, setPreviousDayEmployees] = useState([]);
+  const [previousComparisonDate, setPreviousComparisonDate] = useState("");
   const [showMissingEmployeesModal, setShowMissingEmployeesModal] =
     useState(false);
   const [missingEmployees, setMissingEmployees] = useState([]);
+  const [
+    confirmedUnannouncedResignations,
+    setConfirmedUnannouncedResignations,
+  ] = useState({});
+  const [historicalThresholdDays, setHistoricalThresholdDays] = useState(3);
+  const [historicalSuspectedEmployees, setHistoricalSuspectedEmployees] =
+    useState([]);
+  const [historicalScanLoading, setHistoricalScanLoading] = useState(false);
+  const [historicalScannedAt, setHistoricalScannedAt] = useState("");
+  const [historicalLatestDate, setHistoricalLatestDate] = useState("");
   const [filterMenuDropdownOpen, setFilterMenuDropdownOpen] = useState(false);
 
   const quickNoCheckInFilterValue = "chưa_chấm_công";
@@ -162,12 +183,44 @@ function AttendanceList() {
   const unattendedEmployees = useMemo(
     () =>
       employees.filter((emp) => {
-        const hasGioVao = emp.gioVao && emp.gioVao.trim() !== "";
-        const hasCaLamViec = emp.caLamViec && emp.caLamViec.trim() !== "";
+        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
+        const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
         return !hasGioVao && !hasCaLamViec;
       }),
     [employees],
   );
+
+  const confirmedMissingEmployees = useMemo(() => {
+    return missingEmployees.filter((emp) => {
+      const code = normalizeEmployeeCode(emp.mnv);
+      return (
+        code && confirmedUnannouncedResignations[code]?.status === "confirmed"
+      );
+    });
+  }, [missingEmployees, confirmedUnannouncedResignations]);
+
+  const suspectedUnannouncedEmployees = useMemo(() => {
+    return missingEmployees.filter((emp) => {
+      const code = normalizeEmployeeCode(emp.mnv);
+      return (
+        !code || confirmedUnannouncedResignations[code]?.status !== "confirmed"
+      );
+    });
+  }, [missingEmployees, confirmedUnannouncedResignations]);
+
+  const canManageUnannouncedResignation =
+    user?.email === "admin@gmail.com" || user?.email === "hr@pavonine.net";
+
+  const historicalSuspectedMap = useMemo(() => {
+    const map = {};
+    historicalSuspectedEmployees.forEach((emp) => {
+      const code = normalizeEmployeeCode(emp.mnv || emp.employeeCode);
+      if (code) {
+        map[code] = emp;
+      }
+    });
+    return map;
+  }, [historicalSuspectedEmployees]);
 
   // Load user's department permissions
   useEffect(() => {
@@ -198,6 +251,18 @@ function AttendanceList() {
     });
     return () => unsubscribe();
   }, [user]);
+
+  useEffect(() => {
+    const confirmationsRef = ref(db, "attendanceUnannouncedResignations");
+    const unsubscribe = onValue(confirmationsRef, (snapshot) => {
+      const data = snapshot.val();
+      setConfirmedUnannouncedResignations(
+        data && typeof data === "object" ? data : {},
+      );
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Load data from Firebase
   useEffect(() => {
@@ -252,14 +317,24 @@ function AttendanceList() {
           id,
         }));
         setPreviousDayEmployees(arr);
+        setPreviousComparisonDate(previousResult.dateKey || "");
 
         // Calculate missing employees
-        const currentMnvSet = new Set(employees.map((e) => e.mnv));
-        const missing = arr.filter((e) => !currentMnvSet.has(e.mnv));
+        const currentMnvSet = new Set(
+          employees
+            .map((e) => normalizeEmployeeCode(e.mnv))
+            .filter((code) => code),
+        );
+        const missing = arr.filter((e) => {
+          const code = normalizeEmployeeCode(e.mnv);
+          if (!code) return false;
+          return !currentMnvSet.has(code);
+        });
         setMissingEmployees(missing);
       } else {
         setPreviousDayEmployees([]);
         setMissingEmployees([]);
+        setPreviousComparisonDate("");
       }
     };
 
@@ -269,6 +344,266 @@ function AttendanceList() {
       cancelled = true;
     };
   }, [selectedDate, employees]);
+
+  const handleConfirmUnannouncedResignation = useCallback(
+    async (employee) => {
+      const employeeCode = normalizeEmployeeCode(employee?.mnv);
+      if (!employeeCode) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Không thể xác nhận do thiếu MNV hợp lệ.",
+        });
+        return;
+      }
+
+      try {
+        const existingRecord =
+          confirmedUnannouncedResignations[employeeCode] || {};
+        await set(
+          ref(db, `attendanceUnannouncedResignations/${employeeCode}`),
+          {
+            employeeCode,
+            employeeName: employee?.hoVaTen || "",
+            department: employee?.boPhan || "",
+            birthDate: employee?.ngayThangNamSinh || "",
+            status: "confirmed",
+            firstDetectedDate: existingRecord.firstDetectedDate || selectedDate,
+            lastSeenDate:
+              previousComparisonDate || existingRecord.lastSeenDate || "",
+            confirmedMissingDate: selectedDate,
+            confirmedAt: new Date().toISOString(),
+            confirmedBy: user?.email || "unknown",
+            updatedAt: new Date().toISOString(),
+          },
+        );
+
+        setAlert({
+          show: true,
+          type: "success",
+          message: `Đã xác nhận ${employee?.hoVaTen || employeeCode} nghỉ không thông báo.`,
+        });
+      } catch (error) {
+        console.error("Confirm unannounced resignation failed:", error);
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Không thể xác nhận nghỉ không thông báo.",
+        });
+      }
+    },
+    [
+      confirmedUnannouncedResignations,
+      previousComparisonDate,
+      selectedDate,
+      user,
+    ],
+  );
+
+  const handleUnconfirmUnannouncedResignation = useCallback(
+    async (employee) => {
+      const employeeCode = normalizeEmployeeCode(employee?.mnv);
+      if (!employeeCode) return;
+
+      try {
+        await remove(
+          ref(db, `attendanceUnannouncedResignations/${employeeCode}`),
+        );
+        setAlert({
+          show: true,
+          type: "success",
+          message: `Đã chuyển ${employee?.hoVaTen || employeeCode} về danh sách nghi ngờ.`,
+        });
+      } catch (error) {
+        console.error("Unconfirm unannounced resignation failed:", error);
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Không thể hủy xác nhận nghỉ không thông báo.",
+        });
+      }
+    },
+    [],
+  );
+
+  const handleScanHistoricalMissingEmployees = useCallback(async () => {
+    const threshold = Number(historicalThresholdDays);
+    if (!Number.isFinite(threshold) || threshold < 1) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "Ngưỡng ngày phải lớn hơn hoặc bằng 1.",
+      });
+      return;
+    }
+
+    setHistoricalScanLoading(true);
+    try {
+      const attendanceSnap = await get(ref(db, "attendance"));
+      const attendanceData = attendanceSnap.val();
+
+      if (!attendanceData || typeof attendanceData !== "object") {
+        setHistoricalSuspectedEmployees([]);
+        setHistoricalLatestDate("");
+        setHistoricalScannedAt(new Date().toISOString());
+        return;
+      }
+
+      const attendanceDates = Object.keys(attendanceData)
+        .filter(
+          (dateKey) =>
+            attendanceData[dateKey] &&
+            typeof attendanceData[dateKey] === "object" &&
+            Object.keys(attendanceData[dateKey]).length > 0,
+        )
+        .sort();
+
+      if (attendanceDates.length === 0) {
+        setHistoricalSuspectedEmployees([]);
+        setHistoricalLatestDate("");
+        setHistoricalScannedAt(new Date().toISOString());
+        return;
+      }
+
+      const latestDate = attendanceDates[attendanceDates.length - 1];
+      setHistoricalLatestDate(latestDate);
+
+      const lastSeenByEmployee = {};
+      attendanceDates.forEach((dateKey, dateIndex) => {
+        const dayData = attendanceData[dateKey];
+        Object.values(dayData).forEach((emp) => {
+          const code = normalizeEmployeeCode(emp?.mnv);
+          if (!code) return;
+
+          const previous = lastSeenByEmployee[code] || {};
+          lastSeenByEmployee[code] = {
+            ...previous,
+            employeeCode: code,
+            mnv: String(emp?.mnv ?? code),
+            hoVaTen: emp?.hoVaTen || previous.hoVaTen || "",
+            boPhan: emp?.boPhan || previous.boPhan || "",
+            ngayThangNamSinh:
+              emp?.ngayThangNamSinh || previous.ngayThangNamSinh || "",
+            lastSeenDate: dateKey,
+            lastSeenIndex: dateIndex,
+          };
+        });
+      });
+
+      const suspected = Object.values(lastSeenByEmployee)
+        .map((emp) => {
+          const missingWorkingDays =
+            attendanceDates.length - 1 - emp.lastSeenIndex;
+          return {
+            id: `historical__${emp.employeeCode}`,
+            ...emp,
+            latestAttendanceDate: latestDate,
+            missingWorkingDays,
+          };
+        })
+        .filter((emp) => emp.missingWorkingDays > threshold)
+        .sort((a, b) => {
+          if (b.missingWorkingDays !== a.missingWorkingDays) {
+            return b.missingWorkingDays - a.missingWorkingDays;
+          }
+          return String(a.hoVaTen || "").localeCompare(String(b.hoVaTen || ""));
+        });
+
+      setHistoricalSuspectedEmployees(suspected);
+      setHistoricalScannedAt(new Date().toISOString());
+      setAlert({
+        show: true,
+        type: "success",
+        message: `Đã quét lịch sử, tìm thấy ${suspected.length} nhân viên nghi ngờ (vắng > ${threshold} ngày).`,
+      });
+    } catch (error) {
+      console.error("Scan historical missing employees failed:", error);
+      setAlert({
+        show: true,
+        type: "error",
+        message: "Không thể quét lịch sử dữ liệu chấm công.",
+      });
+    } finally {
+      setHistoricalScanLoading(false);
+    }
+  }, [historicalThresholdDays]);
+
+  const handleBulkConfirmHistoricalSuspects = useCallback(
+    async (employeeCodes = []) => {
+      if (!canManageUnannouncedResignation) return;
+
+      const normalizedCodes = employeeCodes
+        .map((code) => normalizeEmployeeCode(code))
+        .filter((code) => code);
+
+      if (normalizedCodes.length === 0) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Vui lòng chọn ít nhất 1 nhân viên để xác nhận.",
+        });
+        return;
+      }
+
+      try {
+        const now = new Date().toISOString();
+        const updatesPayload = {};
+
+        normalizedCodes.forEach((code) => {
+          const historicalEmp = historicalSuspectedMap[code] || {};
+          const existingRecord = confirmedUnannouncedResignations[code] || {};
+
+          updatesPayload[`attendanceUnannouncedResignations/${code}`] = {
+            employeeCode: code,
+            employeeName:
+              historicalEmp.hoVaTen || existingRecord.employeeName || "",
+            department: historicalEmp.boPhan || existingRecord.department || "",
+            birthDate:
+              historicalEmp.ngayThangNamSinh || existingRecord.birthDate || "",
+            status: "confirmed",
+            firstDetectedDate:
+              existingRecord.firstDetectedDate ||
+              historicalEmp.lastSeenDate ||
+              "",
+            lastSeenDate:
+              historicalEmp.lastSeenDate || existingRecord.lastSeenDate || "",
+            confirmedMissingDate:
+              historicalEmp.latestAttendanceDate ||
+              existingRecord.confirmedMissingDate ||
+              selectedDate,
+            missingWorkingDays:
+              historicalEmp.missingWorkingDays ??
+              existingRecord.missingWorkingDays ??
+              0,
+            confirmedAt: now,
+            confirmedBy: user?.email || "unknown",
+            updatedAt: now,
+          };
+        });
+
+        await update(ref(db), updatesPayload);
+        setAlert({
+          show: true,
+          type: "success",
+          message: `Đã xác nhận ${normalizedCodes.length} nhân viên từ danh sách lịch sử.`,
+        });
+      } catch (error) {
+        console.error("Bulk confirm historical suspects failed:", error);
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Không thể xác nhận hàng loạt từ dữ liệu lịch sử.",
+        });
+      }
+    },
+    [
+      canManageUnannouncedResignation,
+      confirmedUnannouncedResignations,
+      historicalSuspectedMap,
+      selectedDate,
+      user,
+    ],
+  );
 
   // Auto-hide alert after 3s
   useEffect(() => {
@@ -353,8 +688,8 @@ function AttendanceList() {
         return false;
       // Filter by entry time status
       if (gioVaoFilter.length > 0) {
-        const hasGioVao = emp.gioVao && emp.gioVao.trim() !== "";
-        const hasCaLamViec = emp.caLamViec && emp.caLamViec.trim() !== "";
+        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
+        const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
         const isCheckedIn = "đã_chấm_công";
         const isNotCheckedIn = !hasGioVao && !hasCaLamViec;
 
@@ -1822,7 +2157,7 @@ function AttendanceList() {
           <th style="width:7%">MVT</th>
           <th style="width:26%">Họ và tên</th>
           <th style="width:8%">Giới tính</th>
-          <th style="width:12%">Ngày tháng năm sinh</th>
+          <th style="width:12%">Ngày sinh</th>
           <th style="width:7%">Mã BP</th>
           <th style="width:14%">Bộ phận</th>
           <th style="width:8%">Thời gian vào</th>
@@ -2180,7 +2515,7 @@ function AttendanceList() {
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
                   {tl("dateLabel", "Ngày/Date")}:{" "}
-                  {new Date().toLocaleDateString(displayLocale)}
+                  {new Date(selectedDate).toLocaleDateString(displayLocale)}
                 </p>
               </div>
             </div>
@@ -2291,9 +2626,24 @@ function AttendanceList() {
           isOpen={showMissingEmployeesModal}
           onClose={() => setShowMissingEmployeesModal(false)}
           missingEmployees={missingEmployees}
+          suspectedEmployees={suspectedUnannouncedEmployees}
+          confirmedEmployees={confirmedMissingEmployees}
           previousDayEmployees={previousDayEmployees}
+          previousComparisonDate={previousComparisonDate}
           employees={employees}
           selectedDate={selectedDate}
+          confirmationMap={confirmedUnannouncedResignations}
+          canManageConfirmation={canManageUnannouncedResignation}
+          onConfirmEmployee={handleConfirmUnannouncedResignation}
+          onUnconfirmEmployee={handleUnconfirmUnannouncedResignation}
+          historicalThresholdDays={historicalThresholdDays}
+          onHistoricalThresholdChange={setHistoricalThresholdDays}
+          onScanHistorical={handleScanHistoricalMissingEmployees}
+          historicalScanLoading={historicalScanLoading}
+          historicalScannedAt={historicalScannedAt}
+          historicalLatestDate={historicalLatestDate}
+          historicalSuspectedEmployees={historicalSuspectedEmployees}
+          onBulkConfirmHistorical={handleBulkConfirmHistoricalSuspects}
         />
 
         {/* Filters and Actions */}
@@ -2406,12 +2756,12 @@ function AttendanceList() {
             </div>
 
             {/* Filter Dropdown Menu */}
-            <div className="relative flex-1 sm:flex-none min-w-[110px]">
+            <div className="relative flex-1 sm:flex-none min-w-[100px]">
               <button
                 onClick={() =>
                   setFilterMenuDropdownOpen(!filterMenuDropdownOpen)
                 }
-                className={`w-full px-3 sm:px-4 py-2 rounded-lg border border-slate-300 font-bold text-sm shadow transition flex items-center justify-center gap-2 ${
+                className={`w-full px-1 sm:px-1 py-2 rounded-lg border border-slate-300 font-bold text-sm shadow transition flex items-center justify-center gap-2 ${
                   gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
                   gioVaoFilter.length > 0 ||
@@ -2916,10 +3266,10 @@ function AttendanceList() {
 
             {/* Action Dropdown (Upload/Export/Add) */}
             {user && (
-              <div className="relative action-dropdown flex-1 sm:flex-none min-w-[110px]">
+              <div className="relative action-dropdown flex-1 sm:flex-none min-w-[80px]">
                 <button
                   onClick={() => setActionDropdownOpen(!actionDropdownOpen)}
-                  className="w-full px-3 sm:px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center justify-center gap-1"
+                  className="w-full px-2 sm:px-2 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center justify-center gap-1"
                 >
                   ⚙️ {tl("actionsMenu", "Chức năng")}
                   <span className="text-xs">
@@ -3060,10 +3410,10 @@ function AttendanceList() {
             )}
 
             {/* Print Dropdown */}
-            <div className="relative flex-1 sm:flex-none min-w-[110px]">
+            <div className="relative flex-1 sm:flex-none min-w-[80px]">
               <button
                 onClick={() => setPrintDropdownOpen(!printDropdownOpen)}
-                className="w-full px-3 sm:px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition flex items-center justify-center gap-1"
+                className="w-full px-1 sm:px-1 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition flex items-center justify-center gap-1"
               >
                 🖨️ {tl("print", "In")}
                 <span className="text-xs">{printDropdownOpen ? "▲" : "▼"}</span>
@@ -3200,7 +3550,7 @@ function AttendanceList() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("dateOfBirth", "Ngày tháng năm sinh")}
+                    {tl("dateOfBirth", "Ngày sinh")}
                   </label>
                   <input
                     type="date"
@@ -3339,13 +3689,13 @@ function AttendanceList() {
                 <div className="flex gap-3">
                   <button
                     onClick={handlePrintOvertimeList}
-                    className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition whitespace-nowrap"
+                    className="px-2 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition whitespace-nowrap"
                   >
                     🖨️ {tl("printList", "In danh sách")}
                   </button>
                   <button
                     onClick={handleExportOvertimeForm}
-                    className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition whitespace-nowrap"
+                    className="px-2 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition whitespace-nowrap"
                   >
                     ⬇️ {tl("exportOvertimeExcel", "Xuất biểu mẫu Excel")}
                   </button>
@@ -3947,14 +4297,14 @@ function AttendanceList() {
                             className="w-full md:w-auto px-2.5 md:px-3 py-1.5 bg-blue-500 text-white rounded-md text-[11px] md:text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md whitespace-nowrap"
                             title="Chỉnh sửa"
                           >
-                            ✏️ Sửa
+                            ✏️
                           </button>
                           <button
                             onClick={() => handleDelete(emp.id)}
                             className="w-full md:w-auto px-2.5 md:px-3 py-1.5 bg-red-500 text-white rounded-md text-[11px] md:text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md whitespace-nowrap"
                             title="Xóa"
                           >
-                            🗑️ Xóa
+                            🗑️
                           </button>
                         </div>
                       </td>

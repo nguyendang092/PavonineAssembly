@@ -1,6 +1,6 @@
 // Component: UnifiedModal
 // Chức năng: Component modal đồng nhất về màu sắc và design cho toàn bộ ứng dụng
-import React from "react";
+import React, { useEffect } from "react";
 
 /**
  * UnifiedModal - Component modal tái sử dụng với màu sắc đồng nhất
@@ -28,6 +28,17 @@ const UnifiedModal = ({
   showCloseButton = true,
   icon,
 }) => {
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Cấu hình màu sắc theo variant

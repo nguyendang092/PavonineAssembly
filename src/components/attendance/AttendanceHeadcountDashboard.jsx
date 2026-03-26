@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
+import * as XLSX from "xlsx";
 
 const DEPARTMENT_CONFIG = [
   {
@@ -398,6 +399,19 @@ function AttendanceHeadcountDashboard({
 }) {
   const dashboardExportRef = useRef(null);
 
+  const resolveDisplayCount = (overrideValue, fallbackValue) => {
+    if (
+      overrideValue === "" ||
+      overrideValue === null ||
+      overrideValue === undefined
+    ) {
+      return fallbackValue;
+    }
+
+    const parsed = Number(overrideValue);
+    return Number.isFinite(parsed) ? parsed : fallbackValue;
+  };
+
   const handleDownloadDashboardImage = () => {
     const node = dashboardExportRef.current;
     if (!node) return;
@@ -423,6 +437,184 @@ function AttendanceHeadcountDashboard({
       .catch((error) => {
         console.error("Download dashboard image failed:", error);
       });
+  };
+
+  const handleExportExcel = () => {
+    const wsData = [
+      [
+        "공정",
+        "총 필요인원",
+        "현재 인원",
+        "부족 인원",
+        "구분",
+        "주간 근무",
+        "",
+        "",
+        "",
+        "",
+        "야간 근무",
+        "",
+        "",
+        "",
+        "",
+      ],
+      [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "인원",
+        "결근/연차",
+        "출근 인원",
+        "결근율",
+        "비고",
+        "인원",
+        "결근/연차",
+        "출근 인원",
+        "결근율",
+        "비고",
+      ],
+    ];
+
+    rows.forEach((row) => {
+      wsData.push([
+        row.label,
+        row.required,
+        row.current,
+        row.shortage,
+        "정규직",
+        row.regularStats.day.total,
+        row.regularStats.day.absent,
+        row.regularStats.day.present,
+        row.regularStats.day.absentRate,
+        notesByKey?.[`${row.key}_regular_day`] || "-",
+        row.regularStats.night.total,
+        row.regularStats.night.absent,
+        row.regularStats.night.present,
+        row.regularStats.night.absentRate,
+        notesByKey?.[`${row.key}_regular_night`] || "-",
+      ]);
+
+      wsData.push([
+        "",
+        "",
+        "",
+        "",
+        "일용직",
+        resolveDisplayCount(
+          notesByKey?.[`${row.key}_seasonal_day_count`],
+          row.seasonalStats.day.total,
+        ),
+        row.seasonalStats.day.absent,
+        row.seasonalStats.day.present,
+        row.seasonalStats.day.absentRate,
+        notesByKey?.[`${row.key}_seasonal_day`] || "-",
+        resolveDisplayCount(
+          notesByKey?.[`${row.key}_seasonal_night_count`],
+          row.seasonalStats.night.total,
+        ),
+        row.seasonalStats.night.absent,
+        row.seasonalStats.night.present,
+        row.seasonalStats.night.absentRate,
+        notesByKey?.[`${row.key}_seasonal_night`] || "-",
+      ]);
+    });
+
+    wsData.push([
+      "TOTAL",
+      totals.required,
+      totals.current,
+      totals.shortage,
+      "정규직",
+      totals.regular.day.total,
+      totals.regular.day.absent,
+      totals.regular.day.present,
+      totals.regular.day.absentRate,
+      "-",
+      totals.regular.night.total,
+      totals.regular.night.absent,
+      totals.regular.night.present,
+      totals.regular.night.absentRate,
+      "-",
+    ]);
+
+    wsData.push([
+      "",
+      "",
+      "",
+      "",
+      "일용직",
+      totals.seasonal.day.total,
+      totals.seasonal.day.absent,
+      totals.seasonal.day.present,
+      totals.seasonal.day.absentRate,
+      "-",
+      totals.seasonal.night.total,
+      totals.seasonal.night.absent,
+      totals.seasonal.night.present,
+      totals.seasonal.night.absentRate,
+      "-",
+    ]);
+
+    wsData.push([
+      "TOTAL",
+      totals.required,
+      totals.current,
+      totals.shortage,
+      "합계",
+      totals.grand.day.total,
+      totals.grand.day.absent,
+      totals.grand.day.present,
+      totals.grand.day.absentRate,
+      "-",
+      totals.grand.night.total,
+      totals.grand.night.absent,
+      totals.grand.night.present,
+      totals.grand.night.absentRate,
+      "-",
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+
+    worksheet["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
+      { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+      { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
+      { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
+      { s: { r: 0, c: 4 }, e: { r: 1, c: 4 } },
+      { s: { r: 0, c: 5 }, e: { r: 0, c: 9 } },
+      { s: { r: 0, c: 10 }, e: { r: 0, c: 14 } },
+    ];
+
+    worksheet["!cols"] = [
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 8 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 8 },
+      { wch: 24 },
+      { wch: 8 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 8 },
+      { wch: 24 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "AttendanceDashboard");
+
+    const fallbackDate = new Date();
+    const yyyy = fallbackDate.getFullYear();
+    const mm = String(fallbackDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(fallbackDate.getDate()).padStart(2, "0");
+    const fileDate = selectedDate || `${yyyy}-${mm}-${dd}`;
+
+    XLSX.writeFile(workbook, `attendance-dashboard-${fileDate}.xlsx`);
   };
 
   const filteredRegular = useMemo(() => {
@@ -575,6 +767,13 @@ function AttendanceHeadcountDashboard({
                   className="border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="px-3 py-2 rounded-md text-sm font-semibold border bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700 transition"
+              >
+                Xuất Excel
+              </button>
               <button
                 type="button"
                 onClick={handleDownloadDashboardImage}

@@ -17,6 +17,8 @@ export const PRODUCTION_DEPARTMENTS = [
   "Assy-1",
 ];
 
+const normalizeTextValue = (value) => String(value ?? "").trim();
+
 function AttendanceDashboard({
   employees,
   globalFilter,
@@ -55,10 +57,11 @@ function AttendanceDashboard({
     ];
     const present = filteredEmployees.filter((e) => {
       // Nếu có trường chamCong và nó thuộc loại nghỉ/phép thì không tính
-      if (e.chamCong && INVALID_ATTENDANCE.includes(e.chamCong.trim()))
+      if (INVALID_ATTENDANCE.includes(normalizeTextValue(e.chamCong)))
         return false;
       // Nếu giờ vào là PN, TN, PO thì vẫn tính là vắng
-      if (["PN", "TN", "PO"].includes((e.gioVao || "").trim())) return false;
+      if (["PN", "TN", "PO"].includes(normalizeTextValue(e.gioVao)))
+        return false;
       // Chỉ tính có mặt nếu giờ vào đúng định dạng giờ (HH:MM)
       return /^\d{1,2}:\d{2}$/.test(e.gioVao);
     }).length;
@@ -75,7 +78,7 @@ function AttendanceDashboard({
       }
       byDepartment[dept].total++;
       // Chỉ tính present nếu giờ vào đúng định dạng HH:MM và không phải PN, TN, PO, TS
-      const gioVao = (emp.gioVao || "").trim();
+      const gioVao = normalizeTextValue(emp.gioVao);
       const ABSENT_CODES = [
         "PN",
         "PN1/2",
@@ -91,7 +94,7 @@ function AttendanceDashboard({
       if (
         /^\d{1,2}:\d{2}$/.test(gioVao) &&
         !ABSENT_CODES.includes(gioVao) &&
-        !(emp.chamCong && INVALID_ATTENDANCE.includes(emp.chamCong.trim()))
+        !INVALID_ATTENDANCE.includes(normalizeTextValue(emp.chamCong))
       ) {
         byDepartment[dept].present++;
       } else {
@@ -105,9 +108,8 @@ function AttendanceDashboard({
       let shift;
       // Chỉ tính present nếu không phải các loại nghỉ/phép đặc biệt
       const isPresent =
-        emp.gioVao &&
-        emp.gioVao !== "" &&
-        !(emp.chamCong && INVALID_ATTENDANCE.includes(emp.chamCong.trim()));
+        normalizeTextValue(emp.gioVao) !== "" &&
+        !INVALID_ATTENDANCE.includes(normalizeTextValue(emp.chamCong));
       if (isPresent) {
         const timePattern = /^(\d{1,2}):(\d{2})$/;
         if (timePattern.test(emp.gioVao)) {

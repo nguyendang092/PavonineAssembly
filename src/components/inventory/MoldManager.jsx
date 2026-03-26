@@ -200,8 +200,8 @@ function MoldManager() {
             new Set(
               molds
                 .map((m) => m["Subsidiary"])
-                .filter((v) => v !== undefined && v !== "")
-            )
+                .filter((v) => v !== undefined && v !== ""),
+            ),
           ).sort(),
       },
       {
@@ -214,13 +214,14 @@ function MoldManager() {
             new Set(
               molds
                 .map((m) => m["Type"])
-                .filter((v) => v !== undefined && v !== "")
-            )
+                .filter((v) => v !== undefined && v !== ""),
+            ),
           ).sort(),
       },
       {
         key: "location",
         labelKey: "moldManager.columns.location",
+
         value: locationFilter,
         setValue: setLocationFilter,
         getOptions: () =>
@@ -228,8 +229,8 @@ function MoldManager() {
             new Set(
               molds
                 .map((m) => m["Location"])
-                .filter((v) => v !== undefined && v !== "")
-            )
+                .filter((v) => v !== undefined && v !== ""),
+            ),
           ).sort(),
       },
       {
@@ -242,12 +243,12 @@ function MoldManager() {
             new Set(
               molds
                 .map((m) => m["Vendor"])
-                .filter((v) => v !== undefined && v !== "")
-            )
+                .filter((v) => v !== undefined && v !== ""),
+            ),
           ).sort(),
       },
     ],
-    [molds, subsidiaryFilter, typeFilter, locationFilter, vendorFilter]
+    [molds, subsidiaryFilter, typeFilter, locationFilter, vendorFilter],
   );
 
   // Handle file upload for images
@@ -279,9 +280,6 @@ function MoldManager() {
     else if (columnName === "PM Image") columnType = "pm";
     const newFileName = `${moldCode}_${columnType}.${fileExt}`;
 
-    // Tạo preview URL
-    const previewURL = URL.createObjectURL(file);
-
     // Cập nhật form với tên file mới
     setForm((prev) => ({
       ...prev,
@@ -300,7 +298,6 @@ function MoldManager() {
       originalName: file.name,
       newName: newFileName,
       destination: `public/picture/molds/${newFileName}`,
-      preview: previewURL,
     });
   };
 
@@ -402,7 +399,7 @@ function MoldManager() {
         const moldCode = form["Mold Code"]?.trim();
         if (moldCode) {
           const duplicate = molds.find(
-            (m) => m.id !== editing && m["Mold Code"]?.trim() === moldCode
+            (m) => m.id !== editing && m["Mold Code"]?.trim() === moldCode,
           );
           if (duplicate) {
             setAlert({
@@ -426,7 +423,7 @@ function MoldManager() {
         const moldCode = form["Mold Code"]?.trim();
         if (moldCode) {
           const duplicate = molds.find(
-            (m) => m["Mold Code"]?.trim() === moldCode
+            (m) => m["Mold Code"]?.trim() === moldCode,
           );
           if (duplicate) {
             setAlert({
@@ -547,6 +544,29 @@ function MoldManager() {
   const closePmDetailModal = () =>
     setPmDetailModal({ show: false, mold: null });
 
+  const hasOpenPopup =
+    showModal ||
+    confirmDelete.show ||
+    imageZoom.show ||
+    detailModal.show ||
+    pmDetailModal.show;
+
+  useEffect(() => {
+    const { body, documentElement } = document;
+    const previousBodyOverflow = body.style.overflow;
+    const previousHtmlOverflow = documentElement.style.overflow;
+
+    if (hasOpenPopup) {
+      body.style.overflow = "hidden";
+      documentElement.style.overflow = "hidden";
+    }
+
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [hasOpenPopup]);
+
   // Filtered molds by search term and dropdown filters
   const filteredMolds = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -603,7 +623,7 @@ function MoldManager() {
       parts.push(
         <span key={`hl-${key++}`} className="bg-yellow-200 rounded px-0.5">
           {displayText.slice(idx, idx + q.length)}
-        </span>
+        </span>,
       );
       start = idx + q.length;
       idx = lower.indexOf(qLower, start);
@@ -827,7 +847,7 @@ function MoldManager() {
                               src={getImagePath(
                                 form[col],
                                 form["Mold Code"],
-                                col
+                                col,
                               )}
                               alt={getTranslatedColumn(col)}
                               className="mt-1 rounded border max-h-16 object-contain"
@@ -905,7 +925,7 @@ function MoldManager() {
                     {getTranslatedColumn(col)}
                   </th>
                 ))}
-                <th className="border border-gray-200 px-3 py-2 text-center text-blue-900 text-xs font-bold uppercase tracking-wide bg-blue-100">
+                <th className="w-[124px] border border-gray-200 px-2 py-2 text-center text-blue-900 text-xs font-bold uppercase tracking-wide bg-blue-100 whitespace-nowrap">
                   {t("moldManager.actions")}
                 </th>
               </tr>
@@ -922,13 +942,16 @@ function MoldManager() {
                       return (
                         <td
                           key={col}
-                          className="border border-gray-200 px-2 py-1 text-xs text-center align-middle"
+                          className="border border-gray-200 px-2 py-1 text-xs text-center align-middle whitespace-nowrap"
                         >
                           <button
                             onClick={() => handleViewPmDetail(m)}
-                            className="px-3 py-1.5 bg-emerald-500 text-white rounded-md font-medium text-xs shadow-sm hover:bg-emerald-600 hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                            type="button"
+                            title={t("moldManager.viewDetail")}
+                            aria-label={t("moldManager.viewDetail")}
+                            className="mx-auto flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 hover:shadow-md"
                           >
-                            🔍 {t("moldManager.viewDetail")}
+                            <span aria-hidden="true">🔍</span>
                           </button>
                         </td>
                       );
@@ -967,7 +990,7 @@ function MoldManager() {
                             onError={(e) => {
                               // Thêm vào set failed images để không render lại
                               setFailedImages((prev) =>
-                                new Set(prev).add(imageKey)
+                                new Set(prev).add(imageKey),
                               );
                             }}
                           />
@@ -981,28 +1004,37 @@ function MoldManager() {
                       </td>
                     );
                   })}
-                  <td className="border border-gray-200 px-2 py-1 text-center align-middle">
+                  <td className="border border-gray-200 px-2 py-1 text-center align-middle whitespace-nowrap">
                     {user && (
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => handleViewDetail(m)}
-                          className="px-3 py-1.5 bg-emerald-500 text-white rounded-md font-medium text-xs shadow-sm hover:bg-emerald-600 hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                          type="button"
+                          title={t("moldManager.viewDetail")}
+                          aria-label={t("moldManager.viewDetail")}
+                          className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 hover:shadow-md"
                         >
-                          🔍 {t("moldManager.viewDetail")}
+                          <span aria-hidden="true">🔍</span>
                         </button>
                         <button
                           onClick={() => handleEdit(m.id)}
-                          className="px-3 py-1.5 bg-blue-500 text-white rounded-md font-medium text-xs shadow-sm hover:bg-blue-600 hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                          type="button"
+                          title={t("moldManager.edit")}
+                          aria-label={t("moldManager.edit")}
+                          className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-blue-600 hover:shadow-md"
                         >
-                          ✏️ {t("moldManager.edit")}
+                          <span aria-hidden="true">✏️</span>
                         </button>
                         <button
                           onClick={() =>
                             setConfirmDelete({ show: true, id: m.id })
                           }
-                          className="px-3 py-1.5 bg-red-500 text-white rounded-md font-medium text-xs shadow-sm hover:bg-red-600 hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                          type="button"
+                          title={t("moldManager.delete")}
+                          aria-label={t("moldManager.delete")}
+                          className="flex h-8 w-8 items-center justify-center rounded-md bg-red-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-red-600 hover:shadow-md"
                         >
-                          🗑️ {t("moldManager.delete")}
+                          <span aria-hidden="true">🗑️</span>
                         </button>
                       </div>
                     )}
@@ -1087,7 +1119,7 @@ function MoldManager() {
                               value,
                               detailModal.mold["Mold Code"] ||
                                 detailModal.mold.id,
-                              col
+                              col,
                             )}
                             alt={getTranslatedColumn(col)}
                             className="w-full h-32 object-contain rounded border bg-white"

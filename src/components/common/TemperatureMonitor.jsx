@@ -1,19 +1,30 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  useDeferredValue,
+  lazy,
+  Suspense,
+} from "react";
 import { useUser } from "../../contexts/UserContext";
 import { logUserAction } from "../../utils/userLog";
 import { format } from "date-fns";
 import Modal from "react-modal";
 import { ref, onValue, set, remove, update, get } from "firebase/database";
 import { db } from "../../services/firebase";
-import { HiHome, HiCalendar, HiFolder } from "react-icons/hi";
+import { HiCalendar, HiFolder } from "react-icons/hi";
 import { FaCheck, FaChartLine, FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import Toast from "./Toast";
 import SingleMachineTable from "../dashboard/SingleMachineTable";
-import ChartView from "../dashboard/ChartView";
 import { useTranslation } from "react-i18next";
 import Sidebar from "../layout/Sidebar";
 
 Modal.setAppElement("#root");
+
+const PAGE_SIZE = 6;
+const ChartView = lazy(() => import("../dashboard/ChartView"));
 
 const TemperatureMonitor = () => {
   const { user } = useUser();
@@ -38,11 +49,11 @@ const TemperatureMonitor = () => {
 
   // Toast timeout cleanup
   const toastTimeoutRef = useRef();
-  const showToast = (message) => {
+  const showToast = useCallback((message) => {
     setToastMessage(message);
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     toastTimeoutRef.current = setTimeout(() => setToastMessage(""), 3000);
-  };
+  }, []);
   useEffect(() => {
     return () => {
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -52,49 +63,44 @@ const TemperatureMonitor = () => {
   useEffect(() => {
     setAreasLoading(true);
     const areasRef = ref(db, "areas");
-    let ignore = false;
+    let isMounted = true;
     const unsubscribe = onValue(
       areasRef,
       (snapshot) => {
-        if (ignore) return;
+        if (!isMounted) return;
         const data = snapshot.val() || {};
         setAreas(data);
         setAreasLoading(false);
         // Nếu selectedArea không còn tồn tại thì reset
-        if (selectedArea && !data[selectedArea]) {
-          setSelectedArea(null);
-        }
+        setSelectedArea((prev) => (prev && !data[prev] ? null : prev));
       },
-      (err) => {
-        if (!ignore) setAreasLoading(false);
+      () => {
+        if (isMounted) setAreasLoading(false);
       },
     );
     return () => {
-      ignore = true;
+      isMounted = false;
       unsubscribe();
     };
-  }, [selectedArea]);
+  }, []);
 
   // Chunk load máy (pagination)
-  const PAGE_SIZE = 6;
-  // Debounce search máy
   const [machinePage, setMachinePage] = useState(1);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedSearch(searchMachine), 300);
-    return () => clearTimeout(handler);
-  }, [searchMachine]);
+  const deferredSearchMachine = useDeferredValue(searchMachine);
 
-  const machines =
-    selectedArea && areas[selectedArea]?.machines
-      ? areas[selectedArea].machines
-      : [];
+  const areaKeys = useMemo(() => Object.keys(areas), [areas]);
+  const selectedAreaMachines = useMemo(
+    () => (selectedArea ? areas[selectedArea]?.machines || [] : []),
+    [areas, selectedArea],
+  );
+
   const filteredMachines = useMemo(() => {
-    if (!debouncedSearch) return machines;
-    return machines.filter((m) =>
-      m.toLowerCase().includes(debouncedSearch.toLowerCase()),
+    const normalizedSearch = deferredSearchMachine.trim().toLowerCase();
+    if (!normalizedSearch) return selectedAreaMachines;
+    return selectedAreaMachines.filter((m) =>
+      m.toLowerCase().includes(normalizedSearch),
     );
-  }, [machines, debouncedSearch]);
+  }, [selectedAreaMachines, deferredSearchMachine]);
   const totalMachinePages = useMemo(
     () => Math.ceil(filteredMachines.length / PAGE_SIZE),
     [filteredMachines.length],
@@ -114,93 +120,104 @@ const TemperatureMonitor = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const handleEditMachine = async (oldName, newName) => {
-    const trimmedNew = newName.trim();
-    if (!selectedArea || !trimmedNew) return;
+  const handleEditMachine = useCallback(
+    async (oldName, newName) => {
+      const trimmedNew = newName.trim();
+      if (!selectedArea || !trimmedNew) return;
 
-    const currentMachines = areas[selectedArea]?.machines || [];
-    if (oldName === trimmedNew) {
-      setEditingMachine(null);
-      return;
-    }
-    // Kiểm tra trùng tên không phân biệt hoa thường
-    if (
-      currentMachines.some(
-        (m) => m.trim().toLowerCase() === trimmedNew.toLowerCase(),
-      )
-    ) {
-      alert(t("temperatureMonitor.machineExists"));
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const updatedMachines = currentMachines.map((m) =>
-        m === oldName ? trimmedNew : m,
-      );
-      await update(ref(db, `areas/${selectedArea}`), {
-        machines: updatedMachines,
-      });
-
-      const oldRef = ref(db, `temperature_monitor/${selectedArea}/${oldName}`);
-      const newRef = ref(
-        db,
-        `temperature_monitor/${selectedArea}/${trimmedNew}`,
-      );
-      const snapshot = await get(oldRef);
-      if (snapshot.exists()) {
-        await set(newRef, snapshot.val());
-        await remove(oldRef);
+      const currentMachines = areas[selectedArea]?.machines || [];
+      if (oldName === trimmedNew) {
         setEditingMachine(null);
-        setEditMachineName("");
-        showToast(
-          t("temperatureMonitor.renamed", { oldName, newName: trimmedNew }),
+        return;
+      }
+      // Kiểm tra trùng tên không phân biệt hoa thường
+      if (
+        currentMachines.some(
+          (m) => m.trim().toLowerCase() === trimmedNew.toLowerCase(),
+        )
+      ) {
+        alert(t("temperatureMonitor.machineExists"));
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const updatedMachines = currentMachines.map((m) =>
+          m === oldName ? trimmedNew : m,
         );
-        // Ghi log đổi tên máy
+        await update(ref(db, `areas/${selectedArea}`), {
+          machines: updatedMachines,
+        });
+
+        const oldRef = ref(
+          db,
+          `temperature_monitor/${selectedArea}/${oldName}`,
+        );
+        const newRef = ref(
+          db,
+          `temperature_monitor/${selectedArea}/${trimmedNew}`,
+        );
+        const snapshot = await get(oldRef);
+        if (snapshot.exists()) {
+          await set(newRef, snapshot.val());
+          await remove(oldRef);
+          setEditingMachine(null);
+          setEditMachineName("");
+          showToast(
+            t("temperatureMonitor.renamed", { oldName, newName: trimmedNew }),
+          );
+          // Ghi log đổi tên máy
+          if (user && user.email) {
+            await logUserAction(
+              user.email,
+              "edit_machine",
+              `Đổi tên máy từ ${oldName} sang ${trimmedNew} tại khu vực ${selectedArea}`,
+            );
+          }
+        } else {
+          alert(t("temperatureMonitor.dataNotFound"));
+        }
+      } catch (error) {
+        alert(t("temperatureMonitor.editError"));
+        console.error(error);
+      }
+      setIsLoading(false);
+    },
+    [areas, selectedArea, showToast, t, user],
+  );
+
+  const handleDeleteMachine = useCallback(
+    async (machineName) => {
+      if (!selectedArea) return;
+      if (
+        !window.confirm(t("temperatureMonitor.confirmDelete", { machineName }))
+      )
+        return;
+      setIsLoading(true);
+      try {
+        const updatedMachines = areas[selectedArea]?.machines.filter(
+          (m) => m !== machineName,
+        );
+        await update(ref(db, `areas/${selectedArea}`), {
+          machines: updatedMachines,
+        });
+        await remove(
+          ref(db, `temperature_monitor/${selectedArea}/${machineName}`),
+        );
+        // Ghi log xóa máy
         if (user && user.email) {
           await logUserAction(
             user.email,
-            "edit_machine",
-            `Đổi tên máy từ ${oldName} sang ${trimmedNew} tại khu vực ${selectedArea}`,
+            "delete_machine",
+            `Xóa máy ${machineName} tại khu vực ${selectedArea}`,
           );
         }
-      } else {
-        alert(t("temperatureMonitor.dataNotFound"));
+      } catch (error) {
+        alert(t("temperatureMonitor.deleteError"));
       }
-    } catch (error) {
-      alert(t("temperatureMonitor.editError"));
-      console.error(error);
-    }
-    setIsLoading(false);
-  };
-
-  const handleDeleteMachine = async (machineName) => {
-    if (!selectedArea) return;
-    if (!window.confirm(t("temperatureMonitor.confirmDelete", { machineName })))
-      return;
-    setIsLoading(true);
-    try {
-      const updatedMachines = areas[selectedArea]?.machines.filter(
-        (m) => m !== machineName,
-      );
-      await update(ref(db, `areas/${selectedArea}`), {
-        machines: updatedMachines,
-      });
-      await remove(
-        ref(db, `temperature_monitor/${selectedArea}/${machineName}`),
-      );
-      // Ghi log xóa máy
-      if (user && user.email) {
-        await logUserAction(
-          user.email,
-          "delete_machine",
-          `Xóa máy ${machineName} tại khu vực ${selectedArea}`,
-        );
-      }
-    } catch (error) {
-      alert(t("temperatureMonitor.deleteError"));
-    }
-    setIsLoading(false);
-  };
+      setIsLoading(false);
+    },
+    [areas, selectedArea, t, user],
+  );
 
   // Validate tên máy: không ký tự đặc biệt, không rỗng, tối đa 30 ký tự
   const isValidMachineName = (name) => {
@@ -210,7 +227,7 @@ const TemperatureMonitor = () => {
     return true;
   };
 
-  const handleAddMachine = async () => {
+  const handleAddMachine = useCallback(async () => {
     const trimmedMachine = newMachineName.trim();
     if (!trimmedMachine || !selectedArea) return;
     if (!isValidMachineName(trimmedMachine)) {
@@ -251,7 +268,7 @@ const TemperatureMonitor = () => {
       alert(t("temperatureMonitor.addError"));
     }
     setIsLoading(false);
-  };
+  }, [areas, newMachineName, selectedArea, t, user]);
   return (
     <div className="" style={{ backgroundColor: "#eef4ff" }}>
       {/* Toggle Button */}
@@ -288,12 +305,12 @@ const TemperatureMonitor = () => {
             </div>
             {showAreas && (
               <div className="ml-2 mt-2 space-y-2">
-                {Object.keys(areas).length === 0 && (
+                {areaKeys.length === 0 && (
                   <p className="text-sm text-white/60 italic">
                     {t("temperatureMonitor.noArea")}
                   </p>
                 )}
-                {Object.keys(areas).map((areaKey) => (
+                {areaKeys.map((areaKey) => (
                   <div
                     key={areaKey}
                     className={`px-2 py-1 rounded cursor-pointer ${
@@ -553,7 +570,7 @@ const TemperatureMonitor = () => {
               onChange={(e) => setModalSelectedArea(e.target.value)}
               className="border border-gray-300 rounded-md px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              {Object.keys(areas).map((areaKey) => (
+              {areaKeys.map((areaKey) => (
                 <option key={areaKey} value={areaKey}>
                   {t(`areas.${areaKey}`)}{" "}
                   {/* ✅ dịch tên hiển thị, nhưng giữ key gốc làm value */}
@@ -593,12 +610,20 @@ const TemperatureMonitor = () => {
         </div>
 
         {modalSelectedArea ? (
-          <ChartView
-            selectedArea={modalSelectedArea}
-            selectedMonth={selectedMonth}
-            type={activeTab}
-            machines={areas[modalSelectedArea]?.machines || []}
-          />
+          <Suspense
+            fallback={
+              <div className="text-center text-gray-500 py-8 text-lg">
+                {t("temperatureMonitor.loading")}
+              </div>
+            }
+          >
+            <ChartView
+              selectedArea={modalSelectedArea}
+              selectedMonth={selectedMonth}
+              type={activeTab}
+              machines={areas[modalSelectedArea]?.machines || []}
+            />
+          </Suspense>
         ) : (
           <p>{t("temperatureMonitor.noChartArea")}</p>
         )}

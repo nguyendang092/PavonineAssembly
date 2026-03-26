@@ -236,7 +236,7 @@ function AttendanceTable() {
         <div className="bg-white rounded-lg shadow-md border border-slate-100 p-6 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+              <label className="mb-2 flex items-center gap-1 text-sm font-semibold text-slate-700">
                 <svg
                   className="w-4 h-4 mr-1"
                   fill="none"
@@ -261,7 +261,7 @@ function AttendanceTable() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+              <label className="mb-2 flex items-center gap-1 text-sm font-semibold text-slate-700">
                 <svg
                   className="w-4 h-4 mr-1"
                   fill="none"
@@ -286,7 +286,7 @@ function AttendanceTable() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+              <label className="mb-2 flex items-center gap-1 text-sm font-semibold text-slate-700">
                 <svg
                   className="w-4 h-4 mr-1"
                   fill="none"
