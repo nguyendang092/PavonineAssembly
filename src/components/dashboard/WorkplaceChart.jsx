@@ -1,5 +1,5 @@
 /* Đây là component hiển thị biểu đồ sản lượng */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
 import { Bar } from "react-chartjs-2";
 import { FiUpload } from "react-icons/fi"; // import biểu tượng upload
@@ -26,7 +26,7 @@ ChartJS.register(
   LinearScale,
   Legend,
   Tooltip,
-  ChartDataLabels
+  ChartDataLabels,
 );
 const getCurrentWeekNumber = () => {
   const today = new Date();
@@ -74,6 +74,12 @@ export default function WorkplaceChart() {
   const [rawData, setRawData] = useState(null);
   const [showTable, setShowTable] = useState(window.innerWidth >= 1520);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isReadingTotalFile, setIsReadingTotalFile] = useState(false);
+  const [isReadingDetailFile, setIsReadingDetailFile] = useState(false);
+  const [isUploadingTotal, setIsUploadingTotal] = useState(false);
+  const [isUploadingDetail, setIsUploadingDetail] = useState(false);
+  const totalFileInputRef = useRef(null);
+  const detailFileInputRef = useRef(null);
 
   // Theo dõi kích thước màn hình
   useEffect(() => {
@@ -148,117 +154,187 @@ export default function WorkplaceChart() {
   };
   const closeDetailModal = () => setIsModalOpen(false);
   const uploadToFirebase = async (data) => {
+    if (isUploadingTotal) return;
+    setIsUploadingTotal(true);
+
     // Ghi log upload tổng sản lượng
-    if (user && user.email) {
-      await logUserAction(
-        user.email,
-        "upload_total_output",
-        `Upload tổng sản lượng tuần ${selectedWeek}`
-      );
+    try {
+      if (user && user.email) {
+        await logUserAction(
+          user.email,
+          "upload_total_output",
+          `Upload tổng sản lượng tuần ${selectedWeek}`,
+        );
+      }
+
+      const sanitizeKey = (key) =>
+        String(key ?? "").replace(/[.#$/\[\]]/g, "_");
+      const chunkSize = 500;
+
+      for (let i = 0; i < data.length; i += chunkSize) {
+        // Yield to browser between chunks so UI remains responsive.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        const chunk = data.slice(i, i + chunkSize);
+        const updates = {};
+
+        chunk.forEach((row) => {
+          const {
+            Week,
+            WorkplaceName,
+            ReworkorNot,
+            time_monthday,
+            WorkingLight,
+            Total_Good,
+            Total_NG,
+          } = row;
+
+          if (
+            !Week ||
+            !WorkplaceName ||
+            !ReworkorNot ||
+            !time_monthday ||
+            !WorkingLight
+          ) {
+            return;
+          }
+
+          const safeWorkplaceName = sanitizeKey(WorkplaceName);
+          const pathGood = `bar/${safeWorkplaceName}/${Week}/${ReworkorNot}/${time_monthday}/${WorkingLight}/Total_Good`;
+          const pathNG = `bar/${safeWorkplaceName}/${Week}/${ReworkorNot}/${time_monthday}/${WorkingLight}/Total_NG`;
+          updates[pathGood] = Number(Total_Good) || 0;
+          updates[pathNG] = Number(Total_NG) || 0;
+        });
+
+        if (Object.keys(updates).length > 0) {
+          await update(ref(db), updates);
+        }
+      }
+    } finally {
+      setIsUploadingTotal(false);
     }
-    const updates = {};
-    const sanitizeKey = (key) => key.replace(/[.#$/\[\]]/g, "_");
-    // Khi upload lên Firebase, đổi Total_Product thành Total_Good và thêm Total_NG
-    data.forEach((row) => {
-      const {
-        Week,
-        WorkplaceName,
-        ReworkorNot,
-        time_monthday,
-        WorkingLight,
-        Total_Good,
-        Total_NG,
-      } = row;
-      const safeWorkplaceName = sanitizeKey(WorkplaceName);
-      const pathGood = `bar/${safeWorkplaceName}/${Week}/${ReworkorNot}/${time_monthday}/${WorkingLight}/Total_Good`;
-      const pathNG = `bar/${safeWorkplaceName}/${Week}/${ReworkorNot}/${time_monthday}/${WorkingLight}/Total_NG`;
-      updates[pathGood] = Total_Good;
-      updates[pathNG] = Total_NG;
-    });
-    await update(ref(db), updates);
   };
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const bstr = evt.target.result;
-      const workbook = XLSX.read(bstr, { type: "binary" });
-      const sheetName = workbook.SheetNames[0];
+    if (isReadingTotalFile) return;
+
+    setIsReadingTotalFile(true);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames?.[0];
+      if (!sheetName) {
+        throw new Error("File Excel không có sheet");
+      }
+
       const sheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(sheet);
       setRawData(jsonData);
-      processExcelData(jsonData);
-    };
-    reader.readAsBinaryString(file);
+      processExcelData(jsonData, selectedYear);
+    } catch (err) {
+      alert("❌ Lỗi khi đọc file: " + (err?.message || "Không thể đọc file"));
+    } finally {
+      setIsReadingTotalFile(false);
+      if (e.target) e.target.value = "";
+    }
   };
-  const handleDetailUpload = (e) => {
+  const handleDetailUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const bstr = evt.target.result;
-        const workbook = XLSX.read(bstr, { type: "binary" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(sheet);
-        setDetailData(jsonData);
-        alert("📁 Đã đọc file chi tiết, sẵn sàng upload.");
-      } catch (err) {
-        alert("❌ Lỗi khi đọc file: " + err.message);
+    if (isReadingDetailFile) return;
+
+    setIsReadingDetailFile(true);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames?.[0];
+      if (!sheetName) {
+        throw new Error("File Excel không có sheet");
       }
-    };
-    reader.readAsBinaryString(file);
+
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet);
+      setDetailData(jsonData);
+      alert("📁 Đã đọc file chi tiết, sẵn sàng upload.");
+    } catch (err) {
+      alert("❌ Lỗi khi đọc file: " + (err?.message || "Không thể đọc file"));
+    } finally {
+      setIsReadingDetailFile(false);
+      if (e.target) e.target.value = "";
+    }
   };
   const handleDetailUploadToFirebase = async () => {
     if (!detailData) {
       alert("❗ Vui lòng chọn file chi tiết trước khi upload.");
       return;
     }
+    if (isUploadingDetail) return;
 
-    const updates = {};
+    setIsUploadingDetail(true);
 
-    detailData.forEach((row, index) => {
-      const model = row["ItemCode"]; // Thay cho "Model"
-      const area = row["WorkplaceName"]; // Thay cho "Name"
-      const week = row["Week"]; // Giữ nguyên
-      const date = row["ProductionEfficiencyDate"]; // Thay cho "Date"
-      const total = row["GoodProductEfficiency"]; // Thay cho "Total"
+    try {
+      const sanitizeKey = (key) =>
+        String(key ?? "").replace(/[.#$/\[\]]/g, "_");
+      const chunkSize = 500;
+      let hasValidData = false;
 
-      if (!model || !area || !week || !date) {
-        console.warn(`⚠️ Bỏ qua dòng ${index + 2}: thiếu dữ liệu`, {
-          model,
-          area,
-          week,
-          date,
+      for (let i = 0; i < detailData.length; i += chunkSize) {
+        // Yield to browser between chunks so UI remains responsive.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        const chunk = detailData.slice(i, i + chunkSize);
+        const updates = {};
+
+        chunk.forEach((row, index) => {
+          const model = row["ItemCode"];
+          const area = row["WorkplaceName"];
+          const week = row["Week"];
+          const date = row["ProductionEfficiencyDate"];
+          const total = row["GoodProductEfficiency"];
+
+          if (!model || !area || !week || !date) {
+            console.warn(`⚠️ Bỏ qua dòng ${i + index + 2}: thiếu dữ liệu`, {
+              model,
+              area,
+              week,
+              date,
+            });
+            return;
+          }
+
+          const safeArea = sanitizeKey(area);
+          const safeModel = sanitizeKey(model);
+          const path = `details/${safeArea}/${week}/${safeModel}/${date}`;
+          const totalValue = Number(total);
+          updates[path] = Number.isNaN(totalValue) ? 0 : totalValue;
+          hasValidData = true;
         });
+
+        if (Object.keys(updates).length > 0) {
+          await update(ref(db), updates);
+        }
+      }
+
+      if (!hasValidData) {
+        alert("❌ Không có dữ liệu hợp lệ để upload.");
         return;
       }
 
-      const safeArea = area.replace(/[.#$/\[\]]/g, "_");
-      const safeModel = model.replace(/[.#$/\[\]]/g, "_");
-      const path = `details/${safeArea}/${week}/${safeModel}/${date}`;
-      const totalValue = Number(total);
-      updates[path] = isNaN(totalValue) ? 0 : totalValue;
-    });
-    if (Object.keys(updates).length === 0) {
-      alert("❌ Không có dữ liệu hợp lệ để upload.");
-      return;
-    }
-    try {
-      await update(ref(db), updates);
       // Ghi log upload chi tiết sản lượng
       if (user && user.email) {
         await logUserAction(
           user.email,
           "upload_detail_output",
-          `Upload chi tiết sản lượng tuần ${selectedWeek}`
+          `Upload chi tiết sản lượng tuần ${selectedWeek}`,
         );
       }
       alert("✅ Upload chi tiết thành công!");
       setDetailData(null);
     } catch (error) {
       alert("❌ Lỗi khi upload: " + error.message);
+    } finally {
+      setIsUploadingDetail(false);
     }
   };
   const processExcelData = (data, filterYear) => {
@@ -384,8 +460,8 @@ export default function WorkplaceChart() {
     const filteredAreas = areas.filter((area) =>
       map[area].some(
         ({ Day, Night }) =>
-          Day.normal + Day.rework + Night.normal + Night.rework > 0
-      )
+          Day.normal + Day.rework + Night.normal + Night.rework > 0,
+      ),
     );
     const datasets = filteredAreas.map((area, i) => {
       let dataArr;
@@ -401,7 +477,7 @@ export default function WorkplaceChart() {
             Day.ng_normal +
             Day.ng_rework +
             Night.ng_normal +
-            Night.ng_rework
+            Night.ng_rework,
         );
       }
       return {
@@ -535,7 +611,11 @@ export default function WorkplaceChart() {
             <div className="flex items-center justify-between gap-2 bg-white/10 rounded-lg p-2">
               <label
                 htmlFor="file-upload-total"
-                className="cursor-pointer p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                className={`p-2 text-white rounded-lg ${
+                  isReadingTotalFile || isUploadingTotal
+                    ? "cursor-not-allowed bg-slate-400"
+                    : "cursor-pointer bg-blue-500 hover:bg-blue-600"
+                }`}
                 title="Chọn file"
               >
                 <FiUpload size={16} />
@@ -545,6 +625,7 @@ export default function WorkplaceChart() {
               </span>
               <button
                 onClick={() => {
+                  if (isUploadingTotal || isReadingTotalFile) return;
                   if (!rawData) {
                     alert(t("workplaceChart.pleaseSelectExcel"));
                     return;
@@ -552,18 +633,23 @@ export default function WorkplaceChart() {
                   uploadToFirebase(rawData)
                     .then(() => alert("✅ Upload dữ liệu thành công!"))
                     .catch((error) =>
-                      alert(t("workplaceChart.uploadError") + error.message)
+                      alert(t("workplaceChart.uploadError") + error.message),
                     );
                 }}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-lg text-xs font-medium hover:from-blue-700 hover:to-purple-700 transition"
+                disabled={isUploadingTotal || isReadingTotalFile}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-lg text-xs font-medium hover:from-blue-700 hover:to-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {t("workplaceChart.uploadFirebase")}
+                {isUploadingTotal
+                  ? "Đang upload..."
+                  : t("workplaceChart.uploadFirebase")}
               </button>
               <input
+                ref={totalFileInputRef}
                 id="file-upload-total"
                 type="file"
                 accept=".xlsx, .xls"
                 onChange={handleFileUpload}
+                disabled={isReadingTotalFile || isUploadingTotal}
                 className="hidden"
               />
             </div>
@@ -571,7 +657,11 @@ export default function WorkplaceChart() {
             <div className="flex items-center justify-between gap-2 bg-white/10 rounded-lg p-2">
               <label
                 htmlFor="file-upload-detail"
-                className="cursor-pointer p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                className={`p-2 text-white rounded-lg ${
+                  isReadingDetailFile || isUploadingDetail
+                    ? "cursor-not-allowed bg-slate-400"
+                    : "cursor-pointer bg-blue-500 hover:bg-blue-600"
+                }`}
                 title="Chọn file"
               >
                 <FiUpload size={16} />
@@ -581,16 +671,22 @@ export default function WorkplaceChart() {
               </span>
               <button
                 onClick={handleDetailUploadToFirebase}
-                disabled={!detailData}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-lg text-xs font-medium hover:from-blue-700 hover:to-purple-700 transition disabled:opacity-50"
+                disabled={
+                  !detailData || isUploadingDetail || isReadingDetailFile
+                }
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-lg text-xs font-medium hover:from-blue-700 hover:to-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {t("workplaceChart.uploadFirebase")}
+                {isUploadingDetail
+                  ? "Đang upload..."
+                  : t("workplaceChart.uploadFirebase")}
               </button>
               <input
+                ref={detailFileInputRef}
                 id="file-upload-detail"
                 type="file"
                 accept=".xlsx, .xls"
                 onChange={handleDetailUpload}
+                disabled={isReadingDetailFile || isUploadingDetail}
                 className="hidden"
               />
             </div>
@@ -773,7 +869,7 @@ export default function WorkplaceChart() {
                       {Object.entries(dataMap)
                         .filter(
                           ([area]) =>
-                            selectedArea === "" || selectedArea === area
+                            selectedArea === "" || selectedArea === area,
                         )
                         .map(([area, dayArr]) => {
                           let totalNormal = 0;

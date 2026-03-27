@@ -1,5 +1,12 @@
-﻿import React, { useState, useEffect, useMemo, useCallback } from "react";
+﻿import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
 import {
   db,
@@ -20,6 +27,7 @@ import BirthdayCakeBell from "../employee/BirthdayCakeBell";
 import NotificationBell from "../common/NotificationBell";
 import CenterPortal from "../common/CenterPortal";
 import MissingEmployeesModal from "./MissingEmployeesModal";
+import NewEmployeesSummary from "./NewEmployeesSummary";
 
 const getDateKeyBySubtractDays = (dateStr, daysBack = 1) => {
   const date = new Date(dateStr);
@@ -80,6 +88,7 @@ function AttendanceList() {
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const { t, i18n } = useTranslation();
   const { user } = useUser();
+  const location = useLocation();
   const tl = useCallback(
     (key, defaultValue, options = {}) =>
       t(`attendanceList.${key}`, { defaultValue, ...options }),
@@ -110,6 +119,7 @@ function AttendanceList() {
   const [modalExpandedSections, setModalExpandedSections] = useState({});
   const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
   const [actionDropdownOpen, setActionDropdownOpen] = useState(false);
+  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
   const [showUnattendedPopup, setShowUnattendedPopup] = useState(false);
   const [unattendedPopupDismissed, setUnattendedPopupDismissed] =
     useState(false);
@@ -147,6 +157,10 @@ function AttendanceList() {
   const [historicalScannedAt, setHistoricalScannedAt] = useState("");
   const [historicalLatestDate, setHistoricalLatestDate] = useState("");
   const [filterMenuDropdownOpen, setFilterMenuDropdownOpen] = useState(false);
+  const [showNewEmployeesModal, setShowNewEmployeesModal] = useState(false);
+  const filterMenuRef = useRef(null);
+  const actionDropdownRef = useRef(null);
+  const printDropdownRef = useRef(null);
 
   const quickNoCheckInFilterValue = "chưa_chấm_công";
   const isQuickNoCheckInActive =
@@ -640,38 +654,51 @@ function AttendanceList() {
     [user, userDepartments],
   );
 
-  // Close print dropdown when clicking outside
+  // Unified outside-click handler for top action menus.
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (printDropdownOpen && !event.target.closest(".relative")) {
-        setPrintDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [printDropdownOpen]);
+      const target = event.target;
 
-  // Close filter menu dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterMenuDropdownOpen && !event.target.closest(".relative")) {
+      if (
+        filterMenuDropdownOpen &&
+        filterMenuRef.current &&
+        !filterMenuRef.current.contains(target)
+      ) {
         setFilterMenuDropdownOpen(false);
       }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [filterMenuDropdownOpen]);
 
-  // Close action dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (actionDropdownOpen && !event.target.closest(".action-dropdown")) {
+      if (
+        printDropdownOpen &&
+        printDropdownRef.current &&
+        !printDropdownRef.current.contains(target)
+      ) {
+        setPrintDropdownOpen(false);
+      }
+
+      if (
+        actionDropdownOpen &&
+        actionDropdownRef.current &&
+        !actionDropdownRef.current.contains(target)
+      ) {
         setActionDropdownOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [actionDropdownOpen]);
+  }, [filterMenuDropdownOpen, printDropdownOpen, actionDropdownOpen]);
+
+  // Always close filter menu when route changes (pathname/query/hash).
+  useEffect(() => {
+    setFilterMenuDropdownOpen(false);
+  }, [location.pathname, location.search, location.hash]);
+
+  // Keep filter dropdown closed while opening/closing related detail modals.
+  useEffect(() => {
+    if (showMissingEmployeesModal || showNewEmployeesModal) {
+      setFilterMenuDropdownOpen(false);
+    }
+  }, [showMissingEmployeesModal, showNewEmployeesModal]);
 
   // Filter employees
   const filteredEmployees = useMemo(() => {
@@ -982,6 +1009,14 @@ function AttendanceList() {
 
       const file = e.target.files?.[0];
       if (!file) return;
+      if (isUploadingExcel) return;
+
+      setIsUploadingExcel(true);
+      const resetInput = () => {
+        if (e?.target) {
+          e.target.value = "";
+        }
+      };
 
       try {
         const data = await file.arrayBuffer();
@@ -1096,6 +1131,7 @@ function AttendanceList() {
         // Use the selectedDate from the date picker, not the current date
         const attendanceRef = ref(db, `attendance/${selectedDate}`);
         const dataToUpload = {};
+        const latestRowByMNV = new Map();
 
         // Chuẩn hóa MNV để tránh lệch kiểu dữ liệu (number/string) gây trùng.
         const normalizeMNV = (value) => {
@@ -1118,7 +1154,13 @@ function AttendanceList() {
           return "";
         };
 
-        dataRows.forEach((row, index) => {
+        for (let index = 0; index < dataRows.length; index++) {
+          // Yield every 200 rows so large files do not block the UI for too long.
+          if (index > 0 && index % 200 === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+
+          const row = dataRows[index];
           // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu,
           // Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc, Chấm công,
           // ... , PN tồn (ưu tiên cột P nếu có)
@@ -1149,21 +1191,12 @@ function AttendanceList() {
           const normalizedMNV = normalizeMNV(mnvNum);
           if (!normalizedMNV) return;
 
-          // Trong cùng 1 file, nếu trùng MNV thì lấy dòng xuất hiện sau cùng.
-          const existingUploadKey = Object.keys(dataToUpload).find(
-            (k) => normalizeMNV(dataToUpload[k]?.mnv) === normalizedMNV,
-          );
-          if (existingUploadKey) {
-            delete dataToUpload[existingUploadKey];
-          }
-
-          const empKey = `emp_${index}`;
           const sttNum = Number.isFinite(Number(stt))
             ? Number(stt)
-            : Object.keys(dataToUpload).length + 1;
+            : latestRowByMNV.size + 1;
 
-          dataToUpload[empKey] = {
-            id: empKey,
+          // Với MNV trùng nhau trong cùng file, giữ dòng xuất hiện sau cùng.
+          latestRowByMNV.set(normalizedMNV, {
             stt: sttNum,
             mnv: normalizedMNV,
             mvt: mvt || "",
@@ -1177,7 +1210,17 @@ function AttendanceList() {
             caLamViec: caLamViec || "",
             chamCong: chamCong || "",
             pnTon,
+          });
+        }
+
+        let uploadIndex = 0;
+        latestRowByMNV.forEach((emp) => {
+          const empKey = `emp_${uploadIndex}`;
+          dataToUpload[empKey] = {
+            ...emp,
+            id: empKey,
           };
+          uploadIndex += 1;
         });
 
         // Upload to Firebase - Merge with existing data to prevent data loss
@@ -1276,11 +1319,6 @@ function AttendanceList() {
           type: "success",
           message: message,
         });
-
-        // Reset file input
-        if (e.target) {
-          e.target.value = "";
-        }
       } catch (err) {
         console.error("Upload Excel error:", err);
         setAlert({
@@ -1290,9 +1328,12 @@ function AttendanceList() {
             error: err?.message || t("attendanceList.uploadCheckFormat"),
           }),
         });
+      } finally {
+        resetInput();
+        setIsUploadingExcel(false);
       }
     },
-    [user, selectedDate],
+    [user, selectedDate, t, isUploadingExcel],
   );
 
   // Handle delete all data for selected date
@@ -2627,7 +2668,10 @@ function AttendanceList() {
         {/* Modal hiển thị nhân viên bị mất so với ngày hôm trước */}
         <MissingEmployeesModal
           isOpen={showMissingEmployeesModal}
-          onClose={() => setShowMissingEmployeesModal(false)}
+          onClose={() => {
+            setShowMissingEmployeesModal(false);
+            setFilterMenuDropdownOpen(false);
+          }}
           missingEmployees={missingEmployees}
           suspectedEmployees={suspectedUnannouncedEmployees}
           confirmedEmployees={confirmedMissingEmployees}
@@ -2759,7 +2803,10 @@ function AttendanceList() {
             </div>
 
             {/* Filter Dropdown Menu */}
-            <div className="relative flex-1 sm:flex-none min-w-[100px]">
+            <div
+              ref={filterMenuRef}
+              className={`attendance-filter-menu relative flex-1 sm:flex-none min-w-[100px]`}
+            >
               <button
                 onClick={() =>
                   setFilterMenuDropdownOpen(!filterMenuDropdownOpen)
@@ -2839,31 +2886,65 @@ function AttendanceList() {
                     </div>
                   </button>
 
-                  {/* Nhân viên bị mất */}
-                  {missingEmployees.length > 0 && (
+                  {/* Nhân viên bị mất / nghỉ đã xác nhận */}
+                  {(canManageUnannouncedResignation ||
+                    missingEmployees.length > 0 ||
+                    confirmedMissingEmployees.length > 0) && (
                     <button
                       onClick={() => {
                         setShowMissingEmployeesModal(true);
                         setFilterMenuDropdownOpen(false);
                       }}
-                      className="w-full text-left px-4 py-3 hover:bg-red-50 flex items-center gap-3 transition bg-red-50 text-red-700 font-semibold"
+                      className={`w-full text-left px-4 py-3 flex items-center gap-3 transition font-semibold ${
+                        suspectedUnannouncedEmployees.length > 0
+                          ? "hover:bg-red-50 bg-red-50 text-red-700"
+                          : "hover:bg-slate-50 text-slate-700"
+                      }`}
                     >
                       <span className="text-lg">📋</span>
                       <div className="flex-1">
                         <div className="font-semibold text-sm">
                           {tl("missingEmployees", "Nhân viên nghỉ việc")}
                         </div>
-                        <div className="text-xs text-red-600">
-                          {tl("peopleCount", "{{count}} người", {
-                            count: missingEmployees.length,
-                          })}
+                        <div
+                          className={`text-xs ${
+                            suspectedUnannouncedEmployees.length > 0
+                              ? "text-red-600"
+                              : "text-slate-500"
+                          }`}
+                        >
+                          Nghi ngờ: {suspectedUnannouncedEmployees.length} | Đã
+                          xác nhận: {confirmedMissingEmployees.length}
                         </div>
                       </div>
-                      <span className="ml-2 px-2 py-1 bg-red-600 text-white rounded-full text-xs font-bold">
-                        {missingEmployees.length}
+                      <span
+                        className={`ml-2 px-2 py-1 rounded-full text-xs font-bold text-white ${
+                          suspectedUnannouncedEmployees.length > 0
+                            ? "bg-red-600"
+                            : "bg-slate-500"
+                        }`}
+                      >
+                        {suspectedUnannouncedEmployees.length}
                       </span>
                     </button>
                   )}
+
+                  {/* Tăng ca */}
+                  <NewEmployeesSummary
+                    mode="menu"
+                    employees={employees}
+                    previousDayEmployees={previousDayEmployees}
+                    previousComparisonDate={previousComparisonDate}
+                    selectedDate={selectedDate}
+                    isDetailsOpen={showNewEmployeesModal}
+                    onDetailsOpenChange={(open) => {
+                      setShowNewEmployeesModal(open);
+                      if (open) {
+                        setFilterMenuDropdownOpen(false);
+                      }
+                    }}
+                    onMenuClick={() => setFilterMenuDropdownOpen(false)}
+                  />
 
                   {/* Tăng ca */}
                   <button
@@ -3269,7 +3350,10 @@ function AttendanceList() {
 
             {/* Action Dropdown (Upload/Export/Add) */}
             {user && (
-              <div className="relative action-dropdown flex-1 sm:flex-none min-w-[80px]">
+              <div
+                ref={actionDropdownRef}
+                className="relative action-dropdown flex-1 sm:flex-none min-w-[80px]"
+              >
                 <button
                   onClick={() => setActionDropdownOpen(!actionDropdownOpen)}
                   className="w-full px-2 sm:px-2 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center justify-center gap-1"
@@ -3289,7 +3373,12 @@ function AttendanceList() {
                         </span>
                         <div className="flex flex-col">
                           <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                            {tl("uploadExcelByDate", "Upload Excel theo ngày")}
+                            {isUploadingExcel
+                              ? "Đang upload..."
+                              : tl(
+                                  "uploadExcelByDate",
+                                  "Upload Excel theo ngày",
+                                )}
                           </span>
                           <span className="text-xs text-gray-500 mt-0.5">
                             {tl("importDataForDate", "Import dữ liệu cho ngày")}
@@ -3302,6 +3391,7 @@ function AttendanceList() {
                         <input
                           type="file"
                           accept=".xlsx,.xls"
+                          disabled={isUploadingExcel}
                           onChange={(e) => {
                             handleUploadExcel(e);
                             setActionDropdownOpen(false);
@@ -3413,7 +3503,10 @@ function AttendanceList() {
             )}
 
             {/* Print Dropdown */}
-            <div className="relative flex-1 sm:flex-none min-w-[80px]">
+            <div
+              ref={printDropdownRef}
+              className="print-dropdown-menu relative flex-1 sm:flex-none min-w-[80px]"
+            >
               <button
                 onClick={() => setPrintDropdownOpen(!printDropdownOpen)}
                 className="w-full px-1 sm:px-1 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition flex items-center justify-center gap-1"
@@ -4365,6 +4458,20 @@ function AttendanceList() {
             </p>
           </div>
         </div>
+
+        <NewEmployeesSummary
+          employees={employees}
+          previousDayEmployees={previousDayEmployees}
+          previousComparisonDate={previousComparisonDate}
+          selectedDate={selectedDate}
+          isDetailsOpen={showNewEmployeesModal}
+          onDetailsOpenChange={(open) => {
+            setShowNewEmployeesModal(open);
+            if (open) {
+              setFilterMenuDropdownOpen(false);
+            }
+          }}
+        />
       </div>
     </>
   );
