@@ -658,7 +658,6 @@ function AttendanceList() {
   useEffect(() => {
     const handleClickOutside = (event) => {
       const target = event.target;
-
       if (
         filterMenuDropdownOpen &&
         filterMenuRef.current &&
@@ -666,7 +665,6 @@ function AttendanceList() {
       ) {
         setFilterMenuDropdownOpen(false);
       }
-
       if (
         printDropdownOpen &&
         printDropdownRef.current &&
@@ -674,7 +672,6 @@ function AttendanceList() {
       ) {
         setPrintDropdownOpen(false);
       }
-
       if (
         actionDropdownOpen &&
         actionDropdownRef.current &&
@@ -683,23 +680,19 @@ function AttendanceList() {
         setActionDropdownOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [filterMenuDropdownOpen, printDropdownOpen, actionDropdownOpen]);
-
   // Always close filter menu when route changes (pathname/query/hash).
   useEffect(() => {
     setFilterMenuDropdownOpen(false);
   }, [location.pathname, location.search, location.hash]);
-
   // Keep filter dropdown closed while opening/closing related detail modals.
   useEffect(() => {
     if (showMissingEmployeesModal || showNewEmployeesModal) {
       setFilterMenuDropdownOpen(false);
     }
   }, [showMissingEmployeesModal, showNewEmployeesModal]);
-
   // Filter employees
   const filteredEmployees = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -709,7 +702,6 @@ function AttendanceList() {
     return employees.filter((emp) => {
       const empDeptKey = normalizeDepartment(emp.boPhan);
       const departmentFilterKey = normalizeDepartment(departmentFilter);
-
       if (departmentFilterKey && empDeptKey !== departmentFilterKey)
         return false;
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
@@ -722,7 +714,6 @@ function AttendanceList() {
         const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
         const isCheckedIn = "đã_chấm_công";
         const isNotCheckedIn = !hasGioVao && !hasCaLamViec;
-
         if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;
         if (isNotCheckedIn && !gioVaoFilter.includes("chưa_chấm_công"))
           return false;
@@ -744,7 +735,6 @@ function AttendanceList() {
     gioVaoFilter,
     normalizeDepartment,
   ]);
-
   // Overtime modal: derive unique options and apply modal filters from filteredEmployees
   const modalUniqueGenders = useMemo(
     () =>
@@ -784,7 +774,6 @@ function AttendanceList() {
     modalDepartmentListFilter,
     normalizeDepartment,
   ]);
-
   // Get unique departments (cascading filter - based on other selected filters)
   const departments = useMemo(() => {
     const deptMap = new Map();
@@ -801,7 +790,6 @@ function AttendanceList() {
     }
     return Array.from(deptMap.values());
   }, [employees, gioiTinhFilter, normalizeDepartment]);
-
   // Filtered list for 'bù công' (gioVao là giờ, không phải loại như PN, PO...)
   const buCongEmployees = useMemo(() => {
     // Strictly matches hh:mm or hh:mm:ss (no extra chars, no spaces)
@@ -837,7 +825,6 @@ function AttendanceList() {
       return false;
     });
   }, [filteredEmployees]);
-
   // Get unique genders (cascading filter - based on other selected filters)
   const genderList = useMemo(() => {
     const genders = new Set();
@@ -872,20 +859,17 @@ function AttendanceList() {
     }
     return Array.from(shifts).sort();
   }, [employees, gioiTinhFilter, departmentListFilter, normalizeDepartment]);
-
   // Filter departments based on search
   const filteredDepartments = useMemo(() => {
     if (!departmentSearchTerm.trim()) return departments;
     const search = departmentSearchTerm.toLowerCase();
     return departments.filter((dept) => dept.toLowerCase().includes(search));
   }, [departments, departmentSearchTerm]);
-
   // Handle form input
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }, []);
-
   // Handle submit (add/update)
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -897,7 +881,6 @@ function AttendanceList() {
       });
       return;
     }
-
     try {
       if (editing) {
         const empRef = ref(db, `attendance/${selectedDate}/${editing}`);
@@ -943,7 +926,6 @@ function AttendanceList() {
       });
     }
   };
-
   // Handle edit
   const handleEdit = useCallback(
     (emp) => {
@@ -1053,10 +1035,7 @@ function AttendanceList() {
 
           const fmt = (y, m, d) =>
             y && m && d
-              ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(
-                  2,
-                  "0",
-                )}`
+              ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`
               : "";
 
           // 1️⃣ Số serial Excel (QUAN TRỌNG NHẤT)
@@ -1085,11 +1064,11 @@ function AttendanceList() {
             if (!str) return "";
 
             // yyyy-mm-dd hoặc yyyy/mm/dd
-            const iso = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+            const iso = str.match(/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/);
             if (iso) return fmt(+iso[1], +iso[2], +iso[3]);
 
             // dd-mm-yyyy hoặc dd/mm/yyyy
-            const dmy = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+            const dmy = str.match(/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/);
             if (dmy) return fmt(+dmy[3], +dmy[2], +dmy[1]);
 
             // dd-MMM-yy (9-Feb-96)
@@ -1108,14 +1087,14 @@ function AttendanceList() {
               dec: 12,
             };
             const dmyText = str.match(
-              /^(\d{1,2})[-\s]?([a-zA-Z]{3})[-\s]?(\d{2,4})$/i,
+              /^\d{1,2}[-\s]?[a-zA-Z]{3}[-\s]?\d{2,4}$/i,
             );
             if (dmyText) {
               const day = +dmyText[1];
               const mon = monthNames[dmyText[2].toLowerCase()];
               if (mon) {
                 let year = +dmyText[3];
-                // Pivot year: 70-99 -> 1970-1999, 00-69 -> 2000-2069
+                // Pivot year: 70-99 -> 1970-1999, 00-69 -> 2000 + year
                 if (year < 100) {
                   year = year >= 70 ? 1900 + year : 2000 + year;
                 }
