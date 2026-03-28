@@ -1,12 +1,5 @@
-﻿import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-} from "react";
+﻿import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
 import {
   db,
@@ -27,7 +20,6 @@ import BirthdayCakeBell from "../employee/BirthdayCakeBell";
 import NotificationBell from "../common/NotificationBell";
 import CenterPortal from "../common/CenterPortal";
 import MissingEmployeesModal from "./MissingEmployeesModal";
-import NewEmployeesSummary from "./NewEmployeesSummary";
 
 const getDateKeyBySubtractDays = (dateStr, daysBack = 1) => {
   const date = new Date(dateStr);
@@ -88,7 +80,6 @@ function AttendanceList() {
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const { t, i18n } = useTranslation();
   const { user } = useUser();
-  const location = useLocation();
   const tl = useCallback(
     (key, defaultValue, options = {}) =>
       t(`attendanceList.${key}`, { defaultValue, ...options }),
@@ -119,7 +110,6 @@ function AttendanceList() {
   const [modalExpandedSections, setModalExpandedSections] = useState({});
   const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
   const [actionDropdownOpen, setActionDropdownOpen] = useState(false);
-  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
   const [showUnattendedPopup, setShowUnattendedPopup] = useState(false);
   const [unattendedPopupDismissed, setUnattendedPopupDismissed] =
     useState(false);
@@ -157,10 +147,6 @@ function AttendanceList() {
   const [historicalScannedAt, setHistoricalScannedAt] = useState("");
   const [historicalLatestDate, setHistoricalLatestDate] = useState("");
   const [filterMenuDropdownOpen, setFilterMenuDropdownOpen] = useState(false);
-  const [showNewEmployeesModal, setShowNewEmployeesModal] = useState(false);
-  const filterMenuRef = useRef(null);
-  const actionDropdownRef = useRef(null);
-  const printDropdownRef = useRef(null);
 
   const quickNoCheckInFilterValue = "chưa_chấm_công";
   const isQuickNoCheckInActive =
@@ -654,45 +640,39 @@ function AttendanceList() {
     [user, userDepartments],
   );
 
-  // Unified outside-click handler for top action menus.
+  // Close print dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      const target = event.target;
-      if (
-        filterMenuDropdownOpen &&
-        filterMenuRef.current &&
-        !filterMenuRef.current.contains(target)
-      ) {
-        setFilterMenuDropdownOpen(false);
-      }
-      if (
-        printDropdownOpen &&
-        printDropdownRef.current &&
-        !printDropdownRef.current.contains(target)
-      ) {
+      if (printDropdownOpen && !event.target.closest(".relative")) {
         setPrintDropdownOpen(false);
       }
-      if (
-        actionDropdownOpen &&
-        actionDropdownRef.current &&
-        !actionDropdownRef.current.contains(target)
-      ) {
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [printDropdownOpen]);
+
+  // Close filter menu dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterMenuDropdownOpen && !event.target.closest(".relative")) {
+        setFilterMenuDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [filterMenuDropdownOpen]);
+
+  // Close action dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (actionDropdownOpen && !event.target.closest(".action-dropdown")) {
         setActionDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [filterMenuDropdownOpen, printDropdownOpen, actionDropdownOpen]);
-  // Always close filter menu when route changes (pathname/query/hash).
-  useEffect(() => {
-    setFilterMenuDropdownOpen(false);
-  }, [location.pathname, location.search, location.hash]);
-  // Keep filter dropdown closed while opening/closing related detail modals.
-  useEffect(() => {
-    if (showMissingEmployeesModal || showNewEmployeesModal) {
-      setFilterMenuDropdownOpen(false);
-    }
-  }, [showMissingEmployeesModal, showNewEmployeesModal]);
+  }, [actionDropdownOpen]);
+
   // Filter employees
   const filteredEmployees = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -702,6 +682,7 @@ function AttendanceList() {
     return employees.filter((emp) => {
       const empDeptKey = normalizeDepartment(emp.boPhan);
       const departmentFilterKey = normalizeDepartment(departmentFilter);
+
       if (departmentFilterKey && empDeptKey !== departmentFilterKey)
         return false;
       if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
@@ -714,6 +695,7 @@ function AttendanceList() {
         const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
         const isCheckedIn = "đã_chấm_công";
         const isNotCheckedIn = !hasGioVao && !hasCaLamViec;
+
         if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;
         if (isNotCheckedIn && !gioVaoFilter.includes("chưa_chấm_công"))
           return false;
@@ -735,6 +717,7 @@ function AttendanceList() {
     gioVaoFilter,
     normalizeDepartment,
   ]);
+
   // Overtime modal: derive unique options and apply modal filters from filteredEmployees
   const modalUniqueGenders = useMemo(
     () =>
@@ -774,6 +757,7 @@ function AttendanceList() {
     modalDepartmentListFilter,
     normalizeDepartment,
   ]);
+
   // Get unique departments (cascading filter - based on other selected filters)
   const departments = useMemo(() => {
     const deptMap = new Map();
@@ -790,6 +774,7 @@ function AttendanceList() {
     }
     return Array.from(deptMap.values());
   }, [employees, gioiTinhFilter, normalizeDepartment]);
+
   // Filtered list for 'bù công' (gioVao là giờ, không phải loại như PN, PO...)
   const buCongEmployees = useMemo(() => {
     // Strictly matches hh:mm or hh:mm:ss (no extra chars, no spaces)
@@ -825,6 +810,7 @@ function AttendanceList() {
       return false;
     });
   }, [filteredEmployees]);
+
   // Get unique genders (cascading filter - based on other selected filters)
   const genderList = useMemo(() => {
     const genders = new Set();
@@ -859,17 +845,20 @@ function AttendanceList() {
     }
     return Array.from(shifts).sort();
   }, [employees, gioiTinhFilter, departmentListFilter, normalizeDepartment]);
+
   // Filter departments based on search
   const filteredDepartments = useMemo(() => {
     if (!departmentSearchTerm.trim()) return departments;
     const search = departmentSearchTerm.toLowerCase();
     return departments.filter((dept) => dept.toLowerCase().includes(search));
   }, [departments, departmentSearchTerm]);
+
   // Handle form input
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }, []);
+
   // Handle submit (add/update)
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -881,6 +870,7 @@ function AttendanceList() {
       });
       return;
     }
+
     try {
       if (editing) {
         const empRef = ref(db, `attendance/${selectedDate}/${editing}`);
@@ -926,6 +916,7 @@ function AttendanceList() {
       });
     }
   };
+
   // Handle edit
   const handleEdit = useCallback(
     (emp) => {
@@ -991,14 +982,6 @@ function AttendanceList() {
 
       const file = e.target.files?.[0];
       if (!file) return;
-      if (isUploadingExcel) return;
-
-      setIsUploadingExcel(true);
-      const resetInput = () => {
-        if (e?.target) {
-          e.target.value = "";
-        }
-      };
 
       try {
         const data = await file.arrayBuffer();
@@ -1035,7 +1018,10 @@ function AttendanceList() {
 
           const fmt = (y, m, d) =>
             y && m && d
-              ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`
+              ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(
+                  2,
+                  "0",
+                )}`
               : "";
 
           // 1️⃣ Số serial Excel (QUAN TRỌNG NHẤT)
@@ -1064,11 +1050,11 @@ function AttendanceList() {
             if (!str) return "";
 
             // yyyy-mm-dd hoặc yyyy/mm/dd
-            const iso = str.match(/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/);
+            const iso = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
             if (iso) return fmt(+iso[1], +iso[2], +iso[3]);
 
             // dd-mm-yyyy hoặc dd/mm/yyyy
-            const dmy = str.match(/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/);
+            const dmy = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
             if (dmy) return fmt(+dmy[3], +dmy[2], +dmy[1]);
 
             // dd-MMM-yy (9-Feb-96)
@@ -1087,14 +1073,14 @@ function AttendanceList() {
               dec: 12,
             };
             const dmyText = str.match(
-              /^\d{1,2}[-\s]?[a-zA-Z]{3}[-\s]?\d{2,4}$/i,
+              /^(\d{1,2})[-\s]?([a-zA-Z]{3})[-\s]?(\d{2,4})$/i,
             );
             if (dmyText) {
               const day = +dmyText[1];
               const mon = monthNames[dmyText[2].toLowerCase()];
               if (mon) {
                 let year = +dmyText[3];
-                // Pivot year: 70-99 -> 1970-1999, 00-69 -> 2000 + year
+                // Pivot year: 70-99 -> 1970-1999, 00-69 -> 2000-2069
                 if (year < 100) {
                   year = year >= 70 ? 1900 + year : 2000 + year;
                 }
@@ -1110,7 +1096,6 @@ function AttendanceList() {
         // Use the selectedDate from the date picker, not the current date
         const attendanceRef = ref(db, `attendance/${selectedDate}`);
         const dataToUpload = {};
-        const latestRowByMNV = new Map();
 
         // Chuẩn hóa MNV để tránh lệch kiểu dữ liệu (number/string) gây trùng.
         const normalizeMNV = (value) => {
@@ -1133,13 +1118,7 @@ function AttendanceList() {
           return "";
         };
 
-        for (let index = 0; index < dataRows.length; index++) {
-          // Yield every 200 rows so large files do not block the UI for too long.
-          if (index > 0 && index % 200 === 0) {
-            await new Promise((resolve) => setTimeout(resolve, 0));
-          }
-
-          const row = dataRows[index];
+        dataRows.forEach((row, index) => {
           // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu,
           // Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc, Chấm công,
           // ... , PN tồn (ưu tiên cột P nếu có)
@@ -1170,12 +1149,21 @@ function AttendanceList() {
           const normalizedMNV = normalizeMNV(mnvNum);
           if (!normalizedMNV) return;
 
+          // Trong cùng 1 file, nếu trùng MNV thì lấy dòng xuất hiện sau cùng.
+          const existingUploadKey = Object.keys(dataToUpload).find(
+            (k) => normalizeMNV(dataToUpload[k]?.mnv) === normalizedMNV,
+          );
+          if (existingUploadKey) {
+            delete dataToUpload[existingUploadKey];
+          }
+
+          const empKey = `emp_${index}`;
           const sttNum = Number.isFinite(Number(stt))
             ? Number(stt)
-            : latestRowByMNV.size + 1;
+            : Object.keys(dataToUpload).length + 1;
 
-          // Với MNV trùng nhau trong cùng file, giữ dòng xuất hiện sau cùng.
-          latestRowByMNV.set(normalizedMNV, {
+          dataToUpload[empKey] = {
+            id: empKey,
             stt: sttNum,
             mnv: normalizedMNV,
             mvt: mvt || "",
@@ -1189,17 +1177,7 @@ function AttendanceList() {
             caLamViec: caLamViec || "",
             chamCong: chamCong || "",
             pnTon,
-          });
-        }
-
-        let uploadIndex = 0;
-        latestRowByMNV.forEach((emp) => {
-          const empKey = `emp_${uploadIndex}`;
-          dataToUpload[empKey] = {
-            ...emp,
-            id: empKey,
           };
-          uploadIndex += 1;
         });
 
         // Upload to Firebase - Merge with existing data to prevent data loss
@@ -1298,6 +1276,11 @@ function AttendanceList() {
           type: "success",
           message: message,
         });
+
+        // Reset file input
+        if (e.target) {
+          e.target.value = "";
+        }
       } catch (err) {
         console.error("Upload Excel error:", err);
         setAlert({
@@ -1307,12 +1290,9 @@ function AttendanceList() {
             error: err?.message || t("attendanceList.uploadCheckFormat"),
           }),
         });
-      } finally {
-        resetInput();
-        setIsUploadingExcel(false);
       }
     },
-    [user, selectedDate, t, isUploadingExcel],
+    [user, selectedDate],
   );
 
   // Handle delete all data for selected date
@@ -2647,10 +2627,7 @@ function AttendanceList() {
         {/* Modal hiển thị nhân viên bị mất so với ngày hôm trước */}
         <MissingEmployeesModal
           isOpen={showMissingEmployeesModal}
-          onClose={() => {
-            setShowMissingEmployeesModal(false);
-            setFilterMenuDropdownOpen(false);
-          }}
+          onClose={() => setShowMissingEmployeesModal(false)}
           missingEmployees={missingEmployees}
           suspectedEmployees={suspectedUnannouncedEmployees}
           confirmedEmployees={confirmedMissingEmployees}
@@ -2782,10 +2759,7 @@ function AttendanceList() {
             </div>
 
             {/* Filter Dropdown Menu */}
-            <div
-              ref={filterMenuRef}
-              className={`attendance-filter-menu relative flex-1 sm:flex-none min-w-[100px]`}
-            >
+            <div className="relative flex-1 sm:flex-none min-w-[100px]">
               <button
                 onClick={() =>
                   setFilterMenuDropdownOpen(!filterMenuDropdownOpen)
@@ -2865,65 +2839,31 @@ function AttendanceList() {
                     </div>
                   </button>
 
-                  {/* Nhân viên bị mất / nghỉ đã xác nhận */}
-                  {(canManageUnannouncedResignation ||
-                    missingEmployees.length > 0 ||
-                    confirmedMissingEmployees.length > 0) && (
+                  {/* Nhân viên bị mất */}
+                  {missingEmployees.length > 0 && (
                     <button
                       onClick={() => {
                         setShowMissingEmployeesModal(true);
                         setFilterMenuDropdownOpen(false);
                       }}
-                      className={`w-full text-left px-4 py-3 flex items-center gap-3 transition font-semibold ${
-                        suspectedUnannouncedEmployees.length > 0
-                          ? "hover:bg-red-50 bg-red-50 text-red-700"
-                          : "hover:bg-slate-50 text-slate-700"
-                      }`}
+                      className="w-full text-left px-4 py-3 hover:bg-red-50 flex items-center gap-3 transition bg-red-50 text-red-700 font-semibold"
                     >
                       <span className="text-lg">📋</span>
                       <div className="flex-1">
                         <div className="font-semibold text-sm">
                           {tl("missingEmployees", "Nhân viên nghỉ việc")}
                         </div>
-                        <div
-                          className={`text-xs ${
-                            suspectedUnannouncedEmployees.length > 0
-                              ? "text-red-600"
-                              : "text-slate-500"
-                          }`}
-                        >
-                          Nghi ngờ: {suspectedUnannouncedEmployees.length} | Đã
-                          xác nhận: {confirmedMissingEmployees.length}
+                        <div className="text-xs text-red-600">
+                          {tl("peopleCount", "{{count}} người", {
+                            count: missingEmployees.length,
+                          })}
                         </div>
                       </div>
-                      <span
-                        className={`ml-2 px-2 py-1 rounded-full text-xs font-bold text-white ${
-                          suspectedUnannouncedEmployees.length > 0
-                            ? "bg-red-600"
-                            : "bg-slate-500"
-                        }`}
-                      >
-                        {suspectedUnannouncedEmployees.length}
+                      <span className="ml-2 px-2 py-1 bg-red-600 text-white rounded-full text-xs font-bold">
+                        {missingEmployees.length}
                       </span>
                     </button>
                   )}
-
-                  {/* Tăng ca */}
-                  <NewEmployeesSummary
-                    mode="menu"
-                    employees={employees}
-                    previousDayEmployees={previousDayEmployees}
-                    previousComparisonDate={previousComparisonDate}
-                    selectedDate={selectedDate}
-                    isDetailsOpen={showNewEmployeesModal}
-                    onDetailsOpenChange={(open) => {
-                      setShowNewEmployeesModal(open);
-                      if (open) {
-                        setFilterMenuDropdownOpen(false);
-                      }
-                    }}
-                    onMenuClick={() => setFilterMenuDropdownOpen(false)}
-                  />
 
                   {/* Tăng ca */}
                   <button
@@ -3329,10 +3269,7 @@ function AttendanceList() {
 
             {/* Action Dropdown (Upload/Export/Add) */}
             {user && (
-              <div
-                ref={actionDropdownRef}
-                className="relative action-dropdown flex-1 sm:flex-none min-w-[80px]"
-              >
+              <div className="relative action-dropdown flex-1 sm:flex-none min-w-[80px]">
                 <button
                   onClick={() => setActionDropdownOpen(!actionDropdownOpen)}
                   className="w-full px-2 sm:px-2 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center justify-center gap-1"
@@ -3352,12 +3289,7 @@ function AttendanceList() {
                         </span>
                         <div className="flex flex-col">
                           <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                            {isUploadingExcel
-                              ? "Đang upload..."
-                              : tl(
-                                  "uploadExcelByDate",
-                                  "Upload Excel theo ngày",
-                                )}
+                            {tl("uploadExcelByDate", "Upload Excel theo ngày")}
                           </span>
                           <span className="text-xs text-gray-500 mt-0.5">
                             {tl("importDataForDate", "Import dữ liệu cho ngày")}
@@ -3370,7 +3302,6 @@ function AttendanceList() {
                         <input
                           type="file"
                           accept=".xlsx,.xls"
-                          disabled={isUploadingExcel}
                           onChange={(e) => {
                             handleUploadExcel(e);
                             setActionDropdownOpen(false);
@@ -3482,10 +3413,7 @@ function AttendanceList() {
             )}
 
             {/* Print Dropdown */}
-            <div
-              ref={printDropdownRef}
-              className="print-dropdown-menu relative flex-1 sm:flex-none min-w-[80px]"
-            >
+            <div className="relative flex-1 sm:flex-none min-w-[80px]">
               <button
                 onClick={() => setPrintDropdownOpen(!printDropdownOpen)}
                 className="w-full px-1 sm:px-1 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition flex items-center justify-center gap-1"
@@ -4437,20 +4365,6 @@ function AttendanceList() {
             </p>
           </div>
         </div>
-
-        <NewEmployeesSummary
-          employees={employees}
-          previousDayEmployees={previousDayEmployees}
-          previousComparisonDate={previousComparisonDate}
-          selectedDate={selectedDate}
-          isDetailsOpen={showNewEmployeesModal}
-          onDetailsOpenChange={(open) => {
-            setShowNewEmployeesModal(open);
-            if (open) {
-              setFilterMenuDropdownOpen(false);
-            }
-          }}
-        />
       </div>
     </>
   );
