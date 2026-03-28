@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "../../contexts/UserContext";
+import { isAdminOrHR } from "../../config/authRoles";
 import {
   db,
   ref,
@@ -17,7 +18,6 @@ import ExportExcelButton from "../common/ExportExcelButton";
 // import BirthdayCake from "./BirthdayCake";
 import NotificationBell from "../common/NotificationBell";
 import Sidebar from "../layout/Sidebar";
-import CenterPortal from "../common/CenterPortal";
 
 const normalizeTextValue = (value) => String(value ?? "").trim();
 
@@ -36,8 +36,6 @@ function SeasonalStaffAttendance() {
   const [departmentFilter, setDepartmentFilter] = useState("");
   // State for main search input
   const [searchTerm, setSearchTerm] = useState("");
-  // State for user department permissions
-  const [userDepartments, setUserDepartments] = useState(null);
   // State for selected date (default to today)
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
@@ -47,7 +45,7 @@ function SeasonalStaffAttendance() {
     return `${yyyy}-${mm}-${dd}`;
   });
   const { t } = useTranslation();
-  const { user } = useUser();
+  const { user, userDepartments } = useUser();
 
   const [employees, setEmployees] = useState([]);
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
@@ -89,36 +87,6 @@ function SeasonalStaffAttendance() {
     chamCong: "",
   });
 
-  // Load user's department permissions
-  useEffect(() => {
-    if (!user?.email) {
-      setUserDepartments(null);
-      return;
-    }
-
-    const userDeptsRef = ref(db, "userDepartments");
-    const unsubscribe = onValue(userDeptsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const userMapping = Object.values(data).find(
-          (mapping) => mapping.email === user.email,
-        );
-        if (userMapping) {
-          // Support both old format (department: string) and new format (departments: array)
-          const depts =
-            userMapping.departments ||
-            (userMapping.department ? [userMapping.department] : []);
-          setUserDepartments(depts);
-        } else {
-          setUserDepartments(null);
-        }
-      } else {
-        setUserDepartments(null);
-      }
-    });
-    return () => unsubscribe();
-  }, [user]);
-
   // Load data from Firebase
   useEffect(() => {
     const empRef = ref(db, `seasonalAttendance/${selectedDate}`);
@@ -153,18 +121,30 @@ function SeasonalStaffAttendance() {
     (employee) => {
       if (!user) return false;
 
-      // Admin and HR can edit everything
-      const isAdmin =
-        user.email === "admin@gmail.com" || user.email === "hr@pavonine.net";
-      if (isAdmin) return true;
+      if (isAdminOrHR(user)) return true;
 
-      // Check if user has permission for this department (case-insensitive, trimmed)
       if (!userDepartments || userDepartments.length === 0) return false;
       if (!employee.boPhan) return false;
 
       const empDept = (employee.boPhan || "").trim().toLowerCase();
       return userDepartments.some(
         (dept) => (dept || "").trim().toLowerCase() === empDept,
+      );
+    },
+    [user, userDepartments],
+  );
+
+  /** Thêm mới: chỉ admin/HR hoặc user có quyền trên đúng bộ phận (boPhan) */
+  const canAddEmployeeForDepartment = useCallback(
+    (boPhan) => {
+      if (!user) return false;
+      if (isAdminOrHR(user)) return true;
+      const dept = String(boPhan ?? "").trim();
+      if (!dept) return false;
+      if (!userDepartments || userDepartments.length === 0) return false;
+      const key = dept.toLowerCase();
+      return userDepartments.some(
+        (d) => String(d ?? "").trim().toLowerCase() === key,
       );
     },
     [user, userDepartments],
@@ -364,6 +344,33 @@ function SeasonalStaffAttendance() {
       return;
     }
 
+    if (editing) {
+      const existing = employees.find((emp) => emp.id === editing);
+      if (!existing) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Không tìm thấy bản ghi để cập nhật",
+        });
+        return;
+      }
+      if (!canEditEmployee(existing)) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Bạn không có quyền chỉnh sửa nhân viên này",
+        });
+        return;
+      }
+    } else if (!canAddEmployeeForDepartment(form.boPhan)) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: "Bạn không có quyền thêm nhân viên cho bộ phận này",
+      });
+      return;
+    }
+
     try {
       if (editing) {
         const empRef = ref(db, `seasonalAttendance/${selectedDate}/${editing}`);
@@ -420,6 +427,14 @@ function SeasonalStaffAttendance() {
         });
         return;
       }
+      if (!isAdminOrHR(user)) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Chỉ admin hoặc HR mới được mở form chỉnh sửa đầy đủ!",
+        });
+        return;
+      }
       setForm({ ...emp });
       setEditing(emp.id);
       setShowModal(true);
@@ -435,6 +450,14 @@ function SeasonalStaffAttendance() {
           show: true,
           type: "error",
           message: "Vui lòng đăng nhập để thực hiện thao tác này",
+        });
+        return;
+      }
+      if (!isAdminOrHR(user)) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Chỉ admin hoặc HR mới được phép xóa nhân viên!",
         });
         return;
       }
@@ -466,6 +489,14 @@ function SeasonalStaffAttendance() {
           show: true,
           type: "error",
           message: "Vui lòng đăng nhập để thực hiện thao tác này",
+        });
+        return;
+      }
+      if (!isAdminOrHR(user)) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Chỉ admin hoặc HR mới được upload Excel!",
         });
         return;
       }
@@ -679,7 +710,6 @@ function SeasonalStaffAttendance() {
             chamCong: chamCong || "",
           };
         });
-
         // Upload to Firebase - Merge with existing data to prevent data loss
         let uploadedCount = 0;
         let duplicateCount = 0;
@@ -761,9 +791,7 @@ function SeasonalStaffAttendance() {
       });
       return;
     }
-    const isAdminOrHR =
-      user.email === "admin@gmail.com" || user.email === "hr@pavonine.net";
-    if (!isAdminOrHR) {
+    if (!isAdminOrHR(user)) {
       setAlert({
         show: true,
         type: "error",
@@ -2402,8 +2430,7 @@ function SeasonalStaffAttendance() {
                 </button>
                 {actionDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-50 overflow-hidden animate-fadeIn">
-                    {(user.email === "admin@gmail.com" ||
-                      user.email === "hr@pavonine.net") && (
+                    {isAdminOrHR(user) && (
                       <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
                         <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
                           📤
@@ -2490,9 +2517,7 @@ function SeasonalStaffAttendance() {
                         </span>
                       </div>
                     </button>
-                    {user &&
-                      (user.email === "admin@gmail.com" ||
-                        user.email === "hr@pavonine.net") && (
+                    {user && isAdminOrHR(user) && (
                         <button
                           onClick={() => {
                             handleDeleteAllData();
@@ -3374,9 +3399,7 @@ function SeasonalStaffAttendance() {
                       {emp.chamCong || "--"}
                     </span>
                   </td>
-                  {user &&
-                    (user.email === "admin@gmail.com" ||
-                      user.email === "hr@pavonine.net") && (
+                  {user && isAdminOrHR(user) && (
                       <td className="px-2 py-2 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button

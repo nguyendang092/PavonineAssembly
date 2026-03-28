@@ -58,19 +58,28 @@ export default function SignIn({ onSignIn, onClose }) {
 
   // Auto login if session exists
   useEffect(() => {
-    const loginData = localStorage.getItem("userLogin");
-    if (loginData) {
-      const { email, name, expire } = JSON.parse(loginData);
-      if (Date.now() < expire) {
-        if (onSignIn) onSignIn({ email, name });
-        if (onClose) onClose();
-        setTimeout(() => {
-          localStorage.removeItem("userLogin");
+    try {
+      const loginData = localStorage.getItem("userLogin");
+      if (loginData) {
+        const { email, name, expire } = JSON.parse(loginData);
+        if (
+          email &&
+          typeof expire === "number" &&
+          Number.isFinite(expire) &&
+          Date.now() < expire
+        ) {
+          if (onSignIn) onSignIn({ email, name });
           if (onClose) onClose();
-        }, expire - Date.now());
-      } else {
-        localStorage.removeItem("userLogin");
+          setTimeout(() => {
+            localStorage.removeItem("userLogin");
+            if (onClose) onClose();
+          }, expire - Date.now());
+        } else {
+          localStorage.removeItem("userLogin");
+        }
       }
+    } catch {
+      localStorage.removeItem("userLogin");
     }
   }, []);
 
@@ -194,6 +203,11 @@ export default function SignIn({ onSignIn, onClose }) {
         }),
       );
       clearForm();
+      if (onSignIn)
+        onSignIn({
+          email: userCredential.user.email,
+          name: formState.signUpName,
+        });
       if (onClose) onClose();
     } catch (err) {
       setError(t("signIn.signupFail"));

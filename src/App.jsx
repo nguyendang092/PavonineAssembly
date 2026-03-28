@@ -91,19 +91,29 @@ const App = () => {
 
   useEffect(() => {
     setLoading(true);
-    const loginData = localStorage.getItem("userLogin");
-    if (loginData) {
-      const { email, name, expire } = JSON.parse(loginData);
-      if (Date.now() < expire) {
-        setUser({ email, name });
-        setTimeout(() => {
+    try {
+      const loginData = localStorage.getItem("userLogin");
+      if (loginData) {
+        const { email, name, expire } = JSON.parse(loginData);
+        if (
+          email &&
+          typeof expire === "number" &&
+          Number.isFinite(expire) &&
+          Date.now() < expire
+        ) {
+          setUser({ email, name });
+          setTimeout(() => {
+            localStorage.removeItem("userLogin");
+            setUser(null);
+          }, expire - Date.now());
+        } else {
           localStorage.removeItem("userLogin");
           setUser(null);
-        }, expire - Date.now());
-      } else {
-        localStorage.removeItem("userLogin");
-        setUser(null);
+        }
       }
+    } catch {
+      localStorage.removeItem("userLogin");
+      setUser(null);
     }
     setTimeout(() => setLoading(false), 800);
   }, []);
@@ -187,7 +197,7 @@ const App = () => {
   );
 
   return (
-    <UserContext.Provider value={{ user, setUser }}>
+    <UserContext.Provider value={{ user, setUser, userDepartments }}>
       <Router>
         {/* Hiệu ứng mùa: tuyết rơi hoặc Happy New Year */}
         {/* <SeasonEffect effect={seasonEffect} /> */}

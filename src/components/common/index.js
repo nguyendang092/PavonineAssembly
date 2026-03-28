@@ -3,7 +3,6 @@
 
 export { default as AlertMessage } from "./AlertMessage";
 export { default as BackToTop } from "./BackToTop";
-export { default as CenterPortal } from "./CenterPortal";
 export { default as Downloads } from "./Downloads";
 export { default as ExportExcelButton } from "./ExportExcelButton";
 export { default as Notification } from "./Notification";

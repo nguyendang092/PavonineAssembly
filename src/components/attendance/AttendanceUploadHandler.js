@@ -2,6 +2,7 @@
 // This module exports the Excel upload handler for attendance data.
 import * as XLSX from "xlsx";
 import { ref, set, get } from "firebase/database";
+import { getDateKeyBySubtractDays } from "../../utils/dateKey";
 
 export const handleUploadExcel = async ({
   e,
@@ -9,7 +10,6 @@ export const handleUploadExcel = async ({
   selectedDate,
   setAlert,
   setIsUploadingExcel,
-  findNearestPreviousAttendanceData,
   t,
   db,
 }) => {
@@ -228,12 +228,10 @@ export const handleUploadExcel = async ({
     let uploadedCount = 0;
     let duplicateCount = 0;
 
-    // Lấy pnTon từ ngày gần nhất trước selectedDate để carry-forward nếu Excel không có
-    const previousResult = await findNearestPreviousAttendanceData(
-      selectedDate,
-      14,
-    );
-    const prevData = previousResult?.data || {};
+    // Lấy pnTon từ đúng ngày liền trước (lịch) để carry-forward nếu Excel không có
+    const yesterdayKey = getDateKeyBySubtractDays(selectedDate, 1);
+    const yesterdaySnap = await get(ref(db, `attendance/${yesterdayKey}`));
+    const prevData = yesterdaySnap.val() || {};
     const prevPnTonByMNV = {};
     Object.values(prevData).forEach((emp) => {
       const key = normalizeMNV(emp?.mnv);

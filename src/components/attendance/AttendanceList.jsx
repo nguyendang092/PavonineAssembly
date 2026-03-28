@@ -1,4 +1,4 @@
-﻿﻿import React, {
+import React, {
   useState,
   useEffect,
   useMemo,
@@ -8,6 +8,8 @@
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
+import { isAdminOrHR } from "../../config/authRoles";
+import { getDateKeyBySubtractDays } from "../../utils/dateKey";
 import {
   db,
   ref,
@@ -22,21 +24,10 @@ import ExcelJS from "exceljs";
 import { handleUploadExcel } from "./AttendanceUploadHandler";
 import ExportExcelButton from "../common/ExportExcelButton";
 import UnifiedModal from "../common/UnifiedModal";
-// import BirthdayCake from "./BirthdayCake";
 import BirthdayCakeBell from "../employee/BirthdayCakeBell";
 import NotificationBell from "../common/NotificationBell";
-import CenterPortal from "../common/CenterPortal";
 import MissingEmployeesModal from "./MissingEmployeesModal";
 import NewEmployeesSummary from "./NewEmployeesSummary";
-
-const getDateKeyBySubtractDays = (dateStr, daysBack = 1) => {
-  const date = new Date(dateStr);
-  date.setDate(date.getDate() - daysBack);
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
 
 const findNearestPreviousAttendanceData = async (
   baseDateStr,
@@ -82,12 +73,10 @@ function AttendanceList() {
   const [departmentFilter, setDepartmentFilter] = useState("");
   // State for main search input
   const [searchTerm, setSearchTerm] = useState("");
-  // State for user department permissions
-  const [userDepartments, setUserDepartments] = useState(null);
   // State for selected date (default to today)
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const { t, i18n } = useTranslation();
-  const { user } = useUser();
+  const { user, userDepartments } = useUser();
   const location = useLocation();
   const tl = useCallback(
     (key, defaultValue, options = {}) =>
@@ -167,16 +156,36 @@ function AttendanceList() {
     gioVaoFilter.length === 1 &&
     gioVaoFilter.includes(quickNoCheckInFilterValue);
 
-  // Lookup map: mnv → pnTon từ ngày hôm trước, dùng làm fallback khi ngày hiện tại chưa có phép năm tồn
-  const prevDayPnTonMap = useMemo(() => {
-    const map = {};
-    for (const emp of previousDayEmployees) {
-      const key = String(emp.mnv || "").trim();
-      const val = String(emp.pnTon ?? emp.phepNam ?? "").trim();
-      if (key && val) map[key] = val;
-    }
-    return map;
-  }, [previousDayEmployees]);
+  // mnv (chuẩn hóa) → pnTon từ đúng ngày liền trước trên lịch (không dùng "ngày gần nhất có dữ liệu")
+  const [prevCalendarDayPnTonByMnv, setPrevCalendarDayPnTonByMnv] = useState(
+    {},
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const yesterdayKey = getDateKeyBySubtractDays(selectedDate, 1);
+        const snap = await get(ref(db, `attendance/${yesterdayKey}`));
+        if (cancelled) return;
+        const data = snap.val();
+        const map = {};
+        if (data && typeof data === "object") {
+          Object.values(data).forEach((emp) => {
+            const key = normalizeEmployeeCode(emp?.mnv);
+            const val = String(emp?.pnTon ?? emp?.phepNam ?? "").trim();
+            if (key && val) map[key] = val;
+          });
+        }
+        setPrevCalendarDayPnTonByMnv(map);
+      } catch {
+        if (!cancelled) setPrevCalendarDayPnTonByMnv({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
 
   // Chuẩn hóa tên bộ phận để lọc ổn định (tránh lệch hoa/thường, khoảng trắng).
   const normalizeDepartment = useCallback((value) => {
@@ -225,8 +234,7 @@ function AttendanceList() {
     });
   }, [missingEmployees, confirmedUnannouncedResignations]);
 
-  const canManageUnannouncedResignation =
-    user?.email === "admin@gmail.com" || user?.email === "hr@pavonine.net";
+  const canManageUnannouncedResignation = isAdminOrHR(user);
 
   const historicalSuspectedMap = useMemo(() => {
     const map = {};
@@ -238,36 +246,6 @@ function AttendanceList() {
     });
     return map;
   }, [historicalSuspectedEmployees]);
-
-  // Load user's department permissions
-  useEffect(() => {
-    if (!user?.email) {
-      setUserDepartments(null);
-      return;
-    }
-
-    const userDeptsRef = ref(db, "userDepartments");
-    const unsubscribe = onValue(userDeptsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const userMapping = Object.values(data).find(
-          (mapping) => mapping.email === user.email,
-        );
-        if (userMapping) {
-          // Support both old format (department: string) and new format (departments: array)
-          const depts =
-            userMapping.departments ||
-            (userMapping.department ? [userMapping.department] : []);
-          setUserDepartments(depts);
-        } else {
-          setUserDepartments(null);
-        }
-      } else {
-        setUserDepartments(null);
-      }
-    });
-    return () => unsubscribe();
-  }, [user]);
 
   useEffect(() => {
     const confirmationsRef = ref(db, "attendanceUnannouncedResignations");
@@ -637,10 +615,7 @@ function AttendanceList() {
     (employee) => {
       if (!user) return false;
 
-      // Admin and HR can edit everything
-      const isAdmin =
-        user.email === "admin@gmail.com" || user.email === "hr@pavonine.net";
-      if (isAdmin) return true;
+      if (isAdminOrHR(user)) return true;
 
       // Check if user has permission for this department (case-insensitive, trimmed)
       if (!userDepartments || userDepartments.length === 0) return false;
@@ -1004,12 +979,11 @@ function AttendanceList() {
         selectedDate,
         setAlert,
         setIsUploadingExcel,
-        findNearestPreviousAttendanceData,
         t,
         db,
       });
     },
-    [user, selectedDate, setAlert, setIsUploadingExcel, t, db]
+    [user, selectedDate, setAlert, setIsUploadingExcel, t, db],
   );
 
   // Handle delete all data for selected date
@@ -1022,9 +996,7 @@ function AttendanceList() {
       });
       return;
     }
-    const isAdminOrHR =
-      user.email === "admin@gmail.com" || user.email === "hr@pavonine.net";
-    if (!isAdminOrHR) {
+    if (!isAdminOrHR(user)) {
       setAlert({
         show: true,
         type: "error",
@@ -1073,203 +1045,6 @@ function AttendanceList() {
   }, [user, selectedDate, employees.length]);
 
   // Export to Excel (moved to external component)
-
-  // Handle Overtime button - Export overtime form
-  const handleOvertimeButton_OLD = useCallback(async () => {
-    try {
-      if (filteredEmployees.length === 0) {
-        setAlert({
-          show: true,
-          type: "error",
-          message: t("attendanceList.noEmployees"),
-        });
-        return;
-      }
-
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Overtime Form");
-
-      // Load logo
-      const logoResponse = await fetch("/picture/logo/logo_pavo.jpg");
-      const logoBlob = await logoResponse.blob();
-      const logoArrayBuffer = await logoBlob.arrayBuffer();
-      const logoId = workbook.addImage({
-        buffer: logoArrayBuffer,
-        extension: "jpeg",
-      });
-
-      worksheet.addImage(logoId, {
-        tl: { col: 0, row: 0 },
-        ext: { width: 80, height: 40 },
-      });
-
-      // Title and date info
-      worksheet.mergeCells("A1:M1");
-      const titleCell = worksheet.getCell("A1");
-      titleCell.value = "ĐĂNG KÝ LÀM THÊM GIỜ / OVERTIME REGISTRATION";
-      titleCell.font = { bold: true, size: 14, color: { argb: "FFFF0000" } };
-      titleCell.alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.mergeCells("A2:M2");
-      const dateInfoCell = worksheet.getCell("A2");
-      const overtimeDate = new Date(selectedDate);
-      dateInfoCell.value = `Ngày/Date: ${overtimeDate.toLocaleDateString(
-        "vi-VN",
-      )}`;
-      dateInfoCell.font = { bold: true, size: 11 };
-      dateInfoCell.alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.addRow([]);
-
-      // Header row 1 (Vietnamese)
-      const headerRow1 = worksheet.addRow([
-        "STT",
-        "MNV",
-        "Họ và tên",
-        "Ngày bắt đầu",
-        "Mã BP",
-        "Bộ phận",
-        "Tổng thời gian làm thêm giờ",
-        "Thời gian dự kiến\\nTừ ...h đến ...h",
-        "Thời gian làm thêm giờ ký",
-        "Chữ ký người lao động",
-        "Thời gian thực tế\\nTừ ...h đến ...h",
-        "Số giờ làm thêm",
-        "Ghi chú",
-      ]);
-
-      // Header row 2 (English)
-      const headerRow2 = worksheet.addRow([
-        "No.",
-        "Code",
-        "Full name",
-        "Start working date",
-        "Code-Dept",
-        "Department",
-        "Total overtime hours",
-        "Estimated Time OT\\n(From..... To....)",
-        "Total hours OT\\n(Hrs)",
-        "Employees sign",
-        "Fact Time OT\\n(From..... To....)",
-        "Total hours OT\\n(Hrs)",
-        "Remark",
-      ]);
-
-      // Style headers
-      [headerRow1, headerRow2].forEach((row, idx) => {
-        row.height = 40;
-        row.eachCell((cell, colNumber) => {
-          cell.font = { bold: true, size: 9 };
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFD3D3D3" },
-          };
-          cell.alignment = {
-            vertical: "middle",
-            horizontal: "center",
-            wrapText: true,
-          };
-          cell.border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
-          };
-        });
-      });
-
-      // Add employee data
-      filteredEmployees.forEach((emp, idx) => {
-        const row = worksheet.addRow([
-          idx + 1,
-          emp.mnv || "",
-          emp.hoVaTen || "",
-          emp.ngayThangNamSinh || "",
-          emp.maBoPhan || "",
-          emp.boPhan || "",
-          "", // Total overtime hours
-          "", // Estimated Time
-          "", // Total hours OT
-          "", // Employee sign
-          "", // Fact Time OT
-          "", // Total hours OT
-          "", // Remark
-        ]);
-
-        row.height = 30;
-        row.eachCell((cell, colNumber) => {
-          cell.font = { size: 9 };
-          cell.alignment = {
-            vertical: "middle",
-            horizontal: colNumber <= 6 ? "center" : "center",
-            wrapText: true,
-          };
-          cell.border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
-          };
-          // Zebra striping
-          if (idx % 2 === 0) {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFF0F8FF" },
-            };
-          }
-        });
-      });
-
-      // Set column widths
-      worksheet.columns = [
-        { width: 5 }, // STT
-        { width: 10 }, // MNV
-        { width: 25 }, // Full name
-        { width: 12 }, // Start date
-        { width: 10 }, // Code BP
-        { width: 15 }, // Department
-        { width: 12 }, // Total OT hours
-        { width: 15 }, // Estimated Time
-        { width: 10 }, // Total hours OT
-        { width: 15 }, // Employee sign
-        { width: 15 }, // Fact Time OT
-        { width: 10 }, // Total hours OT
-        { width: 15 }, // Remark
-      ];
-
-      // Export file
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const dateStr = selectedDate;
-      a.download = `PAVONINE_DangKyTangCa_${dateStr}.xlsx`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-
-      setAlert({
-        show: true,
-        type: "success",
-        message: t("attendanceList.overtimeSuccess", {
-          count: filteredEmployees.length,
-        }),
-      });
-    } catch (err) {
-      console.error("Export Overtime Form Error:", err);
-      setAlert({
-        show: true,
-        type: "error",
-        message: t("attendanceList.overtimeError", {
-          error: err.message || "",
-        }),
-      });
-    }
-  }, [filteredEmployees, selectedDate]);
 
   // Parse Excel date function (defined outside to avoid recreation)
   const parseExcelDate = useCallback((value) => {
@@ -3041,8 +2816,7 @@ function AttendanceList() {
                 </button>
                 {actionDropdownOpen && (
                   <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-full sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-50 overflow-hidden animate-fadeIn">
-                    {(user.email === "admin@gmail.com" ||
-                      user.email === "hr@pavonine.net") && (
+                    {isAdminOrHR(user) && (
                       <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
                         <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
                           📤
@@ -3137,8 +2911,7 @@ function AttendanceList() {
                       </div>
                     </button>
                     {user &&
-                      (user.email === "admin@gmail.com" ||
-                        user.email === "hr@pavonine.net") && (
+                      isAdminOrHR(user) && (
                         <button
                           onClick={() => {
                             handleDeleteAllData();
@@ -3962,7 +3735,9 @@ function AttendanceList() {
                   <td className="px-2 md:px-3 py-2.5 md:py-3 text-xs md:text-sm text-center">
                     <span className="text-xs md:text-sm text-gray-700 font-bold">
                       {String(emp.pnTon ?? emp.phepNam ?? "").trim() ||
-                        prevDayPnTonMap[String(emp.mnv || "").trim()] ||
+                        prevCalendarDayPnTonByMnv[
+                          normalizeEmployeeCode(emp.mnv)
+                        ] ||
                         "--"}
                     </span>
                   </td>
@@ -4060,8 +3835,7 @@ function AttendanceList() {
                     </span>
                   </td>
                   {user &&
-                    (user.email === "admin@gmail.com" ||
-                      user.email === "hr@pavonine.net") && (
+                    isAdminOrHR(user) && (
                       <td className="hidden md:table-cell px-2 py-2 text-center min-w-[120px]">
                         <div className="flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2">
                           <button
