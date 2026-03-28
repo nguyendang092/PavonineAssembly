@@ -19,8 +19,6 @@ import NotificationBell from "../common/NotificationBell";
 import Sidebar from "../layout/Sidebar";
 import CenterPortal from "../common/CenterPortal";
 
-const normalizeTextValue = (value) => String(value ?? "").trim();
-
 function SeasonalStaffAttendance() {
   // State for alert messages
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
@@ -72,7 +70,6 @@ function SeasonalStaffAttendance() {
   const [modalExpandedSections, setModalExpandedSections] = useState({});
   const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
   const [actionDropdownOpen, setActionDropdownOpen] = useState(false);
-  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
   const [form, setForm] = useState({
     id: "",
     stt: "",
@@ -206,7 +203,7 @@ function SeasonalStaffAttendance() {
         return false;
       // Filter by entry time status
       if (gioVaoFilter.length > 0) {
-        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
+        const hasGioVao = emp.gioVao && emp.gioVao.trim() !== "";
         const isCheckedIn = "đã_chấm_công";
         const isNotCheckedIn = "chưa_chấm_công";
         if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;
@@ -472,14 +469,6 @@ function SeasonalStaffAttendance() {
 
       const file = e.target.files?.[0];
       if (!file) return;
-      if (isUploadingExcel) return;
-
-      setIsUploadingExcel(true);
-      const resetInput = () => {
-        if (e?.target) {
-          e.target.value = "";
-        }
-      };
 
       try {
         const data = await file.arrayBuffer();
@@ -594,7 +583,6 @@ function SeasonalStaffAttendance() {
         // Use the selectedDate from the date picker, not the current date
         const attendanceRef = ref(db, `seasonalAttendance/${selectedDate}`);
         const dataToUpload = {};
-        const latestRowByMNV = new Map();
 
         // Chuẩn hóa MNV để tránh lệch kiểu dữ liệu (number/string) gây trùng.
         const normalizeMNV = (value) => {
@@ -631,13 +619,7 @@ function SeasonalStaffAttendance() {
           return mergedEmp;
         };
 
-        for (let index = 0; index < dataRows.length; index++) {
-          // Yield every 200 rows so large files do not block the UI for too long.
-          if (index > 0 && index % 200 === 0) {
-            await new Promise((resolve) => setTimeout(resolve, 0));
-          }
-
-          const row = dataRows[index];
+        dataRows.forEach((row, index) => {
           // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu, Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc, Chấm công
           const [
             stt,
@@ -665,12 +647,21 @@ function SeasonalStaffAttendance() {
           const normalizedMNV = normalizeMNV(mnvNum);
           if (!normalizedMNV) return;
 
+          // Trong cùng 1 file, nếu trùng MNV thì lấy dòng xuất hiện sau cùng.
+          const existingUploadKey = Object.keys(dataToUpload).find(
+            (k) => normalizeMNV(dataToUpload[k]?.mnv) === normalizedMNV,
+          );
+          if (existingUploadKey) {
+            delete dataToUpload[existingUploadKey];
+          }
+
+          const empKey = `emp_${index}`;
           const sttNum = Number.isFinite(Number(stt))
             ? Number(stt)
-            : latestRowByMNV.size + 1;
+            : Object.keys(dataToUpload).length + 1;
 
-          // Với MNV trùng nhau trong cùng file, giữ dòng xuất hiện sau cùng.
-          latestRowByMNV.set(normalizedMNV, {
+          dataToUpload[empKey] = {
+            id: empKey,
             stt: sttNum,
             mnv: normalizedMNV,
             mvt: mvt || "",
@@ -683,17 +674,7 @@ function SeasonalStaffAttendance() {
             gioRa: gioRa || "",
             caLamViec: caLamViec || "",
             chamCong: chamCong || "",
-          });
-        }
-
-        let uploadIndex = 0;
-        latestRowByMNV.forEach((emp) => {
-          const empKey = `emp_${uploadIndex}`;
-          dataToUpload[empKey] = {
-            ...emp,
-            id: empKey,
           };
-          uploadIndex += 1;
         });
 
         // Upload to Firebase - Merge with existing data to prevent data loss
@@ -750,6 +731,11 @@ function SeasonalStaffAttendance() {
           type: "success",
           message: message,
         });
+
+        // Reset file input
+        if (e.target) {
+          e.target.value = "";
+        }
       } catch (err) {
         console.error("Upload Excel error:", err);
         setAlert({
@@ -759,12 +745,9 @@ function SeasonalStaffAttendance() {
             "❌ Lỗi khi upload file: " +
             (err?.message || "Vui lòng kiểm tra định dạng file"),
         });
-      } finally {
-        resetInput();
-        setIsUploadingExcel(false);
       }
     },
-    [user, selectedDate, isUploadingExcel],
+    [user, selectedDate],
   );
 
   // Handle delete all data for selected date
@@ -2426,9 +2409,7 @@ function SeasonalStaffAttendance() {
                         </span>
                         <div className="flex flex-col">
                           <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                            {isUploadingExcel
-                              ? "Đang upload..."
-                              : "Upload Excel theo ngày"}
+                            Upload Excel theo ngày
                           </span>
                           <span className="text-xs text-gray-500 mt-0.5">
                             Import dữ liệu cho ngày:{" "}
@@ -2440,7 +2421,6 @@ function SeasonalStaffAttendance() {
                         <input
                           type="file"
                           accept=".xlsx,.xls"
-                          disabled={isUploadingExcel}
                           onChange={(e) => {
                             handleUploadExcel(e);
                             setActionDropdownOpen(false);
