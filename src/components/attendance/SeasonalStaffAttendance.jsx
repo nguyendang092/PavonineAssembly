@@ -19,6 +19,8 @@ import NotificationBell from "../common/NotificationBell";
 import Sidebar from "../layout/Sidebar";
 import CenterPortal from "../common/CenterPortal";
 
+const normalizeTextValue = (value) => String(value ?? "").trim();
+
 function SeasonalStaffAttendance() {
   // State for alert messages
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
@@ -70,6 +72,7 @@ function SeasonalStaffAttendance() {
   const [modalExpandedSections, setModalExpandedSections] = useState({});
   const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
   const [actionDropdownOpen, setActionDropdownOpen] = useState(false);
+  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
   const [form, setForm] = useState({
     id: "",
     stt: "",
@@ -203,7 +206,7 @@ function SeasonalStaffAttendance() {
         return false;
       // Filter by entry time status
       if (gioVaoFilter.length > 0) {
-        const hasGioVao = emp.gioVao && emp.gioVao.trim() !== "";
+        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
         const isCheckedIn = "đã_chấm_công";
         const isNotCheckedIn = "chưa_chấm_công";
         if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;
@@ -731,11 +734,6 @@ function SeasonalStaffAttendance() {
           type: "success",
           message: message,
         });
-
-        // Reset file input
-        if (e.target) {
-          e.target.value = "";
-        }
       } catch (err) {
         console.error("Upload Excel error:", err);
         setAlert({
@@ -745,9 +743,12 @@ function SeasonalStaffAttendance() {
             "❌ Lỗi khi upload file: " +
             (err?.message || "Vui lòng kiểm tra định dạng file"),
         });
+      } finally {
+        resetInput();
+        setIsUploadingExcel(false);
       }
     },
-    [user, selectedDate],
+    [user, selectedDate, isUploadingExcel],
   );
 
   // Handle delete all data for selected date
@@ -2409,7 +2410,9 @@ function SeasonalStaffAttendance() {
                         </span>
                         <div className="flex flex-col">
                           <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                            Upload Excel theo ngày
+                            {isUploadingExcel
+                              ? "Đang upload..."
+                              : "Upload Excel theo ngày"}
                           </span>
                           <span className="text-xs text-gray-500 mt-0.5">
                             Import dữ liệu cho ngày:{" "}
@@ -2421,6 +2424,7 @@ function SeasonalStaffAttendance() {
                         <input
                           type="file"
                           accept=".xlsx,.xls"
+                          disabled={isUploadingExcel}
                           onChange={(e) => {
                             handleUploadExcel(e);
                             setActionDropdownOpen(false);
