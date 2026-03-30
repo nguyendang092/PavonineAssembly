@@ -3,6 +3,7 @@
 import * as XLSX from "xlsx";
 import { ref, set, get } from "firebase/database";
 import { getDateKeyBySubtractDays } from "../../utils/dateKey";
+import { getUploadErrorMessage } from "../../utils/uploadErrorMessage";
 
 export const handleUploadExcel = async ({
   e,
@@ -324,7 +325,10 @@ export const handleUploadExcel = async ({
       show: true,
       type: "error",
       message: t("attendanceList.uploadError", {
-        error: err?.message || t("attendanceList.uploadCheckFormat"),
+        error: getUploadErrorMessage(
+          err,
+          t("attendanceList.uploadCheckFormat"),
+        ),
       }),
     });
   } finally {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "../../contexts/UserContext";
 import { isAdminOrHR } from "../../config/authRoles";
+import { getUploadErrorMessage } from "../../utils/uploadErrorMessage";
 import {
   db,
   ref,
@@ -771,7 +772,10 @@ function SeasonalStaffAttendance() {
           type: "error",
           message:
             "❌ Lỗi khi upload file: " +
-            (err?.message || "Vui lòng kiểm tra định dạng file"),
+            getUploadErrorMessage(
+              err,
+              "Vui lòng kiểm tra định dạng file",
+            ),
         });
       } finally {
         resetInput();
