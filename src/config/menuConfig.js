@@ -46,6 +46,11 @@ export const menuConfig = [
             label: "navbar.caiTien",
             path: "/performance",
           },
+          {
+            key: "qrCodeGenerator",
+            label: "navbar.qrCodeGenerator",
+            path: "/qr-code-generator",
+          },
         ],
       },
 

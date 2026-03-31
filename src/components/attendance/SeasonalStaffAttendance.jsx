@@ -145,7 +145,10 @@ function SeasonalStaffAttendance() {
       if (!userDepartments || userDepartments.length === 0) return false;
       const key = dept.toLowerCase();
       return userDepartments.some(
-        (d) => String(d ?? "").trim().toLowerCase() === key,
+        (d) =>
+          String(d ?? "")
+            .trim()
+            .toLowerCase() === key,
       );
     },
     [user, userDepartments],
@@ -772,10 +775,7 @@ function SeasonalStaffAttendance() {
           type: "error",
           message:
             "❌ Lỗi khi upload file: " +
-            getUploadErrorMessage(
-              err,
-              "Vui lòng kiểm tra định dạng file",
-            ),
+            getUploadErrorMessage(err, "Vui lòng kiểm tra định dạng file"),
         });
       } finally {
         resetInput();
@@ -1608,6 +1608,14 @@ function SeasonalStaffAttendance() {
         <td class="value-col">PT</td>
         <td class="desc-col">10.Dưỡng sức/Recovery health</td>
         <td class="value-col">DS</td>
+      </tr>
+      <tr>
+        <td class="label-col"></td>
+        <td class="value-col"></td>
+        <td class="desc-col"></td>
+        <td class="value-col"></td>
+        <td class="desc-col">11.Nghỉ việc/Resignation</td>
+        <td class="value-col">NV</td>
       </tr>
     </table>
     
@@ -2522,26 +2530,26 @@ function SeasonalStaffAttendance() {
                       </div>
                     </button>
                     {user && isAdminOrHR(user) && (
-                        <button
-                          onClick={() => {
-                            handleDeleteAllData();
-                            setActionDropdownOpen(false);
-                          }}
-                          className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-red-50 hover:to-rose-50 transition-all duration-200 flex items-center gap-3 group"
-                        >
-                          <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                            🗑️
+                      <button
+                        onClick={() => {
+                          handleDeleteAllData();
+                          setActionDropdownOpen(false);
+                        }}
+                        className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-red-50 hover:to-rose-50 transition-all duration-200 flex items-center gap-3 group"
+                      >
+                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                          🗑️
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-red-600 text-sm group-hover:text-red-700 transition-colors">
+                            Xóa toàn bộ dữ liệu
                           </span>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-red-600 text-sm group-hover:text-red-700 transition-colors">
-                              Xóa toàn bộ dữ liệu
-                            </span>
-                            <span className="text-xs text-gray-500 mt-0.5">
-                              Delete all data for {selectedDate}
-                            </span>
-                          </div>
-                        </button>
-                      )}
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            Delete all data for {selectedDate}
+                          </span>
+                        </div>
+                      </button>
+                    )}
                   </div>
                 )}
                 {/* Hidden ExportExcelButton for functionality */}
@@ -3404,25 +3412,25 @@ function SeasonalStaffAttendance() {
                     </span>
                   </td>
                   {user && isAdminOrHR(user) && (
-                      <td className="px-2 py-2 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleEdit(emp)}
-                            className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md"
-                            title="Chỉnh sửa"
-                          >
-                            ✏️ Sửa
-                          </button>
-                          <button
-                            onClick={() => handleDelete(emp.id)}
-                            className="px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
-                            title="Xóa"
-                          >
-                            🗑️ Xóa
-                          </button>
-                        </div>
-                      </td>
-                    )}
+                    <td className="px-2 py-2 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleEdit(emp)}
+                          className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md"
+                          title="Chỉnh sửa"
+                        >
+                          ✏️ Sửa
+                        </button>
+                        <button
+                          onClick={() => handleDelete(emp.id)}
+                          className="px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
+                          title="Xóa"
+                        >
+                          🗑️ Xóa
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
