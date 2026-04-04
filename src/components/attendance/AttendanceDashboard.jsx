@@ -22,7 +22,6 @@ const normalizeTextValue = (value) => String(value ?? "").trim();
 function AttendanceDashboard({
   employees,
   globalFilter,
-  user,
   selectedDate,
   setSelectedDate,
   loading,
@@ -181,18 +180,6 @@ function AttendanceDashboard({
     shiftEntries.length > 0
       ? Math.max(...shiftEntries.map(([, count]) => count))
       : 1;
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <p className="text-gray-600">
-            {t("attendanceDashboard.pleaseLogin")}
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-900 p-4">

@@ -9,6 +9,11 @@ import {
   remove,
   update,
   get,
+  query,
+  orderByKey,
+  limitToFirst,
+  limitToLast,
+  startAfter,
 } from "firebase/database";
 import {
   getStorage,
@@ -33,7 +38,21 @@ const db = getDatabase(app);
 const storage = getStorage(app);
 
 // Export thêm các hàm thao tác database phổ biến
-export { db, ref, set, onValue, push, remove, update, get };
+export {
+  db,
+  ref,
+  set,
+  onValue,
+  push,
+  remove,
+  update,
+  get,
+  query,
+  orderByKey,
+  limitToFirst,
+  limitToLast,
+  startAfter,
+};
 
 // Export Storage functions
 export { storage, storageRef, uploadBytes, getDownloadURL, deleteObject };

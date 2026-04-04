@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "../../contexts/UserContext";
-import { isAdminOrHR } from "../../config/authRoles";
+import {
+  isAdminAccess,
+  canEditAttendanceForEmployee,
+  canAddAttendanceForDepartment,
+  ROLES,
+} from "../../config/authRoles";
 import { getUploadErrorMessage } from "../../utils/uploadErrorMessage";
 import {
   db,
@@ -46,7 +51,7 @@ function SeasonalStaffAttendance() {
     return `${yyyy}-${mm}-${dd}`;
   });
   const { t } = useTranslation();
-  const { user, userDepartments } = useUser();
+  const { user, userDepartments, userRole } = useUser();
 
   const [employees, setEmployees] = useState([]);
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
@@ -119,40 +124,30 @@ function SeasonalStaffAttendance() {
 
   // Check if user can edit this employee's data
   const canEditEmployee = useCallback(
-    (employee) => {
-      if (!user) return false;
-
-      if (isAdminOrHR(user)) return true;
-
-      if (!userDepartments || userDepartments.length === 0) return false;
-      if (!employee.boPhan) return false;
-
-      const empDept = (employee.boPhan || "").trim().toLowerCase();
-      return userDepartments.some(
-        (dept) => (dept || "").trim().toLowerCase() === empDept,
-      );
-    },
-    [user, userDepartments],
+    (employee) =>
+      canEditAttendanceForEmployee({
+        user,
+        userRole,
+        userDepartments,
+        employee,
+      }),
+    [user, userRole, userDepartments],
   );
 
-  /** Thêm mới: chỉ admin/HR hoặc user có quyền trên đúng bộ phận (boPhan) */
+  /** Thêm mới: admin hoặc manager đúng bộ phận; staff không thêm */
   const canAddEmployeeForDepartment = useCallback(
-    (boPhan) => {
-      if (!user) return false;
-      if (isAdminOrHR(user)) return true;
-      const dept = String(boPhan ?? "").trim();
-      if (!dept) return false;
-      if (!userDepartments || userDepartments.length === 0) return false;
-      const key = dept.toLowerCase();
-      return userDepartments.some(
-        (d) =>
-          String(d ?? "")
-            .trim()
-            .toLowerCase() === key,
-      );
-    },
-    [user, userDepartments],
+    (boPhan) =>
+      canAddAttendanceForDepartment({
+        user,
+        userRole,
+        userDepartments,
+        boPhan,
+      }),
+    [user, userRole, userDepartments],
   );
+
+  const showRowModalActions =
+    user && userRole && userRole !== ROLES.STAFF;
 
   // Close print dropdown when clicking outside
   useEffect(() => {
@@ -431,11 +426,18 @@ function SeasonalStaffAttendance() {
         });
         return;
       }
-      if (!isAdminOrHR(user)) {
+      if (
+        !canEditAttendanceForEmployee({
+          user,
+          userRole,
+          userDepartments,
+          employee: emp,
+        })
+      ) {
         setAlert({
           show: true,
           type: "error",
-          message: "Chỉ admin hoặc HR mới được mở form chỉnh sửa đầy đủ!",
+          message: "Bạn không có quyền chỉnh sửa nhân viên này!",
         });
         return;
       }
@@ -443,7 +445,7 @@ function SeasonalStaffAttendance() {
       setEditing(emp.id);
       setShowModal(true);
     },
-    [user],
+    [user, userRole, userDepartments],
   );
 
   // Handle delete
@@ -457,11 +459,20 @@ function SeasonalStaffAttendance() {
         });
         return;
       }
-      if (!isAdminOrHR(user)) {
+      const emp = employees.find((e) => e.id === id);
+      if (
+        !emp ||
+        !canEditAttendanceForEmployee({
+          user,
+          userRole,
+          userDepartments,
+          employee: emp,
+        })
+      ) {
         setAlert({
           show: true,
           type: "error",
-          message: "Chỉ admin hoặc HR mới được phép xóa nhân viên!",
+          message: "Bạn không có quyền xóa nhân viên này!",
         });
         return;
       }
@@ -482,7 +493,7 @@ function SeasonalStaffAttendance() {
         });
       }
     },
-    [user, selectedDate],
+    [user, userRole, userDepartments, employees, selectedDate],
   );
 
   // Handle upload Excel
@@ -496,11 +507,11 @@ function SeasonalStaffAttendance() {
         });
         return;
       }
-      if (!isAdminOrHR(user)) {
+      if (!isAdminAccess(user, userRole)) {
         setAlert({
           show: true,
           type: "error",
-          message: "Chỉ admin hoặc HR mới được upload Excel!",
+          message: "Chỉ admin mới được upload Excel!",
         });
         return;
       }
@@ -782,7 +793,7 @@ function SeasonalStaffAttendance() {
         setIsUploadingExcel(false);
       }
     },
-    [user, selectedDate, isUploadingExcel],
+    [user, userRole, selectedDate, isUploadingExcel],
   );
 
   // Handle delete all data for selected date
@@ -795,11 +806,11 @@ function SeasonalStaffAttendance() {
       });
       return;
     }
-    if (!isAdminOrHR(user)) {
+    if (!isAdminAccess(user, userRole)) {
       setAlert({
         show: true,
         type: "error",
-        message: "Chỉ admin hoặc HR mới được phép xóa toàn bộ dữ liệu!",
+        message: "Chỉ admin mới được phép xóa toàn bộ dữ liệu!",
       });
       return;
     }
@@ -834,7 +845,7 @@ function SeasonalStaffAttendance() {
           "❌ Lỗi khi xóa dữ liệu: " + (err?.message || "Vui lòng thử lại"),
       });
     }
-  }, [user, selectedDate, employees.length]);
+  }, [user, userRole, selectedDate, employees.length]);
 
   // Export to Excel (moved to external component)
 
@@ -2032,28 +2043,29 @@ function SeasonalStaffAttendance() {
         )}
 
         {/* Filters and Actions */}
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between mb-4">
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-start sm:justify-between mb-4">
+          <div className="flex flex-wrap gap-2 min-w-0 flex-1">
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="border rounded-md h-9 px-3 text-sm bg-white font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300"
+              className="shrink-0 border rounded-md h-9 px-3 text-sm bg-white font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300"
             />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="🔍 Tìm kiếm..."
-              className="w-full sm:w-48 border rounded-md h-9 px-3 text-sm focus:ring-2 focus:ring-blue-200"
+              className="w-full sm:w-48 min-w-0 border rounded-md h-9 px-3 text-sm focus:ring-2 focus:ring-blue-200"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end sm:shrink-0">
             {/* Filter Button */}
-            <div className="relative">
+            <div className="relative z-50 shrink-0">
               <button
+                type="button"
                 onClick={() => setFilterOpen(!filterOpen)}
-                className={`px-4 py-2 rounded font-bold text-sm shadow transition flex items-center gap-2 ${
+                className={`min-h-[2.25rem] px-4 py-2 rounded font-bold text-sm shadow transition flex items-center gap-2 whitespace-nowrap ${
                   gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
                   gioVaoFilter.length > 0
@@ -2422,18 +2434,20 @@ function SeasonalStaffAttendance() {
             </div>
 
             <button
+              type="button"
               onClick={handleOvertimeButton}
-              className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition"
+              className="shrink-0 min-h-[2.25rem] px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition whitespace-nowrap"
             >
               ⏰ Tăng ca
             </button>
 
             {/* Action Dropdown (Upload/Export/Add) */}
             {user && (
-              <div className="relative action-dropdown">
+              <div className="relative action-dropdown z-50 shrink-0 min-w-[10rem]">
                 <button
+                  type="button"
                   onClick={() => setActionDropdownOpen(!actionDropdownOpen)}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center gap-1"
+                  className="w-full min-h-[2.25rem] px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center justify-center gap-1 whitespace-nowrap"
                 >
                   ⚙️ Chức năng
                   <span className="text-xs">
@@ -2441,8 +2455,8 @@ function SeasonalStaffAttendance() {
                   </span>
                 </button>
                 {actionDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-50 overflow-hidden animate-fadeIn">
-                    {isAdminOrHR(user) && (
+                  <div className="absolute right-0 top-full mt-1.5 w-[min(100vw-2rem,16rem)] sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-[100] overflow-hidden animate-fadeIn">
+                    {isAdminAccess(user, userRole) && (
                       <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
                         <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
                           📤
@@ -2494,42 +2508,44 @@ function SeasonalStaffAttendance() {
                         </span>
                       </div>
                     </button>
-                    <button
-                      onClick={() => {
-                        setForm({
-                          id: "",
-                          stt: "",
-                          mnv: "",
-                          mvt: "",
-                          hoVaTen: "",
-                          gioiTinh: "YES",
-                          ngayThangNamSinh: "",
-                          maBoPhan: "",
-                          boPhan: "",
-                          gioVao: "",
-                          gioRa: "",
-                          caLamViec: "",
-                          chamCong: "",
-                        });
-                        setEditing(null);
-                        setShowModal(true);
-                        setActionDropdownOpen(false);
-                      }}
-                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
-                    >
-                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                        ➕
-                      </span>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                          Thêm mới
+                    {showRowModalActions && (
+                      <button
+                        onClick={() => {
+                          setForm({
+                            id: "",
+                            stt: "",
+                            mnv: "",
+                            mvt: "",
+                            hoVaTen: "",
+                            gioiTinh: "YES",
+                            ngayThangNamSinh: "",
+                            maBoPhan: "",
+                            boPhan: "",
+                            gioVao: "",
+                            gioRa: "",
+                            caLamViec: "",
+                            chamCong: "",
+                          });
+                          setEditing(null);
+                          setShowModal(true);
+                          setActionDropdownOpen(false);
+                        }}
+                        className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                      >
+                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                          ➕
                         </span>
-                        <span className="text-xs text-gray-500 mt-0.5">
-                          Add new employee
-                        </span>
-                      </div>
-                    </button>
-                    {user && isAdminOrHR(user) && (
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                            Thêm mới
+                          </span>
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            Add new employee
+                          </span>
+                        </div>
+                      </button>
+                    )}
+                    {user && isAdminAccess(user, userRole) && (
                       <button
                         onClick={() => {
                           handleDeleteAllData();
@@ -3176,9 +3192,9 @@ function SeasonalStaffAttendance() {
                 <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   Chấm công
                 </th>
-                {user && (
+                {showRowModalActions && (
                   <th className="px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                    Hành động
+                    Sửa / Xóa
                   </th>
                 )}
               </tr>
@@ -3261,6 +3277,7 @@ function SeasonalStaffAttendance() {
                           <option value="Phép tang">PT</option>
                           <option value="Dưỡng sức">DS</option>
                           <option value="Phép công tác">PCT</option>
+                          <option value="Nghỉ việc">NV</option>
                         </select>
                         {editingGioVao[emp.id] && (
                           <button
@@ -3411,24 +3428,28 @@ function SeasonalStaffAttendance() {
                       {emp.chamCong || "--"}
                     </span>
                   </td>
-                  {user && isAdminOrHR(user) && (
+                  {showRowModalActions && (
                     <td className="px-2 py-2 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEdit(emp)}
-                          className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md"
-                          title="Chỉnh sửa"
-                        >
-                          ✏️ Sửa
-                        </button>
-                        <button
-                          onClick={() => handleDelete(emp.id)}
-                          className="px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
-                          title="Xóa"
-                        >
-                          🗑️ Xóa
-                        </button>
-                      </div>
+                      {canEditEmployee(emp) ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleEdit(emp)}
+                            className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md"
+                            title="Chỉnh sửa"
+                          >
+                            ✏️ Sửa
+                          </button>
+                          <button
+                            onClick={() => handleDelete(emp.id)}
+                            className="px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
+                            title="Xóa"
+                          >
+                            🗑️ Xóa
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-300 text-xs">—</span>
+                      )}
                     </td>
                   )}
                 </tr>

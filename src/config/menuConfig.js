@@ -60,14 +60,24 @@ export const menuConfig = [
         type: "nested",
         children: [
           {
-            key: "ADMIN",
-            label: "navbar.ADMIN",
+            key: "hrAttendance",
+            label: "navbar.hrAttendance",
             type: "nested",
             children: [
               {
                 key: "attendance",
                 label: "navbar.attendance",
                 path: "/attendance-list",
+              },
+              {
+                key: "employeeRoster",
+                label: "navbar.employeeRoster",
+                path: "/employee-roster",
+              },
+              {
+                key: "employeeRosterResigned",
+                label: "navbar.employeeRosterResigned",
+                path: "/employee-roster-resigned",
               },
               {
                 key: "seasonalStaffAttendance",
@@ -80,15 +90,9 @@ export const menuConfig = [
                 path: "/attendance-dashboard",
               },
               {
-                key: "attendanceTable",
-                label: "navbar.attendanceTable",
-                path: "/attendance-table",
-              },
-              {
                 key: "userDepartment",
                 label: "navbar.userDepartment",
                 path: "/user-department",
-                adminOnly: true,
               },
             ],
           },
@@ -169,8 +173,12 @@ export const routeConfig = [
   { path: "/performance", element: "PerformanceChart" },
   { path: "/qr-code-generator", element: "QRCodeGenerator" },
   { path: "/attendance-list", element: "AttendanceList" },
+  { path: "/employee-roster", element: "AllEmployeesManager" },
+  {
+    path: "/employee-roster-resigned",
+    element: "ResignedEmployeesManager",
+  },
   { path: "/attendance-dashboard", element: "AttendanceDashboard" },
-  { path: "/attendance-table", element: "AttendanceTable" },
   { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
   { path: "/user-department", element: "UserDepartmentManager" },
   { path: "/inventory", element: "Inventory" },

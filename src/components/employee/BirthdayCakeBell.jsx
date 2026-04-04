@@ -4,14 +4,39 @@ import ReactDOM from "react-dom";
 import "./BirthdayCakeBell.css";
 import ExcelJS from "exceljs";
 import { db, ref, onValue } from "../../services/firebase";
+import {
+  EMPLOYEE_PROFILES_PATH,
+  mergeEmployeeProfileAndDay,
+  employeeProfileStorageKeyFromMnv,
+} from "../../utils/employeeRosterRecord";
 
-// Lấy dữ liệu từ attendance/{selectedDate}
+const normalizeEmployeeCode = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (/^\d+$/.test(raw)) {
+    const n = Number(raw);
+    return Number.isFinite(n) ? String(n) : raw;
+  }
+  return raw.toUpperCase();
+};
+
+// attendance/{selectedDate} + employeeProfiles (sinh nhật từ hồ sơ)
 export default function BirthdayCakeBell({ selectedDate, inline = false }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [attendanceEmployees, setAttendanceEmployees] = useState([]);
+  const [profileMap, setProfileMap] = useState({});
   const now = new Date();
   const listRef = useRef(null);
+
+  useEffect(() => {
+    const profRef = ref(db, EMPLOYEE_PROFILES_PATH);
+    const unsub = onValue(profRef, (snapshot) => {
+      const v = snapshot.val();
+      setProfileMap(v && typeof v === "object" ? v : {});
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (!selectedDate) {
@@ -23,7 +48,13 @@ export default function BirthdayCakeBell({ selectedDate, inline = false }) {
     const unsubscribe = onValue(attendanceRef, (snapshot) => {
       const data = snapshot.val();
       if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, emp]) => ({ id, ...emp }));
+        const arr = Object.entries(data).map(([id, emp]) => {
+          const pk = employeeProfileStorageKeyFromMnv(
+            normalizeEmployeeCode(emp?.mnv),
+          );
+          const prof = pk ? profileMap[pk] : null;
+          return mergeEmployeeProfileAndDay({ ...emp, id }, prof, null);
+        });
         setAttendanceEmployees(arr);
       } else {
         setAttendanceEmployees([]);
@@ -31,7 +62,7 @@ export default function BirthdayCakeBell({ selectedDate, inline = false }) {
     });
 
     return () => unsubscribe();
-  }, [selectedDate]);
+  }, [selectedDate, profileMap]);
 
   useEffect(() => {
     if (!open) return;

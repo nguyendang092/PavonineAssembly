@@ -6,9 +6,10 @@ import SignIn from "../../SignIn";
 import ChangePasswordModal from "../modals/ChangePasswordModal";
 import { useTranslation } from "react-i18next";
 import { menuConfig } from "../../config/menuConfig";
+import { isAdminAccess } from "../../config/authRoles";
 import "./navbar.css";
 
-export default function Navbar({ user, setUser }) {
+export default function Navbar({ user, setUser, userRole }) {
   const { t, i18n } = useTranslation();
   const [language, setLanguage] = useState(i18n.language || "vi");
   const [activeLeaderKey, setActiveLeaderKey] = useState("bieudo");
@@ -97,6 +98,8 @@ export default function Navbar({ user, setUser }) {
     }));
   };
 
+  const showAdminOnlyMenu = Boolean(user && isAdminAccess(user, userRole));
+
   // Đóng dropdown user khi click ngoài
   useEffect(() => {
     if (!userDropdownOpen) return;
@@ -161,6 +164,7 @@ export default function Navbar({ user, setUser }) {
                       className={`mobile-dropdown-content ${mobileDropdowns[item.key] ? "open" : ""}`}
                     >
                       {item.children.map((child) => {
+                        if (child.adminOnly && !showAdminOnlyMenu) return null;
                         if (child.type === "nested" && child.children) {
                           return (
                             <li
@@ -182,6 +186,8 @@ export default function Navbar({ user, setUser }) {
                                 className={`mobile-dropdown-content ${mobileDropdowns[child.key] ? "open" : ""}`}
                               >
                                 {child.children.map((subChild) => {
+                                  if (subChild.adminOnly && !showAdminOnlyMenu)
+                                    return null;
                                   if (
                                     subChild.type === "nested" &&
                                     subChild.children
@@ -208,21 +214,28 @@ export default function Navbar({ user, setUser }) {
                                           className={`mobile-dropdown-content ${mobileDropdowns[subChild.key] ? "open" : ""}`}
                                         >
                                           {subChild.children.map(
-                                            (deepChild) => (
-                                              <li key={deepChild.key}>
-                                                <Link
-                                                  to={deepChild.path}
-                                                  onClick={() => {
-                                                    setActiveLeaderKey(
-                                                      deepChild.key,
-                                                    );
-                                                    closeMobileMenu();
-                                                  }}
-                                                >
-                                                  {t(deepChild.label)}
-                                                </Link>
-                                              </li>
-                                            ),
+                                            (deepChild) => {
+                                              if (
+                                                deepChild.adminOnly &&
+                                                !showAdminOnlyMenu
+                                              )
+                                                return null;
+                                              return (
+                                                <li key={deepChild.key}>
+                                                  <Link
+                                                    to={deepChild.path}
+                                                    onClick={() => {
+                                                      setActiveLeaderKey(
+                                                        deepChild.key,
+                                                      );
+                                                      closeMobileMenu();
+                                                    }}
+                                                  >
+                                                    {t(deepChild.label)}
+                                                  </Link>
+                                                </li>
+                                              );
+                                            },
                                           )}
                                         </ul>
                                       </li>
@@ -318,11 +331,7 @@ export default function Navbar({ user, setUser }) {
           <ul>
             {menuConfig.map((item) => {
               if (item.type === "dropdown") {
-                if (
-                  item.adminOnly &&
-                  (!user || user.email !== "admin@gmail.com")
-                )
-                  return null;
+                if (item.adminOnly && !showAdminOnlyMenu) return null;
 
                 return (
                   <li key={item.key}>
@@ -333,6 +342,7 @@ export default function Navbar({ user, setUser }) {
                     <ul className="dropdown-menu">
                       {item.children.map((child) => {
                         if (child.type === "nested" && child.children) {
+                          if (child.adminOnly && !showAdminOnlyMenu) return null;
                           return (
                             <li key={child.key} className="nested-dropdown">
                               <button type="button">
@@ -354,20 +364,27 @@ export default function Navbar({ user, setUser }) {
                                           </span>
                                         </button>
                                         <ul className="nested-dropdown-menu dropdown-menu">
-                                          {sub.children.map((deepSub) => (
-                                            <li key={deepSub.key}>
-                                              <Link
-                                                to={deepSub.path}
-                                                onClick={() => {
-                                                  setActiveLeaderKey(
-                                                    deepSub.key,
-                                                  );
-                                                }}
-                                              >
-                                                {t(deepSub.label)}
-                                              </Link>
-                                            </li>
-                                          ))}
+                                          {sub.children.map((deepSub) => {
+                                            if (
+                                              deepSub.adminOnly &&
+                                              !showAdminOnlyMenu
+                                            )
+                                              return null;
+                                            return (
+                                              <li key={deepSub.key}>
+                                                <Link
+                                                  to={deepSub.path}
+                                                  onClick={() => {
+                                                    setActiveLeaderKey(
+                                                      deepSub.key,
+                                                    );
+                                                  }}
+                                                >
+                                                  {t(deepSub.label)}
+                                                </Link>
+                                              </li>
+                                            );
+                                          })}
                                         </ul>
                                       </li>
                                     );
@@ -389,11 +406,7 @@ export default function Navbar({ user, setUser }) {
                             </li>
                           );
                         }
-                        if (
-                          child.adminOnly &&
-                          (!user || user.email !== "admin@gmail.com")
-                        )
-                          return null;
+                        if (child.adminOnly && !showAdminOnlyMenu) return null;
 
                         return (
                           <li key={child.key}>

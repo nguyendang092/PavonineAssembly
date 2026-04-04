@@ -4,6 +4,30 @@ import * as XLSX from "xlsx";
 import { ref, set, get } from "firebase/database";
 import { getDateKeyBySubtractDays } from "../../utils/dateKey";
 import { getUploadErrorMessage } from "../../utils/uploadErrorMessage";
+import {
+  employeeProfileStorageKeyFromMnv,
+  isEmployeeResigned,
+  businessEmployeeCode,
+  buildPavoEmployeeId,
+  normalizeEmployeeCode,
+} from "../../utils/employeeRosterRecord";
+
+/** Tìm hồ sơ theo MNV (cột Excel số) — khớp key node hoặc trường mnv. */
+function findProfileForMnv(profileMap, normalizedMnvDigits) {
+  if (!profileMap || typeof profileMap !== "object") return null;
+  const pk = employeeProfileStorageKeyFromMnv(normalizedMnvDigits);
+  if (pk && profileMap[pk]) return profileMap[pk];
+  const target = normalizeEmployeeCode(
+    buildPavoEmployeeId(String(normalizedMnvDigits).trim()),
+  );
+  if (!target) return null;
+  for (const prof of Object.values(profileMap)) {
+    if (!prof || typeof prof !== "object") continue;
+    const bc = businessEmployeeCode({ mnv: prof.mnv });
+    if (bc && normalizeEmployeeCode(bc) === target) return prof;
+  }
+  return null;
+}
 
 export const handleUploadExcel = async ({
   e,
@@ -13,6 +37,7 @@ export const handleUploadExcel = async ({
   setIsUploadingExcel,
   t,
   db,
+  employeeProfilesMap = {},
 }) => {
   if (!user) {
     setAlert({
@@ -143,6 +168,7 @@ export const handleUploadExcel = async ({
     // Use the selectedDate from the date picker, not the current date
     const attendanceRef = ref(db, `attendance/${selectedDate}`);
     const dataToUpload = {};
+    let skippedResigned = 0;
 
     // Chuẩn hóa MNV để tránh lệch kiểu dữ liệu (number/string) gây trùng.
     const normalizeMNV = (value) => {
@@ -193,6 +219,12 @@ export const handleUploadExcel = async ({
 
       const normalizedMNV = normalizeMNV(mnvNum);
       if (!normalizedMNV) return;
+
+      const profRow = findProfileForMnv(employeeProfilesMap, normalizedMNV);
+      if (profRow && isEmployeeResigned(profRow)) {
+        skippedResigned += 1;
+        return;
+      }
 
       // Trong cùng 1 file, nếu trùng MNV thì lấy dòng xuất hiện sau cùng.
       const existingUploadKey = Object.keys(dataToUpload).find(
@@ -313,6 +345,13 @@ export const handleUploadExcel = async ({
     let message = `✅ Upload thành công ${uploadedCount} nhân viên mới`;
     if (duplicateCount > 0) {
       message += `, cập nhật ${duplicateCount} nhân viên đã tồn tại`;
+    }
+    if (skippedResigned > 0) {
+      message += t("attendanceList.uploadSkippedResigned", {
+        count: skippedResigned,
+        defaultValue:
+          "; bỏ qua {{count}} dòng (MNV đã nghỉ việc trong hồ sơ employeeProfiles)",
+      });
     }
     setAlert({
       show: true,

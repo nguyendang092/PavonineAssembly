@@ -1,45 +1,65 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "../../contexts/UserContext";
+import {
+  isAdminAccess,
+  inferRoleFromMapping,
+  normalizeRole,
+  ROLES,
+} from "../../config/authRoles";
 import { db, ref, set, onValue, remove } from "../../services/firebase";
 
 function UserDepartmentManager() {
   const { t } = useTranslation();
-  const { user } = useUser();
+  const { user, userRole } = useUser();
   const [userDepartments, setUserDepartments] = useState([]);
   const [availableDepartments, setAvailableDepartments] = useState([]);
   const [form, setForm] = useState({
     email: "",
+    role: ROLES.MANAGER,
     departments: [], // Thay từ department thành departments (array)
     description: "",
   });
   const [editing, setEditing] = useState(null);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
 
-  // Load available departments from attendance data
+  // Bộ phận: attendance (theo ngày) + employeeProfiles (hồ sơ tách tầng)
   useEffect(() => {
     const attendanceRef = ref(db, "attendance");
-    const unsubscribe = onValue(attendanceRef, (snapshot) => {
-      const data = snapshot.val();
+    const profilesRef = ref(db, "employeeProfiles");
+    const collect = (attendanceRoot, profilesRoot) => {
       const depts = new Set();
-
-      if (data && typeof data === "object") {
-        // Iterate through all dates
-        Object.values(data).forEach((dateData) => {
+      if (attendanceRoot && typeof attendanceRoot === "object") {
+        Object.values(attendanceRoot).forEach((dateData) => {
           if (dateData && typeof dateData === "object") {
-            // Iterate through all employees in that date
             Object.values(dateData).forEach((emp) => {
-              if (emp.boPhan) {
-                depts.add(emp.boPhan);
-              }
+              if (emp.boPhan) depts.add(emp.boPhan);
             });
           }
         });
       }
-
+      if (profilesRoot && typeof profilesRoot === "object") {
+        Object.values(profilesRoot).forEach((p) => {
+          if (p?.boPhan) depts.add(p.boPhan);
+        });
+      }
       setAvailableDepartments(Array.from(depts).sort());
+    };
+    let att = null;
+    let prof = null;
+    const flush = () => collect(att, prof);
+    const unsubA = onValue(attendanceRef, (snapshot) => {
+      att = snapshot.val();
+      flush();
     });
-    return () => unsubscribe();
+    const unsubP = onValue(profilesRef, (snapshot) => {
+      prof = snapshot.val();
+      flush();
+    });
+    return () => {
+      unsubA();
+      unsubP();
+    };
   }, []);
 
   // Load user-department mappings from Firebase
@@ -70,27 +90,34 @@ function UserDepartmentManager() {
     }
   }, [alert.show]);
 
-  // Check if user is admin
-  const isAdmin =
-    user?.email === "admin@gmail.com" || user?.email === "hr@pavonine.net";
+  const canManageMappings = isAdminAccess(user, userRole);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!isAdmin) {
+    if (!canManageMappings) {
       setAlert({
         show: true,
         type: "error",
-        message: "Chỉ admin mới có quyền thực hiện thao tác này",
+        message: t("userDeptManager.adminOnlyAction"),
       });
       return;
     }
 
-    if (!form.email || form.departments.length === 0) {
+    const role = normalizeRole(form.role) || ROLES.MANAGER;
+    if (!form.email?.trim()) {
       setAlert({
         show: true,
         type: "error",
-        message: "Vui lòng điền đầy đủ Email và chọn ít nhất 1 Bộ phận",
+        message: t("userDeptManager.requireEmail"),
+      });
+      return;
+    }
+    if (role === ROLES.MANAGER && form.departments.length === 0) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: t("userDeptManager.minOneDeptManager"),
       });
       return;
     }
@@ -99,8 +126,9 @@ function UserDepartmentManager() {
       const id = editing || Date.now().toString();
       const userDeptRef = ref(db, `userDepartments/${id}`);
       await set(userDeptRef, {
-        email: form.email,
-        departments: form.departments, // Lưu array bộ phận
+        email: form.email.trim(),
+        role,
+        departments: form.departments,
         description: form.description || "",
         updatedAt: new Date().toISOString(),
         updatedBy: user.email,
@@ -112,7 +140,12 @@ function UserDepartmentManager() {
         message: editing ? "✅ Cập nhật thành công" : "✅ Thêm mới thành công",
       });
 
-      setForm({ email: "", departments: [], description: "" });
+      setForm({
+        email: "",
+        role: ROLES.MANAGER,
+        departments: [],
+        description: "",
+      });
       setEditing(null);
     } catch (err) {
       console.error("Save error:", err);
@@ -125,17 +158,19 @@ function UserDepartmentManager() {
   };
 
   const handleEdit = (dept) => {
+    const depts =
+      dept.departments || (dept.department ? [dept.department] : []);
     setForm({
       email: dept.email,
-      departments:
-        dept.departments || (dept.department ? [dept.department] : []), // Support cả old và new format
+      role: inferRoleFromMapping({ ...dept, departments: depts }),
+      departments: depts,
       description: dept.description || "",
     });
     setEditing(dept.id);
   };
 
   const handleDelete = async (id) => {
-    if (!isAdmin) {
+    if (!canManageMappings) {
       setAlert({
         show: true,
         type: "error",
@@ -164,7 +199,12 @@ function UserDepartmentManager() {
   };
 
   const handleCancel = () => {
-    setForm({ email: "", departments: [], description: "" });
+    setForm({
+      email: "",
+      role: ROLES.MANAGER,
+      departments: [],
+      description: "",
+    });
     setEditing(null);
   };
 
@@ -184,19 +224,6 @@ function UserDepartmentManager() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 text-center">
           <p className="text-gray-600">{t("userDeptManager.pleaseLogin")}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <p className="text-red-600 font-bold text-xl mb-2">
-            {t("userDeptManager.accessDenied")}
-          </p>
-          <p className="text-gray-600">{t("userDeptManager.adminOnly")}</p>
         </div>
       </div>
     );
@@ -228,7 +255,14 @@ function UserDepartmentManager() {
           <p className="text-gray-600">{t("userDeptManager.description")}</p>
         </div>
 
-        {/* Form */}
+        {user && !canManageMappings && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {t("userDeptManager.viewOnlyBanner")}
+          </div>
+        )}
+
+        {/* Form — chỉ admin */}
+        {canManageMappings && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
@@ -245,6 +279,28 @@ function UserDepartmentManager() {
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  {t("userDeptManager.roleLabel")}
+                </label>
+                <select
+                  value={form.role}
+                  onChange={(e) =>
+                    setForm({ ...form, role: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                >
+                  <option value={ROLES.ADMIN}>{t("userDeptManager.roleAdmin")}</option>
+                  <option value={ROLES.MANAGER}>
+                    {t("userDeptManager.roleManager")}
+                  </option>
+                  <option value={ROLES.STAFF}>{t("userDeptManager.roleStaff")}</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {t("userDeptManager.roleHelp")}
+                </p>
               </div>
 
               {/* Buttons */}
@@ -300,15 +356,17 @@ function UserDepartmentManager() {
                     </div>
                   )}
                 </div>
-                {form.departments.length === 0 && (
-                  <p className="text-xs text-red-500 mt-1">
-                    {t("userDeptManager.minOneDept")}
-                  </p>
-                )}
+                {normalizeRole(form.role) === ROLES.MANAGER &&
+                  form.departments.length === 0 && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {t("userDeptManager.minOneDeptManager")}
+                    </p>
+                  )}
               </div>
             </div>
           </form>
         </div>
+        )}
 
         {/* Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -327,6 +385,9 @@ function UserDepartmentManager() {
                     {t("userDeptManager.colEmail")}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    {t("userDeptManager.colRole")}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     {t("userDeptManager.colDept")}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -335,19 +396,23 @@ function UserDepartmentManager() {
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     {t("userDeptManager.colUpdatedBy")}
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    {t("userDeptManager.colActions")}
-                  </th>
+                  {canManageMappings && (
+                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      {t("userDeptManager.colActions")}
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {userDepartments.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="5"
+                      colSpan={canManageMappings ? 6 : 5}
                       className="px-6 py-8 text-center text-gray-500 italic"
                     >
-                      Chưa có mapping nào. Hãy thêm mới ở form bên trên.
+                      {canManageMappings
+                        ? t("userDeptManager.noMappings")
+                        : t("userDeptManager.noMappingsViewOnly")}
                     </td>
                   </tr>
                 ) : (
@@ -356,6 +421,11 @@ function UserDepartmentManager() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-semibold text-gray-900">
                           {dept.email}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 bg-slate-100 text-slate-800 text-xs font-bold rounded">
+                          {inferRoleFromMapping(dept)}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -387,22 +457,26 @@ function UserDepartmentManager() {
                           {dept.updatedBy || "--"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleEdit(dept)}
-                            className="px-3 py-1 bg-yellow-500 text-white text-xs font-semibold rounded hover:bg-yellow-600 transition-colors"
-                          >
-                            ✏️ Sửa
-                          </button>
-                          <button
-                            onClick={() => handleDelete(dept.id)}
-                            className="px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded hover:bg-red-600 transition-colors"
-                          >
-                            🗑️ Xóa
-                          </button>
-                        </div>
-                      </td>
+                      {canManageMappings && (
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(dept)}
+                              className="px-3 py-1 bg-yellow-500 text-white text-xs font-semibold rounded hover:bg-yellow-600 transition-colors"
+                            >
+                              ✏️ Sửa
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(dept.id)}
+                              className="px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded hover:bg-red-600 transition-colors"
+                            >
+                              🗑️ Xóa
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -418,21 +492,20 @@ function UserDepartmentManager() {
           </h3>
           <ul className="space-y-2 text-sm text-blue-800">
             <li>
-              • <strong>Email User:</strong> Email đăng nhập của user (ví dụ:
-              pavo_press@gmail.com)
+              • <strong>Vai trò admin:</strong> toàn quyền (và mở trang phân
+              quyền này).
             </li>
             <li>
-              • <strong>Bộ phận:</strong> Tên bộ phận mà user được phép quản lý
-              (Press, MC, MOD...)
+              • <strong>Vai trò manager:</strong> xem và sửa chấm công chỉ
+              trong các bộ phận đã chọn (arena).
             </li>
             <li>
-              • User chỉ có thể chỉnh sửa dữ liệu của nhân viên trong bộ phận
-              được gán
+              • <strong>Vai trò staff:</strong> chỉ xem, không sửa dữ liệu chấm
+              công.
             </li>
-            <li>• Admin và HR có quyền chỉnh sửa tất cả bộ phận</li>
             <li>
-              • Bộ phận phải khớp chính xác với giá trị trong cột "Bộ phận" của
-              dữ liệu chấm công
+              • <strong>Bộ phận:</strong> phải khớp cột &quot;Bộ phận&quot;
+              trong dữ liệu chấm công; manager bắt buộc chọn ít nhất một bộ phận.
             </li>
           </ul>
         </div>

@@ -2,11 +2,21 @@ import React, { useEffect, useState } from "react";
 import AttendanceHeadcountDashboard from "./AttendanceHeadcountDashboard";
 import { useUser } from "../../contexts/UserContext";
 import { db, ref, onValue, set } from "../../services/firebase";
+import {
+  EMPLOYEE_PROFILES_PATH,
+  mergeEmployeeProfileAndDay,
+  employeeProfileStorageKeyFromMnv,
+  businessEmployeeCode,
+} from "../../utils/employeeRosterRecord";
 
-const toSortedEmployeeArray = (data) => {
+const toSortedEmployeeArray = (data, profileMap) => {
   if (!data || typeof data !== "object") return [];
 
-  const arr = Object.entries(data).map(([id, emp]) => ({ id, ...emp }));
+  const arr = Object.entries(data).map(([id, emp]) => {
+    const pk = employeeProfileStorageKeyFromMnv(businessEmployeeCode(emp));
+    const prof = pk && profileMap ? profileMap[pk] : null;
+    return mergeEmployeeProfileAndDay({ ...emp, id }, prof, null);
+  });
   arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
   return arr;
 };
@@ -21,9 +31,18 @@ const AttendanceDashboardContainer = () => {
     new Date().toISOString().slice(0, 10),
   );
   const [loading, setLoading] = useState(true);
+  const [profileMap, setProfileMap] = useState({});
 
   const canEditRequired =
     user?.email === "admin@gmail.com" || user?.email === "hr@pavonine.net";
+
+  useEffect(() => {
+    const unsubProf = onValue(ref(db, EMPLOYEE_PROFILES_PATH), (snapshot) => {
+      const v = snapshot.val();
+      setProfileMap(v && typeof v === "object" ? v : {});
+    });
+    return () => unsubProf();
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -44,7 +63,7 @@ const AttendanceDashboardContainer = () => {
     };
 
     const unsubscribe = onValue(empRef, (snapshot) => {
-      setEmployees(toSortedEmployeeArray(snapshot.val()));
+      setEmployees(toSortedEmployeeArray(snapshot.val(), profileMap));
       regularLoaded = true;
       handleLoaded();
     });
@@ -83,7 +102,7 @@ const AttendanceDashboardContainer = () => {
       unsubscribeRequired();
       unsubscribeNotes();
     };
-  }, [selectedDate]);
+  }, [selectedDate, profileMap]);
 
   const handleRequiredChange = async (departmentKey, value) => {
     if (!canEditRequired) return;

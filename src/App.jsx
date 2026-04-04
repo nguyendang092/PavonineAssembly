@@ -17,6 +17,11 @@ import { UserContext } from "./contexts/UserContext";
 import { useLoading } from "./contexts/LoadingContext";
 import { routeConfig } from "./config/menuConfig";
 import {
+  inferRoleFromMapping,
+  isAdminOrHR,
+  ROLES,
+} from "./config/authRoles";
+import {
   BrowserRouter as Router,
   Routes,
   Route,
@@ -54,15 +59,18 @@ const AttendanceList = lazy(
 const AttendanceDashboardContainer = lazy(
   () => import("./components/attendance/AttendanceDashboardContainer"),
 );
-const AttendanceTable = lazy(
-  () => import("./components/attendance/AttendanceTable"),
-);
 const SeasonalStaffAttendance = lazy(
   () => import("./components/attendance/SeasonalStaffAttendance"),
 );
 const Downloads = lazy(() => import("./components/common/Downloads"));
 const UserDepartmentManager = lazy(
   () => import("./components/employee/UserDepartmentManager"),
+);
+const AllEmployeesManager = lazy(
+  () => import("./components/employee/AllEmployeesManager"),
+);
+const ResignedEmployeesManager = lazy(
+  () => import("./components/employee/ResignedEmployeesManager"),
 );
 const MaintenanceChecklist = lazy(
   () => import("./components/maintenance/MaintenanceChecklist"),
@@ -88,6 +96,7 @@ const App = () => {
 
   // departments the currently logged in user has access to
   const [userDepartments, setUserDepartments] = useState([]);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -118,10 +127,11 @@ const App = () => {
     setTimeout(() => setLoading(false), 800);
   }, []);
 
-  // load departments for the logged-in user
+  // load departments + role for the logged-in user
   useEffect(() => {
     if (!user?.email) {
       setUserDepartments([]);
+      setUserRole(null);
       return;
     }
     const userDeptsRef = ref(db, "userDepartments");
@@ -139,11 +149,16 @@ const App = () => {
             mapping.departments ||
             (mapping.department ? [mapping.department] : []);
           setUserDepartments(depts);
+          let role = inferRoleFromMapping({ ...mapping, departments: depts });
+          if (isAdminOrHR(user)) role = ROLES.ADMIN;
+          setUserRole(role);
         } else {
           setUserDepartments([]);
+          setUserRole(isAdminOrHR(user) ? ROLES.ADMIN : ROLES.STAFF);
         }
       } else {
         setUserDepartments([]);
+        setUserRole(isAdminOrHR(user) ? ROLES.ADMIN : ROLES.STAFF);
       }
     });
     return () => unsubscribe();
@@ -185,19 +200,22 @@ const App = () => {
       QRCodeGenerator: <QRCodeGenerator />,
       AttendanceList: <AttendanceList />,
       AttendanceDashboard: <AttendanceDashboardContainer />,
-      AttendanceTable: <AttendanceTable />,
       SeasonalStaffAttendance: <SeasonalStaffAttendance />,
       Downloads: <Downloads />,
       MaintenanceChecklist: <MaintenanceChecklist />,
       DriverLogbook: <DriverLogbook />,
       UserDepartmentManager: <UserDepartmentManager />,
+      AllEmployeesManager: <AllEmployeesManager />,
+      ResignedEmployeesManager: <ResignedEmployeesManager />,
       Employ: <Employ showToast={showToast} />,
     }),
     [],
   );
 
   return (
-    <UserContext.Provider value={{ user, setUser, userDepartments }}>
+    <UserContext.Provider
+      value={{ user, setUser, userDepartments, userRole }}
+    >
       <Router>
         {/* Hiệu ứng mùa: tuyết rơi hoặc Happy New Year */}
         {/* <SeasonEffect effect={seasonEffect} /> */}
@@ -210,11 +228,11 @@ const App = () => {
                 : "bg-transparent"
             }`}
           >
-            <Navbar user={user} setUser={setUser} />
+            <Navbar user={user} setUser={setUser} userRole={userRole} />
           </div>
 
           {/* Nội dung chính */}
-          <div className="pt-16 overflow-hidden flex-1">
+          <div className="pt-16 flex-1 min-h-0 overflow-x-hidden overflow-y-auto">
             <Suspense
               fallback={
                 <div className="h-[60vh] flex items-center justify-center text-gray-500 text-lg">

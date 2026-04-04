@@ -1,14 +1,21 @@
-import React, {
+﻿import React, {
   useState,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useCallback,
   useRef,
 } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
-import { isAdminOrHR } from "../../config/authRoles";
+import {
+  isAdminAccess,
+  canEditAttendanceForEmployee,
+  canAddAttendanceForDepartment,
+  ROLES,
+} from "../../config/authRoles";
 import { getDateKeyBySubtractDays } from "../../utils/dateKey";
 import {
   db,
@@ -20,30 +27,24 @@ import {
   update,
   get,
 } from "../../services/firebase";
+import {
+  EMPLOYEE_PROFILES_PATH,
+  buildEmployeeProfileDocument,
+  buildEmployeeAttendanceDayDocument,
+  mergeEmployeeProfileAndDay,
+  employeeProfileStorageKeyFromMnv,
+  slugifyDepartmentKey,
+} from "../../utils/employeeRosterRecord";
+import {
+  appendEmployeeProfileHistory,
+  diffEmployeeProfileDocs,
+} from "../../utils/employeeProfileHistory";
 import ExcelJS from "exceljs";
 import { handleUploadExcel } from "./AttendanceUploadHandler";
 import ExportExcelButton from "../common/ExportExcelButton";
 import UnifiedModal from "../common/UnifiedModal";
 import BirthdayCakeBell from "../employee/BirthdayCakeBell";
 import NotificationBell from "../common/NotificationBell";
-import MissingEmployeesModal from "./MissingEmployeesModal";
-import NewEmployeesSummary from "./NewEmployeesSummary";
-
-const findNearestPreviousAttendanceData = async (
-  baseDateStr,
-  maxLookbackDays = 14,
-) => {
-  for (let i = 1; i <= maxLookbackDays; i++) {
-    const dateKey = getDateKeyBySubtractDays(baseDateStr, i);
-    const snap = await get(ref(db, `attendance/${dateKey}`));
-    const data = snap.val();
-    if (data && typeof data === "object" && Object.keys(data).length > 0) {
-      return { dateKey, data };
-    }
-  }
-  return null;
-};
-
 const normalizeEmployeeCode = (value) => {
   const raw = String(value ?? "").trim();
   if (!raw) return "";
@@ -76,8 +77,14 @@ function AttendanceList() {
   // State for selected date (default to today)
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const { t, i18n } = useTranslation();
-  const { user, userDepartments } = useUser();
+  const { user, userDepartments, userRole } = useUser();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const d = searchParams.get("date");
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(d);
+  }, [searchParams]);
   const tl = useCallback(
     (key, defaultValue, options = {}) =>
       t(`attendanceList.${key}`, { defaultValue, ...options }),
@@ -129,27 +136,13 @@ function AttendanceList() {
     pnTon: "",
   });
 
-  // States for comparing with previous day
-  const [previousDayEmployees, setPreviousDayEmployees] = useState([]);
-  const [previousComparisonDate, setPreviousComparisonDate] = useState("");
-  const [showMissingEmployeesModal, setShowMissingEmployeesModal] =
-    useState(false);
-  const [missingEmployees, setMissingEmployees] = useState([]);
-  const [
-    confirmedUnannouncedResignations,
-    setConfirmedUnannouncedResignations,
-  ] = useState({});
-  const [historicalThresholdDays, setHistoricalThresholdDays] = useState(3);
-  const [historicalSuspectedEmployees, setHistoricalSuspectedEmployees] =
-    useState([]);
-  const [historicalScanLoading, setHistoricalScanLoading] = useState(false);
-  const [historicalScannedAt, setHistoricalScannedAt] = useState("");
-  const [historicalLatestDate, setHistoricalLatestDate] = useState("");
   const [filterMenuDropdownOpen, setFilterMenuDropdownOpen] = useState(false);
-  const [showNewEmployeesModal, setShowNewEmployeesModal] = useState(false);
   const filterMenuRef = useRef(null);
+  const filterDropdownAnchorRef = useRef(null);
+  const filterMenuPanelRef = useRef(null);
   const actionDropdownRef = useRef(null);
   const printDropdownRef = useRef(null);
+  const [filterDropdownPlacement, setFilterDropdownPlacement] = useState(null);
 
   const quickNoCheckInFilterValue = "chưa_chấm_công";
   const isQuickNoCheckInActive =
@@ -213,59 +206,34 @@ function AttendanceList() {
     [employees],
   );
 
-  const confirmedMissingEmployees = useMemo(() => {
-    return Object.values(confirmedUnannouncedResignations)
-      .filter((rec) => rec?.status === "confirmed")
-      .map((rec) => ({
-        mnv: rec.employeeCode,
-        hoVaTen: rec.employeeName,
-        boPhan: rec.department,
-        ngayThangNamSinh: rec.birthDate,
-        ...rec,
-      }));
-  }, [confirmedUnannouncedResignations]);
-
-  const suspectedUnannouncedEmployees = useMemo(() => {
-    return missingEmployees.filter((emp) => {
-      const code = normalizeEmployeeCode(emp.mnv);
-      return (
-        !code || confirmedUnannouncedResignations[code]?.status !== "confirmed"
-      );
-    });
-  }, [missingEmployees, confirmedUnannouncedResignations]);
-
-  const canManageUnannouncedResignation = isAdminOrHR(user);
-
-  const historicalSuspectedMap = useMemo(() => {
-    const map = {};
-    historicalSuspectedEmployees.forEach((emp) => {
-      const code = normalizeEmployeeCode(emp.mnv || emp.employeeCode);
-      if (code) {
-        map[code] = emp;
-      }
-    });
-    return map;
-  }, [historicalSuspectedEmployees]);
+  const [employeeProfilesMap, setEmployeeProfilesMap] = useState({});
 
   useEffect(() => {
-    const confirmationsRef = ref(db, "attendanceUnannouncedResignations");
-    const unsubscribe = onValue(confirmationsRef, (snapshot) => {
-      const data = snapshot.val();
-      setConfirmedUnannouncedResignations(
-        data && typeof data === "object" ? data : {},
-      );
+    const profRef = ref(db, EMPLOYEE_PROFILES_PATH);
+    const unsubscribe = onValue(profRef, (snapshot) => {
+      const v = snapshot.val();
+      setEmployeeProfilesMap(v && typeof v === "object" ? v : {});
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Load data from Firebase
+  // Load attendance/{date} + gộp employeeProfiles (scale / tách hồ sơ)
   useEffect(() => {
     const empRef = ref(db, `attendance/${selectedDate}`);
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
       if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, emp]) => ({ ...emp, id }));
+        const arr = Object.entries(data).map(([id, emp]) => {
+          const pk = employeeProfileStorageKeyFromMnv(
+            normalizeEmployeeCode(emp?.mnv),
+          );
+          const prof = pk ? employeeProfilesMap[pk] : null;
+          return mergeEmployeeProfileAndDay(
+            { ...emp, id },
+            prof,
+            null,
+          );
+        });
         arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
         setEmployees(arr);
       } else {
@@ -273,7 +241,7 @@ function AttendanceList() {
       }
     });
     return () => unsubscribe();
-  }, [selectedDate]);
+  }, [selectedDate, employeeProfilesMap]);
 
   useEffect(() => {
     setShowUnattendedPopup(false);
@@ -295,311 +263,6 @@ function AttendanceList() {
     return () => clearTimeout(timer);
   }, [unattendedEmployees, unattendedPopupDismissed]);
 
-  // Load nearest previous employees and detect missing ones
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadNearestPreviousEmployees = async () => {
-      const previousResult = await findNearestPreviousAttendanceData(
-        selectedDate,
-        14,
-      );
-      if (cancelled) return;
-
-      if (previousResult?.data && typeof previousResult.data === "object") {
-        const arr = Object.entries(previousResult.data).map(([id, emp]) => ({
-          ...emp,
-          id,
-        }));
-        setPreviousDayEmployees(arr);
-        setPreviousComparisonDate(previousResult.dateKey || "");
-
-        // Calculate missing employees
-        const currentMnvSet = new Set(
-          employees
-            .map((e) => normalizeEmployeeCode(e.mnv))
-            .filter((code) => code),
-        );
-        const missing = arr.filter((e) => {
-          const code = normalizeEmployeeCode(e.mnv);
-          if (!code) return false;
-          return !currentMnvSet.has(code);
-        });
-        setMissingEmployees(missing);
-      } else {
-        setPreviousDayEmployees([]);
-        setMissingEmployees([]);
-        setPreviousComparisonDate("");
-      }
-    };
-
-    loadNearestPreviousEmployees();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedDate, employees]);
-
-  const handleConfirmUnannouncedResignation = useCallback(
-    async (employee) => {
-      const employeeCode = normalizeEmployeeCode(employee?.mnv);
-      if (!employeeCode) {
-        setAlert({
-          show: true,
-          type: "error",
-          message: "Không thể xác nhận do thiếu MNV hợp lệ.",
-        });
-        return;
-      }
-
-      try {
-        const existingRecord =
-          confirmedUnannouncedResignations[employeeCode] || {};
-        await set(
-          ref(db, `attendanceUnannouncedResignations/${employeeCode}`),
-          {
-            employeeCode,
-            employeeName: employee?.hoVaTen || "",
-            department: employee?.boPhan || "",
-            birthDate: employee?.ngayThangNamSinh || "",
-            status: "confirmed",
-            firstDetectedDate: existingRecord.firstDetectedDate || selectedDate,
-            lastSeenDate:
-              previousComparisonDate || existingRecord.lastSeenDate || "",
-            confirmedMissingDate: selectedDate,
-            confirmedAt: new Date().toISOString(),
-            confirmedBy: user?.email || "unknown",
-            updatedAt: new Date().toISOString(),
-          },
-        );
-
-        setAlert({
-          show: true,
-          type: "success",
-          message: `Đã xác nhận ${employee?.hoVaTen || employeeCode} nghỉ không thông báo.`,
-        });
-      } catch (error) {
-        console.error("Confirm unannounced resignation failed:", error);
-        setAlert({
-          show: true,
-          type: "error",
-          message: "Không thể xác nhận nghỉ không thông báo.",
-        });
-      }
-    },
-    [
-      confirmedUnannouncedResignations,
-      previousComparisonDate,
-      selectedDate,
-      user,
-    ],
-  );
-
-  const handleUnconfirmUnannouncedResignation = useCallback(
-    async (employee) => {
-      const employeeCode = normalizeEmployeeCode(employee?.mnv);
-      if (!employeeCode) return;
-
-      try {
-        await remove(
-          ref(db, `attendanceUnannouncedResignations/${employeeCode}`),
-        );
-        setAlert({
-          show: true,
-          type: "success",
-          message: `Đã chuyển ${employee?.hoVaTen || employeeCode} về danh sách nghi ngờ.`,
-        });
-      } catch (error) {
-        console.error("Unconfirm unannounced resignation failed:", error);
-        setAlert({
-          show: true,
-          type: "error",
-          message: "Không thể hủy xác nhận nghỉ không thông báo.",
-        });
-      }
-    },
-    [],
-  );
-
-  const handleScanHistoricalMissingEmployees = useCallback(async () => {
-    const threshold = Number(historicalThresholdDays);
-    if (!Number.isFinite(threshold) || threshold < 1) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: "Ngưỡng ngày phải lớn hơn hoặc bằng 1.",
-      });
-      return;
-    }
-
-    setHistoricalScanLoading(true);
-    try {
-      const attendanceSnap = await get(ref(db, "attendance"));
-      const attendanceData = attendanceSnap.val();
-
-      if (!attendanceData || typeof attendanceData !== "object") {
-        setHistoricalSuspectedEmployees([]);
-        setHistoricalLatestDate("");
-        setHistoricalScannedAt(new Date().toISOString());
-        return;
-      }
-
-      const attendanceDates = Object.keys(attendanceData)
-        .filter(
-          (dateKey) =>
-            attendanceData[dateKey] &&
-            typeof attendanceData[dateKey] === "object" &&
-            Object.keys(attendanceData[dateKey]).length > 0,
-        )
-        .sort();
-
-      if (attendanceDates.length === 0) {
-        setHistoricalSuspectedEmployees([]);
-        setHistoricalLatestDate("");
-        setHistoricalScannedAt(new Date().toISOString());
-        return;
-      }
-
-      const latestDate = attendanceDates[attendanceDates.length - 1];
-      setHistoricalLatestDate(latestDate);
-
-      const lastSeenByEmployee = {};
-      attendanceDates.forEach((dateKey, dateIndex) => {
-        const dayData = attendanceData[dateKey];
-        Object.values(dayData).forEach((emp) => {
-          const code = normalizeEmployeeCode(emp?.mnv);
-          if (!code) return;
-
-          const previous = lastSeenByEmployee[code] || {};
-          lastSeenByEmployee[code] = {
-            ...previous,
-            employeeCode: code,
-            mnv: String(emp?.mnv ?? code),
-            hoVaTen: emp?.hoVaTen || previous.hoVaTen || "",
-            boPhan: emp?.boPhan || previous.boPhan || "",
-            ngayThangNamSinh:
-              emp?.ngayThangNamSinh || previous.ngayThangNamSinh || "",
-            lastSeenDate: dateKey,
-            lastSeenIndex: dateIndex,
-          };
-        });
-      });
-
-      const suspected = Object.values(lastSeenByEmployee)
-        .map((emp) => {
-          const missingWorkingDays =
-            attendanceDates.length - 1 - emp.lastSeenIndex;
-          return {
-            id: `historical__${emp.employeeCode}`,
-            ...emp,
-            latestAttendanceDate: latestDate,
-            missingWorkingDays,
-          };
-        })
-        .filter((emp) => emp.missingWorkingDays > threshold)
-        .sort((a, b) => {
-          if (b.missingWorkingDays !== a.missingWorkingDays) {
-            return b.missingWorkingDays - a.missingWorkingDays;
-          }
-          return String(a.hoVaTen || "").localeCompare(String(b.hoVaTen || ""));
-        });
-
-      setHistoricalSuspectedEmployees(suspected);
-      setHistoricalScannedAt(new Date().toISOString());
-      setAlert({
-        show: true,
-        type: "success",
-        message: `Đã quét lịch sử, tìm thấy ${suspected.length} nhân viên nghi ngờ (vắng > ${threshold} ngày).`,
-      });
-    } catch (error) {
-      console.error("Scan historical missing employees failed:", error);
-      setAlert({
-        show: true,
-        type: "error",
-        message: "Không thể quét lịch sử dữ liệu chấm công.",
-      });
-    } finally {
-      setHistoricalScanLoading(false);
-    }
-  }, [historicalThresholdDays]);
-
-  const handleBulkConfirmHistoricalSuspects = useCallback(
-    async (employeeCodes = []) => {
-      if (!canManageUnannouncedResignation) return;
-
-      const normalizedCodes = employeeCodes
-        .map((code) => normalizeEmployeeCode(code))
-        .filter((code) => code);
-
-      if (normalizedCodes.length === 0) {
-        setAlert({
-          show: true,
-          type: "error",
-          message: "Vui lòng chọn ít nhất 1 nhân viên để xác nhận.",
-        });
-        return;
-      }
-
-      try {
-        const now = new Date().toISOString();
-        const updatesPayload = {};
-
-        normalizedCodes.forEach((code) => {
-          const historicalEmp = historicalSuspectedMap[code] || {};
-          const existingRecord = confirmedUnannouncedResignations[code] || {};
-
-          updatesPayload[`attendanceUnannouncedResignations/${code}`] = {
-            employeeCode: code,
-            employeeName:
-              historicalEmp.hoVaTen || existingRecord.employeeName || "",
-            department: historicalEmp.boPhan || existingRecord.department || "",
-            birthDate:
-              historicalEmp.ngayThangNamSinh || existingRecord.birthDate || "",
-            status: "confirmed",
-            firstDetectedDate:
-              existingRecord.firstDetectedDate ||
-              historicalEmp.lastSeenDate ||
-              "",
-            lastSeenDate:
-              historicalEmp.lastSeenDate || existingRecord.lastSeenDate || "",
-            confirmedMissingDate:
-              historicalEmp.latestAttendanceDate ||
-              existingRecord.confirmedMissingDate ||
-              selectedDate,
-            missingWorkingDays:
-              historicalEmp.missingWorkingDays ??
-              existingRecord.missingWorkingDays ??
-              0,
-            confirmedAt: now,
-            confirmedBy: user?.email || "unknown",
-            updatedAt: now,
-          };
-        });
-
-        await update(ref(db), updatesPayload);
-        setAlert({
-          show: true,
-          type: "success",
-          message: `Đã xác nhận ${normalizedCodes.length} nhân viên từ danh sách lịch sử.`,
-        });
-      } catch (error) {
-        console.error("Bulk confirm historical suspects failed:", error);
-        setAlert({
-          show: true,
-          type: "error",
-          message: "Không thể xác nhận hàng loạt từ dữ liệu lịch sử.",
-        });
-      }
-    },
-    [
-      canManageUnannouncedResignation,
-      confirmedUnannouncedResignations,
-      historicalSuspectedMap,
-      selectedDate,
-      user,
-    ],
-  );
-
   // Auto-hide alert after 3s
   useEffect(() => {
     if (alert.show) {
@@ -612,22 +275,46 @@ function AttendanceList() {
 
   // Check if user can edit this employee's data
   const canEditEmployee = useCallback(
-    (employee) => {
-      if (!user) return false;
-
-      if (isAdminOrHR(user)) return true;
-
-      // Check if user has permission for this department (case-insensitive, trimmed)
-      if (!userDepartments || userDepartments.length === 0) return false;
-      if (!employee.boPhan) return false;
-
-      const empDept = (employee.boPhan || "").trim().toLowerCase();
-      return userDepartments.some(
-        (dept) => (dept || "").trim().toLowerCase() === empDept,
-      );
-    },
-    [user, userDepartments],
+    (employee) =>
+      canEditAttendanceForEmployee({
+        user,
+        userRole,
+        userDepartments,
+        employee,
+      }),
+    [user, userRole, userDepartments],
   );
+
+  const showRowModalActions =
+    Boolean(user && userRole && userRole !== ROLES.STAFF);
+
+  // Vị trí menu bộ lọc (fixed + portal) — không bị cắt bởi overflow / footer
+  useLayoutEffect(() => {
+    if (!filterMenuDropdownOpen) {
+      setFilterDropdownPlacement(null);
+      return;
+    }
+    const update = () => {
+      const btn = filterDropdownAnchorRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      const w = Math.min(288, window.innerWidth - 16);
+      let left =
+        window.innerWidth < 640
+          ? Math.max(8, Math.min(r.left, window.innerWidth - w - 8))
+          : Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+      const top = r.bottom + 6;
+      const maxHeight = Math.max(160, window.innerHeight - top - 12);
+      setFilterDropdownPlacement({ top, left, width: w, maxHeight });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [filterMenuDropdownOpen]);
 
   // Unified outside-click handler for top action menus.
   useEffect(() => {
@@ -637,7 +324,8 @@ function AttendanceList() {
       if (
         filterMenuDropdownOpen &&
         filterMenuRef.current &&
-        !filterMenuRef.current.contains(target)
+        !filterMenuRef.current.contains(target) &&
+        !(filterMenuPanelRef.current?.contains(target))
       ) {
         setFilterMenuDropdownOpen(false);
       }
@@ -667,13 +355,6 @@ function AttendanceList() {
   useEffect(() => {
     setFilterMenuDropdownOpen(false);
   }, [location.pathname, location.search, location.hash]);
-
-  // Keep filter dropdown closed while opening/closing related detail modals.
-  useEffect(() => {
-    if (showMissingEmployeesModal || showNewEmployeesModal) {
-      setFilterMenuDropdownOpen(false);
-    }
-  }, [showMissingEmployeesModal, showNewEmployeesModal]);
 
   // Filter employees
   const filteredEmployees = useMemo(() => {
@@ -861,7 +542,7 @@ function AttendanceList() {
     setForm((prev) => ({ ...prev, [name]: value }));
   }, []);
 
-  // Handle submit (add/update)
+  // Handle submit (add/update) — employeeProfiles + attendance/{date} (tách tầng)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -873,11 +554,82 @@ function AttendanceList() {
       return;
     }
 
+    const storageKey = employeeProfileStorageKeyFromMnv(form.mnv);
+    if (!storageKey) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: t("attendanceList.error"),
+      });
+      return;
+    }
+
     try {
       if (editing) {
-        const empRef = ref(db, `attendance/${selectedDate}/${editing}`);
-        await set(empRef, { ...form, id: editing });
-        setShowModal(false); // Đóng popup sau khi cập nhật thành công
+        const existing = employees.find((emp) => emp.id === editing);
+        if (
+          !existing ||
+          !canEditAttendanceForEmployee({
+            user,
+            userRole,
+            userDepartments,
+            employee: existing,
+          })
+        ) {
+          setAlert({
+            show: true,
+            type: "error",
+            message: t("attendanceList.error"),
+          });
+          return;
+        }
+        const daySnap = await get(
+          ref(db, `attendance/${selectedDate}/${editing}`),
+        );
+        const existingRaw = daySnap.val() || {};
+        const profSnap = await get(
+          ref(db, `${EMPLOYEE_PROFILES_PATH}/${storageKey}`),
+        );
+        const existingProfile = profSnap.val() || {};
+        const deptKey =
+          String(existingProfile.departmentKey ?? "").trim() ||
+          slugifyDepartmentKey(form.boPhan);
+        const mergedForm = {
+          ...existingProfile,
+          ...form,
+          businessId: storageKey,
+          departmentKey: deptKey,
+        };
+        const profileDoc = buildEmployeeProfileDocument({
+          form: mergedForm,
+          existingProfile,
+          departmentDisplayName: form.boPhan,
+          departmentKey: deptKey,
+        });
+        const dayDoc = buildEmployeeAttendanceDayDocument({
+          form: mergedForm,
+          existing: existingRaw,
+        });
+        await update(ref(db), {
+          [`${EMPLOYEE_PROFILES_PATH}/${storageKey}`]: profileDoc,
+          [`attendance/${selectedDate}/${editing}`]: { ...dayDoc, id: editing },
+        });
+        const profileChanges = diffEmployeeProfileDocs(
+          existingProfile,
+          profileDoc,
+        );
+        if (profileChanges.length > 0) {
+          void appendEmployeeProfileHistory({
+            by: user?.email || "",
+            action: "update",
+            source: "attendance",
+            profileKey: storageKey,
+            mnv: String(profileDoc.mnv || form.mnv || ""),
+            hoVaTen: String(profileDoc.hoVaTen || form.hoVaTen || ""),
+            changes: profileChanges,
+          });
+        }
+        setShowModal(false);
         setAlert({
           show: true,
           type: "success",
@@ -885,9 +637,59 @@ function AttendanceList() {
         });
         setEditing(null);
       } else {
+        if (
+          !canAddAttendanceForDepartment({
+            user,
+            userRole,
+            userDepartments,
+            boPhan: form.boPhan,
+          })
+        ) {
+          setAlert({
+            show: true,
+            type: "error",
+            message: t("attendanceList.error"),
+          });
+          return;
+        }
+        const profSnap = await get(
+          ref(db, `${EMPLOYEE_PROFILES_PATH}/${storageKey}`),
+        );
+        const existingProfile = profSnap.val() || {};
+        const deptKey =
+          String(existingProfile.departmentKey ?? "").trim() ||
+          slugifyDepartmentKey(form.boPhan);
+        const mergedForm = {
+          ...existingProfile,
+          ...form,
+          businessId: storageKey,
+          departmentKey: deptKey,
+        };
+        const profileDoc = buildEmployeeProfileDocument({
+          form: mergedForm,
+          existingProfile,
+          departmentDisplayName: form.boPhan,
+          departmentKey: deptKey,
+        });
         const newRef = push(ref(db, `attendance/${selectedDate}`));
-        await set(newRef, { ...form, id: newRef.key });
-        setShowModal(false); // Đóng popup sau khi thêm mới thành công
+        const newKey = newRef.key;
+        const dayDoc = buildEmployeeAttendanceDayDocument({
+          form: mergedForm,
+          existing: {},
+        });
+        await update(ref(db), {
+          [`${EMPLOYEE_PROFILES_PATH}/${storageKey}`]: profileDoc,
+          [`attendance/${selectedDate}/${newKey}`]: { ...dayDoc, id: newKey },
+        });
+        void appendEmployeeProfileHistory({
+          by: user?.email || "",
+          action: "create",
+          source: "attendance",
+          profileKey: storageKey,
+          mnv: String(profileDoc.mnv || form.mnv || ""),
+          hoVaTen: String(profileDoc.hoVaTen || form.hoVaTen || ""),
+        });
+        setShowModal(false);
         setAlert({
           show: true,
           type: "success",
@@ -930,11 +732,26 @@ function AttendanceList() {
         });
         return;
       }
+      if (
+        !canEditAttendanceForEmployee({
+          user,
+          userRole,
+          userDepartments,
+          employee: emp,
+        })
+      ) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: t("attendanceList.error"),
+        });
+        return;
+      }
       setForm({ ...emp });
       setEditing(emp.id);
       setShowModal(true);
     },
-    [user],
+    [user, userRole, userDepartments, t],
   );
 
   // Handle delete
@@ -945,6 +762,23 @@ function AttendanceList() {
           show: true,
           type: "error",
           message: t("attendanceList.pleaseLogin"),
+        });
+        return;
+      }
+      const emp = employees.find((e) => e.id === id);
+      if (
+        !emp ||
+        !canEditAttendanceForEmployee({
+          user,
+          userRole,
+          userDepartments,
+          employee: emp,
+        })
+      ) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: t("attendanceList.error"),
         });
         return;
       }
@@ -967,7 +801,7 @@ function AttendanceList() {
         });
       }
     },
-    [user, selectedDate],
+    [user, userRole, userDepartments, employees, selectedDate, t],
   );
 
   // Use the extracted upload handler
@@ -981,9 +815,18 @@ function AttendanceList() {
         setIsUploadingExcel,
         t,
         db,
+        employeeProfilesMap,
       });
     },
-    [user, selectedDate, setAlert, setIsUploadingExcel, t, db],
+    [
+      user,
+      selectedDate,
+      setAlert,
+      setIsUploadingExcel,
+      t,
+      db,
+      employeeProfilesMap,
+    ],
   );
 
   // Handle delete all data for selected date
@@ -996,7 +839,7 @@ function AttendanceList() {
       });
       return;
     }
-    if (!isAdminOrHR(user)) {
+    if (!isAdminAccess(user, userRole)) {
       setAlert({
         show: true,
         type: "error",
@@ -1042,7 +885,7 @@ function AttendanceList() {
         }),
       });
     }
-  }, [user, selectedDate, employees.length]);
+  }, [user, userRole, selectedDate, employees.length, t]);
 
   // Export to Excel (moved to external component)
 
@@ -2116,56 +1959,28 @@ function AttendanceList() {
           </div>
         </UnifiedModal>
 
-        {/* Modal hiển thị nhân viên bị mất so với ngày hôm trước */}
-        <MissingEmployeesModal
-          isOpen={showMissingEmployeesModal}
-          onClose={() => {
-            setShowMissingEmployeesModal(false);
-            setFilterMenuDropdownOpen(false);
-          }}
-          missingEmployees={missingEmployees}
-          suspectedEmployees={suspectedUnannouncedEmployees}
-          confirmedEmployees={confirmedMissingEmployees}
-          previousDayEmployees={previousDayEmployees}
-          previousComparisonDate={previousComparisonDate}
-          employees={employees}
-          selectedDate={selectedDate}
-          confirmationMap={confirmedUnannouncedResignations}
-          canManageConfirmation={canManageUnannouncedResignation}
-          onConfirmEmployee={handleConfirmUnannouncedResignation}
-          onUnconfirmEmployee={handleUnconfirmUnannouncedResignation}
-          historicalThresholdDays={historicalThresholdDays}
-          onHistoricalThresholdChange={setHistoricalThresholdDays}
-          onScanHistorical={handleScanHistoricalMissingEmployees}
-          historicalScanLoading={historicalScanLoading}
-          historicalScannedAt={historicalScannedAt}
-          historicalLatestDate={historicalLatestDate}
-          historicalSuspectedEmployees={historicalSuspectedEmployees}
-          onBulkConfirmHistorical={handleBulkConfirmHistoricalSuspects}
-        />
-
-        {/* Filters and Actions */}
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between mb-4">
-          <div className="flex flex-wrap gap-2">
+        {/* Filters and Actions — shrink-0 tránh co mất nút khi danh sách ít / màn hẹp */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-start sm:justify-between mb-4">
+          <div className="flex flex-wrap gap-2 min-w-0 flex-1">
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full sm:w-auto border rounded-md h-9 px-3 text-sm bg-white font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300"
+              className="w-full sm:w-auto border rounded-md h-9 px-3 text-sm bg-white font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300 shrink-0"
             />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t("attendanceList.searchPlaceholder")}
-              className="w-full sm:w-48 border rounded-md h-9 px-3 text-sm focus:ring-2 focus:ring-blue-200"
+              className="w-full sm:w-48 min-w-0 border rounded-md h-9 px-3 text-sm focus:ring-2 focus:ring-blue-200"
             />
           </div>
-          <div className="flex flex-wrap items-stretch gap-2 w-full sm:w-auto sm:justify-end">
-            <div className="flex-1 sm:flex-none min-w-[44px]">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end sm:shrink-0">
+            <div className="shrink-0">
               <BirthdayCakeBell selectedDate={selectedDate} inline />
             </div>
-            <div className="flex-1 sm:flex-none min-w-[44px]">
+            <div className="shrink-0">
               <NotificationBell
                 inline
                 count={buCongEmployees.length}
@@ -2256,18 +2071,19 @@ function AttendanceList() {
             {/* Filter Dropdown Menu */}
             <div
               ref={filterMenuRef}
-              className={`attendance-filter-menu relative flex-1 sm:flex-none min-w-[100px]`}
+              className="attendance-filter-menu relative shrink-0 z-50 min-w-[10.5rem] sm:min-w-[11rem]"
             >
               <button
+                ref={filterDropdownAnchorRef}
+                type="button"
                 onClick={() =>
                   setFilterMenuDropdownOpen(!filterMenuDropdownOpen)
                 }
-                className={`w-full px-1 sm:px-1 py-2 rounded-lg border border-slate-300 font-bold text-sm shadow transition flex items-center justify-center gap-2 ${
+                className={`w-full min-h-[2.25rem] px-3 py-2 rounded-lg border border-slate-300 font-bold text-sm shadow transition flex items-center justify-center gap-2 whitespace-nowrap ${
                   gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
                   gioVaoFilter.length > 0 ||
-                  isQuickNoCheckInActive ||
-                  missingEmployees.length > 0
+                  isQuickNoCheckInActive
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-gray-600 text-white hover:bg-gray-700"
                 }`}
@@ -2283,9 +2099,20 @@ function AttendanceList() {
                 </span>
               </button>
 
-              {/* Dropdown Menu */}
-              {filterMenuDropdownOpen && (
-                <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-full sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border border-gray-200 z-40">
+              {/* Dropdown: portal + fixed để luôn nổi trên footer / vùng scroll */}
+              {filterMenuDropdownOpen &&
+                filterDropdownPlacement &&
+                createPortal(
+                  <div
+                    ref={filterMenuPanelRef}
+                    className="fixed z-[1100] bg-white rounded-lg shadow-2xl border border-gray-200 overflow-y-auto overscroll-contain"
+                    style={{
+                      top: filterDropdownPlacement.top,
+                      left: filterDropdownPlacement.left,
+                      width: filterDropdownPlacement.width,
+                      maxHeight: filterDropdownPlacement.maxHeight,
+                    }}
+                  >
                   {/* Bộ lọc nâng cao */}
                   <button
                     onClick={() => {
@@ -2337,67 +2164,6 @@ function AttendanceList() {
                     </div>
                   </button>
 
-                  {/* Nhân viên bị mất / nghỉ đã xác nhận */}
-                  {(canManageUnannouncedResignation ||
-                    missingEmployees.length > 0 ||
-                    confirmedMissingEmployees.length > 0) && (
-                    <button
-                      onClick={() => {
-                        setShowMissingEmployeesModal(true);
-                        setFilterMenuDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 flex items-center gap-3 transition font-semibold ${
-                        suspectedUnannouncedEmployees.length > 0
-                          ? "hover:bg-red-50 bg-red-50 text-red-700"
-                          : "hover:bg-slate-50 text-slate-700"
-                      }`}
-                    >
-                      <span className="text-lg">📋</span>
-                      <div className="flex-1">
-                        <div className="font-semibold text-sm">
-                          {tl("missingEmployees", "Nhân viên nghỉ việc")}
-                        </div>
-                        <div
-                          className={`text-xs ${
-                            suspectedUnannouncedEmployees.length > 0
-                              ? "text-red-600"
-                              : "text-slate-500"
-                          }`}
-                        >
-                          Nghi ngờ: {suspectedUnannouncedEmployees.length} | Đã
-                          xác nhận: {confirmedMissingEmployees.length}
-                        </div>
-                      </div>
-                      <span
-                        className={`ml-2 px-2 py-1 rounded-full text-xs font-bold text-white ${
-                          suspectedUnannouncedEmployees.length > 0
-                            ? "bg-red-600"
-                            : "bg-slate-500"
-                        }`}
-                      >
-                        {suspectedUnannouncedEmployees.length}
-                      </span>
-                    </button>
-                  )}
-
-                  {/* Tăng ca */}
-                  <NewEmployeesSummary
-                    mode="menu"
-                    employees={employees}
-                    previousDayEmployees={previousDayEmployees}
-                    previousComparisonDate={previousComparisonDate}
-                    selectedDate={selectedDate}
-                    isDetailsOpen={showNewEmployeesModal}
-                    onDetailsOpenChange={(open) => {
-                      setShowNewEmployeesModal(open);
-                      if (open) {
-                        setFilterMenuDropdownOpen(false);
-                      }
-                    }}
-                    onMenuClick={() => setFilterMenuDropdownOpen(false)}
-                  />
-
-                  {/* Tăng ca */}
                   <button
                     onClick={() => {
                       handleOvertimeButton();
@@ -2441,8 +2207,9 @@ function AttendanceList() {
                       </div>
                     </button>
                   )}
-                </div>
-              )}
+                  </div>,
+                  document.body,
+                )}
 
               {/* Filter Modal Dialog */}
               {filterOpen && (
@@ -2803,11 +2570,12 @@ function AttendanceList() {
             {user && (
               <div
                 ref={actionDropdownRef}
-                className="relative action-dropdown flex-1 sm:flex-none min-w-[80px]"
+                className="relative action-dropdown shrink-0 z-40 min-w-[10rem] sm:min-w-[11rem]"
               >
                 <button
+                  type="button"
                   onClick={() => setActionDropdownOpen(!actionDropdownOpen)}
-                  className="w-full px-2 sm:px-2 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center justify-center gap-1"
+                  className="w-full min-h-[2.25rem] px-3 py-2 bg-emerald-600 text-white rounded font-bold text-sm shadow hover:bg-emerald-700 transition flex items-center justify-center gap-1 whitespace-nowrap"
                 >
                   ⚙️ {tl("actionsMenu", "Chức năng")}
                   <span className="text-xs">
@@ -2815,8 +2583,8 @@ function AttendanceList() {
                   </span>
                 </button>
                 {actionDropdownOpen && (
-                  <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-full sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-50 overflow-hidden animate-fadeIn">
-                    {isAdminOrHR(user) && (
+                  <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-[min(100vw-2rem,18rem)] sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-[100] overflow-hidden animate-fadeIn">
+                    {isAdminAccess(user, userRole) && (
                       <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
                         <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
                           📤
@@ -2874,64 +2642,65 @@ function AttendanceList() {
                         </span>
                       </div>
                     </button>
-                    <button
-                      onClick={() => {
-                        setForm({
-                          id: "",
-                          stt: "",
-                          mnv: "",
-                          mvt: "",
-                          hoVaTen: "",
-                          gioiTinh: "YES",
-                          ngayThangNamSinh: "",
-                          maBoPhan: "",
-                          boPhan: "",
-                          gioVao: "",
-                          gioRa: "",
-                          caLamViec: "",
-                          chamCong: "",
-                          pnTon: "",
-                        });
-                        setEditing(null);
-                        setShowModal(true);
-                        setActionDropdownOpen(false);
-                      }}
-                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
-                    >
-                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                        ➕
-                      </span>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                          {tl("addNew", "Thêm mới")}
+                    {showRowModalActions && (
+                      <button
+                        onClick={() => {
+                          setForm({
+                            id: "",
+                            stt: "",
+                            mnv: "",
+                            mvt: "",
+                            hoVaTen: "",
+                            gioiTinh: "YES",
+                            ngayThangNamSinh: "",
+                            maBoPhan: "",
+                            boPhan: "",
+                            gioVao: "",
+                            gioRa: "",
+                            caLamViec: "",
+                            chamCong: "",
+                            pnTon: "",
+                          });
+                          setEditing(null);
+                          setShowModal(true);
+                          setActionDropdownOpen(false);
+                        }}
+                        className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                      >
+                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                          ➕
                         </span>
-                        <span className="text-xs text-gray-500 mt-0.5">
-                          Add new employee
-                        </span>
-                      </div>
-                    </button>
-                    {user &&
-                      isAdminOrHR(user) && (
-                        <button
-                          onClick={() => {
-                            handleDeleteAllData();
-                            setActionDropdownOpen(false);
-                          }}
-                          className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-red-50 hover:to-rose-50 transition-all duration-200 flex items-center gap-3 group"
-                        >
-                          <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                            🗑️
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                            {tl("addNew", "Thêm mới")}
                           </span>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-red-600 text-sm group-hover:text-red-700 transition-colors">
-                              {tl("deleteAllData", "Xóa toàn bộ dữ liệu")}
-                            </span>
-                            <span className="text-xs text-gray-500 mt-0.5">
-                              Delete all data for {selectedDate}
-                            </span>
-                          </div>
-                        </button>
-                      )}
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            Add new employee
+                          </span>
+                        </div>
+                      </button>
+                    )}
+                    {user && isAdminAccess(user, userRole) && (
+                      <button
+                        onClick={() => {
+                          handleDeleteAllData();
+                          setActionDropdownOpen(false);
+                        }}
+                        className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-red-50 hover:to-rose-50 transition-all duration-200 flex items-center gap-3 group"
+                      >
+                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                          🗑️
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-red-600 text-sm group-hover:text-red-700 transition-colors">
+                            {tl("deleteAllData", "Xóa toàn bộ dữ liệu")}
+                          </span>
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            Delete all data for {selectedDate}
+                          </span>
+                        </div>
+                      </button>
+                    )}
                   </div>
                 )}
                 {/* Hidden ExportExcelButton for functionality */}
@@ -2954,17 +2723,18 @@ function AttendanceList() {
             {/* Print Dropdown */}
             <div
               ref={printDropdownRef}
-              className="print-dropdown-menu relative flex-1 sm:flex-none min-w-[80px]"
+              className="print-dropdown-menu relative shrink-0 z-40 min-w-[8.5rem] sm:min-w-[9rem]"
             >
               <button
+                type="button"
                 onClick={() => setPrintDropdownOpen(!printDropdownOpen)}
-                className="w-full px-1 sm:px-1 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition flex items-center justify-center gap-1"
+                className="w-full min-h-[2.25rem] px-3 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition flex items-center justify-center gap-1 whitespace-nowrap"
               >
                 🖨️ {tl("print", "In")}
                 <span className="text-xs">{printDropdownOpen ? "▲" : "▼"}</span>
               </button>
               {printDropdownOpen && (
-                <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-full sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border-2 border-blue-200 z-50 overflow-hidden animate-fadeIn">
+                <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-[min(100vw-2rem,18rem)] sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border-2 border-blue-200 z-[100] overflow-hidden animate-fadeIn">
                   <button
                     onClick={() => {
                       handlePrintOvertimeList();
@@ -3579,9 +3349,9 @@ function AttendanceList() {
                 <th className="hidden md:table-cell px-3 py-4 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                   {tl("attendance", "Chấm công")}
                 </th>
-                {user && (
+                {showRowModalActions && (
                   <th className="hidden md:table-cell px-2 md:px-3 py-3 md:py-4 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                    {tl("actions", "Hành động")}
+                    {tl("actions", "Sửa / Xóa")}
                   </th>
                 )}
               </tr>
@@ -3683,7 +3453,7 @@ function AttendanceList() {
                                     db,
                                     `attendance/${selectedDate}/${emp.id}`,
                                   );
-                                  await set(empRef, { ...emp, gioVao: value });
+                                  await update(empRef, { gioVao: value });
                                   setEditingGioVao((prev) => {
                                     const newState = { ...prev };
                                     delete newState[emp.id];
@@ -3782,10 +3552,7 @@ function AttendanceList() {
                                     db,
                                     `attendance/${selectedDate}/${emp.id}`,
                                   );
-                                  await set(empRef, {
-                                    ...emp,
-                                    caLamViec: value,
-                                  });
+                                  await update(empRef, { caLamViec: value });
                                   setEditingCaLamViec((prev) => {
                                     const newState = { ...prev };
                                     delete newState[emp.id];
@@ -3834,9 +3601,9 @@ function AttendanceList() {
                       {emp.chamCong || "--"}
                     </span>
                   </td>
-                  {user &&
-                    isAdminOrHR(user) && (
-                      <td className="hidden md:table-cell px-2 py-2 text-center min-w-[120px]">
+                  {showRowModalActions && (
+                    <td className="hidden md:table-cell px-2 py-2 text-center min-w-[120px]">
+                      {canEditEmployee(emp) ? (
                         <div className="flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2">
                           <button
                             onClick={() => handleEdit(emp)}
@@ -3853,8 +3620,11 @@ function AttendanceList() {
                             🗑️
                           </button>
                         </div>
-                      </td>
-                    )}
+                      ) : (
+                        <span className="text-gray-300 text-xs">—</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -3862,44 +3632,79 @@ function AttendanceList() {
         </div>
 
         {/* Summary */}
+
         <div className="mt-6 bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-600">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <div className="flex items-center flex-wrap gap-2 mt-1">
-                <span className="text-sm font-bold text-gray-700 flex items-center">
-                  📊 {tl("totalEmployees", "Tổng số nhân viên")}:
-                  <span className="ml-2 text-lg text-blue-600">
+            <div className="w-full">
+              <div className="flex flex-wrap items-center gap-4 border border-blue-100 rounded-lg px-3 py-2 bg-gradient-to-r from-blue-50 to-blue-100 shadow-sm">
+                {/* Tổng số nhân viên */}
+                <span className="flex items-center gap-1 text-sm font-bold text-gray-700">
+                  <span className="text-blue-600 text-lg">📊</span>
+                  {tl("totalEmployees", "Tổng số nhân viên")}:
+                  <span className="ml-1 text-lg text-blue-700">
                     {filteredEmployees.length}
                   </span>
                 </span>
-                {/* Đếm số lượng từng loại nhân viên (PO, PN, ...) */}
-                <div className="flex flex-wrap gap-2 sm:ml-4">
-                  {(() => {
-                    // Đếm số lượng theo trường 'gioVao' (thời gian vào)
-                    const timeCounts = {};
-                    filteredEmployees.forEach((emp) => {
-                      const time = emp.gioVao;
-                      // Loại bỏ các giá trị là giờ (hh:mm hoặc hh:mm:ss)
-                      if (time && !/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) {
-                        timeCounts[time] = (timeCounts[time] || 0) + 1;
-                      }
-                    });
-                    return Object.entries(timeCounts).length > 0 ? (
-                      Object.entries(timeCounts).map(([time, count]) => (
-                        <span
-                          key={time}
-                          className="px-2 py-0.5 rounded text-black font-bold text-2xs"
-                        >
-                          {time}: {count}
+                {/* Phân loại phép */}
+                <span className="flex items-center gap-1 text-sm font-bold text-gray-700 border-l border-blue-200 pl-4">
+                  <span className="text-indigo-500 text-base">🏷️</span>
+                  {tl("classification", "Phân loại phép")}:
+                  <span className="flex flex-wrap gap-1 ml-1">
+                    {(() => {
+                      const timeCounts = {};
+                      filteredEmployees.forEach((emp) => {
+                        const time = emp.gioVao;
+                        if (time && !/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) {
+                          timeCounts[time] = (timeCounts[time] || 0) + 1;
+                        }
+                      });
+                      return Object.entries(timeCounts).length > 0 ? (
+                        Object.entries(timeCounts).map(([time, count]) => (
+                          <span
+                            key={time}
+                            className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-bold text-2xs border border-indigo-200"
+                          >
+                            {time}: {count}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="italic text-gray-400">
+                          {tl("noClassification", "Không có phân loại")}
                         </span>
-                      ))
-                    ) : (
-                      <span className="italic text-gray-400">
-                        {tl("noClassification", "Không có phân loại")}
-                      </span>
-                    );
-                  })()}
-                </div>
+                      );
+                    })()}
+                  </span>
+                </span>
+                {/* Thống kê ca làm việc */}
+                <span className="flex items-center gap-1 text-sm font-bold text-gray-700 border-l border-blue-200 pl-4">
+                  <span className="text-amber-500 text-base">🕒</span>
+                  {tl("workShiftStats", "Thống kê ca làm việc")}:
+                  <span className="flex flex-wrap gap-1 ml-1">
+                    {(() => {
+                      const shiftCounts = {};
+                      filteredEmployees.forEach((emp) => {
+                        const shift = emp.caLamViec;
+                        if (shift) {
+                          shiftCounts[shift] = (shiftCounts[shift] || 0) + 1;
+                        }
+                      });
+                      return Object.entries(shiftCounts).length > 0 ? (
+                        Object.entries(shiftCounts).map(([shift, count]) => (
+                          <span
+                            key={shift}
+                            className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-bold text-2xs border border-amber-200"
+                          >
+                            {shift}: {count}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="italic text-gray-400">
+                          {tl("noShiftStats", "Không có ca làm việc")}
+                        </span>
+                      );
+                    })()}
+                  </span>
+                </span>
               </div>
             </div>
             <p className="text-xs text-gray-500 self-start sm:self-auto">
@@ -3908,20 +3713,6 @@ function AttendanceList() {
             </p>
           </div>
         </div>
-
-        <NewEmployeesSummary
-          employees={employees}
-          previousDayEmployees={previousDayEmployees}
-          previousComparisonDate={previousComparisonDate}
-          selectedDate={selectedDate}
-          isDetailsOpen={showNewEmployeesModal}
-          onDetailsOpenChange={(open) => {
-            setShowNewEmployeesModal(open);
-            if (open) {
-              setFilterMenuDropdownOpen(false);
-            }
-          }}
-        />
       </div>
     </>
   );
