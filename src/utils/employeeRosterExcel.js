@@ -4,6 +4,7 @@ import {
   slugifyDepartmentKey,
   resolveExcelBusinessId,
   trangThaiLamViecFromExcelCell,
+  hinhThucNghiViecFromExcelCell,
 } from "./employeeRosterRecord";
 
 function normalizeColKey(s) {
@@ -169,6 +170,25 @@ export function parseEmployeeRosterExcelArrayBuffer(arrayBuffer) {
         "status",
       ),
     );
+    const leaveDateRaw = pick(
+      m,
+      "ngay_nghi_viec",
+      "ngaynghiviec",
+      "resignation_date",
+      "ngay_thoi_viec",
+      "ngay_roi_cong_ty",
+    );
+    const ngayNghiViec = parseExcelDate(leaveDateRaw, workbook);
+    const hinhThucNghiViec = hinhThucNghiViecFromExcelCell(
+      pick(
+        m,
+        "hinh_thuc_nghi_viec",
+        "hinhthucnghiviec",
+        "loai_nghi_viec",
+        "resignation_type",
+        "kieu_nghi_viec",
+      ),
+    );
     const sttRaw = pick(m, "stt", "no", "stt_", "ordinal");
     const sdt = String(pick(m, "sdt", "phone", "dien_thoai", "tel") ?? "").trim();
     const chuyenCan = String(
@@ -195,6 +215,8 @@ export function parseEmployeeRosterExcelArrayBuffer(arrayBuffer) {
       ngayVaoLam,
       ngayThangNamSinh,
       trangThaiLamViec,
+      ngayNghiViec,
+      hinhThucNghiViec,
       stt: sttRaw !== "" && sttRaw != null ? String(sttRaw).trim() : "",
       sdt,
       chuyenCan,
@@ -245,10 +267,13 @@ export function downloadEmployeeRosterTemplateXlsx(filename = "mau_ds_nhan_vien.
       "• Bắt buộc mỗi dòng: ho_va_ten (tên), department (bộ phận). Các cột khác tùy chọn.",
     ],
     [
-      "• Thứ tự cột khuyến nghị: stt, mnv, id, ho_va_ten, ngay_thang_nam_sinh, department, chuc_vu, ngay_vao_lam, sdt, trang_thai_lam_viec, chuyen_can, phan_quyen, email_dang_nhap.",
+      "• Thứ tự cột khuyến nghị: stt, mnv, id, ho_va_ten, ngay_thang_nam_sinh, department, chuc_vu, ngay_vao_lam, ngay_nghi_viec, hinh_thuc_nghi_viec, sdt, trang_thai_lam_viec, chuyen_can, phan_quyen, email_dang_nhap.",
     ],
     [
       "• trang_thai_lam_viec: dang_lam | thu_viec | tam_nghi | nghi_viec (hoặc active/probation/leave/inactive).",
+    ],
+    [
+      "• ngay_nghi_viec: ngày nghỉ việc (YYYY-MM-DD). hinh_thuc_nghi_viec: co_don (có đơn) | nghi_ngang (nghỉ ngang) — áp dụng khi nghỉ việc.",
     ],
     [""],
     ["Sheet «employees» là bảng dữ liệu — app đọc sheet này; xóa dòng mẫu hoặc sửa theo thực tế."],
@@ -267,6 +292,8 @@ export function downloadEmployeeRosterTemplateXlsx(filename = "mau_ds_nhan_vien.
       "department",
       "chuc_vu",
       "ngay_vao_lam",
+      "ngay_nghi_viec",
+      "hinh_thuc_nghi_viec",
       "sdt",
       "trang_thai_lam_viec",
       "chuyen_can",
@@ -282,6 +309,8 @@ export function downloadEmployeeRosterTemplateXlsx(filename = "mau_ds_nhan_vien.
       "Assembly",
       "Operator",
       "2025-01-01",
+      "",
+      "",
       "",
       "dang_lam",
       "",
@@ -299,6 +328,8 @@ export function downloadEmployeeRosterTemplateXlsx(filename = "mau_ds_nhan_vien.
     { wch: 14 },
     { wch: 14 },
     { wch: 12 },
+    { wch: 14 },
+    { wch: 18 },
     { wch: 12 },
     { wch: 16 },
     { wch: 12 },

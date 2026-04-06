@@ -718,6 +718,13 @@ const vi = {
     colJoin: "Ngày vào làm",
     colPhone: "SĐT",
     colStatus: "Trạng thái LV",
+    colResignDate: "Ngày nghỉ việc",
+    colResignType: "Hình thức nghỉ",
+    resignWithLetter: "Có đơn",
+    resignAbrupt: "Nghỉ ngang",
+    resignTypeUnset: "— Chưa chọn / không áp dụng —",
+    resignFieldsHint:
+      "Ghi khi trạng thái là nghỉ việc (tuỳ chọn).",
     colDiligence: "Chuyên cần",
     colPerm: "Phân quyền",
     roleAdmin: "Admin",
@@ -761,6 +768,8 @@ const vi = {
     historyField_chuyenCan: "Chuyên cần",
     historyField_phanQuyen: "Ghi chú PQ",
     historyField_emailDangNhap: "Email đăng nhập",
+    historyField_ngayNghiViec: "Ngày nghỉ việc",
+    historyField_hinhThucNghiViec: "Hình thức nghỉ",
   },
   attendanceList: {
     pleaseLogin: "Vui lòng đăng nhập để thực hiện thao tác này",

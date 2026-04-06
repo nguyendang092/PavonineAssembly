@@ -63,9 +63,11 @@ import {
   RosterToast,
   RosterModal,
 } from "./roster/RosterUiPrimitives";
-
-/** Số hồ sơ tối đa sync mỗi lần (Firebase RTDB orderByKey + limitToFirst). */
-const PROFILE_PAGE_SIZE = 50;
+import {
+  EMPLOYEE_ROSTER_PAGE_SIZE_OPTIONS,
+  readStoredEmployeeRosterPageSize,
+  persistEmployeeRosterPageSize,
+} from "../../config/employeeRosterPagination";
 
 const normEmail = (v) =>
   String(v ?? "")
@@ -94,6 +96,8 @@ const emptyForm = () => ({
   caLamViec: "",
   chamCong: "",
   pnTon: "",
+  ngayNghiViec: "",
+  hinhThucNghiViec: "",
 });
 
 function displayChucVu(emp) {
@@ -134,7 +138,7 @@ function RosterPhoneCell({ value, revealed, onToggle, labelShow, labelHide }) {
   const display = String(value ?? "").trim();
   const digits = phoneDigitsOnly(display);
   if (!display) {
-    return <span className="text-slate-400">—</span>;
+    return <span className="text-gray-400">—</span>;
   }
   if (digits.length <= 3) {
     return <span className="tabular-nums">{display}</span>;
@@ -151,7 +155,7 @@ function RosterPhoneCell({ value, revealed, onToggle, labelShow, labelHide }) {
       <button
         type="button"
         onClick={onToggle}
-        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-transparent text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50"
+        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-transparent text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
         aria-label={showFull ? labelHide : labelShow}
         aria-pressed={showFull}
       >
@@ -166,10 +170,16 @@ function RosterPhoneCell({ value, revealed, onToggle, labelShow, labelHide }) {
 }
 
 /** Nội dung cuộn trong modal «Lịch sử hồ sơ». */
-function EmployeeProfileEditHistoryPanel({ rows, tr, workStatusLabel, i18n }) {
+function EmployeeProfileEditHistoryPanel({
+  rows,
+  tr,
+  workStatusLabel,
+  hinhThucNghiLabel,
+  i18n,
+}) {
   if (!rows?.length) {
     return (
-      <p className="px-5 py-4 text-sm text-slate-500 sm:px-6">
+      <p className="px-5 py-4 text-sm text-gray-500 sm:px-6">
         {tr("editHistoryEmpty", "Chưa có bản ghi nào.")}
       </p>
     );
@@ -190,6 +200,8 @@ function EmployeeProfileEditHistoryPanel({ rows, tr, workStatusLabel, i18n }) {
     chuyenCan: "Chuyên cần",
     phanQuyen: "Ghi chú PQ",
     emailDangNhap: "Email đăng nhập",
+    ngayNghiViec: "Ngày nghỉ việc",
+    hinhThucNghiViec: "Hình thức nghỉ",
   };
   return (
     <div className="space-y-3 px-5 py-4 sm:px-6">
@@ -203,8 +215,11 @@ function EmployeeProfileEditHistoryPanel({ rows, tr, workStatusLabel, i18n }) {
         } catch {
           when = String(row.at ?? "");
         }
-        const fmtVal = (k, v) =>
-          k === "trangThaiLamViec" ? workStatusLabel(v) : slice(v || "—");
+        const fmtVal = (k, v) => {
+          if (k === "trangThaiLamViec") return workStatusLabel(v);
+          if (k === "hinhThucNghiViec") return hinhThucNghiLabel(v);
+          return slice(v || "—");
+        };
         const act = String(row.action || "");
         const actionKey = act
           ? `historyAction${act.charAt(0).toUpperCase()}${act.slice(1)}`
@@ -230,26 +245,26 @@ function EmployeeProfileEditHistoryPanel({ rows, tr, workStatusLabel, i18n }) {
         return (
           <article
             key={row.historyKey}
-            className="rounded-lg border border-slate-200/90 bg-slate-50/50 px-3 py-2.5 text-sm shadow-sm"
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm shadow-sm"
           >
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-slate-600">
-              <time className="font-medium text-slate-800">{when}</time>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-gray-600">
+              <time className="font-medium text-gray-800">{when}</time>
               <span>·</span>
               <span className="break-all">{slice(row.by, 36)}</span>
               <span>·</span>
               <span>{srcLabel}</span>
               <span>·</span>
-              <span className="font-semibold text-slate-800">
+              <span className="font-semibold text-gray-800">
                 {actionLabel}
               </span>
             </div>
             {row.action !== "excel" ? (
-              <p className="mt-1.5 font-medium text-slate-900">
+              <p className="mt-1.5 font-medium text-gray-900">
                 {slice(row.mnv, 24)} — {slice(row.hoVaTen, 40)}
               </p>
             ) : null}
             {row.action === "excel" && row.excel ? (
-              <p className="mt-1.5 text-slate-700">
+              <p className="mt-1.5 text-gray-700">
                 {tr(
                   "historyExcelSummary",
                   "Thêm {{added}}, cập nhật {{updated}}, bỏ qua {{skipped}}.",
@@ -262,18 +277,18 @@ function EmployeeProfileEditHistoryPanel({ rows, tr, workStatusLabel, i18n }) {
               </p>
             ) : null}
             {row.changes?.length ? (
-              <ul className="mt-2 space-y-1 border-t border-slate-200/80 pt-2 text-xs text-slate-600">
+              <ul className="mt-2 space-y-1 border-t border-gray-200 pt-2 text-xs text-gray-600">
                 {row.changes.map((c, i) => (
                   <li key={`${row.historyKey}-${i}`}>
-                    <span className="font-semibold text-slate-700">
+                    <span className="font-semibold text-gray-700">
                       {tr(`historyField_${c.k}`, fieldDef[c.k] || c.k)}
                     </span>
                     {": "}
-                    <span className="text-slate-500 line-through decoration-slate-400">
+                    <span className="text-gray-500 line-through decoration-gray-400">
                       {fmtVal(c.k, c.a)}
                     </span>
                     {" → "}
-                    <span className="text-slate-800">{fmtVal(c.k, c.b)}</span>
+                    <span className="text-gray-800">{fmtVal(c.k, c.b)}</span>
                   </li>
                 ))}
               </ul>
@@ -296,10 +311,14 @@ function AllEmployeesManager({ resignedOnly = false }) {
 
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("");
-  /** Có ô tìm hoặc lọc BP → tải toàn bộ hồ sơ để lọc trên mọi NV, rồi phân trang ở client. */
+  /** Khoảng ngày lọc: tab đang làm = ngày vào làm; tab nghỉ việc = ngày nghỉ việc. */
+  const [joinDateFrom, setJoinDateFrom] = useState("");
+  /** Mặc định đến hôm nay; chỉ áp dụng lọc khi đã chọn “từ ngày”. */
+  const [joinDateTo, setJoinDateTo] = useState(todayKey);
+  /** Có tìm / lọc BP / hoặc đã chọn “từ ngày” (vào làm hoặc nghỉ việc tùy tab) → tải full, phân trang client. */
   const rosterFilterActive = useMemo(
-    () => search.trim() !== "" || deptFilter !== "",
-    [search, deptFilter],
+    () => search.trim() !== "" || deptFilter !== "" || joinDateFrom !== "",
+    [search, deptFilter, joinDateFrom],
   );
 
   const [showModal, setShowModal] = useState(false);
@@ -362,16 +381,25 @@ function AllEmployeesManager({ resignedOnly = false }) {
   }, []);
 
   const [profileByMnv, setProfileByMnv] = useState({});
-  /** Trang hồ sơ (0-based) — mỗi trang tối đa PROFILE_PAGE_SIZE bản ghi theo key RTDB. */
+  /** Số bản ghi mỗi trang (RTDB limit + slice khi lọc); mặc định từ localStorage. */
+  const [rosterPageSize, setRosterPageSize] = useState(
+    readStoredEmployeeRosterPageSize,
+  );
+  /** Trang hồ sơ (0-based) — mỗi trang tối đa `rosterPageSize` bản ghi theo key RTDB. */
   const [profilePageIndex, setProfilePageIndex] = useState(0);
   const [profilesHasNextPage, setProfilesHasNextPage] = useState(false);
   const [profilesPageRowCount, setProfilesPageRowCount] = useState(0);
-  /** `endKeys[p]` = key cuối của trang p (dùng startAfter cho trang p+1). */
+  /** `endKeys[p]` = key cuối **đã đọc từ RTDB** ở trang p (startAfter cho trang p+1). */
   const profilePageEndKeysRef = useRef({});
+  /**
+   * Không lọc tìm/BP: đúng N firebaseKey/trang sau khi bỏ NV không thuộc tab (đang làm bỏ nghỉ,
+   * nghỉ việc bỏ đang làm). null = đang tải full + slice client (có tìm/BP).
+   */
+  const [pagedRosterVisibleKeys, setPagedRosterVisibleKeys] = useState(null);
 
   useEffect(() => {
     setProfilePageIndex(0);
-  }, [search, deptFilter]);
+  }, [search, deptFilter, joinDateFrom, joinDateTo]);
 
   useEffect(() => {
     if (!rosterFilterActive) {
@@ -383,6 +411,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
     const profRef = ref(db, EMPLOYEE_PROFILES_PATH);
 
     if (rosterFilterActive) {
+      setPagedRosterVisibleKeys(null);
       const unsub = onValue(profRef, (snapshot) => {
         const v = snapshot.val();
         const next = v && typeof v === "object" ? v : {};
@@ -399,32 +428,118 @@ function AllEmployeesManager({ resignedOnly = false }) {
       setProfilePageIndex(0);
       return;
     }
-    const q =
-      profilePageIndex === 0
-        ? query(profRef, orderByKey(), limitToFirst(PROFILE_PAGE_SIZE))
-        : query(
+
+    /**
+     * Đang làm: đủ N người chưa nghỉ. Nghỉ việc: đủ N người đã nghỉ.
+     * Đọc nối tiếp theo key RTDB, bỏ bản ghi không khớp tab.
+     */
+    const wantResigned = resignedOnly;
+    setPagedRosterVisibleKeys([]);
+    let cancelled = false;
+    const FETCH_CHUNK = Math.max(64, rosterPageSize * 2);
+    /** Tránh quét cả DB nếu có quá nhiều bản ghi “lệch tab” liên tiếp theo key. */
+    const maxRawKeysPerPage = Math.min(
+      5000,
+      Math.max(200, rosterPageSize * 100),
+    );
+    let cursor = prevEnd;
+
+    (async () => {
+      const merged = {};
+      let lastServerKey = null;
+      const matchedKeysInOrder = [];
+      let rawKeyCount = 0;
+
+      while (
+        !cancelled &&
+        matchedKeysInOrder.length < rosterPageSize &&
+        rawKeyCount < maxRawKeysPerPage
+      ) {
+        const q =
+          cursor == null
+            ? query(profRef, orderByKey(), limitToFirst(FETCH_CHUNK))
+            : query(
+                profRef,
+                orderByKey(),
+                startAfter(cursor),
+                limitToFirst(FETCH_CHUNK),
+              );
+        const snap = await get(q);
+        if (cancelled) return;
+
+        const batchKeys = [];
+        snap.forEach((child) => {
+          batchKeys.push(child.key);
+          merged[child.key] = child.val();
+        });
+
+        if (batchKeys.length === 0) break;
+
+        rawKeyCount += batchKeys.length;
+        lastServerKey = batchKeys[batchKeys.length - 1];
+        cursor = lastServerKey;
+
+        for (const k of batchKeys) {
+          const prof = merged[k];
+          const emp = enrichEmployeeRow(
+            {
+              ...prof,
+              firebaseKey: k,
+              mnv: prof?.mnv || k,
+            },
+            deptCatalog,
+          );
+          const resigned = isEmployeeResigned(emp);
+          const matchesTab = wantResigned ? resigned : !resigned;
+          if (matchesTab) {
+            matchedKeysInOrder.push(k);
+            if (matchedKeysInOrder.length >= rosterPageSize) break;
+          }
+        }
+
+        if (batchKeys.length < FETCH_CHUNK) break;
+      }
+
+      if (cancelled) return;
+
+      if (lastServerKey) {
+        profilePageEndKeysRef.current[profilePageIndex] = lastServerKey;
+      } else {
+        delete profilePageEndKeysRef.current[profilePageIndex];
+      }
+
+      let hasNext = false;
+      if (lastServerKey) {
+        const peekSnap = await get(
+          query(
             profRef,
             orderByKey(),
-            startAfter(prevEnd),
-            limitToFirst(PROFILE_PAGE_SIZE),
-          );
-    const unsub = onValue(q, (snapshot) => {
-      const next = {};
-      const keys = [];
-      snapshot.forEach((child) => {
-        keys.push(child.key);
-        next[child.key] = child.val();
-      });
-      setProfileByMnv(next);
-      const n = keys.length;
-      setProfilesPageRowCount(n);
-      setProfilesHasNextPage(n >= PROFILE_PAGE_SIZE);
-      if (n > 0) {
-        profilePageEndKeysRef.current[profilePageIndex] = keys[keys.length - 1];
+            startAfter(lastServerKey),
+            limitToFirst(1),
+          ),
+        );
+        if (cancelled) return;
+        peekSnap.forEach(() => {
+          hasNext = true;
+        });
       }
-    });
-    return () => unsub();
-  }, [rosterFilterActive, profilePageIndex]);
+
+      setProfilesHasNextPage(hasNext);
+      setProfilesPageRowCount(matchedKeysInOrder.length);
+      setProfileByMnv(merged);
+      setPagedRosterVisibleKeys(matchedKeysInOrder);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    rosterFilterActive,
+    resignedOnly,
+    profilePageIndex,
+    rosterPageSize,
+    deptCatalog,
+  ]);
 
   /** Danh sách cố định: chỉ employeeProfiles — tách khỏi attendance/{ngày}. */
   const employees = useMemo(() => {
@@ -561,6 +676,16 @@ function AllEmployeesManager({ resignedOnly = false }) {
     [tr],
   );
 
+  const hinhThucNghiLabel = useCallback(
+    (v) => {
+      const key = String(v ?? "").trim();
+      if (key === "co_don") return tr("resignWithLetter", "Có đơn");
+      if (key === "nghi_ngang") return tr("resignAbrupt", "Nghỉ ngang");
+      return key || "—";
+    },
+    [tr],
+  );
+
   const departments = useMemo(() => {
     const set = new Set();
     const cat = deptCatalog || {};
@@ -576,8 +701,23 @@ function AllEmployeesManager({ resignedOnly = false }) {
 
   const filteredByDate = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const joinFilterOn = joinDateFrom !== "";
+    let effJoinFrom = joinDateFrom;
+    let effJoinTo =
+      joinDateTo !== "" ? joinDateTo : joinFilterOn ? todayKey : "";
+    if (joinFilterOn && effJoinFrom && effJoinTo && effJoinFrom > effJoinTo) {
+      [effJoinFrom, effJoinTo] = [effJoinTo, effJoinFrom];
+    }
     return rosterEmployees.filter((emp) => {
       if (deptFilter && emp.boPhan !== deptFilter) return false;
+      if (joinFilterOn) {
+        const dateNorm = resignedOnly
+          ? normalizeDateForHtmlInput(emp.ngayNghiViec)
+          : normalizeDateForHtmlInput(emp.ngayVaoLam ?? emp.joinDate);
+        if (!dateNorm) return false;
+        if (effJoinFrom && dateNorm < effJoinFrom) return false;
+        if (effJoinTo && dateNorm > effJoinTo) return false;
+      }
       if (!q) return true;
       const blob = [
         emp.mnv,
@@ -598,21 +738,41 @@ function AllEmployeesManager({ resignedOnly = false }) {
         .join(" ");
       return blob.includes(q);
     });
-  }, [rosterEmployees, search, deptFilter]);
+  }, [
+    rosterEmployees,
+    resignedOnly,
+    search,
+    deptFilter,
+    joinDateFrom,
+    joinDateTo,
+    todayKey,
+  ]);
 
   const list = useMemo(() => {
-    if (!rosterFilterActive) return filteredByDate;
-    const start = profilePageIndex * PROFILE_PAGE_SIZE;
-    return filteredByDate.slice(start, start + PROFILE_PAGE_SIZE);
-  }, [rosterFilterActive, filteredByDate, profilePageIndex]);
+    if (rosterFilterActive) {
+      const start = profilePageIndex * rosterPageSize;
+      return filteredByDate.slice(start, start + rosterPageSize);
+    }
+    if (pagedRosterVisibleKeys !== null) {
+      const set = new Set(pagedRosterVisibleKeys);
+      return filteredByDate.filter((e) => set.has(e.firebaseKey));
+    }
+    return filteredByDate;
+  }, [
+    rosterFilterActive,
+    pagedRosterVisibleKeys,
+    filteredByDate,
+    profilePageIndex,
+    rosterPageSize,
+  ]);
 
   const rosterPagination = useMemo(() => {
     if (rosterFilterActive) {
       const total = filteredByDate.length;
-      const start = profilePageIndex * PROFILE_PAGE_SIZE;
-      const sliceLen = Math.min(PROFILE_PAGE_SIZE, Math.max(0, total - start));
+      const start = profilePageIndex * rosterPageSize;
+      const sliceLen = Math.min(rosterPageSize, Math.max(0, total - start));
       return {
-        hasNext: start + PROFILE_PAGE_SIZE < total,
+        hasNext: start + rosterPageSize < total,
         rowCount: sliceLen,
         rangeFrom: total === 0 ? 0 : start + 1,
         rangeTo: start + sliceLen,
@@ -623,19 +783,27 @@ function AllEmployeesManager({ resignedOnly = false }) {
       hasNext: profilesHasNextPage,
       rowCount: profilesPageRowCount,
       rangeFrom:
-        profilesPageRowCount === 0
-          ? 0
-          : profilePageIndex * PROFILE_PAGE_SIZE + 1,
-      rangeTo: profilePageIndex * PROFILE_PAGE_SIZE + profilesPageRowCount,
+        profilesPageRowCount === 0 ? 0 : profilePageIndex * rosterPageSize + 1,
+      rangeTo: profilePageIndex * rosterPageSize + profilesPageRowCount,
       clientSlice: false,
     };
   }, [
     rosterFilterActive,
     filteredByDate,
     profilePageIndex,
+    rosterPageSize,
     profilesHasNextPage,
     profilesPageRowCount,
   ]);
+
+  const handleRosterPageSizeChange = useCallback((e) => {
+    const n = Number(e.target.value);
+    if (!EMPLOYEE_ROSTER_PAGE_SIZE_OPTIONS.includes(n)) return;
+    persistEmployeeRosterPageSize(n);
+    profilePageEndKeysRef.current = {};
+    setProfilePageIndex(0);
+    setRosterPageSize(n);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -677,6 +845,8 @@ function AllEmployeesManager({ resignedOnly = false }) {
       caLamViec: emp.caLamViec ?? "",
       chamCong: emp.chamCong ?? "",
       pnTon: String(emp.pnTon ?? emp.phepNam ?? "").trim(),
+      ngayNghiViec: normalizeDateForHtmlInput(emp.ngayNghiViec) || "",
+      hinhThucNghiViec: String(emp.hinhThucNghiViec ?? "").trim(),
     });
     setEditing(emp.firebaseKey);
     setShowModal(true);
@@ -1088,6 +1258,8 @@ function AllEmployeesManager({ resignedOnly = false }) {
             ngayVaoLam: r.ngayVaoLam,
             ngayThangNamSinh: r.ngayThangNamSinh,
             trangThaiLamViec: r.trangThaiLamViec,
+            ngayNghiViec: r.ngayNghiViec ?? "",
+            hinhThucNghiViec: r.hinhThucNghiViec ?? "",
             stt: r.stt,
             sdt: r.sdt,
             chuyenCan: r.chuyenCan,
@@ -1230,23 +1402,23 @@ function AllEmployeesManager({ resignedOnly = false }) {
     <div className={rosterUi.page}>
       <RosterToast alert={alert} />
 
-      <div className={rosterUi.container}>
+      <div className={rosterUi.containerFull}>
         <div className={rosterUi.card}>
-          <header className="flex flex-col gap-4 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
+          <header className="flex flex-col gap-4 border-b border-gray-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl uppercase">
+              <h1 className="text-2xl font-extrabold uppercase tracking-wide text-[#1e293b] sm:text-3xl">
                 {resignedOnly
                   ? tr("titleResigned", "Danh sách nhân viên nghỉ việc")
                   : tr("title", "Danh sách nhân viên")}
               </h1>
-              <p className="mt-1.5 text-xs text-slate-500">
+              <p className="mt-1.5 text-xs text-gray-500">
                 <Link
                   to={
                     resignedOnly
                       ? "/employee-roster"
                       : "/employee-roster-resigned"
                   }
-                  className="font-medium text-teal-700 hover:text-teal-800 hover:underline text-xs uppercase"
+                  className="text-xs font-semibold uppercase text-blue-700 hover:text-blue-800 hover:underline"
                 >
                   {resignedOnly
                     ? tr(
@@ -1295,8 +1467,8 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 label={tr("search", "Tìm kiếm")}
                 className={
                   resignedOnly
-                    ? "md:col-span-7 lg:col-span-8"
-                    : "md:col-span-5 lg:col-span-5"
+                    ? "md:col-span-12 lg:col-span-4"
+                    : "md:col-span-12 lg:col-span-4"
                 }
               >
                 <input
@@ -1317,8 +1489,8 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 label={tr("dept", "Lọc bộ phận")}
                 className={
                   resignedOnly
-                    ? "md:col-span-5 lg:col-span-4"
-                    : "md:col-span-3 lg:col-span-3"
+                    ? "md:col-span-6 lg:col-span-2"
+                    : "md:col-span-6 lg:col-span-2"
                 }
               >
                 <select
@@ -1334,8 +1506,55 @@ function AllEmployeesManager({ resignedOnly = false }) {
                   ))}
                 </select>
               </RosterField>
+              <RosterField
+                label={
+                  resignedOnly
+                    ? tr("resignDateRange", "Ngày nghỉ việc (từ — đến)")
+                    : tr("joinDateRange", "Ngày vào làm (từ — đến)")
+                }
+                htmlFor={
+                  resignedOnly ? "roster-resign-from" : "roster-join-from"
+                }
+                className={
+                  resignedOnly
+                    ? "md:col-span-6 lg:col-span-3"
+                    : "md:col-span-12 lg:col-span-3"
+                }
+              >
+                <div className="flex max-w-[min(100%,18.5rem)] flex-wrap items-center gap-1.5">
+                  <input
+                    id={
+                      resignedOnly ? "roster-resign-from" : "roster-join-from"
+                    }
+                    type="date"
+                    value={joinDateFrom}
+                    onChange={(e) => setJoinDateFrom(e.target.value)}
+                    className={`${rosterUi.input} min-w-0 flex-1 basis-[8.5rem]`}
+                    aria-label={
+                      resignedOnly
+                        ? tr("resignDateFrom", "Nghỉ việc từ ngày")
+                        : tr("joinDateFrom", "Vào làm từ ngày")
+                    }
+                  />
+                  <span className="shrink-0 text-xs text-gray-400" aria-hidden>
+                    —
+                  </span>
+                  <input
+                    id={resignedOnly ? "roster-resign-to" : "roster-join-to"}
+                    type="date"
+                    value={joinDateTo}
+                    onChange={(e) => setJoinDateTo(e.target.value)}
+                    className={`${rosterUi.input} min-w-0 flex-1 basis-[8.5rem]`}
+                    aria-label={
+                      resignedOnly
+                        ? tr("resignDateTo", "Nghỉ việc đến ngày")
+                        : tr("joinDateTo", "Vào làm đến ngày")
+                    }
+                  />
+                </div>
+              </RosterField>
               {!resignedOnly ? (
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap md:col-span-4 lg:col-span-4 md:justify-end">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap md:col-span-12 lg:col-span-3 md:justify-end lg:justify-end">
                   <input
                     ref={excelFileInputRef}
                     type="file"
@@ -1370,8 +1589,8 @@ function AllEmployeesManager({ resignedOnly = false }) {
           </section>
 
           <section id="roster-table" className="scroll-mt-20">
-            <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6">
-              <h2 className="text-sm font-semibold text-slate-900 sm:text-base">
+            <div className="flex flex-col gap-3 border-b border-gray-200 bg-white px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6">
+              <h2 className="text-sm font-semibold text-gray-900 sm:text-base">
                 {resignedOnly
                   ? tr(
                       "listSectionTitleResigned",
@@ -1399,16 +1618,52 @@ function AllEmployeesManager({ resignedOnly = false }) {
                     {tr("editHistoryButton", "Lịch sử")}
                   </RosterButton>
                 ) : null}
-                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold tabular-nums text-slate-700 ring-1 ring-slate-200/80">
+                <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-semibold tabular-nums text-gray-700">
                   {countLabel}
                 </span>
               </div>
             </div>
 
-            <div className={rosterUi.tableWrap}>
-              <table className={rosterUi.table}>
-                <thead className="sticky top-0 z-10 border-b-[3px] border-blue-600 bg-gradient-to-r from-blue-200/95 via-blue-100 to-sky-100/95 shadow-[0_8px_36px_-10px_rgba(37,99,235,0.5)] backdrop-blur-sm supports-[backdrop-filter]:bg-blue-100/90">
-                  <tr className="[&_th]:!text-center [&_th]:align-middle [&_th]:py-3.5 [&_th]:!text-[11px] [&_th]:!font-extrabold [&_th]:uppercase [&_th]:!tracking-[0.14em] [&_th]:!text-black sm:[&_th]:!text-xs">
+            <div className={rosterUi.tableWrapNoScroll}>
+              <table className={rosterUi.tableFluid}>
+                {showRowActions ? (
+                  <colgroup>
+                    <col className="w-[3%]" />
+                    <col className="w-[6%]" />
+                    <col className="w-[4%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[6%]" />
+                    <col className="w-[4%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[7%]" />
+                    <col className="w-[10%]" />
+                  </colgroup>
+                ) : (
+                  <colgroup>
+                    <col className="w-[3%]" />
+                    <col className="w-[6%]" />
+                    <col className="w-[4%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[6%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[6%]" />
+                    <col className="w-[8%]" />
+                  </colgroup>
+                )}
+                <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-700 to-blue-400 text-white">
+                  <tr>
                     <th className={rosterUi.th}>{tr("colStt", "STT")}</th>
                     <th className={rosterUi.th}>{tr("colEmployeeId", "ID")}</th>
                     <th className={rosterUi.th}>{tr("colMnv", "MNV")}</th>
@@ -1426,6 +1681,12 @@ function AllEmployeesManager({ resignedOnly = false }) {
                       {tr("colStatus", "Trạng thái")}
                     </th>
                     <th className={rosterUi.th}>
+                      {tr("colResignDate", "Ngày nghỉ việc")}
+                    </th>
+                    <th className={rosterUi.th}>
+                      {tr("colResignType", "Hình thức nghỉ")}
+                    </th>
+                    <th className={rosterUi.th}>
                       {tr("colDiligence", "Chuyên cần")}
                     </th>
                     <th className={rosterUi.th}>
@@ -1438,12 +1699,12 @@ function AllEmployeesManager({ resignedOnly = false }) {
                     ) : null}
                   </tr>
                 </thead>
-                <tbody className="[&_td]:text-center [&_td]:align-middle">
+                <tbody className="divide-y divide-gray-200 bg-white">
                   {list.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={12 + (showRowActions ? 1 : 0)}
-                        className="px-6 py-16 text-center text-sm text-slate-500"
+                        colSpan={14 + (showRowActions ? 1 : 0)}
+                        className="px-6 py-16 text-center text-sm text-gray-500"
                       >
                         {tr("noData", "Không có dữ liệu")}
                       </td>
@@ -1462,23 +1723,25 @@ function AllEmployeesManager({ resignedOnly = false }) {
                       return (
                         <tr
                           key={emp.firebaseKey}
-                          className="transition-colors hover:bg-slate-50/90"
+                          className={`transition-colors hover:bg-blue-50 ${
+                            idx % 2 === 0 ? "bg-gray-50" : "bg-white"
+                          }`}
                         >
                           <td className={`${rosterUi.td} ${rosterUi.tdMono}`}>
                             {emp.stt ?? idx + 1}
                           </td>
                           <td
-                            className={`${rosterUi.td} ${rosterUi.tdMono} font-medium text-slate-900`}
+                            className={`${rosterUi.td} ${rosterUi.tdMono} font-medium text-gray-900`}
                           >
                             {rowFullId || "—"}
                           </td>
                           <td
-                            className={`${rosterUi.td} font-medium text-slate-900`}
+                            className={`${rosterUi.td} font-medium text-gray-900`}
                           >
                             {rowMnvSuffix}
                           </td>
                           <td
-                            className={`${rosterUi.td} font-medium text-slate-900`}
+                            className={`${rosterUi.td} font-medium text-gray-900`}
                           >
                             {emp.hoVaTen ?? "—"}
                           </td>
@@ -1511,24 +1774,31 @@ function AllEmployeesManager({ resignedOnly = false }) {
                               {workStatusLabel(statusVal)}
                             </span>
                           </td>
-                          <td
-                            className={`${rosterUi.td} max-w-[8rem] truncate sm:max-w-[10rem]`}
-                            title={emp.chuyenCan}
-                          >
-                            {String(emp.chuyenCan ?? "").trim() || "—"}
+                          <td className={`${rosterUi.td} ${rosterUi.tdMono}`}>
+                            {normalizeDateForHtmlInput(emp.ngayNghiViec) ||
+                              String(emp.ngayNghiViec ?? "").trim() ||
+                              "—"}
+                          </td>
+                          <td className={rosterUi.td}>
+                            {hinhThucNghiLabel(emp.hinhThucNghiViec)}
+                          </td>
+                          <td className={rosterUi.td} title={emp.chuyenCan}>
+                            <span className="line-clamp-3 text-center">
+                              {String(emp.chuyenCan ?? "").trim() || "—"}
+                            </span>
                           </td>
                           <td
-                            className={`${rosterUi.td} max-w-[10rem] truncate sm:max-w-[12rem]`}
+                            className={rosterUi.td}
                             title={phanQuyenLabel(emp)}
                           >
-                            {phanQuyenLabel(emp)}
+                            <span className="line-clamp-3 text-center">
+                              {phanQuyenLabel(emp)}
+                            </span>
                           </td>
                           {showRowActions ? (
-                            <td
-                              className={`${rosterUi.td} whitespace-nowrap`}
-                            >
+                            <td className={rosterUi.td}>
                               {canEditEmployee(emp) ? (
-                                <div className="inline-flex items-center justify-center gap-1.5">
+                                <div className="flex flex-wrap items-center justify-center gap-1">
                                   <RosterButton
                                     variant="secondary"
                                     size="sm"
@@ -1547,7 +1817,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                                   </RosterButton>
                                 </div>
                               ) : (
-                                <span className="text-slate-300">—</span>
+                                <span className="text-gray-300">—</span>
                               )}
                             </td>
                           ) : null}
@@ -1562,7 +1832,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
             {profilePageIndex > 0 ||
             rosterPagination.hasNext ||
             rosterPagination.rowCount > 0 ? (
-              <div className="flex flex-col items-center gap-2.5 border-t border-slate-100 bg-slate-50/60 px-4 py-3.5 sm:gap-3 sm:px-6">
+              <div className="flex flex-col items-center gap-2.5 border-t border-gray-200 bg-gray-50 px-4 py-3.5 sm:gap-3 sm:px-6">
                 <nav
                   className="flex flex-wrap items-center justify-center gap-2"
                   aria-label={tr(
@@ -1580,7 +1850,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                   >
                     {tr("paginationPrev", "Trước")}
                   </RosterButton>
-                  <span className="min-w-[6.5rem] text-center text-sm font-medium tabular-nums text-slate-800">
+                  <span className="min-w-[6.5rem] text-center text-sm font-medium tabular-nums text-gray-800">
                     {tr("profilesPaginationPage", "Trang {{page}}", {
                       page: profilePageIndex + 1,
                     })}
@@ -1594,7 +1864,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                     {tr("paginationNext", "Sau")}
                   </RosterButton>
                 </nav>
-                <div className="text-center text-xs text-slate-500">
+                <div className="text-center text-xs text-gray-500">
                   {rosterPagination.rowCount > 0 ? (
                     <p className="tabular-nums">
                       {rosterPagination.clientSlice
@@ -1616,12 +1886,12 @@ function AllEmployeesManager({ resignedOnly = false }) {
                           )}
                     </p>
                   ) : null}
-                  <p className="mt-0.5 text-[11px] text-slate-400">
+                  <p className="mt-0.5 text-[11px] text-gray-400">
                     {tr(
                       "profilesPaginationPerPage",
                       "{{n}} dữ liệu mỗi trang",
                       {
-                        n: PROFILE_PAGE_SIZE,
+                        n: rosterPageSize,
                       },
                     )}
                   </p>
@@ -1641,6 +1911,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
           rows={profileHistory}
           tr={tr}
           workStatusLabel={workStatusLabel}
+          hinhThucNghiLabel={hinhThucNghiLabel}
           i18n={i18n}
         />
       </RosterModal>
@@ -1652,7 +1923,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                 {tr("colStt", "STT")}
               </label>
               <input
@@ -1666,7 +1937,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
             <div>
               {editing ? (
                 <>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                     {tr("colPavoId", "Mã nhân viên (id = PAVO+MNV)")}
                   </label>
                   <input
@@ -1679,7 +1950,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 </>
               ) : (
                 <>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                     {tr("colMnvSuffix", "MNV")} *
                   </label>
                   <input
@@ -1691,7 +1962,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                     autoComplete="off"
                     className={inputFieldClass}
                   />
-                  <p className="mt-1 text-xs tabular-nums text-zinc-500">
+                  <p className="mt-1 text-xs tabular-nums text-gray-600">
                     {tr("pavoIdPreview", "ID lưu: {{id}}", {
                       id: buildPavoEmployeeId(form.mnvCode) || "PAVO…",
                     })}
@@ -1701,7 +1972,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
               {tr("colTen", "Tên")} *
             </label>
             <input
@@ -1713,7 +1984,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
               {tr("colBirth", "Ngày sinh")}
             </label>
             <input
@@ -1725,7 +1996,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
               {tr("colDept", "Bộ phận")} *
             </label>
             <select
@@ -1745,7 +2016,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                 {tr("colTitle", "Chức vụ")}
               </label>
               <input
@@ -1757,7 +2028,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                 {tr("colJoin", "Ngày vào làm")}
               </label>
               <input
@@ -1771,7 +2042,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                 {tr("colPhone", "SĐT")}
               </label>
               <input
@@ -1783,7 +2054,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                 {tr("colStatus", "Trạng thái làm việc")}
               </label>
               <select
@@ -1801,8 +2072,49 @@ function AllEmployeesManager({ resignedOnly = false }) {
               </select>
             </div>
           </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
+                {tr("colResignDate", "Ngày nghỉ việc")}
+              </label>
+              <input
+                name="ngayNghiViec"
+                type="date"
+                value={form.ngayNghiViec}
+                onChange={handleChange}
+                className={inputFieldClass}
+              />
+              <p className="mt-1 text-[11px] text-gray-400">
+                {tr(
+                  "resignFieldsHint",
+                  "Ghi khi trạng thái là nghỉ việc (tuỳ chọn).",
+                )}
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
+                {tr("colResignType", "Hình thức nghỉ việc")}
+              </label>
+              <select
+                name="hinhThucNghiViec"
+                value={form.hinhThucNghiViec}
+                onChange={handleChange}
+                className={inputFieldClass}
+              >
+                <option value="">
+                  {tr("resignTypeUnset", "— Chưa chọn / không áp dụng —")}
+                </option>
+                <option value="co_don">
+                  {tr("resignWithLetter", "Có đơn")}
+                </option>
+                <option value="nghi_ngang">
+                  {tr("resignAbrupt", "Nghỉ ngang")}
+                </option>
+              </select>
+            </div>
+          </div>
           <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
               {tr("colDiligence", "Chuyên cần")}
             </label>
             <input
@@ -1815,7 +2127,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                 {tr("emailLogin", "Email đăng nhập (app)")}
               </label>
               <input
@@ -1828,7 +2140,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                 {tr("permNote", "Ghi chú phân quyền (tuỳ chọn)")}
               </label>
               <input
@@ -1841,13 +2153,13 @@ function AllEmployeesManager({ resignedOnly = false }) {
             </div>
           </div>
 
-          <details className="rounded-md border border-zinc-200 bg-zinc-50/80 p-3">
-            <summary className="cursor-pointer select-none text-sm font-medium text-zinc-800">
+          <details className="rounded-md border border-gray-200 bg-gray-50 p-3">
+            <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
               {tr("attendanceExtra", "Chấm công ngày & trường bổ sung")}
             </summary>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                   Giới tính
                 </label>
                 <select
@@ -1861,7 +2173,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                   MVT (legacy)
                 </label>
                 <input
@@ -1872,7 +2184,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                   Mã BP
                 </label>
                 <input
@@ -1883,7 +2195,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                   Giờ vào
                 </label>
                 <input
@@ -1894,7 +2206,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                   Giờ ra
                 </label>
                 <input
@@ -1906,7 +2218,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                   Ca làm việc
                 </label>
                 <input
@@ -1917,7 +2229,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                   Chấm công
                 </label>
                 <input
@@ -1928,7 +2240,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
                   Phép năm (PN)
                 </label>
                 <input

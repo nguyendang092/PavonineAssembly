@@ -1,47 +1,55 @@
 import React from "react";
 
 /**
- * Employee roster screen — design tokens (Tailwind).
- * Spacing: 3–6 scale (12–24px), Typography: xs/sm/base/lg, Colors: slate + semantic accents.
+ * Employee roster — tokens đồng bộ với AttendanceList (card trắng + viền trên xanh,
+ * input h-9, bảng gradient xanh, hover hàng blue-50 / zebra gray-50).
  */
 export const rosterUi = {
-  page: "min-h-screen w-full bg-slate-50",
+  page: "min-h-screen w-full bg-gray-50",
   container:
-    "mx-auto w-full max-w-[min(100vw-1.25rem,1600px)] px-3 py-6 sm:px-5 sm:py-8",
-  card: "overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm shadow-slate-200/50",
-  sectionHeader:
-    "border-b border-slate-100 bg-white px-4 py-4 sm:px-6 sm:py-5",
-  sectionMuted: "border-b border-slate-100 bg-slate-50/80 px-4 py-4 sm:px-6 sm:py-5",
+    "mx-auto w-full max-w-[min(100vw-1.25rem,1600px)] px-4 py-6 md:px-8 md:py-8 transition-all duration-300",
+  /** Trang danh sách NV: full viewport, padding giống AttendanceList. */
+  containerFull:
+    "mx-auto w-full max-w-none p-4 md:p-8 transition-all duration-300",
+  card: "overflow-hidden rounded-lg border border-gray-200 bg-white shadow-md border-t-4 border-blue-600",
+  sectionHeader: "border-b border-gray-200 bg-white px-4 py-4 sm:px-6 sm:py-5",
+  sectionMuted: "border-b border-gray-200 bg-gray-50 px-4 py-4 sm:px-6 sm:py-5",
   label:
-    "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500",
+    "mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-600",
   input:
-    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/[0.07]",
-  inputReadonly: "cursor-default bg-slate-50 text-slate-800",
+    "w-full rounded-md border border-gray-300 bg-white h-9 px-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200",
+  inputReadonly: "cursor-default bg-gray-50 text-gray-800",
   tableWrap: "overflow-x-auto",
+  /** Khung bảng giống AttendanceList: border + rounded + shadow. */
+  tableWrapNoScroll:
+    "w-full max-w-full overflow-x-hidden rounded-lg border border-gray-200 shadow-sm",
   table: "min-w-[1100px] w-full border-collapse text-sm",
-  th: "whitespace-nowrap px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 first:pl-5 last:pr-5 sm:px-4",
-  td: "border-t border-slate-100 px-3 py-2.5 align-middle text-slate-700 first:pl-5 last:pr-5 sm:px-4",
-  tdMono: "tabular-nums text-slate-600",
+  /** Full width, table-fixed — nội dung co theo cột. */
+  tableFluid: "w-full max-w-full table-fixed border-collapse text-sm",
+  /** Trong thead gradient xanh (đặt class nền lên <thead>). */
+  th: "whitespace-normal break-words px-2 py-2.5 text-center align-middle text-[10px] font-extrabold uppercase tracking-wider text-white sm:px-3 sm:py-3.5 sm:text-xs",
+  td: "min-w-0 border-t border-gray-200 px-2 py-2 align-middle text-center break-words text-sm text-gray-700 first:pl-2 last:pr-2 sm:px-3 sm:py-2.5 sm:first:pl-3 sm:last:pr-3",
+  tdMono: "tabular-nums text-gray-600",
 };
 
 const btnBase =
   "inline-flex shrink-0 items-center justify-center gap-2 font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45";
 
 const btnSizes = {
-  sm: "h-9 rounded-lg px-3 text-xs",
-  md: "h-10 rounded-lg px-4 text-sm",
+  sm: "h-9 rounded-md px-3 text-xs",
+  md: "h-9 rounded-md px-4 text-sm",
 };
 
 const btnVariants = {
   primary:
-    "bg-slate-900 text-white shadow-sm hover:bg-slate-800 focus-visible:ring-slate-500",
+    "bg-blue-600 text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500",
   secondary:
-    "border border-slate-200 bg-white text-slate-800 shadow-sm hover:bg-slate-50 focus-visible:ring-slate-300",
+    "border border-gray-300 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus-visible:ring-blue-300",
   accent:
-    "bg-teal-600 text-white shadow-sm hover:bg-teal-700 focus-visible:ring-teal-500",
+    "bg-blue-600 text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500",
   dangerGhost:
     "border border-red-200/80 bg-white text-red-700 shadow-sm hover:bg-red-50 focus-visible:ring-red-300",
-  ghost: "text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-300",
+  ghost: "text-gray-600 hover:bg-gray-100 focus-visible:ring-gray-300",
 };
 
 /**
@@ -82,17 +90,17 @@ export function RosterToast({ alert }) {
   if (!alert?.show) return null;
   const tone =
     alert.type === "success"
-      ? "border-emerald-200/80 bg-emerald-600 text-white"
+      ? "bg-green-100 text-green-800 border border-green-300"
       : alert.type === "info"
-        ? "border-slate-200 bg-slate-800 text-white"
-        : "border-red-200 bg-red-600 text-white";
+        ? "bg-gray-100 text-gray-800 border border-gray-300"
+        : "bg-red-100 text-red-800 border border-red-300";
   return (
     <div
       className="fixed right-3 top-3 z-[60] max-w-[min(100vw-1.5rem,22rem)] sm:right-5 sm:top-5"
       role="status"
     >
       <div
-        className={`rounded-xl border px-4 py-3 text-sm font-medium shadow-lg shadow-slate-900/10 ${tone}`}
+        className={`rounded px-4 py-2 text-sm font-semibold shadow transition-all duration-300 ${tone}`}
       >
         {alert.message}
       </div>
@@ -109,19 +117,19 @@ export function RosterModal({ open, title, onClose, children }) {
       aria-modal="true"
       aria-labelledby="roster-modal-title"
     >
-      <div className="absolute inset-0 bg-slate-900/45" aria-hidden />
-      <div className="relative z-10 flex max-h-[min(92dvh,880px)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-300/25 sm:max-w-2xl sm:rounded-2xl">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
+      <div className="absolute inset-0 bg-black/50" aria-hidden />
+      <div className="relative z-10 flex max-h-[min(92dvh,880px)] w-full max-w-lg flex-col overflow-hidden rounded-t-lg border border-gray-200 bg-white shadow-2xl sm:max-w-2xl sm:rounded-lg">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 sm:px-6">
           <h2
             id="roster-modal-title"
-            className="text-lg font-semibold tracking-tight text-slate-900"
+            className="text-lg font-semibold tracking-tight text-gray-900"
           >
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xl leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-gray-400 transition hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
             aria-label="Close"
           >
             ×
@@ -137,7 +145,7 @@ export function RosterMenu({ open, children }) {
   if (!open) return null;
   return (
     <div
-      className="absolute right-0 top-full z-50 mt-1.5 min-w-[13rem] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-200/80"
+      className="absolute right-0 top-full z-50 mt-1.5 min-w-[13rem] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
       role="menu"
     >
       {children}
@@ -150,7 +158,7 @@ export function RosterMenuItem({ children, className = "", ...props }) {
     <button
       type="button"
       role="menuitem"
-      className={`flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-50 ${className}`}
+      className={`flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-gray-800 transition hover:bg-blue-50 ${className}`}
       {...props}
     >
       {children}

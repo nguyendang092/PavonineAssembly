@@ -291,6 +291,48 @@ export function normalizeTrangThaiLamViec(value) {
   return "dang_lam";
 }
 
+/** Hình thức thôi việc (chỉ khi nghỉ việc). */
+export const HINH_THUC_NGHI_VIEC = Object.freeze({
+  CO_DON: "co_don",
+  NGHI_NGANG: "nghi_ngang",
+});
+
+export function normalizeHinhThucNghiViec(value) {
+  const t = String(value ?? "").trim().toLowerCase();
+  if (t === HINH_THUC_NGHI_VIEC.CO_DON || t === "codon") return "co_don";
+  if (t === HINH_THUC_NGHI_VIEC.NGHI_NGANG || t === "nghingang")
+    return "nghi_ngang";
+  return "";
+}
+
+/** Ô Excel → co_don | nghi_ngang | "". */
+export function hinhThucNghiViecFromExcelCell(raw) {
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+  if (!s) return "";
+  if (
+    s === "co_don" ||
+    s === "codon" ||
+    s.includes("co don") ||
+    s === "with_letter" ||
+    s === "formal"
+  )
+    return "co_don";
+  if (
+    s === "nghi_ngang" ||
+    s === "nghingang" ||
+    s.includes("nghi ngang") ||
+    s === "abrupt" ||
+    s === "no_notice" ||
+    s === "quit"
+  )
+    return "nghi_ngang";
+  return normalizeHinhThucNghiViec(raw);
+}
+
 /** Ô Excel / form tự do → mã trạng thái lưu Firebase. */
 export function trangThaiLamViecFromExcelCell(raw) {
   const s = String(raw ?? "")
@@ -302,15 +344,47 @@ export function trangThaiLamViecFromExcelCell(raw) {
   if (
     s === "dang_lam" ||
     s === "active" ||
+    s === "working" ||
+    s === "work" ||
+    s === "employed" ||
+    s === "current" ||
+    s === "yes" ||
+    s === "true" ||
+    s === "1" ||
     s.includes("dang lam") ||
     s.includes("dang lam viec")
   )
     return "dang_lam";
   if (s === "thu_viec" || s === "probation" || s.includes("thu viec"))
     return "thu_viec";
-  if (s === "tam_nghi" || s === "leave" || s.includes("tam nghi"))
+  if (
+    s === "tam_nghi" ||
+    s === "leave" ||
+    s === "on_leave" ||
+    s === "suspension" ||
+    s.includes("tam nghi")
+  )
     return "tam_nghi";
-  if (s === "nghi_viec" || s === "inactive" || s.includes("nghi viec"))
+  if (
+    s === "nghi_viec" ||
+    s === "inactive" ||
+    s === "stop" ||
+    s === "stopped" ||
+    s === "quit" ||
+    s === "resign" ||
+    s === "resigned" ||
+    s === "resignation" ||
+    s === "terminated" ||
+    s === "termination" ||
+    s === "retired" ||
+    s === "retirement" ||
+    s === "layoff" ||
+    s === "laid_off" ||
+    s === "no" ||
+    s === "false" ||
+    s === "0" ||
+    s.includes("nghi viec")
+  )
     return "nghi_viec";
   return normalizeTrangThaiLamViec(raw);
 }
@@ -358,6 +432,8 @@ const PROFILE_ONLY_STRIP_FROM_DAY = [
   "status",
   "type",
   "updatedAt",
+  "ngayNghiViec",
+  "hinhThucNghiViec",
 ];
 
 /**
@@ -402,6 +478,22 @@ export function buildEmployeeProfileDocument({
   });
 
   const merged = { ...existingProfile, ...core, updatedAt: Date.now() };
+
+  if (Object.prototype.hasOwnProperty.call(form, "ngayNghiViec")) {
+    const resignRaw = String(form.ngayNghiViec ?? "").trim();
+    if (resignRaw) {
+      merged.ngayNghiViec =
+        normalizeDateForHtmlInput(resignRaw) || resignRaw;
+    } else {
+      delete merged.ngayNghiViec;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(form, "hinhThucNghiViec")) {
+    const hinhRaw = normalizeHinhThucNghiViec(form.hinhThucNghiViec);
+    if (hinhRaw) merged.hinhThucNghiViec = hinhRaw;
+    else delete merged.hinhThucNghiViec;
+  }
+
   const sttNum =
     form.stt !== "" && form.stt != null && Number.isFinite(Number(form.stt))
       ? Number(form.stt)

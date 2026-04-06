@@ -9,6 +9,8 @@ const TRACKED_FIELDS = [
   "chucVu",
   "ngayVaoLam",
   "ngayThangNamSinh",
+  "ngayNghiViec",
+  "hinhThucNghiViec",
   "sdt",
   "trangThaiLamViec",
   "chuyenCan",
