@@ -16,7 +16,7 @@ import { ref, onValue, set, remove, update, get } from "firebase/database";
 import { db } from "../../services/firebase";
 import { HiCalendar, HiFolder } from "react-icons/hi";
 import { FaCheck, FaChartLine, FaPlus, FaEdit, FaTrash } from "react-icons/fa";
-import Toast from "./Toast";
+import AlertMessage from "./AlertMessage";
 import SingleMachineTable from "../dashboard/SingleMachineTable";
 import { useTranslation } from "react-i18next";
 import Sidebar from "../layout/Sidebar";
@@ -629,7 +629,10 @@ const TemperatureMonitor = () => {
         )}
       </Modal>
 
-      <Toast message={toastMessage} onClose={() => setToastMessage("")} />
+      <AlertMessage
+        message={toastMessage}
+        onClose={() => setToastMessage("")}
+      />
     </div>
   );
 };

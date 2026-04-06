@@ -23,6 +23,7 @@ import ExcelJS from "exceljs";
 import ExportExcelButton from "../common/ExportExcelButton";
 // import BirthdayCake from "./BirthdayCake";
 import NotificationBell from "../common/NotificationBell";
+import AlertMessage from "../common/AlertMessage";
 import Sidebar from "../layout/Sidebar";
 
 const normalizeTextValue = (value) => String(value ?? "").trim();
@@ -2029,18 +2030,7 @@ function SeasonalStaffAttendance() {
           </div>
         </div>
 
-        {/* Alert */}
-        {alert.show && (
-          <div
-            className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded font-semibold text-sm shadow transition-all duration-300 ${
-              alert.type === "success"
-                ? "bg-green-100 text-green-800 border border-green-300"
-                : "bg-red-100 text-red-800 border border-red-300"
-            }`}
-          >
-            {alert.message}
-          </div>
-        )}
+        <AlertMessage alert={alert} />
 
         {/* Filters and Actions */}
         <div className="flex flex-col sm:flex-row gap-3 sm:items-start sm:justify-between mb-4">

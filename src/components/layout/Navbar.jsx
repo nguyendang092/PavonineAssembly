@@ -220,6 +220,63 @@ export default function Navbar({ user, setUser, userRole }) {
                                                 !showAdminOnlyMenu
                                               )
                                                 return null;
+                                              if (
+                                                deepChild.type === "nested" &&
+                                                deepChild.children
+                                              ) {
+                                                return (
+                                                  <li
+                                                    key={deepChild.key}
+                                                    className="mobile-nested-dropdown"
+                                                  >
+                                                    <button
+                                                      className="mobile-dropdown-toggle nested"
+                                                      onClick={() =>
+                                                        toggleMobileDropdown(
+                                                          deepChild.key,
+                                                        )
+                                                      }
+                                                    >
+                                                      <span>
+                                                        {t(deepChild.label)}
+                                                      </span>
+                                                      <span
+                                                        className={`mobile-arrow ${mobileDropdowns[deepChild.key] ? "open" : ""}`}
+                                                      >
+                                                        ▼
+                                                      </span>
+                                                    </button>
+                                                    <ul
+                                                      className={`mobile-dropdown-content ${mobileDropdowns[deepChild.key] ? "open" : ""}`}
+                                                    >
+                                                      {deepChild.children.map(
+                                                        (leaf) => {
+                                                          if (
+                                                            leaf.adminOnly &&
+                                                            !showAdminOnlyMenu
+                                                          )
+                                                            return null;
+                                                          return (
+                                                            <li key={leaf.key}>
+                                                              <Link
+                                                                to={leaf.path}
+                                                                onClick={() => {
+                                                                  setActiveLeaderKey(
+                                                                    leaf.key,
+                                                                  );
+                                                                  closeMobileMenu();
+                                                                }}
+                                                              >
+                                                                {t(leaf.label)}
+                                                              </Link>
+                                                            </li>
+                                                          );
+                                                        },
+                                                      )}
+                                                    </ul>
+                                                  </li>
+                                                );
+                                              }
                                               return (
                                                 <li key={deepChild.key}>
                                                   <Link
@@ -370,6 +427,49 @@ export default function Navbar({ user, setUser, userRole }) {
                                               !showAdminOnlyMenu
                                             )
                                               return null;
+                                            if (
+                                              deepSub.type === "nested" &&
+                                              deepSub.children
+                                            ) {
+                                              return (
+                                                <li
+                                                  key={deepSub.key}
+                                                  className="nested-dropdown"
+                                                >
+                                                  <button type="button">
+                                                    {t(deepSub.label)}
+                                                    <span className="dropdown-arrow">
+                                                      →
+                                                    </span>
+                                                  </button>
+                                                  <ul className="nested-dropdown-menu dropdown-menu">
+                                                    {deepSub.children.map(
+                                                      (leaf) => {
+                                                        if (
+                                                          leaf.adminOnly &&
+                                                          !showAdminOnlyMenu
+                                                        )
+                                                          return null;
+                                                        return (
+                                                          <li key={leaf.key}>
+                                                            <Link
+                                                              to={leaf.path}
+                                                              onClick={() => {
+                                                                setActiveLeaderKey(
+                                                                  leaf.key,
+                                                                );
+                                                              }}
+                                                            >
+                                                              {t(leaf.label)}
+                                                            </Link>
+                                                          </li>
+                                                        );
+                                                      },
+                                                    )}
+                                                  </ul>
+                                                </li>
+                                              );
+                                            }
                                             return (
                                               <li key={deepSub.key}>
                                                 <Link

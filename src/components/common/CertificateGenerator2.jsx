@@ -1,7 +1,12 @@
 import { useRef, useState, useEffect } from "react";
 import Sidebar from "../layout/Sidebar";
+import { useUser } from "../../contexts/UserContext";
+import { isAdminAccess } from "../../config/authRoles";
 
-export default function CertificateGenerator1() {
+export default function CertificateGenerator2() {
+  const { user, userRole } = useUser();
+  const canEdit = isAdminAccess(user, userRole);
+
   const canvasRef = useRef(null);
   const [name, setName] = useState("");
   const [department, setDepartment] = useState("");
@@ -105,7 +110,7 @@ export default function CertificateGenerator1() {
     const quarter2 = Math.floor(month2 / 3) + 1;
     const year2 = nowSub2.getFullYear();
     const subText = `nhân viên ưu tú quý ${quarter2} năm ${year2}.`;
-    ctx.fillText(subText, baseWidth / 2, 1900 + offsetSub);
+    ctx.fillText(subText, baseWidth / 2, 1900 + offsetSub + offsetDept);
 
     // Ngày tháng năm bên trái dưới
     const dateFontSize = 50; // chỉnh font size tại đây
@@ -140,6 +145,10 @@ export default function CertificateGenerator1() {
   };
 
   const handleGenerate = () => {
+    if (!canEdit) {
+      alert("Chỉ tài khoản Admin / HR mới được chỉnh sửa.");
+      return;
+    }
     if (!name.trim()) {
       alert("Vui lòng nhập tên!");
       return;
@@ -152,6 +161,10 @@ export default function CertificateGenerator1() {
   };
 
   const handleDownload = () => {
+    if (!canEdit) {
+      alert("Chỉ tài khoản Admin / HR mới được tải file.");
+      return;
+    }
     // Xử lý tên file: bỏ dấu, viết liền, lowercase, thay khoảng trắng bằng _
     function removeVietnameseTones(str) {
       return str
@@ -209,36 +222,64 @@ export default function CertificateGenerator1() {
           >
             Tạo Bằng Khen
           </h2>
+          {!canEdit ? (
+            <p
+              style={{
+                color: "#fecaca",
+                fontSize: 13,
+                marginBottom: 20,
+                textAlign: "center",
+                lineHeight: 1.45,
+                maxWidth: 280,
+              }}
+            >
+              Chỉ Admin / HR được nhập thông tin, tạo và tải bằng khen.
+            </p>
+          ) : null}
           <input
             type="text"
             placeholder="Nhập tên người được khen"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            disabled={!canEdit}
             style={{
               padding: "12px 16px",
               fontSize: 18,
               borderRadius: 8,
-              border: "1px solid #ccc",
+              border: "1px solid #d1d5db",
               marginBottom: 24,
               width: "100%",
+              color: "#111827",
+              backgroundColor: canEdit ? "#ffffff" : "#f3f4f6",
+              opacity: canEdit ? 1 : 0.65,
+              cursor: canEdit ? "text" : "not-allowed",
             }}
+            className="placeholder:text-gray-500"
           />
           <input
             type="text"
             placeholder="Nhập bộ phận"
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
+            disabled={!canEdit}
             style={{
               padding: "12px 16px",
               fontSize: 16,
               borderRadius: 8,
-              border: "1px solid #ccc",
+              border: "1px solid #d1d5db",
               marginBottom: 24,
               width: "100%",
+              color: "#111827",
+              backgroundColor: canEdit ? "#ffffff" : "#f3f4f6",
+              opacity: canEdit ? 1 : 0.65,
+              cursor: canEdit ? "text" : "not-allowed",
             }}
+            className="placeholder:text-gray-500"
           />
           <button
+            type="button"
             onClick={handleGenerate}
+            disabled={!canEdit}
             style={{
               marginBottom: 16,
               padding: "12px 0",
@@ -249,13 +290,16 @@ export default function CertificateGenerator1() {
               color: "#fff",
               border: "none",
               borderRadius: 8,
-              cursor: "pointer",
+              cursor: canEdit ? "pointer" : "not-allowed",
+              opacity: canEdit ? 1 : 0.55,
             }}
           >
             Tạo
           </button>
           <button
+            type="button"
             onClick={handleDownload}
+            disabled={!canEdit}
             style={{
               padding: "12px 0",
               width: "100%",
@@ -265,7 +309,8 @@ export default function CertificateGenerator1() {
               color: "#fff",
               border: "none",
               borderRadius: 8,
-              cursor: "pointer",
+              cursor: canEdit ? "pointer" : "not-allowed",
+              opacity: canEdit ? 1 : 0.55,
             }}
           >
             Tải về

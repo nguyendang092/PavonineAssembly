@@ -1638,8 +1638,12 @@ function AllEmployeesManager({ resignedOnly = false }) {
                     <col className="w-[5%]" />
                     <col className="w-[8%]" />
                     <col className="w-[6%]" />
-                    <col className="w-[4%]" />
-                    <col className="w-[5%]" />
+                    {resignedOnly ? (
+                      <>
+                        <col className="w-[4%]" />
+                        <col className="w-[5%]" />
+                      </>
+                    ) : null}
                     <col className="w-[5%]" />
                     <col className="w-[7%]" />
                     <col className="w-[10%]" />
@@ -1656,8 +1660,12 @@ function AllEmployeesManager({ resignedOnly = false }) {
                     <col className="w-[5%]" />
                     <col className="w-[8%]" />
                     <col className="w-[6%]" />
-                    <col className="w-[5%]" />
-                    <col className="w-[5%]" />
+                    {resignedOnly ? (
+                      <>
+                        <col className="w-[5%]" />
+                        <col className="w-[5%]" />
+                      </>
+                    ) : null}
                     <col className="w-[6%]" />
                     <col className="w-[8%]" />
                   </colgroup>
@@ -1680,12 +1688,16 @@ function AllEmployeesManager({ resignedOnly = false }) {
                     <th className={rosterUi.th}>
                       {tr("colStatus", "Trạng thái")}
                     </th>
-                    <th className={rosterUi.th}>
-                      {tr("colResignDate", "Ngày nghỉ việc")}
-                    </th>
-                    <th className={rosterUi.th}>
-                      {tr("colResignType", "Hình thức nghỉ")}
-                    </th>
+                    {resignedOnly ? (
+                      <>
+                        <th className={rosterUi.th}>
+                          {tr("colResignDate", "Ngày nghỉ việc")}
+                        </th>
+                        <th className={rosterUi.th}>
+                          {tr("colResignType", "Hình thức nghỉ")}
+                        </th>
+                      </>
+                    ) : null}
                     <th className={rosterUi.th}>
                       {tr("colDiligence", "Chuyên cần")}
                     </th>
@@ -1703,7 +1715,9 @@ function AllEmployeesManager({ resignedOnly = false }) {
                   {list.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={14 + (showRowActions ? 1 : 0)}
+                        colSpan={
+                          (resignedOnly ? 14 : 12) + (showRowActions ? 1 : 0)
+                        }
                         className="px-6 py-16 text-center text-sm text-gray-500"
                       >
                         {tr("noData", "Không có dữ liệu")}
@@ -1774,14 +1788,20 @@ function AllEmployeesManager({ resignedOnly = false }) {
                               {workStatusLabel(statusVal)}
                             </span>
                           </td>
-                          <td className={`${rosterUi.td} ${rosterUi.tdMono}`}>
-                            {normalizeDateForHtmlInput(emp.ngayNghiViec) ||
-                              String(emp.ngayNghiViec ?? "").trim() ||
-                              "—"}
-                          </td>
-                          <td className={rosterUi.td}>
-                            {hinhThucNghiLabel(emp.hinhThucNghiViec)}
-                          </td>
+                          {resignedOnly ? (
+                            <>
+                              <td
+                                className={`${rosterUi.td} ${rosterUi.tdMono}`}
+                              >
+                                {normalizeDateForHtmlInput(emp.ngayNghiViec) ||
+                                  String(emp.ngayNghiViec ?? "").trim() ||
+                                  "—"}
+                              </td>
+                              <td className={rosterUi.td}>
+                                {hinhThucNghiLabel(emp.hinhThucNghiViec)}
+                              </td>
+                            </>
+                          ) : null}
                           <td className={rosterUi.td} title={emp.chuyenCan}>
                             <span className="line-clamp-3 text-center">
                               {String(emp.chuyenCan ?? "").trim() || "—"}

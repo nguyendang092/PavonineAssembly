@@ -8,6 +8,7 @@ import { db, ref, set, onValue } from "../../services/firebase";
 import { push, remove, update } from "firebase/database";
 import * as XLSX from "xlsx";
 import Sidebar from "../layout/Sidebar";
+import AlertMessage from "../common/AlertMessage";
 
 // Map hiển thị <-> key lưu Firebase
 const toSafeKey = (col) => col.replace(/[^a-zA-Z0-9_]/g, "_");
@@ -718,17 +719,7 @@ function MoldManager() {
         <h1 className="hidden md:block text-2xl font-extrabold uppercase mb-4 text-center tracking-widest text-[#1e293b]">
           {t("moldManager.title")}
         </h1>
-        {alert.show && (
-          <div
-            className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded font-semibold text-sm shadow transition-all duration-300 ${
-              alert.type === "success"
-                ? "bg-green-100 text-green-800 border border-green-300"
-                : "bg-red-100 text-red-800 border border-red-300"
-            }`}
-          >
-            {alert.message}
-          </div>
-        )}
+        <AlertMessage alert={alert} />
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end mb-4">
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <input

@@ -43,6 +43,7 @@ import ExcelJS from "exceljs";
 import { handleUploadExcel } from "./AttendanceUploadHandler";
 import ExportExcelButton from "../common/ExportExcelButton";
 import UnifiedModal from "../common/UnifiedModal";
+import AlertMessage from "../common/AlertMessage";
 import BirthdayCakeBell from "../employee/BirthdayCakeBell";
 import NotificationBell from "../common/NotificationBell";
 const normalizeEmployeeCode = (value) => {
@@ -1860,18 +1861,7 @@ function AttendanceList() {
           </div>
         </div>
 
-        {/* Alert */}
-        {alert.show && (
-          <div
-            className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded font-semibold text-sm shadow transition-all duration-300 ${
-              alert.type === "success"
-                ? "bg-green-100 text-green-800 border border-green-300"
-                : "bg-red-100 text-red-800 border border-red-300"
-            }`}
-          >
-            {alert.message}
-          </div>
-        )}
+        <AlertMessage alert={alert} />
 
         {/* Popup nhân viên chưa điểm danh - sử dụng UnifiedModal */}
         <UnifiedModal

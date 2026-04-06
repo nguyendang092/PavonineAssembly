@@ -316,7 +316,6 @@ const [isLoading, setIsLoading] = useState(false);
 ## Files liên quan
 
 - Component: `/src/components/common/UnifiedModal.jsx`
-- Example: `/src/components/common/UnifiedModal.example.jsx`
 - Implementation: `/src/components/attendance/AttendanceList.jsx` (popup nhân viên chưa điểm danh)
 
 ---

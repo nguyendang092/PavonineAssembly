@@ -3,24 +3,23 @@ import React, {
   useState,
   useLayoutEffect,
   useMemo,
+  useRef,
   Suspense,
   lazy,
 } from "react";
+import { createPortal } from "react-dom";
 // firebase for global data fetching
 import { db, ref, onValue } from "./services/firebase";
-import Toast from "./components/common/Toast";
+import AlertMessage from "./components/common/AlertMessage";
 import Navbar from "./components/layout/Navbar";
 import BackToTop from "./components/common/BackToTop";
+import BackToBottom from "./components/common/BackToBottom";
 import Footer from "./components/layout/Footer";
 import "./config/i18n";
 import { UserContext } from "./contexts/UserContext";
 import { useLoading } from "./contexts/LoadingContext";
 import { routeConfig } from "./config/menuConfig";
-import {
-  inferRoleFromMapping,
-  isAdminOrHR,
-  ROLES,
-} from "./config/authRoles";
+import { inferRoleFromMapping, isAdminOrHR, ROLES } from "./config/authRoles";
 import {
   BrowserRouter as Router,
   Routes,
@@ -56,9 +55,6 @@ const QRCodeGenerator = lazy(
 const AttendanceList = lazy(
   () => import("./components/attendance/AttendanceList"),
 );
-const AttendanceDashboardContainer = lazy(
-  () => import("./components/attendance/AttendanceDashboardContainer"),
-);
 const SeasonalStaffAttendance = lazy(
   () => import("./components/attendance/SeasonalStaffAttendance"),
 );
@@ -72,23 +68,7 @@ const AllEmployeesManager = lazy(
 const ResignedEmployeesManager = lazy(
   () => import("./components/employee/ResignedEmployeesManager"),
 );
-const MaintenanceChecklist = lazy(
-  () => import("./components/maintenance/MaintenanceChecklist"),
-);
-const DriverLogbook = lazy(
-  () => import("./components/logistics/DriverLogbook"),
-);
-
 const App = () => {
-  // Bỏ logic tự động chuyển về /normal khi refresh
-  // useEffect(() => {
-  //   if (
-  //     window.location.pathname !== "/normal" &&
-  //     window.location.pathname !== "/"
-  //   ) {
-  //     window.location.replace("/normal");
-  //   }
-  // }, []);
   const [toastMessage, setToastMessage] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
   const [user, setUser] = useState(null);
@@ -180,12 +160,8 @@ const App = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Chọn hiệu ứng theo mùa ở đây, ví dụ: 'snow' hoặc 'newyear'
-  const [seasonEffect, setSeasonEffect] = useState("snow"); // hoặc 'newyear'
+  /** Vùng cuộn chính (không phải window) — dùng cho BackToTop / BackToBottom */
+  const mainScrollRef = useRef(null);
 
   const routeElements = useMemo(
     () => ({
@@ -199,11 +175,8 @@ const App = () => {
       PerformanceChart: <PerformanceChart />,
       QRCodeGenerator: <QRCodeGenerator />,
       AttendanceList: <AttendanceList />,
-      AttendanceDashboard: <AttendanceDashboardContainer />,
       SeasonalStaffAttendance: <SeasonalStaffAttendance />,
       Downloads: <Downloads />,
-      MaintenanceChecklist: <MaintenanceChecklist />,
-      DriverLogbook: <DriverLogbook />,
       UserDepartmentManager: <UserDepartmentManager />,
       AllEmployeesManager: <AllEmployeesManager />,
       ResignedEmployeesManager: <ResignedEmployeesManager />,
@@ -213,12 +186,8 @@ const App = () => {
   );
 
   return (
-    <UserContext.Provider
-      value={{ user, setUser, userDepartments, userRole }}
-    >
+    <UserContext.Provider value={{ user, setUser, userDepartments, userRole }}>
       <Router>
-        {/* Hiệu ứng mùa: tuyết rơi hoặc Happy New Year */}
-        {/* <SeasonEffect effect={seasonEffect} /> */}
         <div className="min-h-screen flex flex-col bg-gray-50">
           {/* Navbar cố định */}
           <div
@@ -232,7 +201,11 @@ const App = () => {
           </div>
 
           {/* Nội dung chính */}
-          <div className="pt-16 flex-1 min-h-0 overflow-x-hidden overflow-y-auto">
+          <div
+            id="app-main-scroll"
+            ref={mainScrollRef}
+            className="pt-16 flex-1 min-h-0 overflow-x-hidden overflow-y-auto"
+          >
             <Suspense
               fallback={
                 <div className="h-[60vh] flex items-center justify-center text-gray-500 text-lg">
@@ -256,11 +229,27 @@ const App = () => {
           {/* Footer */}
           <Footer />
 
-          {/* Toast */}
-          <Toast message={toastMessage} onClose={() => setToastMessage("")} />
+          <AlertMessage
+            message={toastMessage}
+            onClose={() => setToastMessage("")}
+          />
 
-          {/* Nút scroll to top - luôn hiển thị */}
-          <BackToTop alwaysVisible bottom={24} right={24} />
+          {/* Portal ra body + z cao để không bị footer / layer khác che; cuộn theo mainScrollRef */}
+          {createPortal(
+            <div className="pointer-events-auto fixed bottom-6 right-6 z-[9999] flex items-center gap-1.5">
+              <BackToBottom
+                alwaysVisible
+                inline
+                scrollContainerRef={mainScrollRef}
+              />
+              <BackToTop
+                alwaysVisible
+                inline
+                scrollContainerRef={mainScrollRef}
+              />
+            </div>,
+            document.body,
+          )}
         </div>
       </Router>
     </UserContext.Provider>

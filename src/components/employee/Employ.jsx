@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { db } from "../../services/firebase";
 import { ref, onValue } from "firebase/database";
 import AreaProductionTable from "../dashboard/AreaProductionTable";
-import Toast from "../common/Toast";
+import AlertMessage from "../common/AlertMessage";
 import AreaProductionTableTime from "../dashboard/AreaProductionTableTime";
 import AddEmployeeForm from "../modals/AddEmployeeModal";
 import { useTranslation } from "react-i18next";
@@ -110,10 +110,12 @@ const Employ = ({ showToast, selectedLeader }) => {
             })}
         </div>
 
-        {/* Toast thông báo */}
-        {showToast ? null : (
-          <Toast message={toastMessage} onClose={() => setToastMessage("")} />
-        )}
+        {!showToast ? (
+          <AlertMessage
+            message={toastMessage}
+            onClose={() => setToastMessage("")}
+          />
+        ) : null}
       </div>
     </>
   );

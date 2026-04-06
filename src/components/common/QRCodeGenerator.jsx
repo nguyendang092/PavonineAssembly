@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import AlertMessage from "./AlertMessage";
 import QRCode from "qrcode";
 
 function QRCodeGenerator() {
@@ -349,11 +350,13 @@ function QRCodeGenerator() {
         </div>
 
         <div className="mt-6">
-          {toast && (
-            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-4 py-2 rounded-full text-sm shadow">
-              {toast}
-            </div>
-          )}
+          <AlertMessage
+            alert={{
+              show: Boolean(toast),
+              type: "info",
+              message: toast,
+            }}
+          />
         </div>
       </div>
     </div>

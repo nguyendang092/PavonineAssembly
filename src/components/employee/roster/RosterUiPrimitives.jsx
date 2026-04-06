@@ -1,4 +1,5 @@
 import React from "react";
+import AlertMessage from "../../common/AlertMessage";
 
 /**
  * Employee roster — tokens đồng bộ với AttendanceList (card trắng + viền trên xanh,
@@ -87,25 +88,7 @@ export function RosterField({ label, htmlFor, children, className = "" }) {
 }
 
 export function RosterToast({ alert }) {
-  if (!alert?.show) return null;
-  const tone =
-    alert.type === "success"
-      ? "bg-green-100 text-green-800 border border-green-300"
-      : alert.type === "info"
-        ? "bg-gray-100 text-gray-800 border border-gray-300"
-        : "bg-red-100 text-red-800 border border-red-300";
-  return (
-    <div
-      className="fixed right-3 top-3 z-[60] max-w-[min(100vw-1.5rem,22rem)] sm:right-5 sm:top-5"
-      role="status"
-    >
-      <div
-        className={`rounded px-4 py-2 text-sm font-semibold shadow transition-all duration-300 ${tone}`}
-      >
-        {alert.message}
-      </div>
-    </div>
-  );
+  return <AlertMessage alert={alert} />;
 }
 
 export function RosterModal({ open, title, onClose, children }) {
