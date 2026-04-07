@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "internalAnnouncements": {
+      "$id": {
+        ".write": "auth != null"
+      }
+    },
+    "userDepartments": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    ".read": true,
+    ".write": true
+  }
+}

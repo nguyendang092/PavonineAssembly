@@ -95,7 +95,7 @@ const UnifiedModal = ({
       onClick={handleBackdropClick}
     >
       <div
-        className={`bg-white rounded-2xl shadow-2xl overflow-hidden w-full ${currentSize} max-h-[90vh] flex flex-col animate-slideIn`}
+        className={`rounded-2xl bg-white shadow-2xl overflow-hidden w-full dark:bg-slate-900 dark:ring-1 dark:ring-slate-700 ${currentSize} max-h-[90vh] flex flex-col animate-slideIn`}
       >
         {/* Header */}
         <div
@@ -133,7 +133,7 @@ const UnifiedModal = ({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 text-slate-800 dark:text-slate-200">
           {message && (
             <p
               className={`text-base leading-relaxed ${currentVariant.text} mb-4`}
@@ -154,7 +154,7 @@ const UnifiedModal = ({
                   ? `${currentVariant.buttonPrimary} text-white shadow-lg transform hover:scale-105`
                   : actionVariant === "danger"
                     ? "bg-gradient-to-r from-red-500 to-red-700 text-white shadow-lg transform hover:scale-105"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300";
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
 
               return (
                 <button

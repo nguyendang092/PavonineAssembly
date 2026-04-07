@@ -194,10 +194,7 @@ export default function PerformanceChart() {
   }, [user, userRole, selectedYear, data, setYearDataStore]);
 
   return (
-    <div
-      className="flex h-screen flex-col overflow-hidden md:flex-row"
-      style={{ backgroundColor: "#eef4ff" }}
-    >
+    <div className="flex h-screen flex-col overflow-hidden bg-[#eef4ff] dark:bg-slate-950 md:flex-row">
       <PerformanceYearSidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

@@ -245,7 +245,7 @@ function EmployeeProfileEditHistoryPanel({
         return (
           <article
             key={row.historyKey}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm shadow-sm"
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm shadow-sm dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200"
           >
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-gray-600">
               <time className="font-medium text-gray-800">{when}</time>
@@ -1404,7 +1404,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
 
       <div className={rosterUi.containerFull}>
         <div className={rosterUi.card}>
-          <header className="flex flex-col gap-4 border-b border-gray-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
+          <header className="flex flex-col gap-4 border-b border-gray-200 bg-white px-4 py-4 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
             <div className="min-w-0">
               <h1 className="text-2xl font-extrabold uppercase tracking-wide text-[#1e293b] sm:text-3xl">
                 {resignedOnly
@@ -1589,7 +1589,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
           </section>
 
           <section id="roster-table" className="scroll-mt-20">
-            <div className="flex flex-col gap-3 border-b border-gray-200 bg-white px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6">
+            <div className="flex flex-col gap-3 border-b border-gray-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6">
               <h2 className="text-sm font-semibold text-gray-900 sm:text-base">
                 {resignedOnly
                   ? tr(
@@ -1711,7 +1711,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
                     ) : null}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
+                <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-700 dark:bg-slate-900">
                   {list.length === 0 ? (
                     <tr>
                       <td
@@ -1738,7 +1738,9 @@ function AllEmployeesManager({ resignedOnly = false }) {
                         <tr
                           key={emp.firebaseKey}
                           className={`transition-colors hover:bg-blue-50 ${
-                            idx % 2 === 0 ? "bg-gray-50" : "bg-white"
+                            idx % 2 === 0
+                              ? "bg-gray-50 dark:bg-slate-800/60"
+                              : "bg-white dark:bg-slate-900"
                           }`}
                         >
                           <td className={`${rosterUi.td} ${rosterUi.tdMono}`}>
@@ -1852,7 +1854,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
             {profilePageIndex > 0 ||
             rosterPagination.hasNext ||
             rosterPagination.rowCount > 0 ? (
-              <div className="flex flex-col items-center gap-2.5 border-t border-gray-200 bg-gray-50 px-4 py-3.5 sm:gap-3 sm:px-6">
+              <div className="flex flex-col items-center gap-2.5 border-t border-gray-200 bg-gray-50 px-4 py-3.5 dark:border-slate-700 dark:bg-slate-900 sm:gap-3 sm:px-6">
                 <nav
                   className="flex flex-wrap items-center justify-center gap-2"
                   aria-label={tr(
@@ -2173,7 +2175,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
             </div>
           </div>
 
-          <details className="rounded-md border border-gray-200 bg-gray-50 p-3">
+          <details className="rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-slate-600 dark:bg-slate-900/80">
             <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
               {tr("attendanceExtra", "Chấm công ngày & trường bổ sung")}
             </summary>

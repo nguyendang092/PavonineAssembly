@@ -10,7 +10,7 @@ import React, {
 import { createPortal } from "react-dom";
 // firebase for global data fetching
 import { db, ref, onValue } from "./services/firebase";
-import AlertMessage from "./components/common/AlertMessage";
+import MyAccessSummary from "./components/common/MyAccessSummary";
 import Navbar from "./components/layout/Navbar";
 import BackToTop from "./components/common/BackToTop";
 import BackToBottom from "./components/common/BackToBottom";
@@ -44,7 +44,6 @@ const HonorBoard = lazy(() => import("./components/employee/HonorBoard"));
 const TemperatureMonitor = lazy(
   () => import("./components/common/TemperatureMonitor"),
 );
-const Employ = lazy(() => import("./components/employee/Employ"));
 const MoldManager = lazy(() => import("./components/inventory/MoldManager"));
 const PerformanceChart = lazy(
   () => import("./components/dashboard/PerformanceChart"),
@@ -62,6 +61,12 @@ const Downloads = lazy(() => import("./components/common/Downloads"));
 const UserDepartmentManager = lazy(
   () => import("./components/employee/UserDepartmentManager"),
 );
+const InternalAnnouncements = lazy(
+  () => import("./components/employee/InternalAnnouncements"),
+);
+const InternalAnnouncementsLogin = lazy(
+  () => import("./components/employee/InternalAnnouncementsLogin"),
+);
 const AllEmployeesManager = lazy(
   () => import("./components/employee/AllEmployeesManager"),
 );
@@ -69,7 +74,6 @@ const ResignedEmployeesManager = lazy(
   () => import("./components/employee/ResignedEmployeesManager"),
 );
 const App = () => {
-  const [toastMessage, setToastMessage] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
   const [user, setUser] = useState(null);
   const { setLoading } = useLoading();
@@ -91,10 +95,6 @@ const App = () => {
           Date.now() < expire
         ) {
           setUser({ email, name });
-          setTimeout(() => {
-            localStorage.removeItem("userLogin");
-            setUser(null);
-          }, expire - Date.now());
         } else {
           localStorage.removeItem("userLogin");
           setUser(null);
@@ -106,6 +106,47 @@ const App = () => {
     }
     setTimeout(() => setLoading(false), 800);
   }, []);
+
+  useEffect(() => {
+    if (!user?.email) return undefined;
+
+    let timerId;
+    try {
+      const loginData = localStorage.getItem("userLogin");
+      if (!loginData) {
+        setUser(null);
+        return undefined;
+      }
+      const { expire } = JSON.parse(loginData);
+      if (
+        typeof expire !== "number" ||
+        !Number.isFinite(expire) ||
+        Date.now() >= expire
+      ) {
+        localStorage.removeItem("userLogin");
+        setUser(null);
+        if (window.location.pathname !== "/email/login") {
+          window.location.replace("/email/login");
+        }
+        return undefined;
+      }
+      const delay = expire - Date.now();
+      timerId = window.setTimeout(() => {
+        localStorage.removeItem("userLogin");
+        setUser(null);
+        if (window.location.pathname !== "/email/login") {
+          window.location.replace("/email/login");
+        }
+      }, delay);
+    } catch {
+      localStorage.removeItem("userLogin");
+      setUser(null);
+    }
+
+    return () => {
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [user]);
 
   // load departments + role for the logged-in user
   useEffect(() => {
@@ -144,10 +185,6 @@ const App = () => {
     return () => unsubscribe();
   }, [user]);
 
-  const showToast = (message) => {
-    setToastMessage(message);
-  };
-
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, []);
@@ -178,9 +215,10 @@ const App = () => {
       SeasonalStaffAttendance: <SeasonalStaffAttendance />,
       Downloads: <Downloads />,
       UserDepartmentManager: <UserDepartmentManager />,
+      InternalAnnouncements: <InternalAnnouncements />,
+      InternalAnnouncementsLogin: <InternalAnnouncementsLogin />,
       AllEmployeesManager: <AllEmployeesManager />,
       ResignedEmployeesManager: <ResignedEmployeesManager />,
-      Employ: <Employ showToast={showToast} />,
     }),
     [],
   );
@@ -188,12 +226,12 @@ const App = () => {
   return (
     <UserContext.Provider value={{ user, setUser, userDepartments, userRole }}>
       <Router>
-        <div className="min-h-screen flex flex-col bg-gray-50">
+        <div className="min-h-screen flex flex-col bg-gray-50 text-slate-900 transition-colors duration-200 dark:bg-slate-950 dark:text-slate-100">
           {/* Navbar cố định */}
           <div
             className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
               isScrolled
-                ? "bg-white/30 backdrop-blur-md shadow-md"
+                ? "bg-white/80 shadow-md backdrop-blur-md dark:bg-slate-900/85"
                 : "bg-transparent"
             }`}
           >
@@ -206,9 +244,10 @@ const App = () => {
             ref={mainScrollRef}
             className="pt-16 flex-1 min-h-0 overflow-x-hidden overflow-y-auto"
           >
+            {user ? <MyAccessSummary variant="compact" /> : null}
             <Suspense
               fallback={
-                <div className="h-[60vh] flex items-center justify-center text-gray-500 text-lg">
+                <div className="h-[60vh] flex items-center justify-center text-lg text-slate-500 dark:text-slate-400">
                   Loading...
                 </div>
               }
@@ -228,11 +267,6 @@ const App = () => {
 
           {/* Footer */}
           <Footer />
-
-          <AlertMessage
-            message={toastMessage}
-            onClose={() => setToastMessage("")}
-          />
 
           {/* Portal ra body + z cao để không bị footer / layer khác che; cuộn theo mainScrollRef */}
           {createPortal(

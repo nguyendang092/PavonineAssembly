@@ -40,6 +40,17 @@ import {
   diffEmployeeProfileDocs,
 } from "../../utils/employeeProfileHistory";
 import ExcelJS from "exceljs";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 import { handleUploadExcel } from "./AttendanceUploadHandler";
 import ExportExcelButton from "../common/ExportExcelButton";
 import UnifiedModal from "../common/UnifiedModal";
@@ -107,6 +118,7 @@ function AttendanceList() {
   const [gioVaoFilter, setGioVaoFilter] = useState([]); // Filter by entry time status (chưa chấm công, đã chấm công)
   const [expandedSections, setExpandedSections] = useState({}); // Track which sections are expanded
   const [showOvertimeModal, setShowOvertimeModal] = useState(false);
+  const [showComboChartModal, setShowComboChartModal] = useState(false);
   // Overtime modal-specific filters
   const [modalFilterOpen, setModalFilterOpen] = useState(false);
   const [modalGioiTinhFilter, setModalGioiTinhFilter] = useState([]);
@@ -229,11 +241,7 @@ function AttendanceList() {
             normalizeEmployeeCode(emp?.mnv),
           );
           const prof = pk ? employeeProfilesMap[pk] : null;
-          return mergeEmployeeProfileAndDay(
-            { ...emp, id },
-            prof,
-            null,
-          );
+          return mergeEmployeeProfileAndDay({ ...emp, id }, prof, null);
         });
         arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
         setEmployees(arr);
@@ -286,8 +294,9 @@ function AttendanceList() {
     [user, userRole, userDepartments],
   );
 
-  const showRowModalActions =
-    Boolean(user && userRole && userRole !== ROLES.STAFF);
+  const showRowModalActions = Boolean(
+    user && userRole && userRole !== ROLES.STAFF,
+  );
 
   // Vị trí menu bộ lọc (fixed + portal) — không bị cắt bởi overflow / footer
   useLayoutEffect(() => {
@@ -326,7 +335,7 @@ function AttendanceList() {
         filterMenuDropdownOpen &&
         filterMenuRef.current &&
         !filterMenuRef.current.contains(target) &&
-        !(filterMenuPanelRef.current?.contains(target))
+        !filterMenuPanelRef.current?.contains(target)
       ) {
         setFilterMenuDropdownOpen(false);
       }
@@ -401,6 +410,119 @@ function AttendanceList() {
     gioVaoFilter,
     normalizeDepartment,
   ]);
+
+  const comboChartData = useMemo(() => {
+    const map = new Map();
+    filteredEmployees.forEach((emp) => {
+      const department =
+        normalizeTextValue(emp.boPhan) ||
+        tl("unknownDepartment", "Chưa phân bộ phận");
+      const gioVaoRaw = normalizeTextValue(emp.gioVao);
+      const isTimeFormat = /^\d{1,2}:\d{2}(:\d{2})?$/.test(gioVaoRaw);
+      const gioVaoNormalized = normalizeTextValue(emp.gioVao).toUpperCase();
+      const gioVaoCode = gioVaoNormalized.replace(/\s+/g, "");
+      const gioVaoLatin = gioVaoNormalized
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      const gioVaoTokens = gioVaoLatin
+        .split(/[^A-Z0-9/]+/)
+        .flatMap((t) => t.split("/"))
+        .filter(Boolean);
+      const hasLeaveCode = (...codes) =>
+        codes.some((code) => gioVaoTokens.includes(code));
+      const hasText = (...texts) =>
+        texts.some((txt) => gioVaoLatin.includes(txt));
+      const caLamViecNormalized = normalizeTextValue(
+        emp.caLamViec,
+      ).toLowerCase();
+      const isLate = hasLeaveCode("VT") || hasText("VAO TRE");
+      const hasCheckIn =
+        isTimeFormat || hasLeaveCode("CDL") || hasText("CO DI LAM", "DI LAM") || isLate;
+      const isAnnualLeave =
+        hasLeaveCode("PN") || hasText("PHEP NAM", "1/2PHEPNAM", "1/2 PN");
+      const isLaborAccident =
+        hasLeaveCode("TN") ||
+        hasText("TNLD", "TAI NAN");
+      const isMaternity =
+        hasLeaveCode("TS") || hasText("THAI SAN");
+      const isNoPermit =
+        hasLeaveCode("KP") || hasText("KHONG PHEP");
+      const isUnpaidLeave =
+        hasLeaveCode("KL") || hasText("KHONG LUONG");
+      const isSickLeave =
+        hasLeaveCode("PO") || hasText("PHEP OM", "NGHI OM");
+      const isResignedLeave =
+        hasLeaveCode("NV") || hasText("NGHI VIEC");
+      const isNightShift =
+        caLamViecNormalized.includes("đêm") ||
+        caLamViecNormalized.includes("dem") ||
+        caLamViecNormalized.includes("night");
+      const row = map.get(department) || {
+        department,
+        total: 0,
+        checkedIn: 0,
+        late: 0,
+        annualLeave: 0,
+        nightShift: 0,
+        laborAccident: 0,
+        maternity: 0,
+        noPermit: 0,
+        unpaidLeave: 0,
+        sickLeave: 0,
+        resignedLeave: 0,
+      };
+      row.total += 1;
+      if (hasCheckIn) row.checkedIn += 1;
+      if (isLate) row.late += 1;
+      if (isAnnualLeave) row.annualLeave += 1;
+      if (isNightShift) row.nightShift += 1;
+      if (isLaborAccident) row.laborAccident += 1;
+      if (isMaternity) row.maternity += 1;
+      if (isNoPermit) row.noPermit += 1;
+      if (isUnpaidLeave) row.unpaidLeave += 1;
+      if (isSickLeave) row.sickLeave += 1;
+      if (isResignedLeave) row.resignedLeave += 1;
+      map.set(department, row);
+    });
+
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [filteredEmployees, tl]);
+
+  const comboDashboardStats = useMemo(() => {
+    const stats = comboChartData.reduce(
+      (acc, row) => {
+        acc.total += row.total;
+        acc.checkedIn += row.checkedIn;
+        acc.late += row.late;
+        acc.annualLeave += row.annualLeave;
+        acc.nightShift += row.nightShift;
+        acc.laborAccident += row.laborAccident;
+        acc.maternity += row.maternity;
+        acc.noPermit += row.noPermit;
+        acc.unpaidLeave += row.unpaidLeave;
+        acc.sickLeave += row.sickLeave;
+        acc.resignedLeave += row.resignedLeave;
+        return acc;
+      },
+      {
+        total: 0,
+        checkedIn: 0,
+        late: 0,
+        annualLeave: 0,
+        nightShift: 0,
+        laborAccident: 0,
+        maternity: 0,
+        noPermit: 0,
+        unpaidLeave: 0,
+        sickLeave: 0,
+        resignedLeave: 0,
+      },
+    );
+    return {
+      ...stats,
+      departmentCount: comboChartData.length,
+    };
+  }, [comboChartData]);
 
   // Overtime modal: derive unique options and apply modal filters from filteredEmployees
   const modalUniqueGenders = useMemo(
@@ -1843,7 +1965,7 @@ function AttendanceList() {
       <div className="p-4 md:p-8 transition-all duration-300">
         {/* Header */}
         <div className="mb-6">
-          <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-600">
+          <div className="rounded-lg border-t-4 border-blue-600 bg-white p-6 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-3xl font-extrabold text-[#1e293b] uppercase tracking-wide">
@@ -1922,12 +2044,14 @@ function AttendanceList() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-700 dark:bg-slate-900">
                 {unattendedEmployees.map((emp, idx) => (
                   <tr
                     key={emp.id}
                     className={`transition-colors hover:bg-blue-50 ${
-                      idx % 2 === 0 ? "bg-gray-50" : "bg-white"
+                      idx % 2 === 0
+                        ? "bg-gray-50 dark:bg-slate-800/60"
+                        : "bg-white dark:bg-slate-900"
                     }`}
                   >
                     <td className="px-4 py-3 text-gray-700 font-medium">
@@ -1956,7 +2080,7 @@ function AttendanceList() {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full sm:w-auto border rounded-md h-9 px-3 text-sm bg-white font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300 shrink-0"
+              className="h-9 w-full shrink-0 rounded-md border bg-white px-3 text-sm font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300 sm:w-auto"
             />
             <input
               type="text"
@@ -2059,6 +2183,14 @@ function AttendanceList() {
             </div>
 
             {/* Filter Dropdown Menu */}
+            <button
+              type="button"
+              onClick={() => setShowComboChartModal(true)}
+              className="min-h-[2.25rem] shrink-0 rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow transition hover:bg-emerald-700 dark:border-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+            >
+              📊 {tl("comboChart", "Thống kê")}
+            </button>
+
             <div
               ref={filterMenuRef}
               className="attendance-filter-menu relative shrink-0 z-50 min-w-[10.5rem] sm:min-w-[11rem]"
@@ -2095,7 +2227,7 @@ function AttendanceList() {
                 createPortal(
                   <div
                     ref={filterMenuPanelRef}
-                    className="fixed z-[1100] bg-white rounded-lg shadow-2xl border border-gray-200 overflow-y-auto overscroll-contain"
+                    className="fixed z-[1100] overflow-y-auto overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
                     style={{
                       top: filterDropdownPlacement.top,
                       left: filterDropdownPlacement.left,
@@ -2103,100 +2235,100 @@ function AttendanceList() {
                       maxHeight: filterDropdownPlacement.maxHeight,
                     }}
                   >
-                  {/* Bộ lọc nâng cao */}
-                  <button
-                    onClick={() => {
-                      setFilterOpen(true);
-                      setFilterMenuDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-3 hover:bg-blue-50 border-b flex items-center gap-3 transition ${
-                      gioiTinhFilter.length > 0 ||
-                      departmentListFilter.length > 0 ||
-                      gioVaoFilter.length > 0
-                        ? "bg-blue-50 text-blue-700 font-semibold"
-                        : "text-gray-700"
-                    }`}
-                  >
-                    <span className="text-lg">🔍</span>
-                    <div className="flex-1">
-                      <div className="font-semibold">
-                        {t("attendanceList.advancedFilter")}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {tl(
-                          "advancedFilterDesc",
-                          "Bộ phận, Giới tính, Thời gian",
-                        )}
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Lọc nhanh */}
-                  <button
-                    onClick={() => {
-                      handleQuickNoCheckInFilter();
-                      setFilterMenuDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-3 hover:bg-amber-50 border-b flex items-center gap-3 transition ${
-                      isQuickNoCheckInActive
-                        ? "bg-amber-50 text-amber-700 font-semibold"
-                        : "text-gray-700"
-                    }`}
-                  >
-                    <span className="text-lg">⚡</span>
-                    <div className="flex-1">
-                      <div className="font-semibold">
-                        {t("attendanceList.quickFilter")}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {tl("notCheckedIn", "Nhân viên chưa điểm danh")}
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      handleOvertimeButton();
-                      setFilterMenuDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-orange-50 border-t flex items-center gap-3 transition text-gray-700"
-                  >
-                    <span className="text-lg">⏰</span>
-                    <div className="flex-1">
-                      <div className="font-semibold">
-                        {t("attendanceList.overtime")}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {tl("registerDailyOvertime", "Đăng ký tăng ca ngày")}
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Clear Filter */}
-                  {(gioiTinhFilter.length > 0 ||
-                    departmentListFilter.length > 0 ||
-                    gioVaoFilter.length > 0) && (
+                    {/* Bộ lọc nâng cao */}
                     <button
                       onClick={() => {
-                        setGioiTinhFilter([]);
-                        setDepartmentListFilter([]);
-                        setGioVaoFilter([]);
-                        setSearchTerm("");
+                        setFilterOpen(true);
                         setFilterMenuDropdownOpen(false);
                       }}
-                      className="w-full text-left px-4 py-3 hover:bg-red-50 border-t flex items-center gap-3 transition text-gray-700"
+                      className={`w-full text-left px-4 py-3 hover:bg-blue-50 border-b flex items-center gap-3 transition ${
+                        gioiTinhFilter.length > 0 ||
+                        departmentListFilter.length > 0 ||
+                        gioVaoFilter.length > 0
+                          ? "bg-blue-50 text-blue-700 font-semibold"
+                          : "text-gray-700"
+                      }`}
                     >
-                      <span className="text-lg">🗑️</span>
+                      <span className="text-lg">🔍</span>
                       <div className="flex-1">
                         <div className="font-semibold">
-                          {t("attendanceList.clearFilter")}
+                          {t("attendanceList.advancedFilter")}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {tl("resetAllFilters", "Reset tất cả bộ lọc")}
+                          {tl(
+                            "advancedFilterDesc",
+                            "Bộ phận, Giới tính, Thời gian",
+                          )}
                         </div>
                       </div>
                     </button>
-                  )}
+
+                    {/* Lọc nhanh */}
+                    <button
+                      onClick={() => {
+                        handleQuickNoCheckInFilter();
+                        setFilterMenuDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-amber-50 border-b flex items-center gap-3 transition ${
+                        isQuickNoCheckInActive
+                          ? "bg-amber-50 text-amber-700 font-semibold"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      <span className="text-lg">⚡</span>
+                      <div className="flex-1">
+                        <div className="font-semibold">
+                          {t("attendanceList.quickFilter")}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {tl("notCheckedIn", "Nhân viên chưa điểm danh")}
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleOvertimeButton();
+                        setFilterMenuDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-orange-50 border-t flex items-center gap-3 transition text-gray-700"
+                    >
+                      <span className="text-lg">⏰</span>
+                      <div className="flex-1">
+                        <div className="font-semibold">
+                          {t("attendanceList.overtime")}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {tl("registerDailyOvertime", "Đăng ký tăng ca ngày")}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Clear Filter */}
+                    {(gioiTinhFilter.length > 0 ||
+                      departmentListFilter.length > 0 ||
+                      gioVaoFilter.length > 0) && (
+                      <button
+                        onClick={() => {
+                          setGioiTinhFilter([]);
+                          setDepartmentListFilter([]);
+                          setGioVaoFilter([]);
+                          setSearchTerm("");
+                          setFilterMenuDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-red-50 border-t flex items-center gap-3 transition text-gray-700"
+                      >
+                        <span className="text-lg">🗑️</span>
+                        <div className="flex-1">
+                          <div className="font-semibold">
+                            {t("attendanceList.clearFilter")}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {tl("resetAllFilters", "Reset tất cả bộ lọc")}
+                          </div>
+                        </div>
+                      </button>
+                    )}
                   </div>,
                   document.body,
                 )}
@@ -2204,7 +2336,7 @@ function AttendanceList() {
               {/* Filter Modal Dialog */}
               {filterOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
-                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col animate-slideUp border border-gray-100">
+                  <div className="flex max-h-[85vh] w-full max-w-md flex-col animate-slideUp rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                     {/* Header */}
                     <div className="p-5 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
                       <div className="absolute inset-0 bg-white opacity-10"></div>
@@ -2484,7 +2616,7 @@ function AttendanceList() {
                                       );
                                     }
                                   }}
-                                  className="mr-2 w-4 h-4 cursor-pointer"
+                                  className="mr-2 w-4 h-4 cursor-pointer uppercase"
                                 />
                                 ✅ {tl("checkedIn", "Đã chấm công")}
                               </label>
@@ -2573,7 +2705,7 @@ function AttendanceList() {
                   </span>
                 </button>
                 {actionDropdownOpen && (
-                  <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-[min(100vw-2rem,18rem)] sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border-2 border-emerald-200 z-[100] overflow-hidden animate-fadeIn">
+                  <div className="absolute left-0 top-full z-[100] mt-1.5 max-w-[calc(100vw-2rem)] w-[min(100vw-2rem,18rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-emerald-200 bg-white shadow-2xl dark:border-emerald-800 dark:bg-slate-900 sm:left-auto sm:right-0 sm:w-64">
                     {isAdminAccess(user, userRole) && (
                       <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
                         <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
@@ -2724,7 +2856,7 @@ function AttendanceList() {
                 <span className="text-xs">{printDropdownOpen ? "▲" : "▼"}</span>
               </button>
               {printDropdownOpen && (
-                <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-[min(100vw-2rem,18rem)] sm:w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border-2 border-blue-200 z-[100] overflow-hidden animate-fadeIn">
+                <div className="absolute left-0 top-full z-[100] mt-1.5 max-w-[calc(100vw-2rem)] w-[min(100vw-2rem,18rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-blue-200 bg-white shadow-2xl dark:border-blue-800 dark:bg-slate-900 sm:left-auto sm:right-0 sm:w-64">
                   <button
                     onClick={() => {
                       handlePrintOvertimeList();
@@ -2798,7 +2930,7 @@ function AttendanceList() {
                     name="stt"
                     value={form.stt}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2811,7 +2943,7 @@ function AttendanceList() {
                     value={form.mnv}
                     onChange={handleChange}
                     required
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2823,7 +2955,7 @@ function AttendanceList() {
                     name="mvt"
                     value={form.mvt}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -2836,7 +2968,7 @@ function AttendanceList() {
                     value={form.hoVaTen}
                     onChange={handleChange}
                     required
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2847,7 +2979,7 @@ function AttendanceList() {
                     name="gioiTinh"
                     value={form.gioiTinh}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   >
                     <option value="YES">{t("attendanceList.female")}</option>
                     <option value="NO">{t("attendanceList.male")}</option>
@@ -2862,7 +2994,7 @@ function AttendanceList() {
                     name="ngayThangNamSinh"
                     value={form.ngayThangNamSinh}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2874,7 +3006,7 @@ function AttendanceList() {
                     name="maBoPhan"
                     value={form.maBoPhan}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2887,7 +3019,7 @@ function AttendanceList() {
                     value={form.boPhan}
                     onChange={handleChange}
                     required
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2900,7 +3032,7 @@ function AttendanceList() {
                     value={form.gioVao}
                     onChange={handleChange}
                     placeholder="HH:MM hoặc mã phép (PN, KP,...)"
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2912,7 +3044,7 @@ function AttendanceList() {
                     name="gioRa"
                     value={form.gioRa}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2924,7 +3056,7 @@ function AttendanceList() {
                     name="caLamViec"
                     value={form.caLamViec}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2936,7 +3068,7 @@ function AttendanceList() {
                     name="chamCong"
                     value={form.chamCong}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <button
@@ -2955,7 +3087,7 @@ function AttendanceList() {
         {/* Overtime Modal */}
         {showOvertimeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-8xl relative mx-4 overflow-y-auto max-h-[90vh]">
+            <div className="relative mx-4 max-h-[90vh] w-full max-w-8xl overflow-y-auto rounded-lg bg-white p-6 shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
               <button
                 onClick={() => setShowOvertimeModal(false)}
                 className="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white text-2xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 z-20"
@@ -3009,7 +3141,7 @@ function AttendanceList() {
               {/* Popup Filter Panel */}
               {modalFilterOpen && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
-                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col animate-slideUp border border-gray-100">
+                  <div className="flex max-h-[85vh] w-full max-w-md flex-col animate-slideUp rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                     {/* Header */}
                     <div className="p-5 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
                       <div className="absolute inset-0 bg-white opacity-10"></div>
@@ -3159,7 +3291,7 @@ function AttendanceList() {
                           setModalGioiTinhFilter([]);
                           setModalDepartmentListFilter([]);
                         }}
-                        className="px-3 py-2 text-xs rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 font-medium"
+                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         {tl("clearFilter", "Xóa bộ lọc")}
                       </button>
@@ -3175,7 +3307,7 @@ function AttendanceList() {
               )}
 
               {/* Table with consistent styling */}
-              <div className="overflow-x-auto bg-white rounded-lg shadow-lg mt-6 max-h-[500px] flex flex-col">
+              <div className="mt-6 flex max-h-[500px] flex-col overflow-x-auto rounded-lg bg-white shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
                 <table className="w-full border-collapse min-w-[1400px]">
                   <thead>
                     <tr
@@ -3237,7 +3369,9 @@ function AttendanceList() {
                       <tr
                         key={emp.id || idx}
                         className={`border-b transition-colors hover:bg-blue-100 ${
-                          idx % 2 === 0 ? "bg-blue-50" : "bg-white"
+                          idx % 2 === 0
+                            ? "bg-blue-50 dark:bg-slate-800/70"
+                            : "bg-white dark:bg-slate-900"
                         }`}
                       >
                         <td className="px-3 py-3 text-xs text-gray-800 text-center font-bold border-r border-gray-300">
@@ -3283,6 +3417,353 @@ function AttendanceList() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showComboChartModal && (
+          <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm sm:p-4">
+            <div className="flex h-[94vh] w-[min(98vw,1680px)] max-w-none flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+              <div className="border-b border-slate-300/80 bg-gradient-to-b from-slate-200/95 to-slate-100 px-4 pb-3 pt-4 dark:border-slate-800 dark:from-slate-950 dark:to-slate-950">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-700 dark:text-sky-400">
+                      {tl("comboChartBadge", "Attendance Dashboard")}
+                    </p>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50 sm:text-xl">
+                      {tl(
+                        "comboChartTitle",
+                        "Thống kê toàn bộ nhân viên theo bộ phận",
+                      )}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
+                      {tl(
+                        "comboChartHint",
+                        "Cột: Vào trễ / Phép năm / Ca đêm / Tai nạn / Thai sản / Không phép / Không lương / Phép ốm / Nghỉ việc • Đường: Tổng nhân viên",
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowComboChartModal(false)}
+                    className="rounded-lg p-2 text-slate-600 transition hover:bg-slate-300/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                    aria-label={t("attendanceList.close")}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-11">
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("totalEmployees", "Tổng số nhân viên")}
+                    </p>
+                    <p className="text-base font-bold text-slate-900 dark:text-slate-50">
+                      {comboDashboardStats.total}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("checkedIn", "Đã điểm danh")}
+                    </p>
+                    <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                      {comboDashboardStats.checkedIn}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("late", "Vào trễ")}
+                    </p>
+                    <p className="text-base font-bold text-lime-700 dark:text-lime-400">
+                      {comboDashboardStats.late}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("annualLeave", "Phép năm")}
+                    </p>
+                    <p className="text-base font-bold text-amber-600 dark:text-amber-400">
+                      {comboDashboardStats.annualLeave}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("nightShift", "Ca đêm")}
+                    </p>
+                    <p className="text-base font-bold text-indigo-600 dark:text-indigo-400">
+                      {comboDashboardStats.nightShift}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("department", "Bộ phận")}
+                    </p>
+                    <p className="text-base font-bold text-slate-900 dark:text-slate-50">
+                      {comboDashboardStats.departmentCount}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("laborAccident", "Tai nạn")}
+                    </p>
+                    <p className="text-base font-bold text-rose-600 dark:text-rose-400">
+                      {comboDashboardStats.laborAccident}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("maternity", "Thai sản")}
+                    </p>
+                    <p className="text-base font-bold text-fuchsia-600 dark:text-fuchsia-400">
+                      {comboDashboardStats.maternity}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("noPermit", "Không phép")}
+                    </p>
+                    <p className="text-base font-bold text-red-600 dark:text-red-400">
+                      {comboDashboardStats.noPermit}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("unpaidLeave", "Không lương")}
+                    </p>
+                    <p className="text-base font-bold text-orange-600 dark:text-orange-400">
+                      {comboDashboardStats.unpaidLeave}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("sickLeave", "Phép ốm")}
+                    </p>
+                    <p className="text-base font-bold text-teal-600 dark:text-teal-400">
+                      {comboDashboardStats.sickLeave}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      {tl("resigned", "Nghỉ việc")}
+                    </p>
+                    <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                      {comboDashboardStats.resignedLeave}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-200/35 p-3 dark:bg-black/35 sm:p-5">
+                {comboChartData.length === 0 ? (
+                  <div className="flex flex-1 items-center justify-center text-sm text-slate-600 dark:text-slate-400">
+                    {tl("noData", "Không có dữ liệu")}
+                  </div>
+                ) : (
+                  <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {comboChartData.map((row) => (
+                        <div
+                          key={row.department}
+                          className="rounded-xl border border-slate-300/85 bg-slate-80 p-2 shadow-[0_1px_3px_rgba(15,23,42,0.08)] dark:border-slate-700/90 dark:bg-slate-900/90"
+                        >
+                          <div className="mb-1 flex items-center justify-between gap-2 border-b border-slate-200/90 pb-1.5 dark:border-slate-700/80">
+                            <h4 className="truncate text-[11px] font-bold uppercase tracking-wide text-slate-800 dark:text-slate-50">
+                              {row.department}
+                            </h4>
+                            <span className="rounded bg-slate-200/80 px-1.5 py-0.5 text-[9px] font-semibold text-black dark:bg-slate-800 dark:text-slate-300 font-semibold uppercase">
+                              {tl("totalEmployees", "Tổng")}: {row.total}
+                            </span>
+                          </div>
+                          <div className="mb-1.5 grid grid-cols-3 gap-1 text-[10px]">
+                            <span className="rounded bg-emerald-50 px-1.5 py-1 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold uppercase">
+                              {tl("checkedIn", "Điểm danh")}: {row.checkedIn}
+                            </span>
+                            <span className="rounded bg-lime-50 px-1.5 py-1 text-lime-700 dark:bg-lime-950/40 dark:text-lime-300 font-semibold uppercase">
+                              {tl("late", "Vào trễ")}: {row.late}
+                            </span>
+                            <span className="rounded bg-amber-50 px-1.5 py-1 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold uppercase">
+                              {tl("annualLeave", "Phép năm")}: {row.annualLeave}
+                            </span>
+                            <span className="rounded bg-indigo-50 px-1.5 py-1 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold uppercase">
+                              {tl("nightShift", "Ca đêm")}: {row.nightShift}
+                            </span>
+                            <span className="rounded bg-rose-50 px-1.5 py-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 font-semibold uppercase">
+                              {tl("laborAccident", "Tai nạn")}: {row.laborAccident}
+                            </span>
+                            <span className="rounded bg-fuchsia-50 px-1.5 py-1 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 font-semibold uppercase">
+                              {tl("maternity", "Thai sản")}: {row.maternity}
+                            </span>
+                            <span className="rounded bg-red-50 px-1.5 py-1 text-red-700 dark:bg-red-950/40 dark:text-red-300 font-semibold uppercase">
+                              {tl("noPermit", "Không phép")}: {row.noPermit}
+                            </span>
+                            <span className="rounded bg-orange-50 px-1.5 py-1 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 font-semibold uppercase">
+                              {tl("unpaidLeave", "Không lương")}: {row.unpaidLeave}
+                            </span>
+                            <span className="rounded bg-teal-50 px-1.5 py-1 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-semibold uppercase">
+                              {tl("sickLeave", "Phép ốm")}: {row.sickLeave}
+                            </span>
+                            <span className="rounded bg-slate-100 px-1.5 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-semibold uppercase">
+                              {tl("resigned", "Nghỉ việc")}: {row.resignedLeave}
+                            </span>
+                          </div>
+                          <div className="h-[210px] w-full sm:h-[220px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <ComposedChart
+                                data={[row]}
+                                margin={{
+                                  top: 8,
+                                  right: 10,
+                                  left: 6,
+                                  bottom: 18,
+                                }}
+                              >
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="#64748b"
+                                  strokeOpacity={0.35}
+                                />
+                                <XAxis dataKey="department" hide />
+                                <YAxis
+                                  yAxisId="left"
+                                  allowDecimals={false}
+                                  width={22}
+                                  tick={{ fill: "#94a3b8", fontSize: 10 }}
+                                />
+                                <YAxis
+                                  yAxisId="right"
+                                  orientation="right"
+                                  allowDecimals={false}
+                                  width={22}
+                                  tick={{ fill: "#94a3b8", fontSize: 10 }}
+                                />
+                                <Tooltip
+                                  formatter={(value, name) => {
+                                    if (name === "total")
+                                      return [
+                                        value,
+                                        tl(
+                                          "totalEmployees",
+                                          "Tổng số nhân viên",
+                                        ),
+                                      ];
+                                    if (name === "checkedIn")
+                                      return [
+                                        value,
+                                        tl("checkedIn", "Đã điểm danh"),
+                                      ];
+                                    if (name === "late")
+                                      return [value, tl("late", "Vào trễ")];
+                                    if (name === "annualLeave")
+                                      return [
+                                        value,
+                                        tl("annualLeave", "Phép năm"),
+                                      ];
+                                    if (name === "nightShift")
+                                      return [
+                                        value,
+                                        tl("nightShift", "Ca đêm"),
+                                      ];
+                                    if (name === "laborAccident")
+                                      return [
+                                        value,
+                                        tl("laborAccident", "Tai nạn"),
+                                      ];
+                                    if (name === "maternity")
+                                      return [
+                                        value,
+                                        tl("maternity", "Thai sản"),
+                                      ];
+                                    if (name === "noPermit")
+                                      return [value, tl("noPermit", "Không phép")];
+                                    if (name === "unpaidLeave")
+                                      return [
+                                        value,
+                                        tl("unpaidLeave", "Không lương"),
+                                      ];
+                                    if (name === "sickLeave")
+                                      return [value, tl("sickLeave", "Phép ốm")];
+                                    if (name === "resignedLeave")
+                                      return [value, tl("resigned", "Nghỉ việc")];
+                                    return [value, name];
+                                  }}
+                                />
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="checkedIn"
+                                  fill="#10b981"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="late"
+                                  fill="#65a30d"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="annualLeave"
+                                  fill="#f59e0b"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="nightShift"
+                                  fill="#6366f1"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="laborAccident"
+                                  fill="#f43f5e"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="maternity"
+                                  fill="#d946ef"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="noPermit"
+                                  fill="#dc2626"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="unpaidLeave"
+                                  fill="#ea580c"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="sickLeave"
+                                  fill="#0d9488"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="resignedLeave"
+                                  fill="#475569"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                                <Line
+                                  yAxisId="right"
+                                  type="monotone"
+                                  dataKey="total"
+                                  stroke="#7c3aed"
+                                  strokeWidth={2.25}
+                                  dot={{ r: 3 }}
+                                />
+                              </ComposedChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -3351,7 +3832,9 @@ function AttendanceList() {
                 <tr
                   key={emp.id}
                   className={`transition-colors hover:bg-blue-200 ${
-                    idx % 2 === 0 ? "bg-blue-100" : "bg-white"
+                    idx % 2 === 0
+                      ? "bg-blue-100 dark:bg-slate-800"
+                      : "bg-white dark:bg-slate-900"
                   }`}
                 >
                   <td className="hidden md:table-cell px-2 md:px-3 py-2.5 md:py-3 text-xs md:text-sm text-center font-bold text-gray-700">
@@ -3623,7 +4106,7 @@ function AttendanceList() {
 
         {/* Summary */}
 
-        <div className="mt-6 bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-600">
+        <div className="mt-6 rounded-lg border-l-4 border-blue-600 bg-white p-4 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="w-full">
               <div className="flex flex-wrap items-center gap-4 border border-blue-100 rounded-lg px-3 py-2 bg-gradient-to-r from-blue-50 to-blue-100 shadow-sm">

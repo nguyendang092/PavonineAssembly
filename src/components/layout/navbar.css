@@ -779,3 +779,111 @@ body {
         padding: calc(66px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)) 16px;
     }
 }
+
+/* Theme toggle */
+.theme-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    color: #fff;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.theme-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+html:not(.dark) .theme-toggle-btn {
+    border-color: #cbd5e1;
+    color: #0f172a;
+    background: #f8fafc;
+}
+
+html:not(.dark) .theme-toggle-btn:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+}
+
+.mobile-menu-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 4px 12px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+html:not(.dark) .mobile-menu-toolbar {
+    border-bottom-color: #e2e8f0;
+}
+
+/* Light theme: navbar & menus */
+html:not(.dark) .navbar {
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 4px 24px -12px rgba(15, 23, 42, 0.15);
+}
+
+html:not(.dark) .nav-items > ul > li > a,
+html:not(.dark) .nav-items > ul > li > button {
+    color: #0f172a;
+}
+
+html:not(.dark) .nav-items > ul > li::after {
+    background-color: #0ea5e9;
+}
+
+html:not(.dark) .dropdown-menu,
+html:not(.dark) .dropdown-menu li {
+    background-color: #ffffff;
+    border-color: #e2e8f0;
+}
+
+html:not(.dark) .dropdown-menu li a,
+html:not(.dark) .dropdown-menu li button {
+    color: #1e293b;
+}
+
+html:not(.dark) .dropdown-menu li a:hover,
+html:not(.dark) .dropdown-menu li button:hover {
+    color: #ffffff;
+}
+
+html:not(.dark) #hamburger-menu {
+    color: #0f172a;
+}
+
+html:not(.dark) .nav-logo a {
+    color: #0f172a;
+}
+
+html:not(.dark) .language-dropdown {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+
+/* Light theme: mobile overlay */
+html:not(.dark) #mobile-menu {
+    background: linear-gradient(to bottom, #f8fafc, #e2e8f0);
+}
+
+html:not(.dark) #hamburger-menu:active {
+    background-color: rgba(15, 23, 42, 0.06);
+}
+
+html:not(.dark) .mobile-nav-items a,
+html:not(.dark) .mobile-nav-items button,
+html:not(.dark) .mobile-dropdown-toggle {
+    color: #0f172a !important;
+}
+
+html:not(.dark) #hamburger-cross {
+    color: #0f172a;
+}

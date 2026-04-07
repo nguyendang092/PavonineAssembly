@@ -58,7 +58,7 @@ export default function BackToBottom({
       }}
       aria-label="Scroll to bottom"
       title="Scroll to bottom"
-      className={`${positionClass} z-50 text-cyan-700 hover:text-white bg-white ring-1 ring-cyan-500/50 hover:bg-cyan-600 hover:ring-cyan-400 rounded-full shadow-md p-2 transition duration-300`.trim()}
+      className={`${positionClass} z-50 rounded-full bg-white p-2 text-cyan-700 shadow-md ring-1 ring-cyan-500/50 transition duration-300 hover:bg-cyan-600 hover:text-white hover:ring-cyan-400 dark:bg-slate-800 dark:text-cyan-400 dark:ring-cyan-500/40 dark:hover:bg-cyan-600 dark:hover:text-white`.trim()}
       style={style}
     >
       <FaArrowCircleDown size={18} />

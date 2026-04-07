@@ -70,10 +70,10 @@ const MultiPlanModal = ({ isOpen, onClose, areaKey, modelList }) => {
     <Modal
       isOpen={isOpen}
       onRequestClose={onClose}
-      className="bg-white p-6 max-w-7xl mx-auto rounded shadow overflow-auto max-h-[100vh]"
+      className="mx-auto max-h-[100vh] max-w-7xl overflow-auto rounded bg-white p-6 shadow dark:bg-slate-900 dark:text-slate-100"
       overlayClassName="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50"
     >
-      <h2 className="text-lg font-bold mb-4 uppercase">
+      <h2 className="mb-4 text-lg font-bold uppercase text-slate-900 dark:text-slate-100">
         {t("multiPlanModal.title")}
       </h2>
 
@@ -104,8 +104,8 @@ const MultiPlanModal = ({ isOpen, onClose, areaKey, modelList }) => {
 
         {/* Nhập sản lượng theo chiều ngang */}
         <div className="flex-1 overflow-x-auto">
-          <table className="min-w-full border border-gray-300 text-sm text-gray-700">
-            <thead className="bg-gray-100 text-gray-800 text-[14px] uppercase">
+          <table className="min-w-full border border-gray-300 text-sm text-gray-700 dark:border-slate-600 dark:text-slate-200">
+            <thead className="bg-gray-100 text-[14px] uppercase text-gray-800 dark:bg-slate-800 dark:text-slate-200">
               <tr>
                 <th className="border px-3 py-2 text-left">
                   {t("multiPlanModal.model")}
@@ -124,9 +124,9 @@ const MultiPlanModal = ({ isOpen, onClose, areaKey, modelList }) => {
               {modelList.map((model) => (
                 <tr
                   key={model}
-                  className="even:bg-white odd:bg-gray-50 hover:bg-yellow-50 transition duration-200"
+                  className="transition duration-200 even:bg-white odd:bg-gray-50 hover:bg-yellow-50 dark:even:bg-slate-900 dark:odd:bg-slate-800/80 dark:hover:bg-yellow-900/30"
                 >
-                  <td className="border px-3 py-2 font-medium text-gray-900">
+                  <td className="border px-3 py-2 font-medium text-gray-900 dark:border-slate-600 dark:text-slate-100">
                     {model}
                   </td>
                   {timeLabels.map((slot) => (
@@ -134,7 +134,7 @@ const MultiPlanModal = ({ isOpen, onClose, areaKey, modelList }) => {
                       <input
                         type="number"
                         title={t("multiPlanModal.enterPlan")}
-                        className="border border-gray-300 rounded px-2 py-1 text-center w-20 focus:outline-none focus:ring-2 focus:ring-green-400"
+                        className="w-20 rounded border border-gray-300 px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-green-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
                         value={planData[model]?.[slot] || ""}
                         onChange={(e) => {
                           const updated = { ...(planData[model] || {}) };

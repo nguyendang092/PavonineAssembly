@@ -60,55 +60,63 @@ export default function ChangePasswordModal({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xs relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="relative w-full max-w-xs rounded-lg bg-white p-6 shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl"
+          className="absolute right-2 top-2 text-xl text-gray-400 hover:text-gray-700 dark:hover:text-slate-200"
           aria-label="Đóng"
         >
           ×
         </button>
-        <h2 className="text-xl font-bold mb-4 text-center">Đổi mật khẩu</h2>
+        <h2 className="mb-4 text-center text-xl font-bold text-slate-900 dark:text-slate-100">
+          Đổi mật khẩu
+        </h2>
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               {t("changePassword.currentPassword")}
             </label>
             <input
               type="password"
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               {t("changePassword.newPassword")}
             </label>
             <input
               type="password"
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               {t("changePassword.confirmPassword")}
             </label>
             <input
               type="password"
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
             />
           </div>
-          {error && <div className="text-red-500 text-sm">{error}</div>}
-          {success && <div className="text-green-600 text-sm">{success}</div>}
+          {error && (
+            <div className="text-sm text-red-500 dark:text-red-400">{error}</div>
+          )}
+          {success && (
+            <div className="text-sm text-green-600 dark:text-green-400">
+              {success}
+            </div>
+          )}
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 transition"

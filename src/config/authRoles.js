@@ -46,6 +46,14 @@ export function isAdminAccess(user, userRole) {
   return normalizeRole(userRole) === ROLES.ADMIN;
 }
 
+/**
+ * Được thêm / sửa / xóa bảng mapping trong trang Phân quyền User.
+ * Chỉ Admin (email hệ thống hoặc role admin trên Firebase) hoặc tài khoản HR trong {@link ADMIN_OR_HR_EMAILS}.
+ */
+export function canManageUserDepartmentMappings(user, userRole) {
+  return isAdminAccess(user, userRole);
+}
+
 export function canEditAttendanceForEmployee({
   user,
   userRole,
@@ -74,4 +82,45 @@ export function canAddAttendanceForDepartment({
     userDepartments,
     employee: { boPhan },
   });
+}
+
+/** Đăng thông báo nội bộ: Admin/HR + Manager (sếp bộ phận). */
+export function canPostInternalAnnouncements(user, userRole) {
+  if (!user?.email) return false;
+  if (isAdminAccess(user, userRole)) return true;
+  return normalizeRole(userRole) === ROLES.MANAGER;
+}
+
+/** Giá trị lưu Firebase: ai được đọc thông báo. */
+export const ANNOUNCEMENT_VISIBILITY = {
+  /** Mọi người (kể cả chưa đăng nhập) */
+  ALL: "all",
+  /** Chỉ tài khoản đã đăng nhập */
+  AUTH: "auth",
+  /** Quản lý bộ phận + Admin/HR */
+  MANAGERS: "managers",
+  /** Chỉ Admin / HR (email hệ thống hoặc role admin) */
+  ADMIN: "admin",
+};
+
+/**
+ * Người dùng hiện tại có được xem thông báo này không (theo `visibility` trên bản ghi).
+ * Bản ghi cũ không có trường → coi như {@link ANNOUNCEMENT_VISIBILITY.ALL}.
+ */
+export function canViewAnnouncement(user, userRole, visibility) {
+  const v =
+    visibility == null || String(visibility).trim() === ""
+      ? ANNOUNCEMENT_VISIBILITY.ALL
+      : String(visibility).trim();
+  if (v === ANNOUNCEMENT_VISIBILITY.ALL) return true;
+  if (!user?.email) return false;
+  if (v === ANNOUNCEMENT_VISIBILITY.AUTH) return true;
+  if (v === ANNOUNCEMENT_VISIBILITY.ADMIN) return isAdminAccess(user, userRole);
+  if (v === ANNOUNCEMENT_VISIBILITY.MANAGERS) {
+    return (
+      isAdminAccess(user, userRole) ||
+      normalizeRole(userRole) === ROLES.MANAGER
+    );
+  }
+  return false;
 }

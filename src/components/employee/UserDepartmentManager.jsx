@@ -2,18 +2,19 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "../../contexts/UserContext";
 import {
-  isAdminAccess,
+  canManageUserDepartmentMappings,
   inferRoleFromMapping,
   normalizeRole,
   ROLES,
 } from "../../config/authRoles";
 import { db, ref, set, onValue, remove } from "../../services/firebase";
 import AlertMessage from "../common/AlertMessage";
+import MyAccessSummary from "../common/MyAccessSummary";
 
 function UserDepartmentManager() {
   const { t } = useTranslation();
   const { user, userRole } = useUser();
-  const [userDepartments, setUserDepartments] = useState([]);
+  const [mappings, setMappings] = useState([]);
   const [availableDepartments, setAvailableDepartments] = useState([]);
   const [form, setForm] = useState({
     email: "",
@@ -73,9 +74,9 @@ function UserDepartmentManager() {
           id,
           ...dept,
         }));
-        setUserDepartments(arr);
+        setMappings(arr);
       } else {
-        setUserDepartments([]);
+        setMappings([]);
       }
     });
     return () => unsubscribe();
@@ -91,7 +92,7 @@ function UserDepartmentManager() {
     }
   }, [alert.show]);
 
-  const canManageMappings = isAdminAccess(user, userRole);
+  const canManageMappings = canManageUserDepartmentMappings(user, userRole);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -222,41 +223,47 @@ function UserDepartmentManager() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <p className="text-gray-600">{t("userDeptManager.pleaseLogin")}</p>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-slate-950">
+        <div className="rounded-lg bg-white p-8 text-center shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+          <p className="text-gray-600 dark:text-slate-300">
+            {t("userDeptManager.pleaseLogin")}
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-4 dark:bg-slate-950">
+      <div className="mx-auto max-w-6xl">
         <AlertMessage alert={alert} />
 
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+        <div className="mb-6 rounded-lg bg-white p-6 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+          <h1 className="mb-2 text-3xl font-bold text-gray-800 dark:text-slate-100">
             {t("userDeptManager.title")}
           </h1>
-          <p className="text-gray-600">{t("userDeptManager.description")}</p>
+          <p className="text-gray-600 dark:text-slate-400">
+            {t("userDeptManager.description")}
+          </p>
         </div>
 
+        {user ? <MyAccessSummary variant="full" /> : null}
+
         {user && !canManageMappings && (
-          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
             {t("userDeptManager.viewOnlyBanner")}
           </div>
         )}
 
         {/* Form — chỉ admin */}
         {canManageMappings && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="mb-6 rounded-lg bg-white p-6 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-4">
               {/* Email */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-300">
                   {t("userDeptManager.emailLabel")}
                 </label>
                 <input
@@ -264,13 +271,13 @@ function UserDepartmentManager() {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="pavo_press@gmail.com"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-300">
                   {t("userDeptManager.roleLabel")}
                 </label>
                 <select
@@ -278,7 +285,7 @@ function UserDepartmentManager() {
                   onChange={(e) =>
                     setForm({ ...form, role: e.target.value })
                   }
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
                 >
                   <option value={ROLES.ADMIN}>{t("userDeptManager.roleAdmin")}</option>
                   <option value={ROLES.MANAGER}>
@@ -286,7 +293,7 @@ function UserDepartmentManager() {
                   </option>
                   <option value={ROLES.STAFF}>{t("userDeptManager.roleStaff")}</option>
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                   {t("userDeptManager.roleHelp")}
                 </p>
               </div>
@@ -315,14 +322,14 @@ function UserDepartmentManager() {
 
               {/* Bộ phận */}
               <div className="md:col-span-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-300">
                   {t("userDeptManager.deptLabel", {
                     count: form.departments.length,
                   })}
                 </label>
-                <div className="border border-gray-300 rounded-lg p-2 max-h-40 overflow-y-auto bg-gray-50">
+                <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-300 bg-gray-50 p-2 dark:border-slate-600 dark:bg-slate-900/60">
                   {availableDepartments.length === 0 ? (
-                    <p className="text-gray-500 italic text-xs p-2">
+                    <p className="p-2 text-xs italic text-gray-500 dark:text-slate-400">
                       {t("userDeptManager.loadingDepts")}
                     </p>
                   ) : (
@@ -330,15 +337,17 @@ function UserDepartmentManager() {
                       {availableDepartments.map((dept) => (
                         <label
                           key={dept}
-                          className="flex items-center gap-2 cursor-pointer px-2 py-1 hover:bg-blue-100 rounded"
+                          className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-blue-100 dark:hover:bg-slate-800"
                         >
                           <input
                             type="checkbox"
                             checked={form.departments.includes(dept)}
                             onChange={() => toggleDepartment(dept)}
-                            className="w-4 h-4 rounded"
+                            className="h-4 w-4 rounded"
                           />
-                          <span className="text-xs text-gray-700">{dept}</span>
+                          <span className="text-xs text-gray-700 dark:text-slate-300">
+                            {dept}
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -357,46 +366,46 @@ function UserDepartmentManager() {
         )}
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-800">
+        <div className="overflow-hidden rounded-lg bg-white shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+          <div className="border-b border-gray-200 p-6 dark:border-slate-700">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-slate-100">
               {t("userDeptManager.tableTitle", {
-                count: userDepartments.length,
+                count: mappings.length,
               })}
             </h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-100">
+              <thead className="bg-gray-100 dark:bg-slate-800">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-slate-200">
                     {t("userDeptManager.colEmail")}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-slate-200">
                     {t("userDeptManager.colRole")}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-slate-200">
                     {t("userDeptManager.colDept")}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-slate-200">
                     {t("userDeptManager.colDesc")}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-slate-200">
                     {t("userDeptManager.colUpdatedBy")}
                   </th>
                   {canManageMappings && (
-                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-slate-200">
                       {t("userDeptManager.colActions")}
                     </th>
                   )}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {userDepartments.length === 0 ? (
+              <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-700 dark:bg-slate-900">
+                {mappings.length === 0 ? (
                   <tr>
                     <td
                       colSpan={canManageMappings ? 6 : 5}
-                      className="px-6 py-8 text-center text-gray-500 italic"
+                      className="px-6 py-8 text-center italic text-gray-500 dark:text-slate-400"
                     >
                       {canManageMappings
                         ? t("userDeptManager.noMappings")
@@ -404,10 +413,10 @@ function UserDepartmentManager() {
                     </td>
                   </tr>
                 ) : (
-                  userDepartments.map((dept) => (
-                    <tr key={dept.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-gray-900">
+                  mappings.map((dept) => (
+                    <tr key={dept.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/80">
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-slate-100">
                           {dept.email}
                         </span>
                       </td>

@@ -156,14 +156,14 @@ function QRCodeGenerator() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-sky-50 px-4 sm:px-6 lg:px-8 py-8">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-sky-50 px-4 py-8 dark:from-slate-950 dark:to-slate-900 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 sm:text-3xl">
               PAVONINE QR Code Creator
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Tạo code xe dành cho bộ phận Assembly.
             </p>
           </div>
@@ -173,7 +173,7 @@ function QRCodeGenerator() {
                 setQrValue("BN96-63323A DZ9M");
                 showToast("Mẫu được đặt lại");
               }}
-              className="px-3 py-2 text-sm bg-white border rounded-lg shadow-sm"
+              className="rounded-lg border bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
               Mẫu nhanh
             </button>
@@ -182,20 +182,20 @@ function QRCodeGenerator() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Controls area (span 2 on large) */}
-          <section className="lg:col-span-2 bg-white rounded-2xl shadow p-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+          <section className="rounded-2xl bg-white p-6 shadow dark:bg-slate-900 dark:ring-1 dark:ring-slate-700 lg:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Nội dung
             </label>
             <textarea
               value={qrValue}
               onChange={(e) => setQrValue(e.target.value)}
               placeholder="Nhập URL, văn bản hoặc dữ liệu..."
-              className="w-full min-h-[140px] p-4 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-200 font-mono text-sm resize-vertical"
+              className="min-h-[140px] w-full resize-y rounded-lg border border-slate-200 p-4 font-mono text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-sky-500/40"
             />
 
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Kích thước: <span className="font-semibold">{qrSize}px</span>
                 </label>
                 <input
@@ -214,7 +214,7 @@ function QRCodeGenerator() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Màu
                 </label>
                 <div className="grid grid-cols-2 gap-2 mt-2">
@@ -301,7 +301,7 @@ function QRCodeGenerator() {
           </section>
 
           {/* Preview sidebar */}
-          <aside className="bg-white rounded-2xl shadow p-6 flex flex-col items-center gap-4">
+          <aside className="flex flex-col items-center gap-4 rounded-2xl bg-white p-6 shadow dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
             <div className="w-full flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded-full border bg-white flex items-center justify-center overflow-hidden p-0.5">
@@ -310,21 +310,25 @@ function QRCodeGenerator() {
                     style={{ background: fgColor }}
                   />
                 </div>
-                <span className="text-sm text-slate-600">Màu QR</span>
+                <span className="text-sm text-slate-600 dark:text-slate-300">
+                  Màu QR
+                </span>
                 <div className="w-6 h-6 rounded-full border bg-white flex items-center justify-center ml-3 overflow-hidden p-0.5">
                   <div
                     className="w-full h-full rounded-full"
                     style={{ background: bgColor }}
                   />
                 </div>
-                <span className="text-sm text-slate-600">Nền</span>
+                <span className="text-sm text-slate-600 dark:text-slate-300">
+                  Nền
+                </span>
               </div>
               <div className="text-xs text-slate-400">
                 {qrValue ? "Preview" : "Trống"}
               </div>
             </div>
 
-            <div className="rounded-xl bg-white p-4 border border-slate-100">
+            <div className="rounded-xl border border-slate-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-950">
               <div
                 style={{
                   width: Math.min(qrSize, 320),
@@ -338,7 +342,7 @@ function QRCodeGenerator() {
               </div>
             </div>
 
-            <div className="w-full text-sm text-slate-600 bg-slate-50 p-3 rounded-md">
+            <div className="w-full rounded-md bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
               <div className="truncate font-mono text-xs">
                 {qrValue || "Chưa có nội dung"}
               </div>

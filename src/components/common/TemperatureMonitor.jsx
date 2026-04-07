@@ -338,7 +338,7 @@ const TemperatureMonitor = () => {
                 value={searchMachine}
                 onChange={(e) => setSearchMachine(e.target.value)}
                 placeholder={t("temperatureMonitor.searchMachine")}
-                className="w-full px-2 py-1 rounded text-black mb-2"
+                className="mb-2 w-full rounded border border-white/20 bg-white/95 px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 autoComplete="off"
               />
               {filteredMachines.length === 0 && !isAddingMachine && (
@@ -357,7 +357,7 @@ const TemperatureMonitor = () => {
                         <input
                           value={editMachineName}
                           onChange={(e) => setEditMachineName(e.target.value)}
-                          className="flex-1 px-2 py-1 rounded text-black"
+                          className="flex-1 rounded border border-white/20 bg-white/95 px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                           onKeyDown={(e) => {
                             if (e.key === "Enter")
                               handleEditMachine(machine, editMachineName);
@@ -440,7 +440,7 @@ const TemperatureMonitor = () => {
                       value={newMachineName}
                       onChange={(e) => setNewMachineName(e.target.value)}
                       placeholder={t("temperatureMonitor.newMachine")}
-                      className="flex-1 px-2 py-1 rounded text-black"
+                      className="flex-1 rounded border border-white/20 bg-white/95 px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       disabled={isLoading}
                     />
                     <button onClick={handleAddMachine} disabled={isLoading}>
@@ -489,7 +489,7 @@ const TemperatureMonitor = () => {
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full px-2 py-1 rounded text-black"
+                  className="w-full rounded border border-white/20 bg-white/95 px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 />
               </div>
             )}
@@ -513,8 +513,8 @@ const TemperatureMonitor = () => {
 
       {/* Nội dung chính */}
       <div className="ml-72 flex-1 px-6 pt-6 pb-0">
-        <div className="bg-white rounded shadow p-6 pt-10 min-h-[71.2vh]">
-          <h2 className="text-2xl font-bold text-center mb-6">
+        <div className="min-h-[71.2vh] rounded bg-white p-6 pt-10 shadow dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+          <h2 className="mb-6 text-center text-2xl font-bold text-slate-900 dark:text-slate-100">
             📋 {t("temperatureMonitor.header")} -{" "}
             {selectedArea
               ? t(`areas.${selectedArea}`)
@@ -522,15 +522,15 @@ const TemperatureMonitor = () => {
           </h2>
 
           {areasLoading ? (
-            <div className="text-center text-gray-500 py-8 text-lg">
+            <div className="py-8 text-center text-lg text-gray-500 dark:text-slate-400">
               {t("temperatureMonitor.loading")}
             </div>
           ) : !selectedArea ? (
-            <div className="text-center text-gray-500 py-8 text-lg">
+            <div className="py-8 text-center text-lg text-gray-500 dark:text-slate-400">
               {t("temperatureMonitor.noAreaGuide")}
             </div>
           ) : filteredMachines.length === 0 ? (
-            <p className="text-center text-gray-600">
+            <p className="text-center text-gray-600 dark:text-slate-400">
               {t("temperatureMonitor.noMachine")}
             </p>
           ) : (

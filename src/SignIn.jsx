@@ -10,6 +10,9 @@ import { logUserAction } from "./utils/userLog";
 import { useTranslation } from "react-i18next";
 import "../public/css/auth.css";
 
+/** Ký tự placeholder “vô hình” để CSS dùng :not(:placeholder-shown) — nhãn nổi không phụ thuộc :valid (tránh đè chữ khi gõ email dở). */
+const FLOAT_LABEL_PLACEHOLDER = "\u00a0";
+
 export default function SignIn({ onSignIn, onClose }) {
   const { t } = useTranslation();
 
@@ -70,10 +73,6 @@ export default function SignIn({ onSignIn, onClose }) {
         ) {
           if (onSignIn) onSignIn({ email, name });
           if (onClose) onClose();
-          setTimeout(() => {
-            localStorage.removeItem("userLogin");
-            if (onClose) onClose();
-          }, expire - Date.now());
         } else {
           localStorage.removeItem("userLogin");
         }
@@ -238,6 +237,8 @@ export default function SignIn({ onSignIn, onClose }) {
               <input
                 type="email"
                 required
+                autoComplete="email"
+                placeholder={FLOAT_LABEL_PLACEHOLDER}
                 value={formState.signInEmail}
                 onChange={(e) => updateForm("signInEmail", e.target.value)}
               />
@@ -252,6 +253,8 @@ export default function SignIn({ onSignIn, onClose }) {
               <input
                 type="password"
                 required
+                autoComplete="current-password"
+                placeholder={FLOAT_LABEL_PLACEHOLDER}
                 value={formState.signInPassword}
                 onChange={(e) => updateForm("signInPassword", e.target.value)}
               />
@@ -335,6 +338,8 @@ export default function SignIn({ onSignIn, onClose }) {
               <input
                 type="text"
                 required
+                autoComplete="name"
+                placeholder={FLOAT_LABEL_PLACEHOLDER}
                 value={formState.signUpName}
                 onChange={(e) => updateForm("signUpName", e.target.value)}
               />
@@ -349,6 +354,8 @@ export default function SignIn({ onSignIn, onClose }) {
               <input
                 type="email"
                 required
+                autoComplete="email"
+                placeholder={FLOAT_LABEL_PLACEHOLDER}
                 value={formState.signUpEmail}
                 onChange={(e) => updateForm("signUpEmail", e.target.value)}
               />
@@ -363,6 +370,8 @@ export default function SignIn({ onSignIn, onClose }) {
               <input
                 type="password"
                 required
+                autoComplete="new-password"
+                placeholder={FLOAT_LABEL_PLACEHOLDER}
                 value={formState.signUpPassword}
                 onChange={(e) => updateForm("signUpPassword", e.target.value)}
               />

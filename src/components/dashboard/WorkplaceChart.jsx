@@ -1,8 +1,16 @@
 /* Đây là component hiển thị biểu đồ sản lượng */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import * as XLSX from "xlsx";
-import { Bar } from "react-chartjs-2";
-import { FiUpload } from "react-icons/fi"; // import biểu tượng upload
+import { Chart } from "react-chartjs-2";
+import {
+  FiUpload,
+  FiCalendar,
+  FiLayers,
+  FiTrendingUp,
+  FiAlertTriangle,
+  FiTable,
+  FiX,
+} from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import DetailedModal from "../modals/DetailedModal";
 import { useUser } from "../../contexts/UserContext";
@@ -11,6 +19,10 @@ import Sidebar from "../layout/Sidebar";
 import {
   Chart as ChartJS,
   BarElement,
+  BarController,
+  LineElement,
+  LineController,
+  PointElement,
   CategoryScale,
   LinearScale,
   Legend,
@@ -22,6 +34,10 @@ import { getDatabase, ref, update, get } from "firebase/database";
 import { db } from "../../services/firebase"; // đường dẫn tới file cấu hình firebase của bạn
 ChartJS.register(
   BarElement,
+  BarController,
+  LineElement,
+  LineController,
+  PointElement,
   CategoryScale,
   LinearScale,
   Legend,
@@ -35,29 +51,50 @@ const getCurrentWeekNumber = () => {
   return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
 };
 
-const extraLabelPlugin = {
-  id: "extraLabelPlugin",
-  afterDatasetsDraw(chart) {
-    const { ctx } = chart;
-    chart.data.datasets.forEach((dataset, datasetIndex) => {
-      const meta = chart.getDatasetMeta(datasetIndex);
-      const label = dataset.label || "";
-      const shortName = label.length > 40 ? label.slice(0, 3) : label;
-      meta.data.forEach((bar, index) => {
-        const value = dataset.data[index];
-        if (!bar || value === 0) return;
-        ctx.save();
-        ctx.font = "bold 10px Arial";
-        ctx.fillStyle = "#000";
-        ctx.textBaseline = "middle";
-        const x = bar.x + 10;
-        const y = bar.y + bar.height / 8;
-        ctx.fillText(`${shortName}: ${value.toLocaleString()}`, x, y);
-        ctx.restore();
-      });
-    });
-  },
-};
+/** Lượng đạt (không gồm NG) theo ngày — đồng bộ logic CNC / ca. */
+function dayNormalTotal(area, dayArr, idx) {
+  if (!dayArr?.[idx]) return 0;
+  const { Day, Night } = dayArr[idx];
+  if (area === "CNC") {
+    return (Day?.normal ?? 0) + (Day?.rework ?? 0);
+  }
+  return (
+    (Day?.normal ?? 0) +
+    (Night?.normal ?? 0) +
+    (Day?.rework ?? 0) +
+    (Night?.rework ?? 0)
+  );
+}
+
+/** Tổng NG theo ngày. */
+function dayNGTotal(area, dayArr, idx) {
+  if (!dayArr?.[idx]) return 0;
+  const { Day, Night } = dayArr[idx];
+  if (area === "CNC") {
+    return (Day?.ng_normal ?? 0) + (Day?.ng_rework ?? 0);
+  }
+  return (
+    (Day?.ng_normal ?? 0) +
+    (Night?.ng_normal ?? 0) +
+    (Day?.ng_rework ?? 0) +
+    (Night?.ng_rework ?? 0)
+  );
+}
+
+function formatDayLabelShort(d) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(d))) {
+    try {
+      return format(parseISO(d), "dd/MM");
+    } catch {
+      return d;
+    }
+  }
+  try {
+    return format(parseISO(d), "dd/MM");
+  } catch {
+    return String(d).slice(0, 10);
+  }
+}
 export default function WorkplaceChart() {
   const { user } = useUser();
   const [detailData, setDetailData] = useState(null);
@@ -72,7 +109,7 @@ export default function WorkplaceChart() {
   const [dataMap, setDataMap] = useState({});
   const [tableView, setTableView] = useState("detailed");
   const [rawData, setRawData] = useState(null);
-  const [showTable, setShowTable] = useState(window.innerWidth >= 1520);
+  const [dataTableOpen, setDataTableOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isReadingTotalFile, setIsReadingTotalFile] = useState(false);
   const [isReadingDetailFile, setIsReadingDetailFile] = useState(false);
@@ -81,14 +118,14 @@ export default function WorkplaceChart() {
   const totalFileInputRef = useRef(null);
   const detailFileInputRef = useRef(null);
 
-  // Theo dõi kích thước màn hình
   useEffect(() => {
-    const handleResize = () => {
-      setShowTable(window.innerWidth >= 1520);
+    if (!dataTableOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setDataTableOpen(false);
     };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dataTableOpen]);
 
   // Load dữ liệu từ Firebase khi component mount hoặc khi year thay đổi
   useEffect(() => {
@@ -458,48 +495,17 @@ export default function WorkplaceChart() {
     }
     setDataMap(map);
     const filteredAreas = areas.filter((area) =>
-      map[area].some(
-        ({ Day, Night }) =>
-          Day.normal + Day.rework + Night.normal + Night.rework > 0,
-      ),
+      map[area].some(({ Day, Night }) => {
+        const ok = Day.normal + Day.rework + Night.normal + Night.rework;
+        const ng =
+          (Day.ng_normal ?? 0) +
+          (Day.ng_rework ?? 0) +
+          (Night.ng_normal ?? 0) +
+          (Night.ng_rework ?? 0);
+        return ok > 0 || ng > 0;
+      }),
     );
-    const datasets = filteredAreas.map((area, i) => {
-      let dataArr;
-      if (area === "CNC") {
-        dataArr = map[area].map(({ Day }) => Day.normal + Day.rework);
-      } else {
-        dataArr = map[area].map(
-          ({ Day, Night }) =>
-            Day.normal +
-            Day.rework +
-            Night.normal +
-            Night.rework +
-            Day.ng_normal +
-            Day.ng_rework +
-            Night.ng_normal +
-            Night.ng_rework,
-        );
-      }
-      return {
-        label: area,
-        data: dataArr,
-        backgroundColor: [
-          "#4e79a7",
-          "#f28e2c",
-          "#e15759",
-          "#76b7b2",
-          "#59a14f",
-          "#edc949",
-          "#af7aa1",
-          "#ff9da7",
-          "#9c755f",
-          "#bab0ab",
-        ][i % 10],
-        borderRadius: 6,
-      };
-    });
     const labels = days.map((d) => {
-      // Nếu d đã là yyyy-mm-dd thì giữ nguyên, nếu không thì chuyển về yyyy-mm-dd
       if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
       try {
         const dateObj = parseISO(d);
@@ -508,9 +514,10 @@ export default function WorkplaceChart() {
         return d;
       }
     });
-    setChartData({ labels, datasets });
+    setChartData({ labels, areas: filteredAreas });
   }, [selectedWeek, weekData]);
   const exportToExcel = () => {
+    if (!chartData?.labels?.length) return;
     const headers = ["Khu vực", "Ngày", "Normal", "Rework", "Tổng"];
     const rows = [];
     Object.entries(dataMap)
@@ -536,11 +543,193 @@ export default function WorkplaceChart() {
     XLSX.utils.book_append_sheet(wb, ws, "Sản lượng chi tiết");
     XLSX.writeFile(wb, `san_luong_chi_tiet_tuan_${selectedWeek}.xlsx`);
   };
+
+  const dashboardStats = useMemo(() => {
+    if (!chartData?.labels?.length || !Object.keys(dataMap).length) {
+      return {
+        totalGood: 0,
+        totalNG: 0,
+        grandTotal: 0,
+        areaCount: 0,
+        dayCount: 0,
+      };
+    }
+    let totalNormal = 0;
+    let totalNGSum = 0;
+    Object.entries(dataMap).forEach(([area, dayArr]) => {
+      chartData.labels.forEach((_, idx) => {
+        const { Day, Night } = dayArr[idx] || { Day: {}, Night: {} };
+        let normal;
+        let ng;
+        if (area === "CNC") {
+          normal = Day.normal;
+          ng = Day.ng_normal + Day.ng_rework;
+        } else {
+          normal = Day.normal + Night.normal;
+          ng =
+            Day.ng_normal + Night.ng_normal + Day.ng_rework + Night.ng_rework;
+        }
+        totalNormal += normal;
+        totalNGSum += ng;
+      });
+    });
+    return {
+      totalGood: totalNormal,
+      totalNG: totalNGSum,
+      grandTotal: totalNormal + totalNGSum,
+      areaCount: Object.keys(dataMap).length,
+      dayCount: chartData.labels.length,
+    };
+  }, [chartData, dataMap]);
+
+  const weekMeta = useMemo(() => {
+    if (!selectedWeek) return { weekNum: "", year: "" };
+    const [w, y] = selectedWeek.split("_");
+    return { weekNum: w, year: y };
+  }, [selectedWeek]);
+
+  const areaComboDataByArea = useMemo(() => {
+    if (!chartData?.labels?.length || !chartData?.areas?.length) return {};
+    const out = {};
+    chartData.areas.forEach((area) => {
+      const dayArr = dataMap[area];
+      const labels = chartData.labels;
+      const normals = labels.map((_, idx) => dayNormalTotal(area, dayArr, idx));
+      const ngs = labels.map((_, idx) => dayNGTotal(area, dayArr, idx));
+      const shortLabels = labels.map(formatDayLabelShort);
+      out[area] = {
+        labels: shortLabels,
+        datasets: [
+          {
+            type: "bar",
+            label: t("workplaceChart.comboBarLabel"),
+            data: normals,
+            backgroundColor: "rgba(14, 165, 233, 0.78)",
+            borderColor: "rgb(2, 132, 199)",
+            borderWidth: 0,
+            borderRadius: 3,
+            borderSkipped: false,
+            maxBarThickness: 26,
+            yAxisID: "y",
+          },
+          {
+            type: "line",
+            label: t("workplaceChart.comboLineLabel"),
+            data: ngs,
+            borderColor: "rgb(225, 29, 72)",
+            backgroundColor: "rgba(225, 29, 72, 0.04)",
+            tension: 0.35,
+            pointRadius: 2,
+            pointHoverRadius: 4,
+            pointBackgroundColor: "rgb(225, 29, 72)",
+            pointBorderColor: "#fff",
+            pointBorderWidth: 1,
+            yAxisID: "y1",
+            borderWidth: 2,
+            fill: false,
+          },
+        ],
+      };
+    });
+    return out;
+  }, [chartData, dataMap, t]);
+
+  const comboChartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 420, easing: "easeOutCubic" },
+      interaction: { mode: "index", intersect: false },
+      layout: {
+        padding: { top: 2, right: 4, bottom: 0, left: 2 },
+      },
+      plugins: {
+        legend: {
+          position: "bottom",
+          align: "center",
+          labels: {
+            boxWidth: 8,
+            boxHeight: 8,
+            padding: 10,
+            usePointStyle: true,
+            pointStyle: "rectRounded",
+            font: { size: 10, weight: "500", family: "system-ui, sans-serif" },
+            color: "#475569",
+          },
+        },
+        tooltip: {
+          backgroundColor: "rgba(15, 23, 42, 0.92)",
+          titleFont: { size: 11, weight: "600" },
+          bodyFont: { size: 11 },
+          padding: 10,
+          cornerRadius: 8,
+          displayColors: true,
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.parsed.y;
+              const num = typeof v === "number" ? v : 0;
+              return ` ${ctx.dataset.label}: ${num.toLocaleString()}`;
+            },
+          },
+        },
+        datalabels: { display: false },
+      },
+      scales: {
+        x: {
+          border: { display: false },
+          grid: {
+            display: true,
+            color: "rgba(148, 163, 184, 0.18)",
+            drawTicks: false,
+          },
+          ticks: {
+            maxRotation: 0,
+            minRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 8,
+            font: { size: 9, weight: "500" },
+            color: "#64748b",
+            padding: 4,
+          },
+        },
+        y: {
+          type: "linear",
+          position: "left",
+          title: { display: false },
+          border: { display: false },
+          grid: {
+            color: "rgba(148, 163, 184, 0.22)",
+            lineWidth: 1,
+          },
+          ticks: {
+            font: { size: 9, weight: "500" },
+            color: "#64748b",
+            padding: 6,
+            maxTicksLimit: 5,
+          },
+          beginAtZero: true,
+        },
+        y1: {
+          type: "linear",
+          position: "right",
+          title: { display: false },
+          border: { display: false },
+          grid: { drawOnChartArea: false },
+          ticks: {
+            font: { size: 9, weight: "500" },
+            color: "#94a3b8",
+            padding: 6,
+            maxTicksLimit: 5,
+          },
+          beginAtZero: true,
+        },
+      },
+    }),
+    [t],
+  );
+
   return (
-    <div
-      className="flex flex-col lg:flex-row h-screen overflow-hidden"
-      style={{ backgroundColor: "#eef4ff" }}
-    >
+    <div className="flex flex-col lg:flex-row h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60">
       {/* Toggle Button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -565,12 +754,12 @@ export default function WorkplaceChart() {
           {/* Year Selection */}
           <div>
             <label className="block text-white font-medium mb-2 text-sm">
-              Năm
+              {t("workplaceChart.year")}
             </label>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             >
               {[2026, 2025, 2024, 2023].map((year) => (
                 <option key={year} value={year}>
@@ -589,7 +778,7 @@ export default function WorkplaceChart() {
                 <select
                   value={selectedWeek}
                   onChange={(e) => setSelectedWeek(e.target.value)}
-                  className="w-full bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 >
                   {Object.keys(weekData).map((week) => (
                     <option key={week} value={week}>
@@ -693,247 +882,276 @@ export default function WorkplaceChart() {
           </div>
         )}
       </Sidebar>
-      {/* Chart và bảng tổng */}
       <div
-        className={`flex-1 flex flex-col lg:flex-row gap-3 sm:gap-6 px-2 sm:px-4 transition-all duration-300 ${
+        className={`flex-1 flex flex-col min-h-0 px-3 sm:px-5 pb-3 transition-all duration-300 ${
           sidebarOpen ? "ml-72" : "ml-0"
         }`}
-        style={{ minHeight: 0, overflow: "hidden" }}
       >
-        {/* Chart */}
-        <div
-          className="flex-1 lg:flex-[7] bg-white rounded-xl shadow-lg px-4 max-h-[65vh] lg:max-h-[93vh]"
-          style={{
-            minHeight: 0,
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {chartData ? (
-            <div
-              className="relative flex-1"
-              style={{
-                minHeight: 0,
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-              >
-                <Bar
-                  data={chartData}
-                  options={{
-                    indexAxis: "y",
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { display: false },
-                      tooltip: {
-                        callbacks: {
-                          label: (context) => {
-                            const label = context.dataset.label || "";
-                            const val = context.parsed.x || 0;
-                            return `${label}: ${val.toLocaleString()}`;
-                          },
-                        },
-                      },
-                      datalabels: { display: false },
-                    },
-                    layout: {
-                      padding: 0,
-                    },
-                    scales: {
-                      x: {
-                        beginAtZero: true,
-                        stacked: false,
-                        barPercentage: 0.2,
-                        categoryPercentage: 0.5,
-                        grid: { display: false, color: "#000" },
-                        ticks: {
-                          color: "#000",
-                          font: { weight: "bold", size: 15 },
-                        },
-                      },
-                      y: {
-                        ticks: {
-                          callback: function (value) {
-                            const label = this.getLabelForValue(value);
-                            return label.length > 15
-                              ? label.slice(0, 15) + "..."
-                              : label;
-                          },
-                          font: { size: 15, weight: "bold" },
-                          color: "#000",
-                          autoSkip: true,
-                          maxTicksLimit: 20,
-                        },
-                        grid: {
-                          display: true,
-                          color: "#000",
-                          lineWidth: 0.8,
-                        },
-                      },
-                    },
-                  }}
-                  plugins={[ChartDataLabels, extraLabelPlugin]}
-                  height={null}
-                />
+        <div className="flex flex-1 flex-col min-h-0">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="shrink-0 border-b border-slate-300/80 bg-gradient-to-b from-slate-200/95 to-slate-100 px-4 pt-4 pb-3 dark:border-slate-800 dark:from-slate-950 dark:to-slate-950">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-700 dark:text-sky-400">
+                    {t("workplaceChart.dashboardBadge")}
+                  </p>
+                  <h1 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl dark:text-slate-50">
+                    {t("workplaceChart.dashboardTitle")}
+                  </h1>
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-600 dark:text-slate-400">
+                    {t("workplaceChart.dashboardSubtitle")}
+                  </p>
+                </div>
+                {weekMeta.weekNum ? (
+                  <div className="shrink-0 sm:text-right">
+                    <span className="inline-flex items-center rounded-full border border-slate-300/80 bg-slate-50/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm tabular-nums dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-200">
+                      {t("workplaceChart.weekPeriod", {
+                        week: weekMeta.weekNum,
+                        year: weekMeta.year,
+                      })}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                    <FiTrendingUp
+                      className="shrink-0 text-emerald-600 dark:text-emerald-400"
+                      size={14}
+                    />
+                    {t("workplaceChart.kpiTotalGood")}
+                  </div>
+                  <p className="mt-0.5 text-base font-bold tabular-nums leading-tight text-slate-900 dark:text-slate-50">
+                    {dashboardStats.totalGood.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                    <FiAlertTriangle
+                      className="shrink-0 text-rose-600 dark:text-rose-400"
+                      size={14}
+                    />
+                    {t("workplaceChart.kpiTotalNG")}
+                  </div>
+                  <p className="mt-0.5 text-base font-bold tabular-nums leading-tight text-slate-900 dark:text-slate-50">
+                    {dashboardStats.totalNG.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                    <FiLayers
+                      className="shrink-0 text-indigo-600 dark:text-indigo-400"
+                      size={14}
+                    />
+                    {t("workplaceChart.kpiAreas")}
+                  </div>
+                  <p className="mt-0.5 text-base font-bold tabular-nums leading-tight text-slate-900 dark:text-slate-50">
+                    {dashboardStats.areaCount}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                    <FiCalendar
+                      className="shrink-0 text-sky-600 dark:text-sky-400"
+                      size={14}
+                    />
+                    {t("workplaceChart.kpiDays")}
+                  </div>
+                  <p className="mt-0.5 text-base font-bold tabular-nums leading-tight text-slate-900 dark:text-slate-50">
+                    {dashboardStats.dayCount}
+                  </p>
+                </div>
               </div>
             </div>
-          ) : (
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <p className="text-gray-500">
-                {t("workplaceChart.pleaseSelectExcel")}
-              </p>
-            </div>
-          )}
-        </div>
-        {/* Bảng tổng - Hiển thị khi màn hình >= 1520px */}
-        {showTable && (
-          <div
-            className="flex flex-col bg-white rounded-xl shadow-lg p-3 overflow-y-auto"
-            style={{
-              flex: "4",
-              minWidth: "280px",
-              maxHeight: "93vh",
-            }}
-          >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-2">
-              <h3 className="text-base sm:text-xl font-bold uppercase px-1 sm:px-2">
-                {t("workplaceChart.outputByArea")}
-              </h3>
 
-              <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-                <select
-                  value={selectedArea}
-                  onChange={(e) => setSelectedArea(e.target.value)}
-                  className="border border-gray-300 rounded-md px-2 py-1 text-xs sm:text-sm focus:outline-none flex-1 sm:flex-none"
-                  style={{ minWidth: 100 }}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-300/80 bg-slate-200/35 px-4 py-2 dark:border-slate-800 dark:bg-black/20">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-800 dark:text-slate-200">
+                  {t("workplaceChart.chartSectionTitle")}
+                </h2>
+                <p className="text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+                  {t("workplaceChart.chartSectionHint")}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDataTableOpen(true)}
+                  disabled={!chartData?.labels?.length}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-sky-600 dark:hover:bg-sky-500"
                 >
-                  <option value="">{t("workplaceChart.selectArea")}</option>
-                  {Object.keys(dataMap).map((area) => (
-                    <option key={area} value={area}>
-                      {t(`areas.${area}`)}
-                    </option>
-                  ))}
-                </select>
+                  <FiTable size={14} strokeWidth={2.5} />
+                  {t("workplaceChart.openDataTable")}
+                </button>
+                {chartData?.areas?.length ? (
+                  <span className="inline-flex items-baseline gap-1.5 rounded-md border border-slate-300/80 bg-slate-50/90 px-2.5 py-1 text-[11px] font-medium text-slate-600 tabular-nums dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-300">
+                    <span className="text-slate-600 dark:text-slate-400">
+                      {t("workplaceChart.grandTotal")}
+                    </span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-50">
+                      {dashboardStats.grandTotal.toLocaleString()}
+                    </span>
+                  </span>
+                ) : null}
               </div>
             </div>
-            {chartData ? (
-              tableView === "detailed" ? (
-                <>
-                  <table
-                    className="min-w-full text-left border-collapse table-auto text-sm"
-                    style={{ fontSize: "0.875rem", lineHeight: 1.2 }}
-                  >
-                    <thead>
-                      <tr className="uppercase">
-                        <th className="border-b pb-1" style={{ width: "35%" }}>
-                          {t("workplaceChart.areaDay")}
-                        </th>
-                        <th
-                          className="border-b pb-1 text-right"
-                          style={{ width: "25%" }}
-                        >
-                          {t("workplaceChart.normal")}
-                        </th>
-                        <th
-                          className="border-b pb-1 text-right"
-                          style={{ width: "20%" }}
-                        >
-                          NG
-                        </th>
-                        <th
-                          className="border-b pb-1 text-right font-bold"
-                          style={{ width: "20%" }}
-                        >
-                          {t("workplaceChart.total")}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(dataMap)
-                        .filter(
-                          ([area]) =>
-                            selectedArea === "" || selectedArea === area,
-                        )
-                        .map(([area, dayArr]) => {
-                          let totalNormal = 0;
-                          let totalNG = 0;
-                          chartData.labels.forEach((_, idx) => {
-                            const { Day, Night } = dayArr[idx] || {
-                              Day: {},
-                              Night: {},
-                            };
-                            let normal, ng;
-                            if (area === "CNC") {
-                              normal = Day.normal;
-                              ng = Day.ng_normal + Day.ng_rework;
-                            } else {
-                              normal = Day.normal + Night.normal;
-                              ng =
-                                Day.ng_normal +
-                                Night.ng_normal +
-                                Day.ng_rework +
-                                Night.ng_rework;
-                            }
-                            totalNormal += normal;
-                            totalNG += ng;
-                          });
-                          return (
-                            <React.Fragment key={area}>
-                              <tr
-                                className="bg-gray-200 font-semibold uppercase"
-                                style={{ fontSize: "0.9rem" }}
-                              >
-                                <td style={{ padding: "6px 8px" }}>
-                                  {t(`areas.${area}`)}
-                                </td>
-                                <td
-                                  className="text-right"
-                                  style={{ padding: "6px 8px" }}
-                                >
-                                  {totalNormal.toLocaleString()}
-                                </td>
-                                <td
-                                  className="text-right"
-                                  style={{ padding: "6px 8px" }}
-                                >
-                                  {totalNG.toLocaleString()}
-                                </td>
-                                <td
-                                  className="text-right"
-                                  style={{ padding: "6px 8px" }}
-                                >
-                                  {(totalNormal + totalNG).toLocaleString()}
-                                </td>
-                              </tr>
-                              {chartData.labels.map((label, idx) => {
+
+            {chartData?.areas?.length ? (
+              <div className="min-h-[200px] flex-1 overflow-y-auto bg-slate-200/35 p-3 dark:bg-black/35 sm:p-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {chartData.areas.map((area) => {
+                    const combo = areaComboDataByArea[area];
+                    if (!combo) return null;
+                    return (
+                      <div
+                        key={area}
+                        className="flex flex-col rounded-xl border border-slate-300/85 bg-slate-50 p-2 shadow-[0_1px_3px_rgba(15,23,42,0.08)] dark:border-slate-700/90 dark:bg-slate-900/90"
+                      >
+                        <div className="mb-1 flex items-center justify-between gap-2 border-b border-slate-200/90 pb-1.5 dark:border-slate-700/80">
+                          <h3 className="truncate text-[11px] font-bold uppercase tracking-wide text-slate-800 dark:text-slate-50">
+                            {t(`areas.${area}`)}
+                          </h3>
+                          <span className="shrink-0 rounded bg-slate-200/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {t("workplaceChart.panelLabel")}
+                          </span>
+                        </div>
+                        <div className="relative h-[200px] w-full sm:h-[200px] xl:h-[250px]">
+                          <Chart
+                            type="bar"
+                            data={combo}
+                            options={comboChartOptions}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-1 items-center justify-center bg-slate-200/35 px-4 py-10 dark:bg-black/35">
+                <p className="max-w-sm text-center text-sm text-slate-600 dark:text-slate-400">
+                  {t("workplaceChart.pleaseSelectExcel")}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {dataTableOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="workplace-data-table-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setDataTableOpen(false)}
+            aria-label={t("workplaceChart.closeDataTable")}
+          />
+          <div
+            className="relative z-10 flex min-h-0 max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-300/80 bg-gradient-to-b from-slate-200/95 to-slate-100 px-4 py-3 dark:border-slate-800 dark:from-slate-950 dark:to-slate-950 sm:px-5">
+              <div className="min-w-0">
+                <h2
+                  id="workplace-data-table-title"
+                  className="text-base font-bold text-slate-900 dark:text-slate-50 sm:text-lg"
+                >
+                  {t("workplaceChart.tableSectionTitle")}
+                </h2>
+                <p className="mt-0.5 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+                  {t("workplaceChart.tableSectionHint")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDataTableOpen(false)}
+                className="shrink-0 rounded-lg p-2 text-slate-600 transition hover:bg-slate-300/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                aria-label={t("workplaceChart.closeDataTable")}
+              >
+                <FiX size={20} strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="flex shrink-0 flex-col gap-2 border-b border-slate-300/80 bg-slate-50/90 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-900/95 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <div className="flex rounded-lg border border-slate-300/80 bg-slate-100/90 p-0.5 text-[11px] font-semibold dark:border-slate-700/90 dark:bg-slate-950/80">
+                <button
+                  type="button"
+                  onClick={() => setTableView("detailed")}
+                  className={`rounded-md px-2.5 py-1.5 transition sm:px-3 ${
+                    tableView === "detailed"
+                      ? "bg-slate-50 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100"
+                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                  }`}
+                >
+                  {t("workplaceChart.viewDetailed")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTableView("summary")}
+                  className={`rounded-md px-2.5 py-1.5 transition sm:px-3 ${
+                    tableView === "summary"
+                      ? "bg-slate-50 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100"
+                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                  }`}
+                >
+                  {t("workplaceChart.viewSummary")}
+                </button>
+              </div>
+              <select
+                value={selectedArea}
+                onChange={(e) => setSelectedArea(e.target.value)}
+                className="w-full rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/35 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-100 sm:max-w-[220px]"
+              >
+                <option value="">{t("workplaceChart.selectArea")}</option>
+                {Object.keys(dataMap).map((area) => (
+                  <option key={area} value={area}>
+                    {t(`areas.${area}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-200/35 px-4 py-3 dark:bg-black/35 sm:px-5">
+              {chartData ? (
+                tableView === "detailed" ? (
+                  <>
+                    <div className="overflow-x-auto rounded-xl border border-slate-300/85 dark:border-slate-700/90">
+                      <table className="w-full min-w-[520px] border-collapse text-left text-xs text-slate-700 dark:text-slate-200">
+                        <thead>
+                          <tr className="uppercase">
+                            <th className="sticky top-0 z-[1] bg-slate-200/90 px-3 py-2 text-[10px] font-semibold tracking-wide text-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
+                              {t("workplaceChart.areaDay")}
+                            </th>
+                            <th className="sticky top-0 z-[1] bg-slate-200/90 px-3 py-2 text-right text-[10px] font-semibold tracking-wide text-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
+                              {t("workplaceChart.normal")}
+                            </th>
+                            <th className="sticky top-0 z-[1] bg-slate-200/90 px-3 py-2 text-right text-[10px] font-semibold tracking-wide text-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
+                              {t("workplaceChart.ngColumn")}
+                            </th>
+                            <th className="sticky top-0 z-[1] bg-slate-200/90 px-3 py-2 text-right text-[10px] font-semibold tracking-wide text-slate-800 dark:bg-slate-900/95 dark:text-slate-200">
+                              {t("workplaceChart.total")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(dataMap)
+                            .filter(
+                              ([area]) =>
+                                selectedArea === "" || selectedArea === area,
+                            )
+                            .map(([area, dayArr]) => {
+                              let totalNormal = 0;
+                              let totalNG = 0;
+                              chartData.labels.forEach((_, idx) => {
                                 const { Day, Night } = dayArr[idx] || {
-                                  Day: {
-                                    normal: 0,
-                                    ng_normal: 0,
-                                    ng_rework: 0,
-                                  },
-                                  Night: {
-                                    normal: 0,
-                                    ng_normal: 0,
-                                    ng_rework: 0,
-                                  },
+                                  Day: {},
+                                  Night: {},
                                 };
                                 let normal, ng;
                                 if (area === "CNC") {
@@ -947,166 +1165,171 @@ export default function WorkplaceChart() {
                                     Day.ng_rework +
                                     Night.ng_rework;
                                 }
-                                const total = normal + ng; // Tổng = good + NG
-                                if (total === 0) return null;
-                                return (
-                                  <tr
-                                    key={idx}
-                                    className="text-gray-700"
-                                    style={{ fontSize: "0.8rem" }}
-                                  >
-                                    <td
-                                      style={{
-                                        paddingLeft: 32,
-                                        paddingTop: 2,
-                                        paddingBottom: 2,
-                                      }}
-                                    >
-                                      {label}
+                                totalNormal += normal;
+                                totalNG += ng;
+                              });
+                              return (
+                                <React.Fragment key={area}>
+                                  <tr className="bg-slate-200/80 text-[11px] font-semibold uppercase text-slate-800 dark:bg-slate-900/90 dark:text-slate-100">
+                                    <td className="px-3 py-2">
+                                      {t(`areas.${area}`)}
                                     </td>
-                                    <td
-                                      className="text-right"
-                                      style={{
-                                        paddingTop: 2,
-                                        paddingBottom: 2,
-                                      }}
-                                    >
-                                      {normal.toLocaleString()}
+                                    <td className="px-3 py-2 text-right tabular-nums">
+                                      {totalNormal.toLocaleString()}
                                     </td>
-                                    <td
-                                      className="text-right"
-                                      style={{
-                                        paddingTop: 2,
-                                        paddingBottom: 2,
-                                      }}
-                                    >
-                                      {ng.toLocaleString()}
+                                    <td className="px-3 py-2 text-right tabular-nums">
+                                      {totalNG.toLocaleString()}
                                     </td>
-                                    <td
-                                      className="text-right"
-                                      style={{
-                                        paddingTop: 2,
-                                        paddingBottom: 2,
-                                      }}
-                                    >
-                                      {total.toLocaleString()}
+                                    <td className="px-3 py-2 text-right tabular-nums">
+                                      {(totalNormal + totalNG).toLocaleString()}
                                     </td>
                                   </tr>
-                                );
-                              })}
-                            </React.Fragment>
+                                  {chartData.labels.map((label, idx) => {
+                                    const { Day, Night } = dayArr[idx] || {
+                                      Day: {
+                                        normal: 0,
+                                        ng_normal: 0,
+                                        ng_rework: 0,
+                                      },
+                                      Night: {
+                                        normal: 0,
+                                        ng_normal: 0,
+                                        ng_rework: 0,
+                                      },
+                                    };
+                                    let normal, ng;
+                                    if (area === "CNC") {
+                                      normal = Day.normal;
+                                      ng = Day.ng_normal + Day.ng_rework;
+                                    } else {
+                                      normal = Day.normal + Night.normal;
+                                      ng =
+                                        Day.ng_normal +
+                                        Night.ng_normal +
+                                        Day.ng_rework +
+                                        Night.ng_rework;
+                                    }
+                                    const total = normal + ng; // Tổng = good + NG
+                                    if (total === 0) return null;
+                                    return (
+                                      <tr
+                                        key={idx}
+                                        className="border-b border-slate-100/90 text-[11px] text-slate-600 transition hover:bg-sky-50/50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/50"
+                                      >
+                                        <td className="pl-8 pr-3 py-1.5 text-slate-600 dark:text-slate-400">
+                                          {label}
+                                        </td>
+                                        <td className="px-3 py-1.5 text-right tabular-nums">
+                                          {normal.toLocaleString()}
+                                        </td>
+                                        <td className="px-3 py-1.5 text-right tabular-nums">
+                                          {ng.toLocaleString()}
+                                        </td>
+                                        <td className="px-3 py-1.5 text-right tabular-nums font-medium text-slate-800 dark:text-slate-100">
+                                          {total.toLocaleString()}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </React.Fragment>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-slate-300/80 pt-3 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openDetailModal("Assembly", getCurrentWeekNumber())
+                        }
+                        className="rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-sky-700"
+                      >
+                        {t("workplaceChart.viewDetail")}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={exportToExcel}
+                        className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                      >
+                        {t("workplaceChart.exportExcel")}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-slate-300/85 dark:border-slate-700/90">
+                    <table className="w-full min-w-[520px] border-collapse text-left text-xs text-slate-700 dark:text-slate-200">
+                      <thead>
+                        <tr className="uppercase">
+                          <th className="border-b border-slate-300/80 bg-slate-200/90 px-3 py-2 text-[10px] font-semibold tracking-wide text-slate-700 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-300">
+                            {t("workplaceChart.area")}
+                          </th>
+                          <th className="border-b border-slate-300/80 bg-slate-200/90 px-3 py-2 text-right text-[10px] font-semibold tracking-wide text-slate-700 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-300">
+                            {t("workplaceChart.normal")}
+                          </th>
+                          <th className="border-b border-slate-300/80 bg-slate-200/90 px-3 py-2 text-right text-[10px] font-semibold tracking-wide text-slate-700 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-300">
+                            {t("workplaceChart.rework")}
+                          </th>
+                          <th className="border-b border-slate-300/80 bg-slate-200/90 px-3 py-2 text-right text-[10px] font-semibold tracking-wide text-slate-800 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-200">
+                            {t("workplaceChart.total")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(dataMap).map(([area, dayArr]) => {
+                          let totalNormal = 0;
+                          let totalRework = 0;
+                          dayArr.forEach(({ Day, Night }, idx) => {
+                            let normal = Day.normal;
+                            let rework = Day.rework;
+                            if (area === "CNC") {
+                              const nextNight =
+                                idx + 1 < dayArr.length
+                                  ? dayArr[idx + 1].Night
+                                  : { normal: 0, rework: 0 };
+                              normal += nextNight.normal;
+                              rework += nextNight.rework;
+                            } else {
+                              normal += Night.normal;
+                              rework += Night.rework;
+                            }
+                            totalNormal += normal;
+                            totalRework += rework;
+                          });
+                          return (
+                            <tr
+                              key={area}
+                              className="border-b border-slate-100 text-[11px] font-medium text-slate-800 transition hover:bg-slate-50/90 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800/80"
+                            >
+                              <td className="px-3 py-2">
+                                {t(`areas.${area}`)}
+                              </td>
+                              <td className="px-3 py-2 text-right tabular-nums">
+                                {totalNormal.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2 text-right tabular-nums">
+                                {totalRework.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                                {(totalNormal + totalRework).toLocaleString()}
+                              </td>
+                            </tr>
                           );
                         })}
-                    </tbody>
-                  </table>
-                  {/* Nút xuất Excel */}
-                  <div className="mt-4 flex justify-end gap-3">
-                    <button
-                      onClick={() =>
-                        openDetailModal("Assembly", getCurrentWeekNumber())
-                      }
-                      className="bg-blue-600 text-white px-4 py-2 rounded font-bold"
-                    >
-                      {t("workplaceChart.viewDetail")}
-                    </button>
-
-                    <button
-                      onClick={exportToExcel}
-                      className="font-bold text-white px-3 py-2 bg-green-600 rounded hover:bg-green-700"
-                    >
-                      {t("workplaceChart.exportExcel")}
-                    </button>
+                      </tbody>
+                    </table>
                   </div>
-                </>
+                )
               ) : (
-                // summary view: bảng đơn giản tổng mỗi khu vực
-                <table
-                  className="min-w-full text-left border-collapse table-auto text-sm"
-                  style={{ fontSize: "0.875rem", lineHeight: 1.2 }}
-                >
-                  <thead>
-                    <tr>
-                      <th className="border-b pb-1" style={{ width: "40%" }}>
-                        {t("workplaceChart.area")}
-                      </th>
-                      <th
-                        className="border-b pb-1 text-right"
-                        style={{ width: "20%" }}
-                      >
-                        {t("workplaceChart.normal")}
-                      </th>
-                      <th
-                        className="border-b pb-1 text-right"
-                        style={{ width: "20%" }}
-                      >
-                        {t("workplaceChart.rework")}
-                      </th>
-                      <th
-                        className="border-b pb-1 text-right font-bold"
-                        style={{ width: "20%" }}
-                      >
-                        {t("workplaceChart.total")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(dataMap).map(([area, dayArr]) => {
-                      let totalNormal = 0;
-                      let totalRework = 0;
-                      dayArr.forEach(({ Day, Night }, idx) => {
-                        let normal = Day.normal;
-                        let rework = Day.rework;
-                        if (area === "CNC") {
-                          const nextNight =
-                            idx + 1 < dayArr.length
-                              ? dayArr[idx + 1].Night
-                              : { normal: 0, rework: 0 };
-                          normal += nextNight.normal;
-                          rework += nextNight.rework;
-                        } else {
-                          normal += Night.normal;
-                          rework += Night.rework;
-                        }
-                        totalNormal += normal;
-                        totalRework += rework;
-                      });
-                      return (
-                        <tr
-                          key={area}
-                          className="font-semibold"
-                          style={{ fontSize: "1rem" }}
-                        >
-                          <td style={{ padding: "6px 8px" }}>{area}</td>
-                          <td
-                            className="text-right"
-                            style={{ padding: "6px 8px" }}
-                          >
-                            {totalNormal.toLocaleString()}
-                          </td>
-                          <td
-                            className="text-right"
-                            style={{ padding: "6px 8px" }}
-                          >
-                            {totalRework.toLocaleString()}
-                          </td>
-                          <td
-                            className="text-right"
-                            style={{ padding: "6px 8px" }}
-                          >
-                            {(totalNormal + totalRework).toLocaleString()}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )
-            ) : (
-              <p>{t("workplaceChart.noData")}</p>
-            )}
+                <p className="py-6 text-center text-sm text-slate-600 dark:text-slate-400">
+                  {t("workplaceChart.noData")}
+                </p>
+              )}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
       <DetailedModal
         isOpen={isModalOpen}
         onClose={closeDetailModal}

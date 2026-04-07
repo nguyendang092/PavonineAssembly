@@ -2013,7 +2013,7 @@ function SeasonalStaffAttendance() {
       >
         {/* Header */}
         <div className="mb-6">
-          <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-600">
+          <div className="rounded-lg border-t-4 border-blue-600 bg-white p-6 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-3xl font-extrabold text-[#1e293b] uppercase tracking-wide">
@@ -2657,7 +2657,7 @@ function SeasonalStaffAttendance() {
                     name="stt"
                     value={form.stt}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2670,7 +2670,7 @@ function SeasonalStaffAttendance() {
                     value={form.mnv}
                     onChange={handleChange}
                     required
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2682,7 +2682,7 @@ function SeasonalStaffAttendance() {
                     name="mvt"
                     value={form.mvt}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -2695,7 +2695,7 @@ function SeasonalStaffAttendance() {
                     value={form.hoVaTen}
                     onChange={handleChange}
                     required
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2706,7 +2706,7 @@ function SeasonalStaffAttendance() {
                     name="gioiTinh"
                     value={form.gioiTinh}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   >
                     <option value="YES">YES (Nữ)</option>
                     <option value="NO">NO (Nam)</option>
@@ -2721,7 +2721,7 @@ function SeasonalStaffAttendance() {
                     name="ngayThangNamSinh"
                     value={form.ngayThangNamSinh}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2733,7 +2733,7 @@ function SeasonalStaffAttendance() {
                     name="maBoPhan"
                     value={form.maBoPhan}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2746,7 +2746,7 @@ function SeasonalStaffAttendance() {
                     value={form.boPhan}
                     onChange={handleChange}
                     required
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2759,7 +2759,7 @@ function SeasonalStaffAttendance() {
                     value={form.gioVao}
                     onChange={handleChange}
                     placeholder="HH:MM hoặc mã phép (PN, KP,...)"
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2771,7 +2771,7 @@ function SeasonalStaffAttendance() {
                     name="gioRa"
                     value={form.gioRa}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2783,7 +2783,7 @@ function SeasonalStaffAttendance() {
                     name="caLamViec"
                     value={form.caLamViec}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <div>
@@ -2795,7 +2795,7 @@ function SeasonalStaffAttendance() {
                     name="chamCong"
                     value={form.chamCong}
                     onChange={handleChange}
-                    className="w-full border-2 border-blue-200 p-2 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm bg-white"
+                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
                 <button
@@ -3086,7 +3086,9 @@ function SeasonalStaffAttendance() {
                       <tr
                         key={emp.id || idx}
                         className={`border-b transition-colors hover:bg-blue-100 ${
-                          idx % 2 === 0 ? "bg-blue-50" : "bg-white"
+                          idx % 2 === 0
+                            ? "bg-blue-50 dark:bg-slate-800/70"
+                            : "bg-white dark:bg-slate-900"
                         }`}
                       >
                         <td className="px-3 py-3 text-xs text-gray-800 text-center font-bold border-r border-gray-300">
@@ -3194,7 +3196,9 @@ function SeasonalStaffAttendance() {
                 <tr
                   key={emp.id}
                   className={`transition-colors hover:bg-blue-200 ${
-                    idx % 2 === 0 ? "bg-blue-100" : "bg-white"
+                    idx % 2 === 0
+                      ? "bg-blue-100 dark:bg-slate-800"
+                      : "bg-white dark:bg-slate-900"
                   }`}
                 >
                   <td className="px-3 py-3 text-sm text-center font-bold text-gray-700">

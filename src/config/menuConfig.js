@@ -5,6 +5,11 @@ export const menuConfig = [
     path: "/",
   },
   {
+    key: "internalAnnouncements",
+    label: "navbar.internalAnnouncements",
+    path: "/email/login",
+  },
+  {
     key: "reports",
     label: "navbar.reports",
     type: "dropdown",
@@ -154,8 +159,6 @@ export const routeConfig = [
   { path: "/bangkhen2", element: "CertificateGenerator2" },
   { path: "/honor-board", element: "HonorBoard" },
   { path: "/nhietdo", element: "TemperatureMonitor" },
-  { path: "/employ", element: "Employ" },
-  { path: "/employ/:leader", element: "Employ" },
   { path: "/mold", element: "MoldManager" },
   { path: "/performance", element: "PerformanceChart" },
   { path: "/qr-code-generator", element: "QRCodeGenerator" },
@@ -167,5 +170,10 @@ export const routeConfig = [
   },
   { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
   { path: "/user-department", element: "UserDepartmentManager" },
+  {
+    path: "/email/login",
+    element: "InternalAnnouncementsLogin",
+  },
+  { path: "/email", element: "InternalAnnouncements" },
   { path: "/downloads", element: "Downloads" },
 ];

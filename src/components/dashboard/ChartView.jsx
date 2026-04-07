@@ -127,7 +127,7 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
   return (
     <div className="overflow-x-auto">
       {hasWarning && (
-        <div className="mb-4 p-3 rounded bg-red-100 text-red-700 font-medium">
+        <div className="mb-4 rounded bg-red-100 p-3 font-medium text-red-700 dark:bg-red-950/50 dark:text-red-300">
           ⚠️{" "}
           {t("chartView.warning", {
             count: alerts.length,
@@ -276,31 +276,44 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
 
       {hasWarning && (
         <div className="mt-2">
-          <h3 className="text-lg font-semibold mb-2">
+          <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
             🔍 {t("chartView.alertDetail")}
           </h3>
-          <div className="overflow-auto border rounded">
-            <table className="min-w-full text-sm text-left border-collapse">
-              <thead className="bg-gray-100 text-gray-800">
+          <div className="overflow-auto rounded border border-slate-200 dark:border-slate-600">
+            <table className="min-w-full border-collapse text-left text-sm">
+              <thead className="bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-200">
                 <tr>
-                  <th className="px-4 py-2 border">{t("chartView.date")}</th>
-                  <th className="px-4 py-2 border">{t("chartView.machine")}</th>
-                  <th className="px-4 py-2 border">{t("chartView.value")}</th>
-                  <th className="px-4 py-2 border">{t("chartView.status")}</th>
+                  <th className="border border-slate-200 px-4 py-2 dark:border-slate-600">
+                    {t("chartView.date")}
+                  </th>
+                  <th className="border border-slate-200 px-4 py-2 dark:border-slate-600">
+                    {t("chartView.machine")}
+                  </th>
+                  <th className="border border-slate-200 px-4 py-2 dark:border-slate-600">
+                    {t("chartView.value")}
+                  </th>
+                  <th className="border border-slate-200 px-4 py-2 dark:border-slate-600">
+                    {t("chartView.status")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {alerts.map((alert, i) => (
-                  <tr key={i} className="bg-white even:bg-gray-50">
-                    <td className="px-4 py-2 border">{alert.day}</td>
-                    <td className="px-4 py-2 border">
+                  <tr
+                    key={i}
+                    className="bg-white even:bg-gray-50 dark:bg-slate-900 dark:even:bg-slate-800/80"
+                  >
+                    <td className="border border-slate-200 px-4 py-2 text-slate-800 dark:border-slate-600 dark:text-slate-200">
+                      {alert.day}
+                    </td>
+                    <td className="border border-slate-200 px-4 py-2 text-slate-800 dark:border-slate-600 dark:text-slate-200">
                       {t(`machineNames.${alert.machine}`)}
                     </td>
-                    <td className="px-4 py-2 border">
+                    <td className="border border-slate-200 px-4 py-2 text-slate-800 dark:border-slate-600 dark:text-slate-200">
                       {alert.value}
                       {type === "temperature" ? "°C" : "%"}
                     </td>
-                    <td className="px-4 py-2 border text-red-600">
+                    <td className="border border-slate-200 px-4 py-2 text-red-600 dark:border-slate-600 dark:text-red-400">
                       {alert.status}
                     </td>
                   </tr>

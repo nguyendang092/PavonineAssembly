@@ -151,8 +151,9 @@
     transition: .5s;
 }
 
+/* :not(:placeholder-shown) thay :valid — email khi gõ dở vẫn invalid nhưng đã có chữ, nhãn phải nổi (tránh đè chữ) */
 .auth-wrapper .input-box input:focus,
-.auth-wrapper .input-box input:valid {
+.auth-wrapper .input-box input:not(:placeholder-shown) {
     border-bottom-color: #764ba2;
 }
 
@@ -168,9 +169,14 @@
 }
 
 .auth-wrapper .input-box input:focus ~ label,
-.auth-wrapper .input-box input:valid ~ label {
+.auth-wrapper .input-box input:not(:placeholder-shown) ~ label,
+.auth-wrapper .input-box input:-webkit-autofill ~ label {
     top: -5px;
     color: #764ba2;
+}
+
+.auth-wrapper .input-box input:-webkit-autofill {
+    border-bottom-color: #764ba2;
 }
 
 .auth-wrapper .input-box box-icon {
@@ -183,7 +189,7 @@
 }
 
 .auth-wrapper .input-box input:focus ~ box-icon,
-.auth-wrapper .input-box input:valid ~ box-icon {
+.auth-wrapper .input-box input:not(:placeholder-shown) ~ box-icon {
     color: #764ba2;
 }
 
@@ -256,7 +262,8 @@
 }
 
 .auth-wrapper .input-box input:focus ~ .input-icon,
-.auth-wrapper .input-box input:valid ~ .input-icon {
+.auth-wrapper .input-box input:not(:placeholder-shown) ~ .input-icon,
+.auth-wrapper .input-box input:-webkit-autofill ~ .input-icon {
     color: #764ba2;
 }
 
@@ -601,7 +608,7 @@ body.signin-open .attendance-filter-menu {
     }
 
     .auth-wrapper .input-box input:focus ~ .input-icon,
-    .auth-wrapper .input-box input:valid ~ .input-icon {
+    .auth-wrapper .input-box input:not(:placeholder-shown) ~ .input-icon {
         color: #764ba2;
     }
 
@@ -868,4 +875,37 @@ body.signin-open .attendance-filter-menu {
     .auth-wrapper .input-box .btn {
         height: 40px;
     }
+}
+
+/* Dark theme — đồng bộ với html.dark (Tailwind class trên documentElement) */
+html.dark .auth-wrapper {
+    background: #0f172a;
+    border-color: #6366f1;
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.35);
+}
+
+html.dark .auth-wrapper .form-box h2 {
+    color: #f1f5f9;
+}
+
+html.dark .auth-wrapper .input-box input {
+    color: #f1f5f9;
+    border-bottom-color: rgba(148, 163, 184, 0.45);
+}
+
+html.dark .auth-wrapper .input-box label {
+    color: #94a3b8;
+}
+
+html.dark .auth-wrapper .input-box .input-icon {
+    color: #94a3b8;
+}
+
+html.dark .auth-wrapper .regi-link,
+html.dark .auth-wrapper .regi-link p {
+    color: #cbd5e1;
+}
+
+html.dark .auth-wrapper .regi-link a {
+    color: #a5b4fc;
 }

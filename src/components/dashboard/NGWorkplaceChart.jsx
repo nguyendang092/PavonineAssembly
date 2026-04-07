@@ -419,7 +419,7 @@ export default function NGWorkplaceChart() {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             >
               {[2026, 2025, 2024, 2023].map((year) => (
                 <option key={year} value={year}>
@@ -437,7 +437,7 @@ export default function NGWorkplaceChart() {
                 <select
                   value={selectedWeek}
                   onChange={(e) => setSelectedWeek(e.target.value)}
-                  className="w-full bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 >
                   {Object.keys(weekData)
                     .filter((week) => {
@@ -510,7 +510,7 @@ export default function NGWorkplaceChart() {
       >
         {/* Chart 2/3 */}
         <section
-          className="flex-1 lg:basis-2/3 bg-white rounded-xl shadow-lg px-4 sm:px-6 max-h-[65vh] lg:max-h-[93vh]"
+          className="flex-1 rounded-xl bg-white px-4 shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700 sm:px-6 lg:basis-2/3 max-h-[65vh] lg:max-h-[93vh]"
           style={{
             minHeight: 0,
             overflow: "hidden",
@@ -607,7 +607,7 @@ export default function NGWorkplaceChart() {
                   justifyContent: "center",
                 }}
               >
-                <p className="text-gray-400 text-base sm:text-lg font-medium">
+                <p className="text-base font-medium text-gray-400 dark:text-slate-500 sm:text-lg">
                   {t("workplaceNGChart.pleaseSelectExcel")}
                 </p>
               </div>
@@ -617,17 +617,17 @@ export default function NGWorkplaceChart() {
         {/* Bảng chi tiết 1/3 - Hiển thị khi màn hình >= 1520px */}
         {showTable && (
           <section
-            className="w-full lg:basis-1/3 bg-white rounded-xl shadow-lg p-4 sm:p-6 flex flex-col overflow-y-auto"
+            className="flex w-full flex-col overflow-y-auto rounded-xl bg-white p-4 shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700 sm:p-6 lg:basis-1/3"
             style={{ maxHeight: "93vh" }}
           >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
-              <h3 className="text-lg sm:text-xl font-bold text-black uppercase">
+            <div className="mb-4 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+              <h3 className="text-lg font-bold uppercase text-black dark:text-slate-100 sm:text-xl">
                 {t("workplaceNGChart.outputByArea")}
               </h3>
               <select
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full sm:w-auto border border-gray-300 rounded-md px-2 py-1 text-xs focus:outline-none min-w-[140px] bg-white"
+                className="min-w-[140px] w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:outline-none dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 sm:w-auto"
               >
                 <option value="">{t("workplaceNGChart.selectArea")}</option>
                 {Object.keys(dataMap).map((area) => (

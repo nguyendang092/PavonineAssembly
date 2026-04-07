@@ -274,7 +274,7 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
 
         {/* Bộ lọc */}
         {/* Bộ lọc + Nút xuất Excel: sang trọng, hiện đại (glassmorphism, gradient, icon) */}
-        <div className="flex flex-col gap-2 mb-4 px-4 pt-2 pb-3 rounded-2xl shadow border border-[#e0e7ef] bg-white/70 backdrop-blur-sm w-full max-w-2xl mx-auto">
+        <div className="mx-auto mb-4 flex w-full max-w-2xl flex-col gap-2 rounded-2xl border border-[#e0e7ef] bg-white/70 px-4 pb-3 pt-2 shadow backdrop-blur-sm dark:border-slate-600 dark:bg-slate-900/85">
           <div className="flex items-center gap-2">
             <input
               id="view-whole-week"
@@ -307,7 +307,7 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
                 id="area-select"
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value)}
-                className="border border-gray-300 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400 text-gray-800 text-sm"
+                className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
               >
                 {areas.map((a) => (
                   <option key={a} value={a}>
@@ -328,7 +328,7 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="border border-gray-300 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400 text-gray-800 text-sm"
+                className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
               />
             </div>
             <div className="flex flex-col min-w-[90px] flex-1">
@@ -342,7 +342,7 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
                 id="week-select"
                 value={selectedWeek}
                 onChange={(e) => setSelectedWeek(e.target.value)}
-                className="border border-gray-300 rounded-lg px-2 py-1 bg-white text-gray-800 text-sm cursor-not-allowed opacity-60"
+                className="cursor-not-allowed rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400"
                 disabled
               >
                 {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
@@ -365,7 +365,7 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
                 placeholder={t("detailedNGModal.searchModel")}
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="border border-gray-300 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400 text-gray-800 text-sm"
+                className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
               />
             </div>
             <div className="flex flex-col justify-end min-w-fit flex-1 items-end">
@@ -486,7 +486,11 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
                 {filteredData.slice(0, visibleCount).map((item, i) => (
                   <tr
                     key={i}
-                    className={i % 2 === 0 ? "bg-white" : "bg-[#f1f5f9]"}
+                    className={
+                      i % 2 === 0
+                        ? "bg-white dark:bg-slate-900"
+                        : "bg-[#f1f5f9] dark:bg-slate-800/80"
+                    }
                   >
                     <td className="border-b p-1 text-center text-[#334155] font-medium">
                       {selectedArea}

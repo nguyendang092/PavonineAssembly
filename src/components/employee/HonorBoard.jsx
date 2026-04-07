@@ -403,10 +403,7 @@ function HonorBoard() {
         }
       `}</style>
 
-      <div
-        className="min-h-screen relative overflow-hidden"
-        style={{ backgroundColor: "#eef4ff" }}
-      >
+      <div className="relative min-h-screen overflow-hidden bg-[#eef4ff] dark:bg-slate-950">
         {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div
@@ -629,19 +626,21 @@ function HonorBoard() {
             {/* Header */}
             <div className="mb-1">
               <div className="text-center">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+                <h1 className="mb-1 text-2xl font-bold text-gray-900 dark:text-slate-100 sm:text-3xl">
                   🏆 Nhân Viên Ưu Tú
                 </h1>
-                <p className="text-sm text-gray-500">Employee of Excellence</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400">
+                  Employee of Excellence
+                </p>
               </div>
             </div>
 
             {/* Employee Cards by Month */}
             <div className="space-y-8">
               {filteredEmployees.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-                  <div className="text-6xl mb-4">🔍</div>
-                  <p className="text-gray-500 text-lg">
+                <div className="rounded-xl bg-white p-12 text-center shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+                  <div className="mb-4 text-6xl">🔍</div>
+                  <p className="text-lg text-gray-500 dark:text-slate-400">
                     Không tìm thấy nhân viên nào
                   </p>
                 </div>
@@ -676,7 +675,7 @@ function HonorBoard() {
                               className={`rounded-2xl p-[1.5px] ${accent.gradient} w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] xl:w-[calc(25%-18px)]`}
                             >
                               <div
-                                className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-1 ${
+                                className={`overflow-hidden rounded-2xl bg-white shadow-lg transition hover:-translate-y-1 hover:shadow-2xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-700 ${
                                   emp.awardType === "Ưu tú" ? "scale-90" : ""
                                 }`}
                               >
@@ -853,7 +852,7 @@ function HonorBoard() {
           {/* Modal */}
           {showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-2xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
                 <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-xl">
                   <h2 className="text-2xl font-bold">
                     {editingId

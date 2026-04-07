@@ -18,10 +18,10 @@ import {
 } from "../../utils/performanceChartData";
 
 const INPUT_CLASS =
-  "w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed";
+  "w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/30 dark:disabled:bg-slate-800";
 
 const INPUT_WEEK_CLASS =
-  "w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-pink-400 focus:ring-1 focus:ring-pink-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed";
+  "w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-pink-400 focus:ring-1 focus:ring-pink-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:focus:border-pink-500 dark:focus:ring-pink-500/30 dark:disabled:bg-slate-800";
 
 export function PerformanceYearSidebar({
   open,
@@ -90,7 +90,7 @@ export function PerformanceDataTable({
   const prevWeek = currentWeekNumber - 1;
 
   return (
-    <div className="mb-2 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg md:mb-4">
+    <div className="mb-2 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 md:mb-4">
       <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 px-2 py-2 md:px-4">
         <h3 className="flex items-center gap-2 text-xs font-semibold text-white md:text-sm">
           <span>📊</span>
@@ -111,14 +111,14 @@ export function PerformanceDataTable({
                   }
                 }}
                 placeholder="Tên team"
-                className="min-w-[8rem] max-w-[12rem] rounded-md border border-white/40 bg-white/95 px-2 py-1 text-gray-800 placeholder:text-gray-400 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="min-w-[8rem] max-w-[12rem] rounded-md border border-white/40 bg-white/95 px-2 py-1 text-gray-800 placeholder:text-gray-400 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/50 dark:bg-slate-900/90 dark:text-slate-100 dark:placeholder:text-slate-500"
                 title="Tên team mới (chỉ admin)"
                 aria-label="Tên team cải tiến mới"
               />
               <button
                 type="button"
                 onClick={() => onAddTeam?.()}
-                className="shrink-0 rounded bg-white/90 px-2 py-1 font-semibold text-indigo-700 shadow hover:bg-white"
+                className="shrink-0 rounded bg-white/90 px-2 py-1 font-semibold text-indigo-700 shadow hover:bg-white dark:bg-slate-200/90 dark:text-indigo-900 dark:hover:bg-white"
                 title="Thêm team vào danh sách (chưa lưu — bấm Lưu)"
               >
                 + Team
@@ -131,7 +131,7 @@ export function PerformanceDataTable({
             disabled={!hasUnsavedChanges || saving || !canEdit}
             className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-all md:gap-2 md:px-3 md:py-1.5 md:text-xs ${
               hasUnsavedChanges && !saving && canEdit
-                ? "bg-white text-indigo-600 shadow-md hover:bg-gray-100"
+                ? "bg-white text-indigo-600 shadow-md hover:bg-gray-100 dark:bg-slate-100 dark:text-indigo-700 dark:hover:bg-white"
                 : "cursor-not-allowed bg-white/20 text-white/50"
             }`}
             title={
@@ -166,25 +166,25 @@ export function PerformanceDataTable({
       <div className="overflow-x-auto">
         <table className="w-full text-[10px] md:text-xs">
           <thead>
-            <tr className="bg-gradient-to-r from-gray-50 to-slate-50">
-              <th className="border-b border-indigo-200 px-2 py-1 text-left text-[9px] font-bold uppercase tracking-wider text-gray-700 md:px-3 md:py-2 md:text-[10px]">
+            <tr className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-slate-800 dark:to-slate-800/90">
+              <th className="border-b border-indigo-200 px-2 py-1 text-left text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
                 TEAM
               </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 md:px-3 md:py-2 md:text-[10px]">
+              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
                 <span className="hidden sm:inline">TARGET</span>
                 <span className="sm:hidden">TGT</span>
               </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 md:px-3 md:py-2 md:text-[10px]">
+              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
                 <span className="hidden md:inline">
                   TOTAL (W1~W{prevWeek}/{selectedYear})
                 </span>
                 <span className="md:hidden">TOTAL</span>
               </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 md:px-3 md:py-2 md:text-[10px]">
+              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
                 <span className="hidden sm:inline">Achievement Rate</span>
                 <span className="sm:hidden">%</span>
               </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 md:px-3 md:py-2 md:text-[10px]">
+              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
                 <span className="hidden sm:inline">
                   WEEK {prevWeek}/{selectedYear}
                 </span>
@@ -192,7 +192,7 @@ export function PerformanceDataTable({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
             {data.map((row, i) => {
               const total = calculateTotal(row, currentWeekNumber);
               const currentWeekValue = row.weeks[`W${prevWeek}`] || 0;
@@ -206,11 +206,11 @@ export function PerformanceDataTable({
               return (
                 <tr
                   key={row.team || i}
-                  className="transition-all duration-200 hover:bg-indigo-50/50"
+                  className="transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-slate-800/60"
                 >
                   <td className="whitespace-nowrap px-2 py-1 md:px-3 md:py-2">
                     <div className="flex max-w-[14rem] items-center gap-1">
-                      <span className="inline-flex min-w-0 flex-1 items-center rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-800 md:px-2 md:text-[11px]">
+                      <span className="inline-flex min-w-0 flex-1 items-center rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-800 dark:from-indigo-900/60 dark:to-purple-900/50 dark:text-indigo-200 md:px-2 md:text-[11px]">
                         <span className="truncate">{row.team}</span>
                       </span>
                       {canRemove ? (
@@ -241,7 +241,7 @@ export function PerformanceDataTable({
                     />
                   </td>
                   <td className="px-2 py-1 text-center md:px-3 md:py-2">
-                    <div className="mx-auto w-12 rounded bg-purple-50 px-1 py-0.5 text-center text-[10px] font-bold text-purple-600 md:w-16 md:px-2 md:py-1 md:text-xs">
+                    <div className="mx-auto w-12 rounded bg-purple-50 px-1 py-0.5 text-center text-[10px] font-bold text-purple-600 dark:bg-purple-950/50 dark:text-purple-300 md:w-16 md:px-2 md:py-1 md:text-xs">
                       {total}
                     </div>
                   </td>
@@ -294,7 +294,7 @@ export function PerformanceBarChartCard({
   return (
     <div
       ref={cardRef}
-      className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg"
+      className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-pink-500 to-rose-600 px-2 py-2 md:px-4">
         <h3 className="flex items-center gap-2 text-xs font-semibold text-white md:text-sm">
@@ -328,7 +328,7 @@ export function PerformanceBarChartCard({
 
       <div
         ref={chartRef}
-        className="h-64 rounded-lg bg-gradient-to-br from-slate-50 to-indigo-50 p-2 md:h-96 md:p-4"
+        className="h-64 rounded-lg bg-gradient-to-br from-slate-50 to-indigo-50 p-2 dark:from-slate-900 dark:to-slate-800 md:h-96 md:p-4"
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart

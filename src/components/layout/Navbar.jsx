@@ -2,14 +2,17 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
+import { FiMoon, FiSun } from "react-icons/fi";
 import SignIn from "../../SignIn";
 import ChangePasswordModal from "../modals/ChangePasswordModal";
 import { useTranslation } from "react-i18next";
 import { menuConfig } from "../../config/menuConfig";
 import { isAdminAccess } from "../../config/authRoles";
+import { useTheme } from "../../contexts/ThemeContext";
 import "./navbar.css";
 
 export default function Navbar({ user, setUser, userRole }) {
+  const { theme, toggleTheme } = useTheme();
   const { t, i18n } = useTranslation();
   const [language, setLanguage] = useState(i18n.language || "vi");
   const [activeLeaderKey, setActiveLeaderKey] = useState("bieudo");
@@ -82,6 +85,9 @@ export default function Navbar({ user, setUser, userRole }) {
     } catch {}
     localStorage.removeItem("userLogin");
     if (setUser) setUser(null);
+    closeMobileMenu();
+    setUserDropdownOpen(false);
+    navigate("/email/login", { replace: true });
   };
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
@@ -143,6 +149,29 @@ export default function Navbar({ user, setUser, userRole }) {
         <span id="hamburger-cross" onClick={closeMobileMenu}>
           ✕
         </span>
+        <div className="mobile-menu-toolbar">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="theme-toggle-btn"
+            title={
+              theme === "dark"
+                ? t("navbar.themeSwitchToLight")
+                : t("navbar.themeSwitchToDark")
+            }
+            aria-label={
+              theme === "dark"
+                ? t("navbar.themeSwitchToLight")
+                : t("navbar.themeSwitchToDark")
+            }
+          >
+            {theme === "dark" ? (
+              <FiSun size={20} strokeWidth={2} />
+            ) : (
+              <FiMoon size={20} strokeWidth={2} />
+            )}
+          </button>
+        </div>
         <div className="mobile-nav-items">
           <ul>
             {menuConfig.map((item) => {
@@ -587,6 +616,28 @@ export default function Navbar({ user, setUser, userRole }) {
               </a>
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="theme-toggle-btn"
+            title={
+              theme === "dark"
+                ? t("navbar.themeSwitchToLight")
+                : t("navbar.themeSwitchToDark")
+            }
+            aria-label={
+              theme === "dark"
+                ? t("navbar.themeSwitchToLight")
+                : t("navbar.themeSwitchToDark")
+            }
+          >
+            {theme === "dark" ? (
+              <FiSun size={20} strokeWidth={2} />
+            ) : (
+              <FiMoon size={20} strokeWidth={2} />
+            )}
+          </button>
 
           {/* Language Selector */}
           <div className="lang-selector">
