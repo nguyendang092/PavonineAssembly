@@ -1,11 +1,5 @@
 export const menuConfig = [
   {
-    key: "home",
-    label: "navbar.home",
-    /** Trang chính (dashboard sản lượng) */
-    path: "/",
-  },
-  {
     key: "internalAnnouncements",
     label: "navbar.internalAnnouncements",
     /** Trang nội dung; chưa đăng nhập → `/login` */
@@ -29,7 +23,7 @@ export const menuConfig = [
               {
                 key: "sanLuongNormal",
                 label: "navbar.Normal",
-                path: "/",
+                path: "/normal",
               },
               {
                 key: "sanLuongNG",
@@ -156,10 +150,10 @@ export const menuConfig = [
 /** Không bọc ProtectedRoute — dùng cho App.jsx */
 export const PUBLIC_ROUTE_PATHS = new Set(["/login", "/email/login"]);
 
-// Cấu hình route cho App.jsx
+// Cấu hình route cho App.jsx (route công khai /login, /email/login khai báo trực tiếp trong App)
 export const routeConfig = [
-  { path: "/login", element: "LoginRoute" },
-  { path: "/", element: "WorkplaceChart" },
+  { path: "/", element: "InternalAnnouncements" },
+  { path: "/normal", element: "WorkplaceChart" },
   { path: "/ng", element: "NGWorkplaceChart" },
   { path: "/bangkhen1", element: "CertificateGenerator1" },
   { path: "/bangkhen2", element: "CertificateGenerator2" },
@@ -176,10 +170,6 @@ export const routeConfig = [
   },
   { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
   { path: "/user-department", element: "UserDepartmentManager" },
-  {
-    path: "/email/login",
-    element: "InternalAnnouncementsLogin",
-  },
   { path: "/email", element: "InternalAnnouncements" },
   { path: "/downloads", element: "Downloads" },
 ];

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useLoading } from '../../contexts/LoadingContext';
-import { logUserAction } from '../../utils/userLog';
+import { useLoading } from "@/contexts/LoadingContext";
+import { logUserAction } from "@/utils/userLog";
 import Modal from "react-modal";
 import { ref, set, get, update } from "firebase/database";
-import { db } from '../../services/firebase';
+import { db } from "@/services/firebase";
 import {
   getStorage,
   ref as storageRef,

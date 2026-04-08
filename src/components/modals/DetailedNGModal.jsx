@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { logUserAction } from '../../utils/userLog';
+import LoadingBlock from "@/components/ui/LoadingBlock";
+import { logUserAction } from "@/utils/userLog";
 import { ref, get } from "firebase/database";
-import { db } from '../../services/firebase';
+import { db } from "@/services/firebase";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -12,7 +13,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { useUser } from '../../contexts/UserContext';
+import { useUser } from "@/contexts/UserContext";
 
 // Utility functions
 // ISO week number (tuần bắt đầu từ thứ 2, tuần 1 là tuần có ngày đầu tiên của năm)
@@ -453,9 +454,13 @@ export default function DetailedNGModal({ isOpen, onClose, area, week }) {
                 }}
               />
             ) : loading ? (
-              <p className="text-center text-gray-500 italic">
-                {t("detailedNGModal.loadingChart")}
-              </p>
+              <LoadingBlock
+                size="sm"
+                message={t("detailedNGModal.loadingChart")}
+                textClassName="text-sm text-slate-500 dark:text-slate-400 italic"
+                gapClassName="gap-2"
+                className="py-6"
+              />
             ) : (
               <p>{t("detailedNGModal.noChartData")}</p>
             )}

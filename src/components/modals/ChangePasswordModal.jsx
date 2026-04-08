@@ -6,7 +6,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth";
-import { logUserAction } from "../../utils/userLog";
+import { logUserAction } from "@/utils/userLog";
 
 export default function ChangePasswordModal({ onClose }) {
   const { t } = useTranslation();

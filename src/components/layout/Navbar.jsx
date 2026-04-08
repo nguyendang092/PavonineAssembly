@@ -3,12 +3,12 @@ import { useState, useEffect, useRef } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { FiMoon, FiSun } from "react-icons/fi";
-import SignIn from "../../SignIn";
-import ChangePasswordModal from "../modals/ChangePasswordModal";
+import SignIn from "@/auth/SignIn";
+import ChangePasswordModal from "@/components/modals/ChangePasswordModal";
 import { useTranslation } from "react-i18next";
-import { menuConfig } from "../../config/menuConfig";
-import { isAdminAccess } from "../../config/authRoles";
-import { useTheme } from "../../contexts/ThemeContext";
+import { menuConfig } from "@/config/menuConfig";
+import { isAdminAccess } from "@/config/authRoles";
+import { useTheme } from "@/contexts/ThemeContext";
 import "./navbar.css";
 
 /** Link menu với trạng thái active khớp URL (kể cả `/email` ↔ `/email/login`). */

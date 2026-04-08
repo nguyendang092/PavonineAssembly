@@ -35,6 +35,9 @@ const ko = {
   loading: {
     loading: "데이터를 불러오는 중...",
   },
+  performanceChart: {
+    saving: "저장 중...",
+  },
   navbar: {
     getStarted: "시작하기",
     language: "언어",

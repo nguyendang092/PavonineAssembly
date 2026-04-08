@@ -2,6 +2,9 @@ const vi = {
   loading: {
     loading: "Đang tải dữ liệu...",
   },
+  performanceChart: {
+    saving: "Đang lưu...",
+  },
   signIn: {
     cancel: "Hủy",
     login: "Đăng nhập",
@@ -872,7 +875,7 @@ const vi = {
     close: "Đóng",
     export: "⬇ Xuất Excel",
     cancel: "Hủy",
-    activeEmployeesTitle: "DANH SÁCH NHÂN VIÊN HIỆN DIỆN",
+    activeEmployeesTitle: "ĐIỂM DANH NHÂN VIÊN",
     activeEmployeesSubtitle: "List of Active Employees",
     dateLabel: "Ngày/Date",
     unattendedTitle: "Nhân viên chưa điểm danh",

@@ -9,72 +9,72 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 // firebase for global data fetching
-import { db, ref, onValue } from "./services/firebase";
-import MyAccessSummary from "./components/common/MyAccessSummary";
-import Navbar from "./components/layout/Navbar";
-import BackToTop from "./components/common/BackToTop";
-import BackToBottom from "./components/common/BackToBottom";
-import Footer from "./components/layout/Footer";
-import "./config/i18n";
-import { UserContext } from "./contexts/UserContext";
-import ProtectedRoute from "./components/ProtectedRoute";
-import { useLoading } from "./contexts/LoadingContext";
-import { routeConfig, PUBLIC_ROUTE_PATHS } from "./config/menuConfig";
-import { inferRoleFromMapping, isAdminOrHR, ROLES } from "./config/authRoles";
+import { db, ref, onValue } from "@/services/firebase";
+import MyAccessSummary from "@/components/ui/MyAccessSummary";
+import Navbar from "@/components/layout/Navbar";
+import BackToTop from "@/components/ui/BackToTop";
+import BackToBottom from "@/components/ui/BackToBottom";
+import Footer from "@/components/layout/Footer";
+import "@/config/i18n";
+import { UserContext } from "@/contexts/UserContext";
+import ProtectedRoute from "@/auth/ProtectedRoute";
+import { routeConfig, PUBLIC_ROUTE_PATHS } from "@/config/menuConfig";
+import { inferRoleFromMapping, isAdminOrHR, ROLES } from "@/config/authRoles";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
-import "./styles/App.css";
+import "@/styles/App.css";
+import LoadingBlock from "@/components/ui/LoadingBlock";
 
 const WorkplaceChart = lazy(
-  () => import("./components/dashboard/WorkplaceChart"),
+  () => import("@/features/dashboard/WorkplaceChart"),
 );
 const NGWorkplaceChart = lazy(
-  () => import("./components/dashboard/NGWorkplaceChart"),
+  () => import("@/features/dashboard/NGWorkplaceChart"),
 );
 const CertificateGenerator1 = lazy(
-  () => import("./components/common/CertificateGenerator1"),
+  () => import("@/components/ui/CertificateGenerator1"),
 );
 const CertificateGenerator2 = lazy(
-  () => import("./components/common/CertificateGenerator2"),
+  () => import("@/components/ui/CertificateGenerator2"),
 );
-const HonorBoard = lazy(() => import("./components/employee/HonorBoard"));
+const HonorBoard = lazy(() => import("@/features/employee/HonorBoard"));
 const TemperatureMonitor = lazy(
-  () => import("./components/common/TemperatureMonitor"),
+  () => import("@/components/ui/TemperatureMonitor"),
 );
-const MoldManager = lazy(() => import("./components/inventory/MoldManager"));
+const MoldManager = lazy(() => import("@/features/inventory/MoldManager"));
 const PerformanceChart = lazy(
-  () => import("./components/dashboard/PerformanceChart"),
+  () => import("@/features/dashboard/PerformanceChart"),
 );
 const QRCodeGenerator = lazy(
-  () => import("./components/common/QRCodeGenerator"),
+  () => import("@/components/ui/QRCodeGenerator"),
 );
 const AttendanceList = lazy(
-  () => import("./components/attendance/AttendanceList"),
+  () => import("@/features/attendance/AttendanceList"),
 );
 const SeasonalStaffAttendance = lazy(
-  () => import("./components/attendance/SeasonalStaffAttendance"),
+  () => import("@/features/attendance/SeasonalStaffAttendance"),
 );
-const Downloads = lazy(() => import("./components/common/Downloads"));
+const Downloads = lazy(() => import("@/components/ui/Downloads"));
 const UserDepartmentManager = lazy(
-  () => import("./components/employee/UserDepartmentManager"),
+  () => import("@/features/employee/UserDepartmentManager"),
 );
 const InternalAnnouncements = lazy(
-  () => import("./components/employee/InternalAnnouncements"),
+  () => import("@/features/employee/InternalAnnouncements"),
 );
 const InternalAnnouncementsLogin = lazy(
-  () => import("./components/employee/InternalAnnouncementsLogin"),
+  () => import("@/features/employee/InternalAnnouncementsLogin"),
 );
 const AllEmployeesManager = lazy(
-  () => import("./components/employee/AllEmployeesManager"),
+  () => import("@/features/employee/AllEmployeesManager"),
 );
 const ResignedEmployeesManager = lazy(
-  () => import("./components/employee/ResignedEmployeesManager"),
+  () => import("@/features/employee/ResignedEmployeesManager"),
 );
-const LoginRoute = lazy(() => import("./components/LoginRoute"));
+const LoginRoute = lazy(() => import("@/auth/LoginRoute"));
 
 function readSessionUser() {
   try {
@@ -99,16 +99,21 @@ function readSessionUser() {
 const App = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [user, setUser] = useState(() => readSessionUser());
-  const { setLoading } = useLoading();
 
   // departments the currently logged in user has access to
   const [userDepartments, setUserDepartments] = useState([]);
   const [userRole, setUserRole] = useState(null);
 
+  /** Vùng cuộn chính — dùng cho navbar shadow + BackToTop / BackToBottom */
+  const mainScrollRef = useRef(null);
+
+  const userContextValue = useMemo(
+    () => ({ user, setUser, userDepartments, userRole }),
+    [user, userDepartments, userRole],
+  );
+
   useEffect(() => {
-    setLoading(true);
     setUser(readSessionUser());
-    setTimeout(() => setLoading(false), 800);
   }, []);
 
   useEffect(() => {
@@ -190,19 +195,16 @@ const App = () => {
   }, [user]);
 
   useLayoutEffect(() => {
-    window.scrollTo({ top: 0, behavior: "auto" });
-  }, []);
-
-  useEffect(() => {
+    const el = mainScrollRef.current;
+    if (!el) return undefined;
+    el.scrollTo({ top: 0, behavior: "auto" });
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 100);
+      setIsScrolled(el.scrollTop > 100);
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    handleScroll();
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
   }, []);
-
-  /** Vùng cuộn chính (không phải window) — dùng cho BackToTop / BackToBottom */
-  const mainScrollRef = useRef(null);
 
   const routeElements = useMemo(
     () => ({
@@ -220,16 +222,14 @@ const App = () => {
       Downloads: <Downloads />,
       UserDepartmentManager: <UserDepartmentManager />,
       InternalAnnouncements: <InternalAnnouncements />,
-      InternalAnnouncementsLogin: <InternalAnnouncementsLogin />,
       AllEmployeesManager: <AllEmployeesManager />,
       ResignedEmployeesManager: <ResignedEmployeesManager />,
-      LoginRoute: <LoginRoute />,
     }),
     [],
   );
 
   return (
-    <UserContext.Provider value={{ user, setUser, userDepartments, userRole }}>
+    <UserContext.Provider value={userContextValue}>
       <Router>
         <div className="min-h-screen flex flex-col bg-gray-50 text-slate-900 transition-colors duration-200 dark:bg-slate-950 dark:text-slate-100">
           {/* Navbar cố định */}
@@ -252,9 +252,7 @@ const App = () => {
             {user ? <MyAccessSummary variant="compact" /> : null}
             <Suspense
               fallback={
-                <div className="h-[60vh] flex items-center justify-center text-lg text-slate-500 dark:text-slate-400">
-                  Loading...
-                </div>
+                <LoadingBlock className="min-h-[60vh]" />
               }
             >
               <Routes>
@@ -262,10 +260,6 @@ const App = () => {
                 <Route
                   path="/email/login"
                   element={<InternalAnnouncementsLogin />}
-                />
-                <Route
-                  path="/normal"
-                  element={<Navigate to="/" replace />}
                 />
                 {routeConfig
                   .filter((r) => !PUBLIC_ROUTE_PATHS.has(r.path))

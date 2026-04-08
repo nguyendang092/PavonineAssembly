@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useUser } from '../../contexts/UserContext';
+import { useUser } from "@/contexts/UserContext";
 import Modal from "react-modal";
 import { ref, get, update, remove } from "firebase/database";
-import { db } from '../../services/firebase';
+import { db } from "@/services/firebase";
 import { useTranslation } from "react-i18next";
 import { getDatabase, ref as dbRef, push } from "firebase/database";
-import { logUserAction } from '../../utils/userLog';
+import { logUserAction } from "@/utils/userLog";
 
 const formatName = (name) => {
   return name

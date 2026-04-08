@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Modal from "react-modal";
 import { ref, set } from "firebase/database";
-import { db } from '../../services/firebase';
+import { db } from "@/services/firebase";
 import { format, startOfWeek, addDays } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";

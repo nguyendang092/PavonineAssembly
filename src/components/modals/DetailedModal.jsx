@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { useTranslation } from "react-i18next";
-import { logUserAction } from '../../utils/userLog';
+import LoadingBlock from "@/components/ui/LoadingBlock";
+import { logUserAction } from "@/utils/userLog";
 import { ref, get, child } from "firebase/database";
-import { db } from '../../services/firebase';
+import { db } from "@/services/firebase";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -36,7 +37,7 @@ function getWeekNumber(dateStr) {
   const days = Math.floor((date - startOfYear) / (24 * 60 * 60 * 1000));
   return Math.ceil((days + startOfYear.getDay() + 1) / 7);
 }
-import { useUser } from '../../contexts/UserContext';
+import { useUser } from "@/contexts/UserContext";
 
 export default function DetailedModal({ isOpen, onClose, area }) {
   const { t } = useTranslation();
@@ -302,93 +303,97 @@ export default function DetailedModal({ isOpen, onClose, area }) {
           </div>
         </div>
 
-        {/* Nội dung chính: Biểu đồ + bảng */}
+        {/* Nội dung chính: Biểu đồ + bảng — một khối loading thay vì hai */}
         <div className="flex flex-1 overflow-hidden">
-          <div className="w-2/3 pr-4 h-full">
-            {chartData && chartData.labels.length > 0 ? (
-              <Bar
-                data={{
-                  ...chartData,
-                  datasets: chartData.datasets.map((ds) => ({
-                    ...ds,
-                    backgroundColor: "rgba(255,105,180,0.7)", // màu hồng
-                    borderWidth: 0, // bỏ viền
-                  })),
-                }}
-                options={{
-                  indexAxis: "y",
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  elements: {
-                    bar: {
-                      borderRadius: 10, // bo tròn góc
-                      borderWidth: 0, // không border
-                    },
-                  },
-                  scales: {
-                    x: {
-                      beginAtZero: true,
-                      ticks: {
-                        color: "#000",
-                        font: { weight: "bold", size: 10 },
-                      },
-                      grid: { display: false },
-                      max: (() => {
-                        // Lấy max data trong datasets[0].data rồi cộng thêm 50
-                        if (
-                          !chartData ||
-                          !chartData.datasets ||
-                          chartData.datasets.length === 0
-                        )
-                          return undefined;
-                        const maxVal = Math.max(...chartData.datasets[0].data);
-                        return maxVal + 50;
-                      })(),
-                    },
-                    y: {
-                      ticks: {
-                        color: "#000",
-                        font: { weight: "bold", size: 10 },
-                      },
-                      grid: { display: false },
-                    },
-                  },
-                  plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) => {
-                          const val = context.parsed.x || 0;
-                          return val.toLocaleString();
+          {loading ? (
+            <div className="flex w-full min-h-[200px] items-center justify-center">
+              <LoadingBlock
+                size="sm"
+                message={t("loading.loading")}
+                textClassName="text-sm text-slate-500 dark:text-slate-400"
+                gapClassName="gap-2"
+                className="py-6"
+              />
+            </div>
+          ) : (
+            <>
+              <div className="w-2/3 pr-4 h-full">
+                {chartData && chartData.labels.length > 0 ? (
+                  <Bar
+                    data={{
+                      ...chartData,
+                      datasets: chartData.datasets.map((ds) => ({
+                        ...ds,
+                        backgroundColor: "rgba(255,105,180,0.7)", // màu hồng
+                        borderWidth: 0, // bỏ viền
+                      })),
+                    }}
+                    options={{
+                      indexAxis: "y",
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      elements: {
+                        bar: {
+                          borderRadius: 10, // bo tròn góc
+                          borderWidth: 0, // không border
                         },
                       },
-                    },
-                    datalabels: {
-                      anchor: "end",
-                      align: "end",
-                      color: "#000",
-                      font: { weight: "bold", size: 10 },
-                      formatter: (value) => value.toLocaleString(),
-                    },
-                  },
-                }}
-              />
-            ) : loading ? (
-              <p className="text-center text-gray-500 italic">
-                {t("detailedModal.loadingChart")}
-              </p>
-            ) : (
-              <p>{t("detailedModal.noChartData")}</p>
-            )}
-          </div>
-          {/* Bảng chi tiết (1/3) */}
-          <div className="w-1/3 overflow-auto">
-            {loading ? (
-              <p className="text-center text-gray-500 italic">
-                {t("detailedModal.loadingData")}
-              </p>
-            ) : (
-              <>
+                      scales: {
+                        x: {
+                          beginAtZero: true,
+                          ticks: {
+                            color: "#000",
+                            font: { weight: "bold", size: 10 },
+                          },
+                          grid: { display: false },
+                          max: (() => {
+                            // Lấy max data trong datasets[0].data rồi cộng thêm 50
+                            if (
+                              !chartData ||
+                              !chartData.datasets ||
+                              chartData.datasets.length === 0
+                            )
+                              return undefined;
+                            const maxVal = Math.max(
+                              ...chartData.datasets[0].data,
+                            );
+                            return maxVal + 50;
+                          })(),
+                        },
+                        y: {
+                          ticks: {
+                            color: "#000",
+                            font: { weight: "bold", size: 10 },
+                          },
+                          grid: { display: false },
+                        },
+                      },
+                      plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                          callbacks: {
+                            label: (context) => {
+                              const val = context.parsed.x || 0;
+                              return val.toLocaleString();
+                            },
+                          },
+                        },
+                        datalabels: {
+                          anchor: "end",
+                          align: "end",
+                          color: "#000",
+                          font: { weight: "bold", size: 10 },
+                          formatter: (value) => value.toLocaleString(),
+                        },
+                      },
+                    }}
+                  />
+                ) : (
+                  <p>{t("detailedModal.noChartData")}</p>
+                )}
+              </div>
+              {/* Bảng chi tiết (1/3) */}
+              <div className="w-1/3 overflow-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
@@ -443,9 +448,9 @@ export default function DetailedModal({ isOpen, onClose, area }) {
                     {t("detailedModal.viewMore")}
                   </button>
                 )}
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
