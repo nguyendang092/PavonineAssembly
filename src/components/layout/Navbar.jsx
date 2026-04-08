@@ -1,6 +1,6 @@
 /* Đây là component hiển thị navbar */
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { FiMoon, FiSun } from "react-icons/fi";
 import SignIn from "../../SignIn";
@@ -11,32 +11,30 @@ import { isAdminAccess } from "../../config/authRoles";
 import { useTheme } from "../../contexts/ThemeContext";
 import "./navbar.css";
 
+/** Link menu với trạng thái active khớp URL (kể cả `/email` ↔ `/email/login`). */
+function RouterNavLink({ to, onClick, children }) {
+  const location = useLocation();
+  return (
+    <NavLink
+      to={to}
+      end
+      className={({ isActive }) => {
+        const active =
+          isActive ||
+          (to === "/email" && location.pathname === "/email/login");
+        return active ? "navbar-link-active" : undefined;
+      }}
+      onClick={onClick}
+    >
+      {children}
+    </NavLink>
+  );
+}
+
 export default function Navbar({ user, setUser, userRole }) {
   const { theme, toggleTheme } = useTheme();
   const { t, i18n } = useTranslation();
   const [language, setLanguage] = useState(i18n.language || "vi");
-  const [activeLeaderKey, setActiveLeaderKey] = useState("bieudo");
-  const location = useLocation();
-
-  // Đồng bộ activeLeaderKey với route
-  useEffect(() => {
-    let foundKey = null;
-    for (const item of menuConfig) {
-      if (item.type === "dropdown" && item.children) {
-        for (const child of item.children) {
-          if (child.path === location.pathname) {
-            foundKey = child.key;
-            break;
-          }
-        }
-      } else if (item.path === location.pathname) {
-        foundKey = item.key;
-      }
-      if (foundKey) break;
-    }
-    if (foundKey) setActiveLeaderKey(foundKey);
-  }, [location.pathname]);
-
   const languageOptions = {
     vi: "Tiếng Việt",
     ko: "한국어",
@@ -87,7 +85,7 @@ export default function Navbar({ user, setUser, userRole }) {
     if (setUser) setUser(null);
     closeMobileMenu();
     setUserDropdownOpen(false);
-    navigate("/email/login", { replace: true });
+    navigate("/login", { replace: true });
   };
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
@@ -287,17 +285,14 @@ export default function Navbar({ user, setUser, userRole }) {
                                                             return null;
                                                           return (
                                                             <li key={leaf.key}>
-                                                              <Link
+                                                              <RouterNavLink
                                                                 to={leaf.path}
-                                                                onClick={() => {
-                                                                  setActiveLeaderKey(
-                                                                    leaf.key,
-                                                                  );
-                                                                  closeMobileMenu();
-                                                                }}
+                                                                onClick={() =>
+                                                                  closeMobileMenu()
+                                                                }
                                                               >
                                                                 {t(leaf.label)}
-                                                              </Link>
+                                                              </RouterNavLink>
                                                             </li>
                                                           );
                                                         },
@@ -308,17 +303,14 @@ export default function Navbar({ user, setUser, userRole }) {
                                               }
                                               return (
                                                 <li key={deepChild.key}>
-                                                  <Link
+                                                  <RouterNavLink
                                                     to={deepChild.path}
-                                                    onClick={() => {
-                                                      setActiveLeaderKey(
-                                                        deepChild.key,
-                                                      );
-                                                      closeMobileMenu();
-                                                    }}
+                                                    onClick={() =>
+                                                      closeMobileMenu()
+                                                    }
                                                   >
                                                     {t(deepChild.label)}
-                                                  </Link>
+                                                  </RouterNavLink>
                                                 </li>
                                               );
                                             },
@@ -329,15 +321,12 @@ export default function Navbar({ user, setUser, userRole }) {
                                   }
                                   return (
                                     <li key={subChild.key}>
-                                      <Link
+                                      <RouterNavLink
                                         to={subChild.path}
-                                        onClick={() => {
-                                          setActiveLeaderKey(subChild.key);
-                                          closeMobileMenu();
-                                        }}
+                                        onClick={() => closeMobileMenu()}
                                       >
                                         {t(subChild.label)}
-                                      </Link>
+                                      </RouterNavLink>
                                     </li>
                                   );
                                 })}
@@ -347,15 +336,12 @@ export default function Navbar({ user, setUser, userRole }) {
                         }
                         return (
                           <li key={child.key}>
-                            <Link
+                            <RouterNavLink
                               to={child.path}
-                              onClick={() => {
-                                setActiveLeaderKey(child.key);
-                                closeMobileMenu();
-                              }}
+                              onClick={() => closeMobileMenu()}
                             >
                               {t(child.label)}
-                            </Link>
+                            </RouterNavLink>
                           </li>
                         );
                       })}
@@ -365,15 +351,12 @@ export default function Navbar({ user, setUser, userRole }) {
               }
               return (
                 <li key={item.key}>
-                  <Link
+                  <RouterNavLink
                     to={item.path}
-                    onClick={() => {
-                      setActiveLeaderKey(item.key);
-                      closeMobileMenu();
-                    }}
+                    onClick={() => closeMobileMenu()}
                   >
                     {t(item.label)}
-                  </Link>
+                  </RouterNavLink>
                 </li>
               );
             })}
@@ -481,16 +464,11 @@ export default function Navbar({ user, setUser, userRole }) {
                                                           return null;
                                                         return (
                                                           <li key={leaf.key}>
-                                                            <Link
+                                                            <RouterNavLink
                                                               to={leaf.path}
-                                                              onClick={() => {
-                                                                setActiveLeaderKey(
-                                                                  leaf.key,
-                                                                );
-                                                              }}
                                                             >
                                                               {t(leaf.label)}
-                                                            </Link>
+                                                            </RouterNavLink>
                                                           </li>
                                                         );
                                                       },
@@ -501,16 +479,11 @@ export default function Navbar({ user, setUser, userRole }) {
                                             }
                                             return (
                                               <li key={deepSub.key}>
-                                                <Link
+                                                <RouterNavLink
                                                   to={deepSub.path}
-                                                  onClick={() => {
-                                                    setActiveLeaderKey(
-                                                      deepSub.key,
-                                                    );
-                                                  }}
                                                 >
                                                   {t(deepSub.label)}
-                                                </Link>
+                                                </RouterNavLink>
                                               </li>
                                             );
                                           })}
@@ -520,14 +493,11 @@ export default function Navbar({ user, setUser, userRole }) {
                                   }
                                   return (
                                     <li key={sub.key}>
-                                      <Link
+                                      <RouterNavLink
                                         to={sub.path}
-                                        onClick={() => {
-                                          setActiveLeaderKey(sub.key);
-                                        }}
                                       >
                                         {t(sub.label)}
-                                      </Link>
+                                      </RouterNavLink>
                                     </li>
                                   );
                                 })}
@@ -539,14 +509,11 @@ export default function Navbar({ user, setUser, userRole }) {
 
                         return (
                           <li key={child.key}>
-                            <Link
+                            <RouterNavLink
                               to={child.path}
-                              onClick={() => {
-                                setActiveLeaderKey(child.key);
-                              }}
                             >
                               {t(child.label)}
-                            </Link>
+                            </RouterNavLink>
                           </li>
                         );
                       })}
@@ -557,12 +524,11 @@ export default function Navbar({ user, setUser, userRole }) {
 
               return (
                 <li key={item.key}>
-                  <Link
+                  <RouterNavLink
                     to={item.path}
-                    onClick={() => setActiveLeaderKey(item.key)}
                   >
                     {t(item.label)}
-                  </Link>
+                  </RouterNavLink>
                 </li>
               );
             })}

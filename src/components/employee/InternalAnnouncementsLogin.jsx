@@ -22,7 +22,7 @@ function InternalAnnouncementsLogin() {
   };
 
   const handleClose = () => {
-    navigate("/normal", { replace: true });
+    navigate("/", { replace: true });
   };
 
   return <SignIn onSignIn={handleSuccess} onClose={handleClose} />;

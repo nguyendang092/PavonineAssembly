@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUser } from "../../contexts/UserContext";
 import {
@@ -392,6 +393,10 @@ function InternalAnnouncements() {
       ) : null}
     </button>
   );
+
+  if (!user?.email) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-[#f5f5f5] text-slate-800 dark:bg-slate-950 dark:text-slate-200 lg:flex-row">

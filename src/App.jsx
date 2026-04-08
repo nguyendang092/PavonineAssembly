@@ -17,8 +17,9 @@ import BackToBottom from "./components/common/BackToBottom";
 import Footer from "./components/layout/Footer";
 import "./config/i18n";
 import { UserContext } from "./contexts/UserContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { useLoading } from "./contexts/LoadingContext";
-import { routeConfig } from "./config/menuConfig";
+import { routeConfig, PUBLIC_ROUTE_PATHS } from "./config/menuConfig";
 import { inferRoleFromMapping, isAdminOrHR, ROLES } from "./config/authRoles";
 import {
   BrowserRouter as Router,
@@ -73,9 +74,31 @@ const AllEmployeesManager = lazy(
 const ResignedEmployeesManager = lazy(
   () => import("./components/employee/ResignedEmployeesManager"),
 );
+const LoginRoute = lazy(() => import("./components/LoginRoute"));
+
+function readSessionUser() {
+  try {
+    const loginData = localStorage.getItem("userLogin");
+    if (!loginData) return null;
+    const { email, name, expire } = JSON.parse(loginData);
+    if (
+      email &&
+      typeof expire === "number" &&
+      Number.isFinite(expire) &&
+      Date.now() < expire
+    ) {
+      return { email, name };
+    }
+    localStorage.removeItem("userLogin");
+  } catch {
+    localStorage.removeItem("userLogin");
+  }
+  return null;
+}
+
 const App = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => readSessionUser());
   const { setLoading } = useLoading();
 
   // departments the currently logged in user has access to
@@ -84,26 +107,7 @@ const App = () => {
 
   useEffect(() => {
     setLoading(true);
-    try {
-      const loginData = localStorage.getItem("userLogin");
-      if (loginData) {
-        const { email, name, expire } = JSON.parse(loginData);
-        if (
-          email &&
-          typeof expire === "number" &&
-          Number.isFinite(expire) &&
-          Date.now() < expire
-        ) {
-          setUser({ email, name });
-        } else {
-          localStorage.removeItem("userLogin");
-          setUser(null);
-        }
-      }
-    } catch {
-      localStorage.removeItem("userLogin");
-      setUser(null);
-    }
+    setUser(readSessionUser());
     setTimeout(() => setLoading(false), 800);
   }, []);
 
@@ -125,8 +129,8 @@ const App = () => {
       ) {
         localStorage.removeItem("userLogin");
         setUser(null);
-        if (window.location.pathname !== "/email/login") {
-          window.location.replace("/email/login");
+        if (window.location.pathname !== "/login") {
+          window.location.replace("/login");
         }
         return undefined;
       }
@@ -134,8 +138,8 @@ const App = () => {
       timerId = window.setTimeout(() => {
         localStorage.removeItem("userLogin");
         setUser(null);
-        if (window.location.pathname !== "/email/login") {
-          window.location.replace("/email/login");
+        if (window.location.pathname !== "/login") {
+          window.location.replace("/login");
         }
       }, delay);
     } catch {
@@ -219,6 +223,7 @@ const App = () => {
       InternalAnnouncementsLogin: <InternalAnnouncementsLogin />,
       AllEmployeesManager: <AllEmployeesManager />,
       ResignedEmployeesManager: <ResignedEmployeesManager />,
+      LoginRoute: <LoginRoute />,
     }),
     [],
   );
@@ -253,14 +258,37 @@ const App = () => {
               }
             >
               <Routes>
-                <Route path="/" element={<Navigate to="/normal" replace />} />
-                {routeConfig.map((r) => {
-                  const element = routeElements[r.element];
-                  return element ? (
-                    <Route key={r.path} path={r.path} element={element} />
-                  ) : null;
-                })}
-                <Route path="*" element={<Navigate to="/normal" replace />} />
+                <Route path="/login" element={<LoginRoute />} />
+                <Route
+                  path="/email/login"
+                  element={<InternalAnnouncementsLogin />}
+                />
+                <Route
+                  path="/normal"
+                  element={<Navigate to="/" replace />}
+                />
+                {routeConfig
+                  .filter((r) => !PUBLIC_ROUTE_PATHS.has(r.path))
+                  .map((r) => {
+                    const element = routeElements[r.element];
+                    return element ? (
+                      <Route
+                        key={r.path}
+                        path={r.path}
+                        element={
+                          <ProtectedRoute>{element}</ProtectedRoute>
+                        }
+                      />
+                    ) : null;
+                  })}
+                <Route
+                  path="*"
+                  element={
+                    <ProtectedRoute>
+                      <Navigate to="/" replace />
+                    </ProtectedRoute>
+                  }
+                />
               </Routes>
             </Suspense>
           </div>

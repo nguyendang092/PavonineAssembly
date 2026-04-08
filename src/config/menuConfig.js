@@ -2,12 +2,14 @@ export const menuConfig = [
   {
     key: "home",
     label: "navbar.home",
+    /** Trang chính (dashboard sản lượng) */
     path: "/",
   },
   {
     key: "internalAnnouncements",
     label: "navbar.internalAnnouncements",
-    path: "/email/login",
+    /** Trang nội dung; chưa đăng nhập → `/login` */
+    path: "/email",
   },
   {
     key: "reports",
@@ -27,7 +29,7 @@ export const menuConfig = [
               {
                 key: "sanLuongNormal",
                 label: "navbar.Normal",
-                path: "/normal",
+                path: "/",
               },
               {
                 key: "sanLuongNG",
@@ -151,9 +153,13 @@ export const menuConfig = [
   },
 ];
 
+/** Không bọc ProtectedRoute — dùng cho App.jsx */
+export const PUBLIC_ROUTE_PATHS = new Set(["/login", "/email/login"]);
+
 // Cấu hình route cho App.jsx
 export const routeConfig = [
-  { path: "/normal", element: "WorkplaceChart" },
+  { path: "/login", element: "LoginRoute" },
+  { path: "/", element: "WorkplaceChart" },
   { path: "/ng", element: "NGWorkplaceChart" },
   { path: "/bangkhen1", element: "CertificateGenerator1" },
   { path: "/bangkhen2", element: "CertificateGenerator2" },

@@ -887,3 +887,21 @@ html:not(.dark) .mobile-dropdown-toggle {
 html:not(.dark) #hamburger-cross {
     color: #0f172a;
 }
+
+/* Trang menu khớp route hiện tại (react-router NavLink) */
+.nav-items a.navbar-link-active,
+.dropdown-menu a.navbar-link-active,
+.nested-dropdown-menu a.navbar-link-active,
+.mobile-nav-items a.navbar-link-active {
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    color: #fef08a !important;
+}
+
+html:not(.dark) .nav-items a.navbar-link-active,
+html:not(.dark) .dropdown-menu a.navbar-link-active,
+html:not(.dark) .nested-dropdown-menu a.navbar-link-active,
+html:not(.dark) .mobile-nav-items a.navbar-link-active {
+    color: #2563eb !important;
+}
