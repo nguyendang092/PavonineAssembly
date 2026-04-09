@@ -25,15 +25,16 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import "@/styles/App.css";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 
-const WorkplaceChart = lazy(
-  () => import("@/features/dashboard/WorkplaceChart"),
+const WorkplaceDashboardNormal = lazy(
+  () => import("@/features/dashboard/WorkplaceDashboardNormal"),
 );
-const NGWorkplaceChart = lazy(
-  () => import("@/features/dashboard/NGWorkplaceChart"),
+const WorkplaceDashboardNG = lazy(
+  () => import("@/features/dashboard/WorkplaceDashboardNG"),
 );
 const CertificateGenerator1 = lazy(
   () => import("@/components/ui/CertificateGenerator1"),
@@ -75,6 +76,22 @@ const ResignedEmployeesManager = lazy(
   () => import("@/features/employee/ResignedEmployeesManager"),
 );
 const LoginRoute = lazy(() => import("@/auth/LoginRoute"));
+
+/** Không hiện nút cuộn nhanh trên màn hình đăng nhập */
+const NO_SCROLL_ACTION_PATHS = new Set(["/login", "/email/login"]);
+
+function ScrollActionPortal({ scrollContainerRef }) {
+  const { pathname } = useLocation();
+  if (NO_SCROLL_ACTION_PATHS.has(pathname)) return null;
+
+  return createPortal(
+    <div className="pointer-events-auto fixed bottom-6 right-6 z-[9999] flex items-center gap-1.5">
+      <BackToBottom alwaysVisible inline scrollContainerRef={scrollContainerRef} />
+      <BackToTop alwaysVisible inline scrollContainerRef={scrollContainerRef} />
+    </div>,
+    document.body,
+  );
+}
 
 function readSessionUser() {
   try {
@@ -208,8 +225,8 @@ const App = () => {
 
   const routeElements = useMemo(
     () => ({
-      WorkplaceChart: <WorkplaceChart />,
-      NGWorkplaceChart: <NGWorkplaceChart />,
+      WorkplaceDashboardNormal: <WorkplaceDashboardNormal />,
+      WorkplaceDashboardNG: <WorkplaceDashboardNG />,
       CertificateGenerator1: <CertificateGenerator1 />,
       CertificateGenerator2: <CertificateGenerator2 />,
       HonorBoard: <HonorBoard />,
@@ -290,22 +307,7 @@ const App = () => {
           {/* Footer */}
           <Footer />
 
-          {/* Portal ra body + z cao để không bị footer / layer khác che; cuộn theo mainScrollRef */}
-          {createPortal(
-            <div className="pointer-events-auto fixed bottom-6 right-6 z-[9999] flex items-center gap-1.5">
-              <BackToBottom
-                alwaysVisible
-                inline
-                scrollContainerRef={mainScrollRef}
-              />
-              <BackToTop
-                alwaysVisible
-                inline
-                scrollContainerRef={mainScrollRef}
-              />
-            </div>,
-            document.body,
-          )}
+          <ScrollActionPortal scrollContainerRef={mainScrollRef} />
         </div>
       </Router>
     </UserContext.Provider>

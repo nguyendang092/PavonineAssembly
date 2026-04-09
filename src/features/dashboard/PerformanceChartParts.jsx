@@ -33,15 +33,17 @@ export function PerformanceYearSidebar({
   onSelectYear,
   currentCalendarYear,
 }) {
+  const { t } = useTranslation();
   return (
     <Sidebar isOpen={open} onClose={onClose}>
       <div className="flex h-full flex-col p-4">
         <div className="mb-4 text-center">
-          <h2 className="mb-2 flex items-center justify-center gap-2 text-sm font-bold text-white">
-            <span>📅</span>
-            <span>년도 선택</span>
+          <h2 className="mb-1 text-sm font-bold text-white">
+            {t("performanceChart.sidebarTitle")}
           </h2>
-          <p className="text-[10px] text-gray-300">Select Year</p>
+          <p className="text-[10px] text-gray-300">
+            {t("performanceChart.sidebarSubtitle")}
+          </p>
         </div>
 
         <div className="grid flex-1 grid-cols-2 gap-2 space-y-2 overflow-y-auto md:block md:space-y-2">
@@ -59,11 +61,11 @@ export function PerformanceYearSidebar({
                   : "bg-white/10 text-gray-300 hover:bg-white/20"
               }`}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span>{year}</span>
                 {year === currentCalendarYear && (
-                  <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px]">
-                    현재
+                  <span className="shrink-0 rounded bg-white/20 px-1.5 py-0.5 text-[10px]">
+                    {t("performanceChart.currentYearBadge")}
                   </span>
                 )}
               </div>
@@ -89,15 +91,19 @@ export function PerformanceDataTable({
   onAddTeam,
   onRemoveTeam,
 }) {
+  const { t } = useTranslation();
   const prevWeek = currentWeekNumber - 1;
 
   return (
-    <div className="mb-2 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 md:mb-4">
+    <div className="dashboard-report-surface mb-2 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 md:mb-4">
       <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 px-2 py-2 md:px-4">
-        <h3 className="flex items-center gap-2 text-xs font-semibold text-white md:text-sm">
-          <span>📊</span>
-          <span className="hidden sm:inline">데이터 입력 테이블</span>
-          <span className="sm:hidden">테이블</span>
+        <h3 className="text-xs font-semibold text-white md:text-sm">
+          <span className="hidden sm:inline">
+            {t("performanceChart.tableToolbar")}
+          </span>
+          <span className="sm:hidden">
+            {t("performanceChart.tableToolbarShort")}
+          </span>
         </h3>
         <div className="flex flex-wrap items-center justify-end gap-1.5 md:gap-2">
           {canEdit ? (
@@ -112,7 +118,7 @@ export function PerformanceDataTable({
                     onAddTeam?.();
                   }
                 }}
-                placeholder="Tên team"
+                placeholder={t("performanceChart.addTeamPlaceholder")}
                 className="min-w-[8rem] max-w-[12rem] rounded-md border border-white/40 bg-white/95 px-2 py-1 text-gray-800 placeholder:text-gray-400 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/50 dark:bg-slate-900/90 dark:text-slate-100 dark:placeholder:text-slate-500"
                 title="Tên team mới (chỉ admin)"
                 aria-label="Tên team cải tiến mới"
@@ -154,8 +160,10 @@ export function PerformanceDataTable({
               </>
             ) : (
               <>
-                <span>💾</span>
-                <span className="hidden sm:inline">저장</span>
+                <span aria-hidden>💾</span>
+                <span className="hidden sm:inline">
+                  {t("performanceChart.saveButton")}
+                </span>
                 {hasUnsavedChanges && (
                   <span className="rounded-full bg-red-500 px-1 text-[10px] text-white">
                     ●
@@ -172,27 +180,45 @@ export function PerformanceDataTable({
           <thead>
             <tr className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-slate-800 dark:to-slate-800/90">
               <th className="border-b border-indigo-200 px-2 py-1 text-left text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
-                TEAM
-              </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
-                <span className="hidden sm:inline">TARGET</span>
-                <span className="sm:hidden">TGT</span>
-              </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
-                <span className="hidden md:inline">
-                  TOTAL (W1~W{prevWeek}/{selectedYear})
-                </span>
-                <span className="md:hidden">TOTAL</span>
-              </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
-                <span className="hidden sm:inline">Achievement Rate</span>
-                <span className="sm:hidden">%</span>
+                {t("performanceChart.colTeam")}
               </th>
               <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
                 <span className="hidden sm:inline">
-                  WEEK {prevWeek}/{selectedYear}
+                  {t("performanceChart.colTarget")}
                 </span>
-                <span className="sm:hidden">WK</span>
+                <span className="sm:hidden">
+                  {t("performanceChart.colTarget")}
+                </span>
+              </th>
+              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
+                <span className="hidden md:inline">
+                  {t("performanceChart.colTotalLong", {
+                    prevWeek,
+                    year: selectedYear,
+                  })}
+                </span>
+                <span className="md:hidden">
+                  {t("performanceChart.colTotalShort")}
+                </span>
+              </th>
+              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
+                <span className="hidden sm:inline">
+                  {t("performanceChart.colAchievement")}
+                </span>
+                <span className="sm:hidden">
+                  {t("performanceChart.colAchievementShort")}
+                </span>
+              </th>
+              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
+                <span className="hidden sm:inline">
+                  {t("performanceChart.colWeekLong", {
+                    week: prevWeek,
+                    year: selectedYear,
+                  })}
+                </span>
+                <span className="sm:hidden">
+                  {t("performanceChart.colWeekShort")}
+                </span>
               </th>
             </tr>
           </thead>
@@ -295,37 +321,45 @@ export function PerformanceBarChartCard({
   onDownloadPng,
   onDownloadSvg,
 }) {
+  const { t } = useTranslation();
   return (
     <div
       ref={cardRef}
-      className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
+      className="dashboard-report-surface overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-pink-500 to-rose-600 px-2 py-2 md:px-4">
-        <h3 className="flex items-center gap-2 text-xs font-semibold text-white md:text-sm">
-          <span>📈</span>
-          <span className="hidden sm:inline">성과 비교 차트</span>
-          <span className="sm:hidden">차트</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-slate-700 to-slate-900 px-2 py-2 md:px-4">
+        <h3 className="text-xs font-semibold text-white md:text-sm">
+          <span className="hidden sm:inline">
+            {t("performanceChart.chartToolbar")}
+          </span>
+          <span className="sm:hidden">
+            {t("performanceChart.chartToolbarShort")}
+          </span>
         </h3>
         <div className="flex items-center gap-1 md:gap-2">
           <button
             type="button"
             onClick={onDownloadPng}
             data-no-export="true"
-            className="rounded border border-white/30 bg-white/20 px-1.5 py-0.5 text-[9px] font-semibold text-white/90 transition hover:bg-white/30 hover:text-white md:px-2 md:py-1 md:text-[11px]"
-            title="Tải ảnh PNG"
+            className="rounded border border-white/30 bg-white/15 px-1.5 py-0.5 text-[9px] font-semibold text-white transition hover:bg-white/25 md:px-2 md:py-1 md:text-[11px]"
+            title={t("performanceChart.exportPng")}
           >
-            <span className="hidden sm:inline">⬇️ PNG</span>
-            <span className="sm:hidden">PNG</span>
+            <span className="hidden sm:inline">
+              ⬇️ {t("performanceChart.exportPng")}
+            </span>
+            <span className="sm:hidden">{t("performanceChart.exportPng")}</span>
           </button>
           <button
             type="button"
             onClick={onDownloadSvg}
             data-no-export="true"
-            className="rounded border border-white/30 bg-white/20 px-1.5 py-0.5 text-[9px] font-semibold text-white/90 transition hover:bg-white/30 hover:text-white md:px-2 md:py-1 md:text-[11px]"
-            title="Tải ảnh SVG"
+            className="rounded border border-white/30 bg-white/15 px-1.5 py-0.5 text-[9px] font-semibold text-white transition hover:bg-white/25 md:px-2 md:py-1 md:text-[11px]"
+            title={t("performanceChart.exportSvg")}
           >
-            <span className="hidden sm:inline">⬇️ SVG</span>
-            <span className="sm:hidden">SVG</span>
+            <span className="hidden sm:inline">
+              ⬇️ {t("performanceChart.exportSvg")}
+            </span>
+            <span className="sm:hidden">{t("performanceChart.exportSvg")}</span>
           </button>
         </div>
       </div>
@@ -400,7 +434,7 @@ export function PerformanceBarChartCard({
             <Bar
               dataKey="target"
               fill="url(#colorTarget)"
-              name="Target"
+              name={t("performanceChart.chartTarget")}
               radius={[8, 8, 0, 0]}
               maxBarSize={50}
             >
@@ -417,7 +451,7 @@ export function PerformanceBarChartCard({
             <Bar
               dataKey="total"
               fill="url(#colorTotal)"
-              name="Total"
+              name={t("performanceChart.chartTotal")}
               radius={[8, 8, 0, 0]}
               maxBarSize={50}
             >
@@ -434,7 +468,7 @@ export function PerformanceBarChartCard({
             <Bar
               dataKey="percentage"
               fill="url(#colorPercentage)"
-              name="Achievement Rate"
+              name={t("performanceChart.chartAchievement")}
               radius={[8, 8, 0, 0]}
               maxBarSize={50}
             >
@@ -452,7 +486,7 @@ export function PerformanceBarChartCard({
             <Bar
               dataKey="currentWeek"
               fill="url(#colorWeek)"
-              name="Current Week"
+              name={t("performanceChart.chartCurrentWeek")}
               radius={[8, 8, 0, 0]}
               maxBarSize={50}
             >

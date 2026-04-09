@@ -18,6 +18,7 @@ import {
   PerformanceBarChartCard,
   buildChartRows,
 } from "./PerformanceChartParts";
+import "./dashboard.css";
 
 function ymdStamp() {
   const now = new Date();
@@ -210,13 +211,15 @@ export default function PerformanceChart() {
       <button
         type="button"
         onClick={() => setSidebarOpen((o) => !o)}
-        className="fixed left-4 top-20 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-black text-white shadow-lg transition hover:bg-gray-900"
+        aria-expanded={sidebarOpen}
+        aria-label={t("workplaceChart.toggleSidebar")}
+        className="dashboard-no-print fixed left-4 top-20 z-50 flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-md transition hover:bg-slate-50 hover:shadow-lg focus-visible:outline focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
       >
         {sidebarOpen ? "✕" : "☰"}
       </button>
 
       <div
-        className={`flex-1 overflow-hidden p-2 transition-all duration-300 md:p-4 ${
+        className={`dashboard-print-fill flex-1 overflow-hidden p-2 transition-all duration-300 md:p-4 ${
           sidebarOpen ? "ml-72" : "ml-0"
         }`}
       >
@@ -230,16 +233,17 @@ export default function PerformanceChart() {
           </div>
         ) : (
           <div className="mx-auto flex h-full max-w-7xl flex-col">
-            <div className="mb-2 text-center md:mb-4">
-              <div className="inline-block">
-                <h1 className="mb-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-xl font-bold text-transparent md:text-2xl">
-                  개선 제안현황 ({selectedYear})
-                </h1>
-                <p className="text-xs tracking-wide text-gray-500">
-                  Improvement Dashboard
-                </p>
-              </div>
-            </div>
+            <header className="dashboard-report-surface mb-3 rounded-2xl border border-slate-200/90 bg-white/90 px-4 py-3 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/90 md:mb-4 md:px-6 md:py-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-400">
+                {t("performanceChart.sidebarSubtitle")}
+              </p>
+              <h1 className="mt-1 text-lg font-bold tracking-tight text-slate-900 dark:text-slate-50 md:text-2xl">
+                {t("performanceChart.pageTitle", { year: selectedYear })}
+              </h1>
+              <p className="mx-auto mt-1 max-w-2xl text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                {t("performanceChart.pageSubtitle")}
+              </p>
+            </header>
 
             <PerformanceDataTable
               data={data}

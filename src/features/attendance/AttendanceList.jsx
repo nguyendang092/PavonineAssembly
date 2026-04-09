@@ -6,6 +6,7 @@
   useCallback,
   useRef,
   useDeferredValue,
+  startTransition,
 } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -81,6 +82,61 @@ const normalizeEmployeeCode = (value) => {
 
 const normalizeTextValue = (value) => String(value ?? "").trim();
 
+/** Giờ chuẩn HH:MM (hoặc HH:MM:SS), không nhận text loại phép / ngoài 24h */
+const GIO_VAO_HHMM_STRICT = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+/** Cùng logic với thống kê combo chart — dùng cho bảng chi tiết khi bấm KPI */
+function getAttendanceComboFlags(emp) {
+  const gioVaoRaw = normalizeTextValue(emp.gioVao);
+  const isTimeFormat = /^\d{1,2}:\d{2}(:\d{2})?$/.test(gioVaoRaw);
+  const nonStandardTimeIn =
+    gioVaoRaw !== "" && !GIO_VAO_HHMM_STRICT.test(gioVaoRaw);
+  const gioVaoNormalized = normalizeTextValue(emp.gioVao).toUpperCase();
+  const gioVaoLatin = gioVaoNormalized
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const gioVaoTokens = gioVaoLatin
+    .split(/[^A-Z0-9/]+/)
+    .flatMap((t) => t.split("/"))
+    .filter(Boolean);
+  const hasLeaveCode = (...codes) =>
+    codes.some((code) => gioVaoTokens.includes(code));
+  const hasText = (...texts) =>
+    texts.some((txt) => gioVaoLatin.includes(txt));
+  const caLamViecNormalized = normalizeTextValue(emp.caLamViec).toLowerCase();
+  const isLate = hasLeaveCode("VT") || hasText("VAO TRE");
+  const hasCheckIn =
+    isTimeFormat ||
+    hasLeaveCode("CDL") ||
+    hasText("CO DI LAM", "DI LAM") ||
+    isLate;
+  const isAnnualLeave =
+    hasLeaveCode("PN") || hasText("PHEP NAM", "1/2PHEPNAM", "1/2 PN");
+  const isLaborAccident = hasLeaveCode("TN") || hasText("TNLD", "TAI NAN");
+  const isMaternity = hasLeaveCode("TS") || hasText("THAI SAN");
+  const isNoPermit = hasLeaveCode("KP") || hasText("KHONG PHEP");
+  const isUnpaidLeave = hasLeaveCode("KL") || hasText("KHONG LUONG");
+  const isSickLeave = hasLeaveCode("PO") || hasText("PHEP OM", "NGHI OM");
+  const isResignedLeave = hasLeaveCode("NV") || hasText("NGHI VIEC");
+  const isNightShift =
+    caLamViecNormalized.includes("đêm") ||
+    caLamViecNormalized.includes("dem") ||
+    caLamViecNormalized.includes("night");
+  return {
+    nonStandardTimeIn,
+    checkedIn: hasCheckIn,
+    late: isLate,
+    annualLeave: isAnnualLeave,
+    nightShift: isNightShift,
+    laborAccident: isLaborAccident,
+    maternity: isMaternity,
+    noPermit: isNoPermit,
+    unpaidLeave: isUnpaidLeave,
+    sickLeave: isSickLeave,
+    resignedLeave: isResignedLeave,
+  };
+}
+
 function AttendanceList() {
   const todayKey = new Date().toISOString().slice(0, 10);
   // State for alert messages
@@ -128,6 +184,10 @@ function AttendanceList() {
   const [expandedSections, setExpandedSections] = useState({}); // Track which sections are expanded
   const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   const [showComboChartModal, setShowComboChartModal] = useState(false);
+  const [comboChartBodyReady, setComboChartBodyReady] = useState(false);
+  const [comboChartCardsVisibleCount, setComboChartCardsVisibleCount] =
+    useState(0);
+  const [comboStatDetailKey, setComboStatDetailKey] = useState(null);
   // Overtime modal-specific filters
   const [modalFilterOpen, setModalFilterOpen] = useState(false);
   const [modalGioiTinhFilter, setModalGioiTinhFilter] = useState([]);
@@ -448,49 +508,15 @@ function AttendanceList() {
   const comboChartData = useMemo(() => {
     const map = new Map();
     deferredFilteredForCharts.forEach((emp) => {
+      const flags = getAttendanceComboFlags(emp);
       const department =
         normalizeTextValue(emp.boPhan) ||
         tl("unknownDepartment", "Chưa phân bộ phận");
-      const gioVaoRaw = normalizeTextValue(emp.gioVao);
-      const isTimeFormat = /^\d{1,2}:\d{2}(:\d{2})?$/.test(gioVaoRaw);
-      const gioVaoNormalized = normalizeTextValue(emp.gioVao).toUpperCase();
-      const gioVaoCode = gioVaoNormalized.replace(/\s+/g, "");
-      const gioVaoLatin = gioVaoNormalized
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-      const gioVaoTokens = gioVaoLatin
-        .split(/[^A-Z0-9/]+/)
-        .flatMap((t) => t.split("/"))
-        .filter(Boolean);
-      const hasLeaveCode = (...codes) =>
-        codes.some((code) => gioVaoTokens.includes(code));
-      const hasText = (...texts) =>
-        texts.some((txt) => gioVaoLatin.includes(txt));
-      const caLamViecNormalized = normalizeTextValue(
-        emp.caLamViec,
-      ).toLowerCase();
-      const isLate = hasLeaveCode("VT") || hasText("VAO TRE");
-      const hasCheckIn =
-        isTimeFormat ||
-        hasLeaveCode("CDL") ||
-        hasText("CO DI LAM", "DI LAM") ||
-        isLate;
-      const isAnnualLeave =
-        hasLeaveCode("PN") || hasText("PHEP NAM", "1/2PHEPNAM", "1/2 PN");
-      const isLaborAccident = hasLeaveCode("TN") || hasText("TNLD", "TAI NAN");
-      const isMaternity = hasLeaveCode("TS") || hasText("THAI SAN");
-      const isNoPermit = hasLeaveCode("KP") || hasText("KHONG PHEP");
-      const isUnpaidLeave = hasLeaveCode("KL") || hasText("KHONG LUONG");
-      const isSickLeave = hasLeaveCode("PO") || hasText("PHEP OM", "NGHI OM");
-      const isResignedLeave = hasLeaveCode("NV") || hasText("NGHI VIEC");
-      const isNightShift =
-        caLamViecNormalized.includes("đêm") ||
-        caLamViecNormalized.includes("dem") ||
-        caLamViecNormalized.includes("night");
       const row = map.get(department) || {
         department,
         total: 0,
         checkedIn: 0,
+        nonStandardTimeIn: 0,
         late: 0,
         annualLeave: 0,
         nightShift: 0,
@@ -502,16 +528,17 @@ function AttendanceList() {
         resignedLeave: 0,
       };
       row.total += 1;
-      if (hasCheckIn) row.checkedIn += 1;
-      if (isLate) row.late += 1;
-      if (isAnnualLeave) row.annualLeave += 1;
-      if (isNightShift) row.nightShift += 1;
-      if (isLaborAccident) row.laborAccident += 1;
-      if (isMaternity) row.maternity += 1;
-      if (isNoPermit) row.noPermit += 1;
-      if (isUnpaidLeave) row.unpaidLeave += 1;
-      if (isSickLeave) row.sickLeave += 1;
-      if (isResignedLeave) row.resignedLeave += 1;
+      if (flags.checkedIn) row.checkedIn += 1;
+      if (flags.nonStandardTimeIn) row.nonStandardTimeIn += 1;
+      if (flags.late) row.late += 1;
+      if (flags.annualLeave) row.annualLeave += 1;
+      if (flags.nightShift) row.nightShift += 1;
+      if (flags.laborAccident) row.laborAccident += 1;
+      if (flags.maternity) row.maternity += 1;
+      if (flags.noPermit) row.noPermit += 1;
+      if (flags.unpaidLeave) row.unpaidLeave += 1;
+      if (flags.sickLeave) row.sickLeave += 1;
+      if (flags.resignedLeave) row.resignedLeave += 1;
       map.set(department, row);
     });
 
@@ -523,6 +550,7 @@ function AttendanceList() {
       (acc, row) => {
         acc.total += row.total;
         acc.checkedIn += row.checkedIn;
+        acc.nonStandardTimeIn += row.nonStandardTimeIn;
         acc.late += row.late;
         acc.annualLeave += row.annualLeave;
         acc.nightShift += row.nightShift;
@@ -537,6 +565,7 @@ function AttendanceList() {
       {
         total: 0,
         checkedIn: 0,
+        nonStandardTimeIn: 0,
         late: 0,
         annualLeave: 0,
         nightShift: 0,
@@ -548,11 +577,176 @@ function AttendanceList() {
         resignedLeave: 0,
       },
     );
-    return {
-      ...stats,
-      departmentCount: comboChartData.length,
-    };
+    return stats;
   }, [comboChartData]);
+
+  const comboChartRowsVisible = useMemo(
+    () => comboChartData.slice(0, comboChartCardsVisibleCount),
+    [comboChartData, comboChartCardsVisibleCount],
+  );
+
+  const comboStatEmployeesByKey = useMemo(() => {
+    const list = deferredFilteredForCharts;
+    const buckets = {
+      total: [...list],
+      checkedIn: [],
+      nonStandardTimeIn: [],
+      late: [],
+      annualLeave: [],
+      nightShift: [],
+      laborAccident: [],
+      maternity: [],
+      noPermit: [],
+      unpaidLeave: [],
+      sickLeave: [],
+      resignedLeave: [],
+    };
+    for (const emp of list) {
+      const f = getAttendanceComboFlags(emp);
+      if (f.checkedIn) buckets.checkedIn.push(emp);
+      if (f.nonStandardTimeIn) buckets.nonStandardTimeIn.push(emp);
+      if (f.late) buckets.late.push(emp);
+      if (f.annualLeave) buckets.annualLeave.push(emp);
+      if (f.nightShift) buckets.nightShift.push(emp);
+      if (f.laborAccident) buckets.laborAccident.push(emp);
+      if (f.maternity) buckets.maternity.push(emp);
+      if (f.noPermit) buckets.noPermit.push(emp);
+      if (f.unpaidLeave) buckets.unpaidLeave.push(emp);
+      if (f.sickLeave) buckets.sickLeave.push(emp);
+      if (f.resignedLeave) buckets.resignedLeave.push(emp);
+    }
+    return buckets;
+  }, [deferredFilteredForCharts]);
+
+  const comboStatLabelByKey = useMemo(
+    () => ({
+      total: tl("totalEmployees", "Tổng số nhân viên"),
+      checkedIn: tl("checkedIn", "Đã chấm công"),
+      nonStandardTimeIn: tl("nonStandardTimeIn", "Giờ vào ≠ HH:MM"),
+      late: tl("late", "Vào trễ"),
+      annualLeave: tl("annualLeave", "Phép năm"),
+      nightShift: tl("nightShift", "Ca đêm"),
+      laborAccident: tl("laborAccident", "Tai nạn"),
+      maternity: tl("maternity", "Thai sản"),
+      noPermit: tl("noPermit", "Không phép"),
+      unpaidLeave: tl("unpaidLeave", "Không lương"),
+      sickLeave: tl("sickLeave", "Phép ốm"),
+      resignedLeave: tl("resigned", "Nghỉ việc"),
+    }),
+    [tl],
+  );
+
+  useEffect(() => {
+    if (!showComboChartModal) {
+      setComboStatDetailKey(null);
+      setComboChartBodyReady(false);
+      setComboChartCardsVisibleCount(0);
+      return;
+    }
+    setComboChartBodyReady(false);
+    setComboChartCardsVisibleCount(0);
+    let cancelled = false;
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+        startTransition(() => {
+          if (!cancelled) setComboChartBodyReady(true);
+        });
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [showComboChartModal]);
+
+  useLayoutEffect(() => {
+    if (!comboChartBodyReady) return;
+    const total = comboChartData.length;
+    if (total === 0) {
+      setComboChartCardsVisibleCount(0);
+      return undefined;
+    }
+    const batch = 6;
+    let count = Math.min(batch, total);
+    setComboChartCardsVisibleCount(count);
+    if (count >= total) return undefined;
+    let cancelled = false;
+    const ric =
+      typeof window !== "undefined" && window.requestIdleCallback
+        ? window.requestIdleCallback.bind(window)
+        : (cb) => setTimeout(cb, 48);
+    const tick = () => {
+      if (cancelled) return;
+      count = Math.min(count + batch, total);
+      setComboChartCardsVisibleCount(count);
+      if (count < total) ric(tick, { timeout: 120 });
+    };
+    ric(tick, { timeout: 120 });
+    return () => {
+      cancelled = true;
+    };
+  }, [comboChartBodyReady, comboChartData]);
+
+  useEffect(() => {
+    if (!showComboChartModal) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const mainScroll = document.getElementById("app-main-scroll");
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevMainOverflow = mainScroll?.style.overflow ?? "";
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    if (mainScroll) mainScroll.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      if (mainScroll) mainScroll.style.overflow = prevMainOverflow;
+    };
+  }, [showComboChartModal]);
+
+  useEffect(() => {
+    if (!comboStatDetailKey) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setComboStatDetailKey(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [comboStatDetailKey]);
+
+  useEffect(() => {
+    if (!showComboChartModal || !comboStatDetailKey) return;
+    const s = comboDashboardStats;
+    const key = comboStatDetailKey;
+    const n =
+      key === "total"
+        ? s.total
+        : key === "checkedIn"
+          ? s.checkedIn
+          : key === "nonStandardTimeIn"
+            ? s.nonStandardTimeIn
+            : key === "late"
+              ? s.late
+              : key === "annualLeave"
+                ? s.annualLeave
+                : key === "nightShift"
+                  ? s.nightShift
+                  : key === "laborAccident"
+                    ? s.laborAccident
+                    : key === "maternity"
+                      ? s.maternity
+                      : key === "noPermit"
+                        ? s.noPermit
+                        : key === "unpaidLeave"
+                          ? s.unpaidLeave
+                          : key === "sickLeave"
+                            ? s.sickLeave
+                            : key === "resignedLeave"
+                              ? s.resignedLeave
+                              : -1;
+    if (n === 0) setComboStatDetailKey(null);
+  }, [showComboChartModal, comboStatDetailKey, comboDashboardStats]);
 
   // Overtime modal: derive unique options and apply modal filters from filteredEmployees
   const modalUniqueGenders = useMemo(
@@ -2313,7 +2507,9 @@ function AttendanceList() {
             {/* Filter Dropdown Menu */}
             <button
               type="button"
-              onClick={() => setShowComboChartModal(true)}
+              onClick={() =>
+                startTransition(() => setShowComboChartModal(true))
+              }
               className="inline-flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-lg border border-emerald-300 bg-emerald-600 px-1 text-xs font-bold text-white shadow transition hover:bg-emerald-700 sm:text-sm dark:border-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
             >
               📊 {tl("comboChart", "Thống kê")}
@@ -3550,7 +3746,7 @@ function AttendanceList() {
 
         {showComboChartModal && (
           <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm sm:p-4">
-            <div className="flex h-[94vh] w-[min(98vw,1680px)] max-w-none flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+            <div className="relative flex h-[94vh] w-[min(98vw,1680px)] max-w-none flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
               <div className="border-b border-slate-300/80 bg-gradient-to-b from-slate-200/95 to-slate-100 px-4 pb-3 pt-4 dark:border-slate-800 dark:from-slate-950 dark:to-slate-950">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -3566,7 +3762,7 @@ function AttendanceList() {
                     <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
                       {tl(
                         "comboChartHint",
-                        "Cột: Vào trễ / Phép năm / Ca đêm / Tai nạn / Thai sản / Không phép / Không lương / Phép ốm / Nghỉ việc • Đường: Tổng nhân viên",
+                        "Cột: Điểm danh / Giờ vào ≠ HH:MM / Vào trễ / Phép năm / Ca đêm / Tai nạn / Thai sản / Không phép / Không lương / Phép ốm / Nghỉ việc • Đường: Tổng nhân viên",
                       )}
                     </p>
                   </div>
@@ -3580,103 +3776,175 @@ function AttendanceList() {
                   </button>
                 </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-11">
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("totalEmployees", "Tổng số nhân viên")}
-                    </p>
-                    <p className="text-base font-bold text-slate-900 dark:text-slate-50">
-                      {comboDashboardStats.total}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("checkedIn", "Đã điểm danh")}
-                    </p>
-                    <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                      {comboDashboardStats.checkedIn}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("late", "Vào trễ")}
-                    </p>
-                    <p className="text-base font-bold text-lime-700 dark:text-lime-400">
-                      {comboDashboardStats.late}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("annualLeave", "Phép năm")}
-                    </p>
-                    <p className="text-base font-bold text-amber-600 dark:text-amber-400">
-                      {comboDashboardStats.annualLeave}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("nightShift", "Ca đêm")}
-                    </p>
-                    <p className="text-base font-bold text-indigo-600 dark:text-indigo-400">
-                      {comboDashboardStats.nightShift}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("department", "Bộ phận")}
-                    </p>
-                    <p className="text-base font-bold text-slate-900 dark:text-slate-50">
-                      {comboDashboardStats.departmentCount}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("laborAccident", "Tai nạn")}
-                    </p>
-                    <p className="text-base font-bold text-rose-600 dark:text-rose-400">
-                      {comboDashboardStats.laborAccident}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("maternity", "Thai sản")}
-                    </p>
-                    <p className="text-base font-bold text-fuchsia-600 dark:text-fuchsia-400">
-                      {comboDashboardStats.maternity}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("noPermit", "Không phép")}
-                    </p>
-                    <p className="text-base font-bold text-red-600 dark:text-red-400">
-                      {comboDashboardStats.noPermit}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("unpaidLeave", "Không lương")}
-                    </p>
-                    <p className="text-base font-bold text-orange-600 dark:text-orange-400">
-                      {comboDashboardStats.unpaidLeave}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("sickLeave", "Phép ốm")}
-                    </p>
-                    <p className="text-base font-bold text-teal-600 dark:text-teal-400">
-                      {comboDashboardStats.sickLeave}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                      {tl("resigned", "Nghỉ việc")}
-                    </p>
-                    <p className="text-base font-bold text-slate-700 dark:text-slate-300">
-                      {comboDashboardStats.resignedLeave}
-                    </p>
-                  </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {comboDashboardStats.total > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("total")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("totalEmployees", "Tổng số nhân viên")}
+                      </p>
+                      <p className="text-base font-bold text-slate-900 dark:text-slate-50">
+                        {comboDashboardStats.total}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.checkedIn > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("checkedIn")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("checkedIn", "Đã chấm công")}
+                      </p>
+                      <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                        {comboDashboardStats.checkedIn}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.nonStandardTimeIn > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("nonStandardTimeIn")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("nonStandardTimeIn", "Giờ vào ≠ HH:MM")}
+                      </p>
+                      <p className="text-base font-bold text-cyan-600 dark:text-cyan-400">
+                        {comboDashboardStats.nonStandardTimeIn}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.late > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("late")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("late", "Vào trễ")}
+                      </p>
+                      <p className="text-base font-bold text-lime-700 dark:text-lime-400">
+                        {comboDashboardStats.late}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.annualLeave > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("annualLeave")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("annualLeave", "Phép năm")}
+                      </p>
+                      <p className="text-base font-bold text-amber-600 dark:text-amber-400">
+                        {comboDashboardStats.annualLeave}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.nightShift > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("nightShift")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("nightShift", "Ca đêm")}
+                      </p>
+                      <p className="text-base font-bold text-indigo-600 dark:text-indigo-400">
+                        {comboDashboardStats.nightShift}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.laborAccident > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("laborAccident")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("laborAccident", "Tai nạn")}
+                      </p>
+                      <p className="text-base font-bold text-rose-600 dark:text-rose-400">
+                        {comboDashboardStats.laborAccident}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.maternity > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("maternity")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("maternity", "Thai sản")}
+                      </p>
+                      <p className="text-base font-bold text-fuchsia-600 dark:text-fuchsia-400">
+                        {comboDashboardStats.maternity}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.noPermit > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("noPermit")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("noPermit", "Không phép")}
+                      </p>
+                      <p className="text-base font-bold text-red-600 dark:text-red-400">
+                        {comboDashboardStats.noPermit}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.unpaidLeave > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("unpaidLeave")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("unpaidLeave", "Không lương")}
+                      </p>
+                      <p className="text-base font-bold text-orange-600 dark:text-orange-400">
+                        {comboDashboardStats.unpaidLeave}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.sickLeave > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("sickLeave")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("sickLeave", "Phép ốm")}
+                      </p>
+                      <p className="text-base font-bold text-teal-600 dark:text-teal-400">
+                        {comboDashboardStats.sickLeave}
+                      </p>
+                    </button>
+                  ) : null}
+                  {comboDashboardStats.resignedLeave > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setComboStatDetailKey("resignedLeave")}
+                      className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                        {tl("resigned", "Nghỉ việc")}
+                      </p>
+                      <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                        {comboDashboardStats.resignedLeave}
+                      </p>
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
@@ -3685,10 +3953,41 @@ function AttendanceList() {
                   <div className="flex flex-1 items-center justify-center text-sm text-slate-600 dark:text-slate-400">
                     {tl("noData", "Không có dữ liệu")}
                   </div>
+                ) : !comboChartBodyReady ||
+                  (comboChartRowsVisible.length === 0 &&
+                    comboChartData.length > 0) ? (
+                  <div
+                    className="flex min-h-0 flex-1 flex-col"
+                    aria-busy="true"
+                    aria-live="polite"
+                  >
+                    <p className="mb-3 text-center text-xs text-slate-500 dark:text-slate-400">
+                      {tl(
+                        "comboChartLoading",
+                        "Đang tải biểu đồ theo bộ phận…",
+                      )}
+                    </p>
+                    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div
+                          key={`combo-skel-${i}`}
+                          className="animate-pulse rounded-xl border border-slate-300/60 bg-slate-100/90 p-3 dark:border-slate-700/80 dark:bg-slate-900/80"
+                        >
+                          <div className="mb-2 h-3 w-2/3 rounded bg-slate-300 dark:bg-slate-600" />
+                          <div className="mb-3 flex gap-1">
+                            <div className="h-6 flex-1 rounded bg-slate-200 dark:bg-slate-700" />
+                            <div className="h-6 flex-1 rounded bg-slate-200 dark:bg-slate-700" />
+                            <div className="h-6 flex-1 rounded bg-slate-200 dark:bg-slate-700" />
+                          </div>
+                          <div className="h-[210px] rounded-lg bg-slate-200/80 dark:bg-slate-800/80 sm:h-[220px]" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ) : (
-                  <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                  <div className="min-h-0 flex-1 overflow-y-auto pr-1 transition-opacity duration-200">
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {comboChartData.map((row) => (
+                      {comboChartRowsVisible.map((row) => (
                         <div
                           key={row.department}
                           className="rounded-xl border border-slate-300/85 bg-slate-80 p-2 shadow-[0_1px_3px_rgba(15,23,42,0.08)] dark:border-slate-700/90 dark:bg-slate-900/90"
@@ -3701,39 +4000,65 @@ function AttendanceList() {
                               {tl("totalEmployees", "Tổng")}: {row.total}
                             </span>
                           </div>
-                          <div className="mb-1.5 grid grid-cols-3 gap-1 text-[10px]">
-                            <span className="rounded bg-emerald-50 px-1.5 py-1 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold uppercase">
-                              {tl("checkedIn", "Điểm danh")}: {row.checkedIn}
-                            </span>
-                            <span className="rounded bg-lime-50 px-1.5 py-1 text-lime-700 dark:bg-lime-950/40 dark:text-lime-300 font-semibold uppercase">
-                              {tl("late", "Vào trễ")}: {row.late}
-                            </span>
-                            <span className="rounded bg-amber-50 px-1.5 py-1 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold uppercase">
-                              {tl("annualLeave", "Phép năm")}: {row.annualLeave}
-                            </span>
-                            <span className="rounded bg-indigo-50 px-1.5 py-1 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold uppercase">
-                              {tl("nightShift", "Ca đêm")}: {row.nightShift}
-                            </span>
-                            <span className="rounded bg-rose-50 px-1.5 py-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 font-semibold uppercase">
-                              {tl("laborAccident", "Tai nạn")}:{" "}
-                              {row.laborAccident}
-                            </span>
-                            <span className="rounded bg-fuchsia-50 px-1.5 py-1 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 font-semibold uppercase">
-                              {tl("maternity", "Thai sản")}: {row.maternity}
-                            </span>
-                            <span className="rounded bg-red-50 px-1.5 py-1 text-red-700 dark:bg-red-950/40 dark:text-red-300 font-semibold uppercase">
-                              {tl("noPermit", "Không phép")}: {row.noPermit}
-                            </span>
-                            <span className="rounded bg-orange-50 px-1.5 py-1 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 font-semibold uppercase">
-                              {tl("unpaidLeave", "Không lương")}:{" "}
-                              {row.unpaidLeave}
-                            </span>
-                            <span className="rounded bg-teal-50 px-1.5 py-1 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-semibold uppercase">
-                              {tl("sickLeave", "Phép ốm")}: {row.sickLeave}
-                            </span>
-                            <span className="rounded bg-slate-100 px-1.5 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-semibold uppercase">
-                              {tl("resigned", "Nghỉ việc")}: {row.resignedLeave}
-                            </span>
+                          <div className="mb-1.5 flex flex-wrap gap-1 text-[10px]">
+                            {row.checkedIn > 0 ? (
+                              <span className="rounded bg-emerald-50 px-1.5 py-1 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold uppercase">
+                                {tl("checkedIn", "Điểm danh")}: {row.checkedIn}
+                              </span>
+                            ) : null}
+                            {row.nonStandardTimeIn > 0 ? (
+                              <span className="rounded bg-cyan-50 px-1.5 py-1 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300 font-semibold uppercase">
+                                {tl("nonStandardTimeInShort", "≠ HH:MM")}:{" "}
+                                {row.nonStandardTimeIn}
+                              </span>
+                            ) : null}
+                            {row.late > 0 ? (
+                              <span className="rounded bg-lime-50 px-1.5 py-1 text-lime-700 dark:bg-lime-950/40 dark:text-lime-300 font-semibold uppercase">
+                                {tl("late", "Vào trễ")}: {row.late}
+                              </span>
+                            ) : null}
+                            {row.annualLeave > 0 ? (
+                              <span className="rounded bg-amber-50 px-1.5 py-1 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold uppercase">
+                                {tl("annualLeave", "Phép năm")}: {row.annualLeave}
+                              </span>
+                            ) : null}
+                            {row.nightShift > 0 ? (
+                              <span className="rounded bg-indigo-50 px-1.5 py-1 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold uppercase">
+                                {tl("nightShift", "Ca đêm")}: {row.nightShift}
+                              </span>
+                            ) : null}
+                            {row.laborAccident > 0 ? (
+                              <span className="rounded bg-rose-50 px-1.5 py-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 font-semibold uppercase">
+                                {tl("laborAccident", "Tai nạn")}:{" "}
+                                {row.laborAccident}
+                              </span>
+                            ) : null}
+                            {row.maternity > 0 ? (
+                              <span className="rounded bg-fuchsia-50 px-1.5 py-1 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 font-semibold uppercase">
+                                {tl("maternity", "Thai sản")}: {row.maternity}
+                              </span>
+                            ) : null}
+                            {row.noPermit > 0 ? (
+                              <span className="rounded bg-red-50 px-1.5 py-1 text-red-700 dark:bg-red-950/40 dark:text-red-300 font-semibold uppercase">
+                                {tl("noPermit", "Không phép")}: {row.noPermit}
+                              </span>
+                            ) : null}
+                            {row.unpaidLeave > 0 ? (
+                              <span className="rounded bg-orange-50 px-1.5 py-1 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 font-semibold uppercase">
+                                {tl("unpaidLeave", "Không lương")}:{" "}
+                                {row.unpaidLeave}
+                              </span>
+                            ) : null}
+                            {row.sickLeave > 0 ? (
+                              <span className="rounded bg-teal-50 px-1.5 py-1 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-semibold uppercase">
+                                {tl("sickLeave", "Phép ốm")}: {row.sickLeave}
+                              </span>
+                            ) : null}
+                            {row.resignedLeave > 0 ? (
+                              <span className="rounded bg-slate-100 px-1.5 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-semibold uppercase">
+                                {tl("resigned", "Nghỉ việc")}: {row.resignedLeave}
+                              </span>
+                            ) : null}
                           </div>
                           <div className="h-[210px] w-full sm:h-[220px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -3780,6 +4105,11 @@ function AttendanceList() {
                                         value,
                                         tl("checkedIn", "Đã điểm danh"),
                                       ];
+                                    if (name === "nonStandardTimeIn")
+                                      return [
+                                        value,
+                                        tl("nonStandardTimeIn", "Giờ vào ≠ HH:MM"),
+                                      ];
                                     if (name === "late")
                                       return [value, tl("late", "Vào trễ")];
                                     if (name === "annualLeave")
@@ -3825,83 +4155,236 @@ function AttendanceList() {
                                     return [value, name];
                                   }}
                                 />
-                                <Bar
-                                  yAxisId="left"
-                                  dataKey="checkedIn"
-                                  fill="#10b981"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Bar
-                                  yAxisId="left"
-                                  dataKey="late"
-                                  fill="#65a30d"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Bar
-                                  yAxisId="left"
-                                  dataKey="annualLeave"
-                                  fill="#f59e0b"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Bar
-                                  yAxisId="left"
-                                  dataKey="nightShift"
-                                  fill="#6366f1"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Bar
-                                  yAxisId="left"
-                                  dataKey="laborAccident"
-                                  fill="#f43f5e"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Bar
-                                  yAxisId="left"
-                                  dataKey="maternity"
-                                  fill="#d946ef"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Bar
-                                  yAxisId="left"
-                                  dataKey="noPermit"
-                                  fill="#dc2626"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Bar
-                                  yAxisId="left"
-                                  dataKey="unpaidLeave"
-                                  fill="#ea580c"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Bar
-                                  yAxisId="left"
-                                  dataKey="sickLeave"
-                                  fill="#0d9488"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Bar
-                                  yAxisId="left"
-                                  dataKey="resignedLeave"
-                                  fill="#475569"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Line
-                                  yAxisId="right"
-                                  type="monotone"
-                                  dataKey="total"
-                                  stroke="#7c3aed"
-                                  strokeWidth={2.25}
-                                  dot={{ r: 3 }}
-                                />
+                                {row.checkedIn > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="checkedIn"
+                                    fill="#10b981"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.nonStandardTimeIn > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="nonStandardTimeIn"
+                                    fill="#06b6d4"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.late > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="late"
+                                    fill="#65a30d"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.annualLeave > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="annualLeave"
+                                    fill="#f59e0b"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.nightShift > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="nightShift"
+                                    fill="#6366f1"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.laborAccident > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="laborAccident"
+                                    fill="#f43f5e"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.maternity > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="maternity"
+                                    fill="#d946ef"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.noPermit > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="noPermit"
+                                    fill="#dc2626"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.unpaidLeave > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="unpaidLeave"
+                                    fill="#ea580c"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.sickLeave > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="sickLeave"
+                                    fill="#0d9488"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.resignedLeave > 0 ? (
+                                  <Bar
+                                    yAxisId="left"
+                                    dataKey="resignedLeave"
+                                    fill="#475569"
+                                    radius={[4, 4, 0, 0]}
+                                  />
+                                ) : null}
+                                {row.total > 0 ? (
+                                  <Line
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="total"
+                                    stroke="#7c3aed"
+                                    strokeWidth={2.25}
+                                    dot={{ r: 3 }}
+                                  />
+                                ) : null}
                               </ComposedChart>
                             </ResponsiveContainer>
                           </div>
                         </div>
                       ))}
                     </div>
+                    {comboChartCardsVisibleCount < comboChartData.length ? (
+                      <div className="flex justify-center py-3 text-xs text-slate-500 dark:text-slate-400">
+                        {tl(
+                          "comboChartLoadingMore",
+                          "Đang tải thêm biểu đồ…",
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>
+
+              {comboStatDetailKey && (
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="combo-stat-detail-title"
+                  className="absolute inset-0 z-[1300] flex items-center justify-center bg-black/50 p-3 backdrop-blur-[2px] sm:p-6"
+                  onClick={() => setComboStatDetailKey(null)}
+                >
+                  <div
+                    className="flex max-h-[min(78vh,760px)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-start justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          {tl("comboStatDetailBadge", "Chi tiết danh sách")}
+                        </p>
+                        <h4
+                          id="combo-stat-detail-title"
+                          className="truncate text-base font-bold text-slate-900 dark:text-slate-50"
+                        >
+                          {comboStatLabelByKey[comboStatDetailKey] ?? ""}
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          {tl("peopleCount", "{{count}} người", {
+                            count:
+                              comboStatEmployeesByKey[comboStatDetailKey]
+                                ?.length ?? 0,
+                          })}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setComboStatDetailKey(null)}
+                        className="shrink-0 rounded-lg p-2 text-slate-600 transition hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800"
+                        aria-label={t("attendanceList.close")}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-auto px-2 py-3 sm:px-4">
+                      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                        <table className="w-full min-w-[520px] border-collapse text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
+                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+                                {tl("colIndex", "STT")}
+                              </th>
+                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+                                {tl("colCode", "MNV")}
+                              </th>
+                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+                                {tl("colName", "Họ và tên")}
+                              </th>
+                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+                                {tl("colDepartment", "Bộ phận")}
+                              </th>
+                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+                                {tl("colTimeIn", "Giờ vào")}
+                              </th>
+                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+                                {tl("comboStatColShift", "Ca làm việc")}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(
+                              comboStatEmployeesByKey[comboStatDetailKey] ?? []
+                            ).length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={6}
+                                  className="px-3 py-8 text-center text-slate-500 dark:text-slate-400"
+                                >
+                                  {tl("noData", "Không có dữ liệu")}
+                                </td>
+                              </tr>
+                            ) : (
+                              (
+                                comboStatEmployeesByKey[comboStatDetailKey] ??
+                                []
+                              ).map((emp, idx) => (
+                                <tr
+                                  key={emp.id ?? `${emp.mnv}-${idx}`}
+                                  className="border-b border-slate-100 odd:bg-white even:bg-slate-50/60 dark:border-slate-800 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
+                                >
+                                  <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
+                                    {idx + 1}
+                                  </td>
+                                  <td className="px-3 py-2 tabular-nums text-slate-800 dark:text-slate-200">
+                                    {emp.mnv ?? ""}
+                                  </td>
+                                  <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">
+                                    {emp.hoVaTen ?? ""}
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
+                                    {emp.boPhan ?? ""}
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
+                                    {emp.gioVao ?? ""}
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
+                                    {emp.caLamViec ?? ""}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

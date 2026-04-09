@@ -153,8 +153,8 @@ export const PUBLIC_ROUTE_PATHS = new Set(["/login", "/email/login"]);
 // Cấu hình route cho App.jsx (route công khai /login, /email/login khai báo trực tiếp trong App)
 export const routeConfig = [
   { path: "/", element: "InternalAnnouncements" },
-  { path: "/normal", element: "WorkplaceChart" },
-  { path: "/ng", element: "NGWorkplaceChart" },
+  { path: "/normal", element: "WorkplaceDashboardNormal" },
+  { path: "/ng", element: "WorkplaceDashboardNG" },
   { path: "/bangkhen1", element: "CertificateGenerator1" },
   { path: "/bangkhen2", element: "CertificateGenerator2" },
   { path: "/honor-board", element: "HonorBoard" },
