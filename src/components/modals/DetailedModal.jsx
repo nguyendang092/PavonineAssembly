@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import { useTranslation } from "react-i18next";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import { logUserAction } from "@/utils/userLog";

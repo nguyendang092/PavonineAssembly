@@ -6,7 +6,7 @@ import { useUser } from "@/contexts/UserContext";
 // (đặt sau khai báo state trong component MoldManager)
 import { db, ref, set, onValue } from "@/services/firebase";
 import { push, remove, update } from "firebase/database";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import Sidebar from "@/components/layout/Sidebar";
 import AlertMessage from "@/components/ui/AlertMessage";
 

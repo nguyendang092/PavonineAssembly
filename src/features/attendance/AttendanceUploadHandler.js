@@ -1,6 +1,6 @@
 // AttendanceUploadHandler.js
 // This module exports the Excel upload handler for attendance data.
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import { ref, set, get } from "firebase/database";
 import { getDateKeyBySubtractDays } from "@/utils/dateKey";
 import { getUploadErrorMessage } from "@/utils/uploadErrorMessage";

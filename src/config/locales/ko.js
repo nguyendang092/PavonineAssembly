@@ -982,6 +982,26 @@ const ko = {
     printAttendanceOpened: "✅ 출근부 인쇄 창을 열었습니다 ({{count}}명)",
     noCompensationEmployees: "보상근무 직원이 없습니다",
     overtimeFormTitle: "연장근무 신청서",
+    exportExcelDateRange: "Excel 내보내기 (기간)",
+    exportExcelDateRangeHint: "시작일 ~ 종료일 — 한 파일",
+    exportRangeModalTitle: "기간별 Excel 내보내기",
+    exportRangeModalHint:
+      "각 날짜의 데이터는 출근 화면과 동일하게 인사 프로필과 병합됩니다. 현재 검색·부서·성별·출근 상태 필터가 기간 내 각 날짜에도 적용됩니다.",
+    exportRangeFromLabel: "시작일",
+    exportRangeToLabel: "종료일",
+    exportRangeWorking: "불러오는 중…",
+    exportRangeConfirm: "파일 내보내기",
+    exportRangeFillDates: "시작일과 종료일을 모두 선택하세요 (YYYY-MM-DD).",
+    exportRangeInvalid: "날짜 범위가 올바르지 않거나 시작일이 종료일보다 늦습니다.",
+    exportRangeTooLong:
+      "한 번에 최대 366일까지 내보낼 수 있습니다. 기간을 줄여 주세요.",
+    exportRangeNoData:
+      "선택한 기간에 해당하는 데이터가 없습니다(또는 필터로 모두 제외됨).",
+    exportRangeSuccess: "✅ Excel 내보내기 완료: {{days}}일, {{rows}}행.",
+    exportRangeError: "❌ Excel 내보내기 실패: {{error}}",
+    exportRangeSheetSubtitle: "{{from}} ~ {{to}}",
+    exportRangeColDate: "날짜",
+    exportRangeColDOB: "생년월일",
     unknown: "(미상)",
   },
 };

@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import { ref, update } from "firebase/database";
 
 function sanitizeKey(key) {

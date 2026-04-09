@@ -37,3 +37,33 @@ export function getDateKeyBySubtractDays(dateStr, daysBack = 1) {
   date.setDate(date.getDate() - daysBack);
   return formatDateKeyLocal(date);
 }
+
+/** Ngày đầu tháng (YYYY-MM-DD) theo một date key. */
+export function getFirstDayOfMonthKey(dateKey) {
+  const d = parseLocalDateKey(dateKey);
+  if (!d) {
+    const m = String(dateKey).match(/^(\d{4}-\d{2})/);
+    return m ? `${m[1]}-01` : String(dateKey).slice(0, 10);
+  }
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+/**
+ * Liệt kê mọi YYYY-MM-DD từ fromKey đến toKey (bao gồm hai đầu), theo lịch local.
+ * Trả về [] nếu sai định dạng hoặc from > to.
+ */
+export function enumerateDateKeysInclusive(fromKey, toKey) {
+  const from = parseLocalDateKey(fromKey);
+  const to = parseLocalDateKey(toKey);
+  if (!from || !to) return [];
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+  if (start.getTime() > end.getTime()) return [];
+  const out = [];
+  const cur = new Date(start);
+  while (cur.getTime() <= end.getTime()) {
+    out.push(formatDateKeyLocal(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}

@@ -13,7 +13,7 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from "recharts";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 

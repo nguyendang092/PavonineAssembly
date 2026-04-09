@@ -99,24 +99,26 @@ const UnifiedModal = ({
       >
         {/* Header */}
         <div
-          className={`sticky top-0 ${currentVariant.header} px-6 py-5 flex items-center justify-between rounded-t-2xl shadow-lg z-10`}
+          className={`sticky top-0 ${currentVariant.header} px-4 py-2.5 flex items-center justify-between rounded-t-2xl shadow-lg z-10`}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
             {displayIcon && (
-              <span className="text-3xl" role="img" aria-label={variant}>
+              <span className="text-2xl shrink-0" role="img" aria-label={variant}>
                 {displayIcon}
               </span>
             )}
-            <h2 className="text-2xl font-extrabold text-white">{title}</h2>
+            <h2 className="text-lg font-bold text-white leading-tight truncate">
+              {title}
+            </h2>
           </div>
           {showCloseButton && onClose && (
             <button
               onClick={onClose}
-              className="text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200 hover:scale-110"
+              className="text-white hover:bg-white/20 rounded-full p-1.5 shrink-0 transition-all duration-200 hover:scale-110"
               aria-label="Đóng"
             >
               <svg
-                className="w-6 h-6"
+                className="w-5 h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -133,7 +135,7 @@ const UnifiedModal = ({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 text-slate-800 dark:text-slate-200">
+        <div className="flex-1 overflow-y-auto px-4 py-4 text-slate-800 dark:text-slate-200">
           {message && (
             <p
               className={`text-base leading-relaxed ${currentVariant.text} mb-4`}
@@ -146,7 +148,7 @@ const UnifiedModal = ({
 
         {/* Footer with Actions */}
         {actions.length > 0 && (
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 flex flex-wrap gap-3 justify-end rounded-b-2xl border-t shadow-inner">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-2.5 flex flex-wrap gap-2 justify-end rounded-b-2xl border-t shadow-inner">
             {actions.map((action, idx) => {
               const actionVariant = action.variant || "secondary";
               const buttonClass =

@@ -19,7 +19,7 @@ import {
   update,
   get,
 } from "@/services/firebase";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import ExcelJS from "exceljs";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ExportExcelButton from "@/components/ui/ExportExcelButton";

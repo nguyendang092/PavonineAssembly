@@ -3,7 +3,7 @@
  * Hai luồng UI/dữ liệu tách trong `WorkplaceProductionView` và `WorkplaceNGView`.
  */
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import { Chart, Bar } from "react-chartjs-2";
 import {
   FiUpload,

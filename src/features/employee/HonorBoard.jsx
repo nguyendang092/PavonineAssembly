@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { db, ref, onValue, set } from "@/services/firebase";
 import { push, remove } from "firebase/database";
 import { useUser } from "@/contexts/UserContext";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import Sidebar from "@/components/layout/Sidebar";
 
 function HonorBoard() {

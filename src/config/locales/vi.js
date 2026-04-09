@@ -988,6 +988,27 @@ const vi = {
       "✅ Mở cửa sổ in danh sách chấm công ({{count}} nhân viên)",
     noCompensationEmployees: "Không có nhân viên bù công nào",
     overtimeFormTitle: "Biểu mẫu đăng ký tăng ca",
+    exportExcelDateRange: "Xuất Excel (khoảng ngày)",
+    exportExcelDateRangeHint: "Từ ngày … đến ngày — một file",
+    exportRangeModalTitle: "Xuất Excel theo khoảng ngày",
+    exportRangeModalHint:
+      "Dữ liệu mỗi ngày được gộp hồ sơ giống màn hình điểm danh. Bộ lọc tìm kiếm, bộ phận, giới tính và trạng thái chấm công hiện tại cũng áp dụng cho từng ngày trong file.",
+    exportRangeFromLabel: "Từ ngày",
+    exportRangeToLabel: "Đến ngày",
+    exportRangeWorking: "Đang tải…",
+    exportRangeConfirm: "Xuất file",
+    exportRangeFillDates: "Chọn đủ từ ngày và đến ngày (YYYY-MM-DD).",
+    exportRangeInvalid:
+      "Khoảng ngày không hợp lệ hoặc từ ngày lớn hơn đến ngày.",
+    exportRangeTooLong:
+      "Tối đa 366 ngày mỗi lần xuất. Vui lòng thu hẹp khoảng ngày.",
+    exportRangeNoData:
+      "Không có dòng dữ liệu trong khoảng đã chọn (hoặc bộ lọc hiện tại đã loại hết).",
+    exportRangeSuccess: "✅ Đã xuất Excel: {{days}} ngày, {{rows}} dòng.",
+    exportRangeError: "❌ Xuất Excel thất bại: {{error}}",
+    exportRangeSheetSubtitle: "Từ {{from}} đến {{to}}",
+    exportRangeColDate: "Ngày",
+    exportRangeColDOB: "Ngày tháng năm sinh",
     unknown: "(Không rõ)",
   },
 };

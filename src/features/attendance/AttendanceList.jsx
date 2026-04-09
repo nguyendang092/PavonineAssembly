@@ -19,7 +19,11 @@ import {
   canAddAttendanceForDepartment,
   ROLES,
 } from "@/config/authRoles";
-import { getDateKeyBySubtractDays } from "@/utils/dateKey";
+import {
+  getDateKeyBySubtractDays,
+  getFirstDayOfMonthKey,
+  enumerateDateKeysInclusive,
+} from "@/utils/dateKey";
 import {
   db,
   ref,
@@ -101,8 +105,7 @@ function getAttendanceComboFlags(emp) {
     .filter(Boolean);
   const hasLeaveCode = (...codes) =>
     codes.some((code) => gioVaoTokens.includes(code));
-  const hasText = (...texts) =>
-    texts.some((txt) => gioVaoLatin.includes(txt));
+  const hasText = (...texts) => texts.some((txt) => gioVaoLatin.includes(txt));
   const caLamViecNormalized = normalizeTextValue(emp.caLamViec).toLowerCase();
   const isLate = hasLeaveCode("VT") || hasText("VAO TRE");
   const hasCheckIn =
@@ -198,6 +201,10 @@ function AttendanceList() {
   const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
   const [actionDropdownOpen, setActionDropdownOpen] = useState(false);
   const [isUploadingExcel, setIsUploadingExcel] = useState(false);
+  const [showExportRangeModal, setShowExportRangeModal] = useState(false);
+  const [exportRangeFrom, setExportRangeFrom] = useState("");
+  const [exportRangeTo, setExportRangeTo] = useState("");
+  const [exportRangeBusy, setExportRangeBusy] = useState(false);
   const [showUnattendedPopup, setShowUnattendedPopup] = useState(false);
   const [unattendedPopupDismissed, setUnattendedPopupDismissed] =
     useState(false);
@@ -224,6 +231,7 @@ function AttendanceList() {
   const filterMenuPanelRef = useRef(null);
   const actionDropdownRef = useRef(null);
   const printDropdownRef = useRef(null);
+  const exportRangeModalInitializedRef = useRef(false);
   const [filterDropdownPlacement, setFilterDropdownPlacement] = useState(null);
 
   const quickNoCheckInFilterValue = "chưa_chấm_công";
@@ -457,49 +465,325 @@ function AttendanceList() {
     setFilterMenuDropdownOpen(false);
   }, [location.pathname, location.search, location.hash]);
 
-  // Filter employees
-  const filteredEmployees = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    const selectedDeptKeys = new Set(
-      departmentListFilter.map((dept) => normalizeDepartment(dept)),
-    );
-    return employees.filter((emp) => {
-      const empDeptKey = normalizeDepartment(emp.boPhan);
-      const departmentFilterKey = normalizeDepartment(departmentFilter);
-
-      if (departmentFilterKey && empDeptKey !== departmentFilterKey)
-        return false;
-      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
-        return false;
-      if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
-        return false;
-      // Filter by entry time status
-      if (gioVaoFilter.length > 0) {
-        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
-        const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
-        const isCheckedIn = "đã_chấm_công";
-        const isNotCheckedIn = !hasGioVao && !hasCaLamViec;
-
-        if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;
-        if (isNotCheckedIn && !gioVaoFilter.includes("chưa_chấm_công"))
-          return false;
-        if (!hasGioVao && !isNotCheckedIn) return false;
-      }
-      if (!q) return true;
-      return (
-        (emp.hoVaTen || "").toLowerCase().includes(q) ||
-        (emp.mnv || "").toLowerCase().includes(q) ||
-        (emp.boPhan || "").toLowerCase().includes(q)
+  const filterAttendanceListRows = useCallback(
+    (list) => {
+      const q = searchTerm.trim().toLowerCase();
+      const selectedDeptKeys = new Set(
+        departmentListFilter.map((dept) => normalizeDepartment(dept)),
       );
-    });
+      return list.filter((emp) => {
+        const empDeptKey = normalizeDepartment(emp.boPhan);
+        const departmentFilterKey = normalizeDepartment(departmentFilter);
+
+        if (departmentFilterKey && empDeptKey !== departmentFilterKey)
+          return false;
+        if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
+          return false;
+        if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
+          return false;
+        if (gioVaoFilter.length > 0) {
+          const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
+          const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
+          const isCheckedIn = "đã_chấm_công";
+          const isNotCheckedIn = !hasGioVao && !hasCaLamViec;
+
+          if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;
+          if (isNotCheckedIn && !gioVaoFilter.includes("chưa_chấm_công"))
+            return false;
+          if (!hasGioVao && !isNotCheckedIn) return false;
+        }
+        if (!q) return true;
+        return (
+          (emp.hoVaTen || "").toLowerCase().includes(q) ||
+          (emp.mnv || "").toLowerCase().includes(q) ||
+          (emp.boPhan || "").toLowerCase().includes(q)
+        );
+      });
+    },
+    [
+      searchTerm,
+      departmentFilter,
+      gioiTinhFilter,
+      departmentListFilter,
+      gioVaoFilter,
+      normalizeDepartment,
+    ],
+  );
+
+  const filteredEmployees = useMemo(
+    () => filterAttendanceListRows(employees),
+    [employees, filterAttendanceListRows],
+  );
+
+  useEffect(() => {
+    if (!showExportRangeModal) {
+      exportRangeModalInitializedRef.current = false;
+      return;
+    }
+    if (exportRangeModalInitializedRef.current) return;
+    exportRangeModalInitializedRef.current = true;
+    setExportRangeFrom(getFirstDayOfMonthKey(selectedDate));
+    setExportRangeTo(selectedDate);
+  }, [showExportRangeModal, selectedDate]);
+
+  const handleExportAttendanceDateRange = useCallback(async () => {
+    if (exportRangeBusy) return;
+    const from = exportRangeFrom?.trim();
+    const to = exportRangeTo?.trim();
+    if (!from || !to) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: tl(
+          "exportRangeFillDates",
+          "Chọn đủ từ ngày và đến ngày (YYYY-MM-DD).",
+        ),
+      });
+      return;
+    }
+    const keys = enumerateDateKeysInclusive(from, to);
+    if (keys.length === 0) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: tl(
+          "exportRangeInvalid",
+          "Khoảng ngày không hợp lệ hoặc từ ngày lớn hơn đến ngày.",
+        ),
+      });
+      return;
+    }
+    if (keys.length > 366) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: tl(
+          "exportRangeTooLong",
+          "Tối đa 366 ngày mỗi lần xuất. Vui lòng thu hẹp khoảng ngày.",
+        ),
+      });
+      return;
+    }
+    setExportRangeBusy(true);
+    try {
+      const profMap = employeeProfilesMap;
+      const allRows = [];
+      for (const dateKey of keys) {
+        const snap = await get(ref(db, `attendance/${dateKey}`));
+        const merged = applyAttendanceMerge(snap.val(), profMap);
+        const filtered = filterAttendanceListRows(merged);
+        let stt = 1;
+        for (const emp of filtered) {
+          allRows.push({ dateKey, stt: stt++, emp });
+        }
+      }
+      if (allRows.length === 0) {
+        setAlert({
+          show: true,
+          type: "info",
+          message: tl(
+            "exportRangeNoData",
+            "Không có dòng dữ liệu trong khoảng đã chọn (hoặc bộ lọc hiện tại đã loại hết).",
+          ),
+        });
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet("DiemDanh");
+      ws.mergeCells("A1:L1");
+      const mainTitle = ws.getCell("A1");
+      mainTitle.value = "DANH SÁCH ĐIỂM DANH";
+      mainTitle.font = { size: 14, bold: true, color: { argb: "FF000000" } };
+      mainTitle.alignment = { vertical: "middle", horizontal: "center" };
+      ws.getRow(1).height = 22;
+
+      const fromFmt = new Date(`${from}T12:00:00`).toLocaleDateString(
+        displayLocale,
+      );
+      const toFmt = new Date(`${to}T12:00:00`).toLocaleDateString(
+        displayLocale,
+      );
+      ws.mergeCells("A2:L2");
+      const sub = ws.getCell("A2");
+      sub.value = tl("exportRangeSheetSubtitle", "Từ {{from}} đến {{to}}", {
+        from: fromFmt,
+        to: toFmt,
+      });
+      sub.font = { size: 10, bold: true };
+      sub.alignment = { vertical: "middle", horizontal: "center" };
+      ws.getRow(2).height = 20;
+
+      ws.addRow([]);
+
+      const headerVi = [
+        tl("exportRangeColDate", "Ngày"),
+        tl("colIndex", "STT"),
+        tl("colCode", "MNV"),
+        "MVT",
+        tl("excelHeaderName", "Họ và tên"),
+        tl("gender", "Giới tính"),
+        tl("exportRangeColDOB", "Ngày tháng năm sinh"),
+        tl("departmentCode", "Mã BP"),
+        tl("department", "Bộ phận"),
+        tl("timeIn", "Thời gian vào"),
+        tl("timeOut", "Thời gian ra"),
+        tl("comboStatColShift", "Ca làm việc"),
+      ];
+      const headerEn = [
+        "Date",
+        "",
+        "Code",
+        "",
+        "Full name",
+        "Gender",
+        "DoB",
+        "Code-Dept",
+        "Department",
+        "Time in",
+        "Time out",
+        "Shift",
+      ];
+
+      ws.addRow(headerVi);
+      ws.addRow(headerEn);
+
+      [4, 5].forEach((rowNum) => {
+        const row = ws.getRow(rowNum);
+        row.height = 25;
+        row.eachCell((cell) => {
+          cell.font = { bold: true, size: 9, color: { argb: "FF000000" } };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFB0B0B0" },
+          };
+          cell.alignment = {
+            vertical: "middle",
+            horizontal: "center",
+            wrapText: true,
+          };
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "hair" },
+            bottom: { style: "hair" },
+            right: { style: "hair" },
+          };
+        });
+      });
+
+      allRows.forEach(({ dateKey, stt, emp }, idx) => {
+        const dateDisplay = new Date(`${dateKey}T12:00:00`).toLocaleDateString(
+          displayLocale,
+        );
+        const row = ws.addRow([
+          dateDisplay,
+          stt,
+          emp.mnv || "",
+          emp.mvt || "",
+          emp.hoVaTen || "",
+          emp.gioiTinh === "YES" ? "YES" : "NO",
+          emp.ngayThangNamSinh || "",
+          emp.maBoPhan || "",
+          emp.boPhan || "",
+          emp.gioVao || "",
+          emp.gioRa || "",
+          emp.caLamViec || "",
+        ]);
+        const isEvenRow = idx % 2 === 0;
+        row.eachCell((cell, colNumber) => {
+          cell.font = { size: 9 };
+          if (colNumber === 5 || colNumber === 9) {
+            cell.alignment = {
+              vertical: "middle",
+              horizontal: "left",
+              indent: 1,
+            };
+          } else {
+            cell.alignment = { vertical: "middle", horizontal: "center" };
+          }
+          cell.border = {
+            top: { style: "hair" },
+            left: { style: "hair" },
+            bottom: { style: "hair" },
+            right: { style: "hair" },
+          };
+          if (isEvenRow) {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFF0F8FF" },
+            };
+          }
+          if (colNumber === 10 && cell.value) {
+            cell.font = { size: 9, color: { argb: "FF006400" }, bold: true };
+          }
+          if (colNumber === 11 && cell.value) {
+            cell.font = { size: 9, color: { argb: "FFDC143C" }, bold: true };
+          }
+        });
+      });
+
+      ws.columns = [
+        { width: 12 },
+        { width: 5 },
+        { width: 10 },
+        { width: 10 },
+        { width: 25 },
+        { width: 8 },
+        { width: 15 },
+        { width: 10 },
+        { width: 15 },
+        { width: 10 },
+        { width: 10 },
+        { width: 12 },
+      ];
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const now = new Date();
+      const dateOut = now.toISOString().slice(0, 10);
+      const timeOut = now.toTimeString().slice(0, 8).replace(/:/g, "-");
+      a.download = `PAVONINE_diemDanh_${from}_${to}_${dateOut}_${timeOut}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      setShowExportRangeModal(false);
+      setAlert({
+        show: true,
+        type: "success",
+        message: tl(
+          "exportRangeSuccess",
+          "✅ Đã xuất Excel: {{days}} ngày, {{rows}} dòng.",
+          { days: keys.length, rows: allRows.length },
+        ),
+      });
+    } catch (err) {
+      console.error("Export attendance range:", err);
+      setAlert({
+        show: true,
+        type: "error",
+        message: tl("exportRangeError", "❌ Xuất Excel thất bại: {{error}}", {
+          error: err?.message || String(err),
+        }),
+      });
+    } finally {
+      setExportRangeBusy(false);
+    }
   }, [
-    searchTerm,
-    employees,
-    departmentFilter,
-    gioiTinhFilter,
-    departmentListFilter,
-    gioVaoFilter,
-    normalizeDepartment,
+    exportRangeBusy,
+    exportRangeFrom,
+    exportRangeTo,
+    employeeProfilesMap,
+    applyAttendanceMerge,
+    filterAttendanceListRows,
+    displayLocale,
+    tl,
   ]);
 
   /** Giảm tải main thread khi gõ lọc: bảng cập nhật ngay, biểu đồ combo theo sau */
@@ -2395,6 +2679,68 @@ function AttendanceList() {
           </div>
         </UnifiedModal>
 
+        <UnifiedModal
+          isOpen={showExportRangeModal}
+          onClose={() => {
+            if (exportRangeBusy) return;
+            setShowExportRangeModal(false);
+          }}
+          variant="info"
+          title={tl("exportRangeModalTitle", "Xuất Excel theo khoảng ngày")}
+          size="md"
+          showCloseButton={!exportRangeBusy}
+          actions={[
+            {
+              label: tl("cancel", "Hủy"),
+              onClick: () => {
+                if (exportRangeBusy) return;
+                setShowExportRangeModal(false);
+              },
+              variant: "secondary",
+              disabled: exportRangeBusy,
+            },
+            {
+              label: exportRangeBusy
+                ? tl("exportRangeWorking", "Đang tải…")
+                : tl("exportRangeConfirm", "Xuất file"),
+              onClick: () => {
+                void handleExportAttendanceDateRange();
+              },
+              variant: "primary",
+              disabled: exportRangeBusy,
+            },
+          ]}
+        >
+          <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
+            {tl(
+              "exportRangeModalHint",
+              "Dữ liệu mỗi ngày được gộp hồ sơ giống màn hình điểm danh. Bộ lọc tìm kiếm / bộ phận / giới tính / trạng thái chấm công hiện tại cũng áp dụng cho từng ngày trong file.",
+            )}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="flex flex-col gap-1.5 text-sm font-semibold text-gray-800 dark:text-slate-200">
+              {tl("exportRangeFromLabel", "Từ ngày")}
+              <input
+                type="date"
+                value={exportRangeFrom}
+                onChange={(e) => setExportRangeFrom(e.target.value)}
+                disabled={exportRangeBusy}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-semibold text-gray-800 dark:text-slate-200">
+              {tl("exportRangeToLabel", "Đến ngày")}
+              <input
+                type="date"
+                value={exportRangeTo}
+                onChange={(e) => setExportRangeTo(e.target.value)}
+                disabled={exportRangeBusy}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              />
+            </label>
+          </div>
+        </UnifiedModal>
+
         {/* Filters and Actions — shrink-0 tránh co mất nút khi danh sách ít / màn hẹp */}
         <div className="mb-2 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
@@ -3085,6 +3431,32 @@ function AttendanceList() {
                         </span>
                         <span className="text-xs text-gray-500 mt-0.5">
                           Export to Excel file
+                        </span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowExportRangeModal(true);
+                        setActionDropdownOpen(false);
+                      }}
+                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                    >
+                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                        📅
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                          {tl(
+                            "exportExcelDateRange",
+                            "Xuất Excel (khoảng ngày)",
+                          )}
+                        </span>
+                        <span className="text-xs text-gray-500 mt-0.5">
+                          {tl(
+                            "exportExcelDateRangeHint",
+                            "Từ ngày … đến ngày — một file",
+                          )}
                         </span>
                       </div>
                     </button>
@@ -4019,7 +4391,8 @@ function AttendanceList() {
                             ) : null}
                             {row.annualLeave > 0 ? (
                               <span className="rounded bg-amber-50 px-1.5 py-1 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold uppercase">
-                                {tl("annualLeave", "Phép năm")}: {row.annualLeave}
+                                {tl("annualLeave", "Phép năm")}:{" "}
+                                {row.annualLeave}
                               </span>
                             ) : null}
                             {row.nightShift > 0 ? (
@@ -4056,7 +4429,8 @@ function AttendanceList() {
                             ) : null}
                             {row.resignedLeave > 0 ? (
                               <span className="rounded bg-slate-100 px-1.5 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-semibold uppercase">
-                                {tl("resigned", "Nghỉ việc")}: {row.resignedLeave}
+                                {tl("resigned", "Nghỉ việc")}:{" "}
+                                {row.resignedLeave}
                               </span>
                             ) : null}
                           </div>
@@ -4108,7 +4482,10 @@ function AttendanceList() {
                                     if (name === "nonStandardTimeIn")
                                       return [
                                         value,
-                                        tl("nonStandardTimeIn", "Giờ vào ≠ HH:MM"),
+                                        tl(
+                                          "nonStandardTimeIn",
+                                          "Giờ vào ≠ HH:MM",
+                                        ),
                                       ];
                                     if (name === "late")
                                       return [value, tl("late", "Vào trễ")];
@@ -4261,10 +4638,7 @@ function AttendanceList() {
                     </div>
                     {comboChartCardsVisibleCount < comboChartData.length ? (
                       <div className="flex justify-center py-3 text-xs text-slate-500 dark:text-slate-400">
-                        {tl(
-                          "comboChartLoadingMore",
-                          "Đang tải thêm biểu đồ…",
-                        )}
+                        {tl("comboChartLoadingMore", "Đang tải thêm biểu đồ…")}
                       </div>
                     ) : null}
                   </div>
@@ -4276,110 +4650,117 @@ function AttendanceList() {
                   role="dialog"
                   aria-modal="true"
                   aria-labelledby="combo-stat-detail-title"
-                  className="absolute inset-0 z-[1300] flex items-center justify-center bg-black/50 p-3 backdrop-blur-[2px] sm:p-6"
+                  className="absolute inset-0 z-[1300] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6"
                   onClick={() => setComboStatDetailKey(null)}
                 >
                   <div
-                    className="flex max-h-[min(78vh,760px)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                    className="flex max-h-[min(82vh,820px)] w-full max-w-[min(100%,42rem)] flex-col overflow-hidden rounded-xl border-2 border-sky-400/60 bg-white shadow-[0_20px_40px_-12px_rgba(14,165,233,0.22)] ring-2 ring-sky-200/50 dark:border-sky-500/40 dark:bg-slate-900 dark:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.55)] dark:ring-sky-900/50 sm:max-w-3xl"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="flex items-start justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center gap-2 bg-gradient-to-r from-sky-600 via-sky-500 to-teal-500 px-3 py-2.5 shadow-md sm:px-4 sm:py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[9px] font-bold uppercase leading-none tracking-[0.12em] text-sky-100/95 text-black">
                           {tl("comboStatDetailBadge", "Chi tiết danh sách")}
                         </p>
-                        <h4
-                          id="combo-stat-detail-title"
-                          className="truncate text-base font-bold text-slate-900 dark:text-slate-50"
-                        >
-                          {comboStatLabelByKey[comboStatDetailKey] ?? ""}
-                        </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
-                          {tl("peopleCount", "{{count}} người", {
-                            count:
-                              comboStatEmployeesByKey[comboStatDetailKey]
-                                ?.length ?? 0,
-                          })}
-                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <h4
+                            id="combo-stat-detail-title"
+                            className="text-base font-extrabold leading-tight text-white drop-shadow-sm sm:text-[1.05rem]"
+                          >
+                            {comboStatLabelByKey[comboStatDetailKey] ?? ""}
+                          </h4>
+                          <span className="inline-flex shrink-0 items-center rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-bold text-white ring-1 ring-white/35">
+                            {tl("peopleCount", "{{count}} người", {
+                              count:
+                                comboStatEmployeesByKey[comboStatDetailKey]
+                                  ?.length ?? 0,
+                            })}
+                          </span>
+                        </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setComboStatDetailKey(null)}
-                        className="shrink-0 rounded-lg p-2 text-slate-600 transition hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 text-base leading-none text-white ring-1 ring-white/40 transition hover:bg-white/25 sm:h-9 sm:w-9 sm:text-lg"
                         aria-label={t("attendanceList.close")}
                       >
                         ✕
                       </button>
                     </div>
-                    <div className="min-h-0 flex-1 overflow-auto px-2 py-3 sm:px-4">
-                      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-                        <table className="w-full min-w-[520px] border-collapse text-left text-xs">
-                          <thead>
-                            <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
-                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
-                                {tl("colIndex", "STT")}
-                              </th>
-                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
-                                {tl("colCode", "MNV")}
-                              </th>
-                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
-                                {tl("colName", "Họ và tên")}
-                              </th>
-                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
-                                {tl("colDepartment", "Bộ phận")}
-                              </th>
-                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
-                                {tl("colTimeIn", "Giờ vào")}
-                              </th>
-                              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
-                                {tl("comboStatColShift", "Ca làm việc")}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(
-                              comboStatEmployeesByKey[comboStatDetailKey] ?? []
-                            ).length === 0 ? (
-                              <tr>
-                                <td
-                                  colSpan={6}
-                                  className="px-3 py-8 text-center text-slate-500 dark:text-slate-400"
-                                >
-                                  {tl("noData", "Không có dữ liệu")}
-                                </td>
+                    <div className="min-h-0 flex-1 overflow-auto bg-gradient-to-b from-sky-50/90 to-emerald-50/40 px-2 py-3 sm:px-4 dark:from-slate-950 dark:to-slate-900">
+                      <div className="overflow-hidden rounded-xl border-2 border-sky-200/80 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-900">
+                        <div className="max-h-[min(52vh,480px)] overflow-auto sm:max-h-[min(56vh,520px)]">
+                          <table className="w-full min-w-[560px] border-collapse text-left text-[15px] leading-snug">
+                            <thead className="sticky top-0 z-10 shadow-md">
+                              <tr className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white">
+                                <th className="w-14 whitespace-nowrap px-2 py-3.5 text-center text-xs font-extrabold uppercase tracking-wider text-white">
+                                  {tl("colIndex", "STT")}
+                                </th>
+                                <th className="whitespace-nowrap px-3 py-3.5 text-xs font-extrabold uppercase tracking-wider text-white">
+                                  {tl("colCode", "MNV")}
+                                </th>
+                                <th className="min-w-[150px] px-3 py-3.5 text-xs font-extrabold uppercase tracking-wider text-white">
+                                  {tl("colName", "Họ và tên")}
+                                </th>
+                                <th className="min-w-[120px] px-3 py-3.5 text-xs font-extrabold uppercase tracking-wider text-white">
+                                  {tl("colDepartment", "Bộ phận")}
+                                </th>
+                                <th className="whitespace-nowrap px-3 py-3.5 text-center text-xs font-extrabold uppercase tracking-wider text-amber-100">
+                                  {tl("colTimeIn", "Giờ vào")}
+                                </th>
+                                <th className="min-w-[100px] px-3 py-3.5 text-xs font-extrabold uppercase tracking-wider text-emerald-100">
+                                  {tl("comboStatColShift", "Ca làm việc")}
+                                </th>
                               </tr>
-                            ) : (
-                              (
+                            </thead>
+                            <tbody className="divide-y divide-sky-100 dark:divide-slate-700">
+                              {(
                                 comboStatEmployeesByKey[comboStatDetailKey] ??
                                 []
-                              ).map((emp, idx) => (
-                                <tr
-                                  key={emp.id ?? `${emp.mnv}-${idx}`}
-                                  className="border-b border-slate-100 odd:bg-white even:bg-slate-50/60 dark:border-slate-800 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
-                                >
-                                  <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
-                                    {idx + 1}
-                                  </td>
-                                  <td className="px-3 py-2 tabular-nums text-slate-800 dark:text-slate-200">
-                                    {emp.mnv ?? ""}
-                                  </td>
-                                  <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">
-                                    {emp.hoVaTen ?? ""}
-                                  </td>
-                                  <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
-                                    {emp.boPhan ?? ""}
-                                  </td>
-                                  <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
-                                    {emp.gioVao ?? ""}
-                                  </td>
-                                  <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
-                                    {emp.caLamViec ?? ""}
+                              ).length === 0 ? (
+                                <tr>
+                                  <td
+                                    colSpan={6}
+                                    className="bg-amber-50/80 px-4 py-14 text-center text-base font-medium text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+                                  >
+                                    {tl("noData", "Không có dữ liệu")}
                                   </td>
                                 </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
+                              ) : (
+                                (
+                                  comboStatEmployeesByKey[comboStatDetailKey] ??
+                                  []
+                                ).map((emp, idx) => (
+                                  <tr
+                                    key={emp.id ?? `${emp.mnv}-${idx}`}
+                                    className="odd:bg-white even:bg-sky-50/90 transition-colors hover:bg-amber-50/80 dark:odd:bg-slate-900 dark:even:bg-slate-800/90 dark:hover:bg-slate-700/80"
+                                  >
+                                    <td className="bg-sky-100/50 px-2 py-3 text-center text-base font-bold tabular-nums text-sky-800 dark:bg-sky-950/50 dark:text-sky-200">
+                                      {idx + 1}
+                                    </td>
+                                    <td className="px-3 py-3">
+                                      <span className="inline-block rounded-md bg-indigo-100 px-2 py-0.5 font-mono text-sm font-bold tabular-nums text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-200">
+                                        {emp.mnv ?? ""}
+                                      </span>
+                                    </td>
+                                    <td className="max-w-[220px] truncate px-3 py-3 text-base font-bold text-slate-900 dark:text-white sm:max-w-none">
+                                      {emp.hoVaTen ?? ""}
+                                    </td>
+                                    <td className="max-w-[180px] truncate px-3 py-3 text-base font-medium text-violet-900 dark:text-violet-200 sm:max-w-none">
+                                      {emp.boPhan ?? ""}
+                                    </td>
+                                    <td className="whitespace-nowrap bg-emerald-50/70 px-3 py-3 text-center font-mono text-base font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                      {emp.gioVao ?? ""}
+                                    </td>
+                                    <td className="bg-amber-50/60 px-3 py-3 text-base font-semibold text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                                      {emp.caLamViec ?? ""}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   </div>
