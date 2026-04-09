@@ -5,7 +5,6 @@ import React, {
   useMemo,
   useRef,
   Suspense,
-  lazy,
 } from "react";
 import { createPortal } from "react-dom";
 // firebase for global data fetching
@@ -29,53 +28,51 @@ import {
 } from "react-router-dom";
 import "@/styles/App.css";
 import LoadingBlock from "@/components/ui/LoadingBlock";
+import { lazyImport } from "@/utils/lazyImport";
+/** File rất lớn — lazy() hay gây "Failed to fetch" trong dev (timeout/HMR); import tĩnh để tải cùng graph App. */
+import AttendanceList from "@/features/attendance/AttendanceList";
+import SeasonalStaffAttendance from "@/features/attendance/SeasonalStaffAttendance";
 
-const WorkplaceDashboardNormal = lazy(
+const WorkplaceDashboardNormal = lazyImport(
   () => import("@/features/dashboard/WorkplaceDashboardNormal"),
 );
-const WorkplaceDashboardNG = lazy(
+const WorkplaceDashboardNG = lazyImport(
   () => import("@/features/dashboard/WorkplaceDashboardNG"),
 );
-const CertificateGenerator1 = lazy(
+const CertificateGenerator1 = lazyImport(
   () => import("@/components/ui/CertificateGenerator1"),
 );
-const CertificateGenerator2 = lazy(
+const CertificateGenerator2 = lazyImport(
   () => import("@/components/ui/CertificateGenerator2"),
 );
-const HonorBoard = lazy(() => import("@/features/employee/HonorBoard"));
-const TemperatureMonitor = lazy(
+const HonorBoard = lazyImport(() => import("@/features/employee/HonorBoard"));
+const TemperatureMonitor = lazyImport(
   () => import("@/components/ui/TemperatureMonitor"),
 );
-const MoldManager = lazy(() => import("@/features/inventory/MoldManager"));
-const PerformanceChart = lazy(
+const MoldManager = lazyImport(() => import("@/features/inventory/MoldManager"));
+const PerformanceChart = lazyImport(
   () => import("@/features/dashboard/PerformanceChart"),
 );
-const QRCodeGenerator = lazy(
+const QRCodeGenerator = lazyImport(
   () => import("@/components/ui/QRCodeGenerator"),
 );
-const AttendanceList = lazy(
-  () => import("@/features/attendance/AttendanceList"),
-);
-const SeasonalStaffAttendance = lazy(
-  () => import("@/features/attendance/SeasonalStaffAttendance"),
-);
-const Downloads = lazy(() => import("@/components/ui/Downloads"));
-const UserDepartmentManager = lazy(
+const Downloads = lazyImport(() => import("@/components/ui/Downloads"));
+const UserDepartmentManager = lazyImport(
   () => import("@/features/employee/UserDepartmentManager"),
 );
-const InternalAnnouncements = lazy(
+const InternalAnnouncements = lazyImport(
   () => import("@/features/employee/InternalAnnouncements"),
 );
-const InternalAnnouncementsLogin = lazy(
+const InternalAnnouncementsLogin = lazyImport(
   () => import("@/features/employee/InternalAnnouncementsLogin"),
 );
-const AllEmployeesManager = lazy(
+const AllEmployeesManager = lazyImport(
   () => import("@/features/employee/AllEmployeesManager"),
 );
-const ResignedEmployeesManager = lazy(
+const ResignedEmployeesManager = lazyImport(
   () => import("@/features/employee/ResignedEmployeesManager"),
 );
-const LoginRoute = lazy(() => import("@/auth/LoginRoute"));
+const LoginRoute = lazyImport(() => import("@/auth/LoginRoute"));
 
 /** Không hiện nút cuộn nhanh trên màn hình đăng nhập */
 const NO_SCROLL_ACTION_PATHS = new Set(["/login", "/email/login"]);

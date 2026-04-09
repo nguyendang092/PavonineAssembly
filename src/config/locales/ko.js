@@ -442,6 +442,9 @@ const ko = {
     chartSectionTitle: "일자별 차트",
     chartSectionHint:
       "공정별 패널: 막대(양품) + 선(NG), 범례는 차트 아래.",
+    chartDragHint:
+      "제목 줄(⋮⋮)을 드래그해 순서 변경 — Firebase에 계정별 저장(기기 간 동기화).",
+    chartDragHandle: "드래그하여 순서 변경",
     comboBarLabel: "양품",
     comboLineLabel: "NG",
     axisOk: "양품",
@@ -949,6 +952,9 @@ const ko = {
     comboStatColShift: "근무 조",
     comboChartLoading: "부서별 차트 불러오는 중…",
     comboChartLoadingMore: "차트 추가 로드 중…",
+    comboChartDragHint:
+      "제목 줄(⋮⋮)을 드래그해 차트 순서 변경 — Firebase에 계정별 저장(기기 간 동기화).",
+    comboChartDragHandle: "드래그하여 순서 변경",
     notCheckedInShort: "미체크인",
     clearAll: "전체 삭제",
     apply: "적용",

@@ -448,6 +448,9 @@ const vi = {
     chartSectionTitle: "Biểu đồ theo ngày",
     chartSectionHint:
       "Mỗi khu vực một khung: cột (lượng đạt) + đường (NG), chú thích dưới biểu đồ.",
+    chartDragHint:
+      "Kéo thanh tiêu đề (⋮⋮) để đổi thứ tự — lưu theo tài khoản trên Firebase (đồng bộ mọi máy).",
+    chartDragHandle: "Kéo để sắp xếp",
     comboBarLabel: "Lượng đạt",
     comboLineLabel: "NG",
     axisOk: "Lượng đạt",
@@ -953,6 +956,8 @@ const vi = {
     comboStatColShift: "Ca làm việc",
     comboChartLoading: "Đang tải biểu đồ theo bộ phận…",
     comboChartLoadingMore: "Đang tải thêm biểu đồ…",
+    comboChartDragHint: "Kéo thanh tiêu đề (⋮⋮) để đổi thứ tự biểu đồ.",
+    comboChartDragHandle: "Kéo để sắp xếp",
     notCheckedInShort: "Chưa chấm công",
     clearAll: "Xóa tất cả",
     apply: "Áp dụng",

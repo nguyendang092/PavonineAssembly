@@ -2,7 +2,7 @@
  * Dashboard sản lượng: `mode="normal"` (/normal) và `mode="ng"` (/ng).
  * Hai luồng UI/dữ liệu tách trong `WorkplaceProductionView` và `WorkplaceNGView`.
  */
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import * as XLSX from "@e965/xlsx";
 import { Chart, Bar } from "react-chartjs-2";
 import {
@@ -40,6 +40,14 @@ import { db } from "@/services/firebase"; // đường dẫn tới file cấu h�
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import { uploadNgFaultyExcel } from "./ngWorkplaceUpload";
 import "./dashboard.css";
+import {
+  CHART_ORDER_KIND,
+  CHART_DRAG_MIME,
+  hydrateChartOrder,
+  persistChartOrder,
+  applySavedKeyOrder,
+  moveKeyBefore,
+} from "@/utils/chartOrderStorage";
 
 ChartJS.register(
   BarElement,
@@ -131,6 +139,12 @@ const extraLabelPlugin = {
 
 function WorkplaceProductionView() {
   const { user } = useUser();
+  const userEmailKey = useMemo(
+    () => user?.email?.trim().toLowerCase() || "anonymous",
+    [user?.email],
+  );
+  const [workplaceAreaOrder, setWorkplaceAreaOrder] = useState([]);
+  const [workplaceDragOverArea, setWorkplaceDragOverArea] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalArea, setModalArea] = useState("");
@@ -151,6 +165,20 @@ function WorkplaceProductionView() {
   const [isUploadingDetail, setIsUploadingDetail] = useState(false);
   const totalFileInputRef = useRef(null);
   const detailFileInputRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const order = await hydrateChartOrder(
+        userEmailKey,
+        CHART_ORDER_KIND.WORKPLACE_AREA,
+      );
+      if (!cancelled) setWorkplaceAreaOrder(order);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userEmailKey]);
 
   useEffect(() => {
     if (!dataTableOpen) return undefined;
@@ -762,6 +790,37 @@ function WorkplaceProductionView() {
     [t],
   );
 
+  const chartAreasOrdered = useMemo(() => {
+    if (!chartData?.areas?.length) return [];
+    return applySavedKeyOrder(
+      chartData.areas,
+      workplaceAreaOrder,
+      (a, b) =>
+        String(a).localeCompare(String(b), undefined, { sensitivity: "base" }),
+    );
+  }, [chartData?.areas, workplaceAreaOrder]);
+
+  const handleWorkplaceAreaReorder = useCallback(
+    (fromArea, toArea) => {
+      if (!fromArea || !toArea || fromArea === toArea) return;
+      const base = chartData?.areas || [];
+      const ordered = applySavedKeyOrder(
+        base,
+        workplaceAreaOrder,
+        (a, b) =>
+          String(a).localeCompare(String(b), undefined, { sensitivity: "base" }),
+      );
+      const next = moveKeyBefore(ordered, fromArea, toArea);
+      setWorkplaceAreaOrder(next);
+      void persistChartOrder(
+        userEmailKey,
+        CHART_ORDER_KIND.WORKPLACE_AREA,
+        next,
+      );
+    },
+    [chartData?.areas, workplaceAreaOrder, userEmailKey],
+  );
+
   return (
     <div className="flex flex-col lg:flex-row h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60">
       <button
@@ -1009,6 +1068,9 @@ function WorkplaceProductionView() {
                 <p className="text-[11px] leading-snug text-slate-600 dark:text-slate-400">
                   {t("workplaceChart.chartSectionHint")}
                 </p>
+                <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-500">
+                  {t("workplaceChart.chartDragHint")}
+                </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <button
@@ -1036,16 +1098,53 @@ function WorkplaceProductionView() {
             {chartData?.areas?.length ? (
               <div className="min-h-[200px] flex-1 overflow-y-auto bg-slate-200/35 p-3 dark:bg-black/35 sm:p-5">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {chartData.areas.map((area) => {
+                  {chartAreasOrdered.map((area) => {
                     const combo = areaComboDataByArea[area];
                     if (!combo) return null;
                     return (
                       <div
                         key={area}
-                        className="flex flex-col rounded-xl border border-slate-300/85 bg-slate-50 p-2 shadow-[0_1px_3px_rgba(15,23,42,0.08)] dark:border-slate-700/90 dark:bg-slate-900/90"
+                        className={`flex flex-col rounded-xl border border-slate-300/85 bg-slate-50 p-2 shadow-[0_1px_3px_rgba(15,23,42,0.08)] transition dark:border-slate-700/90 dark:bg-slate-900/90 ${
+                          workplaceDragOverArea === area
+                            ? "ring-2 ring-sky-400 ring-offset-1 dark:ring-offset-slate-950"
+                            : ""
+                        }`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          setWorkplaceDragOverArea(area);
+                        }}
+                        onDragLeave={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget)) {
+                            setWorkplaceDragOverArea((d) =>
+                              d === area ? null : d,
+                            );
+                          }
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const from = e.dataTransfer.getData(CHART_DRAG_MIME);
+                          setWorkplaceDragOverArea(null);
+                          if (from) handleWorkplaceAreaReorder(from, area);
+                        }}
                       >
-                        <div className="mb-1 flex items-center justify-between gap-2 border-b border-slate-200/90 pb-1.5 dark:border-slate-700/80">
-                          <h3 className="truncate text-[11px] font-bold uppercase tracking-wide text-slate-800 dark:text-slate-50">
+                        <div
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData(CHART_DRAG_MIME, area);
+                            e.dataTransfer.effectAllowed = "move";
+                          }}
+                          onDragEnd={() => setWorkplaceDragOverArea(null)}
+                          className="mb-1 flex cursor-grab items-center justify-between gap-2 border-b border-slate-200/90 pb-1.5 active:cursor-grabbing dark:border-slate-700/80"
+                        >
+                          <span
+                            className="shrink-0 select-none text-slate-400"
+                            aria-hidden
+                            title={t("workplaceChart.chartDragHandle")}
+                          >
+                            ⋮⋮
+                          </span>
+                          <h3 className="min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-800 dark:text-slate-50">
                             {t(`areas.${area}`)}
                           </h3>
                           <span className="shrink-0 rounded bg-slate-200/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-300">

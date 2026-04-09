@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
+    "dev:force": "vite --force",
+    "dev:reset": "node -e \"try{require('fs').rmSync('node_modules/.vite',{recursive:true})}catch(e){}\" && vite --force",
     "build": "vite build",
     "preview": "vite preview",
     "build:all": "npm run build && npm run cap:sync",
