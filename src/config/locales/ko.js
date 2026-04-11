@@ -104,7 +104,7 @@ const ko = {
     attendanceTable: "근태 시간표",
     seasonalStaffAttendance: "임시직 출석부",
     userDepartment: "사용자 권한",
-    internalAnnouncements: "내부 공지",
+    internalAnnouncements: "공지",
     download: "다운로드",
     files: "파일",
   },
@@ -112,14 +112,14 @@ const ko = {
     title: "내부 공지",
     subtitle:
       "HR·관리자가 공지를 등록하고, 로그인한 직원은 모두 볼 수 있습니다.",
-    mailBrand: "내부 메일",
-    composeBtn: "편지 쓰기",
-    sidebarMailboxes: "편지함",
-    inbox: "받은편지함",
+    mailBrand: "내부 공지",
+    composeBtn: "공지 작성",
+    sidebarMailboxes: "분류",
+    inbox: "전체",
     pinned: "중요(고정)",
     today: "오늘",
     storageHint: "읽음 상태는 이 브라우저에 저장됩니다.",
-    inboxTitle: "받은편지함",
+    inboxTitle: "전체 공지",
     inboxStats: "전체 {{total}}건 · 읽지 않음 {{unread}}건",
     searchIn: "검색",
     searchPlaceholder: "제목, 본문, 보낸 사람...",
@@ -132,7 +132,7 @@ const ko = {
     unread: "읽지 않음",
     read: "읽음",
     pageOf: "{{current}} / {{total}} 페이지",
-    composeTitle: "편지 쓰기",
+    composeTitle: "공지 작성",
     composeSend: "보내기",
     composeDraft: "임시 저장",
     composePreview: "미리보기",
@@ -173,7 +173,7 @@ const ko = {
     empty: "등록된 공지가 없습니다.",
     pleaseLogin: "내부 공지를 보려면 로그인해 주세요.",
     loginRequiredDetail:
-      "로그인하지 않으면 메일 목록과 내용이 표시되지 않습니다.",
+      "로그인하지 않으면 공지 목록과 내용이 표시되지 않습니다.",
     readOnlyHint:
       "읽기 전용입니다. HR·관리자·매니저만 공지를 등록할 수 있습니다.",
     publicReadHint:
@@ -194,7 +194,7 @@ const ko = {
     publishFail:
       "등록에 실패했습니다. Firebase 권한 설정을 확인해 주세요.",
     delete: "삭제",
-    deleteMailBtn: "메일 삭제",
+    deleteMailBtn: "공지 삭제",
     deleteMailHint: "목록에서 이 공지를 삭제합니다",
     deleteConfirm: "이 공지를 삭제할까요?",
     deleteSuccess: "삭제되었습니다.",
@@ -462,6 +462,11 @@ const ko = {
     openDataTable: "수치 표",
     closeDataTable: "닫기",
     toggleSidebar: "메뉴 열기/닫기",
+    uploadNgDetailTitle: "NG 상세 Excel",
+    uploadNgDetailHint:
+      "Firebase ng/ 경로에 저장(품목별). 이 페이지 차트·KPI의 NG는 위쪽 총합 Excel의 Total_NG 열에서만 가져옵니다.",
+    chooseNgExcel: "NG 파일 선택",
+    pleaseSelectNgExcel: "업로드할 NG Excel 파일을 선택해 주세요.",
   },
   detailedModal: {
     title: "상세 생산량 표",

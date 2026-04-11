@@ -36,9 +36,6 @@ import SeasonalStaffAttendance from "@/features/attendance/SeasonalStaffAttendan
 const WorkplaceDashboardNormal = lazyImport(
   () => import("@/features/dashboard/WorkplaceDashboardNormal"),
 );
-const WorkplaceDashboardNG = lazyImport(
-  () => import("@/features/dashboard/WorkplaceDashboardNG"),
-);
 const CertificateGenerator1 = lazyImport(
   () => import("@/components/ui/CertificateGenerator1"),
 );
@@ -223,7 +220,6 @@ const App = () => {
   const routeElements = useMemo(
     () => ({
       WorkplaceDashboardNormal: <WorkplaceDashboardNormal />,
-      WorkplaceDashboardNG: <WorkplaceDashboardNG />,
       CertificateGenerator1: <CertificateGenerator1 />,
       CertificateGenerator2: <CertificateGenerator2 />,
       HonorBoard: <HonorBoard />,
@@ -274,6 +270,14 @@ const App = () => {
                 <Route
                   path="/email/login"
                   element={<InternalAnnouncementsLogin />}
+                />
+                <Route
+                  path="/ng"
+                  element={
+                    <ProtectedRoute>
+                      <Navigate to="/normal" replace />
+                    </ProtectedRoute>
+                  }
                 />
                 {routeConfig
                   .filter((r) => !PUBLIC_ROUTE_PATHS.has(r.path))

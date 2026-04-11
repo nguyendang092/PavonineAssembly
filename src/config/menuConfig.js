@@ -18,19 +18,7 @@ export const menuConfig = [
           {
             key: "sanLuong",
             label: "navbar.sanLuong",
-            type: "nested",
-            children: [
-              {
-                key: "sanLuongNormal",
-                label: "navbar.Normal",
-                path: "/normal",
-              },
-              {
-                key: "sanLuongNG",
-                label: "navbar.ng",
-                path: "/ng",
-              },
-            ],
+            path: "/normal",
           },
           {
             key: "nhietdo",
@@ -154,7 +142,6 @@ export const PUBLIC_ROUTE_PATHS = new Set(["/login", "/email/login"]);
 export const routeConfig = [
   { path: "/", element: "InternalAnnouncements" },
   { path: "/normal", element: "WorkplaceDashboardNormal" },
-  { path: "/ng", element: "WorkplaceDashboardNG" },
   { path: "/bangkhen1", element: "CertificateGenerator1" },
   { path: "/bangkhen2", element: "CertificateGenerator2" },
   { path: "/honor-board", element: "HonorBoard" },

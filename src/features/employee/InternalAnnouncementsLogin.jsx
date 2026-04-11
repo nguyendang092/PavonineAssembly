@@ -4,7 +4,7 @@ import { useUser } from "@/contexts/UserContext";
 import SignIn from "@/auth/SignIn";
 
 /**
- * Trang đăng nhập dành cho luồng Email nội bộ: vào đây trước, sau khi đăng nhập chuyển sang /email.
+ * Trang đăng nhập dành cho luồng Thông báo nội bộ: vào đây trước, sau khi đăng nhập chuyển sang /email.
  */
 function InternalAnnouncementsLogin() {
   const { user, setUser } = useUser();

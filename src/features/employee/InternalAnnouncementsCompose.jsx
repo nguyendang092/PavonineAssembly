@@ -45,7 +45,7 @@ function isBodyEmpty(html) {
 }
 
 /**
- * Modal soạn thư: toolbar Gửi / Lưu nháp / Xem trước / Soạn lại, metadata, đính kèm, ReactQuill.
+ * Modal soạn thông báo: toolbar Gửi / Lưu nháp / Xem trước / Soạn lại, metadata, đính kèm, ReactQuill.
  */
 function InternalAnnouncementsCompose({
   open,

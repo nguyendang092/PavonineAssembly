@@ -329,7 +329,7 @@ function InternalAnnouncements() {
     [user?.email],
   );
 
-  /** Desktop: sau F5 / chưa chọn thư → mở sẵn thư mới nhất trong danh sách đang lọc (mobile giữ danh sách). */
+  /** Desktop: sau F5 / chưa chọn mục → mở sẵn thông báo mới nhất trong danh sách đang lọc (mobile giữ danh sách). */
   useEffect(() => {
     if (loading || isNarrow) return;
     if (!filtered.length) {

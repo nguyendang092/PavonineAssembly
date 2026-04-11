@@ -1,6 +1,6 @@
 import WorkplaceDashboard from "./WorkplaceDashboard";
 
-/** Route `/normal` — dashboard sản lượng (không phải NG). */
+/** Route `/normal` — dashboard sản lượng (bar + upload NG → `ng/`). */
 export default function WorkplaceDashboardNormal() {
-  return <WorkplaceDashboard mode="normal" />;
+  return <WorkplaceDashboard />;
 }

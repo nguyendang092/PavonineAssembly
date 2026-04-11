@@ -1,6 +1,6 @@
 /**
- * Dashboard sản lượng: `mode="normal"` (/normal) và `mode="ng"` (/ng).
- * Hai luồng UI/dữ liệu tách trong `WorkplaceProductionView` và `WorkplaceNGView`.
+ * Dashboard sản lượng (/normal): biểu đồ/KPI/bảng từ Firebase `bar` (Total_Good + Total_NG).
+ * Upload Excel chi tiết lỗi tùy chọn → Firebase `ng/` (không dùng cho biểu đồ trên trang này).
  */
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import * as XLSX from "@e965/xlsx";
@@ -11,12 +11,10 @@ import {
   FiLayers,
   FiTrendingUp,
   FiAlertTriangle,
-  FiActivity,
   FiTable,
   FiX,
 } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
-import DetailedNGModal from "@/components/modals/DetailedNGModal";
 import DetailedModal from "@/components/modals/DetailedModal";
 import { useUser } from "@/contexts/UserContext";
 import { logUserAction } from "@/utils/userLog";
@@ -35,7 +33,7 @@ import {
 } from "chart.js";
 import { format, parseISO, getISOWeek } from "date-fns";
 import ChartDataLabels from "chartjs-plugin-datalabels";
-import { getDatabase, ref, update, get } from "firebase/database";
+import { ref, update, get } from "firebase/database";
 import { db } from "@/services/firebase"; // đường dẫn tới file cấu hình firebase của bạn
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import { uploadNgFaultyExcel } from "./ngWorkplaceUpload";
@@ -61,12 +59,8 @@ ChartJS.register(
   Tooltip,
   ChartDataLabels,
 );
-const getCurrentWeekNumber = () => {
-  const today = new Date();
-  const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
-  const pastDaysOfYear = (today - firstDayOfYear) / 86400000;
-  return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-};
+/** Tuần ISO (khớp cột Week / `getISOWeek` khi lọc dòng) — không dùng tuần “từ 1/1” vì lệch số với dữ liệu. */
+const getCurrentWeekNumber = () => getISOWeek(new Date());
 
 /** Lượng đạt (không gồm NG) theo ngày — đồng bộ logic CNC / ca. */
 function dayNormalTotal(area, dayArr, idx) {
@@ -83,21 +77,6 @@ function dayNormalTotal(area, dayArr, idx) {
   );
 }
 
-/** Tổng NG theo ngày. */
-function dayNGTotal(area, dayArr, idx) {
-  if (!dayArr?.[idx]) return 0;
-  const { Day, Night } = dayArr[idx];
-  if (area === "CNC") {
-    return (Day?.ng_normal ?? 0) + (Day?.ng_rework ?? 0);
-  }
-  return (
-    (Day?.ng_normal ?? 0) +
-    (Night?.ng_normal ?? 0) +
-    (Day?.ng_rework ?? 0) +
-    (Night?.ng_rework ?? 0)
-  );
-}
-
 function formatDayLabelShort(d) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(String(d))) {
     try {
@@ -111,6 +90,21 @@ function formatDayLabelShort(d) {
   } catch {
     return String(d).slice(0, 10);
   }
+}
+
+/** Tổng NG theo ngày — cùng nguồn `bar` (Total_NG trong dataMap). */
+function dayNGTotal(area, dayArr, idx) {
+  if (!dayArr?.[idx]) return 0;
+  const { Day, Night } = dayArr[idx];
+  if (area === "CNC") {
+    return (Day?.ng_normal ?? 0) + (Day?.ng_rework ?? 0);
+  }
+  return (
+    (Day?.ng_normal ?? 0) +
+    (Night?.ng_normal ?? 0) +
+    (Day?.ng_rework ?? 0) +
+    (Night?.ng_rework ?? 0)
+  );
 }
 
 const extraLabelPlugin = {
@@ -165,6 +159,8 @@ function WorkplaceProductionView() {
   const [isUploadingDetail, setIsUploadingDetail] = useState(false);
   const totalFileInputRef = useRef(null);
   const detailFileInputRef = useRef(null);
+  const [pendingNgFaultyFile, setPendingNgFaultyFile] = useState(null);
+  const [isUploadingNgFaulty, setIsUploadingNgFaulty] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,7 +182,18 @@ function WorkplaceProductionView() {
       if (e.key === "Escape") setDataTableOpen(false);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    const scrollRoot = document.getElementById("app-main-scroll");
+    const prevMainOverflow = scrollRoot?.style.overflow ?? "";
+    const prevBodyOverflow = document.body.style.overflow;
+    if (scrollRoot) scrollRoot.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (scrollRoot) scrollRoot.style.overflow = prevMainOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+    };
   }, [dataTableOpen]);
 
   // Load dữ liệu từ Firebase khi component mount hoặc khi year thay đổi
@@ -466,28 +473,18 @@ function WorkplaceProductionView() {
     });
 
     setWeekData(grouped);
-    const today = new Date();
     const currentWeek = getCurrentWeekNumber();
-
-    // Kiểm tra xem hôm nay là thứ mấy (0=CN, 1=Thứ 2, ...)
-    const dayOfWeek = today.getDay();
-
-    // Nếu hôm nay là thứ 2 (dayOfWeek === 1) thì lấy tuần trước
-    let defaultWeek = currentWeek;
-    if (dayOfWeek === 1) {
-      defaultWeek = currentWeek - 1;
-    }
-
+    const defaultWeek = currentWeek;
     const defaultWeekKey = `${defaultWeek}_${filterYear}`;
 
-    // Nếu tuần này hoặc tuần trước đó không có dữ liệu, thì fallback
+    // Nếu tuần hiện tại không có dữ liệu, fallback tuần lớn nhất có dữ liệu trong năm (sort theo số, không sort chuỗi — tránh nhầm tuần 9 cuối danh sách)
     const weekKeys = Object.keys(grouped)
       .filter((k) => k.endsWith(`_${filterYear}`))
-      .sort();
+      .sort((a, b) => Number(a.split("_")[0]) - Number(b.split("_")[0]));
 
     let selectedWeekKey = defaultWeekKey;
     if (!grouped[defaultWeekKey] && weekKeys.length > 0) {
-      selectedWeekKey = weekKeys[weekKeys.length - 1]; // Chọn tuần cuối cùng có dữ liệu
+      selectedWeekKey = weekKeys[weekKeys.length - 1];
     }
 
     setSelectedWeek(selectedWeekKey);
@@ -578,6 +575,7 @@ function WorkplaceProductionView() {
     });
     setChartData({ labels, areas: filteredAreas });
   }, [selectedWeek, weekData]);
+
   const exportToExcel = () => {
     if (!chartData?.labels?.length) return;
     const headers = ["Khu vực", "Ngày", "Normal", "Rework", "Tổng"];
@@ -619,20 +617,9 @@ function WorkplaceProductionView() {
     let totalNormal = 0;
     let totalNGSum = 0;
     Object.entries(dataMap).forEach(([area, dayArr]) => {
-      chartData.labels.forEach((_, idx) => {
-        const { Day, Night } = dayArr[idx] || { Day: {}, Night: {} };
-        let normal;
-        let ng;
-        if (area === "CNC") {
-          normal = Day.normal;
-          ng = Day.ng_normal + Day.ng_rework;
-        } else {
-          normal = Day.normal + Night.normal;
-          ng =
-            Day.ng_normal + Night.ng_normal + Day.ng_rework + Night.ng_rework;
-        }
-        totalNormal += normal;
-        totalNGSum += ng;
+      chartData.labels.forEach((label, idx) => {
+        totalNormal += dayNormalTotal(area, dayArr, idx);
+        totalNGSum += dayNGTotal(area, dayArr, idx);
       });
     });
     return {
@@ -875,11 +862,16 @@ function WorkplaceProductionView() {
                   onChange={(e) => setSelectedWeek(e.target.value)}
                   className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 >
-                  {Object.keys(weekData).map((week) => (
-                    <option key={week} value={week}>
-                      {week} {t("workplaceChart.week")}
-                    </option>
-                  ))}
+                  {[...Object.keys(weekData)]
+                    .sort(
+                      (a, b) =>
+                        Number(a.split("_")[0]) - Number(b.split("_")[0]),
+                    )
+                    .map((week) => (
+                      <option key={week} value={week}>
+                        {week} {t("workplaceChart.week")}
+                      </option>
+                    ))}
                 </select>
               </>
             )}
@@ -973,6 +965,67 @@ function WorkplaceProductionView() {
                 disabled={isReadingDetailFile || isUploadingDetail}
                 className="hidden"
               />
+            </div>
+
+            <div className="mt-2 border-t border-white/20 pt-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-rose-100">
+                {t("workplaceChart.uploadNgDetailTitle")}
+              </p>
+              <p className="mb-2 text-[10px] leading-snug text-white/75">
+                {t("workplaceChart.uploadNgDetailHint")}
+              </p>
+              <div className="flex items-center justify-between gap-2 rounded-lg bg-white/10 p-2">
+                <label
+                  htmlFor="file-upload-ng-faulty"
+                  className={`rounded-lg p-2 text-white ${
+                    isUploadingNgFaulty
+                      ? "cursor-not-allowed bg-slate-400"
+                      : "cursor-pointer bg-rose-600 hover:bg-rose-700"
+                  }`}
+                  title={t("workplaceChart.chooseNgExcel")}
+                >
+                  <FiUpload size={16} />
+                </label>
+                <span className="flex-1 text-center text-xs font-medium text-white">
+                  {pendingNgFaultyFile?.name ||
+                    t("workplaceChart.chooseNgExcel")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isUploadingNgFaulty) return;
+                    if (!pendingNgFaultyFile) {
+                      alert(t("workplaceChart.pleaseSelectNgExcel"));
+                      return;
+                    }
+                    uploadNgFaultyExcel(pendingNgFaultyFile, {
+                      db,
+                      user,
+                      logUserAction,
+                      onLoading: setIsUploadingNgFaulty,
+                    })
+                      .then(() => setPendingNgFaultyFile(null))
+                      .catch(() => {});
+                  }}
+                  disabled={isUploadingNgFaulty}
+                  className="rounded-lg bg-gradient-to-r from-rose-600 to-amber-600 px-3 py-1 text-xs font-medium text-white transition hover:from-rose-700 hover:to-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isUploadingNgFaulty
+                    ? "Đang upload..."
+                    : t("workplaceChart.uploadFirebase")}
+                </button>
+                <input
+                  id="file-upload-ng-faulty"
+                  type="file"
+                  accept=".xlsx, .xls"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    setPendingNgFaultyFile(f || null);
+                  }}
+                  disabled={isUploadingNgFaulty}
+                  className="hidden"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -1176,14 +1229,14 @@ function WorkplaceProductionView() {
 
       {dataTableOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto overscroll-contain p-2 sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="workplace-data-table-title"
         >
           <button
             type="button"
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 min-h-full bg-black/70 backdrop-blur-sm"
             onClick={() => setDataTableOpen(false)}
             aria-label={t("workplaceChart.closeDataTable")}
           />
@@ -1264,7 +1317,7 @@ function WorkplaceProductionView() {
                               {t("workplaceChart.areaDay")}
                             </th>
                             <th className="sticky top-0 z-[1] bg-slate-200/90 px-3 py-2 text-right text-[10px] font-semibold tracking-wide text-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
-                              {t("workplaceChart.normal")}
+                              {t("workplaceChart.comboBarLabel")}
                             </th>
                             <th className="sticky top-0 z-[1] bg-slate-200/90 px-3 py-2 text-right text-[10px] font-semibold tracking-wide text-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
                               {t("workplaceChart.ngColumn")}
@@ -1283,25 +1336,13 @@ function WorkplaceProductionView() {
                             .map(([area, dayArr]) => {
                               let totalNormal = 0;
                               let totalNG = 0;
-                              chartData.labels.forEach((_, idx) => {
-                                const { Day, Night } = dayArr[idx] || {
-                                  Day: {},
-                                  Night: {},
-                                };
-                                let normal, ng;
-                                if (area === "CNC") {
-                                  normal = Day.normal;
-                                  ng = Day.ng_normal + Day.ng_rework;
-                                } else {
-                                  normal = Day.normal + Night.normal;
-                                  ng =
-                                    Day.ng_normal +
-                                    Night.ng_normal +
-                                    Day.ng_rework +
-                                    Night.ng_rework;
-                                }
-                                totalNormal += normal;
-                                totalNG += ng;
+                              chartData.labels.forEach((label, idx) => {
+                                totalNormal += dayNormalTotal(
+                                  area,
+                                  dayArr,
+                                  idx,
+                                );
+                                totalNG += dayNGTotal(area, dayArr, idx);
                               });
                               return (
                                 <React.Fragment key={area}>
@@ -1320,31 +1361,13 @@ function WorkplaceProductionView() {
                                     </td>
                                   </tr>
                                   {chartData.labels.map((label, idx) => {
-                                    const { Day, Night } = dayArr[idx] || {
-                                      Day: {
-                                        normal: 0,
-                                        ng_normal: 0,
-                                        ng_rework: 0,
-                                      },
-                                      Night: {
-                                        normal: 0,
-                                        ng_normal: 0,
-                                        ng_rework: 0,
-                                      },
-                                    };
-                                    let normal, ng;
-                                    if (area === "CNC") {
-                                      normal = Day.normal;
-                                      ng = Day.ng_normal + Day.ng_rework;
-                                    } else {
-                                      normal = Day.normal + Night.normal;
-                                      ng =
-                                        Day.ng_normal +
-                                        Night.ng_normal +
-                                        Day.ng_rework +
-                                        Night.ng_rework;
-                                    }
-                                    const total = normal + ng; // Tổng = good + NG
+                                    const good = dayNormalTotal(
+                                      area,
+                                      dayArr,
+                                      idx,
+                                    );
+                                    const ng = dayNGTotal(area, dayArr, idx);
+                                    const total = good + ng;
                                     if (total === 0) return null;
                                     return (
                                       <tr
@@ -1355,7 +1378,7 @@ function WorkplaceProductionView() {
                                           {label}
                                         </td>
                                         <td className="px-3 py-1.5 text-right tabular-nums">
-                                          {normal.toLocaleString()}
+                                          {good.toLocaleString()}
                                         </td>
                                         <td className="px-3 py-1.5 text-right tabular-nums">
                                           {ng.toLocaleString()}
@@ -1474,731 +1497,7 @@ function WorkplaceProductionView() {
   );
 }
 
-function WorkplaceNGView() {
-  const { user } = useUser();
-  const { t } = useTranslation();
-  const [chartData, setChartData] = useState(null);
-  const [selectedArea, setSelectedArea] = useState("");
-  const [selectedWeek, setSelectedWeek] = useState("");
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [weekData, setWeekData] = useState({});
-  const [dataMap, setDataMap] = useState({});
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalArea, setModalArea] = useState("");
-  const [showTable, setShowTable] = useState(window.innerWidth >= 1520);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [pendingFile, setPendingFile] = useState(null);
-  const [dataLoading, setDataLoading] = useState(false);
 
-  // Theo dõi kích thước màn hình
-  useEffect(() => {
-    const handleResize = () => {
-      setShowTable(window.innerWidth >= 1520);
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const ngDashboardStats = useMemo(() => {
-    if (!chartData?.labels?.length) {
-      return {
-        totalNormal: 0,
-        totalRework: 0,
-        grandTotal: 0,
-        areaCount: 0,
-        dayCount: 0,
-      };
-    }
-    let totalNormal = 0;
-    let totalRework = 0;
-    Object.values(dataMap).forEach((dayObj) => {
-      chartData.labels.forEach((label) => {
-        const d = dayObj[label] || { normal: 0, rework: 0 };
-        totalNormal += d.normal;
-        totalRework += d.rework;
-      });
-    });
-    return {
-      totalNormal,
-      totalRework,
-      grandTotal: totalNormal + totalRework,
-      areaCount: Object.keys(dataMap).length,
-      dayCount: chartData.labels.length,
-    };
-  }, [chartData, dataMap]);
-
-  // Hàm đóng modal chi tiết
-  const closeDetailModal = () => {
-    setIsModalOpen(false);
-    setModalArea("");
-  };
-  const parseYearFromDay = (dayStr) => {
-    if (!dayStr) return null;
-    const parsed = new Date(dayStr);
-    return Number.isNaN(parsed.getTime()) ? null : parsed.getFullYear();
-  };
-
-  // Tối ưu: chỉ load dữ liệu cho tuần được chọn, lọc theo năm chọn
-  useEffect(() => {
-    setDataLoading(true);
-    const fetchData = async () => {
-      try {
-        const ngRef = ref(db, "ng");
-        const snapshot = await get(ngRef);
-        if (!snapshot.exists()) {
-          setChartData(null);
-          setDataMap({});
-          setWeekData({});
-          setDataLoading(false);
-          return;
-        }
-        const ngData = snapshot.val();
-
-        // Lấy danh sách tuần duy nhất trong năm đã chọn
-        const weekSet = new Set();
-        for (const workplace in ngData) {
-          for (const week in ngData[workplace]) {
-            let hasDayInYear = false;
-            for (const rework in ngData[workplace][week]) {
-              for (const day in ngData[workplace][week][rework]) {
-                const year = parseYearFromDay(day);
-                if (year === selectedYear) {
-                  hasDayInYear = true;
-                  break;
-                }
-              }
-              if (hasDayInYear) break;
-            }
-            if (hasDayInYear) weekSet.add(week);
-          }
-        }
-        let weekList = Array.from(weekSet);
-        // Sort tuần theo số (tăng dần)
-        weekList = weekList.sort((a, b) => Number(a) - Number(b));
-
-        setWeekData(
-          weekList.reduce((acc, w) => {
-            acc[w] = true;
-            return acc;
-          }, {})
-        );
-
-        const currentWeek = getCurrentWeekNumber();
-
-        // Khi đổi năm hoặc chưa có tuần chọn, chọn tuần hợp lệ trong năm
-        if (!selectedWeek || !weekList.includes(selectedWeek)) {
-          if (weekList.includes(currentWeek.toString())) {
-            setSelectedWeek(currentWeek.toString());
-            setDataLoading(false);
-            return;
-          }
-          const previousWeek = currentWeek - 1;
-          if (weekList.includes(previousWeek.toString())) {
-            setSelectedWeek(previousWeek.toString());
-            setDataLoading(false);
-            return;
-          }
-          if (weekList.length > 0) {
-            setSelectedWeek(weekList[weekList.length - 1]);
-            setDataLoading(false);
-            return;
-          }
-          setSelectedWeek("");
-          setDataLoading(false);
-          return;
-        }
-
-        // Nếu đã có selectedWeek, build dữ liệu cho tuần đó
-        const rows = [];
-        for (const workplace in ngData) {
-          if (!ngData[workplace][selectedWeek]) continue;
-          for (const rework in ngData[workplace][selectedWeek]) {
-            for (const day in ngData[workplace][selectedWeek][rework]) {
-              const year = parseYearFromDay(day);
-              if (year !== selectedYear) continue;
-              for (const model in ngData[workplace][selectedWeek][rework][
-                day
-              ]) {
-                for (const shift in ngData[workplace][selectedWeek][rework][
-                  day
-                ][model]) {
-                  const qty =
-                    ngData[workplace][selectedWeek][rework][day][model][shift];
-                  rows.push({
-                    workplace,
-                    week: selectedWeek,
-                    rework,
-                    day,
-                    model,
-                    shift,
-                    qty,
-                  });
-                }
-              }
-            }
-          }
-        }
-        // Chuẩn bị dataMap cho bảng tổng
-        const map = {};
-        rows.forEach((row) => {
-          if (!map[row.workplace]) map[row.workplace] = {};
-          if (!map[row.workplace][row.day])
-            map[row.workplace][row.day] = { normal: 0, rework: 0 };
-          let value = row.qty;
-          if (typeof value === "object" && value !== null) {
-            value = value.quantity ?? 0;
-          }
-          if (row.rework === "Rework") {
-            map[row.workplace][row.day].rework += Number(value) || 0;
-          } else {
-            map[row.workplace][row.day].normal += Number(value) || 0;
-          }
-        });
-        setDataMap(map);
-
-        // Chuẩn bị dữ liệu cho biểu đồ
-        const workplaces = Object.keys(map);
-        let days = Array.from(new Set(rows.map((r) => r.day))).sort();
-
-        // Loại bỏ ngày chủ nhật ("Chủ nhật" hoặc "Sunday")
-        days = days.filter((day) => {
-          const lower = day.toLowerCase();
-          return lower !== "chủ nhật" && lower !== "sunday";
-        });
-
-        const datasets = workplaces.map((workplace, i) => ({
-          label: workplace,
-          data: days.map(
-            (day) =>
-              (map[workplace][day]?.normal || 0) +
-              (map[workplace][day]?.rework || 0)
-          ),
-          backgroundColor: [
-            "#4e79a7",
-            "#f28e2c",
-            "#e15759",
-            "#76b7b2",
-            "#59a14f",
-            "#edc949",
-            "#af7aa1",
-            "#ff9da7",
-            "#9c755f",
-            "#bab0ab",
-          ][i % 10],
-          borderRadius: 6,
-        }));
-
-        setChartData({ labels: days, datasets });
-      } catch (err) {
-        setChartData(null);
-        setDataMap({});
-        setWeekData({});
-        console.error("Lỗi load dữ liệu NG:", err);
-      }
-      setDataLoading(false);
-    };
-    fetchData();
-  }, [selectedWeek, selectedYear]);
-
-  const uploadFromExcel = (file, user) =>
-    uploadNgFaultyExcel(file, {
-      db,
-      user,
-      logUserAction,
-      onLoading: setDataLoading,
-    });
-
-  // Handle khi người dùng chọn file
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setPendingFile(file);
-  };
-
-  const openDetailModal = () => {
-    const fallbackArea = selectedArea || Object.keys(dataMap)[0] || "";
-    if (!fallbackArea) return;
-    setModalArea(fallbackArea);
-    setIsModalOpen(true);
-  };
-
-  const exportToExcel = () => {
-    if (!chartData) {
-      alert(t("workplaceNGChart.noData"));
-      return;
-    }
-
-    const headers = ["Khu vực", "Ngày", "Normal", "Rework", "Tổng"];
-    const rows = [];
-
-    Object.entries(dataMap)
-      .filter(([area]) => selectedArea === "" || selectedArea === area)
-      .forEach(([area, dayObj]) => {
-        chartData.labels.forEach((label) => {
-          const { normal = 0, rework = 0 } = dayObj[label] || {};
-          const total = normal + rework;
-          if (total === 0) return;
-          rows.push([area, label, normal, rework, total]);
-        });
-      });
-
-    if (rows.length === 0) {
-      alert(t("workplaceNGChart.noData"));
-      return;
-    }
-
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "NG Data");
-    XLSX.writeFile(workbook, `ng_data_week_${selectedWeek || "all"}.xlsx`);
-  };
-
-  return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 lg:flex-row">
-      <button
-        type="button"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        aria-expanded={sidebarOpen}
-        aria-label={t("workplaceNGChart.toggleSidebar")}
-        className="dashboard-no-print fixed left-4 top-20 z-50 flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-md transition hover:bg-slate-50 hover:shadow-lg focus-visible:outline focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-      >
-        {sidebarOpen ? "✕" : "☰"}
-      </button>
-
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        className="!space-y-0"
-      >
-        <div className="space-y-4">
-          <div className="text-center">
-            <h2 className="text-lg lg:text-2xl font-bold text-white mb-3 uppercase">
-              {t("workplaceNGChart.menuTitle")}
-            </h2>
-          </div>
-
-          {/* Year selection — cùng pattern với chế độ sản lượng */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-white">
-              {t("workplaceNGChart.year")}
-            </label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-            >
-              {[2026, 2025, 2024, 2023].map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            {Object.keys(weekData).length > 0 && (
-              <>
-                <label className="block text-white font-medium mb-2 text-sm">
-                  {t("workplaceNGChart.selectWeek")}
-                </label>
-                <select
-                  value={selectedWeek}
-                  onChange={(e) => setSelectedWeek(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                >
-                  {Object.keys(weekData)
-                    .filter((week) => {
-                      if (!chartData || !chartData.labels) return true;
-                      const days = chartData.labels.map((label) =>
-                        label.toLowerCase()
-                      );
-                      return (
-                        !days.includes("chủ nhật") && !days.includes("sunday")
-                      );
-                    })
-                    .map((week) => (
-                      <option key={week} value={week}>
-                        {t("workplaceNGChart.week")} {week}
-                      </option>
-                    ))}
-                </select>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Upload section */}
-        {user && (
-          <div className="space-y-3">
-            <p className="uppercase text-sm text-white tracking-wide">
-              {t("workplaceNGChart.uploadData")}
-            </p>
-            <div className="flex items-center justify-between gap-2 bg-white/10 rounded-lg p-2">
-              <label
-                htmlFor="file-upload-total"
-                className="cursor-pointer p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                title="Chọn file"
-              >
-                <FiUpload size={16} />
-              </label>
-              <span className="text-white text-xs font-medium flex-1 text-center">
-                {pendingFile?.name || t("workplaceNGChart.chooseExceltotal")}
-              </span>
-              <button
-                onClick={() => {
-                  if (!pendingFile) {
-                    alert(t("workplaceNGChart.pleaseSelectExcel"));
-                    return;
-                  }
-                  uploadFromExcel(pendingFile, user);
-                }}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-lg text-xs font-medium hover:from-blue-700 hover:to-purple-700 transition"
-              >
-                {t("workplaceNGChart.uploadFirebase")}
-              </button>
-              <input
-                id="file-upload-total"
-                type="file"
-                accept=".xlsx, .xls"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </div>
-          </div>
-        )}
-      </Sidebar>
-
-      <main
-        className={`dashboard-print-fill flex min-h-0 flex-1 flex-col px-3 pb-3 transition-all duration-300 sm:px-5 ${
-          sidebarOpen ? "ml-72" : "ml-0"
-        }`}
-      >
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="dashboard-report-surface flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-            <div className="shrink-0 border-b border-slate-300/80 bg-gradient-to-b from-slate-200/95 to-slate-100 px-4 pb-3 pt-4 dark:border-slate-800 dark:from-slate-950 dark:to-slate-950">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-700 dark:text-rose-400">
-                    {t("workplaceNGChart.dashboardBadge")}
-                  </p>
-                  <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-50 sm:text-xl">
-                    {t("workplaceNGChart.dashboardTitle")}
-                  </h1>
-                  <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-600 dark:text-slate-400">
-                    {t("workplaceNGChart.dashboardSubtitle")}
-                  </p>
-                </div>
-                {selectedWeek ? (
-                  <div className="shrink-0 sm:text-right">
-                    <span className="inline-flex items-center rounded-full border border-slate-300/80 bg-slate-50/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm tabular-nums dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-200">
-                      {t("workplaceNGChart.weekPeriod", {
-                        week: selectedWeek,
-                        year: selectedYear,
-                      })}
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                    <FiAlertTriangle
-                      className="shrink-0 text-rose-600 dark:text-rose-400"
-                      size={14}
-                    />
-                    {t("workplaceNGChart.kpiTotalNG")}
-                  </div>
-                  <p className="mt-0.5 text-base font-bold tabular-nums text-slate-900 dark:text-slate-50">
-                    {ngDashboardStats.grandTotal.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                    <FiActivity
-                      className="shrink-0 text-amber-600 dark:text-amber-400"
-                      size={14}
-                    />
-                    {t("workplaceNGChart.kpiNormalNG")}
-                  </div>
-                  <p className="mt-0.5 text-base font-bold tabular-nums text-slate-900 dark:text-slate-50">
-                    {ngDashboardStats.totalNormal.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                    <FiActivity
-                      className="shrink-0 text-orange-600 dark:text-orange-400"
-                      size={14}
-                    />
-                    {t("workplaceNGChart.kpiReworkNG")}
-                  </div>
-                  <p className="mt-0.5 text-base font-bold tabular-nums text-slate-900 dark:text-slate-50">
-                    {ngDashboardStats.totalRework.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                    <FiLayers
-                      className="shrink-0 text-indigo-600 dark:text-indigo-400"
-                      size={14}
-                    />
-                    {t("workplaceNGChart.kpiAreas")}
-                  </div>
-                  <p className="mt-0.5 text-base font-bold tabular-nums text-slate-900 dark:text-slate-50">
-                    {ngDashboardStats.areaCount}
-                  </p>
-                </div>
-              </div>
-              <p className="mt-2 flex items-center justify-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400 sm:justify-start">
-                <FiCalendar
-                  className="shrink-0 text-sky-600 dark:text-sky-400"
-                  size={12}
-                />
-                {t("workplaceNGChart.kpiDays")}:{" "}
-                <span className="tabular-nums text-slate-700 dark:text-slate-300">
-                  {ngDashboardStats.dayCount}
-                </span>
-              </p>
-            </div>
-
-            <div className="shrink-0 border-b border-slate-300/80 bg-slate-200/35 px-4 py-2 dark:border-slate-800 dark:bg-black/20">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-800 dark:text-slate-200">
-                {t("workplaceNGChart.chartSectionTitle")}
-              </h2>
-              <p className="text-[11px] leading-snug text-slate-600 dark:text-slate-400">
-                {t("workplaceNGChart.chartSectionHint")}
-              </p>
-            </div>
-
-            <div className="relative flex min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-slate-200/35 p-3 dark:bg-black/35 lg:flex-row lg:gap-4 lg:p-4">
-              {dataLoading && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-[1px] dark:bg-slate-950/80">
-                  <LoadingBlock />
-                </div>
-              )}
-              <section className="relative flex min-h-[280px] flex-1 flex-col overflow-hidden rounded-xl border border-slate-300/85 bg-white shadow-sm dark:border-slate-700/90 dark:bg-slate-900/90 lg:min-h-0 lg:basis-[62%]">
-                <div className="relative min-h-[260px] flex-1 lg:min-h-0">
-                  {chartData ? (
-                    <div className="absolute inset-0 p-2 sm:p-3">
-                      <Bar
-                        data={chartData}
-                        options={{
-                          indexAxis: "y",
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: { display: false, position: "bottom" },
-                            tooltip: {
-                              callbacks: {
-                                label: (context) => {
-                                  const label = context.dataset.label || "";
-                                  const val = context.parsed.x || 0;
-                                  return `${label}: ${val.toLocaleString()}`;
-                                },
-                              },
-                            },
-                            datalabels: { display: false },
-                          },
-                          layout: { padding: 8 },
-                          scales: {
-                            x: {
-                              beginAtZero: true,
-                              stacked: false,
-                              barPercentage: 0.22,
-                              categoryPercentage: 0.55,
-                              grid: {
-                                display: true,
-                                color: "rgba(148, 163, 184, 0.2)",
-                              },
-                              ticks: {
-                                color: "#64748b",
-                                font: { weight: "600", size: 11 },
-                              },
-                              border: { display: false },
-                            },
-                            y: {
-                              ticks: {
-                                callback(value) {
-                                  const label = this.getLabelForValue(value);
-                                  return label.length > 15
-                                    ? `${label.slice(0, 15)}…`
-                                    : label;
-                                },
-                                font: { size: 11, weight: "600" },
-                                color: "#64748b",
-                                autoSkip: true,
-                                maxTicksLimit: 20,
-                              },
-                              grid: {
-                                display: true,
-                                color: "rgba(148, 163, 184, 0.25)",
-                                lineWidth: 1,
-                              },
-                              border: { display: false },
-                            },
-                          },
-                        }}
-                        plugins={[ChartDataLabels, extraLabelPlugin]}
-                        height={null}
-                      />
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center px-4">
-                      <p className="max-w-sm text-center text-sm text-slate-600 dark:text-slate-400">
-                        {t("workplaceNGChart.pleaseSelectExcel")}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              {showTable ? (
-                <section className="flex max-h-[55vh] w-full flex-col overflow-y-auto rounded-xl border border-slate-300/85 bg-slate-50 p-4 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/90 sm:p-5 lg:max-h-none lg:min-h-0 lg:basis-[38%] lg:max-w-xl">
-                  <div className="mb-3 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
-                    <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-slate-50 sm:text-base">
-                      {t("workplaceNGChart.outputByArea")}
-                    </h3>
-                    <select
-                      value={selectedArea}
-                      onChange={(e) => setSelectedArea(e.target.value)}
-                      className="w-full min-w-[140px] rounded-lg border border-slate-300/80 bg-white px-2.5 py-2 text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 sm:w-auto"
-                    >
-                      <option value="">
-                        {t("workplaceNGChart.selectArea")}
-                      </option>
-                      {Object.keys(dataMap).map((area) => (
-                        <option key={area} value={area}>
-                          {t(`areas.${area}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {chartData ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[320px] border-collapse text-left text-xs text-slate-700 dark:text-slate-200 sm:text-sm">
-                        <thead>
-                          <tr className="border-b border-slate-200 bg-slate-100 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300 sm:text-xs">
-                            <th className="px-2 py-2">
-                              {t("workplaceNGChart.areaDay")}
-                            </th>
-                            <th className="px-2 py-2 text-right">
-                              {t("workplaceNGChart.normal")}
-                            </th>
-                            <th className="px-2 py-2 text-right">
-                              {t("workplaceNGChart.rework")}
-                            </th>
-                            <th className="px-2 py-2 text-right font-bold">
-                              {t("workplaceNGChart.total")}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(dataMap)
-                            .filter(
-                              ([area]) =>
-                                selectedArea === "" || selectedArea === area,
-                            )
-                            .map(([area, dayObj]) => {
-                              let totalNormal = 0;
-                              let totalRework = 0;
-                              chartData.labels.forEach((day) => {
-                                const d = dayObj[day] || {
-                                  normal: 0,
-                                  rework: 0,
-                                };
-                                totalNormal += d.normal;
-                                totalRework += d.rework;
-                              });
-                              return (
-                                <React.Fragment key={area}>
-                                  <tr className="bg-slate-200/90 text-[11px] font-semibold uppercase text-slate-800 dark:bg-slate-800/90 dark:text-slate-100">
-                                    <td className="px-2 py-2">
-                                      {t(`areas.${area}`)}
-                                    </td>
-                                    <td className="px-2 py-2 text-right tabular-nums">
-                                      {totalNormal.toLocaleString()}
-                                    </td>
-                                    <td className="px-2 py-2 text-right tabular-nums">
-                                      {totalRework.toLocaleString()}
-                                    </td>
-                                    <td className="px-2 py-2 text-right tabular-nums">
-                                      {(
-                                        totalNormal + totalRework
-                                      ).toLocaleString()}
-                                    </td>
-                                  </tr>
-                                  {chartData.labels.map((label) => {
-                                    const d = dayObj[label] || {
-                                      normal: 0,
-                                      rework: 0,
-                                    };
-                                    const total = d.normal + d.rework;
-                                    if (total === 0) return null;
-                                    return (
-                                      <tr
-                                        key={label}
-                                        className="border-b border-slate-100 text-slate-700 dark:border-slate-800 dark:text-slate-300"
-                                      >
-                                        <td className="py-1.5 pl-6">
-                                          {label}
-                                        </td>
-                                        <td className="px-2 py-1.5 text-right tabular-nums">
-                                          {d.normal.toLocaleString()}
-                                        </td>
-                                        <td className="px-2 py-1.5 text-right tabular-nums">
-                                          {d.rework.toLocaleString()}
-                                        </td>
-                                        <td className="px-2 py-1.5 text-right tabular-nums">
-                                          {total.toLocaleString()}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </React.Fragment>
-                              );
-                            })}
-                        </tbody>
-                      </table>
-                      <div className="mt-4 flex flex-col justify-end gap-2 sm:flex-row sm:gap-3">
-                        <button
-                          type="button"
-                          onClick={openDetailModal}
-                          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500"
-                        >
-                          {t("workplaceNGChart.viewDetail")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={exportToExcel}
-                          disabled={!chartData}
-                          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {t("workplaceNGChart.exportExcel")}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {t("workplaceNGChart.noData")}
-                    </p>
-                  )}
-                </section>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </main>
-      <DetailedNGModal
-        isOpen={isModalOpen}
-        onClose={closeDetailModal}
-        area={modalArea}
-      />
-    </div>
-  );
-}
-
-export default function WorkplaceDashboard({ mode = "normal" }) {
-  if (mode === "ng") return <WorkplaceNGView />;
+export default function WorkplaceDashboard() {
   return <WorkplaceProductionView />;
 }
-

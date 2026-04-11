@@ -15,7 +15,7 @@ function attachmentKind(name) {
 
 /**
  * Khối xem trướa inline: ảnh / PDF (iframe) / liên kết tải.
- * Dùng chung màn đọc thư và hộp thoại Xem trước khi soạn.
+ * Dùng chung màn đọc thông báo và hộp thoại Xem trước khi soạn.
  */
 export function LatestAttachmentInlinePreview({
   attachment,
