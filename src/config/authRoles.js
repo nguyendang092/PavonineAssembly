@@ -54,6 +54,14 @@ export function canManageUserDepartmentMappings(user, userRole) {
   return isAdminAccess(user, userRole);
 }
 
+/**
+ * Xóa dòng điểm danh theo ngày hoặc xóa hồ sơ employeeProfiles:
+ * chỉ Admin / HR (xem {@link isAdminAccess}), không cho vai trò manager bộ phận.
+ */
+export function canDeleteEmployeeData(user, userRole) {
+  return isAdminAccess(user, userRole);
+}
+
 export function canEditAttendanceForEmployee({
   user,
   userRole,

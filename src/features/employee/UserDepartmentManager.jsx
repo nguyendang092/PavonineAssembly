@@ -494,7 +494,8 @@ function UserDepartmentManager() {
             </li>
             <li>
               • <strong>Vai trò manager:</strong> xem và sửa chấm công chỉ
-              trong các bộ phận đã chọn (arena).
+              trong các bộ phận đã chọn (arena); không xóa dòng điểm danh / hồ
+              sơ (chỉ Admin/HR).
             </li>
             <li>
               • <strong>Vai trò staff:</strong> chỉ xem, không sửa dữ liệu chấm

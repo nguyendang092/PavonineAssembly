@@ -169,6 +169,8 @@ const vi = {
     imageUploadFail: "Không chèn ảnh được.",
     emptyBodyPreview: "(Chưa có nội dung)",
     attachment: "Tệp đính kèm",
+    latestAttachmentPreview: "Xem trước tệp đính kèm mới nhất",
+    openAttachmentNewTab: "Mở trong thẻ mới",
     fieldTitle: "Tiêu đề",
     fieldBody: "Nội dung",
     titlePlaceholder: "Ví dụ: Lịch nghỉ lễ, thay đổi quy định...",
@@ -717,7 +719,7 @@ const vi = {
     myAccessBulletManage:
       "Bạn được phép thêm / sửa / xóa mapping phân quyền ở form bên dưới (chỉ Admin & HR).",
     myAccessBulletManager:
-      "Bạn được chỉnh sửa điểm danh & hồ sơ nhân viên trong các arena đã gán ở trên.",
+      "Bạn được chỉnh sửa điểm danh & hồ sơ nhân viên trong các arena đã gán; không được xóa dòng điểm danh hay xóa hồ sơ (chỉ Admin/HR).",
     myAccessBulletStaff:
       "Bạn chỉ xem dữ liệu chấm công / danh sách (không sửa bản ghi người khác).",
     myAccessBulletAdminFull:
@@ -809,6 +811,9 @@ const vi = {
     colStt: "STT",
     colEmployeeId: "ID",
     colMnv: "MNV",
+    nameRequired: "Vui lòng nhập họ tên.",
+    deptOrphanSuffix: " (đang dùng trên hồ sơ)",
+    gioRaPh: "VD: 17:30 hoặc theo ca",
     colTen: "Tên",
     colBirth: "Ngày sinh",
     colTitle: "Chức vụ",
@@ -977,7 +982,15 @@ const vi = {
     departmentRequired: "Bộ phận",
     excelHeaderRemark: "Ghi chú",
     yearLeaveNote: "Lưu ý: Phép năm chưa tính tháng hiện tại.",
+    monthlyDiligence: "Chuyên cần",
+    monthlyDiligenceTooltip:
+      "Tỉ lệ theo tháng của ngày đang chọn: tháng này chỉ tính đến hôm nay; tháng đã qua tính trọn tháng. Ngày làm kỳ vọng: T2–T6 + Thứ 7 (trừ 2 Thứ 7 nghỉ bổ sung); CN không tính. Thai sản: mỗi ngày có Giờ vào Thai sản/TS, hoặc cột PN/chấm công (ngày đó) ghi Thai sản, thì ngày đó không vào chuyên cần. Chỉ ghi Phép năm khi nghỉ thai sản vẫn được tính đủ điểm PN — nên ghi Thai sản hoặc ghi rõ trên PN/chấm công. Cột phép năm (tổng) ghi Thai sản thì ẩn cột chuyên cần. PN/TN/PO đủ điểm; trễ giảm nhẹ; KL/KP/vắng = 0.",
+    monthlyDiligenceNote:
+      "Chuyên cần: tháng của ngày đang chọn — tháng hiện tại chỉ tính đến hôm nay.",
+    monthlyDiligenceExcludedMaternity:
+      "Không áp dụng chuyên cần: cột phép năm ghi Thai sản (TS).",
     actions: "Hành động",
+    actionsEditOnly: "Sửa",
     chooseType: "Chọn loại",
     chooseShift: "Chọn ca",
     cannotEdit: "Không được phép chỉnh sửa",

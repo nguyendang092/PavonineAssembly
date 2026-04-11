@@ -10,16 +10,6 @@ import {
   employeeProfileStorageKeyFromMnv,
 } from "@/utils/employeeRosterRecord";
 
-const normalizeEmployeeCode = (value) => {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "";
-  if (/^\d+$/.test(raw)) {
-    const n = Number(raw);
-    return Number.isFinite(n) ? String(n) : raw;
-  }
-  return raw.toUpperCase();
-};
-
 // attendance/{selectedDate} + employeeProfiles (sinh nhật từ hồ sơ)
 export default function BirthdayCakeBell({ selectedDate, inline = false }) {
   const { t } = useTranslation();
@@ -49,9 +39,7 @@ export default function BirthdayCakeBell({ selectedDate, inline = false }) {
       const data = snapshot.val();
       if (data && typeof data === "object") {
         const arr = Object.entries(data).map(([id, emp]) => {
-          const pk = employeeProfileStorageKeyFromMnv(
-            normalizeEmployeeCode(emp?.mnv),
-          );
+          const pk = employeeProfileStorageKeyFromMnv(emp?.mnv);
           const prof = pk ? profileMap[pk] : null;
           return mergeEmployeeProfileAndDay({ ...emp, id }, prof, null);
         });

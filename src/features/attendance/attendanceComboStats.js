@@ -5,6 +5,54 @@ export const normalizeTextValue = (value) => String(value ?? "").trim();
 /** Giờ chuẩn HH:MM (hoặc HH:MM:SS), không nhận text loại phép / ngoài 24h */
 export const GIO_VAO_HHMM_STRICT = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 
+/**
+ * Cột phép năm / ghi chú: ghi Thai sản / TS / maternity.
+ * Dùng cho ẩn cột chuyên cần + loại ngày khỏi mẫu số.
+ */
+export function isPnTonPhepNamTextMarkedThaiSan(raw) {
+  const s = String(raw ?? "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+  if (!s || s === "--") return false;
+  if (s.includes("THAI SAN") || s.includes("THAISAN")) return true;
+  if (s.includes("MATERNITY")) return true;
+  const tokens = s.split(/[^A-Z0-9]+/).filter(Boolean);
+  if (tokens.some((t) => t === "TS")) return true;
+  return false;
+}
+
+/** Giờ vào (chuỗi tự do): Thai sản / TS / maternity — bỏ dấu, so khớp chặt hơn token PN. */
+export function gioVaoTextLooksLikeMaternity(raw) {
+  const s = normalizeTextValue(raw)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+  if (!s) return false;
+  if (s.includes("THAI SAN") || s.includes("THAISAN")) return true;
+  if (s.includes("MATERNITY")) return true;
+  const compact = s.replace(/\s+/g, "");
+  if (compact.includes("THAISAN")) return true;
+  const tokens = s.split(/[^A-Z0-9]+/).filter(Boolean);
+  if (tokens.includes("TS")) return true;
+  return false;
+}
+
+/**
+ * Một dòng attendance/{ngày}: coi là thai sản → không tính vào chuyên cần (bỏ qua ngày).
+ * Gồm giờ vào, cờ combo, cột PN/phepNam/chấm công của đúng ngày đó.
+ */
+export function isMaternityForDiligenceRow(row) {
+  if (!row || typeof row !== "object") return false;
+  const flags = getAttendanceComboFlags(row);
+  if (flags.maternity) return true;
+  if (isPnTonPhepNamTextMarkedThaiSan(row.pnTon ?? row.phepNam))
+    return true;
+  if (isPnTonPhepNamTextMarkedThaiSan(row.chamCong)) return true;
+  return false;
+}
+
 /** Cùng logic với thống kê combo chart — dùng cho bảng chi tiết khi bấm KPI */
 export function getAttendanceComboFlags(emp) {
   const gioVaoRaw = normalizeTextValue(emp.gioVao);
@@ -30,9 +78,13 @@ export function getAttendanceComboFlags(emp) {
     hasText("CO DI LAM", "DI LAM") ||
     isLate;
   const isAnnualLeave =
-    hasLeaveCode("PN") || hasText("PHEP NAM", "1/2PHEPNAM", "1/2 PN");
+    hasLeaveCode("PN", "PCT") ||
+    hasText("PHEP NAM", "1/2PHEPNAM", "1/2 PN", "PHEP CONG TAC");
   const isLaborAccident = hasLeaveCode("TN") || hasText("TNLD", "TAI NAN");
-  const isMaternity = hasLeaveCode("TS") || hasText("THAI SAN");
+  const isMaternity =
+    hasLeaveCode("TS") ||
+    hasText("THAI SAN", "THAISAN") ||
+    gioVaoTextLooksLikeMaternity(gioVaoRaw);
   const isNoPermit = hasLeaveCode("KP") || hasText("KHONG PHEP");
   const isUnpaidLeave = hasLeaveCode("KL") || hasText("KHONG LUONG");
   const isSickLeave = hasLeaveCode("PO") || hasText("PHEP OM", "NGHI OM");

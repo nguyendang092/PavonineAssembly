@@ -23,6 +23,11 @@ function formatDateKeyLocal(date) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/** Hôm nay theo lịch máy (local), YYYY-MM-DD — dùng cho chuyên cần / báo cáo theo ngày hiện tại. */
+export function getTodayDateKeyLocal() {
+  return formatDateKeyLocal(new Date());
+}
+
 /** Trừ N ngày theo lịch local (đúng “hôm qua” so với selectedDate). */
 export function getDateKeyBySubtractDays(dateStr, daysBack = 1) {
   const date = parseLocalDateKey(dateStr);
@@ -35,6 +40,21 @@ export function getDateKeyBySubtractDays(dateStr, daysBack = 1) {
     return formatDateKeyLocal(fallback);
   }
   date.setDate(date.getDate() - daysBack);
+  return formatDateKeyLocal(date);
+}
+
+/** Cộng N ngày theo lịch local (dùng mặc định khoảng nghỉ dài). */
+export function getDateKeyByAddDays(dateStr, daysForward = 1) {
+  const date = parseLocalDateKey(dateStr);
+  if (!date) {
+    const fallback = new Date(dateStr);
+    if (Number.isNaN(fallback.getTime())) {
+      return String(dateStr).slice(0, 10);
+    }
+    fallback.setDate(fallback.getDate() + daysForward);
+    return formatDateKeyLocal(fallback);
+  }
+  date.setDate(date.getDate() + daysForward);
   return formatDateKeyLocal(date);
 }
 

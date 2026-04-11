@@ -6,6 +6,7 @@ import {
   isAdminAccess,
   canEditAttendanceForEmployee,
   canAddAttendanceForDepartment,
+  canDeleteEmployeeData,
   ROLES,
 } from "@/config/authRoles";
 import { getUploadErrorMessage } from "@/utils/uploadErrorMessage";
@@ -26,6 +27,10 @@ import ExportExcelButton from "@/components/ui/ExportExcelButton";
 // import BirthdayCake from "./BirthdayCake";
 import NotificationBell from "@/components/ui/NotificationBell";
 import AlertMessage from "@/components/ui/AlertMessage";
+import {
+  ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  isGioVaoLeaveOrStatusType,
+} from "./attendanceGioVaoTypeOptions";
 const SEASONAL_WIDTHS_WITH_ACTIONS = [7, 5, 5, 22, 5, 7, 5, 13, 10, 5, 10, 6];
 const SEASONAL_WIDTHS_NO_ACTIONS = [7, 5, 5, 28, 5, 6, 5, 13, 10, 6, 10];
 
@@ -169,6 +174,8 @@ function SeasonalStaffAttendance() {
 
   const showRowModalActions = user && userRole && userRole !== ROLES.STAFF;
 
+  const canDeleteSeasonalRecord = canDeleteEmployeeData(user, userRole);
+
   // Close print dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -274,32 +281,16 @@ function SeasonalStaffAttendance() {
   const buCongEmployees = useMemo(() => {
     // Strictly matches hh:mm or hh:mm:ss (no extra chars, no spaces)
     const timeRegex = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
-    // Danh sách các loại cần loại ra khỏi bù công (không phân biệt hoa thường, loại bỏ khoảng trắng)
-    const excludeTypes = [
-      "PN",
-      "PN1/2",
-      "PO",
-      "TS",
-      "KL",
-      "KP",
-      "CDL",
-      "VT",
-      "TN",
-      "PC",
-      "PT",
-      "DS",
-    ];
     return filteredEmployees.filter((emp) => {
-      const gioVao = (emp.gioVao || "").trim().toUpperCase();
+      const gioVaoRaw = (emp.gioVao || "").trim();
       const gioRa = (emp.gioRa || "").trim();
-      // Loại các loại đặc biệt
-      if (!gioVao || excludeTypes.includes(gioVao)) return false;
+      if (!gioVaoRaw || isGioVaoLeaveOrStatusType(gioVaoRaw)) return false;
       // Chỉ nhận giá trị giờ vào hợp lệ
-      if (!timeRegex.test(gioVao)) return false;
+      if (!timeRegex.test(gioVaoRaw)) return false;
       // Nếu có cả giờ vào và giờ ra (đều hợp lệ) thì không phải bù công
-      if (gioVao && gioRa && timeRegex.test(gioRa)) return false;
+      if (gioVaoRaw && gioRa && timeRegex.test(gioRa)) return false;
       // Nếu chỉ có giờ vào hoặc chỉ có giờ ra (1 trong 2), thì là bù công
-      if ((gioVao && !gioRa) || (!gioVao && gioRa)) return true;
+      if ((gioVaoRaw && !gioRa) || (!gioVaoRaw && gioRa)) return true;
       // Nếu không có giờ vào và không có giờ ra thì không phải bù công
       return false;
     });
@@ -480,8 +471,15 @@ function SeasonalStaffAttendance() {
         return;
       }
       const emp = employees.find((e) => e.id === id);
+      if (!emp || !canDeleteEmployeeData(user, userRole)) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: "Bạn không có quyền xóa nhân viên này!",
+        });
+        return;
+      }
       if (
-        !emp ||
         !canEditAttendanceForEmployee({
           user,
           userRole,
@@ -3197,7 +3195,7 @@ function SeasonalStaffAttendance() {
                 </th>
                 {showRowModalActions && (
                   <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                    Sửa / Xóa
+                    {canDeleteSeasonalRecord ? "Sửa / Xóa" : "Sửa"}
                   </th>
                 )}
               </tr>
@@ -3268,21 +3266,18 @@ function SeasonalStaffAttendance() {
                             }));
                           }}
                         >
-                          <option value="">Chọn loại</option>
-                          <option value="Có đi làm">Có</option>
-                          <option value="Vào trễ">Vào trễ</option>
-                          <option value="Phép năm">PN</option>
-                          <option value="1/2 Phép năm">1/2 PN</option>
-                          <option value="Không lương">KL</option>
-                          <option value="Không phép">KP</option>
-                          <option value="Thai sản">TS</option>
-                          <option value="Phép ốm">PO</option>
-                          <option value="Tai nạn">TN</option>
-                          <option value="Phép cưới">PC</option>
-                          <option value="Phép tang">PT</option>
-                          <option value="Dưỡng sức">DS</option>
-                          <option value="Phép công tác">PCT</option>
-                          <option value="Nghỉ việc">NV</option>
+                          <option value="">
+                            {t("attendanceList.chooseType", {
+                              defaultValue: "Chọn loại",
+                            })}
+                          </option>
+                          {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(
+                            ({ value, shortLabel }) => (
+                              <option key={value} value={value}>
+                                {shortLabel}
+                              </option>
+                            ),
+                          )}
                         </select>
                         {editingGioVao[emp.id] && (
                           <button
@@ -3453,13 +3448,15 @@ function SeasonalStaffAttendance() {
                           >
                             ✏️
                           </button>
-                          <button
-                            onClick={() => handleDelete(emp.id)}
-                            className="px-2 py-1 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
-                            title="Xóa"
-                          >
-                            🗑️
-                          </button>
+                          {canDeleteSeasonalRecord ? (
+                            <button
+                              onClick={() => handleDelete(emp.id)}
+                              className="px-2 py-1 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
+                              title="Xóa"
+                            >
+                              🗑️
+                            </button>
+                          ) : null}
                         </div>
                       ) : (
                         <span className="text-gray-300 text-xs">—</span>

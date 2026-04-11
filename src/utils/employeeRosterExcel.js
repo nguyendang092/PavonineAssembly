@@ -95,8 +95,8 @@ export function parseEmployeeRosterExcelArrayBuffer(arrayBuffer) {
   const out = [];
   const warnings = [];
 
-  rows.forEach((row, idx) => {
-    const m = buildNormValueMap(row);
+  rows.forEach((sheetRow, idx) => {
+    const m = buildNormValueMap(sheetRow);
     const idCell = pick(m, "id", "employee_id", "employeeid");
     const mnvCell = pick(m, "mnv", "manv", "ma_nv", "ma_so_nv");
     const businessId = resolveExcelBusinessId(idCell, mnvCell);
@@ -161,15 +161,41 @@ export function parseEmployeeRosterExcelArrayBuffer(arrayBuffer) {
       "date_of_birth",
     );
     const ngayThangNamSinh = parseExcelDate(birthRaw, workbook);
-    const trangThaiLamViec = trangThaiLamViecFromExcelCell(
-      pick(
-        m,
-        "trang_thai_lam_viec",
-        "trangthailamviec",
-        "trang_thai",
-        "status",
-      ),
+    const trangThaiCell = pick(
+      m,
+      "trang_thai_lam_viec",
+      "trangthailamviec",
+      "trang_thai",
+      "status",
     );
+    const trangThaiLamViec =
+      String(trangThaiCell ?? "").trim() === ""
+        ? undefined
+        : trangThaiLamViecFromExcelCell(trangThaiCell);
+    const thaiSanTuRaw = pick(
+      m,
+      "thai_san_tu_ngay",
+      "thaisantungay",
+      "thai_san_tu",
+      "maternity_from",
+      "maternity_start",
+    );
+    const thaiSanDenRaw = pick(
+      m,
+      "thai_san_den_ngay",
+      "thaisandenngay",
+      "thai_san_den",
+      "maternity_to",
+      "maternity_end",
+    );
+    const thaiSanTuNgay =
+      String(thaiSanTuRaw ?? "").trim() === ""
+        ? undefined
+        : parseExcelDate(thaiSanTuRaw, workbook);
+    const thaiSanDenNgay =
+      String(thaiSanDenRaw ?? "").trim() === ""
+        ? undefined
+        : parseExcelDate(thaiSanDenRaw, workbook);
     const leaveDateRaw = pick(
       m,
       "ngay_nghi_viec",
@@ -207,14 +233,13 @@ export function parseEmployeeRosterExcelArrayBuffer(arrayBuffer) {
       ) ?? "",
     ).trim();
 
-    out.push({
+    const parsedRow = {
       businessId: normalizeEmployeeCode(businessId),
       hoVaTen,
       departmentRaw,
       chucVu,
       ngayVaoLam,
       ngayThangNamSinh,
-      trangThaiLamViec,
       ngayNghiViec,
       hinhThucNghiViec,
       stt: sttRaw !== "" && sttRaw != null ? String(sttRaw).trim() : "",
@@ -222,7 +247,13 @@ export function parseEmployeeRosterExcelArrayBuffer(arrayBuffer) {
       chuyenCan,
       phanQuyen,
       emailDangNhap,
-    });
+    };
+    if (trangThaiLamViec !== undefined)
+      parsedRow.trangThaiLamViec = trangThaiLamViec;
+    if (thaiSanTuNgay !== undefined) parsedRow.thaiSanTuNgay = thaiSanTuNgay;
+    if (thaiSanDenNgay !== undefined)
+      parsedRow.thaiSanDenNgay = thaiSanDenNgay;
+    out.push(parsedRow);
   });
 
   return { rows: out, warnings };
@@ -267,10 +298,13 @@ export function downloadEmployeeRosterTemplateXlsx(filename = "mau_ds_nhan_vien.
       "• Bắt buộc mỗi dòng: ho_va_ten (tên), department (bộ phận). Các cột khác tùy chọn.",
     ],
     [
-      "• Thứ tự cột khuyến nghị: stt, mnv, id, ho_va_ten, ngay_thang_nam_sinh, department, chuc_vu, ngay_vao_lam, ngay_nghi_viec, hinh_thuc_nghi_viec, sdt, trang_thai_lam_viec, chuyen_can, phan_quyen, email_dang_nhap.",
+      "• Thứ tự cột khuyến nghị: stt, mnv, id, ho_va_ten, ngay_thang_nam_sinh, department, chuc_vu, ngay_vao_lam, ngay_nghi_viec, hinh_thuc_nghi_viec, sdt, trang_thai_lam_viec, thai_san_tu_ngay, thai_san_den_ngay, chuyen_can, phan_quyen, email_dang_nhap.",
     ],
     [
-      "• trang_thai_lam_viec: dang_lam | thu_viec | tam_nghi | nghi_viec (hoặc active/probation/leave/inactive).",
+      "• trang_thai_lam_viec: dang_lam | thu_viec | tam_nghi | thai_san | nghi_viec (hoặc active/probation/leave/maternity/inactive). Ô trống = giữ nguyên trạng thái đang lưu (không ghi đè).",
+    ],
+    [
+      "• thai_san_tu_ngay / thai_san_den_ngay: khoảng nghỉ thai sản (YYYY-MM-DD). Ô trống = giữ ngày đang lưu.",
     ],
     [
       "• ngay_nghi_viec: ngày nghỉ việc (YYYY-MM-DD). hinh_thuc_nghi_viec: co_don (có đơn) | nghi_ngang (nghỉ ngang) — áp dụng khi nghỉ việc.",
@@ -296,6 +330,8 @@ export function downloadEmployeeRosterTemplateXlsx(filename = "mau_ds_nhan_vien.
       "hinh_thuc_nghi_viec",
       "sdt",
       "trang_thai_lam_viec",
+      "thai_san_tu_ngay",
+      "thai_san_den_ngay",
       "chuyen_can",
       "phan_quyen",
       "email_dang_nhap",
@@ -316,6 +352,8 @@ export function downloadEmployeeRosterTemplateXlsx(filename = "mau_ds_nhan_vien.
       "",
       "",
       "",
+      "",
+      "",
     ],
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -333,6 +371,8 @@ export function downloadEmployeeRosterTemplateXlsx(filename = "mau_ds_nhan_vien.
     { wch: 12 },
     { wch: 16 },
     { wch: 12 },
+    { wch: 14 },
+    { wch: 14 },
     { wch: 14 },
     { wch: 22 },
   ];

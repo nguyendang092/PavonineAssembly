@@ -1,22 +1,23 @@
 import React, { memo } from "react";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { ATTENDANCE_GIO_VAO_TYPE_OPTIONS } from "./attendanceGioVaoTypeOptions";
 
 /** Ngưỡng: danh sách lớn hơn số này dùng virtual scroll (xem AttendanceList). */
 export const ATTENDANCE_VIRTUAL_THRESHOLD = 300;
 
-/** % cột bảng điểm danh (grid + colgroup). Cột Họ tên (index 3) giữ vừa đủ, không chiếm quá nhiều. */
-const WIDTHS_14 = [7, 5, 5, 20, 5, 7, 5, 10, 10, 5, 5, 10, 6];
-const WIDTHS_13 = [7, 5, 5, 22, 5, 6, 5, 10, 10, 6, 6, 10];
+/** % cột — khớp `SeasonalStaffAttendance` (`SEASONAL_WIDTHS_*`) để colgroup/grid đồng bộ. */
+const WIDTHS_WITH_ACTIONS = [7, 5, 5, 22, 5, 7, 5, 13, 10, 5, 10, 6];
+const WIDTHS_NO_ACTIONS = [7, 5, 5, 28, 5, 6, 5, 13, 10, 6, 10];
 
 /** Chuỗi grid-template-columns — header + hàng virtual dùng chung (tránh lệch cột so với <table> + tr absolute). */
 export function getAttendanceGridTemplateColumns(showRowModalActions) {
-  const widths = showRowModalActions ? WIDTHS_14 : WIDTHS_13;
+  const widths = showRowModalActions ? WIDTHS_WITH_ACTIONS : WIDTHS_NO_ACTIONS;
   return widths.map((w) => `${w}%`).join(" ");
 }
 
 /** Cố định % cột — giữ cho tương thích; virtual dùng grid, không phụ thuộc colgroup. */
 export function AttendanceTableColgroup({ showRowModalActions }) {
-  const widths = showRowModalActions ? WIDTHS_14 : WIDTHS_13;
+  const widths = showRowModalActions ? WIDTHS_WITH_ACTIONS : WIDTHS_NO_ACTIONS;
   return (
     <colgroup>
       {widths.map((w, i) => (
@@ -53,6 +54,7 @@ export function AttendanceVirtualHeader({
   tl,
   showRowModalActions,
   gridTemplateColumns,
+  canDeleteRow = true,
 }) {
   return (
     <div
@@ -125,12 +127,6 @@ export function AttendanceVirtualHeader({
       </div>
       <div
         role="columnheader"
-        className="flex min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-white md:px-2 md:py-1 md:text-sm"
-      >
-        {tl("annualLeave", "Phép năm")}
-      </div>
-      <div
-        role="columnheader"
         className="hidden min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-white md:flex md:px-2 md:py-1 md:text-sm"
       >
         {tl("workShift", "Ca làm việc")}
@@ -140,7 +136,9 @@ export function AttendanceVirtualHeader({
           role="columnheader"
           className="hidden min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-white md:flex md:px-2 md:py-1 md:text-sm"
         >
-          {tl("actions", "Sửa / Xóa")}
+          {canDeleteRow
+            ? tl("actions", "Sửa / Xóa")
+            : tl("actionsEditOnly", "Sửa")}
         </div>
       )}
     </div>
@@ -152,6 +150,7 @@ export function AttendanceTableThead({
   tl,
   showRowModalActions,
   stickyHeader,
+  canDeleteRow = true,
 }) {
   return (
     <thead
@@ -196,15 +195,14 @@ export function AttendanceTableThead({
         <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
           {tl("timeOut", "Thời gian ra")}
         </th>
-        <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-          {tl("annualLeave", "Phép năm")}
-        </th>
         <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
           {tl("workShift", "Ca làm việc")}
         </th>
         {showRowModalActions && (
           <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-            {tl("actions", "Sửa / Xóa")}
+            {canDeleteRow
+              ? tl("actions", "Sửa / Xóa")
+              : tl("actionsEditOnly", "Sửa")}
           </th>
         )}
       </tr>
@@ -227,7 +225,6 @@ function AttendanceTableRow({
   editingGioVaoValue,
   savingCaLamViec,
   editingCaLamViecValue,
-  pnTonDisplay,
   tl,
   t,
   onGioVaoChange,
@@ -236,6 +233,7 @@ function AttendanceTableRow({
   onCaLamSave,
   onEdit,
   onDelete,
+  canDeleteRow = true,
   measureElementRef,
   gridTemplateColumns,
 }) {
@@ -360,35 +358,28 @@ function AttendanceTableRow({
             {emp.gioVao}
           </span>
         ) : canEdit ? (
-          <div className="flex items-center justify-center gap-1 md:gap-2">
+          <div className="flex items-center justify-center gap-2">
             <select
               disabled={savingGioVao}
-              className="w-full max-w-[94px] md:max-w-none border rounded px-1.5 md:px-2 text-[11px] md:text-sm text-red-700 font-bold focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="border rounded px-1.5 py-0.5 text-xs md:text-sm text-red-700 font-bold focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
               value={editingGioVaoValue || ""}
               onChange={(e) => onGioVaoChange(emp.id, e.target.value)}
             >
               <option value="">{tl("chooseType", "Chọn loại")}</option>
-              <option value="Có đi làm">Có</option>
-              <option value="Vào trễ">Vào trễ</option>
-              <option value="Phép năm">PN</option>
-              <option value="1/2 Phép năm">1/2 PN</option>
-              <option value="Không lương">KL</option>
-              <option value="Không phép">KP</option>
-              <option value="Thai sản">TS</option>
-              <option value="Phép ốm">PO</option>
-              <option value="Tai nạn">TN</option>
-              <option value="Phép cưới">PC</option>
-              <option value="Phép tang">PT</option>
-              <option value="Dưỡng sức">DS</option>
-              <option value="Phép công tác">PCT</option>
-              <option value="Nghỉ việc">NV</option>
+              {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(
+                ({ value, shortLabel }) => (
+                  <option key={value} value={value}>
+                    {shortLabel}
+                  </option>
+                ),
+              )}
             </select>
             {editingGioVaoValue && (
               <button
                 type="button"
                 disabled={savingGioVao}
                 onClick={() => onGioVaoSave(emp.id, editingGioVaoValue)}
-                className="px-1.5 md:px-2 py-1 bg-green-500 text-white rounded text-[10px] md:text-xs hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-1.5 py-0.5 bg-green-500 text-white rounded text-xs hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {savingGioVao ? (
                   <LoadingSpinner
@@ -420,16 +411,6 @@ function AttendanceTableRow({
       <Cell
         role={isGrid ? "cell" : undefined}
         className={cellCls(
-          "px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center",
-        )}
-      >
-        <span className="text-xs md:text-sm text-gray-700 font-bold">
-          {pnTonDisplay}
-        </span>
-      </Cell>
-      <Cell
-        role={isGrid ? "cell" : undefined}
-        className={cellCls(
           "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0",
         )}
       >
@@ -441,7 +422,7 @@ function AttendanceTableRow({
           <div className="flex items-center justify-center gap-2">
             <select
               disabled={savingCaLamViec}
-              className="border rounded px-2 py-1 text-sm text-blue-700 font-bold focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="border rounded px-1.5 py-0.5 text-xs md:text-sm text-blue-700 font-bold focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
               value={editingCaLamViecValue || ""}
               onChange={(e) => onCaLamChange(emp.id, e.target.value)}
             >
@@ -456,7 +437,7 @@ function AttendanceTableRow({
                 type="button"
                 disabled={savingCaLamViec}
                 onClick={() => onCaLamSave(emp.id, editingCaLamViecValue)}
-                className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-1.5 py-0.5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {savingCaLamViec ? (
                   <LoadingSpinner
@@ -483,23 +464,25 @@ function AttendanceTableRow({
           className={cellCls("hidden md:table-cell px-1 text-center min-w-0")}
         >
           {canEdit ? (
-            <div className="flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2">
+            <div className="flex items-center justify-center gap-2">
               <button
                 type="button"
                 onClick={() => onEdit(emp)}
-                className="w-full md:w-auto px-1.5 md:px-2 py-1 bg-blue-500 text-white rounded-md text-[11px] md:text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md whitespace-nowrap"
+                className="px-2 py-1 bg-blue-500 text-white rounded-md text-xs font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow-md"
                 title="Chỉnh sửa"
               >
                 ✏️
               </button>
-              <button
-                type="button"
-                onClick={() => onDelete(emp.id)}
-                className="w-full md:w-auto px-1.5 md:px-2 py-1 bg-red-500 text-white rounded-md text-[11px] md:text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md whitespace-nowrap"
-                title="Xóa"
-              >
-                🗑️
-              </button>
+              {canDeleteRow ? (
+                <button
+                  type="button"
+                  onClick={() => onDelete(emp.id)}
+                  className="px-2 py-1 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-all shadow-sm hover:shadow-md"
+                  title="Xóa"
+                >
+                  🗑️
+                </button>
+              ) : null}
             </div>
           ) : (
             <span className="text-gray-300 text-xs">—</span>
@@ -532,7 +515,6 @@ function propsAreEqual(prev, next) {
     prev.editingGioVaoValue === next.editingGioVaoValue &&
     prev.savingCaLamViec === next.savingCaLamViec &&
     prev.editingCaLamViecValue === next.editingCaLamViecValue &&
-    prev.pnTonDisplay === next.pnTonDisplay &&
     prev.tl === next.tl &&
     prev.t === next.t &&
     prev.onGioVaoChange === next.onGioVaoChange &&
@@ -541,6 +523,7 @@ function propsAreEqual(prev, next) {
     prev.onCaLamSave === next.onCaLamSave &&
     prev.onEdit === next.onEdit &&
     prev.onDelete === next.onDelete &&
+    prev.canDeleteRow === next.canDeleteRow &&
     prev.measureElementRef === next.measureElementRef &&
     prev.gridTemplateColumns === next.gridTemplateColumns
   );

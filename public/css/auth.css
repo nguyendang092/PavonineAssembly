@@ -342,30 +342,6 @@
     line-height: 1.6;
 }
 
-.auth-container .close-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    border-radius: 50%;
-    font-size: 24px;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    transition: 0.3s;
-}
-
-.auth-container .close-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: rotate(90deg);
-}
-
 /* Animations - scoped to auth-container */
 .auth-container .animation {
     opacity: 1;
@@ -779,16 +755,6 @@ body.signin-open .attendance-filter-menu {
         background-color: #545b62;
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(84, 91, 98, 0.3);
-    }
-
-    /* Close button adjustment */
-    .auth-container .close-btn {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        width: 40px;
-        height: 40px;
-        font-size: 24px;
     }
 
     /* Stack forms vertically on mobile when switching */

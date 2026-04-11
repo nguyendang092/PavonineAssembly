@@ -132,7 +132,7 @@ export default function SignIn({ onSignIn, onClose }) {
     updateUI("loading", true);
 
     if (!formState.signInEmail || !formState.signInPassword) {
-      setError(t("signIn.requiredFields"));
+      setError(t("signIn.requireEmailPassword"));
       updateUI("loading", false);
       return;
     }
@@ -158,7 +158,7 @@ export default function SignIn({ onSignIn, onClose }) {
       clearForm();
       if (onClose) onClose();
     } catch (err) {
-      setError(t("signIn.signinfail"));
+      setError(t("signIn.loginFail"));
     } finally {
       updateUI("loading", false);
     }
@@ -175,7 +175,7 @@ export default function SignIn({ onSignIn, onClose }) {
       !formState.signUpPassword ||
       !formState.signUpName
     ) {
-      setError(t("signIn.requiredFields"));
+      setError(t("signIn.requireAllFields"));
       updateUI("loading", false);
       return;
     }
@@ -217,9 +217,6 @@ export default function SignIn({ onSignIn, onClose }) {
 
   return (
     <div className="auth-container">
-      <button className="close-btn" onClick={onClose}>
-        ×
-      </button>
       <div className={`auth-wrapper ${uiState.isActive ? "active" : ""}`}>
         <div className="curved-shape"></div>
         <div className="curved-shape2"></div>

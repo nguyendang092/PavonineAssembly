@@ -162,6 +162,8 @@ const ko = {
     imageUploadFail: "이미지를 넣을 수 없습니다.",
     emptyBodyPreview: "(내용 없음)",
     attachment: "첨부",
+    latestAttachmentPreview: "최신 첨부 미리보기",
+    openAttachmentNewTab: "새 탭에서 열기",
     fieldTitle: "제목",
     fieldBody: "내용",
     titlePlaceholder: "예: 휴무 일정, 규정 변경...",
@@ -706,7 +708,7 @@ const ko = {
     myAccessBulletManage:
       "아래 폼에서 권한 매핑을 추가·수정·삭제할 수 있습니다(관리자·HR만).",
     myAccessBulletManager:
-      "위에 지정된 arena에 한해 출석·인사 정보를 수정할 수 있습니다.",
+      "위에 지정된 arena에 한해 출석·인사 정보를 수정할 수 있습니다. 출석 행·프로필 삭제는 Admin/HR만 가능합니다.",
     myAccessBulletStaff:
       "출석/명단 데이터는 조회만 가능하며(타인 기록 수정 불가).",
     myAccessBulletAdminFull:
@@ -799,6 +801,9 @@ const ko = {
     colStt: "순번",
     colEmployeeId: "ID",
     colMnv: "사번",
+    nameRequired: "성명을 입력하세요.",
+    deptOrphanSuffix: " (프로필에 쓰는 값)",
+    gioRaPh: "예: 17:30 또는 조별",
     colTen: "성명",
     colBirth: "생년월일",
     colTitle: "직책",
@@ -974,7 +979,15 @@ const ko = {
     departmentRequired: "부서 *",
     excelHeaderRemark: "비고",
     yearLeaveNote: "참고: 연차는 당월을 포함하지 않았습니다.",
+    monthlyDiligence: "근태율",
+    monthlyDiligenceTooltip:
+      "선택한 날짜가 속한 달 기준 비율입니다. 이번 달은 오늘까지 집계; 지난 달은 해당 월 전체. 출산휴가: 해당 일의 출근 시간이 Thai sản/TS이거나, 그날 PN/근태 메모에 출산 표기 시 그날은 근태율에서 제외. 연차만 쓰면 만점 처리될 수 있으니 출산은 Thai sản 또는 메모에 표기. PN 칸(요약)에 출산 표기 시 열 숨김.",
+    monthlyDiligenceNote:
+      "근태율: 해당 달 기준이며, 이번 달은 오늘까지 반영.",
+    monthlyDiligenceExcludedMaternity:
+      "근태율 미적용: 연차(PN) 칸에 출산휴가(Thai sản/TS)로 표기된 경우.",
     actions: "작업",
+    actionsEditOnly: "수정",
     chooseType: "유형 선택",
     chooseShift: "근무조 선택",
     cannotEdit: "수정 권한이 없습니다",

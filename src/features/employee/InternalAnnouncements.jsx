@@ -11,6 +11,10 @@ import {
 import { db, ref, onValue, push, remove, update } from "@/services/firebase";
 import AlertMessage from "@/components/ui/AlertMessage";
 import InternalAnnouncementsCompose from "./InternalAnnouncementsCompose";
+import {
+  getLatestAttachment,
+  LatestAttachmentInlinePreview,
+} from "./InternalAnnouncementLatestAttachmentPreview";
 
 const ANNOUNCEMENTS_PATH = "internalAnnouncements";
 const PAGE_SIZE = 15;
@@ -324,6 +328,20 @@ function InternalAnnouncements() {
     },
     [user?.email],
   );
+
+  /** Desktop: sau F5 / chưa chọn thư → mở sẵn thư mới nhất trong danh sách đang lọc (mobile giữ danh sách). */
+  useEffect(() => {
+    if (loading || isNarrow) return;
+    if (!filtered.length) {
+      if (selectedId != null) setSelectedId(null);
+      return;
+    }
+    if (selectedId != null) return;
+    const first = filtered[0];
+    setPage(1);
+    setSelectedId(first.id);
+    markAsRead(first.id);
+  }, [loading, isNarrow, filtered, selectedId, markAsRead]);
 
   const handleOpenRow = (row) => {
     setSelectedId(row.id);
@@ -734,20 +752,39 @@ function InternalAnnouncements() {
                   </div>
                   <div className="flex-1 overflow-y-auto px-5 py-4">
                     {selected.attachments?.length ? (
-                      <ul className="mb-4 space-y-1 text-xs">
-                        {selected.attachments.map((a, i) => (
-                          <li key={`${a.url}-${i}`}>
-                            <a
-                              href={a.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sky-600 hover:underline"
-                            >
-                              📎 {a.name || t("internalAnnouncements.attachment")}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
+                      <>
+                        {(() => {
+                          const latest = getLatestAttachment(
+                            selected.attachments,
+                          );
+                          return latest ? (
+                            <LatestAttachmentInlinePreview
+                              attachment={latest}
+                              titleLabel={t(
+                                "internalAnnouncements.latestAttachmentPreview",
+                              )}
+                              openInNewTabLabel={t(
+                                "internalAnnouncements.openAttachmentNewTab",
+                              )}
+                            />
+                          ) : null;
+                        })()}
+                        <ul className="mb-4 space-y-1 text-xs">
+                          {selected.attachments.map((a, i) => (
+                            <li key={`${a.url}-${i}`}>
+                              <a
+                                href={a.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sky-600 hover:underline"
+                              >
+                                📎{" "}
+                                {a.name || t("internalAnnouncements.attachment")}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
                     ) : null}
                     <AnnouncementBody
                       body={selected.body}
@@ -788,20 +825,37 @@ function InternalAnnouncements() {
             </p>
             <div className="mt-4">
               {selected.attachments?.length ? (
-                <ul className="mb-3 space-y-1 text-xs">
-                  {selected.attachments.map((a, i) => (
-                    <li key={`${a.url}-${i}`}>
-                      <a
-                        href={a.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sky-600 hover:underline"
-                      >
-                        📎 {a.name || t("internalAnnouncements.attachment")}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  {(() => {
+                    const latest = getLatestAttachment(selected.attachments);
+                    return latest ? (
+                      <LatestAttachmentInlinePreview
+                        attachment={latest}
+                        titleLabel={t(
+                          "internalAnnouncements.latestAttachmentPreview",
+                        )}
+                        openInNewTabLabel={t(
+                          "internalAnnouncements.openAttachmentNewTab",
+                        )}
+                      />
+                    ) : null;
+                  })()}
+                  <ul className="mb-3 space-y-1 text-xs">
+                    {selected.attachments.map((a, i) => (
+                      <li key={`${a.url}-${i}`}>
+                        <a
+                          href={a.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sky-600 hover:underline"
+                        >
+                          📎{" "}
+                          {a.name || t("internalAnnouncements.attachment")}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </>
               ) : null}
               <AnnouncementBody
                 body={selected.body}

@@ -5,6 +5,7 @@
   useMemo,
   useCallback,
   useRef,
+  useId,
   useDeferredValue,
   startTransition,
   lazy,
@@ -19,12 +20,10 @@ import {
   isAdminAccess,
   canEditAttendanceForEmployee,
   canAddAttendanceForDepartment,
+  canDeleteEmployeeData,
   ROLES,
 } from "@/config/authRoles";
-import {
-  getDateKeyBySubtractDays,
-  getFirstDayOfMonthKey,
-} from "@/utils/dateKey";
+import { getFirstDayOfMonthKey } from "@/utils/dateKey";
 import {
   CHART_ORDER_KIND,
   hydrateChartOrder,
@@ -74,7 +73,14 @@ import {
   executeAttendanceDateRangeExport,
 } from "./attendanceDateRangeExport";
 import AttendanceExportRangeModal from "./AttendanceExportRangeModal";
-import { normalizeTextValue, getAttendanceComboFlags } from "./attendanceComboStats";
+import {
+  normalizeTextValue,
+  getAttendanceComboFlags,
+} from "./attendanceComboStats";
+import {
+  ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  isGioVaoLeaveOrStatusType,
+} from "./attendanceGioVaoTypeOptions";
 
 const AttendanceComboChartModal = lazy(() =>
   import("./AttendanceComboChartModal"),
@@ -129,6 +135,7 @@ function AttendanceList() {
     [t],
   );
   const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
+  const gioVaoTypeDatalistId = useId();
 
   const [employees, setEmployees] = useState([]);
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
@@ -199,37 +206,6 @@ function AttendanceList() {
     gioVaoFilter.length === 1 &&
     gioVaoFilter.includes(quickNoCheckInFilterValue);
 
-  // mnv (chuẩn hóa) → pnTon từ đúng ngày liền trước trên lịch (không dùng "ngày gần nhất có dữ liệu")
-  const [prevCalendarDayPnTonByMnv, setPrevCalendarDayPnTonByMnv] = useState(
-    {},
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const yesterdayKey = getDateKeyBySubtractDays(selectedDate, 1);
-        const snap = await get(ref(db, `attendance/${yesterdayKey}`));
-        if (cancelled) return;
-        const data = snap.val();
-        const map = {};
-        if (data && typeof data === "object") {
-          Object.values(data).forEach((emp) => {
-            const key = normalizeEmployeeCode(emp?.mnv);
-            const val = String(emp?.pnTon ?? emp?.phepNam ?? "").trim();
-            if (key && val) map[key] = val;
-          });
-        }
-        setPrevCalendarDayPnTonByMnv(map);
-      } catch {
-        if (!cancelled) setPrevCalendarDayPnTonByMnv({});
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedDate]);
-
   // Chuẩn hóa tên bộ phận để lọc ổn định (tránh lệch hoa/thường, khoảng trắng).
   const normalizeDepartment = useCallback((value) => {
     return String(value || "")
@@ -278,9 +254,7 @@ function AttendanceList() {
   const applyAttendanceMerge = useCallback((rawData, profMap) => {
     if (!rawData || typeof rawData !== "object") return [];
     const arr = Object.entries(rawData).map(([id, emp]) => {
-      const pk = employeeProfileStorageKeyFromMnv(
-        normalizeEmployeeCode(emp?.mnv),
-      );
+      const pk = employeeProfileStorageKeyFromMnv(emp?.mnv);
       const prof = pk ? profMap[pk] : null;
       return mergeEmployeeProfileAndDay({ ...emp, id }, prof, null);
     });
@@ -351,6 +325,8 @@ function AttendanceList() {
   const showRowModalActions = Boolean(
     user && userRole && userRole !== ROLES.STAFF,
   );
+
+  const canDeleteDayRecord = canDeleteEmployeeData(user, userRole);
 
   const attendanceGridTemplateColumns = useMemo(
     () => getAttendanceGridTemplateColumns(showRowModalActions),
@@ -890,33 +866,16 @@ function AttendanceList() {
   const buCongEmployees = useMemo(() => {
     // Strictly matches hh:mm or hh:mm:ss (no extra chars, no spaces)
     const timeRegex = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
-    // Danh sách các loại cần loại ra khỏi bù công (không phân biệt hoa thường, loại bỏ khoảng trắng)
-    const excludeTypes = [
-      "PN",
-      "PN1/2",
-      "PO",
-      "TS",
-      "KL",
-      "KP",
-      "CDL",
-      "VT",
-      "TN",
-      "PC",
-      "PT",
-      "DS",
-      "NV",
-    ];
     return filteredEmployees.filter((emp) => {
-      const gioVao = (emp.gioVao || "").trim().toUpperCase();
+      const gioVaoRaw = (emp.gioVao || "").trim();
       const gioRa = (emp.gioRa || "").trim();
-      // Loại các loại đặc biệt
-      if (!gioVao || excludeTypes.includes(gioVao)) return false;
+      if (!gioVaoRaw || isGioVaoLeaveOrStatusType(gioVaoRaw)) return false;
       // Chỉ nhận giá trị giờ vào hợp lệ
-      if (!timeRegex.test(gioVao)) return false;
+      if (!timeRegex.test(gioVaoRaw)) return false;
       // Nếu có cả giờ vào và giờ ra (đều hợp lệ) thì không phải bù công
-      if (gioVao && gioRa && timeRegex.test(gioRa)) return false;
+      if (gioVaoRaw && gioRa && timeRegex.test(gioRa)) return false;
       // Nếu chỉ có giờ vào hoặc chỉ có giờ ra (1 trong 2), thì là bù công
-      if ((gioVao && !gioRa) || (!gioVao && gioRa)) return true;
+      if ((gioVaoRaw && !gioRa) || (!gioVaoRaw && gioRa)) return true;
       // Nếu không có giờ vào và không có giờ ra thì không phải bù công
       return false;
     });
@@ -1194,8 +1153,15 @@ function AttendanceList() {
         return;
       }
       const emp = employees.find((e) => e.id === id);
+      if (!emp || !canDeleteEmployeeData(user, userRole)) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: t("attendanceList.error"),
+        });
+        return;
+      }
       if (
-        !emp ||
         !canEditAttendanceForEmployee({
           user,
           userRole,
@@ -3208,42 +3174,44 @@ function AttendanceList() {
                       </div>
                     </button>
                     {showRowModalActions && (
-                      <button
-                        onClick={() => {
-                          setForm({
-                            id: "",
-                            stt: "",
-                            mnv: "",
-                            mvt: "",
-                            hoVaTen: "",
-                            gioiTinh: "YES",
-                            ngayThangNamSinh: "",
-                            maBoPhan: "",
-                            boPhan: "",
-                            gioVao: "",
-                            gioRa: "",
-                            caLamViec: "",
-                            chamCong: "",
-                            pnTon: "",
-                          });
-                          setEditing(null);
-                          setShowModal(true);
-                          setActionDropdownOpen(false);
-                        }}
-                        className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
-                      >
-                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                          ➕
-                        </span>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                            {tl("addNew", "Thêm mới")}
+                      <>
+                        <button
+                          onClick={() => {
+                            setForm({
+                              id: "",
+                              stt: "",
+                              mnv: "",
+                              mvt: "",
+                              hoVaTen: "",
+                              gioiTinh: "YES",
+                              ngayThangNamSinh: "",
+                              maBoPhan: "",
+                              boPhan: "",
+                              gioVao: "",
+                              gioRa: "",
+                              caLamViec: "",
+                              chamCong: "",
+                              pnTon: "",
+                            });
+                            setEditing(null);
+                            setShowModal(true);
+                            setActionDropdownOpen(false);
+                          }}
+                          className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                        >
+                          <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                            ➕
                           </span>
-                          <span className="text-xs text-gray-500 mt-0.5">
-                            Add new employee
-                          </span>
-                        </div>
-                      </button>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                              {tl("addNew", "Thêm mới")}
+                            </span>
+                            <span className="text-xs text-gray-500 mt-0.5">
+                              Add new employee
+                            </span>
+                          </div>
+                        </button>
+                      </>
                     )}
                     {user && isAdminAccess(user, userRole) && (
                       <button
@@ -3472,11 +3440,20 @@ function AttendanceList() {
                   <input
                     type="text"
                     name="gioVao"
+                    list={gioVaoTypeDatalistId}
                     value={form.gioVao}
                     onChange={handleChange}
-                    placeholder="HH:MM hoặc mã phép (PN, KP,...)"
+                    placeholder={tl(
+                      "gioVaoPlaceholder",
+                      "HH:MM hoặc loại phép (PN, Phép năm, …)",
+                    )}
                     className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
+                  <datalist id={gioVaoTypeDatalistId}>
+                    {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(({ value }) => (
+                      <option key={value} value={value} />
+                    ))}
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
@@ -3900,9 +3877,6 @@ function AttendanceList() {
 
         {/* Table — virtual: CSS Grid (header + hàng) cùng grid-template-columns; <tr> absolute không bám colgroup */}
         <div className="min-w-0 w-full max-w-full overflow-x-hidden bg-white rounded-lg shadow-lg">
-          <p className="px-4 pb-1 text-xs font-medium text-amber-500 text-end">
-            {tl("yearLeaveNote", "Lưu ý: Phép năm chưa tính tháng hiện tại.")}
-          </p>
           {shouldVirtualizeTable ? (
             <div
               ref={tableScrollParentRef}
@@ -3913,6 +3887,7 @@ function AttendanceList() {
                   tl={tl}
                   showRowModalActions={showRowModalActions}
                   gridTemplateColumns={attendanceGridTemplateColumns}
+                  canDeleteRow={canDeleteDayRecord}
                 />
                 <div
                   role="rowgroup"
@@ -3925,12 +3900,6 @@ function AttendanceList() {
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                     const emp = filteredEmployees[virtualRow.index];
                     const idx = virtualRow.index;
-                    const pnTonDisplay =
-                      String(emp.pnTon ?? emp.phepNam ?? "").trim() ||
-                      prevCalendarDayPnTonByMnv[
-                        normalizeEmployeeCode(emp.mnv)
-                      ] ||
-                      "--";
                     return (
                       <AttendanceTableRow
                         key={emp.id}
@@ -3944,7 +3913,6 @@ function AttendanceList() {
                         editingGioVaoValue={editingGioVao[emp.id]}
                         savingCaLamViec={!!savingCaLamViec[emp.id]}
                         editingCaLamViecValue={editingCaLamViec[emp.id]}
-                        pnTonDisplay={pnTonDisplay}
                         tl={tl}
                         t={t}
                         onGioVaoChange={handleGioVaoSelectChange}
@@ -3953,6 +3921,7 @@ function AttendanceList() {
                         onCaLamSave={handleCaLamSaveClick}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        canDeleteRow={canDeleteDayRecord}
                         measureElementRef={rowVirtualizer.measureElement}
                         gridTemplateColumns={attendanceGridTemplateColumns}
                       />
@@ -3974,15 +3943,10 @@ function AttendanceList() {
                   tl={tl}
                   showRowModalActions={showRowModalActions}
                   stickyHeader={true}
+                  canDeleteRow={canDeleteDayRecord}
                 />
                 <tbody>
                   {filteredEmployees.map((emp, idx) => {
-                    const pnTonDisplay =
-                      String(emp.pnTon ?? emp.phepNam ?? "").trim() ||
-                      prevCalendarDayPnTonByMnv[
-                        normalizeEmployeeCode(emp.mnv)
-                      ] ||
-                      "--";
                     return (
                       <AttendanceTableRow
                         key={emp.id}
@@ -3996,7 +3960,6 @@ function AttendanceList() {
                         editingGioVaoValue={editingGioVao[emp.id]}
                         savingCaLamViec={!!savingCaLamViec[emp.id]}
                         editingCaLamViecValue={editingCaLamViec[emp.id]}
-                        pnTonDisplay={pnTonDisplay}
                         tl={tl}
                         t={t}
                         onGioVaoChange={handleGioVaoSelectChange}
@@ -4005,6 +3968,7 @@ function AttendanceList() {
                         onCaLamSave={handleCaLamSaveClick}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        canDeleteRow={canDeleteDayRecord}
                       />
                     );
                   })}

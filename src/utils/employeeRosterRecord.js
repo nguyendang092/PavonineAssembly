@@ -95,11 +95,23 @@ export function isLikelyFirebasePushKey(v) {
   return /^-[A-Za-z0-9_-]{10,}$/.test(s);
 }
 
+/**
+ * Mã chuẩn để so khớp mnv giữa attendance / profile (PAVO001, hoặc chỉ số "001" → PAVO001).
+ */
+export function canonicalAttendanceMnvForMatch(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  const up = s.toUpperCase();
+  if (up.startsWith(PAVO_ID_PREFIX)) return normalizeEmployeeCode(up);
+  if (/^\d+$/.test(s)) return buildPavoEmployeeId(s);
+  return normalizeEmployeeCode(s);
+}
+
 export function businessEmployeeCode(emp) {
-  const m = normalizeEmployeeCode(emp?.mnv);
-  if (m) return m;
+  const m = String(emp?.mnv ?? "").trim();
+  if (m) return canonicalAttendanceMnvForMatch(m);
   const id = String(emp?.id ?? "").trim();
-  if (id && !isLikelyFirebasePushKey(id)) return normalizeEmployeeCode(id);
+  if (id && !isLikelyFirebasePushKey(id)) return canonicalAttendanceMnvForMatch(id);
   return "";
 }
 
@@ -131,7 +143,8 @@ export function isEmployeeResigned(emp) {
 export function canonicalStatusFromLegacy(trangThaiLamViec) {
   const v = String(trangThaiLamViec || "").trim();
   if (v === "thu_viec") return CANONICAL_EMPLOYEE_STATUS.PROBATION;
-  if (v === "tam_nghi") return CANONICAL_EMPLOYEE_STATUS.LEAVE;
+  if (v === "tam_nghi" || v === "thai_san")
+    return CANONICAL_EMPLOYEE_STATUS.LEAVE;
   if (v === "nghi_viec") return CANONICAL_EMPLOYEE_STATUS.INACTIVE;
   return CANONICAL_EMPLOYEE_STATUS.ACTIVE;
 }
@@ -261,13 +274,15 @@ export function normalizeDateForHtmlInput(value) {
 export function enrichEmployeeRow(emp, catalog) {
   if (!emp || typeof emp !== "object") return emp;
   const code = businessEmployeeCode(emp);
+  const mnvDisplay =
+    extractMnvSuffixFromStoredId(code) || normalizeMnvSuffix(emp.mnv) || "";
   const birthRaw = emp.ngayThangNamSinh ?? emp.birthDate;
   const joinRaw = emp.ngayVaoLam ?? emp.joinDate;
   const birthNorm = normalizeDateForHtmlInput(birthRaw);
   const joinNorm = normalizeDateForHtmlInput(joinRaw);
   return {
     ...emp,
-    mnv: code || emp.mnv,
+    mnv: mnvDisplay || String(emp.mnv ?? "").trim() || code,
     hoVaTen: String(emp.name ?? emp.hoVaTen ?? "").trim(),
     chucVu: String(emp.position ?? emp.chucVu ?? "").trim(),
     ngayThangNamSinh:
@@ -282,6 +297,7 @@ export const ROSTER_TRANG_THAI_VALUES = Object.freeze([
   "dang_lam",
   "thu_viec",
   "tam_nghi",
+  "thai_san",
   "nghi_viec",
 ]);
 
@@ -366,6 +382,15 @@ export function trangThaiLamViecFromExcelCell(raw) {
   )
     return "tam_nghi";
   if (
+    s === "thai_san" ||
+    s === "thaisan" ||
+    s.includes("thai san") ||
+    s === "maternity" ||
+    s === "pregnancy" ||
+    s.includes("maternity")
+  )
+    return "thai_san";
+  if (
     s === "nghi_viec" ||
     s === "inactive" ||
     s === "stop" ||
@@ -434,6 +459,9 @@ const PROFILE_ONLY_STRIP_FROM_DAY = [
   "updatedAt",
   "ngayNghiViec",
   "hinhThucNghiViec",
+  /** Legacy: từng ghi trên profile — không lưu vào attendance/{ngày}. */
+  "thaiSanTuNgay",
+  "thaiSanDenNgay",
 ];
 
 /**
@@ -459,8 +487,22 @@ export function buildEmployeeProfileDocument({
     ? normalizeDateForHtmlInput(joinRaw) || joinRaw
     : undefined;
 
+  const mnvStored =
+    extractMnvSuffixFromStoredId(businessId) || businessId || undefined;
+
+  const hasExplicitTrangThai = Object.prototype.hasOwnProperty.call(
+    form,
+    "trangThaiLamViec",
+  );
+  const resolvedTrangThai = normalizeTrangThaiLamViec(
+    hasExplicitTrangThai
+      ? form.trangThaiLamViec ?? legacyStatusFromCanonical(form.status)
+      : existingProfile.trangThaiLamViec ??
+          legacyStatusFromCanonical(form.status),
+  );
+
   const core = stripUndefined({
-    mnv: businessId || undefined,
+    mnv: mnvStored,
     hoVaTen: hoVaTen || undefined,
     ngayThangNamSinh: birthStored,
     boPhan: deptName || undefined,
@@ -469,15 +511,35 @@ export function buildEmployeeProfileDocument({
     chucVu: String(form.chucVu ?? form.position ?? "").trim() || undefined,
     ngayVaoLam: joinStored,
     sdt: String(form.sdt ?? "").trim() || undefined,
-    trangThaiLamViec: normalizeTrangThaiLamViec(
-      form.trangThaiLamViec ?? legacyStatusFromCanonical(form.status),
-    ),
+    trangThaiLamViec: resolvedTrangThai,
     chuyenCan: String(form.chuyenCan ?? "").trim() || undefined,
     phanQuyen: String(form.phanQuyen ?? "").trim() || undefined,
     emailDangNhap: String(form.emailDangNhap ?? "").trim() || undefined,
   });
 
   const merged = { ...existingProfile, ...core, updatedAt: Date.now() };
+
+  if (resolvedTrangThai === "thai_san") {
+    const hasTu = Object.prototype.hasOwnProperty.call(form, "thaiSanTuNgay");
+    const hasDen = Object.prototype.hasOwnProperty.call(
+      form,
+      "thaiSanDenNgay",
+    );
+    if (hasTu) {
+      const tu = String(form.thaiSanTuNgay ?? "").trim();
+      if (tu) merged.thaiSanTuNgay = normalizeDateForHtmlInput(tu) || tu;
+      else delete merged.thaiSanTuNgay;
+    }
+    if (hasDen) {
+      const den = String(form.thaiSanDenNgay ?? "").trim();
+      if (den)
+        merged.thaiSanDenNgay = normalizeDateForHtmlInput(den) || den;
+      else delete merged.thaiSanDenNgay;
+    }
+  } else {
+    delete merged.thaiSanTuNgay;
+    delete merged.thaiSanDenNgay;
+  }
 
   if (Object.prototype.hasOwnProperty.call(form, "ngayNghiViec")) {
     const resignRaw = String(form.ngayNghiViec ?? "").trim();
@@ -518,6 +580,8 @@ export function buildEmployeeProfileDocument({
  */
 export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
   const businessId = normalizeEmployeeCode(form.businessId ?? form.mnv ?? "");
+  const mnvStored =
+    extractMnvSuffixFromStoredId(businessId) || businessId || undefined;
   const sttNum =
     form.stt !== "" && form.stt != null && Number.isFinite(Number(form.stt))
       ? Number(form.stt)
@@ -547,7 +611,7 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
   });
 
   const merged = {
-    mnv: businessId || undefined,
+    mnv: mnvStored,
     ...preserved,
     ...extras,
   };

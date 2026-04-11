@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useCallback,
   useRef,
+  useId,
 } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -11,9 +12,11 @@ import { useUser } from "@/contexts/UserContext";
 import {
   canEditAttendanceForEmployee,
   canAddAttendanceForDepartment,
+  canDeleteEmployeeData,
   ROLES,
   inferRoleFromMapping,
 } from "@/config/authRoles";
+import { ATTENDANCE_GIO_VAO_TYPE_OPTIONS } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import {
   db,
   ref,
@@ -98,6 +101,8 @@ const emptyForm = () => ({
   pnTon: "",
   ngayNghiViec: "",
   hinhThucNghiViec: "",
+  thaiSanTuNgay: "",
+  thaiSanDenNgay: "",
 });
 
 function displayChucVu(emp) {
@@ -115,6 +120,9 @@ function workStatusPillClass(statusRaw) {
   }
   if (key === "tam_nghi" || key === "leave") {
     return "bg-amber-50 text-amber-900 ring-1 ring-amber-100";
+  }
+  if (key === "thai_san") {
+    return "bg-fuchsia-50 text-fuchsia-900 ring-1 ring-fuchsia-100";
   }
   if (key === "thu_viec" || key === "probation") {
     return "bg-sky-50 text-sky-900 ring-1 ring-sky-100";
@@ -197,6 +205,8 @@ function EmployeeProfileEditHistoryPanel({
     ngayThangNamSinh: "Ngày sinh",
     sdt: "SĐT",
     trangThaiLamViec: "Trạng thái LV",
+    thaiSanTuNgay: "Thai sản từ ngày",
+    thaiSanDenNgay: "Thai sản đến ngày",
     chuyenCan: "Chuyên cần",
     phanQuyen: "Ghi chú PQ",
     emailDangNhap: "Email đăng nhập",
@@ -304,6 +314,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
   const { t, i18n } = useTranslation();
   const { user, userDepartments, userRole } = useUser();
   const todayKey = new Date().toISOString().slice(0, 10);
+  const gioVaoTypeDatalistId = useId();
 
   /** Chỉ dùng cho link sang Điểm danh — không ảnh hưởng danh sách hồ sơ. */
   const [attendanceNavDate, setAttendanceNavDate] = useState(todayKey);
@@ -596,6 +607,24 @@ function AllEmployeesManager({ resignedOnly = false }) {
       }));
   }, [deptCatalog, employees]);
 
+  /** Khóa BP trên hồ sơ không có trong danh mục → <select> HTML5 coi là invalid và chặn submit. */
+  const departmentKeyOrphan = useMemo(() => {
+    const k = String(form.departmentKey ?? "").trim();
+    if (!k) return null;
+    if (departmentSelectOptions.some((o) => o.key === k)) return null;
+    const fromCatalog = deptCatalog[k]?.name;
+    const row =
+      editing && employees.find((r) => r.firebaseKey === editing);
+    const label = fromCatalog || row?.boPhan || k;
+    return { key: k, label };
+  }, [
+    form.departmentKey,
+    departmentSelectOptions,
+    deptCatalog,
+    editing,
+    employees,
+  ]);
+
   const canEditEmployee = useCallback(
     (employee) =>
       canEditAttendanceForEmployee({
@@ -608,6 +637,8 @@ function AllEmployeesManager({ resignedOnly = false }) {
   );
 
   const showRowActions = Boolean(user && userRole && userRole !== ROLES.STAFF);
+
+  const canDeleteProfile = canDeleteEmployeeData(user, userRole);
 
   useEffect(() => {
     if (!showRowActions) {
@@ -665,6 +696,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
         dang_lam: tr("wsDangLam", "Đang làm"),
         thu_viec: tr("wsThuViec", "Thử việc"),
         tam_nghi: tr("wsTamNghi", "Tạm nghỉ"),
+        thai_san: tr("wsThaiSan", "Thai sản"),
         nghi_viec: tr("wsNghiViec", "Nghỉ việc"),
         active: tr("wsDangLam", "Đang làm"),
         probation: tr("wsThuViec", "Thử việc"),
@@ -807,7 +839,14 @@ function AllEmployeesManager({ resignedOnly = false }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "trangThaiLamViec" && value !== "thai_san") {
+        next.thaiSanTuNgay = "";
+        next.thaiSanDenNgay = "";
+      }
+      return next;
+    });
   };
 
   const openAdd = useCallback(() => {
@@ -847,6 +886,8 @@ function AllEmployeesManager({ resignedOnly = false }) {
       pnTon: String(emp.pnTon ?? emp.phepNam ?? "").trim(),
       ngayNghiViec: normalizeDateForHtmlInput(emp.ngayNghiViec) || "",
       hinhThucNghiViec: String(emp.hinhThucNghiViec ?? "").trim(),
+      thaiSanTuNgay: normalizeDateForHtmlInput(emp.thaiSanTuNgay) || "",
+      thaiSanDenNgay: normalizeDateForHtmlInput(emp.thaiSanDenNgay) || "",
     });
     setEditing(emp.firebaseKey);
     setShowModal(true);
@@ -859,6 +900,14 @@ function AllEmployeesManager({ resignedOnly = false }) {
         show: true,
         type: "error",
         message: tr("pleaseLogin", "Vui lòng đăng nhập"),
+      });
+      return;
+    }
+    if (!String(form.hoVaTen ?? "").trim()) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: tr("nameRequired", "Vui lòng nhập họ tên."),
       });
       return;
     }
@@ -924,6 +973,33 @@ function AllEmployeesManager({ resignedOnly = false }) {
         message: tr("deptRequired", "Chọn bộ phận (danh mục)."),
       });
       return;
+    }
+
+    if (form.trangThaiLamViec === "thai_san") {
+      const tu = String(form.thaiSanTuNgay ?? "").trim();
+      const den = String(form.thaiSanDenNgay ?? "").trim();
+      if (!tu || !den) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tr(
+            "thaiSanDatesRequired",
+            "Trạng thái Thai sản: vui lòng chọn đủ «từ ngày» và «đến ngày».",
+          ),
+        });
+        return;
+      }
+      if (tu > den) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tr(
+            "thaiSanDateOrder",
+            "«Từ ngày» thai sản phải trước hoặc trùng «đến ngày».",
+          ),
+        });
+        return;
+      }
     }
 
     try {
@@ -1055,9 +1131,15 @@ function AllEmployeesManager({ resignedOnly = false }) {
 
   const handleDelete = async (id) => {
     const emp = employees.find((x) => x.firebaseKey === id);
+    if (!user || !emp || !canDeleteEmployeeData(user, userRole)) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: tr("noPermission", "Không có quyền."),
+      });
+      return;
+    }
     if (
-      !user ||
-      !emp ||
       !canEditAttendanceForEmployee({
         user,
         userRole,
@@ -1257,7 +1339,6 @@ function AllEmployeesManager({ resignedOnly = false }) {
             chucVu: r.chucVu,
             ngayVaoLam: r.ngayVaoLam,
             ngayThangNamSinh: r.ngayThangNamSinh,
-            trangThaiLamViec: r.trangThaiLamViec,
             ngayNghiViec: r.ngayNghiViec ?? "",
             hinhThucNghiViec: r.hinhThucNghiViec ?? "",
             stt: r.stt,
@@ -1266,6 +1347,15 @@ function AllEmployeesManager({ resignedOnly = false }) {
             phanQuyen: r.phanQuyen,
             emailDangNhap: r.emailDangNhap,
           };
+          if (r.trangThaiLamViec !== undefined) {
+            formLike.trangThaiLamViec = r.trangThaiLamViec;
+          }
+          if (r.thaiSanTuNgay !== undefined) {
+            formLike.thaiSanTuNgay = r.thaiSanTuNgay;
+          }
+          if (r.thaiSanDenNgay !== undefined) {
+            formLike.thaiSanDenNgay = r.thaiSanDenNgay;
+          }
 
           const existingRaw = existingKey
             ? profilesCache[existingKey] || {}
@@ -1784,11 +1874,33 @@ function AllEmployeesManager({ resignedOnly = false }) {
                             />
                           </td>
                           <td className={rosterUi.td}>
-                            <span
-                              className={`inline-flex max-w-full rounded-full px-2.5 py-0.5 text-xs font-medium ${workStatusPillClass(statusVal)}`}
-                            >
-                              {workStatusLabel(statusVal)}
-                            </span>
+                            <div className="flex min-w-0 flex-col items-center gap-0.5">
+                              <span
+                                className={`inline-flex max-w-full rounded-full px-2.5 py-0.5 text-xs font-medium ${workStatusPillClass(statusVal)}`}
+                              >
+                                {workStatusLabel(statusVal)}
+                              </span>
+                              {String(statusVal).trim() === "thai_san" &&
+                              (emp.thaiSanTuNgay || emp.thaiSanDenNgay) ? (
+                                <span
+                                  className="max-w-full text-center text-[10px] leading-tight text-gray-500 tabular-nums"
+                                  title={tr(
+                                    "thaiSanRangeTitle",
+                                    "Khoảng nghỉ thai sản",
+                                  )}
+                                >
+                                  {normalizeDateForHtmlInput(emp.thaiSanTuNgay) ||
+                                    String(emp.thaiSanTuNgay ?? "").trim() ||
+                                    "—"}
+                                  {" → "}
+                                  {normalizeDateForHtmlInput(
+                                    emp.thaiSanDenNgay,
+                                  ) ||
+                                    String(emp.thaiSanDenNgay ?? "").trim() ||
+                                    "—"}
+                                </span>
+                              ) : null}
+                            </div>
                           </td>
                           {resignedOnly ? (
                             <>
@@ -1828,15 +1940,17 @@ function AllEmployeesManager({ resignedOnly = false }) {
                                   >
                                     {tr("edit", "Sửa")}
                                   </RosterButton>
-                                  <RosterButton
-                                    variant="dangerGhost"
-                                    size="sm"
-                                    onClick={() =>
-                                      handleDelete(emp.firebaseKey)
-                                    }
-                                  >
-                                    {tr("delete", "Xóa")}
-                                  </RosterButton>
+                                  {canDeleteProfile ? (
+                                    <RosterButton
+                                      variant="dangerGhost"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleDelete(emp.firebaseKey)
+                                      }
+                                    >
+                                      {tr("delete", "Xóa")}
+                                    </RosterButton>
+                                  ) : null}
                                 </div>
                               ) : (
                                 <span className="text-gray-300">—</span>
@@ -1940,6 +2054,7 @@ function AllEmployeesManager({ resignedOnly = false }) {
 
       <RosterModal open={showModal} title={modalTitle} onClose={closeModal}>
         <form
+          noValidate
           onSubmit={handleSubmit}
           className="space-y-5 px-5 py-5 sm:px-6 sm:py-6"
         >
@@ -2029,6 +2144,12 @@ function AllEmployeesManager({ resignedOnly = false }) {
               className={inputFieldClass}
             >
               <option value="">{tr("deptSelectPh", "— Chọn bộ phận —")}</option>
+              {departmentKeyOrphan ? (
+                <option value={departmentKeyOrphan.key}>
+                  {departmentKeyOrphan.label}
+                  {tr("deptOrphanSuffix", " (đang dùng trên hồ sơ)")}
+                </option>
+              ) : null}
               {departmentSelectOptions.map((o) => (
                 <option key={o.key} value={o.key}>
                   {o.label}
@@ -2088,12 +2209,41 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 <option value="dang_lam">{tr("wsDangLam", "Đang làm")}</option>
                 <option value="thu_viec">{tr("wsThuViec", "Thử việc")}</option>
                 <option value="tam_nghi">{tr("wsTamNghi", "Tạm nghỉ")}</option>
+                <option value="thai_san">{tr("wsThaiSan", "Thai sản")}</option>
                 <option value="nghi_viec">
                   {tr("wsNghiViec", "Nghỉ việc")}
                 </option>
               </select>
             </div>
           </div>
+          {form.trangThaiLamViec === "thai_san" ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
+                  {tr("thaiSanFrom", "Thai sản — từ ngày")}
+                </label>
+                <input
+                  name="thaiSanTuNgay"
+                  type="date"
+                  value={form.thaiSanTuNgay}
+                  onChange={handleChange}
+                  className={inputFieldClass}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
+                  {tr("thaiSanTo", "Thai sản — đến ngày")}
+                </label>
+                <input
+                  name="thaiSanDenNgay"
+                  type="date"
+                  value={form.thaiSanDenNgay}
+                  onChange={handleChange}
+                  className={inputFieldClass}
+                />
+              </div>
+            </div>
+          ) : null}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
@@ -2222,10 +2372,20 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 </label>
                 <input
                   name="gioVao"
+                  list={gioVaoTypeDatalistId}
                   value={form.gioVao}
                   onChange={handleChange}
+                  placeholder={tr(
+                    "gioVaoPh",
+                    "VD: 08:00 hoặc Phép năm, PN, …",
+                  )}
                   className={inputFieldClass}
                 />
+                <datalist id={gioVaoTypeDatalistId}>
+                  {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(({ value }) => (
+                    <option key={value} value={value} />
+                  ))}
+                </datalist>
               </div>
               <div>
                 <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
@@ -2233,9 +2393,10 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 </label>
                 <input
                   name="gioRa"
-                  type="time"
+                  type="text"
                   value={form.gioRa}
                   onChange={handleChange}
+                  placeholder={tr("gioRaPh", "VD: 17:30 hoặc theo ca")}
                   className={inputFieldClass}
                 />
               </div>

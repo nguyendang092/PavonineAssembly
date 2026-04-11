@@ -9,6 +9,10 @@ import {
   getDownloadURL,
 } from "@/services/firebase";
 import { ANNOUNCEMENT_VISIBILITY } from "@/config/authRoles";
+import {
+  getLatestAttachment,
+  LatestAttachmentInlinePreview,
+} from "./InternalAnnouncementLatestAttachmentPreview";
 
 function parseVisibility(raw) {
   const allowed = Object.values(ANNOUNCEMENT_VISIBILITY);
@@ -225,6 +229,7 @@ function InternalAnnouncementsCompose({
 
   const uploadFiles = async (fileList) => {
     if (!user?.email || !fileList?.length) return;
+    const prevLen = attachments.length;
     setUploading(true);
     try {
       const next = [...attachments];
@@ -248,6 +253,9 @@ function InternalAnnouncementsCompose({
         });
       }
       setAttachments(next);
+      if (next.length > prevLen) {
+        setPreviewOpen(true);
+      }
     } catch (err) {
       console.error(err);
       showErr(t("internalAnnouncements.attachUploadFail"));
@@ -638,6 +646,20 @@ function InternalAnnouncementsCompose({
                   {t("internalAnnouncements.composeImportant")}
                 </p>
               ) : null}
+              {(() => {
+                const latest = getLatestAttachment(attachments);
+                return latest ? (
+                  <LatestAttachmentInlinePreview
+                    attachment={latest}
+                    titleLabel={t(
+                      "internalAnnouncements.latestAttachmentPreview",
+                    )}
+                    openInNewTabLabel={t(
+                      "internalAnnouncements.openAttachmentNewTab",
+                    )}
+                  />
+                ) : null;
+              })()}
               <div
                 className="compose-preview-html mt-4 text-sm leading-relaxed text-slate-800 [&_a]:text-sky-600 [&_img]:max-h-96 [&_img]:max-w-full [&_ul]:list-disc [&_ul]:pl-5"
                 dangerouslySetInnerHTML={{
