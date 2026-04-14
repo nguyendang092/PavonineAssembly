@@ -10,6 +10,12 @@ import {
   Tooltip,
 } from "recharts";
 import { CHART_DRAG_MIME } from "@/utils/chartOrderStorage";
+import {
+  COMBO_DASHBOARD_TILES,
+  COMBO_BAR_SERIES,
+  COMBO_CHART_METRIC_KEYS,
+  COMBO_STAT_LABEL_DEFAULTS,
+} from "./attendanceComboChartConfig";
 
 export default function AttendanceComboChartModal({
   open,
@@ -49,7 +55,7 @@ export default function AttendanceComboChartModal({
             <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
               {tl(
                 "comboChartHint",
-                "Cột: Điểm danh / Giờ vào ≠ HH:MM / Vào trễ / Phép năm / Ca đêm / Tai nạn / Thai sản / Phép tang / Không phép / Không lương / Phép ốm / Nghỉ việc • Đường: Tổng nhân viên",
+                "Cột: đủ loại chọn ở Giờ vào (điểm danh, Có đi làm, phép, Thai sản, Phép cưới, Dưỡng sức, …) + Giờ vào ≠ HH:MM + Ca đêm • Đường: Tổng nhân viên",
               )}
             </p>
             <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
@@ -84,192 +90,33 @@ export default function AttendanceComboChartModal({
               </p>
             </button>
           ) : null}
-          {comboDashboardStats.checkedIn > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("checkedIn")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("checkedIn", "Đã chấm công")}
-              </p>
-              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                {comboDashboardStats.checkedIn}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.nonStandardTimeIn > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("nonStandardTimeIn")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("nonStandardTimeIn", "Giờ vào ≠ HH:MM")}
-              </p>
-              <p className="text-base font-bold text-cyan-600 dark:text-cyan-400">
-                {comboDashboardStats.nonStandardTimeIn}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.late > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("late")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("late", "Vào trễ")}
-              </p>
-              <p className="text-base font-bold text-lime-700 dark:text-lime-400">
-                {comboDashboardStats.late}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.annualLeave > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("annualLeave")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("annualLeave", "Phép năm")}
-              </p>
-              <p className="text-base font-bold text-amber-600 dark:text-amber-400">
-                {comboDashboardStats.annualLeave}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.nightShift > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("nightShift")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("nightShift", "Ca đêm")}
-              </p>
-              <p className="text-base font-bold text-indigo-600 dark:text-indigo-400">
-                {comboDashboardStats.nightShift}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.laborAccident > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("laborAccident")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("laborAccident", "Tai nạn")}
-              </p>
-              <p className="text-base font-bold text-rose-600 dark:text-rose-400">
-                {comboDashboardStats.laborAccident}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.maternity > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("maternity")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("maternity", "Thai sản")}
-              </p>
-              <p className="text-base font-bold text-fuchsia-600 dark:text-fuchsia-400">
-                {comboDashboardStats.maternity}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.total > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (comboDashboardStats.funeralLeave > 0)
-                  setComboStatDetailKey("funeralLeave");
-              }}
-              title={
-                comboDashboardStats.funeralLeave === 0
-                  ? tl("funeralLeaveNone", "Không có nhân viên Phép tang")
-                  : undefined
-              }
-              className={`min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95 ${
-                comboDashboardStats.funeralLeave > 0
-                  ? "hover:ring-2 hover:ring-sky-500/35"
-                  : "cursor-default opacity-55"
-              }`}
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("funeralLeave", "Phép tang")}
-              </p>
-              <p
-                className={`text-base font-bold ${
-                  comboDashboardStats.funeralLeave > 0
-                    ? "text-violet-600 dark:text-violet-400"
-                    : "text-slate-500 dark:text-slate-500"
-                }`}
+          {COMBO_DASHBOARD_TILES.map((tile) => {
+            const v = comboDashboardStats[tile.key];
+            if (!v || v <= 0) return null;
+            const label = tl(
+              tile.tlKey,
+              COMBO_STAT_LABEL_DEFAULTS[tile.key],
+            );
+            const baseBtn =
+              "min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95";
+            return (
+              <button
+                key={tile.key}
+                type="button"
+                onClick={() => setComboStatDetailKey(tile.key)}
+                className={`${baseBtn} hover:ring-2 hover:ring-sky-500/35`}
               >
-                {comboDashboardStats.funeralLeave}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.noPermit > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("noPermit")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("noPermit", "Không phép")}
-              </p>
-              <p className="text-base font-bold text-red-600 dark:text-red-400">
-                {comboDashboardStats.noPermit}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.unpaidLeave > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("unpaidLeave")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("unpaidLeave", "Không lương")}
-              </p>
-              <p className="text-base font-bold text-orange-600 dark:text-orange-400">
-                {comboDashboardStats.unpaidLeave}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.sickLeave > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("sickLeave")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("sickLeave", "Phép ốm")}
-              </p>
-              <p className="text-base font-bold text-teal-600 dark:text-teal-400">
-                {comboDashboardStats.sickLeave}
-              </p>
-            </button>
-          ) : null}
-          {comboDashboardStats.resignedLeave > 0 ? (
-            <button
-              type="button"
-              onClick={() => setComboStatDetailKey("resignedLeave")}
-              className="min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95"
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                {tl("resigned", "Nghỉ việc")}
-              </p>
-              <p className="text-base font-bold text-slate-700 dark:text-slate-300">
-                {comboDashboardStats.resignedLeave}
-              </p>
-            </button>
-          ) : null}
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                  {label}
+                </p>
+                <p
+                  className={`text-base font-bold ${tile.activeNumClass}`}
+                >
+                  {v}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -372,72 +219,27 @@ export default function AttendanceComboChartModal({
                     </span>
                   </div>
                   <div className="mb-1.5 flex flex-wrap gap-1 text-[10px]">
-                    {row.checkedIn > 0 ? (
-                      <span className="rounded bg-emerald-50 px-1.5 py-1 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold uppercase">
-                        {tl("checkedIn", "Điểm danh")}: {row.checkedIn}
-                      </span>
-                    ) : null}
-                    {row.nonStandardTimeIn > 0 ? (
-                      <span className="rounded bg-cyan-50 px-1.5 py-1 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300 font-semibold uppercase">
-                        {tl("nonStandardTimeInShort", "≠ HH:MM")}:{" "}
-                        {row.nonStandardTimeIn}
-                      </span>
-                    ) : null}
-                    {row.late > 0 ? (
-                      <span className="rounded bg-lime-50 px-1.5 py-1 text-lime-700 dark:bg-lime-950/40 dark:text-lime-300 font-semibold uppercase">
-                        {tl("late", "Vào trễ")}: {row.late}
-                      </span>
-                    ) : null}
-                    {row.annualLeave > 0 ? (
-                      <span className="rounded bg-amber-50 px-1.5 py-1 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold uppercase">
-                        {tl("annualLeave", "Phép năm")}:{" "}
-                        {row.annualLeave}
-                      </span>
-                    ) : null}
-                    {row.nightShift > 0 ? (
-                      <span className="rounded bg-indigo-50 px-1.5 py-1 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold uppercase">
-                        {tl("nightShift", "Ca đêm")}: {row.nightShift}
-                      </span>
-                    ) : null}
-                    {row.laborAccident > 0 ? (
-                      <span className="rounded bg-rose-50 px-1.5 py-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 font-semibold uppercase">
-                        {tl("laborAccident", "Tai nạn")}:{" "}
-                        {row.laborAccident}
-                      </span>
-                    ) : null}
-                    {row.maternity > 0 ? (
-                      <span className="rounded bg-fuchsia-50 px-1.5 py-1 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 font-semibold uppercase">
-                        {tl("maternity", "Thai sản")}: {row.maternity}
-                      </span>
-                    ) : null}
-                    {row.funeralLeave > 0 ? (
-                      <span className="rounded bg-violet-50 px-1.5 py-1 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300 font-semibold uppercase">
-                        {tl("funeralLeave", "Phép tang")}:{" "}
-                        {row.funeralLeave}
-                      </span>
-                    ) : null}
-                    {row.noPermit > 0 ? (
-                      <span className="rounded bg-red-50 px-1.5 py-1 text-red-700 dark:bg-red-950/40 dark:text-red-300 font-semibold uppercase">
-                        {tl("noPermit", "Không phép")}: {row.noPermit}
-                      </span>
-                    ) : null}
-                    {row.unpaidLeave > 0 ? (
-                      <span className="rounded bg-orange-50 px-1.5 py-1 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 font-semibold uppercase">
-                        {tl("unpaidLeave", "Không lương")}:{" "}
-                        {row.unpaidLeave}
-                      </span>
-                    ) : null}
-                    {row.sickLeave > 0 ? (
-                      <span className="rounded bg-teal-50 px-1.5 py-1 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-semibold uppercase">
-                        {tl("sickLeave", "Phép ốm")}: {row.sickLeave}
-                      </span>
-                    ) : null}
-                    {row.resignedLeave > 0 ? (
-                      <span className="rounded bg-slate-100 px-1.5 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-semibold uppercase">
-                        {tl("resigned", "Nghỉ việc")}:{" "}
-                        {row.resignedLeave}
-                      </span>
-                    ) : null}
+                    {COMBO_CHART_METRIC_KEYS.map((k) => {
+                      const n = row[k];
+                      if (!n || n <= 0) return null;
+                      const lab =
+                        k === "nonStandardTimeIn"
+                          ? tl("nonStandardTimeInShort", "≠ HH:MM")
+                          : k === "resignedLeave"
+                            ? tl(
+                                "resigned",
+                                COMBO_STAT_LABEL_DEFAULTS[k],
+                              )
+                            : tl(k, COMBO_STAT_LABEL_DEFAULTS[k]);
+                      return (
+                        <span
+                          key={k}
+                          className="rounded bg-sky-50 px-1.5 py-1 text-sky-900 dark:bg-sky-950/50 dark:text-sky-200 font-semibold uppercase"
+                        >
+                          {lab}: {n}
+                        </span>
+                      );
+                    })}
                   </div>
                   <div className="h-[210px] w-full sm:h-[220px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -479,165 +281,38 @@ export default function AttendanceComboChartModal({
                                   "Tổng số nhân viên",
                                 ),
                               ];
-                            if (name === "checkedIn")
-                              return [
-                                value,
-                                tl("checkedIn", "Đã điểm danh"),
-                              ];
-                            if (name === "nonStandardTimeIn")
-                              return [
-                                value,
-                                tl(
-                                  "nonStandardTimeIn",
-                                  "Giờ vào ≠ HH:MM",
-                                ),
-                              ];
-                            if (name === "late")
-                              return [value, tl("late", "Vào trễ")];
-                            if (name === "annualLeave")
-                              return [
-                                value,
-                                tl("annualLeave", "Phép năm"),
-                              ];
-                            if (name === "nightShift")
-                              return [
-                                value,
-                                tl("nightShift", "Ca đêm"),
-                              ];
-                            if (name === "laborAccident")
-                              return [
-                                value,
-                                tl("laborAccident", "Tai nạn"),
-                              ];
-                            if (name === "maternity")
-                              return [
-                                value,
-                                tl("maternity", "Thai sản"),
-                              ];
-                            if (name === "funeralLeave")
-                              return [
-                                value,
-                                tl("funeralLeave", "Phép tang"),
-                              ];
-                            if (name === "noPermit")
-                              return [
-                                value,
-                                tl("noPermit", "Không phép"),
-                              ];
-                            if (name === "unpaidLeave")
-                              return [
-                                value,
-                                tl("unpaidLeave", "Không lương"),
-                              ];
-                            if (name === "sickLeave")
-                              return [
-                                value,
-                                tl("sickLeave", "Phép ốm"),
-                              ];
-                            if (name === "resignedLeave")
-                              return [
-                                value,
-                                tl("resigned", "Nghỉ việc"),
-                              ];
+                            if (
+                              Object.prototype.hasOwnProperty.call(
+                                COMBO_STAT_LABEL_DEFAULTS,
+                                name,
+                              )
+                            ) {
+                              const label =
+                                name === "resignedLeave"
+                                  ? tl(
+                                      "resigned",
+                                      COMBO_STAT_LABEL_DEFAULTS[name],
+                                    )
+                                  : tl(
+                                      name,
+                                      COMBO_STAT_LABEL_DEFAULTS[name],
+                                    );
+                              return [value, label];
+                            }
                             return [value, name];
                           }}
                         />
-                        {row.checkedIn > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="checkedIn"
-                            fill="#10b981"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.nonStandardTimeIn > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="nonStandardTimeIn"
-                            fill="#06b6d4"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.late > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="late"
-                            fill="#65a30d"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.annualLeave > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="annualLeave"
-                            fill="#f59e0b"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.nightShift > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="nightShift"
-                            fill="#6366f1"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.laborAccident > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="laborAccident"
-                            fill="#f43f5e"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.maternity > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="maternity"
-                            fill="#d946ef"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.funeralLeave > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="funeralLeave"
-                            fill="#6d28d9"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.noPermit > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="noPermit"
-                            fill="#dc2626"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.unpaidLeave > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="unpaidLeave"
-                            fill="#ea580c"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.sickLeave > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="sickLeave"
-                            fill="#0d9488"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
-                        {row.resignedLeave > 0 ? (
-                          <Bar
-                            yAxisId="left"
-                            dataKey="resignedLeave"
-                            fill="#475569"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        ) : null}
+                        {COMBO_BAR_SERIES.map(({ dataKey, fill }) =>
+                          row[dataKey] > 0 ? (
+                            <Bar
+                              key={dataKey}
+                              yAxisId="left"
+                              dataKey={dataKey}
+                              fill={fill}
+                              radius={[4, 4, 0, 0]}
+                            />
+                          ) : null,
+                        )}
                         {row.total > 0 ? (
                           <Line
                             yAxisId="right"

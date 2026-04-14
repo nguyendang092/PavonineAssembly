@@ -361,11 +361,17 @@ function AttendanceTableRow({
           <div className="flex items-center justify-center gap-2">
             <select
               disabled={savingGioVao}
+              title={tl(
+                "gioVaoEmptySelectHint",
+                "Chưa nhập giờ — chọn đúng loại; thống kê Dashboard sẽ đếm theo từng loại.",
+              )}
               className="border rounded px-1.5 py-0.5 text-xs md:text-sm text-red-700 font-bold focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
               value={editingGioVaoValue || ""}
               onChange={(e) => onGioVaoChange(emp.id, e.target.value)}
             >
-              <option value="">{tl("chooseType", "Chọn loại")}</option>
+              <option value="">
+                {tl("chooseType", "Chọn loại…")}
+              </option>
               {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(
                 ({ value, shortLabel }) => (
                   <option key={value} value={value}>

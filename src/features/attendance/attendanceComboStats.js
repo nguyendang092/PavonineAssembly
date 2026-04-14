@@ -1,6 +1,10 @@
 /** Logic cờ thống kê combo (điểm danh) — dùng cho modal Thống kê và bảng chi tiết KPI */
 
-import { foldGioVaoCompare } from "./attendanceGioVaoTypeOptions";
+import {
+  foldGioVaoCompare,
+  ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH,
+  rawMatchesAttendanceTypeOption,
+} from "./attendanceGioVaoTypeOptions";
 
 export const normalizeTextValue = (value) => String(value ?? "").trim();
 
@@ -29,6 +33,35 @@ export function textMatchesFuneralLeave(raw) {
   if (tokens.includes("PT")) return true;
   if (latin.includes("PHEP TANG") || latin.includes("FUNERAL")) return true;
   if (latin.replace(/\s/g, "").includes("PHEPTANG")) return true;
+  return false;
+}
+
+const CO_DI_LAM_FOLD_FULL = foldGioVaoCompare("Có đi làm");
+const CO_DI_LAM_FOLD_SHORT = foldGioVaoCompare("Có");
+
+/** Khớp loại «Có đi làm» / CDL / ghi tắt Có — dùng cột Giờ vào & ghi chú */
+export function textMatchesCoDiLam(raw) {
+  const t = normalizeTextValue(raw).replace(/\u00a0/g, " ");
+  if (!t) return false;
+  const folded = foldGioVaoCompare(t);
+  if (folded === CO_DI_LAM_FOLD_FULL) return true;
+  if (folded === CO_DI_LAM_FOLD_SHORT) return true;
+  const compact = folded.replace(/\s/g, "");
+  if (compact === "CODILAM" || compact.includes("CODILAM")) return true;
+  const latin = t
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const tokens = latin
+    .split(/[^A-Z0-9/]+/)
+    .flatMap((x) => x.split("/"))
+    .filter(Boolean);
+  if (tokens.includes("CDL")) return true;
+  if (latin.includes("CO DI LAM")) return true;
+  if (latin.replace(/\s/g, "").includes("CODILAM")) return true;
   return false;
 }
 
@@ -109,6 +142,15 @@ export function getAttendanceComboFlags(emp) {
     hasLeaveCode("CDL") ||
     hasText("CO DI LAM", "DI LAM") ||
     isLate;
+  /**
+   * NV quên chấm giờ nhưng có mặt — ghi «Có đi làm» (hoặc CDL/Có) ở Giờ vào / ghi chú.
+   * Tách biệt checkedIn (giờ HH:MM, CDL trong luồng chấm công…).
+   */
+  const coDiLam =
+    textMatchesCoDiLam(gioVaoRaw) ||
+    textMatchesCoDiLam(emp.chamCong) ||
+    textMatchesCoDiLam(emp.phepNam) ||
+    textMatchesCoDiLam(emp.pnTon);
   const isAnnualLeave =
     hasLeaveCode("PN", "PCT") ||
     hasText("PHEP NAM", "1/2PHEPNAM", "1/2 PN", "PHEP CONG TAC");
@@ -131,18 +173,49 @@ export function getAttendanceComboFlags(emp) {
     caLamViecNormalized.includes("đêm") ||
     caLamViecNormalized.includes("dem") ||
     caLamViecNormalized.includes("night");
+
+  /** Khớp từng loại trong ATTENDANCE_GIO_VAO_TYPE_OPTIONS trên Giờ vào + ghi chú liên quan */
+  const scanRaws = [
+    gioVaoRaw,
+    normalizeTextValue(emp.chamCong),
+    normalizeTextValue(emp.phepNam),
+    normalizeTextValue(emp.pnTon),
+  ].filter(Boolean);
+  const typeHitKeys = new Set();
+  for (const raw of scanRaws) {
+    for (const opt of ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH) {
+      if (rawMatchesAttendanceTypeOption(raw, opt))
+        typeHitKeys.add(opt.comboStatKey);
+    }
+  }
+
+  const weddingLeave =
+    typeHitKeys.has("weddingLeave") ||
+    hasLeaveCode("PC") ||
+    hasText("PHEP CUOI", "PHEPCUOI");
+  const recuperationLeave =
+    typeHitKeys.has("recuperationLeave") ||
+    hasLeaveCode("DS") ||
+    hasText("DUONG SUC", "DUONGSUC");
+
   return {
     nonStandardTimeIn,
     checkedIn: hasCheckIn,
-    late: isLate,
-    annualLeave: isAnnualLeave,
+    coDiLam: coDiLam || typeHitKeys.has("coDiLam"),
+    late: isLate || typeHitKeys.has("late"),
+    annualLeave: isAnnualLeave || typeHitKeys.has("annualLeave"),
     nightShift: isNightShift,
-    laborAccident: isLaborAccident,
-    maternity: isMaternity,
-    noPermit: isNoPermit,
-    unpaidLeave: isUnpaidLeave,
-    sickLeave: isSickLeave,
-    funeralLeave: isFuneralLeave,
-    resignedLeave: isResignedLeave,
+    laborAccident:
+      isLaborAccident || typeHitKeys.has("laborAccident"),
+    maternity: isMaternity || typeHitKeys.has("maternity"),
+    weddingLeave,
+    noPermit: isNoPermit || typeHitKeys.has("noPermit"),
+    unpaidLeave: isUnpaidLeave || typeHitKeys.has("unpaidLeave"),
+    sickLeave: isSickLeave || typeHitKeys.has("sickLeave"),
+    funeralLeave:
+      isFuneralLeave || typeHitKeys.has("funeralLeave"),
+    recuperationLeave,
+    resignedLeave:
+      isResignedLeave || typeHitKeys.has("resignedLeave"),
   };
 }

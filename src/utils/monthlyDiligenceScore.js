@@ -140,7 +140,9 @@ export function scoreSingleWorkday(empLike) {
     flags.annualLeave ||
     flags.laborAccident ||
     flags.sickLeave ||
-    flags.funeralLeave;
+    flags.funeralLeave ||
+    flags.weddingLeave ||
+    flags.recuperationLeave;
 
   /** KL / KP: không tính như ngày đạt chuẩn (có thể đổi hằng số nếu HR quy định khác). */
   if (flags.unpaidLeave || flags.noPermit) {

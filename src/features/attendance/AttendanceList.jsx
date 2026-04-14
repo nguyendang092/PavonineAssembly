@@ -81,6 +81,10 @@ import {
   ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
   isGioVaoLeaveOrStatusType,
 } from "./attendanceGioVaoTypeOptions";
+import {
+  COMBO_CHART_METRIC_KEYS,
+  COMBO_STAT_LABEL_DEFAULTS,
+} from "./attendanceComboChartConfig";
 
 const AttendanceComboChartModal = lazy(() =>
   import("./AttendanceComboChartModal"),
@@ -540,6 +544,8 @@ function AttendanceList() {
 
   const comboChartData = useMemo(() => {
     const map = new Map();
+    const emptyMetrics = () =>
+      Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, 0]));
     deferredFilteredForCharts.forEach((emp) => {
       const flags = getAttendanceComboFlags(emp);
       const department =
@@ -548,32 +554,12 @@ function AttendanceList() {
       const row = map.get(department) || {
         department,
         total: 0,
-        checkedIn: 0,
-        nonStandardTimeIn: 0,
-        late: 0,
-        annualLeave: 0,
-        nightShift: 0,
-        laborAccident: 0,
-        maternity: 0,
-        funeralLeave: 0,
-        noPermit: 0,
-        unpaidLeave: 0,
-        sickLeave: 0,
-        resignedLeave: 0,
+        ...emptyMetrics(),
       };
       row.total += 1;
-      if (flags.checkedIn) row.checkedIn += 1;
-      if (flags.nonStandardTimeIn) row.nonStandardTimeIn += 1;
-      if (flags.late) row.late += 1;
-      if (flags.annualLeave) row.annualLeave += 1;
-      if (flags.nightShift) row.nightShift += 1;
-      if (flags.laborAccident) row.laborAccident += 1;
-      if (flags.maternity) row.maternity += 1;
-      if (flags.funeralLeave) row.funeralLeave += 1;
-      if (flags.noPermit) row.noPermit += 1;
-      if (flags.unpaidLeave) row.unpaidLeave += 1;
-      if (flags.sickLeave) row.sickLeave += 1;
-      if (flags.resignedLeave) row.resignedLeave += 1;
+      for (const k of COMBO_CHART_METRIC_KEYS) {
+        if (flags[k]) row[k] += 1;
+      }
       map.set(department, row);
     });
 
@@ -604,38 +590,17 @@ function AttendanceList() {
   );
 
   const comboDashboardStats = useMemo(() => {
+    const zero = () =>
+      Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, 0]));
     const stats = comboChartData.reduce(
       (acc, row) => {
         acc.total += row.total;
-        acc.checkedIn += row.checkedIn;
-        acc.nonStandardTimeIn += row.nonStandardTimeIn;
-        acc.late += row.late;
-        acc.annualLeave += row.annualLeave;
-        acc.nightShift += row.nightShift;
-        acc.laborAccident += row.laborAccident;
-        acc.maternity += row.maternity;
-        acc.funeralLeave += row.funeralLeave;
-        acc.noPermit += row.noPermit;
-        acc.unpaidLeave += row.unpaidLeave;
-        acc.sickLeave += row.sickLeave;
-        acc.resignedLeave += row.resignedLeave;
+        for (const k of COMBO_CHART_METRIC_KEYS) {
+          acc[k] += row[k];
+        }
         return acc;
       },
-      {
-        total: 0,
-        checkedIn: 0,
-        nonStandardTimeIn: 0,
-        late: 0,
-        annualLeave: 0,
-        nightShift: 0,
-        laborAccident: 0,
-        maternity: 0,
-        funeralLeave: 0,
-        noPermit: 0,
-        unpaidLeave: 0,
-        sickLeave: 0,
-        resignedLeave: 0,
-      },
+      { total: 0, ...zero() },
     );
     return stats;
   }, [comboChartData]);
@@ -650,55 +615,29 @@ function AttendanceList() {
     const list = deferredFilteredForCharts;
     const buckets = {
       total: [...list],
-      checkedIn: [],
-      nonStandardTimeIn: [],
-      late: [],
-      annualLeave: [],
-      nightShift: [],
-      laborAccident: [],
-      maternity: [],
-      funeralLeave: [],
-      noPermit: [],
-      unpaidLeave: [],
-      sickLeave: [],
-      resignedLeave: [],
+      ...Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, []])),
     };
     for (const emp of list) {
       const f = getAttendanceComboFlags(emp);
-      if (f.checkedIn) buckets.checkedIn.push(emp);
-      if (f.nonStandardTimeIn) buckets.nonStandardTimeIn.push(emp);
-      if (f.late) buckets.late.push(emp);
-      if (f.annualLeave) buckets.annualLeave.push(emp);
-      if (f.nightShift) buckets.nightShift.push(emp);
-      if (f.laborAccident) buckets.laborAccident.push(emp);
-      if (f.maternity) buckets.maternity.push(emp);
-      if (f.funeralLeave) buckets.funeralLeave.push(emp);
-      if (f.noPermit) buckets.noPermit.push(emp);
-      if (f.unpaidLeave) buckets.unpaidLeave.push(emp);
-      if (f.sickLeave) buckets.sickLeave.push(emp);
-      if (f.resignedLeave) buckets.resignedLeave.push(emp);
+      for (const k of COMBO_CHART_METRIC_KEYS) {
+        if (f[k]) buckets[k].push(emp);
+      }
     }
     return buckets;
   }, [deferredFilteredForCharts]);
 
-  const comboStatLabelByKey = useMemo(
-    () => ({
+  const comboStatLabelByKey = useMemo(() => {
+    const fromKeys = Object.fromEntries(
+      COMBO_CHART_METRIC_KEYS.map((k) => [
+        k,
+        tl(k, COMBO_STAT_LABEL_DEFAULTS[k]),
+      ]),
+    );
+    return {
       total: tl("totalEmployees", "Tổng số nhân viên"),
-      checkedIn: tl("checkedIn", "Đã chấm công"),
-      nonStandardTimeIn: tl("nonStandardTimeIn", "Giờ vào ≠ HH:MM"),
-      late: tl("late", "Vào trễ"),
-      annualLeave: tl("annualLeave", "Phép năm"),
-      nightShift: tl("nightShift", "Ca đêm"),
-      laborAccident: tl("laborAccident", "Tai nạn"),
-      maternity: tl("maternity", "Thai sản"),
-      funeralLeave: tl("funeralLeave", "Phép tang"),
-      noPermit: tl("noPermit", "Không phép"),
-      unpaidLeave: tl("unpaidLeave", "Không lương"),
-      sickLeave: tl("sickLeave", "Phép ốm"),
-      resignedLeave: tl("resigned", "Nghỉ việc"),
-    }),
-    [tl],
-  );
+      ...fromKeys,
+    };
+  }, [tl]);
 
   useEffect(() => {
     if (!showComboChartModal) {
@@ -786,31 +725,9 @@ function AttendanceList() {
     const n =
       key === "total"
         ? s.total
-        : key === "checkedIn"
-          ? s.checkedIn
-          : key === "nonStandardTimeIn"
-            ? s.nonStandardTimeIn
-            : key === "late"
-              ? s.late
-              : key === "annualLeave"
-                ? s.annualLeave
-                : key === "nightShift"
-                  ? s.nightShift
-                  : key === "laborAccident"
-                    ? s.laborAccident
-                    : key === "maternity"
-                      ? s.maternity
-                      : key === "funeralLeave"
-                        ? s.funeralLeave
-                        : key === "noPermit"
-                          ? s.noPermit
-                          : key === "unpaidLeave"
-                            ? s.unpaidLeave
-                            : key === "sickLeave"
-                              ? s.sickLeave
-                              : key === "resignedLeave"
-                                ? s.resignedLeave
-                                : -1;
+        : Object.prototype.hasOwnProperty.call(s, key)
+          ? s[key]
+          : -1;
     if (n === 0) setComboStatDetailKey(null);
   }, [showComboChartModal, comboStatDetailKey, comboDashboardStats]);
 
@@ -3454,7 +3371,7 @@ function AttendanceList() {
                     onChange={handleChange}
                     placeholder={tl(
                       "gioVaoPlaceholder",
-                      "HH:MM hoặc loại phép (PN, Phép năm, …)",
+                      "HH:MM hoặc chọn loại (Phép năm, Phép cưới, Dưỡng sức, …) — đều lên thống kê",
                     )}
                     className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
