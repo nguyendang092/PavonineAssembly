@@ -1,6 +1,36 @@
 /** Logic cờ thống kê combo (điểm danh) — dùng cho modal Thống kê và bảng chi tiết KPI */
 
+import { foldGioVaoCompare } from "./attendanceGioVaoTypeOptions";
+
 export const normalizeTextValue = (value) => String(value ?? "").trim();
+
+const FUNERAL_FOLD_LABEL = foldGioVaoCompare("Phép tang");
+const FUNERAL_FOLD_CODE = foldGioVaoCompare("PT");
+
+/** Khớp Phép tang / PT / FUNERAL trên một chuỗi (giờ vào, chấm công, ghi chú…). */
+export function textMatchesFuneralLeave(raw) {
+  const t = normalizeTextValue(raw).replace(/\u00a0/g, " ");
+  if (!t) return false;
+  const folded = foldGioVaoCompare(t);
+  if (folded === FUNERAL_FOLD_LABEL || folded === FUNERAL_FOLD_CODE) return true;
+  const compact = folded.replace(/\s/g, "");
+  if (compact === "PT" || compact === "PHEPTANG") return true;
+  const latin = t
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const tokens = latin
+    .split(/[^A-Z0-9/]+/)
+    .flatMap((x) => x.split("/"))
+    .filter(Boolean);
+  if (tokens.includes("PT")) return true;
+  if (latin.includes("PHEP TANG") || latin.includes("FUNERAL")) return true;
+  if (latin.replace(/\s/g, "").includes("PHEPTANG")) return true;
+  return false;
+}
 
 /** Giờ chuẩn HH:MM (hoặc HH:MM:SS), không nhận text loại phép / ngoài 24h */
 export const GIO_VAO_HHMM_STRICT = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
@@ -59,7 +89,9 @@ export function getAttendanceComboFlags(emp) {
   const isTimeFormat = /^\d{1,2}:\d{2}(:\d{2})?$/.test(gioVaoRaw);
   const nonStandardTimeIn =
     gioVaoRaw !== "" && !GIO_VAO_HHMM_STRICT.test(gioVaoRaw);
-  const gioVaoNormalized = normalizeTextValue(emp.gioVao).toUpperCase();
+  const gioVaoNormalized = normalizeTextValue(emp.gioVao)
+    .replace(/\u00a0/g, " ")
+    .toUpperCase();
   const gioVaoLatin = gioVaoNormalized
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
@@ -88,6 +120,12 @@ export function getAttendanceComboFlags(emp) {
   const isNoPermit = hasLeaveCode("KP") || hasText("KHONG PHEP");
   const isUnpaidLeave = hasLeaveCode("KL") || hasText("KHONG LUONG");
   const isSickLeave = hasLeaveCode("PO") || hasText("PHEP OM", "NGHI OM");
+  /** Phép tang: giờ vào + chấm công / PN (ghi chú) — đồng bộ với dropdown & Excel */
+  const isFuneralLeave =
+    textMatchesFuneralLeave(gioVaoRaw) ||
+    textMatchesFuneralLeave(emp.chamCong) ||
+    textMatchesFuneralLeave(emp.phepNam) ||
+    textMatchesFuneralLeave(emp.pnTon);
   const isResignedLeave = hasLeaveCode("NV") || hasText("NGHI VIEC");
   const isNightShift =
     caLamViecNormalized.includes("đêm") ||
@@ -104,6 +142,7 @@ export function getAttendanceComboFlags(emp) {
     noPermit: isNoPermit,
     unpaidLeave: isUnpaidLeave,
     sickLeave: isSickLeave,
+    funeralLeave: isFuneralLeave,
     resignedLeave: isResignedLeave,
   };
 }

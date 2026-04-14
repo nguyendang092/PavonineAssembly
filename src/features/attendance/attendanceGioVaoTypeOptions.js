@@ -21,9 +21,11 @@ export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = [
   { value: "Nghỉ việc", shortLabel: "NV" },
 ];
 
-function foldGioVaoCompare(s) {
+/** Gập dấu / khoảng trắng — dùng khớp nhập tay, Excel, NBSP */
+export function foldGioVaoCompare(s) {
   return String(s ?? "")
     .trim()
+    .replace(/\u00a0/g, " ")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()

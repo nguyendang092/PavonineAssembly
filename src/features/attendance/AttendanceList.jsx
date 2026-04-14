@@ -555,6 +555,7 @@ function AttendanceList() {
         nightShift: 0,
         laborAccident: 0,
         maternity: 0,
+        funeralLeave: 0,
         noPermit: 0,
         unpaidLeave: 0,
         sickLeave: 0,
@@ -568,6 +569,7 @@ function AttendanceList() {
       if (flags.nightShift) row.nightShift += 1;
       if (flags.laborAccident) row.laborAccident += 1;
       if (flags.maternity) row.maternity += 1;
+      if (flags.funeralLeave) row.funeralLeave += 1;
       if (flags.noPermit) row.noPermit += 1;
       if (flags.unpaidLeave) row.unpaidLeave += 1;
       if (flags.sickLeave) row.sickLeave += 1;
@@ -612,6 +614,7 @@ function AttendanceList() {
         acc.nightShift += row.nightShift;
         acc.laborAccident += row.laborAccident;
         acc.maternity += row.maternity;
+        acc.funeralLeave += row.funeralLeave;
         acc.noPermit += row.noPermit;
         acc.unpaidLeave += row.unpaidLeave;
         acc.sickLeave += row.sickLeave;
@@ -627,6 +630,7 @@ function AttendanceList() {
         nightShift: 0,
         laborAccident: 0,
         maternity: 0,
+        funeralLeave: 0,
         noPermit: 0,
         unpaidLeave: 0,
         sickLeave: 0,
@@ -653,6 +657,7 @@ function AttendanceList() {
       nightShift: [],
       laborAccident: [],
       maternity: [],
+      funeralLeave: [],
       noPermit: [],
       unpaidLeave: [],
       sickLeave: [],
@@ -667,6 +672,7 @@ function AttendanceList() {
       if (f.nightShift) buckets.nightShift.push(emp);
       if (f.laborAccident) buckets.laborAccident.push(emp);
       if (f.maternity) buckets.maternity.push(emp);
+      if (f.funeralLeave) buckets.funeralLeave.push(emp);
       if (f.noPermit) buckets.noPermit.push(emp);
       if (f.unpaidLeave) buckets.unpaidLeave.push(emp);
       if (f.sickLeave) buckets.sickLeave.push(emp);
@@ -685,6 +691,7 @@ function AttendanceList() {
       nightShift: tl("nightShift", "Ca đêm"),
       laborAccident: tl("laborAccident", "Tai nạn"),
       maternity: tl("maternity", "Thai sản"),
+      funeralLeave: tl("funeralLeave", "Phép tang"),
       noPermit: tl("noPermit", "Không phép"),
       unpaidLeave: tl("unpaidLeave", "Không lương"),
       sickLeave: tl("sickLeave", "Phép ốm"),
@@ -793,15 +800,17 @@ function AttendanceList() {
                     ? s.laborAccident
                     : key === "maternity"
                       ? s.maternity
-                      : key === "noPermit"
-                        ? s.noPermit
-                        : key === "unpaidLeave"
-                          ? s.unpaidLeave
-                          : key === "sickLeave"
-                            ? s.sickLeave
-                            : key === "resignedLeave"
-                              ? s.resignedLeave
-                              : -1;
+                      : key === "funeralLeave"
+                        ? s.funeralLeave
+                        : key === "noPermit"
+                          ? s.noPermit
+                          : key === "unpaidLeave"
+                            ? s.unpaidLeave
+                            : key === "sickLeave"
+                              ? s.sickLeave
+                              : key === "resignedLeave"
+                                ? s.resignedLeave
+                                : -1;
     if (n === 0) setComboStatDetailKey(null);
   }, [showComboChartModal, comboStatDetailKey, comboDashboardStats]);
 

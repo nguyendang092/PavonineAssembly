@@ -49,7 +49,7 @@ export default function AttendanceComboChartModal({
             <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
               {tl(
                 "comboChartHint",
-                "Cột: Điểm danh / Giờ vào ≠ HH:MM / Vào trễ / Phép năm / Ca đêm / Tai nạn / Thai sản / Không phép / Không lương / Phép ốm / Nghỉ việc • Đường: Tổng nhân viên",
+                "Cột: Điểm danh / Giờ vào ≠ HH:MM / Vào trễ / Phép năm / Ca đêm / Tai nạn / Thai sản / Phép tang / Không phép / Không lương / Phép ốm / Nghỉ việc • Đường: Tổng nhân viên",
               )}
             </p>
             <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
@@ -179,6 +179,38 @@ export default function AttendanceComboChartModal({
               </p>
               <p className="text-base font-bold text-fuchsia-600 dark:text-fuchsia-400">
                 {comboDashboardStats.maternity}
+              </p>
+            </button>
+          ) : null}
+          {comboDashboardStats.total > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (comboDashboardStats.funeralLeave > 0)
+                  setComboStatDetailKey("funeralLeave");
+              }}
+              title={
+                comboDashboardStats.funeralLeave === 0
+                  ? tl("funeralLeaveNone", "Không có nhân viên Phép tang")
+                  : undefined
+              }
+              className={`min-w-[calc(50%-0.25rem)] flex-1 basis-[140px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[120px] sm:max-w-[200px] dark:border-slate-700/90 dark:bg-slate-900/95 ${
+                comboDashboardStats.funeralLeave > 0
+                  ? "hover:ring-2 hover:ring-sky-500/35"
+                  : "cursor-default opacity-55"
+              }`}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                {tl("funeralLeave", "Phép tang")}
+              </p>
+              <p
+                className={`text-base font-bold ${
+                  comboDashboardStats.funeralLeave > 0
+                    ? "text-violet-600 dark:text-violet-400"
+                    : "text-slate-500 dark:text-slate-500"
+                }`}
+              >
+                {comboDashboardStats.funeralLeave}
               </p>
             </button>
           ) : null}
@@ -378,6 +410,12 @@ export default function AttendanceComboChartModal({
                         {tl("maternity", "Thai sản")}: {row.maternity}
                       </span>
                     ) : null}
+                    {row.funeralLeave > 0 ? (
+                      <span className="rounded bg-violet-50 px-1.5 py-1 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300 font-semibold uppercase">
+                        {tl("funeralLeave", "Phép tang")}:{" "}
+                        {row.funeralLeave}
+                      </span>
+                    ) : null}
                     {row.noPermit > 0 ? (
                       <span className="rounded bg-red-50 px-1.5 py-1 text-red-700 dark:bg-red-950/40 dark:text-red-300 font-semibold uppercase">
                         {tl("noPermit", "Không phép")}: {row.noPermit}
@@ -476,6 +514,11 @@ export default function AttendanceComboChartModal({
                                 value,
                                 tl("maternity", "Thai sản"),
                               ];
+                            if (name === "funeralLeave")
+                              return [
+                                value,
+                                tl("funeralLeave", "Phép tang"),
+                              ];
                             if (name === "noPermit")
                               return [
                                 value,
@@ -552,6 +595,14 @@ export default function AttendanceComboChartModal({
                             yAxisId="left"
                             dataKey="maternity"
                             fill="#d946ef"
+                            radius={[4, 4, 0, 0]}
+                          />
+                        ) : null}
+                        {row.funeralLeave > 0 ? (
+                          <Bar
+                            yAxisId="left"
+                            dataKey="funeralLeave"
+                            fill="#6d28d9"
                             radius={[4, 4, 0, 0]}
                           />
                         ) : null}

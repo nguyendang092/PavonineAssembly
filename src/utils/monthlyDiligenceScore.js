@@ -139,7 +139,8 @@ export function scoreSingleWorkday(empLike) {
   const authorizedLeave =
     flags.annualLeave ||
     flags.laborAccident ||
-    flags.sickLeave;
+    flags.sickLeave ||
+    flags.funeralLeave;
 
   /** KL / KP: không tính như ngày đạt chuẩn (có thể đổi hằng số nếu HR quy định khác). */
   if (flags.unpaidLeave || flags.noPermit) {
