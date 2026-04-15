@@ -58,12 +58,11 @@ const vi = {
     sending: "Đang gửi...",
     backToLogin: "Quay lại đăng nhập",
     enterEmailReset: "Nhập email để đặt lại mật khẩu",
-    overlayWelcomeBack: "Chào mừng trở lại!",
-    overlayDescBack:
-      "Để giữ kết nối, hãy đăng nhập bằng thông tin cá nhân của bạn",
+    overlayWelcomeBack: "Say ✌️!",
+    overlayDescBack: "Để kết nối, hãy đăng nhập bằng tài khoản của bạn.",
     overlayHelloNew: "Xin chào, bạn mới!",
     overlayDescNew:
-      "Nhập thông tin cá nhân và bắt đầu hành trình cùng chúng tôi",
+      "Nhập thông tin cá nhân và bắt đầu hành trình cùng chúng tôi.",
   },
   navbar: {
     getStarted: "Bắt đầu",

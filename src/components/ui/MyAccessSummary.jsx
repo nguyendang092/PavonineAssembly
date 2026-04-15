@@ -11,6 +11,12 @@ import {
 
 const PANEL_STORAGE_KEY = "pavonine_myAccessPanelOpen";
 
+/** Trang điểm danh — navbar/hamburger đã có mục Phân quyền; ẩn link trùng trong panel xanh */
+const PATHS_HIDE_USER_DEPT_LINK = new Set([
+  "/attendance-list",
+  "/seasonal-staff-attendance",
+]);
+
 /**
  * Tóm tắt quyền của user đang đăng nhập — dùng toàn app (compact) hoặc trang Phân quyền (full).
  */
@@ -41,8 +47,6 @@ function MyAccessSummary({ variant = "compact" }) {
   const togglePanel = useCallback(() => {
     setPanelOpen((o) => !o);
   }, []);
-
-  const canManageMappings = canManageUserDepartmentMappings(user, userRole);
 
   const roleShort =
     normalizeRole(userRole) === ROLES.ADMIN
@@ -124,15 +128,19 @@ function MyAccessSummary({ variant = "compact" }) {
           </span>{" "}
           {arenas}
         </p>
-        <Link
-          to="/user-department"
-          className="mt-1.5 inline-block font-semibold text-emerald-800 underline decoration-emerald-400 underline-offset-2 hover:text-emerald-950"
-        >
-          {t("userDeptManager.myAccessDetailLink")}
-        </Link>
+        {!PATHS_HIDE_USER_DEPT_LINK.has(pathname) ? (
+          <Link
+            to="/user-department"
+            className="mt-1.5 inline-block font-semibold text-emerald-800 underline decoration-emerald-400 underline-offset-2 hover:text-emerald-950"
+          >
+            {t("userDeptManager.myAccessDetailLink")}
+          </Link>
+        ) : null}
       </div>
     );
   }
+
+  const canManageMappings = canManageUserDepartmentMappings(user, userRole);
 
   return (
     <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50/90 px-5 py-4 shadow-sm">
