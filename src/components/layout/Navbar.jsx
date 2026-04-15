@@ -1,5 +1,5 @@
 /* Đây là component hiển thị navbar */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { FiMoon, FiSun } from "react-icons/fi";
@@ -46,6 +46,30 @@ export default function Navbar({ user, setUser, userRole }) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileDropdowns, setMobileDropdowns] = useState({});
+  const navbarMeasureRef = useRef(null);
+
+  /** Đồng bộ chiều cao navbar → `--app-navbar-height` để nội dung dưới không bị che khi menu xuống dòng. */
+  useLayoutEffect(() => {
+    const el = navbarMeasureRef.current;
+    if (!el) return undefined;
+
+    const apply = () => {
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      if (h > 0) {
+        document.documentElement.style.setProperty(
+          "--app-navbar-height",
+          `${h}px`,
+        );
+      }
+    };
+
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+    };
+  }, []);
 
   const handleChangeLanguage = (lang) => {
     setLanguage(lang);
@@ -380,7 +404,7 @@ export default function Navbar({ user, setUser, userRole }) {
       </div>
 
       {/* Desktop Navbar */}
-      <nav className="navbar">
+      <nav ref={navbarMeasureRef} className="navbar">
         <div className="nav-logo">
           <a href="http://www.pavonine.net/en/">
             <img

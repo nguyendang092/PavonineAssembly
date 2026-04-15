@@ -257,7 +257,8 @@ const App = () => {
           <div
             id="app-main-scroll"
             ref={mainScrollRef}
-            className="pt-16 flex-1 min-h-0 overflow-x-hidden overflow-y-auto"
+            className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto"
+            style={{ paddingTop: "var(--app-navbar-height, 4rem)" }}
           >
             {user ? <MyAccessSummary variant="compact" /> : null}
             <Suspense

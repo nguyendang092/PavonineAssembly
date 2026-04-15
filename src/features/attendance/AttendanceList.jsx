@@ -63,6 +63,7 @@ import AttendanceTableRow, {
   AttendanceVirtualHeader,
   getAttendanceGridTemplateColumns,
 } from "./AttendanceTableRow";
+import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
 import ExportExcelButton from "@/components/ui/ExportExcelButton";
 import UnifiedModal from "@/components/ui/UnifiedModal";
 import AlertMessage from "@/components/ui/AlertMessage";
@@ -89,6 +90,21 @@ import {
 const AttendanceComboChartModal = lazy(() =>
   import("./AttendanceComboChartModal"),
 );
+
+function attendanceTableWrapperMinWidthClass(columnPlan) {
+  switch (columnPlan) {
+    case "full":
+      return "min-w-[1100px]";
+    case "compact":
+      return "min-w-[920px]";
+    case "narrow":
+      return "min-w-[760px]";
+    case "minimal":
+      return "min-w-[400px]";
+    default:
+      return "min-w-[920px]";
+  }
+}
 
 function AttendanceList() {
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -332,9 +348,12 @@ function AttendanceList() {
 
   const canDeleteDayRecord = canDeleteEmployeeData(user, userRole);
 
+  const columnPlan = useAttendanceColumnPlan();
+
   const attendanceGridTemplateColumns = useMemo(
-    () => getAttendanceGridTemplateColumns(showRowModalActions),
-    [showRowModalActions],
+    () =>
+      getAttendanceGridTemplateColumns(showRowModalActions, columnPlan),
+    [showRowModalActions, columnPlan],
   );
 
   // Vị trí menu bộ lọc (fixed + portal) — không bị cắt bởi overflow / footer
@@ -3802,18 +3821,22 @@ function AttendanceList() {
         ) : null}
 
         {/* Table — virtual: CSS Grid (header + hàng) cùng grid-template-columns; <tr> absolute không bám colgroup */}
-        <div className="min-w-0 w-full max-w-full overflow-x-hidden bg-white rounded-lg shadow-lg">
+        <div className="min-w-0 w-full max-w-full overflow-x-auto bg-white rounded-lg shadow-lg">
           {shouldVirtualizeTable ? (
             <div
               ref={tableScrollParentRef}
-              className="max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-hidden overscroll-x-none [scrollbar-gutter:stable]"
+              className="max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
             >
-              <div className="w-full min-w-0 max-w-full" role="table">
+              <div
+                className={`w-full max-w-none ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
+                role="table"
+              >
                 <AttendanceVirtualHeader
                   tl={tl}
                   showRowModalActions={showRowModalActions}
                   gridTemplateColumns={attendanceGridTemplateColumns}
                   canDeleteRow={canDeleteDayRecord}
+                  columnPlan={columnPlan}
                 />
                 <div
                   role="rowgroup"
@@ -3850,6 +3873,7 @@ function AttendanceList() {
                         canDeleteRow={canDeleteDayRecord}
                         measureElementRef={rowVirtualizer.measureElement}
                         gridTemplateColumns={attendanceGridTemplateColumns}
+                        columnPlan={columnPlan}
                       />
                     );
                   })}
@@ -3859,17 +3883,21 @@ function AttendanceList() {
           ) : (
             <div
               ref={tableScrollParentRef}
-              className="min-w-0 w-full max-w-full overflow-x-hidden"
+              className="min-w-0 w-full max-w-full overflow-x-auto"
             >
-              <table className="w-full table-fixed border-collapse min-w-0 max-w-full">
+              <table
+                className={`w-full table-fixed border-collapse max-w-none ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
+              >
                 <AttendanceTableColgroup
                   showRowModalActions={showRowModalActions}
+                  columnPlan={columnPlan}
                 />
                 <AttendanceTableThead
                   tl={tl}
                   showRowModalActions={showRowModalActions}
                   stickyHeader={true}
                   canDeleteRow={canDeleteDayRecord}
+                  columnPlan={columnPlan}
                 />
                 <tbody>
                   {filteredEmployees.map((emp, idx) => {
@@ -3895,6 +3923,7 @@ function AttendanceList() {
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         canDeleteRow={canDeleteDayRecord}
+                        columnPlan={columnPlan}
                       />
                     );
                   })}

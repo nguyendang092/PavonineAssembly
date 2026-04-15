@@ -1,6 +1,7 @@
 /**
  * Thứ tự biểu đồ (kéo-thả):
- * - User đã đăng nhập (có email): Firebase Realtime DB `userPreferences/{email}/chartOrder_v1/{kind}`.
+ * - User đã đăng nhập (có email): Firebase Realtime DB `userPreferences/{safeEmail}/chartOrder_v1/{kind}`.
+ *   (`safeEmail` — không chứa `. # $ [ ]`, vì RTDB cấm trong path.)
  * - Không email (`anonymous`): chỉ localStorage (fallback khi lỗi mạng cũng ghi local).
  */
 
@@ -14,10 +15,20 @@ export const CHART_ORDER_KIND = {
   WORKPLACE_AREA: "workplaceArea",
 };
 
-function safeUserSegment(email) {
+/** Khóa localStorage cũ (cho phép dấu chấm trong email). */
+function legacySafeUserSegment(email) {
   return String(email || "anonymous")
     .toLowerCase()
+    .trim()
     .replace(/[^a-z0-9@._-]/g, "_");
+}
+
+/**
+ * Segment path RTDB + khóa localStorage mới.
+ * Firebase không cho `. # $ [ ]` trong path.
+ */
+function safeUserSegment(email) {
+  return legacySafeUserSegment(email).replace(/[.#$\[\]]/g, "_");
 }
 
 function localStorageKey(email, kind) {
@@ -31,7 +42,23 @@ function rtdbChartOrderPath(email, kind) {
 
 function loadFromLocalStorage(email, kind) {
   try {
-    const raw = localStorage.getItem(localStorageKey(email, kind));
+    const keyNew = localStorageKey(email, kind);
+    let raw = localStorage.getItem(keyNew);
+    if (!raw && legacySafeUserSegment(email) !== safeUserSegment(email)) {
+      raw = localStorage.getItem(
+        `${STORAGE_PREFIX}:${kind}:${legacySafeUserSegment(email)}`,
+      );
+      if (raw) {
+        try {
+          localStorage.setItem(keyNew, raw);
+          localStorage.removeItem(
+            `${STORAGE_PREFIX}:${kind}:${legacySafeUserSegment(email)}`,
+          );
+        } catch {
+          /* ignore migration failure */
+        }
+      }
+    }
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed)
@@ -53,6 +80,9 @@ function saveToLocalStorage(email, kind, ids) {
 function removeFromLocalStorage(email, kind) {
   try {
     localStorage.removeItem(localStorageKey(email, kind));
+    localStorage.removeItem(
+      `${STORAGE_PREFIX}:${kind}:${legacySafeUserSegment(email)}`,
+    );
   } catch {
     /* ignore */
   }

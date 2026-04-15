@@ -31,13 +31,11 @@ import {
   ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
   isGioVaoLeaveOrStatusType,
 } from "./attendanceGioVaoTypeOptions";
-const SEASONAL_WIDTHS_WITH_ACTIONS = [7, 5, 5, 22, 5, 7, 5, 13, 10, 5, 10, 6];
-const SEASONAL_WIDTHS_NO_ACTIONS = [7, 5, 5, 28, 5, 6, 5, 13, 10, 6, 10];
+import { getAttendanceColWidthPercents } from "./AttendanceTableRow";
+import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
 
-function SeasonalAttendanceColgroup({ showRowModalActions }) {
-  const widths = showRowModalActions
-    ? SEASONAL_WIDTHS_WITH_ACTIONS
-    : SEASONAL_WIDTHS_NO_ACTIONS;
+function SeasonalAttendanceColgroup({ showRowModalActions, columnPlan = "full" }) {
+  const widths = getAttendanceColWidthPercents(showRowModalActions, columnPlan);
   return (
     <colgroup>
       {widths.map((w, i) => (
@@ -45,6 +43,14 @@ function SeasonalAttendanceColgroup({ showRowModalActions }) {
       ))}
     </colgroup>
   );
+}
+
+function seasonalTableMinWidthClass(columnPlan) {
+  if (columnPlan === "full") return "";
+  if (columnPlan === "compact") return "min-w-[920px]";
+  if (columnPlan === "narrow") return "min-w-[760px]";
+  if (columnPlan === "minimal") return "min-w-[400px]";
+  return "min-w-[920px]";
 }
 
 const normalizeTextValue = (value) => String(value ?? "").trim();
@@ -173,6 +179,7 @@ function SeasonalStaffAttendance() {
   );
 
   const showRowModalActions = user && userRole && userRole !== ROLES.STAFF;
+  const columnPlan = useAttendanceColumnPlan();
 
   const canDeleteSeasonalRecord = canDeleteEmployeeData(user, userRole);
 
@@ -3150,9 +3157,12 @@ function SeasonalStaffAttendance() {
 
         {/* Table */}
         <div className="min-w-0 w-full max-w-full overflow-x-hidden bg-white rounded-lg shadow-lg">
-          <table className="w-full table-fixed border-collapse min-w-0 max-w-full">
+          <table
+            className={`w-full table-fixed border-collapse min-w-0 max-w-full ${seasonalTableMinWidthClass(columnPlan)}`}
+          >
             <SeasonalAttendanceColgroup
               showRowModalActions={showRowModalActions}
+              columnPlan={columnPlan}
             />
             <thead>
               <tr
@@ -3160,43 +3170,73 @@ function SeasonalStaffAttendance() {
                   background: "linear-gradient(to right, #3b82f6, #8b5cf6)",
                 }}
               >
-                <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  STT
-                </th>
-                <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  MNV
-                </th>
-                <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  MVT
-                </th>
-                <th className="px-1 md:px-2 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Họ và tên
-                </th>
-                <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Giới tính
-                </th>
-                <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Ngày tháng năm sinh
-                </th>
-                <th className="hidden lg:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Mã BP
-                </th>
-                <th className="hidden md:table-cell px-1.5 md:px-2 py-0.5 md:py-1 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Bộ phận
-                </th>
-                <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Thời gian vào
-                </th>
-                <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Thời gian ra
-                </th>
-                <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                  Ca làm việc
-                </th>
-                {showRowModalActions && (
-                  <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                    {canDeleteSeasonalRecord ? "Sửa / Xóa" : "Sửa"}
-                  </th>
+                {columnPlan === "minimal" ? (
+                  <>
+                    <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      MNV
+                    </th>
+                    <th className="px-1 md:px-2 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      Họ và tên
+                    </th>
+                    <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      Thời gian vào
+                    </th>
+                    <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      Ca làm việc
+                    </th>
+                    {showRowModalActions && (
+                      <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                        {canDeleteSeasonalRecord ? "Sửa / Xóa" : "Sửa"}
+                      </th>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      STT
+                    </th>
+                    <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      MNV
+                    </th>
+                    <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      MVT
+                    </th>
+                    <th className="px-1 md:px-2 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      Họ và tên
+                    </th>
+                    <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      Giới tính
+                    </th>
+                    {columnPlan === "full" ? (
+                      <>
+                        <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                          Ngày tháng năm sinh
+                        </th>
+                        <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                          Mã BP
+                        </th>
+                      </>
+                    ) : null}
+                    {(columnPlan === "full" || columnPlan === "compact") && (
+                      <th className="hidden md:table-cell px-1.5 md:px-2 py-0.5 md:py-1 text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                        Bộ phận
+                      </th>
+                    )}
+                    <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      Thời gian vào
+                    </th>
+                    <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      Thời gian ra
+                    </th>
+                    <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                      Ca làm việc
+                    </th>
+                    {showRowModalActions && (
+                      <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
+                        {canDeleteSeasonalRecord ? "Sửa / Xóa" : "Sửa"}
+                      </th>
+                    )}
+                  </>
                 )}
               </tr>
             </thead>
@@ -3210,38 +3250,50 @@ function SeasonalStaffAttendance() {
                       : "bg-white dark:bg-slate-900"
                   }`}
                 >
-                  <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center font-bold text-gray-700">
-                    {emp.stt || idx + 1}
-                  </td>
+                  {columnPlan !== "minimal" ? (
+                    <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center font-bold text-gray-700">
+                      {emp.stt || idx + 1}
+                    </td>
+                  ) : null}
                   <td className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center font-bold text-blue-600">
                     {emp.mnv}
                   </td>
-                  <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-semibold text-gray-700">
-                    {emp.mvt}
-                  </td>
+                  {columnPlan !== "minimal" ? (
+                    <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-semibold text-gray-700">
+                      {emp.mvt}
+                    </td>
+                  ) : null}
                   <td className="px-1 md:px-2 py-0.5 md:py-1 text-xs md:text-sm text-left md:text-center font-bold text-gray-800 break-words whitespace-normal leading-tight">
                     {emp.hoVaTen}
                   </td>
-                  <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center">
-                    <span
-                      className={`inline-flex items-center justify-center px-1 py-px text-[10px] font-bold leading-none rounded-full ${
-                        emp.gioiTinh === "YES"
-                          ? "bg-pink-100 text-pink-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
-                    >
-                      {emp.gioiTinh}
-                    </span>
-                  </td>
-                  <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-semibold text-gray-700">
-                    {emp.ngayThangNamSinh}
-                  </td>
-                  <td className="hidden lg:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-bold text-gray-700">
-                    {emp.maBoPhan}
-                  </td>
-                  <td className="hidden md:table-cell px-1.5 md:px-2 py-0.5 md:py-1 text-sm text-center font-semibold text-gray-700">
-                    {emp.boPhan}
-                  </td>
+                  {columnPlan !== "minimal" ? (
+                    <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center">
+                      <span
+                        className={`inline-flex items-center justify-center px-1 py-px text-[10px] font-bold leading-none rounded-full ${
+                          emp.gioiTinh === "YES"
+                            ? "bg-pink-100 text-pink-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                        {emp.gioiTinh}
+                      </span>
+                    </td>
+                  ) : null}
+                  {columnPlan === "full" ? (
+                    <>
+                      <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-semibold text-gray-700">
+                        {emp.ngayThangNamSinh}
+                      </td>
+                      <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-bold text-gray-700">
+                        {emp.maBoPhan}
+                      </td>
+                    </>
+                  ) : null}
+                  {columnPlan === "full" || columnPlan === "compact" ? (
+                    <td className="hidden md:table-cell px-1.5 md:px-2 py-0.5 md:py-1 text-sm text-center font-semibold text-gray-700">
+                      {emp.boPhan}
+                    </td>
+                  ) : null}
                   <td className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center">
                     {emp.gioVao ? (
                       <span
@@ -3342,12 +3394,20 @@ function SeasonalStaffAttendance() {
                       <span className="text-gray-400 italic">--</span>
                     )}
                   </td>
-                  <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0">
-                    <span className="text-red-600 font-bold text-base">
-                      {emp.gioRa}
-                    </span>
-                  </td>
-                  <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0">
+                  {columnPlan !== "minimal" ? (
+                    <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0">
+                      <span className="text-red-600 font-bold text-base">
+                        {emp.gioRa}
+                      </span>
+                    </td>
+                  ) : null}
+                  <td
+                    className={
+                      columnPlan === "minimal"
+                        ? "px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0"
+                        : "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0"
+                    }
+                  >
                     {emp.caLamViec ? (
                       <span className="text-blue-600 font-bold text-base">
                         {emp.caLamViec}
@@ -3438,7 +3498,13 @@ function SeasonalStaffAttendance() {
                     )}
                   </td>
                   {showRowModalActions && (
-                    <td className="hidden md:table-cell px-1 text-center min-w-0">
+                    <td
+                      className={
+                        columnPlan === "minimal"
+                          ? "px-1 text-center min-w-0"
+                          : "hidden md:table-cell px-1 text-center min-w-0"
+                      }
+                    >
                       {canEditEmployee(emp) ? (
                         <div className="flex items-center justify-center gap-2">
                           <button

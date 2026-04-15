@@ -3,31 +3,65 @@ body {
     margin: 0px;
 }
 
+:root {
+    --app-navbar-height: 4rem;
+}
+
 .navbar {
     position: relative;
     display: flex;
     width: 100%;
-    padding: 2px;
-    background: #000000cb;
-    justify-content: space-around;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 4px 8px;
+    gap: 8px;
+    background: linear-gradient(to right, #2563eb, #7c3aed);
+    justify-content: space-between;
     align-items: center;
+    flex-wrap: nowrap;
     box-shadow: 7px 5px 15px -4px rgba(0, 0, 0, 0.75);
     -webkit-box-shadow: 7px 5px 15px -4px rgba(0, 0, 0, 0.75);
     -moz-box-shadow: 7px 5px 15px -4px rgba(0, 0, 0, 0.75);
 }
 
+.nav-logo {
+    flex-shrink: 0;
+}
+
+/* Giữ logo + user cố định; khu vực menu co giãn và xuống dòng khi viewport hẹp (vd. 1/2 màn hình). */
+.nav-items {
+    flex: 1 1 0%;
+    min-width: 0;
+    max-width: 100%;
+}
+
 .nav-items > ul {
     padding: 0;
     margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0 2px;
+    row-gap: 2px;
 }
 
 .nav-items > ul > li {
     position: relative;
-    display: inline-block;
+    display: block;
     list-style: none;
-    margin: 8px;
-    padding: 8px 16px;
+    margin: 4px 4px;
+    padding: 6px 10px;
     cursor: pointer;
+    flex-shrink: 0;
+}
+
+@media (min-width: 1281px) and (max-width: 1400px) {
+    .nav-items > ul > li > a,
+    .nav-items > ul > li > button {
+        font-size: clamp(13px, 1.05vw, 17px);
+    }
 }
 
 .nav-items > ul > li > a,
@@ -64,7 +98,7 @@ body {
     position: absolute;
     top: 100%;
     left: 0;
-    background-color: #000000cb;
+    background: linear-gradient(165deg, #1d4ed8 0%, #6d28d9 100%);
     border: 1px solid #e5e7eb;
     min-width: 200px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
@@ -97,7 +131,7 @@ body {
     margin: 0;
     padding: 0;
     position: relative;
-    background-color: #000000cb;
+    background: transparent;
 }
 
 .dropdown-menu li a,
@@ -240,6 +274,7 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 .user-dropdown-wrapper {
@@ -349,7 +384,8 @@ body {
     display: none;
 }
 
-@media only screen and (max-width: 1024px) {
+/* Cửa sổ hẹp / ~1/2 màn: menu hamburger + overlay (trùng khoảng trước đây gọi desktop nhỏ). */
+@media only screen and (max-width: 1280px) {
     .nav-logo img {
         height: 36px !important;
         max-height: 36px;
@@ -872,6 +908,48 @@ html:not(.dark) .language-dropdown {
 /* Light theme: mobile overlay */
 html:not(.dark) #mobile-menu {
     background: linear-gradient(to bottom, #f8fafc, #e2e8f0);
+}
+
+/* Light theme: các khối con vẫn dùng nền tối (rgba slate) ở CSS mặc định —
+   gộp với chữ đậm (#0f172a) → tương phản kém. Đổi nền sáng + viền để đọc được. */
+html:not(.dark) .mobile-dropdown {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+html:not(.dark) .mobile-dropdown-toggle:active {
+    background-color: #e2e8f0;
+}
+
+html:not(.dark) .mobile-dropdown-toggle.nested {
+    background-color: #f1f5f9;
+    color: #0f172a !important;
+}
+
+html:not(.dark) .mobile-dropdown-content {
+    background-color: #f8fafc;
+}
+
+html:not(.dark) .mobile-dropdown-content > li > a {
+    color: #0f172a !important;
+}
+
+html:not(.dark) .mobile-dropdown-content > li > a:active {
+    background-color: #e2e8f0;
+}
+
+html:not(.dark) .mobile-nested-dropdown {
+    background-color: #f1f5f9;
+}
+
+html:not(.dark) .mobile-nav-items > ul > li:not(.mobile-dropdown) {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+}
+
+html:not(.dark) .mobile-nav-items > ul > li:not(.mobile-dropdown):active {
+    background-color: #f1f5f9;
 }
 
 html:not(.dark) #hamburger-menu:active {
