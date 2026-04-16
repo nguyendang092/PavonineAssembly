@@ -189,6 +189,30 @@ export const handleUploadExcel = async ({
       return "";
     };
 
+    /**
+     * Giá trị ô Excel có nội dung (sau trim).
+     * Merge bản ghi đã có (cùng MNV): **chỉ điền** từ Excel vào các field đang **trống** trên Firebase;
+     * field nào Firebase **đã có** dữ liệu thì **giữ nguyên** (không ghi đè Excel để tránh sai lệch).
+     */
+    const hasUploadValue = (value) => {
+      if (value === undefined || value === null) return false;
+      if (typeof value === "number") return Number.isFinite(value);
+      return String(value).trim() !== "";
+    };
+
+    const trimCell = (value) =>
+      value === undefined || value === null ? "" : String(value).trim();
+
+    /** Bỏ trường nội bộ phục vụ merge (không lưu Firebase). */
+    const stripUploadInternalFields = (record) => {
+      if (!record || typeof record !== "object") return record;
+      const o = { ...record };
+      Object.keys(o).forEach((k) => {
+        if (k.startsWith("_excel")) delete o[k];
+      });
+      return o;
+    };
+
     dataRows.forEach((row, index) => {
       // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu,
       // Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc, PN tồn (ưu tiên cột P nếu có)
@@ -205,7 +229,7 @@ export const handleUploadExcel = async ({
         gioRa,
         caLamViec,
       ] = row;
-      const pnTon = getFirstNonEmptyValue(row[11], row[14]);
+      const pnTonRaw = getFirstNonEmptyValue(row[11], row[14]);
 
       // Bỏ qua dòng trống hoàn toàn
       const hasValue = row.some((cell) => String(cell || "").trim() !== "");
@@ -233,7 +257,10 @@ export const handleUploadExcel = async ({
       }
 
       const empKey = `emp_${index}`;
-      const sttNum = Number.isFinite(Number(stt))
+      /** `true` khi ô STT có số hợp lệ — merge: chỉ ghi STT nếu STT trên Firebase đang trống. */
+      const excelHasStt =
+        trimCell(stt) !== "" && Number.isFinite(Number(stt));
+      const sttNum = excelHasStt
         ? Number(stt)
         : Object.keys(dataToUpload).length + 1;
 
@@ -241,16 +268,17 @@ export const handleUploadExcel = async ({
         id: empKey,
         stt: sttNum,
         mnv: normalizedMNV,
-        mvt: mvt || "",
-        hoVaTen: hoVaTen || "",
-        gioiTinh: gioiTinh || "YES",
+        mvt: trimCell(mvt),
+        hoVaTen: trimCell(hoVaTen),
+        gioiTinh: trimCell(gioiTinh),
         ngayThangNamSinh: normalizeDate(ngayThangNamSinh),
-        maBoPhan: maBoPhan || "",
-        boPhan: boPhan || "",
-        gioVao: gioVao || "",
-        gioRa: gioRa || "",
-        caLamViec: caLamViec || "",
-        pnTon,
+        maBoPhan: trimCell(maBoPhan),
+        boPhan: trimCell(boPhan),
+        gioVao: trimCell(gioVao),
+        gioRa: trimCell(gioRa),
+        caLamViec: trimCell(caLamViec),
+        pnTon: trimCell(pnTonRaw),
+        _excelHasStt: excelHasStt,
       };
     });
 
@@ -288,32 +316,33 @@ export const handleUploadExcel = async ({
       const existingKey = existingKeyByMNV[normalizedNewMNV];
       const isDuplicate = Boolean(existingKey);
       if (isDuplicate) {
-        // Update existing employee with new data, chỉ cập nhật gioVao nếu giá trị mới không rỗng
         if (existingKey) {
           const oldEmp = mergedData[existingKey] || {};
           const mergedEmp = { ...oldEmp };
-          Object.keys(newEmp).forEach((field) => {
-            // Giữ nguyên id cũ theo key Firebase, tránh lệch id và render sai dòng.
-            if (field === "id") return;
 
-            if (field === "gioVao") {
-              const newValue = newEmp[field];
+          Object.keys(newEmp).forEach((field) => {
+            if (field === "id" || field === "mnv") return;
+            if (field.startsWith("_excel")) return;
+
+            if (field === "stt") {
               if (
-                newValue !== undefined &&
-                newValue !== null &&
-                newValue !== ""
+                !hasUploadValue(mergedEmp.stt) &&
+                newEmp._excelHasStt
               ) {
-                mergedEmp[field] = newValue;
+                mergedEmp.stt = newEmp.stt;
               }
-              // Nếu giá trị mới rỗng, giữ nguyên giá trị cũ
-            } else {
-              if (newEmp[field] !== undefined && newEmp[field] !== "") {
-                mergedEmp[field] = newEmp[field];
-              }
+              return;
+            }
+
+            const nv = newEmp[field];
+            if (
+              !hasUploadValue(mergedEmp[field]) &&
+              hasUploadValue(nv)
+            ) {
+              mergedEmp[field] = nv;
             }
           });
           mergedData[existingKey] = mergedEmp;
-          // Carry-forward pnTon từ hôm trước nếu hôm nay chưa có
           if (!mergedEmp.pnTon && !mergedEmp.phepNam) {
             const prevVal = prevPnTonByMNV[normalizedNewMNV];
             if (prevVal) mergedData[existingKey].pnTon = prevVal;
@@ -321,13 +350,13 @@ export const handleUploadExcel = async ({
         }
         duplicateCount++;
       } else {
-        // Add new employee
-        // Carry-forward pnTon từ hôm trước nếu Excel không có
-        if (!newEmp.pnTon && !newEmp.phepNam) {
-          const prevVal = prevPnTonByMNV[normalizeMNV(newEmp?.mnv)];
-          if (prevVal) newEmp = { ...newEmp, pnTon: prevVal };
+        let rec = stripUploadInternalFields({ ...newEmp });
+        if (!hasUploadValue(rec.gioiTinh)) rec.gioiTinh = "YES";
+        if (!rec.pnTon && !rec.phepNam) {
+          const prevVal = prevPnTonByMNV[normalizeMNV(rec?.mnv)];
+          if (prevVal) rec = { ...rec, pnTon: prevVal };
         }
-        mergedData[key] = newEmp;
+        mergedData[key] = rec;
         if (normalizedNewMNV) {
           existingKeyByMNV[normalizedNewMNV] = key;
         }
@@ -335,8 +364,11 @@ export const handleUploadExcel = async ({
       }
     });
 
-    // Save merged data (attendance)
-    await set(attendanceRef, mergedData);
+    const payload = {};
+    Object.entries(mergedData).forEach(([k, v]) => {
+      payload[k] = stripUploadInternalFields(v);
+    });
+    await set(attendanceRef, payload);
 
     // Show result message
     let message = `✅ Upload thành công ${uploadedCount} nhân viên mới`;
