@@ -32,6 +32,7 @@ import {
 } from "@/features/attendance/attendanceDayMeta";
 import AlertMessage from "@/components/ui/AlertMessage";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
+import { downloadPayrollSalaryExcel } from "@/features/payroll/payrollExcelExport";
 import "./payrollTableCompact.css";
 
 /** Bảng lương: min-width hẹp hơn điểm danh một chút (nhiều cột). Thêm cột Sửa thì nới thêm ~56px (class cố định để Tailwind JIT nhận). */
@@ -189,7 +190,8 @@ export default function PayrollSalaryCalculator() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, "vi"));
   }, [employees]);
 
-  const canSeeEmployee = useCallback(
+  /** Chỉ ảnh hưởng nút Sửa / mở form — không lọc dòng xem (mọi user đã đăng nhập xem cùng danh sách theo ngày). */
+  const canEditEmployeeRow = useCallback(
     (employee) =>
       canEditAttendanceForEmployee({
         user,
@@ -198,11 +200,6 @@ export default function PayrollSalaryCalculator() {
         employee,
       }),
     [user, userRole, userDepartments],
-  );
-
-  const visibleRows = useMemo(
-    () => filteredEmployees.filter((emp) => canSeeEmployee(emp)),
-    [filteredEmployees, canSeeEmployee],
   );
 
   /** Cột Sửa — popup cập nhật nhân viên (cùng Firebase với Điểm danh; listener đồng bộ mọi màn). */
@@ -252,10 +249,10 @@ export default function PayrollSalaryCalculator() {
 
   const tableScrollParentRef = useRef(null);
   const shouldVirtualizeTable =
-    visibleRows.length > ATTENDANCE_VIRTUAL_THRESHOLD;
+    filteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
 
   const rowVirtualizer = useVirtualizer({
-    count: visibleRows.length,
+    count: filteredEmployees.length,
     getScrollElement: () => tableScrollParentRef.current,
     estimateSize: () => 34,
     overscan: 12,
@@ -269,6 +266,59 @@ export default function PayrollSalaryCalculator() {
       return () => clearTimeout(timer);
     }
   }, [alert.show]);
+
+  const payrollExportSheetTitle = useMemo(() => {
+    const dateStr = new Date(selectedDate).toLocaleDateString(displayLocale);
+    const base = tlPage("exportSheetTitle", "Bảng giờ công nhân viên");
+    return `${base} — ${dateStr}${
+      isOffDay ? ` (${tlPage("exportOffDaySuffix", "Ngày off")})` : ""
+    }`;
+  }, [selectedDate, isOffDay, displayLocale, tlPage]);
+
+  const handleExportPayrollExcel = useCallback(async () => {
+    if (!employees.length) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: tlPage(
+          "exportExcelEmpty",
+          "Không có dữ liệu điểm danh trong ngày để xuất.",
+        ),
+      });
+      return;
+    }
+    try {
+      await downloadPayrollSalaryExcel({
+        employees,
+        selectedDate,
+        isOffDay,
+        tlTable,
+        sheetTitle: payrollExportSheetTitle,
+      });
+      setAlert({
+        show: true,
+        type: "success",
+        message: tlPage("exportExcelSuccess", "✅ Đã xuất Excel.", {
+          rows: employees.length,
+        }),
+      });
+    } catch (err) {
+      setAlert({
+        show: true,
+        type: "error",
+        message: tlPage("exportExcelError", "❌ Xuất Excel thất bại.", {
+          error: err?.message || String(err),
+        }),
+      });
+    }
+  }, [
+    employees,
+    selectedDate,
+    isOffDay,
+    tlTable,
+    tlPage,
+    payrollExportSheetTitle,
+  ]);
 
   return (
     <>
@@ -347,6 +397,17 @@ export default function PayrollSalaryCalculator() {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={handleExportPayrollExcel}
+              className="h-8 shrink-0 rounded-md border border-emerald-600 bg-emerald-600 px-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 dark:border-emerald-500 dark:hover:bg-emerald-600"
+              title={tlPage(
+                "exportExcelHint",
+                "Xuất toàn bộ nhân viên trong ngày (theo dữ liệu điểm danh), đủ các cột giờ như trên bảng.",
+              )}
+            >
+              {tlPage("exportExcel", "⬇ Xuất Excel")}
+            </button>
           </div>
         </div>
         <div className="payroll-salary-table-compact min-w-0 w-full max-w-full overflow-x-auto rounded-lg bg-white text-[10px] leading-tight shadow-lg md:text-[11px] dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
@@ -375,7 +436,7 @@ export default function PayrollSalaryCalculator() {
                   }}
                 >
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const emp = visibleRows[virtualRow.index];
+                    const emp = filteredEmployees[virtualRow.index];
                     const idx = virtualRow.index;
                     return (
                       <PayrollSalaryTableRow
@@ -385,7 +446,7 @@ export default function PayrollSalaryCalculator() {
                         virtualRow={virtualRow}
                         showRowModalActions={showRowModalActions}
                         user={user}
-                        canEdit={canSeeEmployee(emp)}
+                        canEdit={canEditEmployeeRow(emp)}
                         savingGioVao={false}
                         editingGioVaoValue={undefined}
                         savingCaLamViec={false}
@@ -429,7 +490,7 @@ export default function PayrollSalaryCalculator() {
                   columnPlan={columnPlan}
                 />
                 <tbody>
-                  {visibleRows.map((emp, idx) => (
+                  {filteredEmployees.map((emp, idx) => (
                     <PayrollSalaryTableRow
                       key={emp.id}
                       emp={emp}
@@ -437,7 +498,7 @@ export default function PayrollSalaryCalculator() {
                       virtualRow={undefined}
                       showRowModalActions={showRowModalActions}
                       user={user}
-                      canEdit={canSeeEmployee(emp)}
+                      canEdit={canEditEmployeeRow(emp)}
                       savingGioVao={false}
                       editingGioVaoValue={undefined}
                       savingCaLamViec={false}

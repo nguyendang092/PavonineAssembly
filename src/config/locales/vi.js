@@ -115,7 +115,7 @@ const vi = {
     GA: "GA",
     ADMIN: "ADMIN",
     hrAttendance: "Chấm công & nhân sự",
-    attendanceSalaryTitle: "Lương & Giờ công",
+    attendanceSalaryTitle: "Giờ công",
   },
   internalAnnouncements: {
     title: "Thông báo nội bộ",
@@ -1079,6 +1079,14 @@ const vi = {
         "Tổng khối ca đêm: GC (đến mốc 05:00) + TC ca đêm (sau mốc 05:00) — cùng hai cột GC/TC ca đêm.",
     },
     searchPlaceholder: "Tìm theo tên, MNV, bộ phận…",
+    exportExcel: "⬇ Xuất Excel",
+    exportExcelHint:
+      "Xuất toàn bộ nhân viên trong ngày (theo điểm danh), đủ các cột giờ như bảng.",
+    exportExcelEmpty: "Không có dữ liệu điểm danh trong ngày để xuất.",
+    exportExcelSuccess: "✅ Đã xuất Excel ({{rows}} dòng).",
+    exportExcelError: "❌ Xuất Excel thất bại: {{error}}",
+    exportSheetTitle: "Bảng giờ công nhân viên",
+    exportOffDaySuffix: "Ngày off",
     linkAttendance: "Điểm danh NV",
     dateLabel: "Ngày",
     allDepts: "Tất cả bộ phận",

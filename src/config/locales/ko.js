@@ -1082,6 +1082,14 @@ const ko = {
         "야간 합계: GC(05:00 이전) + 야간 연장(05:00 이후) — GC/TC 야간 열과 동일.",
     },
     searchPlaceholder: "이름·사번·부서 검색…",
+    exportExcel: "⬇ Excel 내보내기",
+    exportExcelHint:
+      "해당 일 전체 직원(출석 데이터)을 표와 동일 열 구성으로 내보냅니다.",
+    exportExcelEmpty: "내보낼 해당 일 데이터가 없습니다.",
+    exportExcelSuccess: "✅ Excel 내보내기 완료 ({{rows}}행).",
+    exportExcelError: "❌ Excel 내보내기 실패: {{error}}",
+    exportSheetTitle: "직원 근무시간표",
+    exportOffDaySuffix: "휴무일",
     linkAttendance: "직원 출석부",
     dateLabel: "날짜",
     calcPlaceholder:
