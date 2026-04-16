@@ -103,6 +103,7 @@ const ko = {
     employeeRosterResigned: "퇴사 직원",
     attendanceTable: "근태 시간표",
     seasonalStaffAttendance: "임시직 출석부",
+    attendanceSalary: "급여 추정(출근)",
     userDepartment: "사용자 권한",
     internalAnnouncements: "공지",
     download: "다운로드",
@@ -923,6 +924,11 @@ const ko = {
     cancel: "취소",
     activeEmployeesTitle: "재직 직원 목록",
     activeEmployeesSubtitle: "재직 중인 직원 목록",
+    linkToAttendanceSalary: "급여·근무시간표 (동일일자)",
+    seasonalActiveEmployeesTitleShort: "계절·임시 직원 출석",
+    linkToAttendanceSalaryShort: "근무시간·급여",
+    headerQuickLinks: "빠른 링크",
+    headerDateLabel: "날짜",
     dateLabel: "날짜/Date",
     unattendedTitle: "미체크인 직원",
     unattendedSummary:
@@ -947,6 +953,27 @@ const ko = {
     gender: "성별",
     timeIn: "출근 시간",
     timeOut: "퇴근 시간",
+    workingHours: "근무시간",
+    workingHoursHint:
+      "HH:MM 출·퇴근. 7:00~7:30 이전 출근·17:30 이전 퇴근 = 8시간(고정); 그 외는 두 시각 차이, 최대 8시간(연장은 연장 열).",
+    overtimeHours: "연장근무",
+    overtimeHoursHint:
+      "퇴근이 17:30 이후: 17:00부터 30분당 0.5시간 연장.",
+    offDayOvertimeHours: "휴무일 근무",
+    offDayOvertimeHoursHint:
+      "휴무일로 표시된 날: 근무시간과 동일; 휴무일이 아니면 비움. «야간»: 이 열은 «-», 환산은 «야간(휴무)» 열.",
+    nightShiftWorkingHours: "야간 근무",
+    nightShiftWorkingHoursHint:
+      "«야간» 근무 시: 출근부터 05:00(당일 05:00 이전 출근이면 당일, 아니면 다음 날 05:00)까지, 최대 8시간.",
+    nightShiftOvertimeHours: "야간 연장",
+    nightShiftOvertimeHoursHint:
+      "«야간» 근무 시: 05:00 이후 근무 — 30분당 0.5시간 연장.",
+    nightShiftOffDayWorkingHours: "야간(휴무)",
+    nightShiftOffDayWorkingHoursHint:
+      "«휴무일»이고 «야간» 근무일 때만: 야간 근무 규칙과 동일. 휴무일이 아니면 비움.",
+    dayOffToggle: "휴무일",
+    dayOffToggleHint:
+      "해당 일이 휴무/오프일 때 켜면 급여 화면에서 근무시간 열은 «-», 동일 규칙 시간은 TC off 열에 표시됩니다(Admin/HR).",
     workShift: "근무조",
     attendance: "출근부",
     dateOfBirth: "생년월일",
@@ -1027,6 +1054,73 @@ const ko = {
     exportRangeColDate: "날짜",
     exportRangeColDOB: "생년월일",
     unknown: "(미상)",
+  },
+  salaryCalc: {
+    pageTitle: "급여 추정 — 전용 표",
+    pageSubtitle:
+      "해당 일 출근 데이터를 읽기 전용으로 표시합니다. TC off 열은 이 화면에만 있으며, 입력은 직원 출석부에서 합니다.",
+    tableSectionHint:
+      "급여 참고용 표. 출석부에서 «휴무일»이면 근무시간 열은 «-», 환산 시간은 TC off.",
+    offDayPayrollBanner:
+      "이 날 «휴무일»이 켜져 있습니다: 근무시간 열은 «-», 동일 규칙 환산은 TC off 열.",
+    table: {
+      payrollWorkingHoursHint:
+        "주간(비야간): 출·퇴근 규칙 근무시간. «야간»이면 이 열은 «-» — 야간 GC/TC 열을 봅니다. «휴무일»이면 «-»; 환산은 TC off 또는 야간(휴무).",
+      payrollOffDayTcHint:
+        "«휴무일»일 때만: 근무시간과 동일 규칙(근무시간 열은 «-»). «야간»이면 «-» — «야간(휴무)» 열 참고.",
+      nightShiftWorkingHoursHint:
+        "야간: 출근부터 05:00(당일 05:00 이전 출근이면 당일, 아니면 다음 날 05:00)까지, 최대 8시간.",
+      nightShiftOvertimeHoursHint:
+        "야간: 05:00 이후 근무 — 30분당 0.5시간 연장.",
+      nightShiftOffDayWorkingHoursHint:
+        "휴무일 + 야간: 야간 규무 규칙과 동일. 평일이면 비움.",
+      payrollTotalGcDay: "총 근무(주간)",
+      payrollTotalGcDayHint:
+        "합계: 근무시간 + 연장 + TC off(야간 열 제외).",
+      payrollTotalGcNight: "총 야간 근무",
+      payrollTotalGcNightHint:
+        "야간 합계: GC(05:00 이전) + 야간 연장(05:00 이후) — GC/TC 야간 열과 동일.",
+    },
+    searchPlaceholder: "이름·사번·부서 검색…",
+    linkAttendance: "직원 출석부",
+    dateLabel: "날짜",
+    calcPlaceholder:
+      "급여 계산 영역(매개변수, 수식 등) — 추후 추가 예정.",
+    allDepts: "전체 부서",
+    totalEmployees: "총 인원(필터 후)",
+    classification: "휴가 유형",
+    noClassification: "유형 없음",
+    workShiftStats: "근무조 통계",
+    noShiftStats: "근무조 없음",
+    date: "날짜",
+    title: "출근 기반 급여 추정",
+    subtitle:
+      "attendance/{날짜} 데이터와 출근 통계와 동일한 분류 로직을 사용합니다.",
+    disclaimer:
+      "참고용 결과입니다. 실제 급여 규정과 다를 수 있습니다.",
+    backAttendance: "직원 출석부",
+    pleaseLogin: "로그인해 주세요.",
+    error: "출근 데이터를 불러오지 못했습니다. 잠시 후 다시 시도하세요.",
+    done: "계산 완료(출근 기준 추정).",
+    from: "시작일",
+    to: "종료일",
+    baseMonthly: "기본급 (월, VND)",
+    standardDays: "월 기준 근무일수",
+    calculate: "급여 계산",
+    loading: "계산 중…",
+    hintAdmin: "Admin/HR: 출근부에 있는 모든 직원이 표시됩니다.",
+    hintManager: "출근 편집 권한이 있는 직원만 표시됩니다.",
+    colMnv: "사번",
+    colName: "이름",
+    colDept: "부서",
+    colWork: "근무",
+    colPaidLeave: "유급 휴가",
+    colUnpaid: "무급/KP",
+    colAbsent: "결근",
+    colEstimate: "추정 급여",
+    formulaNote:
+      "기본급 ÷ 기준일수 × (근무일 + 유급 휴가) − 무급/KP 일수 × 일급.",
+    empty: "기간을 선택하고 «급여 계산»을 누르세요.",
   },
 };
 

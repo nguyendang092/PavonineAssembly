@@ -1,6 +1,5 @@
 import ExcelJS from "exceljs";
 import { enumerateDateKeysInclusive } from "@/utils/dateKey";
-
 const MAX_DAYS = 366;
 
 /**

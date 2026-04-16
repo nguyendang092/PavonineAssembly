@@ -431,7 +431,6 @@ const ATTENDANCE_EXTRA_KEYS = [
   "gioVao",
   "gioRa",
   "caLamViec",
-  "chamCong",
   "pnTon",
   "mvt",
   "maBoPhan",
@@ -571,6 +570,7 @@ export function buildEmployeeProfileDocument({
   ATTENDANCE_EXTRA_KEYS.forEach((k) => {
     delete merged[k];
   });
+  delete merged.chamCong;
   delete merged.firebaseKey;
   return stripUndefined(merged);
 }
@@ -591,7 +591,6 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
     gioVao: form.gioVao || undefined,
     gioRa: form.gioRa || undefined,
     caLamViec: form.caLamViec || undefined,
-    chamCong: form.chamCong || undefined,
     pnTon: form.pnTon || undefined,
     mvt: form.mvt || undefined,
     maBoPhan: form.maBoPhan || undefined,
@@ -615,6 +614,7 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
     ...preserved,
     ...extras,
   };
+  delete merged.chamCong;
   if (sttNum !== undefined && sttNum !== null && !Number.isNaN(sttNum)) {
     merged.stt = sttNum;
   }

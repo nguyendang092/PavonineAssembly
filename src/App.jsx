@@ -32,6 +32,9 @@ import { lazyImport } from "@/utils/lazyImport";
 /** File rất lớn — lazy() hay gây "Failed to fetch" trong dev (timeout/HMR); import tĩnh để tải cùng graph App. */
 import AttendanceList from "@/features/attendance/AttendanceList";
 import SeasonalStaffAttendance from "@/features/attendance/SeasonalStaffAttendance";
+const PayrollSalaryCalculator = lazyImport(
+  () => import("@/features/payroll/PayrollSalaryCalculator"),
+);
 
 const WorkplaceDashboardNormal = lazyImport(
   () => import("@/features/dashboard/WorkplaceDashboardNormal"),
@@ -229,6 +232,7 @@ const App = () => {
       QRCodeGenerator: <QRCodeGenerator />,
       AttendanceList: <AttendanceList />,
       SeasonalStaffAttendance: <SeasonalStaffAttendance />,
+      PayrollSalaryCalculator: <PayrollSalaryCalculator />,
       Downloads: <Downloads />,
       UserDepartmentManager: <UserDepartmentManager />,
       InternalAnnouncements: <InternalAnnouncements />,

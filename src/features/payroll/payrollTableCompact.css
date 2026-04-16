@@ -1,0 +1,65 @@
+/**
+ * Bảng lương: thu gọn padding / header so với điểm danh (chỉ bọc PayrollSalaryCalculator).
+ */
+.payroll-salary-table-compact th,
+.payroll-salary-table-compact td,
+.payroll-salary-table-compact [role="columnheader"],
+.payroll-salary-table-compact [role="gridcell"],
+.payroll-salary-table-compact [role="cell"] {
+  padding-left: 0.15rem !important;
+  padding-right: 0.15rem !important;
+  padding-top: 0.08rem !important;
+  padding-bottom: 0.08rem !important;
+}
+
+@media (min-width: 768px) {
+  .payroll-salary-table-compact th,
+  .payroll-salary-table-compact td,
+  .payroll-salary-table-compact [role="columnheader"],
+  .payroll-salary-table-compact [role="gridcell"],
+  .payroll-salary-table-compact [role="cell"] {
+    padding-left: 0.28rem !important;
+    padding-right: 0.28rem !important;
+    padding-top: 0.12rem !important;
+    padding-bottom: 0.12rem !important;
+  }
+}
+
+.payroll-salary-table-compact [role="columnheader"],
+.payroll-salary-table-compact th {
+  line-height: 1.12;
+  font-size: 0.625rem;
+}
+
+@media (min-width: 768px) {
+  .payroll-salary-table-compact [role="columnheader"],
+  .payroll-salary-table-compact th {
+    font-size: 0.6875rem;
+  }
+}
+
+.payroll-salary-table-compact td,
+.payroll-salary-table-compact [role="gridcell"],
+.payroll-salary-table-compact [role="cell"] {
+  font-size: 0.625rem;
+}
+
+@media (min-width: 768px) {
+  .payroll-salary-table-compact td,
+  .payroll-salary-table-compact [role="gridcell"],
+  .payroll-salary-table-compact [role="cell"] {
+    font-size: 0.6875rem;
+  }
+}
+
+/* Giờ vào / giờ ra / ca — nhỏ hơn ô MNV; !important để thắng rule font-size trên [role="cell"]. */
+.payroll-salary-table-compact .payroll-tight-time {
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+}
+
+@media (min-width: 768px) {
+  .payroll-salary-table-compact .payroll-tight-time {
+    font-size: 10px !important;
+  }
+}

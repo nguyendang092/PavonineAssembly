@@ -97,7 +97,6 @@ const emptyForm = () => ({
   gioVao: "",
   gioRa: "",
   caLamViec: "",
-  chamCong: "",
   pnTon: "",
   ngayNghiViec: "",
   hinhThucNghiViec: "",
@@ -882,7 +881,6 @@ function AllEmployeesManager({ resignedOnly = false }) {
       gioVao: emp.gioVao ?? "",
       gioRa: emp.gioRa ?? "",
       caLamViec: emp.caLamViec ?? "",
-      chamCong: emp.chamCong ?? "",
       pnTon: String(emp.pnTon ?? emp.phepNam ?? "").trim(),
       ngayNghiViec: normalizeDateForHtmlInput(emp.ngayNghiViec) || "",
       hinhThucNghiViec: String(emp.hinhThucNghiViec ?? "").trim(),
@@ -2407,17 +2405,6 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 <input
                   name="caLamViec"
                   value={form.caLamViec}
-                  onChange={handleChange}
-                  className={inputFieldClass}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
-                  Chấm công
-                </label>
-                <input
-                  name="chamCong"
-                  value={form.chamCong}
                   onChange={handleChange}
                   className={inputFieldClass}
                 />

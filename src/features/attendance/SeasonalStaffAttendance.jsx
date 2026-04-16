@@ -31,11 +31,24 @@ import {
   ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
   isGioVaoLeaveOrStatusType,
 } from "./attendanceGioVaoTypeOptions";
+import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
+import {
+  GIO_VAO_MODAL_TIME_SENTINEL,
+  GIO_VAO_MODAL_OTHER_SENTINEL,
+  getGioVaoModalSelectValue,
+  looksLikeGioVaoTime,
+  normalizeTimeForHtmlInput,
+  findGioVaoTypeOptionMatch,
+} from "./attendanceGioVaoModalHelpers";
 import { getAttendanceColWidthPercents } from "./AttendanceTableRow";
 import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
 
 function SeasonalAttendanceColgroup({ showRowModalActions, columnPlan = "full" }) {
-  const widths = getAttendanceColWidthPercents(showRowModalActions, columnPlan);
+  const widths = getAttendanceColWidthPercents(
+    showRowModalActions,
+    columnPlan,
+    "attendance",
+  );
   return (
     <colgroup>
       {widths.map((w, i) => (
@@ -122,7 +135,6 @@ function SeasonalStaffAttendance() {
     gioVao: "",
     gioRa: "",
     caLamViec: "",
-    chamCong: "",
   });
 
   // Load data from Firebase
@@ -349,6 +361,46 @@ function SeasonalStaffAttendance() {
     setForm((prev) => ({ ...prev, [name]: value }));
   }, []);
 
+  const seasonalModalFieldClass =
+    "w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100";
+
+  const handleGioVaoModalSelect = useCallback((e) => {
+    const v = e.target.value;
+    if (v === "") {
+      setForm((prev) => ({ ...prev, gioVao: "" }));
+      return;
+    }
+    if (v === GIO_VAO_MODAL_TIME_SENTINEL) {
+      setForm((prev) => {
+        const t = normalizeTimeForHtmlInput(prev.gioVao);
+        return { ...prev, gioVao: t || "08:00" };
+      });
+      return;
+    }
+    if (v === GIO_VAO_MODAL_OTHER_SENTINEL) {
+      setForm((prev) => ({
+        ...prev,
+        gioVao:
+          prev.gioVao &&
+          !looksLikeGioVaoTime(prev.gioVao) &&
+          !findGioVaoTypeOptionMatch(prev.gioVao)
+            ? prev.gioVao
+            : "",
+      }));
+      return;
+    }
+    setForm((prev) => ({ ...prev, gioVao: v }));
+  }, []);
+
+  const handleGioVaoModalTime = useCallback((e) => {
+    const val = e.target.value;
+    setForm((prev) => ({ ...prev, gioVao: val || "" }));
+  }, []);
+
+  const handleGioVaoModalOtherText = useCallback((e) => {
+    setForm((prev) => ({ ...prev, gioVao: e.target.value }));
+  }, []);
+
   // Handle submit (add/update)
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -389,9 +441,11 @@ function SeasonalStaffAttendance() {
     }
 
     try {
+      const payload = { ...form };
+      delete payload.chamCong;
       if (editing) {
         const empRef = ref(db, `seasonalAttendance/${selectedDate}/${editing}`);
-        await set(empRef, { ...form, id: editing });
+        await set(empRef, { ...payload, id: editing });
         setShowModal(false); // Đóng popup sau khi cập nhật thành công
         setAlert({
           show: true,
@@ -401,7 +455,7 @@ function SeasonalStaffAttendance() {
         setEditing(null);
       } else {
         const newRef = push(ref(db, `seasonalAttendance/${selectedDate}`));
-        await set(newRef, { ...form, id: newRef.key });
+        await set(newRef, { ...payload, id: newRef.key });
         setShowModal(false); // Đóng popup sau khi thêm mới thành công
         setAlert({
           show: true,
@@ -422,7 +476,6 @@ function SeasonalStaffAttendance() {
         gioVao: "",
         gioRa: "",
         caLamViec: "",
-        chamCong: "",
       });
     } catch (err) {
       setAlert({
@@ -2527,7 +2580,6 @@ function SeasonalStaffAttendance() {
                             gioVao: "",
                             gioRa: "",
                             caLamViec: "",
-                            chamCong: "",
                           });
                           setEditing(null);
                           setShowModal(true);
@@ -2664,42 +2716,44 @@ function SeasonalStaffAttendance() {
                 onSubmit={handleSubmit}
                 className="grid grid-cols-1 sm:grid-cols-2 gap-6"
               >
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    STT
-                  </label>
-                  <input
-                    type="number"
-                    name="stt"
-                    value={form.stt}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    MNV *
-                  </label>
-                  <input
-                    type="text"
-                    name="mnv"
-                    value={form.mnv}
-                    onChange={handleChange}
-                    required
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    MVT
-                  </label>
-                  <input
-                    type="text"
-                    name="mvt"
-                    value={form.mvt}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
+                <div className="sm:col-span-2 grid min-w-0 grid-cols-3 gap-3 sm:gap-4">
+                  <div className="min-w-0">
+                    <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
+                      STT
+                    </label>
+                    <input
+                      type="number"
+                      name="stt"
+                      value={form.stt}
+                      onChange={handleChange}
+                      className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
+                      MNV *
+                    </label>
+                    <input
+                      type="text"
+                      name="mnv"
+                      value={form.mnv}
+                      onChange={handleChange}
+                      required
+                      className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
+                      MVT
+                    </label>
+                    <input
+                      type="text"
+                      name="mvt"
+                      value={form.mvt}
+                      onChange={handleChange}
+                      className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
+                    />
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
@@ -2765,18 +2819,70 @@ function SeasonalStaffAttendance() {
                     className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Giờ vào
+                    {tl("timeIn", "Giờ vào")}
                   </label>
-                  <input
-                    type="text"
-                    name="gioVao"
-                    value={form.gioVao}
-                    onChange={handleChange}
-                    placeholder="HH:MM hoặc mã phép (PN, KP,...)"
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
+                  <div className="space-y-2">
+                    <select
+                      value={getGioVaoModalSelectValue(form.gioVao)}
+                      onChange={handleGioVaoModalSelect}
+                      className={seasonalModalFieldClass}
+                    >
+                      <option value="">
+                        {tl(
+                          "gioVaoModalChoose",
+                          "Chọn loại phép / trạng thái hoặc giờ (HH:MM)…",
+                        )}
+                      </option>
+                      {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(
+                        ({ value, shortLabel }) => (
+                          <option key={value} value={value}>
+                            {shortLabel} — {value}
+                          </option>
+                        ),
+                      )}
+                      <option value={GIO_VAO_MODAL_TIME_SENTINEL}>
+                        {tl("gioVaoModalTimeOption", "Giờ vào cụ thể (HH:MM)")}
+                      </option>
+                      <option value={GIO_VAO_MODAL_OTHER_SENTINEL}>
+                        {tl(
+                          "gioVaoModalOtherOption",
+                          "Khác (nhập tay / dữ liệu cũ)",
+                        )}
+                      </option>
+                    </select>
+                    {getGioVaoModalSelectValue(form.gioVao) ===
+                    GIO_VAO_MODAL_TIME_SENTINEL ? (
+                      <input
+                        type="time"
+                        value={
+                          normalizeTimeForHtmlInput(form.gioVao) || "08:00"
+                        }
+                        onChange={handleGioVaoModalTime}
+                        className={seasonalModalFieldClass}
+                      />
+                    ) : null}
+                    {getGioVaoModalSelectValue(form.gioVao) ===
+                    GIO_VAO_MODAL_OTHER_SENTINEL ? (
+                      <input
+                        type="text"
+                        value={form.gioVao}
+                        onChange={handleGioVaoModalOtherText}
+                        placeholder={tl(
+                          "gioVaoOtherPlaceholder",
+                          "Chỉ dùng khi giá trị không có trong danh sách",
+                        )}
+                        className={seasonalModalFieldClass}
+                      />
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-[11px] text-purple-600/90">
+                    {tl(
+                      "gioVaoModalHint",
+                      "Chọn từ danh sách để thống kê Dashboard và biểu đồ khớp dữ liệu.",
+                    )}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
@@ -2792,27 +2898,43 @@ function SeasonalStaffAttendance() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Ca làm việc
+                    {tl("workShift", "Ca làm việc")}
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="caLamViec"
-                    value={form.caLamViec}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Chấm công
-                  </label>
-                  <input
-                    type="text"
-                    name="chamCong"
-                    value={form.chamCong}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
+                    value={form.caLamViec ?? ""}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        caLamViec: e.target.value,
+                      }))
+                    }
+                    className={seasonalModalFieldClass}
+                  >
+                    <option value="">{tl("chooseShift", "Chọn ca")}</option>
+                    {(() => {
+                      const raw = String(form.caLamViec ?? "").trim();
+                      const isStd = ATTENDANCE_CA_LAM_VIEC_OPTIONS.some(
+                        (o) => o.value === raw,
+                      );
+                      return !isStd && raw ? (
+                        <option value={raw}>
+                          {raw} {tl("shiftCurrentValue", "(giá trị hiện tại)")}
+                        </option>
+                      ) : null;
+                    })()}
+                    {ATTENDANCE_CA_LAM_VIEC_OPTIONS.map(({ value, label }) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[11px] text-blue-600/90">
+                    {tl(
+                      "caLamViecModalHint",
+                      "Chọn ca chuẩn để đồng bộ với bảng điểm danh và thống kê.",
+                    )}
+                  </p>
                 </div>
                 <button
                   type="submit"
@@ -3426,10 +3548,13 @@ function SeasonalStaffAttendance() {
                           }}
                         >
                           <option value="">Chọn ca</option>
-                          <option value="Ca đêm">Ca đêm</option>
-                          <option value="Ca 1">Ca 1</option>
-                          <option value="Ca 2">Ca 2</option>
-                          <option value="Ca hành chính">Ca hành chính</option>
+                          {ATTENDANCE_CA_LAM_VIEC_OPTIONS.map(
+                            ({ value, label }) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ),
+                          )}
                         </select>
                         {editingCaLamViec[emp.id] && (
                           <button

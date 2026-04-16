@@ -92,6 +92,18 @@ export const menuConfig = [
                   },
                 ],
               },
+              {
+                key: "attendanceSalary",
+                label: "navbar.attendanceSalaryTitle",
+                type: "nested",
+                children: [
+                  {
+                    key: "attendanceSalary",
+                    label: "navbar.attendanceSalary",
+                    path: "/attendance-salary",
+                  },
+                ],
+              },
             ],
           },
           {
@@ -157,6 +169,7 @@ export const routeConfig = [
     element: "ResignedEmployeesManager",
   },
   { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
+  { path: "/attendance-salary", element: "PayrollSalaryCalculator" },
   { path: "/user-department", element: "UserDepartmentManager" },
   { path: "/email", element: "InternalAnnouncements" },
   { path: "/downloads", element: "Downloads" },

@@ -101,6 +101,7 @@ const vi = {
     qrCodeGenerator: "Tạo QR Code",
     attendance: "Điểm danh",
     attendanceList: "Điểm danh NV",
+    attendanceSalary: "Bảng giờ công nhân viên",
     employeeRosterMain: "Danh sách",
     employeeRoster: "Danh sách NV",
     employeeRosterResigned: "Danh sách NV nghỉ việc",
@@ -114,6 +115,7 @@ const vi = {
     GA: "GA",
     ADMIN: "ADMIN",
     hrAttendance: "Chấm công & nhân sự",
+    attendanceSalaryTitle: "Lương & Giờ công",
   },
   internalAnnouncements: {
     title: "Thông báo nội bộ",
@@ -932,6 +934,11 @@ const vi = {
     cancel: "Hủy",
     activeEmployeesTitle: "ĐIỂM DANH NHÂN VIÊN",
     activeEmployeesSubtitle: "List of Active Employees",
+    linkToAttendanceSalary: "Bảng giờ công / lương",
+    seasonalActiveEmployeesTitleShort: "Điểm danh thời vụ",
+    linkToAttendanceSalaryShort: "Bảng giờ công / lương",
+    headerQuickLinks: "Liên kết nhanh",
+    headerDateLabel: "Ngày",
     dateLabel: "Ngày/Date",
     unattendedTitle: "Nhân viên chưa điểm danh",
     unattendedSummary:
@@ -958,6 +965,27 @@ const vi = {
     gender: "Giới tính",
     timeIn: "Thời gian vào",
     timeOut: "Thời gian ra",
+    workingHours: "Giờ công",
+    workingHoursHint:
+      "Giờ vào–ra dạng HH:MM. Vào từ 7:00 đến trước 7:30 và ra trước 17:30 = 8 giờ công (cố định); ngoài khung: khoảng giờ giữa hai mốc, tối đa 8h (phần tăng ca xem cột Giờ TC).",
+    overtimeHours: "Giờ công tăng ca (x1.5)",
+    overtimeHoursHint:
+      "Giờ ra sau 17:30: tính tăng ca từ 17:00, cứ 30 phút = 0,5 giờ.",
+    offDayOvertimeHours: "Giờ công ngày OFF (x2.0)",
+    offDayOvertimeHoursHint:
+      "Khi ngày được đánh dấu off: hiển thị giờ công giống cột Giờ công; ngày không off thì trống. Ca «Ca đêm»: cột này «-» — giờ quy đổi nằm ở «GC ca đêm off».",
+    nightShiftWorkingHours: "Giờ công ca đêm",
+    nightShiftWorkingHoursHint:
+      "Chỉ khi ca «Ca đêm»: thời lượng từ giờ vào đến mốc 05:00 (05:00 cùng ngày nếu vào trước 05:00, không thì 05:00 ngày hôm sau), tối đa 8 giờ.",
+    nightShiftOvertimeHours: "Giờ công tăng ca (ca đêm) (X1.5)",
+    nightShiftOvertimeHoursHint:
+      "Chỉ khi ca «Ca đêm»: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ tăng ca.",
+    nightShiftOffDayWorkingHours: "Giờ công ca đêm ngày OFF (X2.0)",
+    nightShiftOffDayWorkingHoursHint:
+      "Khi «Ngày off» và ca «Ca đêm»: cùng quy tắc GC ca đêm (đến mốc 05:00, tối đa 8h). Ngày không off thì trống.",
+    dayOffToggle: "Ngày off",
+    dayOffToggleHint:
+      "Bật khi ngày đó là ngày nghỉ/off để tính TC off trên màn Ước lương: cột Giờ công hiển thị «-», giờ làm quy đổi theo quy tắc giờ công nằm ở cột TC off (Admin/HR).",
     checkedIn: "Đã chấm công",
     nonStandardTimeIn: "Giờ vào ≠ HH:MM",
     nonStandardTimeInShort: "≠ HH:MM",
@@ -997,7 +1025,7 @@ const vi = {
     actionsEditOnly: "Sửa",
     chooseType: "Chọn loại",
     chooseShift: "Chọn ca",
-    cannotEdit: "Không được phép chỉnh sửa",
+    cannotEdit: "-",
     totalEmployees: "Tổng số nhân viên",
     noClassification: "Không có phân loại",
     date: "Ngày",
@@ -1032,6 +1060,63 @@ const vi = {
     exportRangeColDate: "Ngày",
     exportRangeColDOB: "Ngày tháng năm sinh",
     unknown: "(Không rõ)",
+  },
+  salaryCalc: {
+    pageTitle: "Bảng giờ công nhân viên",
+    pageSubtitle: "Bảng giờ công nhân viên dựa trên dữ liệu chấm công.",
+    table: {
+      nightShiftWorkingHoursHint:
+        "Ca đêm: từ giờ vào đến mốc 05:00 (cùng ngày nếu vào trước 05:00, không thì 05:00 hôm sau), tối đa 8 giờ.",
+      nightShiftOvertimeHoursHint:
+        "Ca đêm: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ TC.",
+      nightShiftOffDayWorkingHoursHint:
+        "Ngày off + ca đêm: cùng quy tắc GC ca đêm; ngày thường cột trống.",
+      payrollTotalGcDay: "Tổng giờ công",
+      payrollTotalGcDayHint:
+        "Tổng: Giờ công + Giờ TC + TC off (không gồm cột ca đêm).",
+      payrollTotalGcNight: "Tổng giờ công ca đêm",
+      payrollTotalGcNightHint:
+        "Tổng khối ca đêm: GC (đến mốc 05:00) + TC ca đêm (sau mốc 05:00) — cùng hai cột GC/TC ca đêm.",
+    },
+    searchPlaceholder: "Tìm theo tên, MNV, bộ phận…",
+    linkAttendance: "Điểm danh NV",
+    dateLabel: "Ngày",
+    allDepts: "Tất cả bộ phận",
+    totalEmployees: "Tổng số nhân viên (sau lọc)",
+    classification: "Phân loại phép",
+    noClassification: "Không có phân loại",
+    workShiftStats: "Thống kê ca làm việc",
+    noShiftStats: "Không có ca làm việc",
+    date: "Ngày",
+    title: "Bảng giờ công nhân viên",
+    subtitle:
+      "Dựa trên dữ liệu attendance/{ngày} và cùng logic phân loại với thống kê điểm danh.",
+    disclaimer:
+      "Kết quả mang tính tham khảo; quy chế lương thực tế có thể khác.",
+    backAttendance: "Điểm danh NV",
+    pleaseLogin: "Vui lòng đăng nhập.",
+    error: "Không tải dữ liệu điểm danh. Thử lại sau.",
+    done: "Đã tính xong (ước lượng theo điểm danh).",
+    from: "Từ ngày",
+    to: "Đến ngày",
+    baseMonthly: "Lương cơ bản (VNĐ/tháng)",
+    standardDays: "Ngày công chuẩn / tháng",
+    calculate: "Tính lương",
+    loading: "Đang tính…",
+    hintAdmin: "Admin/HR: xem toàn bộ nhân viên có trong điểm danh.",
+    hintManager:
+      "Chỉ hiển thị nhân viên thuộc quyền chỉnh sửa điểm danh của bạn.",
+    colMnv: "MNV",
+    colName: "Họ và tên",
+    colDept: "Bộ phận",
+    colWork: "Làm",
+    colPaidLeave: "Phép hưởng lương",
+    colUnpaid: "KL/KP",
+    colAbsent: "Vắng",
+    colEstimate: "Ước lương",
+    formulaNote:
+      "Công thức: (lương cơ bản ÷ ngày chuẩn) × (ngày làm + phép hưởng lương) − (ngày KL/KP × một ngày lương).",
+    empty: "Chọn khoảng ngày và bấm «Tính lương».",
   },
 };
 

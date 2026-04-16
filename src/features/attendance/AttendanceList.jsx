@@ -5,7 +5,6 @@
   useMemo,
   useCallback,
   useRef,
-  useId,
   useDeferredValue,
   startTransition,
   lazy,
@@ -19,7 +18,6 @@ import { useUser } from "@/contexts/UserContext";
 import {
   isAdminAccess,
   canEditAttendanceForEmployee,
-  canAddAttendanceForDepartment,
   canDeleteEmployeeData,
   ROLES,
 } from "@/config/authRoles";
@@ -36,24 +34,16 @@ import {
   ref,
   set,
   onValue,
-  push,
   remove,
   update,
   get,
 } from "@/services/firebase";
 import {
   EMPLOYEE_PROFILES_PATH,
-  buildEmployeeProfileDocument,
-  buildEmployeeAttendanceDayDocument,
   mergeEmployeeProfileAndDay,
   employeeProfileStorageKeyFromMnv,
-  slugifyDepartmentKey,
   normalizeEmployeeCode,
 } from "@/utils/employeeRosterRecord";
-import {
-  appendEmployeeProfileHistory,
-  diffEmployeeProfileDocs,
-} from "@/utils/employeeProfileHistory";
 import ExcelJS from "exceljs";
 import { handleUploadExcel } from "./AttendanceUploadHandler";
 import AttendanceTableRow, {
@@ -74,6 +64,11 @@ import {
   executeAttendanceDateRangeExport,
 } from "./attendanceDateRangeExport";
 import AttendanceExportRangeModal from "./AttendanceExportRangeModal";
+import AttendanceEmployeeFormModal from "./AttendanceEmployeeFormModal";
+import {
+  isAttendanceDayMetaKey,
+  getIsOffDayFromRaw,
+} from "./attendanceDayMeta";
 import {
   normalizeTextValue,
   getAttendanceComboFlags,
@@ -94,7 +89,7 @@ const AttendanceComboChartModal = lazy(() =>
 function attendanceTableWrapperMinWidthClass(columnPlan) {
   switch (columnPlan) {
     case "full":
-      return "min-w-[1100px]";
+      return "min-w-[1000px]";
     case "compact":
       return "min-w-[920px]";
     case "narrow":
@@ -110,8 +105,9 @@ function AttendanceList() {
   const todayKey = new Date().toISOString().slice(0, 10);
   // State for alert messages
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
-  // State for add/edit modal open/close
-  const [showModal, setShowModal] = useState(false);
+  // State for add/edit modal (logic trong AttendanceEmployeeFormModal)
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [employeeModalRecord, setEmployeeModalRecord] = useState(null);
   // State for main filter modal open/close
   const [filterOpen, setFilterOpen] = useState(false);
   // State for department search input in filter
@@ -122,6 +118,8 @@ function AttendanceList() {
   const [searchTerm, setSearchTerm] = useState("");
   // State for selected date (default to today)
   const [selectedDate, setSelectedDate] = useState(todayKey);
+  /** `attendance/{date}/_meta.isOffDay` — chỉ Admin/HR bật/tắt. */
+  const [isOffDay, setIsOffDay] = useState(false);
   const { t, i18n } = useTranslation();
   const { user, userDepartments, userRole } = useUser();
   const userEmailKey = useMemo(
@@ -129,7 +127,7 @@ function AttendanceList() {
     [user?.email],
   );
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     const d = searchParams.get("date");
@@ -155,11 +153,8 @@ function AttendanceList() {
     [t],
   );
   const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
-  const gioVaoTypeDatalistId = useId();
-
   const [employees, setEmployees] = useState([]);
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
-  const [editing, setEditing] = useState(null);
   const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
   const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
   const [savingGioVao, setSavingGioVao] = useState({}); // Track which gioVao is being saved
@@ -195,23 +190,6 @@ function AttendanceList() {
   const [showUnattendedPopup, setShowUnattendedPopup] = useState(false);
   const [unattendedPopupDismissed, setUnattendedPopupDismissed] =
     useState(false);
-  const [form, setForm] = useState({
-    id: "",
-    stt: "",
-    mnv: "",
-    mvt: "",
-    hoVaTen: "",
-    gioiTinh: "YES",
-    ngayThangNamSinh: "",
-    maBoPhan: "",
-    boPhan: "",
-    gioVao: "",
-    gioRa: "",
-    caLamViec: "",
-    chamCong: "",
-    pnTon: "",
-  });
-
   const [filterMenuDropdownOpen, setFilterMenuDropdownOpen] = useState(false);
   const filterMenuRef = useRef(null);
   const filterDropdownAnchorRef = useRef(null);
@@ -273,11 +251,13 @@ function AttendanceList() {
 
   const applyAttendanceMerge = useCallback((rawData, profMap) => {
     if (!rawData || typeof rawData !== "object") return [];
-    const arr = Object.entries(rawData).map(([id, emp]) => {
-      const pk = employeeProfileStorageKeyFromMnv(emp?.mnv);
-      const prof = pk ? profMap[pk] : null;
-      return mergeEmployeeProfileAndDay({ ...emp, id }, prof, null);
-    });
+    const arr = Object.entries(rawData)
+      .filter(([id]) => !isAttendanceDayMetaKey(id))
+      .map(([id, emp]) => {
+        const pk = employeeProfileStorageKeyFromMnv(emp?.mnv);
+        const prof = pk ? profMap[pk] : null;
+        return mergeEmployeeProfileAndDay({ ...emp, id }, prof, null);
+      });
     arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
     return arr;
   }, []);
@@ -289,6 +269,7 @@ function AttendanceList() {
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
       attendanceRawRef.current = data;
+      setIsOffDay(getIsOffDayFromRaw(data));
       setEmployees(applyAttendanceMerge(data, profilesRef.current));
     });
     return () => unsubscribe();
@@ -868,192 +849,7 @@ function AttendanceList() {
     return departments.filter((dept) => dept.toLowerCase().includes(search));
   }, [departments, departmentSearchTerm]);
 
-  // Handle form input
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }, []);
-
-  // Handle submit (add/update) — employeeProfiles + attendance/{date} (tách tầng)
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: t("attendanceList.pleaseLogin"),
-      });
-      return;
-    }
-
-    const storageKey = employeeProfileStorageKeyFromMnv(form.mnv);
-    if (!storageKey) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: t("attendanceList.error"),
-      });
-      return;
-    }
-
-    try {
-      if (editing) {
-        const existing = employees.find((emp) => emp.id === editing);
-        if (
-          !existing ||
-          !canEditAttendanceForEmployee({
-            user,
-            userRole,
-            userDepartments,
-            employee: existing,
-          })
-        ) {
-          setAlert({
-            show: true,
-            type: "error",
-            message: t("attendanceList.error"),
-          });
-          return;
-        }
-        const daySnap = await get(
-          ref(db, `attendance/${selectedDate}/${editing}`),
-        );
-        const existingRaw = daySnap.val() || {};
-        const profSnap = await get(
-          ref(db, `${EMPLOYEE_PROFILES_PATH}/${storageKey}`),
-        );
-        const existingProfile = profSnap.val() || {};
-        const deptKey =
-          String(existingProfile.departmentKey ?? "").trim() ||
-          slugifyDepartmentKey(form.boPhan);
-        const mergedForm = {
-          ...existingProfile,
-          ...form,
-          businessId: storageKey,
-          departmentKey: deptKey,
-        };
-        const profileDoc = buildEmployeeProfileDocument({
-          form: mergedForm,
-          existingProfile,
-          departmentDisplayName: form.boPhan,
-          departmentKey: deptKey,
-        });
-        const dayDoc = buildEmployeeAttendanceDayDocument({
-          form: mergedForm,
-          existing: existingRaw,
-        });
-        await update(ref(db), {
-          [`${EMPLOYEE_PROFILES_PATH}/${storageKey}`]: profileDoc,
-          [`attendance/${selectedDate}/${editing}`]: { ...dayDoc, id: editing },
-        });
-        const profileChanges = diffEmployeeProfileDocs(
-          existingProfile,
-          profileDoc,
-        );
-        if (profileChanges.length > 0) {
-          void appendEmployeeProfileHistory({
-            by: user?.email || "",
-            action: "update",
-            source: "attendance",
-            profileKey: storageKey,
-            mnv: String(profileDoc.mnv || form.mnv || ""),
-            hoVaTen: String(profileDoc.hoVaTen || form.hoVaTen || ""),
-            changes: profileChanges,
-          });
-        }
-        setShowModal(false);
-        setAlert({
-          show: true,
-          type: "success",
-          message: t("attendanceList.updateSuccess"),
-        });
-        setEditing(null);
-      } else {
-        if (
-          !canAddAttendanceForDepartment({
-            user,
-            userRole,
-            userDepartments,
-            boPhan: form.boPhan,
-          })
-        ) {
-          setAlert({
-            show: true,
-            type: "error",
-            message: t("attendanceList.error"),
-          });
-          return;
-        }
-        const profSnap = await get(
-          ref(db, `${EMPLOYEE_PROFILES_PATH}/${storageKey}`),
-        );
-        const existingProfile = profSnap.val() || {};
-        const deptKey =
-          String(existingProfile.departmentKey ?? "").trim() ||
-          slugifyDepartmentKey(form.boPhan);
-        const mergedForm = {
-          ...existingProfile,
-          ...form,
-          businessId: storageKey,
-          departmentKey: deptKey,
-        };
-        const profileDoc = buildEmployeeProfileDocument({
-          form: mergedForm,
-          existingProfile,
-          departmentDisplayName: form.boPhan,
-          departmentKey: deptKey,
-        });
-        const newRef = push(ref(db, `attendance/${selectedDate}`));
-        const newKey = newRef.key;
-        const dayDoc = buildEmployeeAttendanceDayDocument({
-          form: mergedForm,
-          existing: {},
-        });
-        await update(ref(db), {
-          [`${EMPLOYEE_PROFILES_PATH}/${storageKey}`]: profileDoc,
-          [`attendance/${selectedDate}/${newKey}`]: { ...dayDoc, id: newKey },
-        });
-        void appendEmployeeProfileHistory({
-          by: user?.email || "",
-          action: "create",
-          source: "attendance",
-          profileKey: storageKey,
-          mnv: String(profileDoc.mnv || form.mnv || ""),
-          hoVaTen: String(profileDoc.hoVaTen || form.hoVaTen || ""),
-        });
-        setShowModal(false);
-        setAlert({
-          show: true,
-          type: "success",
-          message: t("attendanceList.addSuccess"),
-        });
-      }
-      setForm({
-        id: "",
-        stt: "",
-        mnv: "",
-        mvt: "",
-        hoVaTen: "",
-        gioiTinh: "YES",
-        ngayThangNamSinh: "",
-        maBoPhan: "",
-        boPhan: "",
-        gioVao: "",
-        gioRa: "",
-        caLamViec: "",
-        chamCong: "",
-        pnTon: "",
-      });
-    } catch (err) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: t("attendanceList.error"),
-      });
-    }
-  };
-
-  // Handle edit
+  // Handle edit — mở AttendanceEmployeeFormModal
   const handleEdit = useCallback(
     (emp) => {
       if (!user) {
@@ -1079,12 +875,31 @@ function AttendanceList() {
         });
         return;
       }
-      setForm({ ...emp });
-      setEditing(emp.id);
-      setShowModal(true);
+      setEmployeeModalRecord({ ...emp });
+      setShowEmployeeModal(true);
     },
     [user, userRole, userDepartments, t],
   );
+
+  /** Mở sửa từ URL ?edit=<id> (vd. từ trang Lương). Xóa `edit` sau khi xử lý để không lặp. */
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || !user) return;
+    if (employees.length === 0) return;
+
+    const emp = employees.find((e) => String(e.id) === String(editId));
+
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("edit");
+        return next;
+      },
+      { replace: true },
+    );
+
+    if (emp) handleEdit(emp);
+  }, [searchParams, employees, user, handleEdit, setSearchParams]);
 
   // Handle delete
   const handleDelete = useCallback(
@@ -1315,6 +1130,32 @@ function AttendanceList() {
       });
     }
   }, [user, userRole, selectedDate, employees.length, t]);
+
+  const handleSetDayOff = useCallback(
+    async (checked) => {
+      if (!user || !isAdminAccess(user, userRole)) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: t("attendanceList.adminOrHROnly"),
+        });
+        return;
+      }
+      try {
+        await set(ref(db, `attendance/${selectedDate}/_meta`), {
+          isOffDay: checked,
+        });
+      } catch (err) {
+        console.error("Set day off meta:", err);
+        setAlert({
+          show: true,
+          type: "error",
+          message: t("attendanceList.error"),
+        });
+      }
+    },
+    [user, userRole, selectedDate, t],
+  );
 
   // Export to Excel (moved to external component)
 
@@ -2269,30 +2110,45 @@ function AttendanceList() {
       <div className="p-2 md:p-4 transition-all duration-300">
         {/* Header */}
         <div className="mb-2 md:mb-3">
-          <div className="rounded-lg border-t-4 border-blue-600 bg-white px-3 py-2 md:px-4 md:py-2 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-            <div>
-              <div className="flex flex-wrap items-end gap-2">
-                <h1 className="text-xl md:text-2xl font-extrabold leading-tight text-[#1e293b] uppercase tracking-wide">
+          <div className="rounded-lg border-t-4 border-blue-600 bg-white px-2.5 py-1.5 shadow-md md:px-3 md:py-2 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="text-base font-bold uppercase leading-tight tracking-wide text-[#1e293b] md:text-lg dark:text-slate-100">
                   {tl("activeEmployeesTitle", "DANH SÁCH NHÂN VIÊN HIỆN DIỆN")}
                 </h1>
+                <p className="mt-0.5 text-[11px] leading-snug text-gray-600 md:text-xs">
+                  {tl("activeEmployeesSubtitle", "List of Active Employees")}
+                </p>
+                <p className="mt-0.5 text-[10px] text-gray-500 md:text-[11px]">
+                  {tl("headerDateLabel", "Ngày")}:{" "}
+                  {new Date(selectedDate).toLocaleDateString(displayLocale)}
+                </p>
+              </div>
+              <nav
+                className="mb-0.5 flex shrink-0 flex-col items-end gap-0.5 text-right"
+                aria-label={tl("headerQuickLinks", "Liên kết nhanh")}
+              >
                 <Link
                   to="/seasonal-staff-attendance"
-                  className="mb-0.5 ml-2 inline-flex items-center gap-1 text-xs md:text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline md:text-xs"
                 >
                   <span aria-hidden>→</span>
                   {tl(
-                    "seasonalActiveEmployeesTitle",
-                    "DANH SÁCH NHÂN VIÊN THỜI VỤ HIỆN DIỆN",
+                    "seasonalActiveEmployeesTitleShort",
+                    "Điểm danh thời vụ",
                   )}
                 </Link>
-              </div>
-              <p className="text-sm text-gray-600 mt-0.5 leading-snug">
-                {tl("activeEmployeesSubtitle", "List of Active Employees")}
-              </p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {tl("dateLabel", "Ngày/Date")}:{" "}
-                {new Date(selectedDate).toLocaleDateString(displayLocale)}
-              </p>
+                <Link
+                  to={`/attendance-salary?date=${encodeURIComponent(selectedDate)}`}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300 md:text-xs"
+                >
+                  <span aria-hidden>→</span>
+                  {tl(
+                    "linkToAttendanceSalaryShort",
+                    "Bảng giờ công / lương",
+                  )}
+                </Link>
+              </nav>
             </div>
           </div>
         </div>
@@ -2408,6 +2264,26 @@ function AttendanceList() {
               onChange={(e) => setSelectedDate(e.target.value)}
               className="h-8 w-full shrink-0 rounded-md border bg-white px-2 text-sm font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300 sm:w-auto"
             />
+            <label
+              title={tl(
+                "dayOffToggleHint",
+                "Bật khi ngày đó là ngày nghỉ/off để tính TC off trên màn Ước lương: cột Giờ công = 0, giờ làm quy đổi theo quy tắc giờ công nằm ở cột TC off (Admin/HR).",
+              )}
+              className="inline-flex h-8 max-w-full shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-2 text-xs font-bold text-violet-900 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100"
+            >
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 shrink-0 rounded border-violet-400 text-violet-600 focus:ring-violet-400"
+                checked={isOffDay}
+                disabled={!user || !isAdminAccess(user, userRole)}
+                onChange={(e) => {
+                  void handleSetDayOff(e.target.checked);
+                }}
+              />
+              <span className="whitespace-nowrap">
+                {tl("dayOffToggle", "Ngày off")}
+              </span>
+            </label>
             <input
               type="text"
               value={searchTerm}
@@ -3122,24 +2998,8 @@ function AttendanceList() {
                       <>
                         <button
                           onClick={() => {
-                            setForm({
-                              id: "",
-                              stt: "",
-                              mnv: "",
-                              mvt: "",
-                              hoVaTen: "",
-                              gioiTinh: "YES",
-                              ngayThangNamSinh: "",
-                              maBoPhan: "",
-                              boPhan: "",
-                              gioVao: "",
-                              gioRa: "",
-                              caLamViec: "",
-                              chamCong: "",
-                              pnTon: "",
-                            });
-                            setEditing(null);
-                            setShowModal(true);
+                            setEmployeeModalRecord(null);
+                            setShowEmployeeModal(true);
                             setActionDropdownOpen(false);
                           }}
                           className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
@@ -3257,197 +3117,20 @@ function AttendanceList() {
           </div>
         </div>
 
-        {/* Modal Add/Edit */}
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="bg-gradient-to-br from-purple-50 via-white to-purple-200 rounded-2xl shadow-2xl p-8 w-full max-w-2xl relative mx-4 overflow-y-auto max-h-[90vh] border-2 border-blue-200 animate-fadeIn">
-              <button
-                onClick={() => setShowModal(false)}
-                className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 rounded-full transition"
-                aria-label="Đóng"
-              >
-                ×
-              </button>
-              <h2 className="text-xl font-extrabold mb-6 text-black tracking-wide text-center drop-shadow uppercase">
-                {editing
-                  ? tl("updateEmployee", "Cập nhật nhân viên")
-                  : tl("addEmployee", "Thêm nhân viên mới")}
-              </h2>
-              <form
-                onSubmit={handleSubmit}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-6"
-              >
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("stt", "STT")}
-                  </label>
-                  <input
-                    type="number"
-                    name="stt"
-                    value={form.stt}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("mnv", "MNV")} *
-                  </label>
-                  <input
-                    type="text"
-                    name="mnv"
-                    value={form.mnv}
-                    onChange={handleChange}
-                    required
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("mvt", "MVT")}
-                  </label>
-                  <input
-                    type="text"
-                    name="mvt"
-                    value={form.mvt}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("fullName", "Họ và tên")}
-                  </label>
-                  <input
-                    type="text"
-                    name="hoVaTen"
-                    value={form.hoVaTen}
-                    onChange={handleChange}
-                    required
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("gender", "Giới tính")}
-                  </label>
-                  <select
-                    name="gioiTinh"
-                    value={form.gioiTinh}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  >
-                    <option value="YES">{t("attendanceList.female")}</option>
-                    <option value="NO">{t("attendanceList.male")}</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("dateOfBirth", "Ngày sinh")}
-                  </label>
-                  <input
-                    type="date"
-                    name="ngayThangNamSinh"
-                    value={form.ngayThangNamSinh}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("departmentCode", "Mã BP")}
-                  </label>
-                  <input
-                    type="text"
-                    name="maBoPhan"
-                    value={form.maBoPhan}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("departmentRequired", "Bộ phận")}
-                  </label>
-                  <input
-                    type="text"
-                    name="boPhan"
-                    value={form.boPhan}
-                    onChange={handleChange}
-                    required
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("timeIn", "Giờ vào")}
-                  </label>
-                  <input
-                    type="text"
-                    name="gioVao"
-                    list={gioVaoTypeDatalistId}
-                    value={form.gioVao}
-                    onChange={handleChange}
-                    placeholder={tl(
-                      "gioVaoPlaceholder",
-                      "HH:MM hoặc chọn loại (Phép năm, Phép cưới, Dưỡng sức, …) — đều lên thống kê",
-                    )}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                  <datalist id={gioVaoTypeDatalistId}>
-                    {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(({ value }) => (
-                      <option key={value} value={value} />
-                    ))}
-                  </datalist>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("timeOut", "Giờ ra")}
-                  </label>
-                  <input
-                    type="time"
-                    name="gioRa"
-                    value={form.gioRa}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("workShift", "Ca làm việc")}
-                  </label>
-                  <input
-                    type="text"
-                    name="caLamViec"
-                    value={form.caLamViec}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    {tl("attendance", "Chấm công")}
-                  </label>
-                  <input
-                    type="text"
-                    name="chamCong"
-                    value={form.chamCong}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="sm:col-span-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-extrabold text-base mt-2 shadow-lg hover:from-blue-700 hover:to-purple-700 active:scale-95 transition-all duration-150 tracking-wide"
-                >
-                  {editing
-                    ? t("attendanceList.btnUpdate")
-                    : t("attendanceList.btnAdd")}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
+        <AttendanceEmployeeFormModal
+          open={showEmployeeModal}
+          onClose={() => {
+            setShowEmployeeModal(false);
+            setEmployeeModalRecord(null);
+          }}
+          initialRecord={employeeModalRecord}
+          selectedDate={selectedDate}
+          employees={employees}
+          user={user}
+          userRole={userRole}
+          userDepartments={userDepartments}
+          onAlert={setAlert}
+        />
 
         {/* Overtime Modal */}
         {showOvertimeModal && (
@@ -3874,6 +3557,7 @@ function AttendanceList() {
                         measureElementRef={rowVirtualizer.measureElement}
                         gridTemplateColumns={attendanceGridTemplateColumns}
                         columnPlan={columnPlan}
+                        isOffDay={isOffDay}
                       />
                     );
                   })}
@@ -3924,6 +3608,7 @@ function AttendanceList() {
                         onDelete={handleDelete}
                         canDeleteRow={canDeleteDayRecord}
                         columnPlan={columnPlan}
+                        isOffDay={isOffDay}
                       />
                     );
                   })}

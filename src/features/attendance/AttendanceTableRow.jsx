@@ -1,6 +1,32 @@
 import React, { memo } from "react";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { ATTENDANCE_GIO_VAO_TYPE_OPTIONS } from "./attendanceGioVaoTypeOptions";
+import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
+import {
+  formatOvertimeHoursLabel,
+  formatPayrollTableNightShiftOffDayWorkingCell,
+  formatPayrollTableNightShiftOvertimeCell,
+  formatPayrollTableNightShiftWorkingCell,
+  formatPayrollTableOffDayTcCell,
+  formatPayrollTableTotalDayGcCell,
+  formatPayrollTableTotalNightGcCell,
+  formatPayrollTableWorkingHoursCell,
+} from "./attendanceWorkingHours";
+import { getPayrollColWidthPercents } from "@/features/payroll/payrollColumnWidths";
+
+const PAYROLL_EMPTY_CELL = "-";
+
+/** Bảng lương: null / chỉ khoảng trắng / chuỗi rỗng → `-`. Điểm danh: giữ nguyên. */
+function payrollDash(value, isPayroll) {
+  if (!isPayroll) return value;
+  if (value === null || value === undefined) return PAYROLL_EMPTY_CELL;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : PAYROLL_EMPTY_CELL;
+  }
+  const s = String(value).trim();
+  if (s === "") return PAYROLL_EMPTY_CELL;
+  return s;
+}
 
 /** Ngưỡng: danh sách lớn hơn số này dùng virtual scroll (xem AttendanceList). */
 export const ATTENDANCE_VIRTUAL_THRESHOLD = 300;
@@ -21,7 +47,15 @@ export const ATTENDANCE_GRID_COL = {
   timeIn: 9,
   timeOut: 10,
   shift: 11,
-  actions: 12,
+  workingHours: 12,
+  overtimeHours: 13,
+  offDayOvertimeHours: 14,
+  payrollTotalGcDay: 15,
+  nightShiftWorkingHours: 16,
+  nightShiftOvertimeHours: 17,
+  nightShiftOffDayWorkingHours: 18,
+  payrollTotalGcNight: 19,
+  actions: 20,
 };
 
 /** Cùng thứ tự cột nhưng bỏ ngày sinh + mã BP — % chia lại tròn 100. */
@@ -35,7 +69,15 @@ const ATTENDANCE_GRID_COL_COMPACT_WITH_ACTIONS = {
   timeIn: 7,
   timeOut: 8,
   shift: 9,
-  actions: 10,
+  workingHours: 10,
+  overtimeHours: 11,
+  offDayOvertimeHours: 12,
+  payrollTotalGcDay: 13,
+  nightShiftWorkingHours: 14,
+  nightShiftOvertimeHours: 15,
+  nightShiftOffDayWorkingHours: 16,
+  payrollTotalGcNight: 17,
+  actions: 18,
 };
 
 const ATTENDANCE_GRID_COL_COMPACT_NO_ACTIONS = {
@@ -48,6 +90,14 @@ const ATTENDANCE_GRID_COL_COMPACT_NO_ACTIONS = {
   timeIn: 7,
   timeOut: 8,
   shift: 9,
+  workingHours: 10,
+  overtimeHours: 11,
+  offDayOvertimeHours: 12,
+  payrollTotalGcDay: 13,
+  nightShiftWorkingHours: 14,
+  nightShiftOvertimeHours: 15,
+  nightShiftOffDayWorkingHours: 16,
+  payrollTotalGcNight: 17,
 };
 
 /** Ẩn ngày sinh + mã BP + bộ phận — 9 cột (có Sửa) hoặc 8 cột. */
@@ -60,7 +110,15 @@ const ATTENDANCE_GRID_COL_NARROW_WITH_ACTIONS = {
   timeIn: 6,
   timeOut: 7,
   shift: 8,
-  actions: 9,
+  workingHours: 9,
+  overtimeHours: 10,
+  offDayOvertimeHours: 11,
+  payrollTotalGcDay: 12,
+  nightShiftWorkingHours: 13,
+  nightShiftOvertimeHours: 14,
+  nightShiftOffDayWorkingHours: 15,
+  payrollTotalGcNight: 16,
+  actions: 17,
 };
 
 const ATTENDANCE_GRID_COL_NARROW_NO_ACTIONS = {
@@ -72,6 +130,14 @@ const ATTENDANCE_GRID_COL_NARROW_NO_ACTIONS = {
   timeIn: 6,
   timeOut: 7,
   shift: 8,
+  workingHours: 9,
+  overtimeHours: 10,
+  offDayOvertimeHours: 11,
+  payrollTotalGcDay: 12,
+  nightShiftWorkingHours: 13,
+  nightShiftOvertimeHours: 14,
+  nightShiftOffDayWorkingHours: 15,
+  payrollTotalGcNight: 16,
 };
 
 const ATTENDANCE_GRID_COL_MINIMAL_WITH_ACTIONS = {
@@ -79,7 +145,15 @@ const ATTENDANCE_GRID_COL_MINIMAL_WITH_ACTIONS = {
   fullName: 2,
   timeIn: 3,
   shift: 4,
-  actions: 5,
+  workingHours: 5,
+  overtimeHours: 6,
+  offDayOvertimeHours: 7,
+  payrollTotalGcDay: 8,
+  nightShiftWorkingHours: 9,
+  nightShiftOvertimeHours: 10,
+  nightShiftOffDayWorkingHours: 11,
+  payrollTotalGcNight: 12,
+  actions: 13,
 };
 
 const ATTENDANCE_GRID_COL_MINIMAL_NO_ACTIONS = {
@@ -87,16 +161,143 @@ const ATTENDANCE_GRID_COL_MINIMAL_NO_ACTIONS = {
   fullName: 2,
   timeIn: 3,
   shift: 4,
+  workingHours: 5,
+  overtimeHours: 6,
+  offDayOvertimeHours: 7,
+  payrollTotalGcDay: 8,
+  nightShiftWorkingHours: 9,
+  nightShiftOvertimeHours: 10,
+  nightShiftOffDayWorkingHours: 11,
+  payrollTotalGcNight: 12,
 };
+
+/** Điểm danh: không 6 cột lương (… GC/TC ca đêm, GC ca đêm off) — kết thúc ở ca làm việc (khớp `dropSalaryHoursWidths`). */
+const FULL_ATTENDANCE_ONLY_NO_ACTIONS = {
+  stt: 1,
+  mnv: 2,
+  mvt: 3,
+  fullName: 4,
+  gender: 5,
+  dob: 6,
+  deptCode: 7,
+  dept: 8,
+  timeIn: 9,
+  timeOut: 10,
+  shift: 11,
+};
+const FULL_ATTENDANCE_ONLY_WITH_ACTIONS = {
+  ...FULL_ATTENDANCE_ONLY_NO_ACTIONS,
+  actions: 12,
+};
+const COMPACT_ATTENDANCE_ONLY_NO_ACTIONS = {
+  stt: 1,
+  mnv: 2,
+  mvt: 3,
+  fullName: 4,
+  gender: 5,
+  dept: 6,
+  timeIn: 7,
+  timeOut: 8,
+  shift: 9,
+};
+const COMPACT_ATTENDANCE_ONLY_WITH_ACTIONS = {
+  ...COMPACT_ATTENDANCE_ONLY_NO_ACTIONS,
+  actions: 10,
+};
+const NARROW_ATTENDANCE_ONLY_NO_ACTIONS = {
+  stt: 1,
+  mnv: 2,
+  mvt: 3,
+  fullName: 4,
+  gender: 5,
+  timeIn: 6,
+  timeOut: 7,
+  shift: 8,
+};
+const NARROW_ATTENDANCE_ONLY_WITH_ACTIONS = {
+  ...NARROW_ATTENDANCE_ONLY_NO_ACTIONS,
+  actions: 9,
+};
+const MINIMAL_ATTENDANCE_ONLY_NO_ACTIONS = {
+  mnv: 1,
+  fullName: 2,
+  timeIn: 3,
+  shift: 4,
+};
+const MINIMAL_ATTENDANCE_ONLY_WITH_ACTIONS = {
+  ...MINIMAL_ATTENDANCE_ONLY_NO_ACTIONS,
+  actions: 5,
+};
+
+function normalizePercents(widths) {
+  const sum = widths.reduce((a, b) => a + b, 0);
+  if (sum <= 0) return widths;
+  return widths.map((w) => (w / sum) * 100);
+}
+
+/** Bỏ 6 cột lương (trước actions nếu có) rồi chuẩn hóa 100%. */
+function dropSalaryHoursWidths(widths, showRowModalActions) {
+  if (widths.length === 0) return widths;
+  const copy = [...widths];
+  if (showRowModalActions) {
+    if (copy.length >= 7) copy.splice(copy.length - 7, 6);
+  } else if (copy.length >= 6) {
+    copy.splice(copy.length - 6, 6);
+  }
+  return normalizePercents(copy);
+}
 
 /**
  * Cột grid theo `columnPlan` — khi ô không render, không dùng key đó (compact/ narrow/ minimal bỏ bớt cột).
+ * @param {"attendance"|"payroll"} [tableVariant="attendance"] — payroll: có Giờ công, Giờ TC, TC off, GC/TC ca đêm, GC ca đêm off.
  */
 export function getAttendanceGridColumnStart(
   key,
   columnPlan,
   showRowModalActions,
+  tableVariant = "attendance",
 ) {
+  const payroll = tableVariant === "payroll";
+  if (!payroll) {
+    if (key === "payrollTotalGcDay" || key === "payrollTotalGcNight") {
+      return undefined;
+    }
+    if (
+      key === "workingHours" ||
+      key === "overtimeHours" ||
+      key === "offDayOvertimeHours" ||
+      key === "nightShiftWorkingHours" ||
+      key === "nightShiftOvertimeHours" ||
+      key === "nightShiftOffDayWorkingHours"
+    ) {
+      return undefined;
+    }
+    if (columnPlan === "minimal") {
+      const map = showRowModalActions
+        ? MINIMAL_ATTENDANCE_ONLY_WITH_ACTIONS
+        : MINIMAL_ATTENDANCE_ONLY_NO_ACTIONS;
+      return map[key];
+    }
+    if (columnPlan === "narrow") {
+      const map = showRowModalActions
+        ? NARROW_ATTENDANCE_ONLY_WITH_ACTIONS
+        : NARROW_ATTENDANCE_ONLY_NO_ACTIONS;
+      if (key === "dob" || key === "deptCode" || key === "dept")
+        return undefined;
+      return map[key];
+    }
+    if (columnPlan === "compact") {
+      const map = showRowModalActions
+        ? COMPACT_ATTENDANCE_ONLY_WITH_ACTIONS
+        : COMPACT_ATTENDANCE_ONLY_NO_ACTIONS;
+      if (key === "dob" || key === "deptCode") return undefined;
+      return map[key];
+    }
+    const map = showRowModalActions
+      ? FULL_ATTENDANCE_ONLY_WITH_ACTIONS
+      : FULL_ATTENDANCE_ONLY_NO_ACTIONS;
+    return map[key];
+  }
   if (columnPlan === "minimal") {
     const map = showRowModalActions
       ? ATTENDANCE_GRID_COL_MINIMAL_WITH_ACTIONS
@@ -133,47 +334,67 @@ export function cellClsForAttendanceTable(s) {
 }
 
 /** % cột — khớp `SeasonalStaffAttendance` colgroup/grid. */
-const WIDTHS_WITH_ACTIONS = [7, 5, 5, 22, 5, 7, 5, 13, 10, 5, 10, 6];
-const WIDTHS_NO_ACTIONS = [7, 5, 5, 28, 5, 6, 5, 13, 10, 6, 10];
+const WIDTHS_WITH_ACTIONS = [
+  7, 5, 5, 10, 5, 7, 5, 13, 10, 5, 10, 5, 4, 4, 4, 4, 3, 6,
+];
+const WIDTHS_NO_ACTIONS = [
+  7, 5, 5, 17, 5, 6, 5, 13, 10, 6, 5, 4, 4, 4, 4, 3, 10,
+];
 /** Bỏ ngày sinh + mã BP — compact (870–1279). */
-const WIDTHS_WITH_ACTIONS_COMPACT = [8, 6, 6, 24, 6, 15, 11, 6, 11, 7];
-const WIDTHS_NO_ACTIONS_COMPACT = [8, 6, 6, 30, 6, 15, 11, 7, 11];
+const WIDTHS_WITH_ACTIONS_COMPACT = [
+  8, 6, 6, 11, 6, 15, 11, 6, 11, 5, 5, 4, 4, 4, 3, 7,
+];
+const WIDTHS_NO_ACTIONS_COMPACT = [
+  8, 6, 6, 17, 6, 15, 11, 7, 5, 5, 4, 4, 4, 3, 11,
+];
 /** Thêm bỏ bộ phận — narrow (820–869). */
-const WIDTHS_NARROW_WITH_ACTIONS = [9, 7, 7, 28, 7, 13, 7, 13, 9];
-const WIDTHS_NARROW_NO_ACTIONS = [9, 7, 7, 35, 7, 13, 8, 14];
+const WIDTHS_NARROW_WITH_ACTIONS = [
+  9, 7, 7, 15, 7, 13, 7, 13, 5, 5, 4, 4, 4, 3, 9,
+];
+const WIDTHS_NARROW_NO_ACTIONS = [9, 7, 7, 22, 7, 13, 8, 5, 5, 4, 4, 4, 3, 14];
 /** Chỉ MNV, họ tên, giờ vào, ca, (hành động) — &lt;820px. */
-const WIDTHS_MINIMAL_WITH_ACTIONS = [14, 28, 20, 18, 20];
-const WIDTHS_MINIMAL_NO_ACTIONS = [24, 32, 22, 22];
+const WIDTHS_MINIMAL_WITH_ACTIONS = [10, 18, 12, 12, 8, 8, 5, 5, 4, 3, 18];
+const WIDTHS_MINIMAL_NO_ACTIONS = [16, 16, 14, 12, 8, 5, 5, 4, 3, 14];
 
 /** @param {"full"|"compact"|"narrow"|"minimal"} [columnPlan="full"] */
 export function getAttendanceColWidthPercents(
   showRowModalActions,
   columnPlan = "full",
+  tableVariant = "attendance",
 ) {
+  if (tableVariant === "payroll") {
+    return getPayrollColWidthPercents(showRowModalActions, columnPlan);
+  }
+  let base;
   if (columnPlan === "minimal") {
-    return showRowModalActions
+    base = showRowModalActions
       ? WIDTHS_MINIMAL_WITH_ACTIONS
       : WIDTHS_MINIMAL_NO_ACTIONS;
-  }
-  if (columnPlan === "narrow") {
-    return showRowModalActions
+  } else if (columnPlan === "narrow") {
+    base = showRowModalActions
       ? WIDTHS_NARROW_WITH_ACTIONS
       : WIDTHS_NARROW_NO_ACTIONS;
-  }
-  if (columnPlan === "compact") {
-    return showRowModalActions
+  } else if (columnPlan === "compact") {
+    base = showRowModalActions
       ? WIDTHS_WITH_ACTIONS_COMPACT
       : WIDTHS_NO_ACTIONS_COMPACT;
+  } else {
+    base = showRowModalActions ? WIDTHS_WITH_ACTIONS : WIDTHS_NO_ACTIONS;
   }
-  return showRowModalActions ? WIDTHS_WITH_ACTIONS : WIDTHS_NO_ACTIONS;
+  return dropSalaryHoursWidths(base, showRowModalActions);
 }
 
 /** Chuỗi grid-template-columns — header + hàng virtual dùng chung. */
 export function getAttendanceGridTemplateColumns(
   showRowModalActions,
   columnPlan = "full",
+  tableVariant = "attendance",
 ) {
-  return getAttendanceColWidthPercents(showRowModalActions, columnPlan)
+  return getAttendanceColWidthPercents(
+    showRowModalActions,
+    columnPlan,
+    tableVariant,
+  )
     .map((w) => `${w}%`)
     .join(" ");
 }
@@ -182,8 +403,13 @@ export function getAttendanceGridTemplateColumns(
 export function AttendanceTableColgroup({
   showRowModalActions,
   columnPlan = "full",
+  tableVariant = "attendance",
 }) {
-  const widths = getAttendanceColWidthPercents(showRowModalActions, columnPlan);
+  const widths = getAttendanceColWidthPercents(
+    showRowModalActions,
+    columnPlan,
+    tableVariant,
+  );
   return (
     <colgroup>
       {widths.map((w, i) => (
@@ -250,9 +476,16 @@ export function AttendanceVirtualHeader({
   gridTemplateColumns,
   canDeleteRow = true,
   columnPlan = "full",
+  tableVariant = "attendance",
 }) {
+  const isPayroll = tableVariant === "payroll";
   const gcs = (key) =>
-    getAttendanceGridColumnStart(key, columnPlan, showRowModalActions);
+    getAttendanceGridColumnStart(
+      key,
+      columnPlan,
+      showRowModalActions,
+      tableVariant,
+    );
 
   if (columnPlan === "minimal") {
     return (
@@ -292,6 +525,122 @@ export function AttendanceVirtualHeader({
         >
           {tl("workShift", "Ca làm việc")}
         </div>
+        {isPayroll ? (
+          <>
+            <div
+              role="columnheader"
+              style={{
+                gridColumnStart: gcs("workingHours"),
+                background: "#facc15",
+              }}
+              className="flex min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:px-2 md:py-1 md:text-sm"
+              title={tl(
+                "payrollWorkingHoursHint",
+                "Ngày thường: giờ công theo giờ vào–ra. Ngày «Ngày off» (Điểm danh): cột này «-»; cùng quy tắc giờ công hiển thị ở TC off.",
+              )}
+            >
+              {tl("workingHours", "Giờ công")}
+            </div>
+            <div
+              role="columnheader"
+              style={{
+                gridColumnStart: gcs("overtimeHours"),
+                background: "#fb923c",
+              }}
+              className="flex min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:px-2 md:py-1 md:text-sm"
+              title={tl(
+                "overtimeHoursHint",
+                "Giờ ra sau 17:30: tính từ 17:00, cứ 30 phút = 0,5 giờ tăng ca.",
+              )}
+            >
+              {tl("overtimeHours", "Giờ TC")}
+            </div>
+            <div
+              role="columnheader"
+              style={{
+                gridColumnStart: gcs("offDayOvertimeHours"),
+                background: "#c4b5fd",
+              }}
+              className="flex min-w-0 items-center justify-center py-0.5 px-1 text-center text-[10px] font-extrabold uppercase leading-tight tracking-wide text-gray-900 md:px-2 md:py-1 md:text-sm"
+              title={tl(
+                "payrollOffDayTcHint",
+                "Khi «Ngày off»: giờ làm quy đổi theo quy tắc Giờ công (cột Giờ công = «-»).",
+              )}
+            >
+              {tl("offDayOvertimeHours", "TC off")}
+            </div>
+            <div
+              role="columnheader"
+              style={{
+                gridColumnStart: gcs("payrollTotalGcDay"),
+                background: "#38bdf8",
+              }}
+              className="flex min-w-0 items-center justify-center py-0.5 px-1 text-center text-[10px] font-extrabold uppercase leading-tight tracking-wide text-gray-900 md:px-2 md:py-1 md:text-sm"
+              title={tl(
+                "payrollTotalGcDayHint",
+                "Tổng: Giờ công + Giờ TC + TC off (không gồm cột ca đêm).",
+              )}
+            >
+              {tl("payrollTotalGcDay", "Tổng GC")}
+            </div>
+            <div
+              role="columnheader"
+              style={{
+                gridColumnStart: gcs("nightShiftWorkingHours"),
+                background: "#2dd4bf",
+              }}
+              className="flex min-w-0 items-center justify-center py-0.5 px-1 text-center text-[10px] font-extrabold uppercase leading-tight tracking-wide text-gray-900 md:px-2 md:py-1 md:text-sm"
+              title={tl(
+                "nightShiftWorkingHoursHint",
+                "Ca đêm: từ giờ vào đến mốc 05:00 (cùng ngày nếu vào trước 05:00, không thì 05:00 hôm sau), tối đa 8 giờ.",
+              )}
+            >
+              {tl("nightShiftWorkingHours", "GC ca đêm")}
+            </div>
+            <div
+              role="columnheader"
+              style={{
+                gridColumnStart: gcs("nightShiftOvertimeHours"),
+                background: "#e879f9",
+              }}
+              className="flex min-w-0 items-center justify-center py-0.5 px-1 text-center text-[10px] font-extrabold uppercase leading-tight tracking-wide text-gray-900 md:px-2 md:py-1 md:text-sm"
+              title={tl(
+                "nightShiftOvertimeHoursHint",
+                "Ca đêm: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ TC.",
+              )}
+            >
+              {tl("nightShiftOvertimeHours", "TC ca đêm")}
+            </div>
+            <div
+              role="columnheader"
+              style={{
+                gridColumnStart: gcs("nightShiftOffDayWorkingHours"),
+                background: "#6ee7b7",
+              }}
+              className="flex min-w-0 items-center justify-center py-0.5 px-1 text-center text-[10px] font-extrabold uppercase leading-tight tracking-wide text-gray-900 md:px-2 md:py-1 md:text-sm"
+              title={tl(
+                "nightShiftOffDayWorkingHoursHint",
+                "Khi «Ngày off» và ca «Ca đêm»: cùng quy tắc GC ca đêm (đến mốc 05:00, tối đa 8h). Ngày không off thì trống.",
+              )}
+            >
+              {tl("nightShiftOffDayWorkingHours", "GC ca đêm off")}
+            </div>
+            <div
+              role="columnheader"
+              style={{
+                gridColumnStart: gcs("payrollTotalGcNight"),
+                background: "#818cf8",
+              }}
+              className="flex min-w-0 items-center justify-center py-0.5 px-1 text-center text-[10px] font-extrabold uppercase leading-tight tracking-wide text-gray-900 md:px-2 md:py-1 md:text-sm"
+              title={tl(
+                "payrollTotalGcNightHint",
+                "Tổng khối ca đêm: GC (đến mốc 05:00) + TC ca đêm (sau mốc 05:00) — cùng hai cột GC/TC ca đêm.",
+              )}
+            >
+              {tl("payrollTotalGcNight", "Tổng GC ca đêm")}
+            </div>
+          </>
+        ) : null}
         {showRowModalActions ? (
           <div
             role="columnheader"
@@ -402,6 +751,122 @@ export function AttendanceVirtualHeader({
       >
         {tl("workShift", "Ca làm việc")}
       </div>
+      {isPayroll ? (
+        <>
+          <div
+            role="columnheader"
+            style={{
+              gridColumnStart: gcs("workingHours"),
+              background: "#facc15",
+            }}
+            className="hidden min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:flex md:px-2 md:py-1 md:text-sm"
+            title={tl(
+              "payrollWorkingHoursHint",
+              "Ngày thường: giờ công theo giờ vào–ra. Ngày «Ngày off» (Điểm danh): cột này «-»; cùng quy tắc giờ công hiển thị ở TC off.",
+            )}
+          >
+            {tl("workingHours", "Giờ công")}
+          </div>
+          <div
+            role="columnheader"
+            style={{
+              gridColumnStart: gcs("overtimeHours"),
+              background: "#fb923c",
+            }}
+            className="hidden min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:flex md:px-2 md:py-1 md:text-sm"
+            title={tl(
+              "overtimeHoursHint",
+              "Giờ ra sau 17:30: tính từ 17:00, cứ 30 phút = 0,5 giờ tăng ca.",
+            )}
+          >
+            {tl("overtimeHours", "Giờ TC")}
+          </div>
+          <div
+            role="columnheader"
+            style={{
+              gridColumnStart: gcs("offDayOvertimeHours"),
+              background: "#c4b5fd",
+            }}
+            className="hidden min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:flex md:px-2 md:py-1 md:text-sm"
+            title={tl(
+              "payrollOffDayTcHint",
+              "Khi «Ngày off»: giờ làm quy đổi theo quy tắc Giờ công (cột Giờ công = «-»).",
+            )}
+          >
+            {tl("offDayOvertimeHours", "TC off")}
+          </div>
+          <div
+            role="columnheader"
+            style={{
+              gridColumnStart: gcs("payrollTotalGcDay"),
+              background: "#38bdf8",
+            }}
+            className="hidden min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:flex md:px-2 md:py-1 md:text-sm"
+            title={tl(
+              "payrollTotalGcDayHint",
+              "Tổng: Giờ công + Giờ TC + TC off (không gồm cột ca đêm).",
+            )}
+          >
+            {tl("payrollTotalGcDay", "Tổng GC")}
+          </div>
+          <div
+            role="columnheader"
+            style={{
+              gridColumnStart: gcs("nightShiftWorkingHours"),
+              background: "#2dd4bf",
+            }}
+            className="hidden min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:flex md:px-2 md:py-1 md:text-sm"
+            title={tl(
+              "nightShiftWorkingHoursHint",
+              "Ca đêm: từ giờ vào đến mốc 05:00 (cùng ngày nếu vào trước 05:00, không thì 05:00 hôm sau), tối đa 8 giờ.",
+            )}
+          >
+            {tl("nightShiftWorkingHours", "GC ca đêm")}
+          </div>
+          <div
+            role="columnheader"
+            style={{
+              gridColumnStart: gcs("nightShiftOvertimeHours"),
+              background: "#e879f9",
+            }}
+            className="hidden min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:flex md:px-2 md:py-1 md:text-sm"
+            title={tl(
+              "nightShiftOvertimeHoursHint",
+              "Ca đêm: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ TC.",
+            )}
+          >
+            {tl("nightShiftOvertimeHours", "TC ca đêm")}
+          </div>
+          <div
+            role="columnheader"
+            style={{
+              gridColumnStart: gcs("nightShiftOffDayWorkingHours"),
+              background: "#6ee7b7",
+            }}
+            className="hidden min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:flex md:px-2 md:py-1 md:text-sm"
+            title={tl(
+              "nightShiftOffDayWorkingHoursHint",
+              "Khi «Ngày off» và ca «Ca đêm»: cùng quy tắc GC ca đêm (đến mốc 05:00, tối đa 8h). Ngày không off thì trống.",
+            )}
+          >
+            {tl("nightShiftOffDayWorkingHours", "GC ca đêm off")}
+          </div>
+          <div
+            role="columnheader"
+            style={{
+              gridColumnStart: gcs("payrollTotalGcNight"),
+              background: "#818cf8",
+            }}
+            className="hidden min-w-0 items-center justify-center py-0.5 px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:flex md:px-2 md:py-1 md:text-sm"
+            title={tl(
+              "payrollTotalGcNightHint",
+              "Tổng khối ca đêm: GC (đến mốc 05:00) + TC ca đêm (sau mốc 05:00) — cùng hai cột GC/TC ca đêm.",
+            )}
+          >
+            {tl("payrollTotalGcNight", "Tổng GC ca đêm")}
+          </div>
+        </>
+      ) : null}
       {showRowModalActions ? (
         <div
           role="columnheader"
@@ -424,7 +889,9 @@ export function AttendanceTableThead({
   stickyHeader,
   canDeleteRow = true,
   columnPlan = "full",
+  tableVariant = "attendance",
 }) {
+  const isPayroll = tableVariant === "payroll";
   if (columnPlan === "minimal") {
     return (
       <thead
@@ -451,6 +918,90 @@ export function AttendanceTableThead({
           <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
             {tl("workShift", "Ca làm việc")}
           </th>
+          {isPayroll ? (
+            <>
+              <th
+                className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold uppercase tracking-wide text-center text-gray-900"
+                style={{ background: "#facc15" }}
+                title={tl(
+                  "payrollWorkingHoursHint",
+                  "Ngày thường: giờ công theo giờ vào–ra. Ngày «Ngày off» (Điểm danh): cột này «-»; cùng quy tắc giờ công hiển thị ở TC off.",
+                )}
+              >
+                {tl("workingHours", "Giờ công")}
+              </th>
+              <th
+                className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold uppercase tracking-wide text-center text-gray-900"
+                style={{ background: "#fb923c" }}
+                title={tl(
+                  "overtimeHoursHint",
+                  "Giờ ra sau 17:30: tính từ 17:00, cứ 30 phút = 0,5 giờ tăng ca.",
+                )}
+              >
+                {tl("overtimeHours", "Giờ TC")}
+              </th>
+              <th
+                className="px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold uppercase tracking-wide text-center leading-tight text-gray-900"
+                style={{ background: "#c4b5fd" }}
+                title={tl(
+                  "payrollOffDayTcHint",
+                  "Khi «Ngày off»: giờ làm quy đổi theo quy tắc Giờ công (cột Giờ công = «-»).",
+                )}
+              >
+                {tl("offDayOvertimeHours", "TC off")}
+              </th>
+              <th
+                className="px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold uppercase tracking-wide text-center leading-tight text-gray-900"
+                style={{ background: "#38bdf8" }}
+                title={tl(
+                  "payrollTotalGcDayHint",
+                  "Tổng: Giờ công + Giờ TC + TC off (không gồm cột ca đêm).",
+                )}
+              >
+                {tl("payrollTotalGcDay", "Tổng GC")}
+              </th>
+              <th
+                className="px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold uppercase tracking-wide text-center leading-tight text-gray-900"
+                style={{ background: "#2dd4bf" }}
+                title={tl(
+                  "nightShiftWorkingHoursHint",
+                  "Ca đêm: từ giờ vào đến mốc 05:00 (cùng ngày nếu vào trước 05:00, không thì 05:00 hôm sau), tối đa 8 giờ.",
+                )}
+              >
+                {tl("nightShiftWorkingHours", "GC ca đêm")}
+              </th>
+              <th
+                className="px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold uppercase tracking-wide text-center leading-tight text-gray-900"
+                style={{ background: "#e879f9" }}
+                title={tl(
+                  "nightShiftOvertimeHoursHint",
+                  "Ca đêm: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ TC.",
+                )}
+              >
+                {tl("nightShiftOvertimeHours", "TC ca đêm")}
+              </th>
+              <th
+                className="px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold uppercase tracking-wide text-center leading-tight text-gray-900"
+                style={{ background: "#6ee7b7" }}
+                title={tl(
+                  "nightShiftOffDayWorkingHoursHint",
+                  "Khi «Ngày off» và ca «Ca đêm»: cùng quy tắc GC ca đêm (đến mốc 05:00, tối đa 8h). Ngày không off thì trống.",
+                )}
+              >
+                {tl("nightShiftOffDayWorkingHours", "GC ca đêm off")}
+              </th>
+              <th
+                className="px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold uppercase tracking-wide text-center leading-tight text-gray-900"
+                style={{ background: "#818cf8" }}
+                title={tl(
+                  "payrollTotalGcNightHint",
+                  "Tổng khối ca đêm: GC (đến mốc 05:00) + TC ca đêm (sau mốc 05:00) — cùng hai cột GC/TC ca đêm.",
+                )}
+              >
+                {tl("payrollTotalGcNight", "Tổng GC ca đêm")}
+              </th>
+            </>
+          ) : null}
           {showRowModalActions && (
             <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
               {canDeleteRow
@@ -550,6 +1101,106 @@ export function AttendanceTableThead({
         >
           {tl("workShift", "Ca làm việc")}
         </th>
+        {isPayroll ? (
+          <>
+            <th
+              className={cellClsForAttendanceTable(
+                "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold uppercase tracking-wide text-center text-gray-900",
+              )}
+              style={{ background: "#facc15" }}
+              title={tl(
+                "payrollWorkingHoursHint",
+                "Ngày thường: giờ công theo giờ vào–ra. Ngày «Ngày off» (Điểm danh): cột này «-»; cùng quy tắc giờ công hiển thị ở TC off.",
+              )}
+            >
+              {tl("workingHours", "Giờ công")}
+            </th>
+            <th
+              className={cellClsForAttendanceTable(
+                "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold uppercase tracking-wide text-center text-gray-900",
+              )}
+              style={{ background: "#fb923c" }}
+              title={tl(
+                "overtimeHoursHint",
+                "Giờ ra sau 17:30: tính từ 17:00, cứ 30 phút = 0,5 giờ tăng ca.",
+              )}
+            >
+              {tl("overtimeHours", "Giờ TC")}
+            </th>
+            <th
+              className={cellClsForAttendanceTable(
+                "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold uppercase tracking-wide text-center text-gray-900",
+              )}
+              style={{ background: "#c4b5fd" }}
+              title={tl(
+                "payrollOffDayTcHint",
+                "Khi «Ngày off»: giờ làm quy đổi theo quy tắc Giờ công (cột Giờ công = «-»).",
+              )}
+            >
+              {tl("offDayOvertimeHours", "TC off")}
+            </th>
+            <th
+              className={cellClsForAttendanceTable(
+                "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold uppercase tracking-wide text-center text-gray-900",
+              )}
+              style={{ background: "#38bdf8" }}
+              title={tl(
+                "payrollTotalGcDayHint",
+                "Tổng: Giờ công + Giờ TC + TC off (không gồm cột ca đêm).",
+              )}
+            >
+              {tl("payrollTotalGcDay", "Tổng GC")}
+            </th>
+            <th
+              className={cellClsForAttendanceTable(
+                "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold uppercase tracking-wide text-center text-gray-900",
+              )}
+              style={{ background: "#2dd4bf" }}
+              title={tl(
+                "nightShiftWorkingHoursHint",
+                "Ca đêm: từ giờ vào đến mốc 05:00 (cùng ngày nếu vào trước 05:00, không thì 05:00 hôm sau), tối đa 8 giờ.",
+              )}
+            >
+              {tl("nightShiftWorkingHours", "GC ca đêm")}
+            </th>
+            <th
+              className={cellClsForAttendanceTable(
+                "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold uppercase tracking-wide text-center text-gray-900",
+              )}
+              style={{ background: "#e879f9" }}
+              title={tl(
+                "nightShiftOvertimeHoursHint",
+                "Ca đêm: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ TC.",
+              )}
+            >
+              {tl("nightShiftOvertimeHours", "TC ca đêm")}
+            </th>
+            <th
+              className={cellClsForAttendanceTable(
+                "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold uppercase tracking-wide text-center text-gray-900",
+              )}
+              style={{ background: "#6ee7b7" }}
+              title={tl(
+                "nightShiftOffDayWorkingHoursHint",
+                "Khi «Ngày off» và ca «Ca đêm»: cùng quy tắc GC ca đêm (đến mốc 05:00, tối đa 8h). Ngày không off thì trống.",
+              )}
+            >
+              {tl("nightShiftOffDayWorkingHours", "GC ca đêm off")}
+            </th>
+            <th
+              className={cellClsForAttendanceTable(
+                "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold uppercase tracking-wide text-center text-gray-900",
+              )}
+              style={{ background: "#818cf8" }}
+              title={tl(
+                "payrollTotalGcNightHint",
+                "Tổng khối ca đêm: GC (đến mốc 05:00) + TC ca đêm (sau mốc 05:00) — cùng hai cột GC/TC ca đêm.",
+              )}
+            >
+              {tl("payrollTotalGcNight", "Tổng GC ca đêm")}
+            </th>
+          </>
+        ) : null}
         {showRowModalActions && (
           <th
             className={cellClsForAttendanceTable(
@@ -593,7 +1244,14 @@ function AttendanceTableRow({
   canDeleteRow = true,
   measureElementRef,
   gridTemplateColumns,
+  isOffDay = false,
+  tableVariant = "attendance",
 }) {
+  const isPayroll = tableVariant === "payroll";
+  /** Bảng lương: cỡ nhỏ hơn ô MNV; `payroll-tight-time` + payrollTableCompact.css */
+  const payrollTimeShiftFont = isPayroll
+    ? "payroll-tight-time leading-tight"
+    : "text-xs md:text-sm";
   const isGrid = virtualRow != null;
   const isMinimal = columnPlan === "minimal";
   const showBirthAndDeptCode = columnPlan === "full";
@@ -604,7 +1262,21 @@ function AttendanceTableRow({
     isGrid ? cellClsForGrid(true, s, isMinimal) : cellClsForAttendanceTable(s);
 
   const gcs = (key) =>
-    getAttendanceGridColumnStart(key, columnPlan, showRowModalActions);
+    getAttendanceGridColumnStart(
+      key,
+      columnPlan,
+      showRowModalActions,
+      tableVariant,
+    );
+
+  const gioVaoTrimmed =
+    emp.gioVao != null && String(emp.gioVao).trim() !== ""
+      ? String(emp.gioVao).trim()
+      : "";
+  const caLamViecTrimmed =
+    emp.caLamViec != null && String(emp.caLamViec).trim() !== ""
+      ? String(emp.caLamViec).trim()
+      : "";
 
   const rowStyle = isGrid
     ? {
@@ -651,7 +1323,7 @@ function AttendanceTableRow({
           "px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center font-bold text-blue-600 whitespace-nowrap",
         )}
       >
-        {emp.mnv}
+        {payrollDash(emp.mnv, isPayroll)}
       </Cell>
       {!isMinimal ? (
         <Cell
@@ -661,7 +1333,7 @@ function AttendanceTableRow({
             "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-semibold text-gray-700",
           )}
         >
-          {emp.mvt}
+          {payrollDash(emp.mvt, isPayroll)}
         </Cell>
       ) : null}
       <Cell
@@ -671,7 +1343,7 @@ function AttendanceTableRow({
           "px-1 md:px-2 py-0.5 md:py-1 text-xs md:text-sm text-left md:text-center font-bold text-gray-800 break-words whitespace-normal leading-tight",
         )}
       >
-        {emp.hoVaTen}
+        {payrollDash(emp.hoVaTen, isPayroll)}
       </Cell>
       {!isMinimal ? (
         <Cell
@@ -681,15 +1353,19 @@ function AttendanceTableRow({
             "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center",
           )}
         >
-          <span
-            className={`inline-flex items-center justify-center px-1 py-px text-[10px] font-bold leading-none rounded-full ${
-              emp.gioiTinh === "YES"
-                ? "bg-pink-100 text-pink-700"
-                : "bg-blue-100 text-blue-700"
-            }`}
-          >
-            {emp.gioiTinh}
-          </span>
+          {isPayroll && !String(emp.gioiTinh ?? "").trim() ? (
+            <span className="text-gray-500 tabular-nums">{PAYROLL_EMPTY_CELL}</span>
+          ) : (
+            <span
+              className={`inline-flex items-center justify-center px-1 py-px text-[10px] font-bold leading-none rounded-full ${
+                emp.gioiTinh === "YES"
+                  ? "bg-pink-100 text-pink-700"
+                  : "bg-blue-100 text-blue-700"
+              }`}
+            >
+              {payrollDash(emp.gioiTinh, isPayroll)}
+            </span>
+          )}
         </Cell>
       ) : null}
       {showBirthAndDeptCode ? (
@@ -701,7 +1377,7 @@ function AttendanceTableRow({
               "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-semibold text-gray-700",
             )}
           >
-            {emp.ngayThangNamSinh}
+            {payrollDash(emp.ngayThangNamSinh, isPayroll)}
           </Cell>
           <Cell
             role={isGrid ? "cell" : undefined}
@@ -710,7 +1386,7 @@ function AttendanceTableRow({
               "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-bold text-gray-700",
             )}
           >
-            {emp.maBoPhan}
+            {payrollDash(emp.maBoPhan, isPayroll)}
           </Cell>
         </>
       ) : null}
@@ -722,25 +1398,43 @@ function AttendanceTableRow({
             "hidden md:table-cell px-1.5 md:px-2 py-0.5 md:py-1 text-sm text-center font-semibold text-gray-700",
           )}
         >
-          {emp.boPhan}
+          {payrollDash(emp.boPhan, isPayroll)}
         </Cell>
       ) : null}
       <Cell
         role={isGrid ? "cell" : undefined}
         style={attendanceGridCellStyle(isGrid, gcs("timeIn"))}
         className={cellCls(
-          "min-w-0 px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center",
+          `min-w-0 px-1 md:px-1.5 py-0.5 md:py-1 ${payrollTimeShiftFont} text-center`,
         )}
       >
-        {emp.gioVao ? (
+        {gioVaoTrimmed ? (
           <span
-            className={`font-bold text-sm md:text-base ${
-              /^\d{1,2}:\d{2}$/.test(emp.gioVao)
-                ? "text-green-600"
-                : "text-red-600"
-            }`}
+            className={
+              isPayroll
+                ? `font-bold ${payrollTimeShiftFont} ${
+                    /^\d{1,2}:\d{2}$/.test(gioVaoTrimmed)
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`
+                : `font-bold text-sm md:text-base ${
+                    /^\d{1,2}:\d{2}$/.test(gioVaoTrimmed)
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`
+            }
           >
-            {emp.gioVao}
+            {gioVaoTrimmed}
+          </span>
+        ) : canEdit && isPayroll ? (
+          <span
+            className="text-gray-500 italic text-xs"
+            title={tl(
+              "gioVaoEditOnlyViaModalHint",
+              "Chưa nhập giờ vào — mở form qua nút Sửa (cột thao tác).",
+            )}
+          >
+            {tl("emptyUseEditButton", PAYROLL_EMPTY_CELL)}
           </span>
         ) : canEdit ? (
           <div className="mx-auto flex w-fit max-w-full min-w-0 items-center justify-center gap-1">
@@ -781,10 +1475,12 @@ function AttendanceTableRow({
           </div>
         ) : user ? (
           <span className="text-gray-400 italic text-xs">
-            🔒 {tl("cannotEdit", "Không được phép chỉnh sửa")}
+            {tl("cannotEdit", "Không được phép chỉnh sửa")}
           </span>
         ) : (
-          <span className="text-gray-400 italic">--</span>
+          <span className="text-gray-400 italic">
+            {isPayroll ? PAYROLL_EMPTY_CELL : "--"}
+          </span>
         )}
       </Cell>
       {!isMinimal ? (
@@ -792,22 +1488,46 @@ function AttendanceTableRow({
           role={isGrid ? "cell" : undefined}
           style={attendanceGridCellStyle(isGrid, gcs("timeOut"))}
           className={cellCls(
-            "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0",
+            `hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 ${payrollTimeShiftFont} text-center min-w-0`,
           )}
         >
-          <span className="text-red-600 font-bold text-base">{emp.gioRa}</span>
+          <span
+            className={
+              isPayroll
+                ? `text-red-600 font-bold ${payrollTimeShiftFont}`
+                : "text-red-600 font-bold text-base"
+            }
+          >
+            {payrollDash(emp.gioRa, isPayroll)}
+          </span>
         </Cell>
       ) : null}
       <Cell
         role={isGrid ? "cell" : undefined}
         style={attendanceGridCellStyle(isGrid, gcs("shift"))}
         className={cellCls(
-          "hidden md:table-cell px-px md:px-0.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0",
+          `hidden md:table-cell px-px md:px-0.5 py-0.5 md:py-1 ${payrollTimeShiftFont} text-center min-w-0`,
         )}
       >
-        {emp.caLamViec ? (
-          <span className="text-blue-600 font-bold text-base">
-            {emp.caLamViec}
+        {caLamViecTrimmed ? (
+          <span
+            className={
+              isPayroll
+                ? `text-blue-600 font-bold ${payrollTimeShiftFont}`
+                : "text-blue-600 font-bold text-base"
+            }
+          >
+            {caLamViecTrimmed}
+          </span>
+        ) : canEdit && isPayroll ? (
+          <span
+            className="text-gray-500 italic text-xs"
+            title={tl(
+              "shiftEditOnlyViaModalHint",
+              "Chưa chọn ca — mở form qua nút Sửa (cột thao tác).",
+            )}
+          >
+            {tl("emptyUseEditButton", PAYROLL_EMPTY_CELL)}
           </span>
         ) : canEdit ? (
           <div className="mx-auto flex w-fit max-w-full min-w-0 items-center justify-center gap-0.5">
@@ -818,18 +1538,11 @@ function AttendanceTableRow({
               onChange={(e) => onCaLamChange(emp.id, e.target.value)}
             >
               <option value="">{tl("chooseShift", "Chọn ca")}</option>
-              <option value="Ca đêm" className="text-xs">
-                Ca đêm
-              </option>
-              <option value="Ca 1" className="text-xs">
-                Ca 1
-              </option>
-              <option value="Ca 2" className="text-xs">
-                Ca 2
-              </option>
-              <option value="Ca hành chính" className="text-xs">
-                Hành chính
-              </option>
+              {ATTENDANCE_CA_LAM_VIEC_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value} className="text-xs">
+                  {label}
+                </option>
+              ))}
             </select>
             {editingCaLamViecValue && (
               <button
@@ -851,12 +1564,182 @@ function AttendanceTableRow({
           </div>
         ) : user ? (
           <span className="text-gray-400 italic text-xs">
-            🔒 {tl("cannotEdit", "Không được phân quyền")}
+            {tl("cannotEdit", "Không được phân quyền")}
           </span>
         ) : (
-          <span className="text-gray-400 italic">--</span>
+          <span className="text-gray-400 italic">
+            {isPayroll ? PAYROLL_EMPTY_CELL : "--"}
+          </span>
         )}
       </Cell>
+      {isPayroll ? (
+        <>
+          <Cell
+            role={isGrid ? "cell" : undefined}
+            style={attendanceGridCellStyle(isGrid, gcs("workingHours"))}
+            className={cellCls(
+              "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 bg-amber-50/90 dark:bg-amber-950/25",
+            )}
+            title={tl(
+              "payrollWorkingHoursHint",
+              "Ngày thường: giờ công theo giờ vào–ra. Ngày «Ngày off» (Điểm danh): cột này «-»; cùng quy tắc giờ công hiển thị ở TC off.",
+            )}
+          >
+            <span className="font-bold tabular-nums text-amber-900 dark:text-amber-100">
+              {formatPayrollTableWorkingHoursCell(
+                emp.gioVao,
+                emp.gioRa,
+                isOffDay,
+                emp.caLamViec,
+              )}
+            </span>
+          </Cell>
+          <Cell
+            role={isGrid ? "cell" : undefined}
+            style={attendanceGridCellStyle(isGrid, gcs("overtimeHours"))}
+            className={cellCls(
+              "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 bg-orange-50/90 dark:bg-orange-950/25",
+            )}
+            title={tl(
+              "overtimeHoursHint",
+              "Giờ ra sau 17:30: tính từ 17:00, cứ 30 phút = 0,5 giờ tăng ca.",
+            )}
+          >
+            <span className="font-bold tabular-nums text-orange-900 dark:text-orange-100">
+              {formatOvertimeHoursLabel(emp.gioRa)}
+            </span>
+          </Cell>
+          <Cell
+            role={isGrid ? "cell" : undefined}
+            style={attendanceGridCellStyle(isGrid, gcs("offDayOvertimeHours"))}
+            className={cellCls(
+              "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 bg-violet-50/90 dark:bg-violet-950/25",
+            )}
+            title={tl(
+              "payrollOffDayTcHint",
+              "Khi «Ngày off»: giờ làm quy đổi theo quy tắc Giờ công (cột Giờ công = «-»).",
+            )}
+          >
+            <span className="font-bold tabular-nums text-violet-900 dark:text-violet-100">
+              {formatPayrollTableOffDayTcCell(
+                emp.gioVao,
+                emp.gioRa,
+                isOffDay,
+                emp.caLamViec,
+              )}
+            </span>
+          </Cell>
+          <Cell
+            role={isGrid ? "cell" : undefined}
+            style={attendanceGridCellStyle(isGrid, gcs("payrollTotalGcDay"))}
+            className={cellCls(
+              "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 bg-sky-100/90 dark:bg-sky-950/30",
+            )}
+            title={tl(
+              "payrollTotalGcDayHint",
+              "Tổng: Giờ công + Giờ TC + TC off (không gồm cột ca đêm).",
+            )}
+          >
+            <span className="font-bold tabular-nums text-sky-950 dark:text-sky-100">
+              {formatPayrollTableTotalDayGcCell(
+                emp.gioVao,
+                emp.gioRa,
+                isOffDay,
+                emp.caLamViec,
+              )}
+            </span>
+          </Cell>
+          <Cell
+            role={isGrid ? "cell" : undefined}
+            style={attendanceGridCellStyle(
+              isGrid,
+              gcs("nightShiftWorkingHours"),
+            )}
+            className={cellCls(
+              "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 bg-teal-50/90 dark:bg-teal-950/25",
+            )}
+            title={tl(
+              "nightShiftWorkingHoursHint",
+              "Ca đêm: từ giờ vào đến mốc 05:00 (cùng ngày nếu vào trước 05:00, không thì 05:00 hôm sau), tối đa 8 giờ.",
+            )}
+          >
+            <span className="font-bold tabular-nums text-teal-900 dark:text-teal-100">
+              {formatPayrollTableNightShiftWorkingCell(
+                emp.gioVao,
+                emp.gioRa,
+                isOffDay,
+                emp.caLamViec,
+              )}
+            </span>
+          </Cell>
+          <Cell
+            role={isGrid ? "cell" : undefined}
+            style={attendanceGridCellStyle(
+              isGrid,
+              gcs("nightShiftOvertimeHours"),
+            )}
+            className={cellCls(
+              "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 bg-fuchsia-50/90 dark:bg-fuchsia-950/25",
+            )}
+            title={tl(
+              "nightShiftOvertimeHoursHint",
+              "Ca đêm: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ TC.",
+            )}
+          >
+            <span className="font-bold tabular-nums text-fuchsia-900 dark:text-fuchsia-100">
+              {formatPayrollTableNightShiftOvertimeCell(
+                emp.gioVao,
+                emp.gioRa,
+                isOffDay,
+                emp.caLamViec,
+              )}
+            </span>
+          </Cell>
+          <Cell
+            role={isGrid ? "cell" : undefined}
+            style={attendanceGridCellStyle(
+              isGrid,
+              gcs("nightShiftOffDayWorkingHours"),
+            )}
+            className={cellCls(
+              "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 bg-emerald-50/90 dark:bg-emerald-950/25",
+            )}
+            title={tl(
+              "nightShiftOffDayWorkingHoursHint",
+              "Khi «Ngày off» và ca «Ca đêm»: cùng quy tắc GC ca đêm (đến mốc 05:00, tối đa 8h). Ngày không off thì trống.",
+            )}
+          >
+            <span className="font-bold tabular-nums text-emerald-900 dark:text-emerald-100">
+              {formatPayrollTableNightShiftOffDayWorkingCell(
+                emp.gioVao,
+                emp.gioRa,
+                isOffDay,
+                emp.caLamViec,
+              )}
+            </span>
+          </Cell>
+          <Cell
+            role={isGrid ? "cell" : undefined}
+            style={attendanceGridCellStyle(isGrid, gcs("payrollTotalGcNight"))}
+            className={cellCls(
+              "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 bg-indigo-100/90 dark:bg-indigo-950/30",
+            )}
+            title={tl(
+              "payrollTotalGcNightHint",
+              "Tổng khối ca đêm: GC (đến mốc 05:00) + TC ca đêm (sau mốc 05:00) — cùng hai cột GC/TC ca đêm.",
+            )}
+          >
+            <span className="font-bold tabular-nums text-indigo-950 dark:text-indigo-100">
+              {formatPayrollTableTotalNightGcCell(
+                emp.gioVao,
+                emp.gioRa,
+                isOffDay,
+                emp.caLamViec,
+              )}
+            </span>
+          </Cell>
+        </>
+      ) : null}
       {showRowModalActions && (
         <Cell
           role={isGrid ? "cell" : undefined}
@@ -885,7 +1768,9 @@ function AttendanceTableRow({
               ) : null}
             </div>
           ) : (
-            <span className="text-gray-300 text-xs">—</span>
+            <span className="text-gray-300 text-xs">
+              {isPayroll ? PAYROLL_EMPTY_CELL : "—"}
+            </span>
           )}
         </Cell>
       )}
@@ -926,7 +1811,9 @@ function propsAreEqual(prev, next) {
     prev.onDelete === next.onDelete &&
     prev.canDeleteRow === next.canDeleteRow &&
     prev.measureElementRef === next.measureElementRef &&
-    prev.gridTemplateColumns === next.gridTemplateColumns
+    prev.gridTemplateColumns === next.gridTemplateColumns &&
+    prev.isOffDay === next.isOffDay &&
+    prev.tableVariant === next.tableVariant
   );
 }
 

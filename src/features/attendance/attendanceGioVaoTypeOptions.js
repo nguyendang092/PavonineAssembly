@@ -5,20 +5,41 @@
  */
 
 export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = [
-  { value: "Có đi làm", shortLabel: "Có", comboStatKey: "coDiLam" },
+  { value: "Đi làm", shortLabel: "Đi làm", comboStatKey: "coDiLam" },
   { value: "Vào trễ", shortLabel: "Vào trễ", comboStatKey: "late" },
-  { value: "Phép năm", shortLabel: "PN", comboStatKey: "annualLeave" },
-  { value: "1/2 Phép năm", shortLabel: "1/2 PN", comboStatKey: "annualLeave" },
-  { value: "Không lương", shortLabel: "KL", comboStatKey: "unpaidLeave" },
-  { value: "Không phép", shortLabel: "KP", comboStatKey: "noPermit" },
-  { value: "Thai sản", shortLabel: "TS", comboStatKey: "maternity" },
-  { value: "Phép ốm", shortLabel: "PO", comboStatKey: "sickLeave" },
-  { value: "Tai nạn", shortLabel: "TN", comboStatKey: "laborAccident" },
-  { value: "Phép cưới", shortLabel: "PC", comboStatKey: "weddingLeave" },
-  { value: "Phép tang", shortLabel: "PT", comboStatKey: "funeralLeave" },
-  { value: "Dưỡng sức", shortLabel: "DS", comboStatKey: "recuperationLeave" },
-  { value: "Phép công tác", shortLabel: "PCT", comboStatKey: "annualLeave" },
-  { value: "Nghỉ việc", shortLabel: "NV", comboStatKey: "resignedLeave" },
+  { value: "Phép năm", shortLabel: "Phép năm", comboStatKey: "annualLeave" },
+  {
+    value: "1/2 Phép năm",
+    shortLabel: "1/2 Phép năm",
+    comboStatKey: "annualLeave",
+  },
+  {
+    value: "Không lương",
+    shortLabel: "Không lương",
+    comboStatKey: "unpaidLeave",
+  },
+  { value: "Không phép", shortLabel: "Không phép", comboStatKey: "noPermit" },
+  { value: "Thai sản", shortLabel: "Thai sản", comboStatKey: "maternity" },
+  { value: "Phép ốm", shortLabel: "Phép ốm", comboStatKey: "sickLeave" },
+  { value: "Tai nạn", shortLabel: "Tai nạn", comboStatKey: "laborAccident" },
+  { value: "Phép cưới", shortLabel: "Phép cưới", comboStatKey: "weddingLeave" },
+  /** `value` = mã lưu DB / in biểu (PT); `shortLabel` = tên hiển thị */
+  { value: "PT", shortLabel: "Phép tang", comboStatKey: "funeralLeave" },
+  {
+    value: "Dưỡng sức",
+    shortLabel: "Dưỡng sức",
+    comboStatKey: "recuperationLeave",
+  },
+  {
+    value: "Công tác",
+    shortLabel: "Công tác",
+    comboStatKey: "annualLeave",
+  },
+  {
+    value: "Nghỉ việc",
+    shortLabel: "Nghỉ việc",
+    comboStatKey: "resignedLeave",
+  },
 ];
 
 /** Gập dấu / khoảng trắng — dùng khớp nhập tay, Excel, NBSP */
@@ -37,7 +58,8 @@ export function foldGioVaoCompare(s) {
 export const ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH = [
   ...ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
 ].sort(
-  (a, b) => foldGioVaoCompare(b.value).length - foldGioVaoCompare(a.value).length,
+  (a, b) =>
+    foldGioVaoCompare(b.value).length - foldGioVaoCompare(a.value).length,
 );
 
 /**
