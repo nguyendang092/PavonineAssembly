@@ -28,7 +28,7 @@ export const COMBO_STAT_LABEL_DEFAULTS = {
   coDiLam: "Có đi làm",
   nonStandardTimeIn: "Giờ vào ≠ HH:MM",
   late: "Vào trễ",
-  annualLeave: "Phép năm / công tác",
+  annualLeave: "Phép năm",
   nightShift: "Ca đêm",
   laborAccident: "Tai nạn",
   maternity: "Thai sản",
