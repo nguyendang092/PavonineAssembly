@@ -11,6 +11,7 @@ import {
   formatPayrollTableWorkingHoursCell,
   roundHoursToTenths,
 } from "@/features/attendance/attendanceWorkingHours";
+import { formatAttendanceGioVaoDisplay } from "@/features/attendance/attendanceGioVaoTypeOptions";
 
 /** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 20 cột bảng. */
 const PAYROLL_EXCEL_COL_COUNT = 23;
@@ -84,7 +85,8 @@ function appendPayrollWorksheetDataRow(worksheet, day, month, year, emp, idx, ct
   const rest = coercePayrollHourRestToNumbers(
     payrollEmployeeRowValues(emp, idx, ctx),
   );
-  const dataRow = worksheet.addRow([day, month, year, ...rest]);
+  const [stt, ...withoutStt] = rest;
+  const dataRow = worksheet.addRow([stt, day, month, year, ...withoutStt]);
   stylePayrollDataRow(dataRow, { nameCol: 7, hoursFromCol: 16 });
   applyPayrollHourNumericCellsToRow(dataRow);
 }
@@ -134,7 +136,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     emp.ngayThangNamSinh ?? "",
     emp.maBoPhan ?? "",
     emp.boPhan ?? "",
-    emp.gioVao ?? "",
+    formatAttendanceGioVaoDisplay(emp.gioVao ?? ""),
     emp.gioRa ?? "",
     emp.caLamViec ?? "",
     isOffDay ? "OFF" : "",
@@ -191,13 +193,13 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
   ];
 }
 
-/** Header đầy đủ (đồng bộ xuất 1 ngày / nhiều ngày). */
+/** Header đầy đủ (đồng bộ xuất 1 ngày / nhiều ngày): STT đứng đầu. */
 function buildPayrollExcelFullHeaders(tlTable) {
   return [
+    tlTable("stt", "STT"),
     tlTable("workDateDay", "Ngày"),
     tlTable("workDateMonth", "Tháng"),
     tlTable("workDateYear", "Năm"),
-    tlTable("stt", "STT"),
     tlTable("mnv", "MNV"),
     tlTable("mvt", "MVT"),
     tlTable("fullName", "Họ và tên"),

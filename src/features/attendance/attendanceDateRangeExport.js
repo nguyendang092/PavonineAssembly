@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { enumerateDateKeysInclusive } from "@/utils/dateKey";
+import { formatAttendanceGioVaoDisplay } from "./attendanceGioVaoTypeOptions";
 const MAX_DAYS = 366;
 
 /**
@@ -186,7 +187,7 @@ export async function executeAttendanceDateRangeExport({
       emp.ngayThangNamSinh || "",
       emp.maBoPhan || "",
       emp.boPhan || "",
-      emp.gioVao || "",
+      formatAttendanceGioVaoDisplay(emp.gioVao || ""),
       emp.gioRa || "",
       emp.caLamViec || "",
     ]);

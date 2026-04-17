@@ -78,6 +78,7 @@ import {
 } from "./attendanceComboStats";
 import {
   ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  formatAttendanceGioVaoDisplay,
   isGioVaoLeaveOrStatusType,
 } from "./attendanceGioVaoTypeOptions";
 import {
@@ -1832,10 +1833,12 @@ function AttendanceList() {
             <td>${emp.maBoPhan || ""}</td>
             <td class="dept">${emp.boPhan || ""}</td>
             <td style="${
-              ["PN", "TS", "PO", "NV"].includes(emp.gioVao)
+              ["PN", "TS", "PO", "NV"].includes(
+                formatAttendanceGioVaoDisplay(emp.gioVao),
+              )
                 ? "color:#c41e3a;font-weight:bold;"
                 : ""
-            }">${emp.gioVao || ""}</td>
+            }">${formatAttendanceGioVaoDisplay(emp.gioVao || "")}</td>
             <td>${emp.gioRa || ""}</td>
             <td>${emp.caLamViec || ""}</td>
         </tr>`;
@@ -2403,7 +2406,7 @@ function AttendanceList() {
                             <td style={{ padding: 8 }}>{emp.hoVaTen}</td>
                             <td style={{ padding: 8 }}>{emp.boPhan}</td>
                             <td style={{ textAlign: "center", padding: 8 }}>
-                              {emp.gioVao}
+                              {formatAttendanceGioVaoDisplay(emp.gioVao)}
                             </td>
                             <td style={{ textAlign: "center", padding: 8 }}>
                               {emp.gioRa || "-"}
@@ -3682,7 +3685,7 @@ function AttendanceList() {
                     {(() => {
                       const timeCounts = {};
                       filteredEmployees.forEach((emp) => {
-                        const time = emp.gioVao;
+                        const time = formatAttendanceGioVaoDisplay(emp.gioVao);
                         if (time && !/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) {
                           timeCounts[time] = (timeCounts[time] || 0) + 1;
                         }

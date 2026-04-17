@@ -1,6 +1,9 @@
 import React, { memo } from "react";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import { ATTENDANCE_GIO_VAO_TYPE_OPTIONS } from "./attendanceGioVaoTypeOptions";
+import {
+  ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  formatAttendanceGioVaoDisplay,
+} from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
   formatPayrollDayOvertimeHoursCell,
@@ -1386,6 +1389,7 @@ function AttendanceTableRow({
     emp.gioVao != null && String(emp.gioVao).trim() !== ""
       ? String(emp.gioVao).trim()
       : "";
+  const gioVaoDisplay = formatAttendanceGioVaoDisplay(gioVaoTrimmed);
   const caLamViecTrimmed =
     emp.caLamViec != null && String(emp.caLamViec).trim() !== ""
       ? String(emp.caLamViec).trim()
@@ -1537,7 +1541,7 @@ function AttendanceTableRow({
                   }`
             }
           >
-            {gioVaoTrimmed}
+            {gioVaoDisplay}
           </span>
         ) : canEdit && isPayroll ? (
           <span

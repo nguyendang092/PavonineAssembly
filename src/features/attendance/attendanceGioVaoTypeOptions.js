@@ -5,39 +5,39 @@
  */
 
 export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = [
-  { value: "Đi làm", shortLabel: "Đi làm", comboStatKey: "coDiLam" },
-  { value: "Vào trễ", shortLabel: "Vào trễ", comboStatKey: "late" },
-  { value: "Phép năm", shortLabel: "Phép năm", comboStatKey: "annualLeave" },
+  { value: "Đi làm", shortLabel: "CDL", comboStatKey: "coDiLam" },
+  { value: "Vào trễ", shortLabel: "VT", comboStatKey: "late" },
+  { value: "Phép năm", shortLabel: "PN", comboStatKey: "annualLeave" },
   {
     value: "1/2 Phép năm",
-    shortLabel: "1/2 Phép năm",
+    shortLabel: "1/2PN",
     comboStatKey: "annualLeave",
   },
   {
     value: "Không lương",
-    shortLabel: "Không lương",
+    shortLabel: "KL",
     comboStatKey: "unpaidLeave",
   },
-  { value: "Không phép", shortLabel: "Không phép", comboStatKey: "noPermit" },
-  { value: "Thai sản", shortLabel: "Thai sản", comboStatKey: "maternity" },
-  { value: "Phép ốm", shortLabel: "Phép ốm", comboStatKey: "sickLeave" },
-  { value: "Tai nạn", shortLabel: "Tai nạn", comboStatKey: "laborAccident" },
-  { value: "Phép cưới", shortLabel: "Phép cưới", comboStatKey: "weddingLeave" },
+  { value: "Không phép", shortLabel: "KP", comboStatKey: "noPermit" },
+  { value: "Thai sản", shortLabel: "TS", comboStatKey: "maternity" },
+  { value: "Phép ốm", shortLabel: "PO", comboStatKey: "sickLeave" },
+  { value: "Tai nạn", shortLabel: "TN", comboStatKey: "laborAccident" },
+  { value: "Phép cưới", shortLabel: "PC", comboStatKey: "weddingLeave" },
   /** `value` = mã lưu DB / in biểu (PT); `shortLabel` = tên hiển thị */
-  { value: "PT", shortLabel: "Phép tang", comboStatKey: "funeralLeave" },
+  { value: "PT", shortLabel: "PT", comboStatKey: "funeralLeave" },
   {
     value: "Dưỡng sức",
-    shortLabel: "Dưỡng sức",
+    shortLabel: "DS",
     comboStatKey: "recuperationLeave",
   },
   {
     value: "Công tác",
-    shortLabel: "Công tác",
+    shortLabel: "CT",
     comboStatKey: "annualLeave",
   },
   {
     value: "Nghỉ việc",
-    shortLabel: "Nghỉ việc",
+    shortLabel: "NV",
     comboStatKey: "resignedLeave",
   },
 ];
@@ -99,6 +99,24 @@ export function rawMatchesAttendanceTypeOption(raw, option) {
   if (tokens.includes(shortTok)) return true;
 
   return false;
+}
+
+/**
+ * Chuẩn hóa chuỗi hiển thị `gioVao`:
+ * - Nếu là loại phép/trạng thái trong options: hiển thị `shortLabel`
+ * - Nếu là giờ HH:MM hoặc dữ liệu khác: giữ nguyên (trim)
+ * @param {unknown} raw
+ * @returns {string}
+ */
+export function formatAttendanceGioVaoDisplay(raw) {
+  const t = String(raw ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ");
+  if (!t) return "";
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  return matched?.shortLabel || t;
 }
 
 /** Giá trị đã gập dấu (để khớp dữ liệu nhập tay / Excel). */
