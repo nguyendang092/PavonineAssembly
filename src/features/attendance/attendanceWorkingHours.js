@@ -274,6 +274,11 @@ const OT_PAY_START_MIN = 17 * 60;
 /** Chỉ có tăng ca khi giờ ra sau > 17:30 (phút). */
 const OT_ELIGIBLE_AFTER_MIN = 17 * 60 + 30;
 
+/** Bảng lương: vào ≤ 06:00 (ca ngày) + có giấy tăng ca → cộng khung 06:00–08:00 vào cột Giờ TC (hệ số lương ×1.5 áp ngoài cột). */
+const EARLY_PAPERWORK_CUTOFF_MIN = 6 * 60;
+/** Giờ công tăng ca quy đổi vào cột Giờ TC (2h). */
+const EARLY_PAPERWORK_OT_HOURS = 2;
+
 /**
  * Giờ tăng ca: từ 17:00 đến giờ ra, cứ 30 phút = 0.5h (làm tròn xuống theo block 30 phút).
  * Chỉ áp dụng khi giờ ra sau 17:30.
@@ -291,6 +296,75 @@ export function getOvertimeHoursFromGioRa(gioRa) {
 }
 
 /**
+ * Ca ngày, giờ vào ≤ 06:00 — đủ điều kiện hỏi «có giấy tăng ca 06:00–08:00» (bảng lương).
+ * Không áp dụng ca đêm (cột TC riêng).
+ */
+export function isEarlyArrivalFor0600PaperworkOvertime(gioVao, caLamViec) {
+  if (isNightShiftCaLamViec(caLamViec)) return false;
+  const a = parseHHMMToMinutes(gioVao);
+  if (a == null) return false;
+  return a <= EARLY_PAPERWORK_CUTOFF_MIN;
+}
+
+/**
+ * Giờ TC khối ngày (cột «Giờ TC»): tăng ca sau 17:30 + (tùy chọn) 2h khi có giấy và vào ≤ 06:00.
+ * @param {boolean | undefined} earlyOtPaperwork — `true` nếu user xác nhận có giấy.
+ * @returns {number | null} null nếu không đọc được giờ ra (ca ngày) và không có phần sớm.
+ */
+export function getPayrollDayOvertimeHoursNumeric(
+  gioVao,
+  gioRa,
+  isOffDay,
+  caLamViec,
+  earlyOtPaperwork,
+) {
+  if (isNightShiftCaLamViec(caLamViec)) {
+    return getOvertimeHoursFromGioRa(gioRa);
+  }
+  if (isOffDay) return 0;
+
+  const evening = getOvertimeHoursFromGioRa(gioRa);
+  let early = 0;
+  if (
+    earlyOtPaperwork === true &&
+    isEarlyArrivalFor0600PaperworkOvertime(gioVao, caLamViec)
+  ) {
+    early = EARLY_PAPERWORK_OT_HOURS;
+  }
+
+  if (evening == null) {
+    if (early > 0) return early;
+    return null;
+  }
+  return Math.round((evening + early) * 10) / 10;
+}
+
+/**
+ * Hiển thị ô Giờ TC (bảng lương — ca ngày có thể cộng TC sớm).
+ */
+export function formatPayrollDayOvertimeHoursCell(
+  gioVao,
+  gioRa,
+  isOffDay,
+  caLamViec,
+  earlyOtPaperwork,
+) {
+  if (isNightShiftCaLamViec(caLamViec)) {
+    return formatOvertimeHoursLabel(gioRa);
+  }
+  const n = getPayrollDayOvertimeHoursNumeric(
+    gioVao,
+    gioRa,
+    isOffDay,
+    caLamViec,
+    earlyOtPaperwork,
+  );
+  if (n == null) return PAYROLL_CELL_DASH;
+  if (n === 0) return PAYROLL_CELL_DASH;
+  return `${n}`;
+}
+
+/**
  * @param {unknown} gioRa
  * @returns {string} «-» nếu không đọc được giờ ra hoặc 0 TC; số nếu có TC.
  */
@@ -305,7 +379,7 @@ export function formatOvertimeHoursLabel(gioRa) {
  * Tổng GC (khối ngày): Giờ công + Giờ TC (ngày thường) + TC off (khi off & không ca đêm).
  * Ca đêm: không cộng phần «Giờ công» (cột đó trống) — dùng «Tổng GC ca đêm».
  */
-function payrollTotalDayGcNumeric(gioVao, gioRa, isOffDay, caLamViec) {
+function payrollTotalDayGcNumeric(gioVao, gioRa, isOffDay, caLamViec, earlyOtPaperwork) {
   let gc = 0;
   if (!isOffDay && !isNightShiftCaLamViec(caLamViec)) {
     const h = getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec);
@@ -313,8 +387,19 @@ function payrollTotalDayGcNumeric(gioVao, gioRa, isOffDay, caLamViec) {
   }
   let tc = 0;
   if (!isOffDay) {
-    const o = getOvertimeHoursFromGioRa(gioRa);
-    tc = o == null ? 0 : o;
+    if (!isNightShiftCaLamViec(caLamViec)) {
+      const n = getPayrollDayOvertimeHoursNumeric(
+        gioVao,
+        gioRa,
+        isOffDay,
+        caLamViec,
+        earlyOtPaperwork,
+      );
+      tc = n == null ? 0 : n;
+    } else {
+      const o = getOvertimeHoursFromGioRa(gioRa);
+      tc = o == null ? 0 : o;
+    }
   }
   let tcOff = 0;
   if (isOffDay && !isNightShiftCaLamViec(caLamViec)) {
@@ -329,8 +414,15 @@ export function formatPayrollTableTotalDayGcCell(
   gioRa,
   isOffDay,
   caLamViec,
+  earlyOtPaperwork,
 ) {
-  const sum = payrollTotalDayGcNumeric(gioVao, gioRa, isOffDay, caLamViec);
+  const sum = payrollTotalDayGcNumeric(
+    gioVao,
+    gioRa,
+    isOffDay,
+    caLamViec,
+    earlyOtPaperwork,
+  );
   if (sum === 0) return PAYROLL_CELL_DASH;
   return payrollHoursCellDisplay(String(sum));
 }

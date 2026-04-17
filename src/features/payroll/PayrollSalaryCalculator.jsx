@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUser } from "@/contexts/UserContext";
 import { canEditAttendanceForEmployee } from "@/config/authRoles";
-import { db, ref, onValue } from "@/services/firebase";
+import { db, ref, onValue, get, update } from "@/services/firebase";
 import {
   EMPLOYEE_PROFILES_PATH,
   mergeEmployeeProfileAndDay,
@@ -29,10 +29,16 @@ import { useAttendanceColumnPlan } from "@/features/attendance/useAttendanceBirt
 import {
   isAttendanceDayMetaKey,
   getIsOffDayFromRaw,
+  ATTENDANCE_DAY_META_KEY,
+  ATTENDANCE_DAY_META_EARLY_OT_KEY,
+  getEarlyOtPaperworkFromRaw,
+  normalizeEarlyOtPaperworkMap,
 } from "@/features/attendance/attendanceDayMeta";
 import AlertMessage from "@/components/ui/AlertMessage";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import { downloadPayrollSalaryExcel } from "@/features/payroll/payrollExcelExport";
+import { isEarlyArrivalFor0600PaperworkOvertime } from "@/features/attendance/attendanceWorkingHours";
+import PayrollEarlyOvertimePaperworkModal from "@/features/payroll/PayrollEarlyOvertimePaperworkModal";
 import "./payrollTableCompact.css";
 
 /** Bảng lương: min-width hẹp hơn điểm danh một chút (nhiều cột). Thêm cột Sửa thì nới thêm ~56px (class cố định để Tailwind JIT nhận). */
@@ -95,6 +101,12 @@ export default function PayrollSalaryCalculator() {
 
   const [employeeProfilesMap, setEmployeeProfilesMap] = useState({});
   const [employees, setEmployees] = useState([]);
+  const [earlyOtMap, setEarlyOtMap] = useState({});
+  const [earlyOtModalOpen, setEarlyOtModalOpen] = useState(false);
+  const [earlyOtSuppressed, setEarlyOtSuppressed] = useState(false);
+  /** `"pending"` — chỉ NV chưa chọn; `"all"` — tất cả NV đủ điều kiện (sửa lại). */
+  const [earlyOtModalMode, setEarlyOtModalMode] = useState("pending");
+  const [earlyOtSaving, setEarlyOtSaving] = useState(false);
 
   const attendanceRawRef = useRef(undefined);
   const profilesRef = useRef({});
@@ -141,12 +153,14 @@ export default function PayrollSalaryCalculator() {
   useEffect(() => {
     attendanceRawRef.current = undefined;
     setEmployees([]);
+    setEarlyOtMap({});
     const empRef = ref(db, `attendance/${selectedDate}`);
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
       attendanceRawRef.current = data;
       setIsOffDay(getIsOffDayFromRaw(data));
       setEmployees(applyMerge(data, profilesRef.current));
+      setEarlyOtMap(getEarlyOtPaperworkFromRaw(data));
     });
     return () => unsubscribe();
   }, [selectedDate, applyMerge]);
@@ -156,6 +170,117 @@ export default function PayrollSalaryCalculator() {
     if (raw === undefined) return;
     setEmployees(applyMerge(raw, employeeProfilesMap));
   }, [employeeProfilesMap, applyMerge]);
+
+  useEffect(() => {
+    setEarlyOtSuppressed(false);
+    setEarlyOtModalMode("pending");
+    setEarlyOtModalOpen(false);
+  }, [selectedDate]);
+
+  const mergeEarlyOt = useCallback(
+    async (updates) => {
+      const metaRef = ref(
+        db,
+        `attendance/${selectedDate}/${ATTENDANCE_DAY_META_KEY}`,
+      );
+      const snap = await get(metaRef);
+      const metaVal = snap.val();
+      const cur = normalizeEarlyOtPaperworkMap(
+        metaVal && typeof metaVal === "object"
+          ? metaVal[ATTENDANCE_DAY_META_EARLY_OT_KEY]
+          : undefined,
+      );
+      const next = { ...cur, ...updates };
+      await update(metaRef, { [ATTENDANCE_DAY_META_EARLY_OT_KEY]: next });
+    },
+    [selectedDate],
+  );
+
+  const employeesForPayroll = useMemo(
+    () =>
+      employees.map((e) => ({
+        ...e,
+        payrollEarlyOtPaperwork: earlyOtMap[e.id],
+      })),
+    [employees, earlyOtMap],
+  );
+
+  const earlyOtEligibleEmployees = useMemo(() => {
+    if (isOffDay) return [];
+    return employees.filter((e) =>
+      isEarlyArrivalFor0600PaperworkOvertime(e.gioVao, e.caLamViec),
+    );
+  }, [employees, isOffDay]);
+
+  const pendingEarlyOtEmployees = useMemo(
+    () => earlyOtEligibleEmployees.filter((e) => !(e.id in earlyOtMap)),
+    [earlyOtEligibleEmployees, earlyOtMap],
+  );
+
+  const earlyOtModalRows = useMemo(() => {
+    if (earlyOtModalMode === "all") return earlyOtEligibleEmployees;
+    return pendingEarlyOtEmployees;
+  }, [earlyOtModalMode, earlyOtEligibleEmployees, pendingEarlyOtEmployees]);
+
+  const earlyOtInitialChecked = useCallback(
+    (id) => {
+      if (earlyOtModalMode === "pending") return false;
+      return !!earlyOtMap[id];
+    },
+    [earlyOtModalMode, earlyOtMap],
+  );
+
+  useEffect(() => {
+    if (earlyOtModalMode === "all") return;
+    if (isOffDay || earlyOtSuppressed) {
+      if (earlyOtModalOpen) setEarlyOtModalOpen(false);
+      return;
+    }
+    if (pendingEarlyOtEmployees.length > 0) {
+      setEarlyOtModalMode("pending");
+      setEarlyOtModalOpen(true);
+    } else if (earlyOtModalOpen) {
+      setEarlyOtModalOpen(false);
+    }
+  }, [
+    isOffDay,
+    earlyOtSuppressed,
+    pendingEarlyOtEmployees,
+    earlyOtModalOpen,
+    earlyOtModalMode,
+  ]);
+
+  const handleEarlyOtSave = useCallback(
+    async (updates) => {
+      setEarlyOtSaving(true);
+      try {
+        await mergeEarlyOt(updates);
+        setEarlyOtModalOpen(false);
+        setEarlyOtModalMode("pending");
+        setEarlyOtSuppressed(false);
+      } catch (err) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "earlyOtSaveError",
+            "Không lưu được giấy tăng ca lên Firebase. Kiểm tra kết nối hoặc quyền ghi.",
+            { error: err?.message || String(err) },
+          ),
+        });
+      } finally {
+        setEarlyOtSaving(false);
+      }
+    },
+    [mergeEarlyOt, tlPage],
+  );
+
+  /** Đóng / click nền: luôn `suppressed` — tránh effect mở lại ngay (đặc biệt sau khi đóng từ chế độ «tất cả»). */
+  const handleEarlyOtDismiss = useCallback(() => {
+    setEarlyOtModalOpen(false);
+    setEarlyOtSuppressed(true);
+    setEarlyOtModalMode("pending");
+  }, []);
 
   const filterRows = useCallback(
     (list) => {
@@ -177,8 +302,8 @@ export default function PayrollSalaryCalculator() {
   );
 
   const filteredEmployees = useMemo(
-    () => filterRows(employees),
-    [employees, filterRows],
+    () => filterRows(employeesForPayroll),
+    [employeesForPayroll, filterRows],
   );
 
   const departments = useMemo(() => {
@@ -294,6 +419,7 @@ export default function PayrollSalaryCalculator() {
         isOffDay,
         tlTable,
         sheetTitle: payrollExportSheetTitle,
+        earlyOtPaperworkById: earlyOtMap,
       });
       setAlert({
         show: true,
@@ -318,6 +444,7 @@ export default function PayrollSalaryCalculator() {
     tlTable,
     tlPage,
     payrollExportSheetTitle,
+    earlyOtMap,
   ]);
 
   return (
@@ -367,7 +494,7 @@ export default function PayrollSalaryCalculator() {
         ) : null}
 
         {/* Khu dự phòng: tính lương (sẽ gắn sau) */}
-        <div className="mb-2 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
             <input
               type="date"
@@ -397,10 +524,29 @@ export default function PayrollSalaryCalculator() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:justify-end">
+            {earlyOtEligibleEmployees.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setEarlyOtSuppressed(false);
+                  setEarlyOtModalMode("all");
+                  setEarlyOtModalOpen(true);
+                }}
+                className="h-8 shrink-0 rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-3 text-xs font-bold text-white shadow-md shadow-sky-600/25 transition hover:from-sky-400 hover:to-blue-500 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:hover:from-sky-500 dark:hover:to-blue-600"
+                title={tlPage(
+                  "earlyOtPaperworkHint",
+                  "Xác nhận có giấy tăng ca khung 06:00–08:00 cho nhân viên vào ≤ 06:00 (ca ngày).",
+                )}
+              >
+                {tlPage("earlyOtPaperworkButton", "Xác nhận tăng ca")}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={handleExportPayrollExcel}
-              className="h-8 shrink-0 rounded-md border border-emerald-600 bg-emerald-600 px-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 dark:border-emerald-500 dark:hover:bg-emerald-600"
+              className="h-8 shrink-0 rounded-lg border-2 border-emerald-600 bg-emerald-600 px-3 text-xs font-bold text-white shadow-md shadow-emerald-900/20 transition hover:bg-emerald-700 dark:border-emerald-500 dark:hover:bg-emerald-600"
               title={tlPage(
                 "exportExcelHint",
                 "Xuất toàn bộ nhân viên trong ngày (theo dữ liệu điểm danh), đủ các cột giờ như trên bảng.",
@@ -536,6 +682,25 @@ export default function PayrollSalaryCalculator() {
         userRole={userRole}
         userDepartments={userDepartments}
         onAlert={setAlert}
+      />
+
+      <PayrollEarlyOvertimePaperworkModal
+        open={earlyOtModalOpen && earlyOtModalRows.length > 0}
+        rows={earlyOtModalRows}
+        initialChecked={earlyOtInitialChecked}
+        onDismiss={handleEarlyOtDismiss}
+        onSave={handleEarlyOtSave}
+        saving={earlyOtSaving}
+        title={tlPage("earlyOtModalTitle", "Xác nhận đăng ký tăng ca")}
+        description={tlPage(
+          "earlyOtModalDescription",
+          "Nhân viên có thời gian vào <= 06:00 sẽ phải có giấy đăng ký tăng ca để xác nhận là có tăng ca hay không.",
+        )}
+        saveLabel={tlPage("earlyOtModalSave", "Lưu")}
+        skipAllLabel={tlPage(
+          "earlyOtModalSkipAll",
+          "Tất cả không có giấy tăng ca",
+        )}
       />
     </>
   );

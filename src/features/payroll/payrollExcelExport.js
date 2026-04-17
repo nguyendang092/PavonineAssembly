@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import {
-  formatOvertimeHoursLabel,
+  formatPayrollDayOvertimeHoursCell,
   formatPayrollTableNightShiftOffDayWorkingCell,
   formatPayrollTableNightShiftOvertimeCell,
   formatPayrollTableNightShiftWorkingCell,
@@ -14,7 +14,7 @@ const COL_COUNT = 19;
 
 /**
  * Xuất Excel bảng lương: đủ cột giống bảng desktop (full), cùng logic format với màn hình.
- * @param {{ employees: object[], selectedDate: string, isOffDay: boolean, tlTable: function, sheetTitle: string }} opts
+ * @param {{ employees: object[], selectedDate: string, isOffDay: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean> }} opts
  */
 export async function buildPayrollSalaryExcelWorkbook({
   employees,
@@ -22,6 +22,7 @@ export async function buildPayrollSalaryExcelWorkbook({
   isOffDay,
   tlTable,
   sheetTitle,
+  earlyOtPaperworkById = {},
 }) {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Payroll", {
@@ -100,7 +101,13 @@ export async function buildPayrollSalaryExcelWorkbook({
         isOffDay,
         emp.caLamViec,
       ),
-      formatOvertimeHoursLabel(emp.gioRa),
+      formatPayrollDayOvertimeHoursCell(
+        emp.gioVao,
+        emp.gioRa,
+        isOffDay,
+        emp.caLamViec,
+        earlyOtPaperworkById[emp.id],
+      ),
       formatPayrollTableOffDayTcCell(
         emp.gioVao,
         emp.gioRa,
@@ -112,6 +119,7 @@ export async function buildPayrollSalaryExcelWorkbook({
         emp.gioRa,
         isOffDay,
         emp.caLamViec,
+        earlyOtPaperworkById[emp.id],
       ),
       formatPayrollTableNightShiftWorkingCell(
         emp.gioVao,

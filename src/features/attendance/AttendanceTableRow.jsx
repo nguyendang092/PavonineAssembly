@@ -3,7 +3,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { ATTENDANCE_GIO_VAO_TYPE_OPTIONS } from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
-  formatOvertimeHoursLabel,
+  formatPayrollDayOvertimeHoursCell,
   formatPayrollTableNightShiftOffDayWorkingCell,
   formatPayrollTableNightShiftOvertimeCell,
   formatPayrollTableNightShiftWorkingCell,
@@ -1602,11 +1602,17 @@ function AttendanceTableRow({
             )}
             title={tl(
               "overtimeHoursHint",
-              "Giờ ra sau 17:30: tính từ 17:00, cứ 30 phút = 0,5 giờ tăng ca.",
+              "Giờ ra sau 17:30: từ 17:00, cứ 30 phút = 0,5 giờ TC. Vào ≤ 06:00 (ca ngày): có thể cộng thêm 2h TC (06:00–08:00) khi xác nhận có giấy tăng ca trên màn lương.",
             )}
           >
             <span className="font-bold tabular-nums text-orange-900 dark:text-orange-100">
-              {formatOvertimeHoursLabel(emp.gioRa)}
+              {formatPayrollDayOvertimeHoursCell(
+                emp.gioVao,
+                emp.gioRa,
+                isOffDay,
+                emp.caLamViec,
+                emp.payrollEarlyOtPaperwork,
+              )}
             </span>
           </Cell>
           <Cell
@@ -1646,6 +1652,7 @@ function AttendanceTableRow({
                 emp.gioRa,
                 isOffDay,
                 emp.caLamViec,
+                emp.payrollEarlyOtPaperwork,
               )}
             </span>
           </Cell>
