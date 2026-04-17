@@ -1081,8 +1081,6 @@ const ko = {
       "해당 일 출근 데이터를 읽기 전용으로 표시합니다. 휴무일 주간 근무는 TC off 열에 표시됩니다.",
     tableSectionHint:
       "급여 참고용 표. «휴무일» 주간 근무는 TC off 열에 환산됩니다.",
-    offDayPayrollBanner:
-      "이 날 «휴무일»입니다: 주간은 TC off 열에 환산 근무시간(근무시간 열 «-»); 야간은 야간 GC / 야간(휴무) 열.",
     table: {
       payrollWorkingHoursHint:
         "평일: 출·퇴근 규칙 근무시간. «휴무일»(주간): 같은 규칙으로 근무시간 열에 표시. «야간»: 이 열 «-» — 야간 GC/TC 열.",

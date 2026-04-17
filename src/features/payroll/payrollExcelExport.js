@@ -65,6 +65,30 @@ function coercePayrollHourRestToNumbers(rest) {
   });
 }
 
+/**
+ * ExcelJS đôi khi giữ ô giờ dạng chuỗi sau `addRow` — ép lại từng ô (cột 16–23) về number + numFmt,
+ * đồng bộ xuất 1 ngày / nhiều ngày và tránh hiển thị như text.
+ */
+function applyPayrollHourNumericCellsToRow(row) {
+  for (let c = PAYROLL_EXCEL_HOURS_COL_FIRST; c <= PAYROLL_EXCEL_HOURS_COL_LAST; c++) {
+    const cell = row.getCell(c);
+    const n = payrollExcelHourValueToNumber(cell.value);
+    cell.value = n;
+    if (n != null) {
+      cell.numFmt = PAYROLL_EXCEL_HOURS_NUM_FMT;
+    }
+  }
+}
+
+function appendPayrollWorksheetDataRow(worksheet, day, month, year, emp, idx, ctx) {
+  const rest = coercePayrollHourRestToNumbers(
+    payrollEmployeeRowValues(emp, idx, ctx),
+  );
+  const dataRow = worksheet.addRow([day, month, year, ...rest]);
+  stylePayrollDataRow(dataRow, { nameCol: 7, hoursFromCol: 16 });
+  applyPayrollHourNumericCellsToRow(dataRow);
+}
+
 /** Giới hạn cùng logic xuất khoảng điểm danh. */
 export const PAYROLL_EXCEL_MAX_RANGE_DAYS = 366;
 
@@ -298,11 +322,7 @@ export async function buildPayrollSalaryExcelWorkbook({
   const { day, month, year } = getPayrollExcelDateParts(selectedDate);
   const ctx = { isOffDay, earlyOtPaperworkById };
   employees.forEach((emp, idx) => {
-    const rest = coercePayrollHourRestToNumbers(
-      payrollEmployeeRowValues(emp, idx, ctx),
-    );
-    const row = worksheet.addRow([day, month, year, ...rest]);
-    stylePayrollDataRow(row, { nameCol: 7, hoursFromCol: 16 });
+    appendPayrollWorksheetDataRow(worksheet, day, month, year, emp, idx, ctx);
   });
 
   worksheet.columns = PAYROLL_EXCEL_FULL_COLUMN_WIDTHS;
@@ -349,11 +369,7 @@ export async function buildPayrollSalaryExcelWorkbookMultiDay({
     };
     const { day, month, year } = getPayrollExcelDateParts(chunk.dateKey);
     chunk.employees.forEach((emp, idx) => {
-      const rest = coercePayrollHourRestToNumbers(
-        payrollEmployeeRowValues(emp, idx, ctx),
-      );
-      const row = worksheet.addRow([day, month, year, ...rest]);
-      stylePayrollDataRow(row, { nameCol: 7, hoursFromCol: 16 });
+      appendPayrollWorksheetDataRow(worksheet, day, month, year, emp, idx, ctx);
     });
   }
 

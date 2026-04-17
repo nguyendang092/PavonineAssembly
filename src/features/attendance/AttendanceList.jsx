@@ -2286,41 +2286,35 @@ function AttendanceList() {
               <button
                 type="button"
                 onClick={() => setOffDaysModalOpen(true)}
-                className="inline-flex max-w-full min-w-0 shrink-0 cursor-pointer flex-col items-stretch gap-0.5 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-left text-xs font-bold text-violet-900 transition hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/50"
+                className="inline-flex h-8 max-w-full min-w-0 shrink-0 cursor-pointer items-center gap-1.5 overflow-hidden rounded-md border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:ring-blue-500/40 sm:max-w-[min(100vw-10rem,22rem)]"
                 title={dayOffToolbarButtonTitle}
               >
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="whitespace-nowrap">
-                    {tl("dayOffToolbarButton", "Ngày off (nhiều ngày)")}
-                  </span>
-                  {isOffDay ? (
-                    <span className="shrink-0 rounded bg-rose-600 px-1.5 py-px text-[10px] font-extrabold uppercase tracking-wide text-white">
-                      OFF
-                    </span>
-                  ) : null}
+                <span className="shrink-0 whitespace-nowrap">
+                  {tl("dayOffToolbarButton", "Ngày off (nhiều ngày)")}
                 </span>
+                {isOffDay ? (
+                  <span className="shrink-0 rounded bg-rose-600 px-1.5 py-px text-[10px] font-extrabold uppercase leading-none tracking-wide text-white">
+                    OFF
+                  </span>
+                ) : null}
                 {monthOffDaysLoading ? (
-                  <span className="text-[10px] font-medium leading-tight text-violet-800/85 dark:text-violet-200/90">
+                  <span className="min-w-0 truncate text-xs font-normal tabular-nums text-slate-500 dark:text-slate-400">
                     {tl(
                       "dayOffToolbarLoading",
                       "Đang tải danh sách ngày off trong tháng…",
                     )}
                   </span>
                 ) : monthOffDaysToolbarText ? (
-                  <span className="max-w-[min(100vw-3rem,22rem)] text-[10px] font-semibold leading-snug text-violet-900/95 dark:text-violet-100/95">
-                    <span className="mr-1 font-bold opacity-90">
-                      {tl("dayOffToolbarMonthPrefix", "Trong tháng:")}
+                  <span
+                    className="min-w-0 truncate text-xs font-normal tabular-nums text-slate-500 dark:text-slate-400"
+                    title={`${tl("dayOffToolbarMonthPrefix", "Trong tháng:")} ${monthOffDaysToolbarText}`}
+                  >
+                    <span className="text-slate-400 dark:text-slate-500">
+                      {tl("dayOffToolbarMonthPrefix", "Trong tháng:")}{" "}
                     </span>
-                    <span className="tabular-nums">{monthOffDaysToolbarText}</span>
+                    {monthOffDaysToolbarText}
                   </span>
-                ) : (
-                  <span className="text-[10px] font-medium leading-tight text-violet-800/65 dark:text-violet-300/75">
-                    {tl(
-                      "dayOffToolbarNoOffInMonth",
-                      "Chưa có ngày off nào trong tháng này.",
-                    )}
-                  </span>
-                )}
+                ) : null}
               </button>
             ) : null}
             <input

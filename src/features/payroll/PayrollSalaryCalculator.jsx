@@ -654,18 +654,6 @@ export default function PayrollSalaryCalculator() {
 
         <AlertMessage alert={alert} />
 
-        {isOffDay ? (
-          <div
-            className="mb-3 rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-xs text-violet-950 dark:border-violet-700 dark:bg-violet-950/50 dark:text-violet-100"
-            role="status"
-          >
-            {tlPage(
-              "offDayPayrollBanner",
-              "Ngày đang bật «Ngày off»: ca ngày — giờ làm quy đổi hiển thị ở cột TC off (cột Giờ công là «-»); ca đêm — dùng cột GC ca đêm / GC ca đêm off.",
-            )}
-          </div>
-        ) : null}
-
         {/* Khu dự phòng: tính lương (sẽ gắn sau) */}
         <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">

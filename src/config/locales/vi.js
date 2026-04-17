@@ -986,7 +986,7 @@ const vi = {
     nightShiftOffDayWorkingHoursHint:
       "Khi «Ngày off» và ca «Ca đêm»: cùng quy tắc GC ca đêm (đến mốc 05:00, tối đa 8h). Ngày không off thì trống.",
     dayOffToggle: "Ngày off",
-    dayOffToolbarButton: "Ngày OFF",
+    dayOffToolbarButton: "Ngày",
     dayOffToolbarHint:
       "Chọn một hoặc nhiều ngày off (lưu Firebase). Ngày đang xem là off thì có huy hiệu OFF.",
     dayOffToolbarTitleDates: "Ngày off trong tháng (YYYY-MM-DD):",
@@ -1085,8 +1085,7 @@ const vi = {
     pageTitle: "Bảng giờ công nhân viên",
     pageSubtitle: "Bảng giờ công nhân viên dựa trên dữ liệu chấm công.",
     table: {
-      payrollWorkingHoursHint:
-        "Ngày không off: giờ công theo giờ vào–ra. Khi «Ngày off» (ca ngày): cột này «-» — giờ quy đổi nằm ở TC off. Ca đêm: cột này «-» (dùng GC/TC ca đêm).",
+      payrollWorkingHoursHint: "Giờ công sẽ được tính theo giờ vào và giờ ra.",
       payrollOffDayTcHint:
         "Khi «Ngày off» và ca ngày: giờ làm quy đổi (cùng quy tắc điểm danh). Ngày không off hoặc ca đêm: «-».",
       nightShiftWorkingHoursHint:
@@ -1114,8 +1113,6 @@ const vi = {
     exportExcelError: "❌ Xuất Excel thất bại: {{error}}",
     exportSheetTitle: "Bảng giờ công nhân viên",
     exportOffDaySuffix: "Ngày off",
-    offDayPayrollBanner:
-      "Ngày đang bật «Ngày off»: ca ngày — giờ làm quy đổi hiển thị ở cột TC off (cột Giờ công là «-»); ca đêm — dùng cột GC ca đêm / GC ca đêm off.",
     linkAttendance: "Điểm danh NV",
     dateLabel: "Ngày",
     allDepts: "Tất cả bộ phận",
