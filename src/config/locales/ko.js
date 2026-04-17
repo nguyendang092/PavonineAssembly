@@ -953,15 +953,17 @@ const ko = {
     gender: "성별",
     timeIn: "출근 시간",
     timeOut: "퇴근 시간",
+    clearTimeOut: "퇴근 지우기",
+    timeOutClearHint: "퇴근 시간 비우기",
     workingHours: "근무시간",
     workingHoursHint:
       "HH:MM 출·퇴근. 7:00~7:30 이전 출근·17:30 이전 퇴근 = 8시간(고정); 그 외는 두 시각 차이, 최대 8시간(연장은 연장 열).",
     overtimeHours: "연장근무",
     overtimeHoursHint:
       "퇴근이 17:30 이후: 17:00부터 30분당 0.5시간 연장.",
-    offDayOvertimeHours: "휴무일 근무",
+    offDayOvertimeHours: "TC off",
     offDayOvertimeHoursHint:
-      "휴무일로 표시된 날: 근무시간과 동일; 휴무일이 아니면 비움. «야간»: 이 열은 «-», 환산은 «야간(휴무)» 열.",
+      "레거시 열: 휴무일 근무 시간은 더 이상 여기에 두지 않습니다(근무시간 열로 이동). 항상 «-».",
     nightShiftWorkingHours: "야간 근무",
     nightShiftWorkingHoursHint:
       "«야간» 근무 시: 출근부터 05:00(당일 05:00 이전 출근이면 당일, 아니면 다음 날 05:00)까지, 최대 8시간.",
@@ -972,8 +974,26 @@ const ko = {
     nightShiftOffDayWorkingHoursHint:
       "«휴무일»이고 «야간» 근무일 때만: 야간 근무 규칙과 동일. 휴무일이 아니면 비움.",
     dayOffToggle: "휴무일",
+    dayOffToolbarButton: "휴무일(여러 날)",
+    dayOffToolbarHint:
+      "하나 이상의 휴무일을 선택해 Firebase에 저장합니다. 현재 보는 날이 휴무이면 OFF 배지가 표시됩니다.",
+    dayOffToolbarTitleDates: "이번 달 휴무일 (YYYY-MM-DD):",
+    dayOffToolbarLoading: "이번 달 휴무 목록 불러오는 중…",
+    dayOffToolbarMonthPrefix: "이번 달:",
+    dayOffToolbarNoOffInMonth: "이번 달에 지정된 휴무일이 없습니다.",
+    dayOffMultiModalTitle: "여러 휴무일 선택",
+    dayOffMultiModalHint:
+      "목록의 날짜가 «휴무일»로 저장됩니다(열에 OFF 표시, 급여 화면은 TC off). 추가·삭제 후 저장하세요.",
+    dayOffMultiAddDate: "추가",
+    dayOffMultiAddCurrent: "현재 보는 날 추가 ({{date}})",
+    dayOffMultiEmpty: "날짜 없음 — 위에서 추가하세요.",
+    dayOffMultiRemove: "제거",
+    dayOffMultiCancel: "취소",
+    dayOffMultiSave: "저장",
+    dayOffMultiSaving: "저장 중…",
+    dayOffMultiLoadingList: "이번 달 휴무일 불러오는 중…",
     dayOffToggleHint:
-      "해당 일이 휴무/오프일 때 켜면 급여 화면에서 근무시간 열은 «-», 동일 규칙 시간은 TC off 열에 표시됩니다(Admin/HR).",
+      "해당 일이 휴무일일 때: 주간 근무는 TC off 열에 환산 근무시간(출석 규칙과 동일), 근무시간 열은 «-». 휴무일이 아니면 근무시간 열에 표시. 야간은 GC/야간(휴무) 열.",
     workShift: "근무조",
     attendance: "출근부",
     dateOfBirth: "생년월일",
@@ -1058,16 +1078,16 @@ const ko = {
   salaryCalc: {
     pageTitle: "급여 추정 — 전용 표",
     pageSubtitle:
-      "해당 일 출근 데이터를 읽기 전용으로 표시합니다. TC off 열은 이 화면에만 있으며, 입력은 직원 출석부에서 합니다.",
+      "해당 일 출근 데이터를 읽기 전용으로 표시합니다. 휴무일 주간 근무는 TC off 열에 표시됩니다.",
     tableSectionHint:
-      "급여 참고용 표. 출석부에서 «휴무일»이면 근무시간 열은 «-», 환산 시간은 TC off.",
+      "급여 참고용 표. «휴무일» 주간 근무는 TC off 열에 환산됩니다.",
     offDayPayrollBanner:
-      "이 날 «휴무일»이 켜져 있습니다: 근무시간 열은 «-», 동일 규칙 환산은 TC off 열.",
+      "이 날 «휴무일»입니다: 주간은 TC off 열에 환산 근무시간(근무시간 열 «-»); 야간은 야간 GC / 야간(휴무) 열.",
     table: {
       payrollWorkingHoursHint:
-        "주간(비야간): 출·퇴근 규칙 근무시간. «야간»이면 이 열은 «-» — 야간 GC/TC 열을 봅니다. «휴무일»이면 «-»; 환산은 TC off 또는 야간(휴무).",
+        "평일: 출·퇴근 규칙 근무시간. «휴무일»(주간): 같은 규칙으로 근무시간 열에 표시. «야간»: 이 열 «-» — 야간 GC/TC 열.",
       payrollOffDayTcHint:
-        "«휴무일»일 때만: 근무시간과 동일 규칙(근무시간 열은 «-»). «야간»이면 «-» — «야간(휴무)» 열 참고.",
+        "레거시 열: 휴무일 근무는 근무시간 열로 옮겼습니다. 항상 «-».",
       nightShiftWorkingHoursHint:
         "야간: 출근부터 05:00(당일 05:00 이전 출근이면 당일, 아니면 다음 날 05:00)까지, 최대 8시간.",
       nightShiftOvertimeHoursHint:
@@ -1076,7 +1096,7 @@ const ko = {
         "휴무일 + 야간: 야간 규무 규칙과 동일. 평일이면 비움.",
       payrollTotalGcDay: "총 근무(주간)",
       payrollTotalGcDayHint:
-        "합계: 근무시간 + 연장 + TC off(야간 열 제외).",
+        "주간 합계: 근무시간 + 연장; 휴무일(주간)이면 TC off에 표시된 시간 포함 — 야간 열 제외.",
       payrollTotalGcNight: "총 야간 근무",
       payrollTotalGcNightHint:
         "야간 합계: GC(05:00 이전) + 야간 연장(05:00 이후) — GC/TC 야간 열과 동일.",

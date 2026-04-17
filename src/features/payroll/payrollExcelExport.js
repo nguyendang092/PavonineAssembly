@@ -9,10 +9,61 @@ import {
   formatPayrollTableTotalDayGcCell,
   formatPayrollTableTotalNightGcCell,
   formatPayrollTableWorkingHoursCell,
+  roundHoursToTenths,
 } from "@/features/attendance/attendanceWorkingHours";
 
-/** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 19 cột bảng. */
-const PAYROLL_EXCEL_COL_COUNT = 22;
+/** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 20 cột bảng. */
+const PAYROLL_EXCEL_COL_COUNT = 23;
+
+/**
+ * Trong `payrollEmployeeRowValues`, 8 cột giờ (Giờ công … Tổng GC ca đêm) bắt đầu ở index này.
+ * @see payrollEmployeeRowValues
+ */
+const PAYROLL_ROW_HOURS_START = 12;
+const PAYROLL_ROW_HOURS_COUNT = 8;
+
+/** Cột giờ trong sheet (1-based): sau Ngày/Tháng/Năm + STT…Bộ phận = cột 16 … 23. */
+const PAYROLL_EXCEL_HOURS_COL_FIRST = 16;
+const PAYROLL_EXCEL_HOURS_COL_LAST = 23;
+
+/**
+ * Một chữ số thập phân — tránh Excel hiển thị 3.5 thành 4 khi định dạng 0 chữ số thập phân.
+ * @see https://support.microsoft.com (định dạng số)
+ */
+const PAYROLL_EXCEL_HOURS_NUM_FMT = "0.0";
+
+function applyPayrollExcelHourColumnNumberFormats(worksheet) {
+  for (let c = PAYROLL_EXCEL_HOURS_COL_FIRST; c <= PAYROLL_EXCEL_HOURS_COL_LAST; c++) {
+    worksheet.getColumn(c).numFmt = PAYROLL_EXCEL_HOURS_NUM_FMT;
+  }
+}
+
+/**
+ * Chuỗi ô giờ từ formatters («-», số) → số để Excel lưu kiểu number; không có số → null (ô trống).
+ * @param {unknown} formatted
+ * @returns {number | null}
+ */
+export function payrollExcelHourValueToNumber(formatted) {
+  if (formatted == null) return null;
+  const s = String(formatted).trim();
+  if (s === "" || s === "-" || s === "—") return null;
+  const n = Number(s.replace(",", "."));
+  if (!Number.isFinite(n)) return null;
+  return roundHoursToTenths(n);
+}
+
+/**
+ * @param {unknown[]} rest — mảng 20 phần tử từ `payrollEmployeeRowValues`
+ * @returns {unknown[]}
+ */
+function coercePayrollHourRestToNumbers(rest) {
+  return rest.map((v, i) => {
+    if (i < PAYROLL_ROW_HOURS_START || i >= PAYROLL_ROW_HOURS_START + PAYROLL_ROW_HOURS_COUNT) {
+      return v;
+    }
+    return payrollExcelHourValueToNumber(v);
+  });
+}
 
 /** Giới hạn cùng logic xuất khoảng điểm danh. */
 export const PAYROLL_EXCEL_MAX_RANGE_DAYS = 366;
@@ -62,6 +113,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     emp.gioVao ?? "",
     emp.gioRa ?? "",
     emp.caLamViec ?? "",
+    isOffDay ? "OFF" : "",
     formatPayrollTableWorkingHoursCell(
       emp.gioVao,
       emp.gioRa,
@@ -132,6 +184,7 @@ function buildPayrollExcelFullHeaders(tlTable) {
     tlTable("timeIn", "Thời gian vào"),
     tlTable("timeOut", "Thời gian ra"),
     tlTable("workShift", "Ca làm việc"),
+    tlTable("offDayColumn", "Ngày off"),
     tlTable("workingHours", "Giờ công"),
     tlTable("overtimeHours", "Giờ TC"),
     tlTable("offDayOvertimeHours", "TC off"),
@@ -158,6 +211,7 @@ const PAYROLL_EXCEL_FULL_COLUMN_WIDTHS = [
   { width: 10 },
   { width: 10 },
   { width: 14 },
+  { width: 5 },
   { width: 10 },
   { width: 9 },
   { width: 10 },
@@ -244,12 +298,15 @@ export async function buildPayrollSalaryExcelWorkbook({
   const { day, month, year } = getPayrollExcelDateParts(selectedDate);
   const ctx = { isOffDay, earlyOtPaperworkById };
   employees.forEach((emp, idx) => {
-    const rest = payrollEmployeeRowValues(emp, idx, ctx);
+    const rest = coercePayrollHourRestToNumbers(
+      payrollEmployeeRowValues(emp, idx, ctx),
+    );
     const row = worksheet.addRow([day, month, year, ...rest]);
-    stylePayrollDataRow(row, { nameCol: 7, hoursFromCol: 15 });
+    stylePayrollDataRow(row, { nameCol: 7, hoursFromCol: 16 });
   });
 
   worksheet.columns = PAYROLL_EXCEL_FULL_COLUMN_WIDTHS;
+  applyPayrollExcelHourColumnNumberFormats(worksheet);
 
   return workbook;
 }
@@ -292,13 +349,16 @@ export async function buildPayrollSalaryExcelWorkbookMultiDay({
     };
     const { day, month, year } = getPayrollExcelDateParts(chunk.dateKey);
     chunk.employees.forEach((emp, idx) => {
-      const rest = payrollEmployeeRowValues(emp, idx, ctx);
+      const rest = coercePayrollHourRestToNumbers(
+        payrollEmployeeRowValues(emp, idx, ctx),
+      );
       const row = worksheet.addRow([day, month, year, ...rest]);
-      stylePayrollDataRow(row, { nameCol: 7, hoursFromCol: 15 });
+      stylePayrollDataRow(row, { nameCol: 7, hoursFromCol: 16 });
     });
   }
 
   worksheet.columns = PAYROLL_EXCEL_FULL_COLUMN_WIDTHS;
+  applyPayrollExcelHourColumnNumberFormats(worksheet);
 
   return workbook;
 }

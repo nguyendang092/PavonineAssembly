@@ -10,27 +10,27 @@ function normalizePercents(widths) {
   return widths.map((w) => (w / sum) * 100);
 }
 
-/* full — 19 cột dữ liệu: … | TC off | Tổng GC | GC đêm | TC đêm | GC đêm off | Tổng GC ca đêm (cột 19); +1 cột Sửa khi có actions */
+/* full — 20 cột: … | Ca | Ngày off | Giờ công | … TC off | Tổng GC | … | Tổng GC ca đêm; +1 Sửa khi có actions */
 export const PAYROLL_WIDTHS_FULL_NO_ACTIONS = [
-  2, 3, 3, 10, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 4, 3, 3, 3, 4,
+  2, 3, 3, 10, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 4, 3, 3, 3, 4,
 ];
 
 /** Trọng số cột hành động (Sửa) — nối sau PAYROLL_*_NO_ACTIONS khi `showRowModalActions`. */
 export const PAYROLL_WIDTH_ACTIONS = 2;
 
-/* compact — 17 cột */
+/* compact — 18 cột */
 export const PAYROLL_WIDTHS_COMPACT_NO_ACTIONS = [
-  7, 6, 6, 14, 6, 13, 10, 8, 5, 5, 5, 4, 5, 5, 5, 9,
+  7, 6, 6, 14, 6, 13, 10, 8, 5, 5, 5, 4, 4, 3, 5, 5, 5, 9,
 ];
 
-/* narrow — 16 cột */
+/* narrow — 18 cột */
 export const PAYROLL_WIDTHS_NARROW_NO_ACTIONS = [
-  8, 7, 7, 18, 7, 12, 9, 6, 5, 5, 5, 4, 5, 5, 12, 4,
+  8, 7, 7, 18, 7, 12, 9, 6, 5, 5, 5, 4, 3, 5, 5, 12, 4,
 ];
 
-/* minimal — 12 cột */
+/* minimal — 13 cột */
 export const PAYROLL_WIDTHS_MINIMAL_NO_ACTIONS = [
-  14, 15, 12, 10, 8, 6, 6, 4, 6, 6, 13, 5,
+  14, 15, 12, 10, 8, 6, 6, 4, 4, 6, 6, 13, 5,
 ];
 
 /**

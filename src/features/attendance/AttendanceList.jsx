@@ -32,7 +32,6 @@ import {
 import {
   db,
   ref,
-  set,
   onValue,
   remove,
   update,
@@ -42,7 +41,6 @@ import {
   EMPLOYEE_PROFILES_PATH,
   mergeEmployeeProfileAndDay,
   employeeProfileStorageKeyFromMnv,
-  normalizeEmployeeCode,
 } from "@/utils/employeeRosterRecord";
 import ExcelJS from "exceljs";
 import { handleUploadExcel } from "./AttendanceUploadHandler";
@@ -65,10 +63,15 @@ import {
 } from "./attendanceDateRangeExport";
 import AttendanceExportRangeModal from "./AttendanceExportRangeModal";
 import AttendanceEmployeeFormModal from "./AttendanceEmployeeFormModal";
+import AttendanceOffDaysModal from "./AttendanceOffDaysModal";
 import {
   isAttendanceDayMetaKey,
   getIsOffDayFromRaw,
 } from "./attendanceDayMeta";
+import {
+  fetchOffDayDateKeysInMonth,
+  formatOffDayDateKeysCompact,
+} from "./attendanceMonthOffDays";
 import {
   normalizeTextValue,
   getAttendanceComboFlags,
@@ -86,6 +89,9 @@ const AttendanceComboChartModal = lazy(() =>
   import("./AttendanceComboChartModal"),
 );
 
+/** Ngày chọn trên ô date / URL `?date=` — đồng bộ với Firebase path `attendance/YYYY-MM-DD`. */
+const ISO_DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 function attendanceTableWrapperMinWidthClass(columnPlan) {
   switch (columnPlan) {
     case "full":
@@ -95,7 +101,7 @@ function attendanceTableWrapperMinWidthClass(columnPlan) {
     case "narrow":
       return "min-w-[760px]";
     case "minimal":
-      return "min-w-[400px]";
+      return "min-w-[520px]";
     default:
       return "min-w-[920px]";
   }
@@ -103,23 +109,18 @@ function attendanceTableWrapperMinWidthClass(columnPlan) {
 
 function AttendanceList() {
   const todayKey = new Date().toISOString().slice(0, 10);
-  // State for alert messages
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
-  // State for add/edit modal (logic trong AttendanceEmployeeFormModal)
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [employeeModalRecord, setEmployeeModalRecord] = useState(null);
-  // State for main filter modal open/close
   const [filterOpen, setFilterOpen] = useState(false);
-  // State for department search input in filter
   const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
-  // State for single department filter (if used)
   const [departmentFilter, setDepartmentFilter] = useState("");
-  // State for main search input
   const [searchTerm, setSearchTerm] = useState("");
-  // State for selected date (default to today)
   const [selectedDate, setSelectedDate] = useState(todayKey);
-  /** `attendance/{date}/_meta.isOffDay` — chỉ Admin/HR bật/tắt. */
   const [isOffDay, setIsOffDay] = useState(false);
+  const [offDaysModalOpen, setOffDaysModalOpen] = useState(false);
+  const [monthOffDayKeys, setMonthOffDayKeys] = useState([]);
+  const [monthOffDaysLoading, setMonthOffDaysLoading] = useState(false);
   const { t, i18n } = useTranslation();
   const { user, userDepartments, userRole } = useUser();
   const userEmailKey = useMemo(
@@ -131,7 +132,7 @@ function AttendanceList() {
 
   useEffect(() => {
     const d = searchParams.get("date");
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(d);
+    if (d && ISO_DATE_KEY_RE.test(d)) setSelectedDate(d);
   }, [searchParams]);
 
   useEffect(() => {
@@ -153,18 +154,62 @@ function AttendanceList() {
     [t],
   );
   const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
+
+  const refreshMonthOffDays = useCallback(async () => {
+    if (!user || !isAdminAccess(user, userRole)) {
+      setMonthOffDayKeys([]);
+      return;
+    }
+    if (!selectedDate || !ISO_DATE_KEY_RE.test(selectedDate)) {
+      setMonthOffDayKeys([]);
+      return;
+    }
+    setMonthOffDaysLoading(true);
+    setMonthOffDayKeys([]);
+    try {
+      const keys = await fetchOffDayDateKeysInMonth(selectedDate);
+      setMonthOffDayKeys(keys);
+    } catch (err) {
+      console.error("refreshMonthOffDays:", err);
+      setMonthOffDayKeys([]);
+    } finally {
+      setMonthOffDaysLoading(false);
+    }
+  }, [user, userRole, selectedDate]);
+
+  useEffect(() => {
+    void refreshMonthOffDays();
+  }, [refreshMonthOffDays]);
+
+  const monthOffDaysToolbarText = useMemo(
+    () => formatOffDayDateKeysCompact(monthOffDayKeys, displayLocale),
+    [monthOffDayKeys, displayLocale],
+  );
+
+  const dayOffToolbarButtonTitle = useMemo(() => {
+    const hint = tl(
+      "dayOffToolbarHint",
+      "Chọn một hoặc nhiều ngày off (lưu lên Firebase). Ngày đang xem có OFF thì hiển thị huy hiệu.",
+    );
+    if (monthOffDayKeys.length === 0) return hint;
+    return `${hint}\n${tl(
+      "dayOffToolbarTitleDates",
+      "Ngày off trong tháng (YYYY-MM-DD):",
+    )} ${monthOffDayKeys.join(", ")}`;
+  }, [monthOffDayKeys, tl]);
+
   const [employees, setEmployees] = useState([]);
   const [savingCaLamViec, setSavingCaLamViec] = useState({});
-  const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
-  const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
-  const [savingGioVao, setSavingGioVao] = useState({}); // Track which gioVao is being saved
+  const [editingCaLamViec, setEditingCaLamViec] = useState({});
+  const [editingGioVao, setEditingGioVao] = useState({});
+  const [savingGioVao, setSavingGioVao] = useState({});
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
   const [filterGenderSearch, setFilterGenderSearch] = useState("");
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
-  const [gioiTinhFilter, setGioiTinhFilter] = useState([]); // Filter by gender
-  const [departmentListFilter, setDepartmentListFilter] = useState([]); // Filter by department in filter section
-  const [gioVaoFilter, setGioVaoFilter] = useState([]); // Filter by entry time status (chưa chấm công, đã chấm công)
-  const [expandedSections, setExpandedSections] = useState({}); // Track which sections are expanded
+  const [gioiTinhFilter, setGioiTinhFilter] = useState([]);
+  const [departmentListFilter, setDepartmentListFilter] = useState([]);
+  const [gioVaoFilter, setGioVaoFilter] = useState([]);
+  const [expandedSections, setExpandedSections] = useState({});
   const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   const [showComboChartModal, setShowComboChartModal] = useState(false);
   const [comboChartBodyReady, setComboChartBodyReady] = useState(false);
@@ -173,7 +218,6 @@ function AttendanceList() {
   const [comboStatDetailKey, setComboStatDetailKey] = useState(null);
   const [comboChartDeptOrder, setComboChartDeptOrder] = useState([]);
   const [comboDragOverDept, setComboDragOverDept] = useState(null);
-  // Overtime modal-specific filters
   const [modalFilterOpen, setModalFilterOpen] = useState(false);
   const [modalGioiTinhFilter, setModalGioiTinhFilter] = useState([]);
   const [modalDepartmentListFilter, setModalDepartmentListFilter] = useState(
@@ -1130,32 +1174,6 @@ function AttendanceList() {
       });
     }
   }, [user, userRole, selectedDate, employees.length, t]);
-
-  const handleSetDayOff = useCallback(
-    async (checked) => {
-      if (!user || !isAdminAccess(user, userRole)) {
-        setAlert({
-          show: true,
-          type: "error",
-          message: t("attendanceList.adminOrHROnly"),
-        });
-        return;
-      }
-      try {
-        await set(ref(db, `attendance/${selectedDate}/_meta`), {
-          isOffDay: checked,
-        });
-      } catch (err) {
-        console.error("Set day off meta:", err);
-        setAlert({
-          show: true,
-          type: "error",
-          message: t("attendanceList.error"),
-        });
-      }
-    },
-    [user, userRole, selectedDate, t],
-  );
 
   // Export to Excel (moved to external component)
 
@@ -2264,26 +2282,47 @@ function AttendanceList() {
               onChange={(e) => setSelectedDate(e.target.value)}
               className="h-8 w-full shrink-0 rounded-md border bg-white px-2 text-sm font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300 sm:w-auto"
             />
-            <label
-              title={tl(
-                "dayOffToggleHint",
-                "Bật khi ngày đó là ngày nghỉ/off để tính TC off trên màn Ước lương: cột Giờ công = 0, giờ làm quy đổi theo quy tắc giờ công nằm ở cột TC off (Admin/HR).",
-              )}
-              className="inline-flex h-8 max-w-full shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-2 text-xs font-bold text-violet-900 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100"
-            >
-              <input
-                type="checkbox"
-                className="h-3.5 w-3.5 shrink-0 rounded border-violet-400 text-violet-600 focus:ring-violet-400"
-                checked={isOffDay}
-                disabled={!user || !isAdminAccess(user, userRole)}
-                onChange={(e) => {
-                  void handleSetDayOff(e.target.checked);
-                }}
-              />
-              <span className="whitespace-nowrap">
-                {tl("dayOffToggle", "Ngày off")}
-              </span>
-            </label>
+            {user && isAdminAccess(user, userRole) ? (
+              <button
+                type="button"
+                onClick={() => setOffDaysModalOpen(true)}
+                className="inline-flex max-w-full min-w-0 shrink-0 cursor-pointer flex-col items-stretch gap-0.5 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-left text-xs font-bold text-violet-900 transition hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/50"
+                title={dayOffToolbarButtonTitle}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="whitespace-nowrap">
+                    {tl("dayOffToolbarButton", "Ngày off (nhiều ngày)")}
+                  </span>
+                  {isOffDay ? (
+                    <span className="shrink-0 rounded bg-rose-600 px-1.5 py-px text-[10px] font-extrabold uppercase tracking-wide text-white">
+                      OFF
+                    </span>
+                  ) : null}
+                </span>
+                {monthOffDaysLoading ? (
+                  <span className="text-[10px] font-medium leading-tight text-violet-800/85 dark:text-violet-200/90">
+                    {tl(
+                      "dayOffToolbarLoading",
+                      "Đang tải danh sách ngày off trong tháng…",
+                    )}
+                  </span>
+                ) : monthOffDaysToolbarText ? (
+                  <span className="max-w-[min(100vw-3rem,22rem)] text-[10px] font-semibold leading-snug text-violet-900/95 dark:text-violet-100/95">
+                    <span className="mr-1 font-bold opacity-90">
+                      {tl("dayOffToolbarMonthPrefix", "Trong tháng:")}
+                    </span>
+                    <span className="tabular-nums">{monthOffDaysToolbarText}</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium leading-tight text-violet-800/65 dark:text-violet-300/75">
+                    {tl(
+                      "dayOffToolbarNoOffInMonth",
+                      "Chưa có ngày off nào trong tháng này.",
+                    )}
+                  </span>
+                )}
+              </button>
+            ) : null}
             <input
               type="text"
               value={searchTerm}
@@ -3130,6 +3169,15 @@ function AttendanceList() {
           userRole={userRole}
           userDepartments={userDepartments}
           onAlert={setAlert}
+        />
+
+        <AttendanceOffDaysModal
+          open={offDaysModalOpen}
+          onClose={() => setOffDaysModalOpen(false)}
+          selectedDate={selectedDate}
+          user={user}
+          tl={tl}
+          onSaved={refreshMonthOffDays}
         />
 
         {/* Overtime Modal */}

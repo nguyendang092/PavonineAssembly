@@ -965,15 +965,17 @@ const vi = {
     gender: "Giới tính",
     timeIn: "Thời gian vào",
     timeOut: "Thời gian ra",
+    clearTimeOut: "Xóa giờ ra",
+    timeOutClearHint: "Xóa thời gian ra (để trống)",
     workingHours: "Giờ công",
     workingHoursHint:
       "Giờ vào–ra dạng HH:MM. Vào từ 7:00 đến trước 7:30 và ra trước 17:30 = 8 giờ công (cố định); ngoài khung: khoảng giờ giữa hai mốc, tối đa 8h (phần tăng ca xem cột Giờ TC).",
     overtimeHours: "Giờ công tăng ca (x1.5)",
     overtimeHoursHint:
       "Giờ ra sau 17:30: tính tăng ca từ 17:00, cứ 30 phút = 0,5 giờ.",
-    offDayOvertimeHours: "Giờ công ngày OFF (x2.0)",
+    offDayOvertimeHours: "Giờ công ngày off (x2.0)",
     offDayOvertimeHoursHint:
-      "Khi ngày được đánh dấu off: hiển thị giờ công giống cột Giờ công; ngày không off thì trống. Ca «Ca đêm»: cột này «-» — giờ quy đổi nằm ở «GC ca đêm off».",
+      "Cột legacy: không còn dùng cho giờ làm ngày off (giờ đó nằm ở cột Giờ công). Luôn «-».",
     nightShiftWorkingHours: "Giờ công ca đêm",
     nightShiftWorkingHoursHint:
       "Chỉ khi ca «Ca đêm»: thời lượng từ giờ vào đến mốc 05:00 (05:00 cùng ngày nếu vào trước 05:00, không thì 05:00 ngày hôm sau), tối đa 8 giờ.",
@@ -984,8 +986,26 @@ const vi = {
     nightShiftOffDayWorkingHoursHint:
       "Khi «Ngày off» và ca «Ca đêm»: cùng quy tắc GC ca đêm (đến mốc 05:00, tối đa 8h). Ngày không off thì trống.",
     dayOffToggle: "Ngày off",
+    dayOffToolbarButton: "Ngày OFF",
+    dayOffToolbarHint:
+      "Chọn một hoặc nhiều ngày off (lưu Firebase). Ngày đang xem là off thì có huy hiệu OFF.",
+    dayOffToolbarTitleDates: "Ngày off trong tháng (YYYY-MM-DD):",
+    dayOffToolbarLoading: "Đang tải danh sách ngày off trong tháng…",
+    dayOffToolbarMonthPrefix: "Trong tháng:",
+    dayOffToolbarNoOffInMonth: "Chưa có ngày off nào trong tháng này.",
+    dayOffMultiModalTitle: "Chọn nhiều ngày off",
+    dayOffMultiModalHint:
+      "Các ngày trong danh sách được lưu là «Ngày off» (cột Ngày off = OFF; bảng lương dùng TC off). Thêm/bỏ ngày rồi bấm Lưu.",
+    dayOffMultiAddDate: "Thêm",
+    dayOffMultiAddCurrent: "Thêm ngày đang xem ({{date}})",
+    dayOffMultiEmpty: "Chưa có ngày — thêm bằng lịch hoặc nút trên.",
+    dayOffMultiRemove: "Bỏ ngày",
+    dayOffMultiCancel: "Hủy",
+    dayOffMultiSave: "Lưu",
+    dayOffMultiSaving: "Đang lưu…",
+    dayOffMultiLoadingList: "Đang tải các ngày off trong tháng…",
     dayOffToggleHint:
-      "Bật khi ngày đó là ngày nghỉ/off để tính TC off trên màn Ước lương: cột Giờ công hiển thị «-», giờ làm quy đổi theo quy tắc giờ công nằm ở cột TC off (Admin/HR).",
+      "Bật khi ngày đó là ngày nghỉ/off: trên bảng lương, ca ngày hiển thị giờ làm quy đổi ở cột TC off (cùng quy tắc điểm danh); cột Giờ công là «-». Ngày không off: giờ công ở cột Giờ công. Ca đêm: GC nằm ở cột GC ca đêm / GC ca đêm off.",
     checkedIn: "Đã chấm công",
     nonStandardTimeIn: "Giờ vào ≠ HH:MM",
     nonStandardTimeInShort: "≠ HH:MM",
@@ -1065,6 +1085,10 @@ const vi = {
     pageTitle: "Bảng giờ công nhân viên",
     pageSubtitle: "Bảng giờ công nhân viên dựa trên dữ liệu chấm công.",
     table: {
+      payrollWorkingHoursHint:
+        "Ngày không off: giờ công theo giờ vào–ra. Khi «Ngày off» (ca ngày): cột này «-» — giờ quy đổi nằm ở TC off. Ca đêm: cột này «-» (dùng GC/TC ca đêm).",
+      payrollOffDayTcHint:
+        "Khi «Ngày off» và ca ngày: giờ làm quy đổi (cùng quy tắc điểm danh). Ngày không off hoặc ca đêm: «-».",
       nightShiftWorkingHoursHint:
         "Ca đêm: từ giờ vào đến mốc 05:00 (cùng ngày nếu vào trước 05:00, không thì 05:00 hôm sau), tối đa 8 giờ.",
       nightShiftOvertimeHoursHint:
@@ -1073,10 +1097,13 @@ const vi = {
         "Ngày off + ca đêm: cùng quy tắc GC ca đêm; ngày thường cột trống.",
       payrollTotalGcDay: "Tổng giờ công",
       payrollTotalGcDayHint:
-        "Tổng: Giờ công + Giờ TC + TC off (không gồm cột ca đêm).",
+        "Tổng khối ngày: Giờ công + Giờ TC; khi ngày off (ca ngày) cộng luôn phần hiển thị ở TC off — không gồm cột ca đêm.",
       payrollTotalGcNight: "Tổng giờ công ca đêm",
       payrollTotalGcNightHint:
         "Tổng khối ca đêm: GC (đến mốc 05:00) + TC ca đêm (sau mốc 05:00) — cùng hai cột GC/TC ca đêm.",
+      offDayColumn: "Ngày off",
+      offDayColumnHint:
+        "Khi ngày được đánh dấu «Ngày off» trên Điểm danh: hiển thị OFF.",
     },
     searchPlaceholder: "Tìm theo tên, MNV, bộ phận…",
     exportExcel: "⬇ Xuất Excel",
@@ -1087,6 +1114,8 @@ const vi = {
     exportExcelError: "❌ Xuất Excel thất bại: {{error}}",
     exportSheetTitle: "Bảng giờ công nhân viên",
     exportOffDaySuffix: "Ngày off",
+    offDayPayrollBanner:
+      "Ngày đang bật «Ngày off»: ca ngày — giờ làm quy đổi hiển thị ở cột TC off (cột Giờ công là «-»); ca đêm — dùng cột GC ca đêm / GC ca đêm off.",
     linkAttendance: "Điểm danh NV",
     dateLabel: "Ngày",
     allDepts: "Tất cả bộ phận",

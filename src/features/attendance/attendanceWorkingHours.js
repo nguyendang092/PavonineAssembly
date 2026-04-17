@@ -17,11 +17,23 @@
  * (đến `min(giờ ra, mốc)` trên trục thời gian, có qua đêm), **tối đa 8 giờ** (làm tròn 0.1).
  * Phần làm việc **sau** mốc 05:00: cứ **30 phút = 0,5 giờ** TC ca đêm (làm tròn xuống theo block 30 phút).
  *
- * **GC ca đêm ngày off:** cùng công thức **GC ca đêm**, chỉ hiển thị khi **Ngày off** + **Ca đêm**
- * (tương tự TC off so với Giờ công).
+ * **GC ca đêm ngày off:** cùng công thức **GC ca đêm**, chỉ hiển thị khi **Ngày off** + **Ca đêm**.
+ * **Ngày off + ca ngày:** giờ làm quy đổi hiển thị ở cột **TC off** (cột Giờ công là «-»). **Ngày không off:** giờ công ở cột **Giờ công** như bình thường.
  */
 
 const HHMM = /^(\d{1,2}):(\d{2})$/;
+
+/**
+ * Làm tròn về **0.1 giờ**. Không dùng `Math.round(giờ)` trên số giờ thuần (ví dụ `Math.round(3.5) === 4`).
+ * Với số dương: half-up qua `floor(x*10+0.5+ε)/10` — 3.5 giữ là 3.5, không thành 4.
+ * @param {number} value
+ * @returns {number}
+ */
+export function roundHoursToTenths(value) {
+  if (!Number.isFinite(value)) return value;
+  if (value >= 0) return Math.floor(value * 10 + 0.5 + 1e-9) / 10;
+  return Math.ceil(value * 10 - 0.5 - 1e-9) / 10;
+}
 
 /** @param {unknown} s */
 export function parseHHMMToMinutes(s) {
@@ -88,7 +100,7 @@ export function getNightShiftPayrollRegularHoursAndOtMinutes(
   const regularMinutes = Math.max(0, gcEnd - T0);
   const regularHours = Math.min(
     MAX_REGULAR_WORKING_HOURS,
-    Math.round((regularMinutes / 60) * 10) / 10,
+    roundHoursToTenths(regularMinutes / 60),
   );
 
   let otMinutes = 0;
@@ -141,8 +153,7 @@ export function getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec) {
   if (b <= a) {
     if (!night) return null;
     const spanMinutes = MINUTES_PER_DAY - a + b;
-    const raw =
-      Math.round((spanMinutes / 60) * 10) / 10;
+    const raw = roundHoursToTenths(spanMinutes / 60);
     return Math.min(raw, MAX_REGULAR_WORKING_HOURS);
   }
 
@@ -154,7 +165,7 @@ export function getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec) {
   ) {
     return MAX_REGULAR_WORKING_HOURS;
   }
-  const raw = Math.round(((b - a) / 60) * 10) / 10;
+  const raw = roundHoursToTenths((b - a) / 60);
   return Math.min(raw, MAX_REGULAR_WORKING_HOURS);
 }
 
@@ -184,10 +195,10 @@ function payrollHoursCellDisplay(value) {
 }
 
 /**
- * Bảng lương khi `attendance/{ngày}/_meta.isOffDay`: không cộng giờ công ngày thường —
- * cột Giờ công hiển thị «-»; cùng quy tắc tính giờ (như cột Giờ công) dùng cho TC off.
- * **Ca đêm (không off):** «-» — toàn bộ giờ công nằm ở «GC ca đêm» / «TC ca đêm», không lặp ở đây.
- * **Ca đêm + off:** TC off = «-» (giờ quy đổi nằm ở cột GC ca đêm off).
+ * Cột **Giờ công** (bảng lương).
+ * **Ngày off + ca ngày:** «-» — giờ quy đổi nằm ở cột **TC off**.
+ * **Ca đêm (không off):** «-» — giờ nằm ở «GC ca đêm» / «TC ca đêm».
+ * **Ca đêm + ngày off:** «-» — GC nằm ở «GC ca đêm off».
  */
 export function formatPayrollTableWorkingHoursCell(
   gioVao,
@@ -195,22 +206,33 @@ export function formatPayrollTableWorkingHoursCell(
   isOffDay,
   caLamViec,
 ) {
-  if (isOffDay) return PAYROLL_CELL_DASH;
-  if (isNightShiftCaLamViec(caLamViec)) return PAYROLL_CELL_DASH;
+  if (isNightShiftCaLamViec(caLamViec)) {
+    return PAYROLL_CELL_DASH;
+  }
+  if (isOffDay) {
+    return PAYROLL_CELL_DASH;
+  }
   return payrollHoursCellDisplay(
     formatAttendanceWorkingHoursLabel(gioVao, gioRa, caLamViec) || PAYROLL_CELL_DASH,
   );
 }
 
+/**
+ * Cột **TC off** (ca ngày): khi **Ngày off** — giờ làm quy đổi (cùng quy tắc điểm danh).
+ * Ngày không off hoặc ca đêm: «-» (ca đêm dùng cột GC ca đêm / GC ca đêm off).
+ */
 export function formatPayrollTableOffDayTcCell(
   gioVao,
   gioRa,
   isOffDay,
   caLamViec,
 ) {
-  if (!isOffDay) return PAYROLL_CELL_DASH;
-  // Ca đêm + off: giờ quy đổi ở «GC ca đêm off», không lặp ở TC off.
-  if (isNightShiftCaLamViec(caLamViec)) return PAYROLL_CELL_DASH;
+  if (isNightShiftCaLamViec(caLamViec)) {
+    return PAYROLL_CELL_DASH;
+  }
+  if (!isOffDay) {
+    return PAYROLL_CELL_DASH;
+  }
   return payrollHoursCellDisplay(
     formatAttendanceWorkingHoursLabel(gioVao, gioRa, caLamViec) || PAYROLL_CELL_DASH,
   );
@@ -308,8 +330,9 @@ export function isEarlyArrivalFor0600PaperworkOvertime(gioVao, caLamViec) {
 
 /**
  * Giờ TC khối ngày (cột «Giờ TC»): tăng ca sau 17:30 + (tùy chọn) 2h khi có giấy và vào ≤ 06:00.
+ * Ca ngày: **bắt buộc có giờ ra hợp lệ** mới tính TC (kể cả phần giấy sớm) — tránh có 2h TC khi chưa chấm giờ ra.
  * @param {boolean | undefined} earlyOtPaperwork — `true` nếu user xác nhận có giấy.
- * @returns {number | null} null nếu không đọc được giờ ra (ca ngày) và không có phần sớm.
+ * @returns {number | null} null nếu không đọc được giờ ra (ca ngày / ca đêm).
  */
 export function getPayrollDayOvertimeHoursNumeric(
   gioVao,
@@ -324,6 +347,9 @@ export function getPayrollDayOvertimeHoursNumeric(
   if (isOffDay) return 0;
 
   const evening = getOvertimeHoursFromGioRa(gioRa);
+  if (evening == null) {
+    return null;
+  }
   let early = 0;
   if (
     earlyOtPaperwork === true &&
@@ -332,11 +358,7 @@ export function getPayrollDayOvertimeHoursNumeric(
     early = EARLY_PAPERWORK_OT_HOURS;
   }
 
-  if (evening == null) {
-    if (early > 0) return early;
-    return null;
-  }
-  return Math.round((evening + early) * 10) / 10;
+  return roundHoursToTenths(evening + early);
 }
 
 /**
@@ -376,14 +398,18 @@ export function formatOvertimeHoursLabel(gioRa) {
 }
 
 /**
- * Tổng GC (khối ngày): Giờ công + Giờ TC (ngày thường) + TC off (khi off & không ca đêm).
+ * Tổng GC (khối ngày): Giờ công + Giờ TC (+ TC off khi ngày off ca ngày — cùng số giờ, chỉ tách cột).
  * Ca đêm: không cộng phần «Giờ công» (cột đó trống) — dùng «Tổng GC ca đêm».
  */
 function payrollTotalDayGcNumeric(gioVao, gioRa, isOffDay, caLamViec, earlyOtPaperwork) {
   let gc = 0;
-  if (!isOffDay && !isNightShiftCaLamViec(caLamViec)) {
+  if (!isNightShiftCaLamViec(caLamViec)) {
     const h = getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec);
-    gc = h == null ? 0 : h;
+    if (isOffDay) {
+      gc = 0;
+    } else {
+      gc = h == null ? 0 : h;
+    }
   }
   let tc = 0;
   if (!isOffDay) {
@@ -400,13 +426,11 @@ function payrollTotalDayGcNumeric(gioVao, gioRa, isOffDay, caLamViec, earlyOtPap
       const o = getOvertimeHoursFromGioRa(gioRa);
       tc = o == null ? 0 : o;
     }
-  }
-  let tcOff = 0;
-  if (isOffDay && !isNightShiftCaLamViec(caLamViec)) {
+  } else if (!isNightShiftCaLamViec(caLamViec)) {
     const h = getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec);
-    tcOff = h == null ? 0 : h;
+    tc = h == null ? 0 : h;
   }
-  return Math.round((gc + tc + tcOff) * 10) / 10;
+  return roundHoursToTenths(gc + tc);
 }
 
 export function formatPayrollTableTotalDayGcCell(
@@ -444,7 +468,7 @@ export function formatPayrollTableTotalNightGcCell(
     parts != null && Number.isFinite(parts.regularHours) ? parts.regularHours : 0;
   const otH = getNightShiftPayrollOvertimeHours(gioVao, gioRa, caLamViec);
   const tc = otH != null && Number.isFinite(otH) ? otH : 0;
-  const sum = Math.round((gc + tc) * 10) / 10;
+  const sum = roundHoursToTenths(gc + tc);
   if (sum === 0) return PAYROLL_CELL_DASH;
   return payrollHoursCellDisplay(String(sum));
 }

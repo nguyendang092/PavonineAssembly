@@ -47,3 +47,16 @@ export function getIsOffDayFromRaw(rawData) {
   const m = rawData[ATTENDANCE_DAY_META_KEY];
   return Boolean(m && typeof m === "object" && m.isOffDay);
 }
+
+/**
+ * Gộp patch vào `_meta` mà không xóa `earlyOtPaperwork` / trường khác.
+ * @param {unknown} existing
+ * @param {Record<string, unknown>} patch
+ */
+export function mergeAttendanceDayMeta(existing, patch) {
+  const base =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? { ...existing }
+      : {};
+  return { ...base, ...patch };
+}

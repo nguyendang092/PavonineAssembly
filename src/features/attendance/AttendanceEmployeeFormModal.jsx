@@ -539,13 +539,32 @@ export default function AttendanceEmployeeFormModal({
             <label className={employeeModalLabelClass}>
               {tl("timeOut", "Giờ ra")}
             </label>
-            <input
-              type="time"
-              name="gioRa"
-              value={form.gioRa}
-              onChange={handleChange}
-              className={employeeModalFieldClass}
-            />
+            <div className="flex flex-wrap items-stretch gap-2">
+              <input
+                type="time"
+                name="gioRa"
+                value={normalizeTimeForHtmlInput(form.gioRa) || ""}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    gioRa: e.target.value || "",
+                  }))
+                }
+                className={`${employeeModalFieldClass} min-w-0 flex-1`}
+              />
+              <button
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, gioRa: "" }))}
+                disabled={!String(form.gioRa ?? "").trim()}
+                className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                title={tl(
+                  "timeOutClearHint",
+                  "Xóa thời gian ra (để trống)",
+                )}
+              >
+                {tl("clearTimeOut", "Xóa giờ ra")}
+              </button>
+            </div>
           </div>
           <div>
             <label className={employeeModalLabelClass}>

@@ -59,15 +59,15 @@ function payrollTableWrapperMinWidthClass(
 ) {
   switch (columnPlan) {
     case "full":
-      return showRowModalActions ? "min-w-[1236px]" : "min-w-[1180px]";
+      return showRowModalActions ? "min-w-[1292px]" : "min-w-[1236px]";
     case "compact":
-      return showRowModalActions ? "min-w-[976px]" : "min-w-[920px]";
+      return showRowModalActions ? "min-w-[1032px]" : "min-w-[976px]";
     case "narrow":
-      return showRowModalActions ? "min-w-[836px]" : "min-w-[780px]";
+      return showRowModalActions ? "min-w-[892px]" : "min-w-[836px]";
     case "minimal":
-      return showRowModalActions ? "min-w-[456px]" : "min-w-[400px]";
+      return showRowModalActions ? "min-w-[512px]" : "min-w-[456px]";
     default:
-      return showRowModalActions ? "min-w-[896px]" : "min-w-[840px]";
+      return showRowModalActions ? "min-w-[952px]" : "min-w-[896px]";
   }
 }
 
@@ -112,7 +112,7 @@ function writeEarlyOtSessionSuppressed(uid, value) {
 }
 
 /**
- * Trang lương: đọc attendance/{ngày} (chỉ xem), bảng riêng với cột TC off (ngày off).
+ * Trang lương: đọc attendance/{ngày} (chỉ xem). Ngày off + ca ngày: giờ quy đổi ở cột TC off.
  * Điểm danh NV: chỉnh sửa chấm công — không hiển thị cột TC off.
  */
 export default function PayrollSalaryCalculator() {
@@ -252,12 +252,14 @@ export default function PayrollSalaryCalculator() {
     [employees, earlyOtMap],
   );
 
-  const earlyOtEligibleEmployees = useMemo(() => {
-    if (isOffDay) return [];
-    return employees.filter((e) =>
-      isEarlyArrivalFor0600PaperworkOvertime(e.gioVao, e.caLamViec),
-    );
-  }, [employees, isOffDay]);
+  /** Vào ≤ 06:00 (ca ngày) — vẫn hiện nút / modal khi ngày off (chỉ tắt tự mở popup). */
+  const earlyOtEligibleEmployees = useMemo(
+    () =>
+      employees.filter((e) =>
+        isEarlyArrivalFor0600PaperworkOvertime(e.gioVao, e.caLamViec),
+      ),
+    [employees],
+  );
 
   const pendingEarlyOtEmployees = useMemo(
     () => earlyOtEligibleEmployees.filter((e) => !(e.id in earlyOtMap)),
@@ -279,8 +281,14 @@ export default function PayrollSalaryCalculator() {
 
   useEffect(() => {
     if (earlyOtModalMode === "all") return;
-    if (isOffDay || earlyOtSuppressed || earlyOtSessionSuppressed) {
+    if (earlyOtSuppressed || earlyOtSessionSuppressed) {
       if (earlyOtModalOpen) setEarlyOtModalOpen(false);
+      return;
+    }
+    if (isOffDay) {
+      if (earlyOtModalOpen && earlyOtModalMode === "pending") {
+        setEarlyOtModalOpen(false);
+      }
       return;
     }
     if (pendingEarlyOtEmployees.length > 0) {
@@ -653,7 +661,7 @@ export default function PayrollSalaryCalculator() {
           >
             {tlPage(
               "offDayPayrollBanner",
-              "Ngày đang bật «Ngày off»: cột Giờ công hiển thị «-»; cùng quy tắc tính như giờ công nằm ở cột TC off.",
+              "Ngày đang bật «Ngày off»: ca ngày — giờ làm quy đổi hiển thị ở cột TC off (cột Giờ công là «-»); ca đêm — dùng cột GC ca đêm / GC ca đêm off.",
             )}
           </div>
         ) : null}
