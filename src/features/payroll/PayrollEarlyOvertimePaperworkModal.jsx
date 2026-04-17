@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 /**
  * Xác nhận có giấy tăng ca khung 06:00–08:00 (vào ≤ 06:00, ca ngày).
- * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: () => void, onSave: (updates: Record<string, boolean>) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean }} props
+ * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: (opts?: { suppressSession?: boolean }) => void, onSave: (updates: Record<string, boolean>, opts?: { suppressSession?: boolean }) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, suppressSessionLabel?: string }} props
  */
 export default function PayrollEarlyOvertimePaperworkModal({
   open,
@@ -16,8 +16,10 @@ export default function PayrollEarlyOvertimePaperworkModal({
   skipAllLabel,
   closeLabel = "Đóng",
   saving = false,
+  suppressSessionLabel = "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
 }) {
   const [checks, setChecks] = useState({});
+  const [suppressSessionChecked, setSuppressSessionChecked] = useState(false);
 
   useEffect(() => {
     if (!open || !rows?.length) return;
@@ -26,6 +28,7 @@ export default function PayrollEarlyOvertimePaperworkModal({
       next[emp.id] = initialChecked(emp.id);
     }
     setChecks(next);
+    setSuppressSessionChecked(false);
   }, [open, rows, initialChecked]);
 
   if (!open) return null;
@@ -40,7 +43,9 @@ export default function PayrollEarlyOvertimePaperworkModal({
     for (const emp of rows) {
       updates[emp.id] = !!checks[emp.id];
     }
-    await Promise.resolve(onSave(updates));
+    await Promise.resolve(
+      onSave(updates, { suppressSession: suppressSessionChecked }),
+    );
   };
 
   const handleSkipAllNo = async () => {
@@ -49,7 +54,13 @@ export default function PayrollEarlyOvertimePaperworkModal({
     for (const emp of rows) {
       updates[emp.id] = false;
     }
-    await Promise.resolve(onSave(updates));
+    await Promise.resolve(
+      onSave(updates, { suppressSession: suppressSessionChecked }),
+    );
+  };
+
+  const handleDismiss = () => {
+    onDismiss({ suppressSession: suppressSessionChecked });
   };
 
   return (
@@ -58,7 +69,7 @@ export default function PayrollEarlyOvertimePaperworkModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="payroll-early-ot-title"
-      onClick={saving ? undefined : onDismiss}
+      onClick={saving ? undefined : handleDismiss}
     >
       <div
         className="max-h-[min(96vh,700px)] w-full max-w-xl overflow-hidden rounded-2xl border border-sky-200/80 bg-white shadow-xl shadow-sky-200/25 ring-1 ring-sky-100/90 dark:border-slate-600/80 dark:bg-slate-900 dark:shadow-black/40 dark:ring-sky-900/30"
@@ -93,7 +104,7 @@ export default function PayrollEarlyOvertimePaperworkModal({
             </div>
           </div>
         </div>
-        <div className="max-h-[min(58vh,440px)] overflow-y-auto bg-stone-50/40 px-3 py-3 dark:bg-slate-950/50">
+        <div className="max-h-[min(62vh,480px)] overflow-y-auto bg-stone-50/40 px-3 py-3 dark:bg-slate-950/50">
           <ul className="space-y-2.5">
             {rows.map((emp) => (
               <li
@@ -150,31 +161,45 @@ export default function PayrollEarlyOvertimePaperworkModal({
             ))}
           </ul>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950">
-          <button
-            type="button"
-            disabled={saving}
-            onClick={handleSkipAllNo}
-            className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-100 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
-          >
-            {skipAllLabel}
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={onDismiss}
-            className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-200 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
-          >
-            {closeLabel}
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={handleSave}
-            className="rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-sky-600/30 transition hover:from-sky-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:shadow-sky-950/40 dark:hover:from-sky-500 dark:hover:to-blue-600"
-          >
-            {saving ? "…" : saveLabel}
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950">
+          <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5 text-left sm:items-center">
+            <input
+              type="checkbox"
+              disabled={saving}
+              checked={suppressSessionChecked}
+              onChange={() => setSuppressSessionChecked((v) => !v)}
+              className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded border-sky-300 text-sky-600 focus:ring-2 focus:ring-sky-300/70 focus:ring-offset-1 disabled:opacity-50 sm:mt-0 dark:border-sky-600 dark:text-sky-500 dark:focus:ring-sky-800/60"
+            />
+            <span className="min-w-0 flex-1 text-[11px] font-medium leading-snug text-slate-700 dark:text-slate-300">
+              {suppressSessionLabel}
+            </span>
+          </label>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleSkipAllNo}
+              className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-100 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
+            >
+              {skipAllLabel}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleDismiss}
+              className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-200 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
+            >
+              {closeLabel}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleSave}
+              className="rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-sky-600/30 transition hover:from-sky-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:shadow-sky-950/40 dark:hover:from-sky-500 dark:hover:to-blue-600"
+            >
+              {saving ? "…" : saveLabel}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -36,7 +36,18 @@ import {
 } from "@/features/attendance/attendanceDayMeta";
 import AlertMessage from "@/components/ui/AlertMessage";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
-import { downloadPayrollSalaryExcel } from "@/features/payroll/payrollExcelExport";
+import {
+  buildPayrollSalaryExcelWorkbookMultiDay,
+  downloadPayrollSalaryExcel,
+  downloadPayrollWorkbookToFile,
+  formatPayrollExcelDateCell,
+  PAYROLL_EXCEL_MAX_RANGE_DAYS,
+} from "@/features/payroll/payrollExcelExport";
+import {
+  enumerateDateKeysInclusive,
+  getTodayDateKeyLocal,
+} from "@/utils/dateKey";
+import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
 import { isEarlyArrivalFor0600PaperworkOvertime } from "@/features/attendance/attendanceWorkingHours";
 import PayrollEarlyOvertimePaperworkModal from "@/features/payroll/PayrollEarlyOvertimePaperworkModal";
 import "./payrollTableCompact.css";
@@ -75,6 +86,31 @@ function applyAttendanceMerge(rawData, profMap) {
 
 const noop = () => {};
 
+const EARLY_OT_SESSION_STORAGE_PREFIX =
+  "payroll_earlyOt_prompt_suppress_session:";
+
+function earlyOtSessionSuppressStorageKey(uid) {
+  return `${EARLY_OT_SESSION_STORAGE_PREFIX}${uid || "anon"}`;
+}
+
+function readEarlyOtSessionSuppressed(uid) {
+  try {
+    return sessionStorage.getItem(earlyOtSessionSuppressStorageKey(uid)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeEarlyOtSessionSuppressed(uid, value) {
+  try {
+    const k = earlyOtSessionSuppressStorageKey(uid);
+    if (value) sessionStorage.setItem(k, "1");
+    else sessionStorage.removeItem(k);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 /**
  * Trang lương: đọc attendance/{ngày} (chỉ xem), bảng riêng với cột TC off (ngày off).
  * Điểm danh NV: chỉnh sửa chấm công — không hiển thị cột TC off.
@@ -104,12 +140,19 @@ export default function PayrollSalaryCalculator() {
   const [earlyOtMap, setEarlyOtMap] = useState({});
   const [earlyOtModalOpen, setEarlyOtModalOpen] = useState(false);
   const [earlyOtSuppressed, setEarlyOtSuppressed] = useState(false);
+  /** Tự động mở popup: không bật lại khi user đã chọn «không hiển thị trong phiên» (sessionStorage). */
+  const [earlyOtSessionSuppressed, setEarlyOtSessionSuppressed] =
+    useState(false);
   /** `"pending"` — chỉ NV chưa chọn; `"all"` — tất cả NV đủ điều kiện (sửa lại). */
   const [earlyOtModalMode, setEarlyOtModalMode] = useState("pending");
   const [earlyOtSaving, setEarlyOtSaving] = useState(false);
+  const [rangeExportModalOpen, setRangeExportModalOpen] = useState(false);
+  const [rangeExportBusy, setRangeExportBusy] = useState(false);
+  const [excelExportMenuOpen, setExcelExportMenuOpen] = useState(false);
 
   const attendanceRawRef = useRef(undefined);
   const profilesRef = useRef({});
+  const excelExportMenuRef = useRef(null);
 
   /** Nhãn bảng: ưu tiên `salaryCalc.table.*`, fallback `attendanceList.*`. */
   const tlTable = useCallback(
@@ -177,6 +220,10 @@ export default function PayrollSalaryCalculator() {
     setEarlyOtModalOpen(false);
   }, [selectedDate]);
 
+  useEffect(() => {
+    setEarlyOtSessionSuppressed(readEarlyOtSessionSuppressed(user?.uid));
+  }, [user?.uid]);
+
   const mergeEarlyOt = useCallback(
     async (updates) => {
       const metaRef = ref(
@@ -232,7 +279,7 @@ export default function PayrollSalaryCalculator() {
 
   useEffect(() => {
     if (earlyOtModalMode === "all") return;
-    if (isOffDay || earlyOtSuppressed) {
+    if (isOffDay || earlyOtSuppressed || earlyOtSessionSuppressed) {
       if (earlyOtModalOpen) setEarlyOtModalOpen(false);
       return;
     }
@@ -245,19 +292,24 @@ export default function PayrollSalaryCalculator() {
   }, [
     isOffDay,
     earlyOtSuppressed,
+    earlyOtSessionSuppressed,
     pendingEarlyOtEmployees,
     earlyOtModalOpen,
     earlyOtModalMode,
   ]);
 
   const handleEarlyOtSave = useCallback(
-    async (updates) => {
+    async (updates, { suppressSession } = {}) => {
       setEarlyOtSaving(true);
       try {
         await mergeEarlyOt(updates);
         setEarlyOtModalOpen(false);
         setEarlyOtModalMode("pending");
         setEarlyOtSuppressed(false);
+        if (suppressSession) {
+          setEarlyOtSessionSuppressed(true);
+          writeEarlyOtSessionSuppressed(user?.uid, true);
+        }
       } catch (err) {
         setAlert({
           show: true,
@@ -272,15 +324,22 @@ export default function PayrollSalaryCalculator() {
         setEarlyOtSaving(false);
       }
     },
-    [mergeEarlyOt, tlPage],
+    [mergeEarlyOt, tlPage, user?.uid],
   );
 
   /** Đóng / click nền: luôn `suppressed` — tránh effect mở lại ngay (đặc biệt sau khi đóng từ chế độ «tất cả»). */
-  const handleEarlyOtDismiss = useCallback(() => {
-    setEarlyOtModalOpen(false);
-    setEarlyOtSuppressed(true);
-    setEarlyOtModalMode("pending");
-  }, []);
+  const handleEarlyOtDismiss = useCallback(
+    ({ suppressSession } = {}) => {
+      setEarlyOtModalOpen(false);
+      setEarlyOtSuppressed(true);
+      setEarlyOtModalMode("pending");
+      if (suppressSession) {
+        setEarlyOtSessionSuppressed(true);
+        writeEarlyOtSessionSuppressed(user?.uid, true);
+      }
+    },
+    [user?.uid],
+  );
 
   const filterRows = useCallback(
     (list) => {
@@ -392,6 +451,16 @@ export default function PayrollSalaryCalculator() {
     }
   }, [alert.show]);
 
+  useEffect(() => {
+    if (!excelExportMenuOpen) return;
+    const onPointerDown = (e) => {
+      const el = excelExportMenuRef.current;
+      if (el && !el.contains(e.target)) setExcelExportMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [excelExportMenuOpen]);
+
   const payrollExportSheetTitle = useMemo(() => {
     const dateStr = new Date(selectedDate).toLocaleDateString(displayLocale);
     const base = tlPage("exportSheetTitle", "Bảng giờ công nhân viên");
@@ -399,6 +468,102 @@ export default function PayrollSalaryCalculator() {
       isOffDay ? ` (${tlPage("exportOffDaySuffix", "Ngày off")})` : ""
     }`;
   }, [selectedDate, isOffDay, displayLocale, tlPage]);
+
+  const handleExportPayrollExcelRange = useCallback(
+    async (rangeFrom, rangeTo) => {
+      const keys = enumerateDateKeysInclusive(rangeFrom, rangeTo);
+      if (!keys.length) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "exportRangeInvalid",
+            "Khoảng ngày không hợp lệ hoặc từ ngày lớn hơn đến ngày.",
+          ),
+        });
+        return;
+      }
+      if (keys.length > PAYROLL_EXCEL_MAX_RANGE_DAYS) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "exportRangeTooLong",
+            "Tối đa 366 ngày mỗi lần xuất. Vui lòng thu hẹp khoảng ngày.",
+          ),
+        });
+        return;
+      }
+      setRangeExportBusy(true);
+      try {
+        const dayChunks = [];
+        for (const dateKey of keys) {
+          const snap = await get(ref(db, `attendance/${dateKey}`));
+          const raw = snap.val();
+          if (!raw || typeof raw !== "object") continue;
+          const isOffDay = getIsOffDayFromRaw(raw);
+          const merged = applyMerge(raw, employeeProfilesMap);
+          if (!merged.length) continue;
+          const earlyOt = getEarlyOtPaperworkFromRaw(raw);
+          dayChunks.push({
+            dateKey,
+            employees: merged,
+            isOffDay,
+            earlyOtPaperworkById: earlyOt,
+          });
+        }
+        if (!dayChunks.length) {
+          setAlert({
+            show: true,
+            type: "error",
+            message: tlPage(
+              "exportRangePayrollEmpty",
+              "Không có dữ liệu điểm danh trong khoảng ngày đã chọn.",
+            ),
+          });
+          return;
+        }
+        const fromKey = keys[0];
+        const toKey = keys[keys.length - 1];
+        const sheetTitle = `${tlPage("exportSheetTitle", "Bảng giờ công nhân viên")} — ${formatPayrollExcelDateCell(fromKey, displayLocale)} – ${formatPayrollExcelDateCell(toKey, displayLocale)}`;
+        const workbook = await buildPayrollSalaryExcelWorkbookMultiDay({
+          dayChunks,
+          tlTable,
+          sheetTitle,
+          displayLocale,
+        });
+        await downloadPayrollWorkbookToFile({
+          workbook,
+          filename: `Bang-gio-cong_${fromKey}_den_${toKey}.xlsx`,
+        });
+        const totalRows = dayChunks.reduce((s, d) => s + d.employees.length, 0);
+        setAlert({
+          show: true,
+          type: "success",
+          message: tlPage(
+            "exportRangeExcelSuccess",
+            "✅ Đã xuất Excel (nhiều ngày).",
+            {
+              days: dayChunks.length,
+              rows: totalRows,
+            },
+          ),
+        });
+        setRangeExportModalOpen(false);
+      } catch (err) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tlPage("exportExcelError", "❌ Xuất Excel thất bại.", {
+            error: err?.message || String(err),
+          }),
+        });
+      } finally {
+        setRangeExportBusy(false);
+      }
+    },
+    [applyMerge, db, displayLocale, employeeProfilesMap, tlPage, tlTable],
+  );
 
   const handleExportPayrollExcel = useCallback(async () => {
     if (!employees.length) {
@@ -543,17 +708,87 @@ export default function PayrollSalaryCalculator() {
                 {tlPage("earlyOtPaperworkButton", "Xác nhận tăng ca")}
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={handleExportPayrollExcel}
-              className="h-8 shrink-0 rounded-lg border-2 border-emerald-600 bg-emerald-600 px-3 text-xs font-bold text-white shadow-md shadow-emerald-900/20 transition hover:bg-emerald-700 dark:border-emerald-500 dark:hover:bg-emerald-600"
-              title={tlPage(
-                "exportExcelHint",
-                "Xuất toàn bộ nhân viên trong ngày (theo dữ liệu điểm danh), đủ các cột giờ như trên bảng.",
-              )}
-            >
-              {tlPage("exportExcel", "⬇ Xuất Excel")}
-            </button>
+            <div className="relative" ref={excelExportMenuRef}>
+              <button
+                type="button"
+                aria-expanded={excelExportMenuOpen}
+                aria-haspopup="menu"
+                onClick={() => setExcelExportMenuOpen((o) => !o)}
+                className="h-8 shrink-0 inline-flex items-center gap-1 rounded-lg border-2 border-emerald-600 bg-emerald-600 px-2.5 pr-2 text-xs font-bold text-white shadow-md shadow-emerald-900/20 transition hover:bg-emerald-700 dark:border-emerald-500 dark:hover:bg-emerald-600"
+                title={tlPage(
+                  "exportExcelMenuHint",
+                  "Xuất Excel: một ngày hoặc nhiều ngày.",
+                )}
+              >
+                <span>{tlPage("exportExcelMenu", "⬇ Xuất Excel")}</span>
+                <svg
+                  className={`h-3.5 w-3.5 shrink-0 opacity-90 transition-transform ${excelExportMenuOpen ? "rotate-180" : ""}`}
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              {excelExportMenuOpen ? (
+                <ul
+                  role="menu"
+                  className="absolute right-0 top-full z-[120] mt-1 min-w-[14.5rem] overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg ring-1 ring-black/5 dark:border-slate-600 dark:bg-slate-800 dark:ring-white/10"
+                >
+                  <li role="none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      title={tlPage(
+                        "exportExcelHint",
+                        "Xuất toàn bộ nhân viên trong ngày (theo dữ liệu điểm danh), đủ các cột giờ như trên bảng.",
+                      )}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-emerald-50 dark:text-slate-100 dark:hover:bg-slate-700/80"
+                      onClick={() => {
+                        setExcelExportMenuOpen(false);
+                        void handleExportPayrollExcel();
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        className="text-emerald-600 dark:text-emerald-400"
+                      >
+                        ⬇
+                      </span>
+                      {tlPage("exportExcelOneDay", "Một ngày (ngày đang chọn)")}
+                    </button>
+                  </li>
+                  <li role="none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      title={tlPage(
+                        "exportExcelRangeHint",
+                        "Xuất Excel nhiều ngày: chọn từ ngày và đến ngày (mặc định hôm nay).",
+                      )}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-emerald-50 dark:text-slate-100 dark:hover:bg-slate-700/80"
+                      onClick={() => {
+                        setExcelExportMenuOpen(false);
+                        setRangeExportModalOpen(true);
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        className="text-sky-600 dark:text-sky-400"
+                      >
+                        ⬇
+                      </span>
+                      {tlPage("exportExcelRange", "Nhiều ngày")}
+                    </button>
+                  </li>
+                </ul>
+              ) : null}
+            </div>
           </div>
         </div>
         <div className="payroll-salary-table-compact min-w-0 w-full max-w-full overflow-x-auto rounded-lg bg-white text-[10px] leading-tight shadow-lg md:text-[11px] dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
@@ -684,6 +919,21 @@ export default function PayrollSalaryCalculator() {
         onAlert={setAlert}
       />
 
+      <PayrollRangeExcelExportModal
+        open={rangeExportModalOpen}
+        onDismiss={() => {
+          if (!rangeExportBusy) setRangeExportModalOpen(false);
+        }}
+        onExport={handleExportPayrollExcelRange}
+        todayKey={getTodayDateKeyLocal()}
+        exporting={rangeExportBusy}
+        title={tlPage("exportRangeModalTitle", "Xuất Excel nhiều ngày")}
+        fromLabel={tlPage("exportRangeFrom", "Từ ngày")}
+        toLabel={tlPage("exportRangeTo", "Đến ngày")}
+        exportLabel={tlPage("exportRangeSubmit", "Xuất Excel")}
+        cancelLabel={tlPage("exportRangeCancel", "Hủy")}
+      />
+
       <PayrollEarlyOvertimePaperworkModal
         open={earlyOtModalOpen && earlyOtModalRows.length > 0}
         rows={earlyOtModalRows}
@@ -700,6 +950,10 @@ export default function PayrollSalaryCalculator() {
         skipAllLabel={tlPage(
           "earlyOtModalSkipAll",
           "Tất cả không có giấy tăng ca",
+        )}
+        suppressSessionLabel={tlPage(
+          "earlyOtModalDontShowSession",
+          "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
         )}
       />
     </>

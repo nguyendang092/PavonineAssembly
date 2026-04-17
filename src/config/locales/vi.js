@@ -1103,6 +1103,7 @@ const vi = {
       "Kết quả mang tính tham khảo; quy chế lương thực tế có thể khác.",
     backAttendance: "Điểm danh NV",
     pleaseLogin: "Vui lòng đăng nhập.",
+    earlyOtModalDontShowSession: "Không hiển thị",
     error: "Không tải dữ liệu điểm danh. Thử lại sau.",
     done: "Đã tính xong (ước lượng theo điểm danh).",
     from: "Từ ngày",

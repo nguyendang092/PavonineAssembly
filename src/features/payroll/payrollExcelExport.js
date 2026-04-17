@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { parseLocalDateKey } from "@/utils/dateKey";
 import {
   formatPayrollDayOvertimeHoursCell,
   formatPayrollTableNightShiftOffDayWorkingCell,
@@ -10,33 +11,116 @@ import {
   formatPayrollTableWorkingHoursCell,
 } from "@/features/attendance/attendanceWorkingHours";
 
-const COL_COUNT = 19;
+/** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 19 cột bảng. */
+const PAYROLL_EXCEL_COL_COUNT = 22;
+
+/** Giới hạn cùng logic xuất khoảng điểm danh. */
+export const PAYROLL_EXCEL_MAX_RANGE_DAYS = 366;
 
 /**
- * Xuất Excel bảng lương: đủ cột giống bảng desktop (full), cùng logic format với màn hình.
- * @param {{ employees: object[], selectedDate: string, isOffDay: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean> }} opts
+ * @param {string} dateKey YYYY-MM-DD
+ * @param {string} [displayLocale]
  */
-export async function buildPayrollSalaryExcelWorkbook({
-  employees,
-  selectedDate,
-  isOffDay,
-  tlTable,
-  sheetTitle,
-  earlyOtPaperworkById = {},
-}) {
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("Payroll", {
-    views: [{ state: "frozen", ySplit: 2 }],
-  });
+export function formatPayrollExcelDateCell(dateKey, displayLocale) {
+  const d = parseLocalDateKey(dateKey);
+  if (!d) return String(dateKey ?? "");
+  return d.toLocaleDateString(displayLocale || "vi-VN");
+}
 
-  worksheet.mergeCells(1, 1, 1, COL_COUNT);
-  const titleCell = worksheet.getCell(1, 1);
-  titleCell.value = sheetTitle;
-  titleCell.font = { bold: true, size: 12, color: { argb: "FF1E293B" } };
-  titleCell.alignment = { vertical: "middle", horizontal: "left" };
-  worksheet.getRow(1).height = 22;
+/**
+ * Tách ngày / tháng / năm từ `dateKey` (YYYY-MM-DD) theo lịch local — dùng cho xuất Excel.
+ * @returns {{ day: number | ""; month: number | ""; year: number | "" }}
+ */
+export function getPayrollExcelDateParts(dateKey) {
+  const d = parseLocalDateKey(dateKey);
+  if (!d) return { day: "", month: "", year: "" };
+  return {
+    day: d.getDate(),
+    month: d.getMonth() + 1,
+    year: d.getFullYear(),
+  };
+}
 
-  const headers = [
+/**
+ * @param {object} emp
+ * @param {number} idx
+ * @param {{ isOffDay: boolean, earlyOtPaperworkById?: Record<string, boolean> }} ctx
+ */
+export function payrollEmployeeRowValues(emp, idx, ctx) {
+  const { isOffDay, earlyOtPaperworkById = {} } = ctx;
+  const stt =
+    emp.stt != null && String(emp.stt).trim() !== "" ? emp.stt : idx + 1;
+  return [
+    stt,
+    emp.mnv ?? "",
+    emp.mvt ?? "",
+    emp.hoVaTen ?? "",
+    emp.gioiTinh ?? "",
+    emp.ngayThangNamSinh ?? "",
+    emp.maBoPhan ?? "",
+    emp.boPhan ?? "",
+    emp.gioVao ?? "",
+    emp.gioRa ?? "",
+    emp.caLamViec ?? "",
+    formatPayrollTableWorkingHoursCell(
+      emp.gioVao,
+      emp.gioRa,
+      isOffDay,
+      emp.caLamViec,
+    ),
+    formatPayrollDayOvertimeHoursCell(
+      emp.gioVao,
+      emp.gioRa,
+      isOffDay,
+      emp.caLamViec,
+      earlyOtPaperworkById[emp.id],
+    ),
+    formatPayrollTableOffDayTcCell(
+      emp.gioVao,
+      emp.gioRa,
+      isOffDay,
+      emp.caLamViec,
+    ),
+    formatPayrollTableTotalDayGcCell(
+      emp.gioVao,
+      emp.gioRa,
+      isOffDay,
+      emp.caLamViec,
+      earlyOtPaperworkById[emp.id],
+    ),
+    formatPayrollTableNightShiftWorkingCell(
+      emp.gioVao,
+      emp.gioRa,
+      isOffDay,
+      emp.caLamViec,
+    ),
+    formatPayrollTableNightShiftOvertimeCell(
+      emp.gioVao,
+      emp.gioRa,
+      isOffDay,
+      emp.caLamViec,
+    ),
+    formatPayrollTableNightShiftOffDayWorkingCell(
+      emp.gioVao,
+      emp.gioRa,
+      isOffDay,
+      emp.caLamViec,
+    ),
+    formatPayrollTableTotalNightGcCell(
+      emp.gioVao,
+      emp.gioRa,
+      isOffDay,
+      emp.caLamViec,
+    ),
+  ];
+}
+
+/** Header đầy đủ (đồng bộ xuất 1 ngày / nhiều ngày). */
+function buildPayrollExcelFullHeaders(tlTable) {
+  return [
+    tlTable("workDateDay", "Ngày"),
+    tlTable("workDateMonth", "Tháng"),
+    tlTable("workDateYear", "Năm"),
     tlTable("stt", "STT"),
     tlTable("mnv", "MNV"),
     tlTable("mvt", "MVT"),
@@ -57,18 +141,64 @@ export async function buildPayrollSalaryExcelWorkbook({
     tlTable("nightShiftOffDayWorkingHours", "GC ca đêm off"),
     tlTable("payrollTotalGcNight", "Tổng GC ca đêm"),
   ];
+}
 
-  const headerRow = worksheet.getRow(2);
-  headers.forEach((text, i) => {
-    const cell = headerRow.getCell(i + 1);
-    cell.value = text;
+const PAYROLL_EXCEL_FULL_COLUMN_WIDTHS = [
+  { width: 5 },
+  { width: 6 },
+  { width: 6 },
+  { width: 5 },
+  { width: 10 },
+  { width: 8 },
+  { width: 22 },
+  { width: 8 },
+  { width: 14 },
+  { width: 10 },
+  { width: 18 },
+  { width: 10 },
+  { width: 10 },
+  { width: 14 },
+  { width: 10 },
+  { width: 9 },
+  { width: 10 },
+  { width: 10 },
+  { width: 11 },
+  { width: 11 },
+  { width: 12 },
+  { width: 12 },
+];
+
+function stylePayrollDataRow(row, { nameCol, hoursFromCol }) {
+  row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    cell.border = {
+      top: { style: "thin", color: { argb: "FFE2E8F0" } },
+      left: { style: "thin", color: { argb: "FFE2E8F0" } },
+      bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+      right: { style: "thin", color: { argb: "FFE2E8F0" } },
+    };
+    const isHoursCol = colNumber >= hoursFromCol;
+    cell.font = { size: 10, bold: isHoursCol };
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: colNumber === nameCol ? "left" : "center",
+      wrapText: false,
+    };
+  });
+}
+
+function applyHeaderRowStyles(headerRow) {
+  headerRow.eachCell({ includeEmpty: true }, (cell) => {
     cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
     cell.fill = {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FF6366F1" },
     };
-    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
     cell.border = {
       top: { style: "thin" },
       left: { style: "thin" },
@@ -76,115 +206,99 @@ export async function buildPayrollSalaryExcelWorkbook({
       right: { style: "thin" },
     };
   });
-  headerRow.height = 18;
+}
 
-  employees.forEach((emp, idx) => {
-    const stt =
-      emp.stt != null && String(emp.stt).trim() !== ""
-        ? emp.stt
-        : idx + 1;
-    const values = [
-      stt,
-      emp.mnv ?? "",
-      emp.mvt ?? "",
-      emp.hoVaTen ?? "",
-      emp.gioiTinh ?? "",
-      emp.ngayThangNamSinh ?? "",
-      emp.maBoPhan ?? "",
-      emp.boPhan ?? "",
-      emp.gioVao ?? "",
-      emp.gioRa ?? "",
-      emp.caLamViec ?? "",
-      formatPayrollTableWorkingHoursCell(
-        emp.gioVao,
-        emp.gioRa,
-        isOffDay,
-        emp.caLamViec,
-      ),
-      formatPayrollDayOvertimeHoursCell(
-        emp.gioVao,
-        emp.gioRa,
-        isOffDay,
-        emp.caLamViec,
-        earlyOtPaperworkById[emp.id],
-      ),
-      formatPayrollTableOffDayTcCell(
-        emp.gioVao,
-        emp.gioRa,
-        isOffDay,
-        emp.caLamViec,
-      ),
-      formatPayrollTableTotalDayGcCell(
-        emp.gioVao,
-        emp.gioRa,
-        isOffDay,
-        emp.caLamViec,
-        earlyOtPaperworkById[emp.id],
-      ),
-      formatPayrollTableNightShiftWorkingCell(
-        emp.gioVao,
-        emp.gioRa,
-        isOffDay,
-        emp.caLamViec,
-      ),
-      formatPayrollTableNightShiftOvertimeCell(
-        emp.gioVao,
-        emp.gioRa,
-        isOffDay,
-        emp.caLamViec,
-      ),
-      formatPayrollTableNightShiftOffDayWorkingCell(
-        emp.gioVao,
-        emp.gioRa,
-        isOffDay,
-        emp.caLamViec,
-      ),
-      formatPayrollTableTotalNightGcCell(
-        emp.gioVao,
-        emp.gioRa,
-        isOffDay,
-        emp.caLamViec,
-      ),
-    ];
-    const row = worksheet.addRow(values);
-    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-      cell.border = {
-        top: { style: "thin", color: { argb: "FFE2E8F0" } },
-        left: { style: "thin", color: { argb: "FFE2E8F0" } },
-        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
-        right: { style: "thin", color: { argb: "FFE2E8F0" } },
-      };
-      const isHoursCol = colNumber >= 12;
-      cell.font = { size: 10, bold: isHoursCol };
-      cell.alignment = {
-        vertical: "middle",
-        horizontal: colNumber === 4 ? "left" : "center",
-        wrapText: false,
-      };
-    });
+/**
+ * Xuất Excel bảng lương (một ngày): ba cột Ngày / Tháng / Năm + đủ cột giống bảng desktop, cùng layout với xuất nhiều ngày.
+ * @param {{ employees: object[], selectedDate: string, isOffDay: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean> }} opts
+ */
+export async function buildPayrollSalaryExcelWorkbook({
+  employees,
+  selectedDate,
+  isOffDay,
+  tlTable,
+  sheetTitle,
+  earlyOtPaperworkById = {},
+}) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Payroll", {
+    views: [{ state: "frozen", ySplit: 2 }],
   });
 
-  worksheet.columns = [
-    { width: 5 },
-    { width: 10 },
-    { width: 8 },
-    { width: 22 },
-    { width: 8 },
-    { width: 14 },
-    { width: 10 },
-    { width: 18 },
-    { width: 10 },
-    { width: 10 },
-    { width: 14 },
-    { width: 10 },
-    { width: 9 },
-    { width: 10 },
-    { width: 10 },
-    { width: 11 },
-    { width: 11 },
-    { width: 12 },
-    { width: 12 },
-  ];
+  worksheet.mergeCells(1, 1, 1, PAYROLL_EXCEL_COL_COUNT);
+  const titleCell = worksheet.getCell(1, 1);
+  titleCell.value = sheetTitle;
+  titleCell.font = { bold: true, size: 12, color: { argb: "FF1E293B" } };
+  titleCell.alignment = { vertical: "middle", horizontal: "left" };
+  worksheet.getRow(1).height = 22;
+
+  const headers = buildPayrollExcelFullHeaders(tlTable);
+
+  const headerRow = worksheet.getRow(2);
+  headers.forEach((text, i) => {
+    headerRow.getCell(i + 1).value = text;
+  });
+  applyHeaderRowStyles(headerRow);
+  headerRow.height = 18;
+
+  const { day, month, year } = getPayrollExcelDateParts(selectedDate);
+  const ctx = { isOffDay, earlyOtPaperworkById };
+  employees.forEach((emp, idx) => {
+    const rest = payrollEmployeeRowValues(emp, idx, ctx);
+    const row = worksheet.addRow([day, month, year, ...rest]);
+    stylePayrollDataRow(row, { nameCol: 7, hoursFromCol: 15 });
+  });
+
+  worksheet.columns = PAYROLL_EXCEL_FULL_COLUMN_WIDTHS;
+
+  return workbook;
+}
+
+/**
+ * Nhiều ngày: một sheet; ba cột đầu là Ngày / Tháng / Năm (số, từ `dateKey` local).
+ * @param {{ dayChunks: { dateKey: string, employees: object[], isOffDay: boolean, earlyOtPaperworkById: Record<string, boolean> }[], tlTable: function, sheetTitle: string, displayLocale?: string }} opts
+ */
+export async function buildPayrollSalaryExcelWorkbookMultiDay({
+  dayChunks,
+  tlTable,
+  sheetTitle,
+  displayLocale,
+}) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Payroll", {
+    views: [{ state: "frozen", ySplit: 2 }],
+  });
+
+  worksheet.mergeCells(1, 1, 1, PAYROLL_EXCEL_COL_COUNT);
+  const titleCell = worksheet.getCell(1, 1);
+  titleCell.value = sheetTitle;
+  titleCell.font = { bold: true, size: 12, color: { argb: "FF1E293B" } };
+  titleCell.alignment = { vertical: "middle", horizontal: "left" };
+  worksheet.getRow(1).height = 22;
+
+  const headers = buildPayrollExcelFullHeaders(tlTable);
+
+  const headerRow = worksheet.getRow(2);
+  headers.forEach((text, i) => {
+    headerRow.getCell(i + 1).value = text;
+  });
+  applyHeaderRowStyles(headerRow);
+  headerRow.height = 18;
+
+  for (const chunk of dayChunks) {
+    const ctx = {
+      isOffDay: chunk.isOffDay,
+      earlyOtPaperworkById: chunk.earlyOtPaperworkById || {},
+    };
+    const { day, month, year } = getPayrollExcelDateParts(chunk.dateKey);
+    chunk.employees.forEach((emp, idx) => {
+      const rest = payrollEmployeeRowValues(emp, idx, ctx);
+      const row = worksheet.addRow([day, month, year, ...rest]);
+      stylePayrollDataRow(row, { nameCol: 7, hoursFromCol: 15 });
+    });
+  }
+
+  worksheet.columns = PAYROLL_EXCEL_FULL_COLUMN_WIDTHS;
 
   return workbook;
 }
@@ -200,6 +314,20 @@ export async function downloadPayrollSalaryExcel(opts) {
   const a = document.createElement("a");
   a.href = url;
   a.download = `Bang-gio-cong_${selectedDate}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** @param {{ workbook: object, filename: string }} opts */
+export async function downloadPayrollWorkbookToFile({ workbook, filename }) {
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
