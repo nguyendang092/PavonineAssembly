@@ -19,6 +19,9 @@ import "../../public/css/auth.css";
 /** Ký tự placeholder “vô hình” để CSS dùng :not(:placeholder-shown) — nhãn nổi không phụ thuộc :valid (tránh đè chữ khi gõ email dở). */
 const FLOAT_LABEL_PLACEHOLDER = "\u00a0";
 
+/** Thời gian duy trì phiên (userLogin trong localStorage), đồng bộ với App.jsx readSessionUser. */
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 /** Icon SVG thống nhất (stroke) — không dùng emoji để giao diện đồng bộ. */
 function AuthFieldIcon({ variant }) {
   return (
@@ -245,13 +248,12 @@ export default function SignIn({ onSignIn, onClose }) {
         formState.signInEmail,
         formState.signInPassword,
       );
-      const TTL = 10 * 60 * 1000; // 10 minutes
       localStorage.setItem(
         "userLogin",
         JSON.stringify({
           email: userCredential.user.email,
           name: userCredential.user.displayName,
-          expire: Date.now() + TTL,
+          expire: Date.now() + SESSION_TTL_MS,
         }),
       );
       logUserAction("sign_in", { email: formState.signInEmail });
@@ -293,13 +295,12 @@ export default function SignIn({ onSignIn, onClose }) {
       });
       logUserAction("sign_up", { email: formState.signUpEmail });
 
-      const TTL = 5 * 60 * 1000; // 5 minutes
       localStorage.setItem(
         "userLogin",
         JSON.stringify({
           email: userCredential.user.email,
           name: formState.signUpName,
-          expire: Date.now() + TTL,
+          expire: Date.now() + SESSION_TTL_MS,
         }),
       );
       clearForm();
