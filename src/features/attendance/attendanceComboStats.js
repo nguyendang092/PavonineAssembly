@@ -39,7 +39,7 @@ export function textMatchesFuneralLeave(raw) {
 const CO_DI_LAM_FOLD_FULL = foldGioVaoCompare("Có đi làm");
 const CO_DI_LAM_FOLD_SHORT = foldGioVaoCompare("Có");
 
-/** Khớp loại «Có đi làm» / CDL / ghi tắt Có — dùng cột Giờ vào & ghi chú */
+/** Khớp loại «Có đi làm» / BGC / ghi tắt Có — dùng cột Giờ vào & ghi chú */
 export function textMatchesCoDiLam(raw) {
   const t = normalizeTextValue(raw).replace(/\u00a0/g, " ");
   if (!t) return false;
@@ -59,7 +59,7 @@ export function textMatchesCoDiLam(raw) {
     .split(/[^A-Z0-9/]+/)
     .flatMap((x) => x.split("/"))
     .filter(Boolean);
-  if (tokens.includes("CDL")) return true;
+  if (tokens.includes("BGC")) return true;
   if (latin.includes("CO DI LAM")) return true;
   if (latin.replace(/\s/g, "").includes("CODILAM")) return true;
   return false;
@@ -139,12 +139,12 @@ export function getAttendanceComboFlags(emp) {
   const isLate = hasLeaveCode("VT") || hasText("VAO TRE");
   const hasCheckIn =
     isTimeFormat ||
-    hasLeaveCode("CDL") ||
+    hasLeaveCode("BGC") ||
     hasText("CO DI LAM", "DI LAM") ||
     isLate;
   /**
-   * NV quên chấm giờ nhưng có mặt — ghi «Có đi làm» (hoặc CDL/Có) ở Giờ vào / ghi chú.
-   * Tách biệt checkedIn (giờ HH:MM, CDL trong luồng chấm công…).
+   * NV quên chấm giờ nhưng có mặt — ghi «Có đi làm» (hoặc BGC/Có) ở Giờ vào / ghi chú.
+   * Tách biệt checkedIn (giờ HH:MM, BGC trong luồng chấm công…).
    */
   const coDiLam =
     textMatchesCoDiLam(gioVaoRaw) ||
@@ -169,10 +169,7 @@ export function getAttendanceComboFlags(emp) {
     textMatchesFuneralLeave(emp.phepNam) ||
     textMatchesFuneralLeave(emp.pnTon);
   const isResignedLeave = hasLeaveCode("NV") || hasText("NGHI VIEC");
-  const isNightShift =
-    caLamViecNormalized.includes("đêm") ||
-    caLamViecNormalized.includes("dem") ||
-    caLamViecNormalized.includes("night");
+  const isNightShift = caLamViecNormalized.replace(/\s+/g, "") === "s2";
 
   /** Khớp từng loại trong ATTENDANCE_GIO_VAO_TYPE_OPTIONS trên Giờ vào + ghi chú liên quan */
   const scanRaws = [

@@ -1,5 +1,6 @@
 import React from "react";
 import ExcelJS from "exceljs";
+import { formatAttendanceGioVaoDisplay } from "@/features/attendance/attendanceGioVaoTypeOptions";
 
 export default function ExportExcelButton({
   data = [],
@@ -265,7 +266,7 @@ export default function ExportExcelButton({
           emp.ngayThangNamSinh || "",
           emp.maBoPhan || "",
           emp.boPhan || "",
-          emp.gioVao || "",
+          formatAttendanceGioVaoDisplay(emp.gioVao || ""),
           emp.gioRa || "",
           emp.caLamViec || "",
         ]);

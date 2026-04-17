@@ -2091,7 +2091,7 @@ function AttendanceList() {
           emp.mnv || "",
           emp.hoVaTen || "",
           emp.boPhan || "",
-          emp.gioVao || "",
+          formatAttendanceGioVaoDisplay(emp.gioVao || ""),
           emp.gioRa || "",
         ]);
         dataRow.alignment = { horizontal: "center", vertical: "middle" };

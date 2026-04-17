@@ -29,8 +29,10 @@ import NotificationBell from "@/components/ui/NotificationBell";
 import AlertMessage from "@/components/ui/AlertMessage";
 import {
   ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  formatAttendanceGioVaoDisplay,
   isGioVaoLeaveOrStatusType,
 } from "./attendanceGioVaoTypeOptions";
+import { getIsOffDayFromRaw } from "./attendanceDayMeta";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
   GIO_VAO_MODAL_TIME_SENTINEL,
@@ -62,7 +64,7 @@ function seasonalTableMinWidthClass(columnPlan) {
   if (columnPlan === "full") return "";
   if (columnPlan === "compact") return "min-w-[920px]";
   if (columnPlan === "narrow") return "min-w-[760px]";
-  if (columnPlan === "minimal") return "min-w-[400px]";
+  if (columnPlan === "minimal") return "min-w-[520px]";
   return "min-w-[920px]";
 }
 
@@ -89,6 +91,7 @@ function SeasonalStaffAttendance() {
     const dd = String(today.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
   });
+  const [isOffDay, setIsOffDay] = useState(false);
   const { t, i18n } = useTranslation();
   const tl = useCallback(
     (key, defaultValue, options = {}) =>
@@ -152,6 +155,15 @@ function SeasonalStaffAttendance() {
       } else {
         setEmployees([]);
       }
+    });
+    return () => unsubscribe();
+  }, [selectedDate]);
+
+  // Dùng chung cờ Ngày off với màn điểm danh nhân viên.
+  useEffect(() => {
+    const dayRef = ref(db, `attendance/${selectedDate}`);
+    const unsubscribe = onValue(dayRef, (snapshot) => {
+      setIsOffDay(getIsOffDayFromRaw(snapshot.val()));
     });
     return () => unsubscribe();
   }, [selectedDate]);
@@ -1771,10 +1783,12 @@ function SeasonalStaffAttendance() {
             <td>${emp.maBoPhan || ""}</td>
             <td class="dept">${emp.boPhan || ""}</td>
             <td style="${
-              ["PN", "TS", "PO"].includes(emp.gioVao)
+              ["PN", "TS", "PO", "NV"].includes(
+                formatAttendanceGioVaoDisplay(emp.gioVao),
+              )
                 ? "color:#c41e3a;font-weight:bold;"
                 : ""
-            }">${emp.gioVao || ""}</td>
+            }">${formatAttendanceGioVaoDisplay(emp.gioVao || "")}</td>
             <td>${emp.gioRa || ""}</td>
             <td>${emp.caLamViec || ""}</td>
         </tr>`;
@@ -2025,7 +2039,7 @@ function SeasonalStaffAttendance() {
           emp.mnv || "",
           emp.hoVaTen || "",
           emp.boPhan || "",
-          emp.gioVao || "",
+          formatAttendanceGioVaoDisplay(emp.gioVao || ""),
           emp.gioRa || "",
         ]);
         dataRow.alignment = { horizontal: "center", vertical: "middle" };
@@ -3306,6 +3320,12 @@ function SeasonalStaffAttendance() {
                     <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                       Ca làm việc
                     </th>
+                    <th
+                      className="px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold text-white uppercase tracking-wide text-center leading-tight"
+                      title="Khi ngày được đánh dấu Ngày off: hiển thị OFF."
+                    >
+                      Ngày off
+                    </th>
                     {showRowModalActions && (
                       <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                         {canDeleteSeasonalRecord ? "Sửa / Xóa" : "Sửa"}
@@ -3352,6 +3372,12 @@ function SeasonalStaffAttendance() {
                     </th>
                     <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                       Ca làm việc
+                    </th>
+                    <th
+                      className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold text-white uppercase tracking-wide text-center leading-tight"
+                      title="Khi ngày được đánh dấu Ngày off: hiển thị OFF."
+                    >
+                      Ngày off
                     </th>
                     {showRowModalActions && (
                       <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
@@ -3425,7 +3451,7 @@ function SeasonalStaffAttendance() {
                             : "text-red-600"
                         }`}
                       >
-                        {emp.gioVao}
+                        {formatAttendanceGioVaoDisplay(emp.gioVao)}
                       </span>
                     ) : canEditEmployee(emp) ? (
                       <div className="flex items-center justify-center gap-2">
@@ -3622,6 +3648,20 @@ function SeasonalStaffAttendance() {
                       <span className="text-gray-400 italic">--</span>
                     )}
                   </td>
+                  <td
+                    className={
+                      columnPlan === "minimal"
+                        ? "px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 font-bold text-slate-800 dark:text-slate-100"
+                        : "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 font-bold text-slate-800 dark:text-slate-100"
+                    }
+                    title="Khi ngày được đánh dấu Ngày off: hiển thị OFF."
+                  >
+                    {isOffDay ? (
+                      <span className="tabular-nums text-rose-700 dark:text-rose-300">
+                        OFF
+                      </span>
+                    ) : null}
+                  </td>
                   {showRowModalActions && (
                     <td
                       className={
@@ -3679,7 +3719,7 @@ function SeasonalStaffAttendance() {
                     {(() => {
                       const timeCounts = {};
                       filteredEmployees.forEach((emp) => {
-                        const time = emp.gioVao;
+                        const time = formatAttendanceGioVaoDisplay(emp.gioVao);
                         if (time && !/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) {
                           timeCounts[time] = (timeCounts[time] || 0) + 1;
                         }

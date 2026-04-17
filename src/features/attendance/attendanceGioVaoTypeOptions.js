@@ -5,7 +5,7 @@
  */
 
 export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = [
-  { value: "Đi làm", shortLabel: "CDL", comboStatKey: "coDiLam" },
+  { value: "Đi làm", shortLabel: "BGC", comboStatKey: "coDiLam" },
   { value: "Vào trễ", shortLabel: "VT", comboStatKey: "late" },
   { value: "Phép năm", shortLabel: "PN", comboStatKey: "annualLeave" },
   {
@@ -137,7 +137,7 @@ const FOLDED_EXTRA_LEAVE_MARKERS = [
   "DS",
   "NV",
   "VT",
-  "CDL",
+  "BGC",
   "PCT",
   "PN1/2",
   "1/2PN",

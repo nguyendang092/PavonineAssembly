@@ -129,13 +129,15 @@ export function getNightShiftPayrollOvertimeHours(gioVao, gioRa, caLamViec) {
   return getNightShiftPayrollOvertimeHoursFromOtMinutes(parts.otMinutes);
 }
 
-/** Đồng bộ cờ `nightShift` trong `attendanceComboStats` + dropdown «Ca đêm». */
+/** Đồng bộ cờ `nightShift` trong `attendanceComboStats` + dropdown ca làm việc. */
 export function isNightShiftCaLamViec(caLamViec) {
   if (caLamViec == null) return false;
-  const s = String(caLamViec).trim().toLowerCase();
-  return (
-    s.includes("đêm") || s.includes("dem") || s.includes("night")
-  );
+  const s = String(caLamViec)
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+  // Quy ước mới: chỉ S2 là ca đêm; S1 đi theo logic ca ngày.
+  return s === "S2";
 }
 
 /**
