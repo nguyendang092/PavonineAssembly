@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { db, ref, get, update } from "@/services/firebase";
 import { mergeAttendanceDayMeta } from "@/features/attendance/attendanceDayMeta";
-import { fetchOffDayDateKeysInMonth } from "@/features/attendance/attendanceMonthOffDays";
+import { fetchOffAndHolidayDateKeysInMonth } from "@/features/attendance/attendanceMonthOffDays";
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
-function sortDateKeys(arr) {
-  return [...new Set(arr)].filter((d) => DATE_KEY.test(d)).sort();
+function sortDraftEntries(arr) {
+  return [...arr]
+    .filter((e) => e && DATE_KEY.test(e.key))
+    .sort((a, b) => a.key.localeCompare(b.key));
 }
 
 /**
- * Admin/HR: đánh dấu nhiều ngày off (Firebase `attendance/{YYYY-MM-DD}/_meta.isOffDay`).
+ * Admin/HR: đánh dấu nhiều ngày off / lễ (Firebase `attendance/{YYYY-MM-DD}/_meta`).
  * Gộp meta để không ghi đè `earlyOtPaperwork`.
  */
 export default function AttendanceOffDaysModal({
@@ -24,6 +26,7 @@ export default function AttendanceOffDaysModal({
   const [draft, setDraft] = useState([]);
   const [snapshot, setSnapshot] = useState([]);
   const [pick, setPick] = useState("");
+  const [addKind, setAddKind] = useState("off");
   const [busy, setBusy] = useState(false);
   const [listLoading, setListLoading] = useState(false);
 
@@ -39,13 +42,20 @@ export default function AttendanceOffDaysModal({
     setListLoading(true);
     (async () => {
       try {
-        const keys = await fetchOffDayDateKeysInMonth(selectedDate);
+        const { off, holiday } = await fetchOffAndHolidayDateKeysInMonth(
+          selectedDate,
+        );
         if (!cancelled) {
-          setDraft(keys);
-          setSnapshot(keys);
+          const entries = [
+            ...off.map((k) => ({ key: k, kind: "off" })),
+            ...holiday.map((k) => ({ key: k, kind: "holiday" })),
+          ];
+          const sorted = sortDraftEntries(entries);
+          setDraft(sorted);
+          setSnapshot(sorted);
         }
       } catch (err) {
-        console.error("AttendanceOffDaysModal load month off days:", err);
+        console.error("AttendanceOffDaysModal load month off/holiday days:", err);
         if (!cancelled) {
           setDraft([]);
           setSnapshot([]);
@@ -60,32 +70,49 @@ export default function AttendanceOffDaysModal({
     };
   }, [open, selectedDate]);
 
-  const addDate = useCallback((d) => {
+  const addOrUpdateDate = useCallback((d, kind) => {
     if (!d || !DATE_KEY.test(d)) return;
-    setDraft((prev) => sortDateKeys([...prev, d]));
+    if (kind !== "off" && kind !== "holiday") return;
+    setDraft((prev) => {
+      const without = prev.filter((x) => x.key !== d);
+      return sortDraftEntries([...without, { key: d, kind }]);
+    });
   }, []);
 
   const removeDate = useCallback((d) => {
-    setDraft((prev) => prev.filter((x) => x !== d));
+    setDraft((prev) => prev.filter((x) => x.key !== d));
   }, []);
 
   const handleSave = useCallback(async () => {
     if (!user) return;
     setBusy(true);
     try {
-      const next = new Set(draft);
-      const prev = new Set(snapshot);
-      const toTrue = [...next].filter((d) => !prev.has(d));
-      const toFalse = [...prev].filter((d) => !next.has(d));
+      const want = new Map(draft.map((e) => [e.key, e.kind]));
+      const had = new Map(snapshot.map((e) => [e.key, e.kind]));
+      const allKeys = new Set([...want.keys(), ...had.keys()]);
       const updates = {};
-      for (const d of toTrue) {
+      for (const d of allKeys) {
+        const w = want.get(d);
+        const h = had.get(d);
+        if (w === h) continue;
         const snap = await get(ref(db, `attendance/${d}/_meta`));
-        const merged = mergeAttendanceDayMeta(snap.val(), { isOffDay: true });
-        updates[`attendance/${d}/_meta`] = merged;
-      }
-      for (const d of toFalse) {
-        const snap = await get(ref(db, `attendance/${d}/_meta`));
-        const merged = mergeAttendanceDayMeta(snap.val(), { isOffDay: false });
+        let merged;
+        if (!w) {
+          merged = mergeAttendanceDayMeta(snap.val(), {
+            isOffDay: false,
+            isHolidayDay: false,
+          });
+        } else if (w === "off") {
+          merged = mergeAttendanceDayMeta(snap.val(), {
+            isOffDay: true,
+            isHolidayDay: false,
+          });
+        } else {
+          merged = mergeAttendanceDayMeta(snap.val(), {
+            isOffDay: false,
+            isHolidayDay: true,
+          });
+        }
         updates[`attendance/${d}/_meta`] = merged;
       }
       if (Object.keys(updates).length > 0) {
@@ -122,16 +149,25 @@ export default function AttendanceOffDaysModal({
         >
           {tl(
             "dayOffMultiModalTitle",
-            "Chọn nhiều ngày off",
+            "Chọn nhiều ngày off / lễ",
           )}
         </h2>
         <p className="mb-3 text-xs text-slate-600 dark:text-slate-400">
           {tl(
             "dayOffMultiModalHint",
-            "Các ngày trong danh sách được lưu là «Ngày off» (cột Ngày off = OFF, bảng lương dùng TC off). Có thể thêm hoặc bỏ ngày rồi bấm Lưu.",
+            "Chọn loại ngày (off hoặc lễ), thêm ngày vào danh sách rồi Lưu. Off → cột Ngày off = OFF; lễ → cột Ngày lễ = HOLIDAY (công/lương giống ngày off).",
           )}
         </p>
         <div className="mb-3 flex flex-wrap items-center gap-2">
+          <select
+            value={addKind}
+            onChange={(e) => setAddKind(e.target.value)}
+            className="h-9 shrink-0 rounded-lg border border-slate-300 px-2 text-xs font-semibold dark:border-slate-600 dark:bg-slate-800"
+            aria-label={tl("dayOffMultiKindLabel", "Loại ngày")}
+          >
+            <option value="off">{tl("dayKindOff", "Ngày off")}</option>
+            <option value="holiday">{tl("dayKindHoliday", "Ngày lễ")}</option>
+          </select>
           <input
             type="date"
             value={pick}
@@ -141,7 +177,7 @@ export default function AttendanceOffDaysModal({
           <button
             type="button"
             onClick={() => {
-              addDate(pick);
+              addOrUpdateDate(pick, addKind);
               setPick("");
             }}
             disabled={!pick || !DATE_KEY.test(pick)}
@@ -153,8 +189,8 @@ export default function AttendanceOffDaysModal({
         {selectedDate && DATE_KEY.test(selectedDate) ? (
           <button
             type="button"
-            onClick={() => addDate(selectedDate)}
-            disabled={draft.includes(selectedDate) || listLoading}
+            onClick={() => addOrUpdateDate(selectedDate, addKind)}
+            disabled={listLoading}
             className="mb-3 w-full rounded-lg border border-violet-300 py-2 text-xs font-semibold text-violet-800 hover:bg-violet-50 disabled:opacity-40 dark:border-violet-700 dark:text-violet-200 dark:hover:bg-violet-950/50"
           >
             {tl("dayOffMultiAddCurrent", "Thêm ngày đang xem ({{date}})", {
@@ -167,24 +203,33 @@ export default function AttendanceOffDaysModal({
             <p className="text-center text-xs text-slate-500 dark:text-slate-400">
               {tl(
                 "dayOffMultiLoadingList",
-                "Đang tải các ngày off trong tháng…",
+                "Đang tải các ngày off / lễ trong tháng…",
               )}
             </p>
           ) : draft.length === 0 ? (
             <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-              {tl("dayOffMultiEmpty", "Chưa có ngày nào — thêm bằng lịch hoặc nút trên.")}
+              {tl("dayOffMultiEmpty", "Chưa có ngày nào — chọn loại, thêm bằng lịch hoặc nút trên.")}
             </p>
           ) : (
             <ul className="flex flex-wrap gap-1.5">
-              {draft.map((d) => (
+              {draft.map(({ key, kind }) => (
                 <li
-                  key={d}
-                  className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-900 dark:bg-violet-900/50 dark:text-violet-100"
+                  key={key}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${
+                    kind === "holiday"
+                      ? "bg-amber-100 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100"
+                      : "bg-violet-100 text-violet-900 dark:bg-violet-900/50 dark:text-violet-100"
+                  }`}
                 >
-                  <span className="tabular-nums">{d}</span>
+                  <span>{key}</span>
+                  <span className="rounded bg-white/70 px-1 text-[10px] uppercase dark:bg-black/30">
+                    {kind === "holiday"
+                      ? tl("dayKindHolidayBadge", "Lễ")
+                      : "OFF"}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => removeDate(d)}
+                    onClick={() => removeDate(key)}
                     className="rounded-full px-1 text-violet-600 hover:bg-violet-200/80 dark:text-violet-300 dark:hover:bg-violet-800"
                     aria-label={tl("dayOffMultiRemove", "Bỏ ngày")}
                   >

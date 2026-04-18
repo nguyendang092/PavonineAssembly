@@ -1,13 +1,20 @@
 import ExcelJS from "exceljs";
 import { enumerateDateKeysInclusive } from "@/utils/dateKey";
-import { formatAttendanceGioVaoDisplay } from "./attendanceGioVaoTypeOptions";
+import {
+  formatAttendanceTimeInColumnDisplay,
+  formatAttendanceLeaveTypeColumnForEmployee,
+} from "./attendanceGioVaoTypeOptions";
 const MAX_DAYS = 366;
 
 /**
  * Kiểm tra đồng bộ trước khi bật trạng thái "đang xuất".
  * @returns {{ ok: true, from: string, to: string, keys: string[] } | { ok: false, alert: { type: string, message: string } }}
  */
-export function getAttendanceDateRangeExportPlan(exportRangeFrom, exportRangeTo, tl) {
+export function getAttendanceDateRangeExportPlan(
+  exportRangeFrom,
+  exportRangeTo,
+  tl,
+) {
   const from = exportRangeFrom?.trim();
   const to = exportRangeTo?.trim();
   if (!from || !to) {
@@ -70,11 +77,10 @@ export async function executeAttendanceDateRangeExport({
   displayLocale,
   tl,
 }) {
-  const profMap = employeeProfilesMap;
   const allRows = [];
   for (const dateKey of keys) {
     const snap = await get(ref(db, `attendance/${dateKey}`));
-    const merged = applyAttendanceMerge(snap.val(), profMap);
+    const merged = applyAttendanceMerge(snap.val(), employeeProfilesMap);
     const filtered = filterAttendanceListRows(merged);
     let stt = 1;
     for (const emp of filtered) {
@@ -95,47 +101,225 @@ export async function executeAttendanceDateRangeExport({
   }
 
   const workbook = new ExcelJS.Workbook();
-  const ws = workbook.addWorksheet("DiemDanh");
-  ws.mergeCells("A1:L1");
-  const mainTitle = ws.getCell("A1");
-  mainTitle.value = "DANH SÁCH ĐIỂM DANH";
+  const ws = workbook.addWorksheet("Attendance");
+
+  const fromFmt = new Date(`${from}T12:00:00`).toLocaleDateString(
+    displayLocale,
+  );
+  const toFmt = new Date(`${to}T12:00:00`).toLocaleDateString(displayLocale);
+
+  // —— Cùng bố cục trang với xuất Excel 1 ngày (ExportExcelButton.jsx) ——
+  ws.mergeCells("B1:F1");
+  const companyName = ws.getCell("B1");
+  companyName.value = "CÔNG TY TNHH PAVONINE VINA";
+  companyName.font = { bold: true, size: 10 };
+  companyName.alignment = { vertical: "top", horizontal: "left" };
+
+  ws.mergeCells("B2:F2");
+  const companyAddr1 = ws.getCell("B2");
+  companyAddr1.value =
+    "Lots VII-3, VII-2, and part of Lot VII-3, My Xuan B1 - Tien Hung";
+  companyAddr1.font = { size: 8, italic: true };
+  companyAddr1.alignment = { vertical: "top", horizontal: "left" };
+
+  ws.mergeCells("B3:F3");
+  const companyAddr2 = ws.getCell("B3");
+  companyAddr2.value =
+    "Industrial Park, Phu My Ward, Ho Chi Minh City, Vietnam";
+  companyAddr2.font = { size: 8, italic: true };
+  companyAddr2.alignment = { vertical: "top", horizontal: "left" };
+
+  const approvalHeaders = [
+    "Người lập /\nPrepared by",
+    "Kiểm tra /\nReviewed by",
+    "Phê duyệt /\nApproved by",
+  ];
+  ["I1", "J1", "K1"].forEach((addr, idx) => {
+    const cell = ws.getCell(addr);
+    cell.value = approvalHeaders[idx];
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
+    cell.font = { bold: true, size: 8 };
+    cell.border = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" },
+    };
+  });
+  ["I2", "J2", "K2"].forEach((addr) => {
+    const c = ws.getCell(addr);
+    c.value = "";
+    c.border = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" },
+    };
+  });
+  ws.getRow(1).height = 18;
+  ws.getRow(2).height = 28;
+
+  ws.mergeCells("A4:M4");
+  const mainTitle = ws.getCell("A4");
+  mainTitle.value = "DANH SÁCH NHÂN VIÊN HIỆN DIỆN";
   mainTitle.font = { size: 14, bold: true, color: { argb: "FF000000" } };
   mainTitle.alignment = { vertical: "middle", horizontal: "center" };
-  ws.getRow(1).height = 22;
+  ws.getRow(4).height = 22;
 
-  const fromFmt = new Date(`${from}T12:00:00`).toLocaleDateString(displayLocale);
-  const toFmt = new Date(`${to}T12:00:00`).toLocaleDateString(displayLocale);
-  ws.mergeCells("A2:L2");
-  const sub = ws.getCell("A2");
-  sub.value = tl("exportRangeSheetSubtitle", "Từ {{from}} đến {{to}}", {
-    from: fromFmt,
-    to: toFmt,
+  ws.mergeCells("A5:M5");
+  const subTitle = ws.getCell("A5");
+  subTitle.value = "List of Active Employees";
+  subTitle.font = { size: 11, bold: true };
+  subTitle.alignment = { vertical: "middle", horizontal: "center" };
+
+  ws.mergeCells("A6:M6");
+  const dateCell = ws.getCell("A6");
+  dateCell.value = tl(
+    "exportRangeExcelDateLine",
+    "Ngày/Date: Từ {{from}} đến {{to}}",
+    { from: fromFmt, to: toFmt },
+  );
+  dateCell.font = { size: 9, bold: true };
+  dateCell.alignment = { vertical: "middle", horizontal: "center" };
+
+  ws.addRow([]);
+
+  ws.addRow([
+    "Ca ngày",
+    "S1",
+    "1.Phép năm/Annual Leave",
+    "PN",
+    "6.Không Lương/Unpaid Leave",
+    "KL",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+  ws.addRow([
+    "Ca đêm",
+    "S2",
+    "2.1/2 ngày phép năm/1/2 day annual Leave",
+    "1/2 PN",
+    "7.Không phép/Illegal Leave",
+    "KP",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+  ws.addRow([
+    "",
+    "",
+    "3.Nghỉ TNLĐ/Labor accident",
+    "TN",
+    "8.Nghỉ ốm/Sick Leave",
+    "PO",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+  ws.addRow([
+    "",
+    "",
+    "4.Phép cưới/Wedding Leave",
+    "PC",
+    "9.Thai sản/Maternity",
+    "TS",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+  ws.addRow([
+    "",
+    "",
+    "5.Phép tang/Funeral Leave",
+    "PT",
+    "10.Dưỡng sức/Recovery health",
+    "DS",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+
+  [8, 9, 10, 11, 12].forEach((rowNum) => {
+    const row = ws.getRow(rowNum);
+    row.height = 15;
+    row.eachCell((cell, colNumber) => {
+      cell.font = { size: 8 };
+      cell.alignment = {
+        vertical: "top",
+        horizontal: "left",
+        wrapText: true,
+      };
+      if (colNumber <= 6) {
+        cell.border = {
+          top: { style: "hair" },
+          left: { style: "hair" },
+          bottom: { style: "hair" },
+          right: { style: "hair" },
+        };
+      }
+    });
   });
-  sub.font = { size: 10, bold: true };
-  sub.alignment = { vertical: "middle", horizontal: "center" };
-  ws.getRow(2).height = 20;
+
+  ws.addRow([]);
+
+  ws.mergeCells("E14:I14");
+  const mealCountCell = ws.getCell("E14");
+  mealCountCell.value = "Số lượng cơm ca trưa:";
+  mealCountCell.font = {
+    size: 10,
+    color: { argb: "FFC41E3A" },
+    italic: true,
+    bold: true,
+  };
+  mealCountCell.alignment = { vertical: "middle", horizontal: "left" };
 
   ws.addRow([]);
 
   const headerVi = [
+    "STT",
     tl("exportRangeColDate", "Ngày"),
-    tl("colIndex", "STT"),
-    tl("colCode", "MNV"),
+    "MNV",
     "MVT",
-    tl("excelHeaderName", "Họ và tên"),
-    tl("gender", "Giới tính"),
-    tl("exportRangeColDOB", "Ngày tháng năm sinh"),
-    tl("departmentCode", "Mã BP"),
-    tl("department", "Bộ phận"),
-    tl("timeIn", "Thời gian vào"),
-    tl("timeOut", "Thời gian ra"),
-    tl("comboStatColShift", "Ca làm việc"),
+    "Họ và tên",
+    "Giới tính",
+    "Ngày tháng năm sinh",
+    "Mã BP",
+    "Bộ phận",
+    "Thời gian vào",
+    "Thời gian ra",
+    "Ca làm việc",
+    "Loại phép",
   ];
   const headerEn = [
+    "STT",
     "Date",
-    "",
     "Code",
-    "",
+    "MVT",
     "Full name",
     "Gender",
     "DoB",
@@ -143,13 +327,14 @@ export async function executeAttendanceDateRangeExport({
     "Department",
     "Time in",
     "Time out",
-    "Shift",
+    "Current shift",
+    "Leave type",
   ];
 
   ws.addRow(headerVi);
   ws.addRow(headerEn);
 
-  [4, 5].forEach((rowNum) => {
+  [16, 17].forEach((rowNum) => {
     const row = ws.getRow(rowNum);
     row.height = 25;
     row.eachCell((cell) => {
@@ -178,8 +363,8 @@ export async function executeAttendanceDateRangeExport({
       displayLocale,
     );
     const row = ws.addRow([
-      dateDisplay,
       stt,
+      dateDisplay,
       emp.mnv || "",
       emp.mvt || "",
       emp.hoVaTen || "",
@@ -187,9 +372,10 @@ export async function executeAttendanceDateRangeExport({
       emp.ngayThangNamSinh || "",
       emp.maBoPhan || "",
       emp.boPhan || "",
-      formatAttendanceGioVaoDisplay(emp.gioVao || ""),
+      formatAttendanceTimeInColumnDisplay(emp.gioVao),
       emp.gioRa || "",
       emp.caLamViec || "",
+      formatAttendanceLeaveTypeColumnForEmployee(emp) || "",
     ]);
     const isEvenRow = idx % 2 === 0;
     row.eachCell((cell, colNumber) => {
@@ -226,8 +412,8 @@ export async function executeAttendanceDateRangeExport({
   });
 
   ws.columns = [
-    { width: 12 },
     { width: 5 },
+    { width: 12 },
     { width: 10 },
     { width: 10 },
     { width: 25 },
@@ -237,6 +423,7 @@ export async function executeAttendanceDateRangeExport({
     { width: 15 },
     { width: 10 },
     { width: 10 },
+    { width: 12 },
     { width: 12 },
   ];
 

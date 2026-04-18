@@ -22,7 +22,6 @@ import {
 } from "@/services/firebase";
 import * as XLSX from "@e965/xlsx";
 import ExcelJS from "exceljs";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ExportExcelButton from "@/components/ui/ExportExcelButton";
 // import BirthdayCake from "./BirthdayCake";
 import NotificationBell from "@/components/ui/NotificationBell";
@@ -30,17 +29,18 @@ import AlertMessage from "@/components/ui/AlertMessage";
 import {
   ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
   formatAttendanceGioVaoDisplay,
+  formatAttendanceLeaveTypeColumnForEmployee,
+  formatAttendanceTimeInColumnDisplay,
   isGioVaoLeaveOrStatusType,
 } from "./attendanceGioVaoTypeOptions";
-import { getIsOffDayFromRaw } from "./attendanceDayMeta";
+import {
+  getIsOffDayFromRaw,
+  getIsHolidayDayFromRaw,
+} from "./attendanceDayMeta";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
-  GIO_VAO_MODAL_TIME_SENTINEL,
-  GIO_VAO_MODAL_OTHER_SENTINEL,
-  getGioVaoModalSelectValue,
   looksLikeGioVaoTime,
   normalizeTimeForHtmlInput,
-  findGioVaoTypeOptionMatch,
 } from "./attendanceGioVaoModalHelpers";
 import { getAttendanceColWidthPercents } from "./AttendanceTableRow";
 import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
@@ -62,9 +62,9 @@ function SeasonalAttendanceColgroup({ showRowModalActions, columnPlan = "full" }
 
 function seasonalTableMinWidthClass(columnPlan) {
   if (columnPlan === "full") return "";
-  if (columnPlan === "compact") return "min-w-[920px]";
-  if (columnPlan === "narrow") return "min-w-[760px]";
-  if (columnPlan === "minimal") return "min-w-[520px]";
+  if (columnPlan === "compact") return "min-w-[1000px]";
+  if (columnPlan === "narrow") return "min-w-[840px]";
+  if (columnPlan === "minimal") return "min-w-[600px]";
   return "min-w-[920px]";
 }
 
@@ -92,6 +92,7 @@ function SeasonalStaffAttendance() {
     return `${yyyy}-${mm}-${dd}`;
   });
   const [isOffDay, setIsOffDay] = useState(false);
+  const [isHolidayDay, setIsHolidayDay] = useState(false);
   const { t, i18n } = useTranslation();
   const tl = useCallback(
     (key, defaultValue, options = {}) =>
@@ -102,11 +103,7 @@ function SeasonalStaffAttendance() {
   const { user, userDepartments, userRole } = useUser();
 
   const [employees, setEmployees] = useState([]);
-  const [savingCaLamViec, setSavingCaLamViec] = useState({});
   const [editing, setEditing] = useState(null);
-  const [editingCaLamViec, setEditingCaLamViec] = useState({}); // Track temporary caLamViec edits
-  const [editingGioVao, setEditingGioVao] = useState({}); // Track temporary gioVao edits
-  const [savingGioVao, setSavingGioVao] = useState({}); // Track which gioVao is being saved
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
   const [filterGenderSearch, setFilterGenderSearch] = useState("");
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
@@ -136,6 +133,7 @@ function SeasonalStaffAttendance() {
     maBoPhan: "",
     boPhan: "",
     gioVao: "",
+    loaiPhep: "",
     gioRa: "",
     caLamViec: "",
   });
@@ -159,11 +157,13 @@ function SeasonalStaffAttendance() {
     return () => unsubscribe();
   }, [selectedDate]);
 
-  // Dùng chung cờ Ngày off với màn điểm danh nhân viên.
+  // Dùng chung cờ Ngày off / lễ với màn điểm danh nhân viên.
   useEffect(() => {
     const dayRef = ref(db, `attendance/${selectedDate}`);
     const unsubscribe = onValue(dayRef, (snapshot) => {
-      setIsOffDay(getIsOffDayFromRaw(snapshot.val()));
+      const v = snapshot.val();
+      setIsOffDay(getIsOffDayFromRaw(v));
+      setIsHolidayDay(getIsHolidayDayFromRaw(v));
     });
     return () => unsubscribe();
   }, [selectedDate]);
@@ -376,41 +376,12 @@ function SeasonalStaffAttendance() {
   const seasonalModalFieldClass =
     "w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100";
 
-  const handleGioVaoModalSelect = useCallback((e) => {
-    const v = e.target.value;
-    if (v === "") {
-      setForm((prev) => ({ ...prev, gioVao: "" }));
-      return;
-    }
-    if (v === GIO_VAO_MODAL_TIME_SENTINEL) {
-      setForm((prev) => {
-        const t = normalizeTimeForHtmlInput(prev.gioVao);
-        return { ...prev, gioVao: t || "08:00" };
-      });
-      return;
-    }
-    if (v === GIO_VAO_MODAL_OTHER_SENTINEL) {
-      setForm((prev) => ({
-        ...prev,
-        gioVao:
-          prev.gioVao &&
-          !looksLikeGioVaoTime(prev.gioVao) &&
-          !findGioVaoTypeOptionMatch(prev.gioVao)
-            ? prev.gioVao
-            : "",
-      }));
-      return;
-    }
-    setForm((prev) => ({ ...prev, gioVao: v }));
+  const handleGioVaoTimeInput = useCallback((e) => {
+    setForm((prev) => ({ ...prev, gioVao: e.target.value || "" }));
   }, []);
 
-  const handleGioVaoModalTime = useCallback((e) => {
-    const val = e.target.value;
-    setForm((prev) => ({ ...prev, gioVao: val || "" }));
-  }, []);
-
-  const handleGioVaoModalOtherText = useCallback((e) => {
-    setForm((prev) => ({ ...prev, gioVao: e.target.value }));
+  const handleLoaiPhepSelect = useCallback((e) => {
+    setForm((prev) => ({ ...prev, loaiPhep: e.target.value }));
   }, []);
 
   // Handle submit (add/update)
@@ -486,6 +457,7 @@ function SeasonalStaffAttendance() {
         maBoPhan: "",
         boPhan: "",
         gioVao: "",
+        loaiPhep: "",
         gioRa: "",
         caLamViec: "",
       });
@@ -524,8 +496,13 @@ function SeasonalStaffAttendance() {
         });
         return;
       }
-      setForm({ ...emp });
-      setEditing(emp.id);
+      let next = { ...emp };
+      const gv = String(next.gioVao ?? "").trim();
+      const lp = String(next.loaiPhep ?? "").trim();
+      if (!lp && gv && !looksLikeGioVaoTime(gv)) {
+        next = { ...next, loaiPhep: gv, gioVao: "" };
+      }
+      setForm(next);
       setShowModal(true);
     },
     [user, userRole, userDepartments],
@@ -1737,8 +1714,9 @@ function SeasonalStaffAttendance() {
           <th style="width:12%">Ngày tháng năm sinh</th>
           <th style="width:7%">Mã BP</th>
           <th style="width:14%">Bộ phận</th>
-          <th style="width:8%">Thời gian vào</th>
+          <th style="width:7%">Thời gian vào</th>
           <th style="width:8%">Thời gian ra</th>
+          <th style="width:7%">Loại phép</th>
           <th style="width:7%">Ca làm việc</th>
         </tr>
       </thead>
@@ -1783,13 +1761,19 @@ function SeasonalStaffAttendance() {
             <td>${emp.maBoPhan || ""}</td>
             <td class="dept">${emp.boPhan || ""}</td>
             <td style="${
+              formatAttendanceTimeInColumnDisplay(emp.gioVao || "")
+                ? "color:#15803d;font-weight:bold;"
+                : ""
+            }">${formatAttendanceTimeInColumnDisplay(emp.gioVao || "")}</td>
+            <td>${emp.gioRa || ""}</td>
+            <td style="${
               ["PN", "TS", "PO", "NV"].includes(
-                formatAttendanceGioVaoDisplay(emp.gioVao),
+                formatAttendanceLeaveTypeColumnForEmployee(emp) ||
+                  formatAttendanceGioVaoDisplay(emp.gioVao),
               )
                 ? "color:#c41e3a;font-weight:bold;"
                 : ""
-            }">${formatAttendanceGioVaoDisplay(emp.gioVao || "")}</td>
-            <td>${emp.gioRa || ""}</td>
+            }">${formatAttendanceLeaveTypeColumnForEmployee(emp)}</td>
             <td>${emp.caLamViec || ""}</td>
         </tr>`;
     });
@@ -2039,7 +2023,7 @@ function SeasonalStaffAttendance() {
           emp.mnv || "",
           emp.hoVaTen || "",
           emp.boPhan || "",
-          formatAttendanceGioVaoDisplay(emp.gioVao || ""),
+          formatAttendanceTimeInColumnDisplay(emp.gioVao),
           emp.gioRa || "",
         ]);
         dataRow.alignment = { horizontal: "center", vertical: "middle" };
@@ -2592,6 +2576,7 @@ function SeasonalStaffAttendance() {
                             maBoPhan: "",
                             boPhan: "",
                             gioVao: "",
+                            loaiPhep: "",
                             gioRa: "",
                             caLamViec: "",
                           });
@@ -2833,68 +2818,36 @@ function SeasonalStaffAttendance() {
                     className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
                     {tl("timeIn", "Giờ vào")}
                   </label>
-                  <div className="space-y-2">
-                    <select
-                      value={getGioVaoModalSelectValue(form.gioVao)}
-                      onChange={handleGioVaoModalSelect}
-                      className={seasonalModalFieldClass}
-                    >
-                      <option value="">
-                        {tl(
-                          "gioVaoModalChoose",
-                          "Chọn loại phép / trạng thái hoặc giờ (HH:MM)…",
-                        )}
-                      </option>
-                      {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(
-                        ({ value, shortLabel }) => (
-                          <option key={value} value={value}>
-                            {shortLabel} — {value}
-                          </option>
-                        ),
+                  <div className="flex flex-wrap items-stretch gap-2">
+                    <input
+                      type="time"
+                      value={normalizeTimeForHtmlInput(form.gioVao) || ""}
+                      onChange={handleGioVaoTimeInput}
+                      className={`${seasonalModalFieldClass} min-w-0 flex-1`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({ ...prev, gioVao: "" }))
+                      }
+                      disabled={!String(form.gioVao ?? "").trim()}
+                      className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      title={tl(
+                        "timeInClearHint",
+                        "Xóa giờ vào (để trống)",
                       )}
-                      <option value={GIO_VAO_MODAL_TIME_SENTINEL}>
-                        {tl("gioVaoModalTimeOption", "Giờ vào cụ thể (HH:MM)")}
-                      </option>
-                      <option value={GIO_VAO_MODAL_OTHER_SENTINEL}>
-                        {tl(
-                          "gioVaoModalOtherOption",
-                          "Khác (nhập tay / dữ liệu cũ)",
-                        )}
-                      </option>
-                    </select>
-                    {getGioVaoModalSelectValue(form.gioVao) ===
-                    GIO_VAO_MODAL_TIME_SENTINEL ? (
-                      <input
-                        type="time"
-                        value={
-                          normalizeTimeForHtmlInput(form.gioVao) || "08:00"
-                        }
-                        onChange={handleGioVaoModalTime}
-                        className={seasonalModalFieldClass}
-                      />
-                    ) : null}
-                    {getGioVaoModalSelectValue(form.gioVao) ===
-                    GIO_VAO_MODAL_OTHER_SENTINEL ? (
-                      <input
-                        type="text"
-                        value={form.gioVao}
-                        onChange={handleGioVaoModalOtherText}
-                        placeholder={tl(
-                          "gioVaoOtherPlaceholder",
-                          "Chỉ dùng khi giá trị không có trong danh sách",
-                        )}
-                        className={seasonalModalFieldClass}
-                      />
-                    ) : null}
+                    >
+                      {tl("clearTimeIn", "Xóa giờ vào")}
+                    </button>
                   </div>
                   <p className="mt-1 text-[11px] text-purple-600/90">
                     {tl(
-                      "gioVaoModalHint",
-                      "Chọn từ danh sách để thống kê Dashboard và biểu đồ khớp dữ liệu.",
+                      "gioVaoTimeOnlyHint",
+                      "Giờ chấm HH:MM — có thể kết hợp với loại phép bên dưới.",
                     )}
                   </p>
                 </div>
@@ -2909,6 +2862,45 @@ function SeasonalStaffAttendance() {
                     onChange={handleChange}
                     className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
+                    {tl("leaveTypeColumn", "Loại phép")}
+                  </label>
+                  <select
+                    value={String(form.loaiPhep ?? "").trim()}
+                    onChange={handleLoaiPhepSelect}
+                    className={seasonalModalFieldClass}
+                  >
+                    <option value="">
+                      {tl("leaveTypePlaceholder", "— Không chọn —")}
+                    </option>
+                    {(() => {
+                      const raw = String(form.loaiPhep ?? "").trim();
+                      const isStd = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.some(
+                        (o) => o.value === raw,
+                      );
+                      return !isStd && raw ? (
+                        <option value={raw}>
+                          {raw}{" "}
+                          {tl("leaveTypeCurrentValue", "(giá trị hiện tại)")}
+                        </option>
+                      ) : null;
+                    })()}
+                    {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(
+                      ({ value, shortLabel }) => (
+                        <option key={value} value={value}>
+                          {shortLabel} — {value}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                  <p className="mt-1 text-[11px] text-purple-600/90">
+                    {tl(
+                      "loaiPhepModalHint",
+                      "Chọn loại phép / trạng thái — có thể vừa có giờ vào vừa có loại.",
+                    )}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
@@ -3317,6 +3309,15 @@ function SeasonalStaffAttendance() {
                     <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                       Thời gian vào
                     </th>
+                    <th
+                      className="px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold text-white uppercase tracking-wide text-center leading-tight"
+                      title={tl(
+                        "leaveTypeColumnHint",
+                        "Loại phép / trạng thái (PN, …) — tách khỏi giờ vào.",
+                      )}
+                    >
+                      {tl("leaveTypeColumn", "Loại phép")}
+                    </th>
                     <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                       Ca làm việc
                     </th>
@@ -3325,6 +3326,12 @@ function SeasonalStaffAttendance() {
                       title="Khi ngày được đánh dấu Ngày off: hiển thị OFF."
                     >
                       Ngày off
+                    </th>
+                    <th
+                      className="px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold text-white uppercase tracking-wide text-center leading-tight"
+                      title="Khi ngày được đánh dấu Ngày lễ: hiển thị HOLIDAY."
+                    >
+                      Ngày lễ
                     </th>
                     {showRowModalActions && (
                       <th className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
@@ -3370,6 +3377,15 @@ function SeasonalStaffAttendance() {
                     <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                       Thời gian ra
                     </th>
+                    <th
+                      className="px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold text-white uppercase tracking-wide text-center leading-tight"
+                      title={tl(
+                        "leaveTypeColumnHint",
+                        "Loại phép / trạng thái (PN, …) — sau giờ ra.",
+                      )}
+                    >
+                      {tl("leaveTypeColumn", "Loại phép")}
+                    </th>
                     <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
                       Ca làm việc
                     </th>
@@ -3378,6 +3394,12 @@ function SeasonalStaffAttendance() {
                       title="Khi ngày được đánh dấu Ngày off: hiển thị OFF."
                     >
                       Ngày off
+                    </th>
+                    <th
+                      className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-[10px] md:text-sm font-extrabold text-white uppercase tracking-wide text-center leading-tight"
+                      title="Khi ngày được đánh dấu Ngày lễ: hiển thị HOLIDAY."
+                    >
+                      Ngày lễ
                     </th>
                     {showRowModalActions && (
                       <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm font-extrabold text-white uppercase tracking-wide text-center">
@@ -3442,113 +3464,86 @@ function SeasonalStaffAttendance() {
                       {emp.boPhan}
                     </td>
                   ) : null}
-                  <td className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center">
-                    {emp.gioVao ? (
-                      <span
-                        className={`font-bold text-sm md:text-base ${
-                          /^\d{1,2}:\d{2}$/.test(emp.gioVao)
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {formatAttendanceGioVaoDisplay(emp.gioVao)}
-                      </span>
-                    ) : canEditEmployee(emp) ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <select
-                          disabled={savingGioVao[emp.id]}
-                          className="border rounded px-1.5 py-0.5 text-xs md:text-sm text-red-700 font-bold focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                          value={editingGioVao[emp.id] || ""}
-                          onChange={(e) => {
-                            setEditingGioVao((prev) => ({
-                              ...prev,
-                              [emp.id]: e.target.value,
-                            }));
-                          }}
-                        >
-                          <option value="">
-                            {t("attendanceList.chooseType", {
-                              defaultValue: "Chọn loại",
-                            })}
-                          </option>
-                          {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(
-                            ({ value, shortLabel }) => (
-                              <option key={value} value={value}>
-                                {shortLabel}
-                              </option>
-                            ),
-                          )}
-                        </select>
-                        {editingGioVao[emp.id] && (
-                          <button
-                            disabled={savingGioVao[emp.id]}
-                            onClick={async () => {
-                              const value = editingGioVao[emp.id];
-                              if (value) {
-                                setSavingGioVao((prev) => ({
-                                  ...prev,
-                                  [emp.id]: true,
-                                }));
-                                try {
-                                  const empRef = ref(
-                                    db,
-                                    `seasonalAttendance/${selectedDate}/${emp.id}`,
-                                  );
-                                  await set(empRef, { ...emp, gioVao: value });
-                                  setEditingGioVao((prev) => {
-                                    const newState = { ...prev };
-                                    delete newState[emp.id];
-                                    return newState;
-                                  });
-                                  setAlert({
-                                    show: true,
-                                    type: "success",
-                                    message: "✅ Cập nhật thành công",
-                                  });
-                                } catch (err) {
-                                  console.error("Save gioVao error:", err);
-                                  setAlert({
-                                    show: true,
-                                    type: "error",
-                                    message: "❌ Cập nhật thất bại",
-                                  });
-                                } finally {
-                                  setSavingGioVao((prev) => {
-                                    const newState = { ...prev };
-                                    delete newState[emp.id];
-                                    return newState;
-                                  });
-                                }
-                              }
-                            }}
-                            className="px-1.5 py-0.5 bg-green-500 text-white rounded text-xs hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {savingGioVao[emp.id] ? (
-                              <LoadingSpinner
-                                size="xs"
-                                className="inline-block text-white"
-                              />
-                            ) : (
-                              "✓"
+                  {(() => {
+                    const gv = String(emp.gioVao ?? "").trim();
+                    const timeCol = formatAttendanceTimeInColumnDisplay(gv);
+                    const leaveCol =
+                      formatAttendanceLeaveTypeColumnForEmployee(emp);
+                    const canEdit = canEditEmployee(emp);
+
+                    const timeTd = (
+                      <td className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center">
+                        {timeCol ? (
+                          <span className="font-bold text-sm md:text-base text-green-600">
+                            {timeCol}
+                          </span>
+                        ) : canEdit ? (
+                          <span
+                            className="tabular-nums font-semibold text-gray-600"
+                            title={tl(
+                              "gioVaoEditOnlyViaModalHint",
+                              "Chưa có giờ vào — chỉnh sửa qua nút Sửa.",
                             )}
-                          </button>
+                          >
+                            -
+                          </span>
+                        ) : user ? (
+                          <span className="text-gray-400 italic text-xs">
+                            🔒 Không được phép chỉnh sửa
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 italic">--</span>
                         )}
-                      </div>
-                    ) : user ? (
-                      <span className="text-gray-400 italic text-xs">
-                        🔒 Không được phép chỉnh sửa
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 italic">--</span>
-                    )}
-                  </td>
-                  {columnPlan !== "minimal" ? (
-                    <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0">
-                      <span className="text-red-600 font-bold text-base">
-                        {emp.gioRa}
-                      </span>
-                    </td>
-                  ) : null}
+                      </td>
+                    );
+
+                    const leaveTd = (
+                      <td className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center">
+                        {leaveCol ? (
+                          <span className="font-bold text-sm md:text-base text-red-600">
+                            {leaveCol}
+                          </span>
+                        ) : canEdit ? (
+                          <span
+                            className="tabular-nums font-semibold text-gray-600"
+                            title={tl(
+                              "leaveTypeEditViaModalHint",
+                              "Chưa có loại phép — chỉnh sửa qua nút Sửa.",
+                            )}
+                          >
+                            -
+                          </span>
+                        ) : user ? (
+                          <span className="text-gray-400 italic text-xs">
+                            🔒 Không được phép chỉnh sửa
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 italic">--</span>
+                        )}
+                      </td>
+                    );
+
+                    if (columnPlan === "minimal") {
+                      return (
+                        <>
+                          {timeTd}
+                          {leaveTd}
+                        </>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {timeTd}
+                        <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0">
+                          <span className="text-red-600 font-bold text-base">
+                            {emp.gioRa}
+                          </span>
+                        </td>
+                        {leaveTd}
+                      </>
+                    );
+                  })()}
                   <td
                     className={
                       columnPlan === "minimal"
@@ -3561,85 +3556,15 @@ function SeasonalStaffAttendance() {
                         {emp.caLamViec}
                       </span>
                     ) : canEditEmployee(emp) ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <select
-                          disabled={savingCaLamViec[emp.id]}
-                          className="border rounded px-1.5 py-0.5 text-xs md:text-sm text-blue-700 font-bold focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                          value={editingCaLamViec[emp.id] || ""}
-                          onChange={(e) => {
-                            setEditingCaLamViec((prev) => ({
-                              ...prev,
-                              [emp.id]: e.target.value,
-                            }));
-                          }}
-                        >
-                          <option value="">Chọn ca</option>
-                          {ATTENDANCE_CA_LAM_VIEC_OPTIONS.map(
-                            ({ value, label }) => (
-                              <option key={value} value={value}>
-                                {label}
-                              </option>
-                            ),
-                          )}
-                        </select>
-                        {editingCaLamViec[emp.id] && (
-                          <button
-                            disabled={savingCaLamViec[emp.id]}
-                            onClick={async () => {
-                              const value = editingCaLamViec[emp.id];
-                              if (value) {
-                                setSavingCaLamViec((prev) => ({
-                                  ...prev,
-                                  [emp.id]: true,
-                                }));
-                                try {
-                                  const empRef = ref(
-                                    db,
-                                    `seasonalAttendance/${selectedDate}/${emp.id}`,
-                                  );
-                                  await set(empRef, {
-                                    ...emp,
-                                    caLamViec: value,
-                                  });
-                                  setEditingCaLamViec((prev) => {
-                                    const newState = { ...prev };
-                                    delete newState[emp.id];
-                                    return newState;
-                                  });
-                                  setAlert({
-                                    show: true,
-                                    type: "success",
-                                    message: "✅ Cập nhật thành công",
-                                  });
-                                } catch (err) {
-                                  console.error("Save caLamViec error:", err);
-                                  setAlert({
-                                    show: true,
-                                    type: "error",
-                                    message: "❌ Cập nhật thất bại",
-                                  });
-                                } finally {
-                                  setSavingCaLamViec((prev) => {
-                                    const newState = { ...prev };
-                                    delete newState[emp.id];
-                                    return newState;
-                                  });
-                                }
-                              }
-                            }}
-                            className="px-1.5 py-0.5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {savingCaLamViec[emp.id] ? (
-                              <LoadingSpinner
-                                size="xs"
-                                className="inline-block text-white"
-                              />
-                            ) : (
-                              "✓"
-                            )}
-                          </button>
+                      <span
+                        className="tabular-nums font-semibold text-gray-600"
+                        title={tl(
+                          "shiftEditViaModalHint",
+                          "Chưa chọn ca — chỉnh sửa qua nút Sửa.",
                         )}
-                      </div>
+                      >
+                        -
+                      </span>
                     ) : user ? (
                       <span className="text-gray-400 italic text-xs">
                         🔒 Không được phép chỉnh sửa
@@ -3661,6 +3586,24 @@ function SeasonalStaffAttendance() {
                         OFF
                       </span>
                     ) : null}
+                  </td>
+                  <td
+                    className={
+                      columnPlan === "minimal"
+                        ? "px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 font-bold text-slate-800 dark:text-slate-100"
+                        : "hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center min-w-0 font-bold text-slate-800 dark:text-slate-100"
+                    }
+                    title="Khi ngày được đánh dấu Ngày lễ: hiển thị HOLIDAY."
+                  >
+                    {isHolidayDay ? (
+                      <span className="tabular-nums text-amber-800 dark:text-amber-200">
+                        HOLIDAY
+                      </span>
+                    ) : (
+                      <span className="tabular-nums font-semibold text-gray-600 dark:text-slate-400">
+                        -
+                      </span>
+                    )}
                   </td>
                   {showRowModalActions && (
                     <td

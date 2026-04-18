@@ -18,22 +18,35 @@ export function dateKeysInMonth(anchorYyyyMmDd) {
 }
 
 /**
+ * Đọc ngày off / ngày lễ trong tháng (`_meta.isOffDay` / `_meta.isHolidayDay`).
+ * @param {string} anchorYyyyMmDd
+ * @returns {Promise<{ off: string[], holiday: string[] }>}
+ */
+export async function fetchOffAndHolidayDateKeysInMonth(anchorYyyyMmDd) {
+  const keys = dateKeysInMonth(anchorYyyyMmDd);
+  if (keys.length === 0) return { off: [], holiday: [] };
+  const snaps = await Promise.all(
+    keys.map((d) => get(ref(db, `attendance/${d}/_meta`))),
+  );
+  const off = [];
+  const holiday = [];
+  for (let i = 0; i < keys.length; i++) {
+    const meta = snaps[i].val();
+    if (!meta || typeof meta !== "object") continue;
+    if (meta.isHolidayDay) holiday.push(keys[i]);
+    else if (meta.isOffDay) off.push(keys[i]);
+  }
+  return { off: off.sort(), holiday: holiday.sort() };
+}
+
+/**
  * Đọc `attendance/{ngày}/_meta.isOffDay` cho tất cả ngày trong tháng của `anchorYyyyMmDd`.
  * @param {string} anchorYyyyMmDd — bất kỳ ngày YYYY-MM-DD trong tháng cần xem
  * @returns {Promise<string[]>} — các ngày có off, đã sort
  */
 export async function fetchOffDayDateKeysInMonth(anchorYyyyMmDd) {
-  const keys = dateKeysInMonth(anchorYyyyMmDd);
-  if (keys.length === 0) return [];
-  const snaps = await Promise.all(
-    keys.map((d) => get(ref(db, `attendance/${d}/_meta`))),
-  );
-  const off = [];
-  for (let i = 0; i < keys.length; i++) {
-    const meta = snaps[i].val();
-    if (meta && typeof meta === "object" && meta.isOffDay) off.push(keys[i]);
-  }
-  return off.sort();
+  const { off } = await fetchOffAndHolidayDateKeysInMonth(anchorYyyyMmDd);
+  return off;
 }
 
 /**

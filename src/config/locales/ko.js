@@ -940,7 +940,7 @@ const ko = {
     colTimeIn: "출근",
     colTimeOut: "퇴근",
     filter: "필터",
-    advancedFilterDesc: "부서, 성별, 시간",
+    advancedFilterDesc: "부서, 휴가 유형",
     advancedFilterAutoUpdate: "조건을 선택하면 결과가 자동으로 갱신됩니다",
     advancedFilterModalDesc: "조건을 선택하면 모달 목록에 적용됩니다",
     missingEmployees: "퇴직(추정) 직원",
@@ -957,7 +957,7 @@ const ko = {
     timeOutClearHint: "퇴근 시간 비우기",
     workingHours: "근무시간",
     workingHoursHint:
-      "HH:MM 출·퇴근. 7:00~7:30 이전 출근·17:30 이전 퇴근 = 8시간(고정); 그 외는 두 시각 차이, 최대 8시간(연장은 연장 열).",
+      "HH:MM. 주간: 출근이 06:00~08:00 미만이면 기준 출근은 08:00; 06:00 미만은 실제 출근 시각 유지. 근무시간=min(차이, 8시간); 퇴근이 17:30 이후면 연장 열 참고.",
     overtimeHours: "연장근무",
     overtimeHoursHint:
       "퇴근이 17:30 이후: 17:00부터 30분당 0.5시간 연장.",
@@ -972,7 +972,7 @@ const ko = {
       "«야간» 근무 시: 05:00 이후 근무 — 30분당 0.5시간 연장.",
     nightShiftOffDayWorkingHours: "야간(휴무)",
     nightShiftOffDayWorkingHoursHint:
-      "«휴무일»이고 «야간» 근무일 때만: 야간 근무 규칙과 동일. 휴무일이 아니면 비움.",
+      "«휴무일»+야간: GC+야간 연장 합산(평일 야간 규칙). 야간 연장 열 «-». 휴무일 아니면 비움.",
     dayOffToggle: "휴무일",
     dayOffToolbarButton: "휴무일(여러 날)",
     dayOffToolbarHint:
@@ -1085,19 +1085,23 @@ const ko = {
       payrollWorkingHoursHint:
         "평일: 출·퇴근 규칙 근무시간. «휴무일»(주간): 같은 규칙으로 근무시간 열에 표시. «야간»: 이 열 «-» — 야간 GC/TC 열.",
       payrollOffDayTcHint:
-        "레거시 열: 휴무일 근무는 근무시간 열로 옮겼습니다. 항상 «-».",
+        "«휴무일» 주간: 근무시간+연장을 한 칸에 합산. 연장 열은 «-».",
+      payrollHolidayDayWorkingHoursHint:
+        "«공휴일» 주간: 근무시간+연장을 한 칸에 합산. 연장 열은 «-».",
       nightShiftWorkingHoursHint:
         "야간: 출근부터 05:00(당일 05:00 이전 출근이면 당일, 아니면 다음 날 05:00)까지, 최대 8시간.",
       nightShiftOvertimeHoursHint:
         "야간: 05:00 이후 근무 — 30분당 0.5시간 연장.",
       nightShiftOffDayWorkingHoursHint:
-        "휴무일 + 야간: 야간 규무 규칙과 동일. 평일이면 비움.",
+        "휴무일+야간: GC+연장 합산; 야간 연장 열 «-». 평일이면 비움.",
+      payrollHolidayNightWorkingHoursHint:
+        "공휴일+야간: GC+연장 합산; 야간 연장 열 «-», 주간 야간 GC 열 «-».",
       payrollTotalGcDay: "총 근무(주간)",
       payrollTotalGcDayHint:
-        "주간 합계: 근무시간 + 연장; 휴무일(주간)이면 TC off에 표시된 시간 포함 — 야간 열 제외.",
+        "주간 합계: 근무시간 + 연장. 휴무일·공휴일(주간): 한 칸에 합산(연장 열 «-»); 야간 열 제외.",
       payrollTotalGcNight: "총 야간 근무",
       payrollTotalGcNightHint:
-        "야간 합계: GC(05:00 이전) + 야간 연장(05:00 이후) — GC/TC 야간 열과 동일.",
+        "야간 합계: GC+연장. 휴무·공휴일 야간은 한 칸 합산(연장 열 «-»).",
     },
     searchPlaceholder: "이름·사번·부서 검색…",
     exportExcel: "⬇ Excel 내보내기",

@@ -11,11 +11,13 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUser } from "@/contexts/UserContext";
 import { canEditAttendanceForEmployee } from "@/config/authRoles";
 import { db, ref, onValue, get, update } from "@/services/firebase";
+import { EMPLOYEE_PROFILES_PATH } from "@/utils/employeeRosterRecord";
+import { mergeAttendanceDayRowsFromRaw } from "@/features/attendance/mergeAttendanceDayRows";
+import { payrollTableWrapperMinWidthClass } from "@/features/payroll/payrollTableLayout";
 import {
-  EMPLOYEE_PROFILES_PATH,
-  mergeEmployeeProfileAndDay,
-  employeeProfileStorageKeyFromMnv,
-} from "@/utils/employeeRosterRecord";
+  readEarlyOtSessionSuppressed,
+  writeEarlyOtSessionSuppressed,
+} from "@/features/payroll/payrollEarlyOtSession";
 import {
   ATTENDANCE_VIRTUAL_THRESHOLD,
   getAttendanceGridTemplateColumns,
@@ -27,8 +29,8 @@ import PayrollSalaryTableRow, {
 } from "@/features/payroll/payrollSalaryTableUi";
 import { useAttendanceColumnPlan } from "@/features/attendance/useAttendanceBirthDeptColumns";
 import {
-  isAttendanceDayMetaKey,
   getIsOffDayFromRaw,
+  getIsHolidayDayFromRaw,
   ATTENDANCE_DAY_META_KEY,
   ATTENDANCE_DAY_META_EARLY_OT_KEY,
   getEarlyOtPaperworkFromRaw,
@@ -52,64 +54,7 @@ import { isEarlyArrivalFor0600PaperworkOvertime } from "@/features/attendance/at
 import PayrollEarlyOvertimePaperworkModal from "@/features/payroll/PayrollEarlyOvertimePaperworkModal";
 import "./payrollTableCompact.css";
 
-/** Bảng lương: min-width hẹp hơn điểm danh một chút (nhiều cột). Thêm cột Sửa thì nới thêm ~56px (class cố định để Tailwind JIT nhận). */
-function payrollTableWrapperMinWidthClass(
-  columnPlan,
-  showRowModalActions = false,
-) {
-  switch (columnPlan) {
-    case "full":
-      return showRowModalActions ? "min-w-[1292px]" : "min-w-[1236px]";
-    case "compact":
-      return showRowModalActions ? "min-w-[1032px]" : "min-w-[976px]";
-    case "narrow":
-      return showRowModalActions ? "min-w-[892px]" : "min-w-[836px]";
-    case "minimal":
-      return showRowModalActions ? "min-w-[512px]" : "min-w-[456px]";
-    default:
-      return showRowModalActions ? "min-w-[952px]" : "min-w-[896px]";
-  }
-}
-
-function applyAttendanceMerge(rawData, profMap) {
-  if (!rawData || typeof rawData !== "object") return [];
-  const arr = Object.entries(rawData)
-    .filter(([id]) => !isAttendanceDayMetaKey(id))
-    .map(([id, emp]) => {
-      const pk = employeeProfileStorageKeyFromMnv(emp?.mnv);
-      const prof = pk ? profMap[pk] : null;
-      return mergeEmployeeProfileAndDay({ ...emp, id }, prof, null);
-    });
-  arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
-  return arr;
-}
-
 const noop = () => {};
-
-const EARLY_OT_SESSION_STORAGE_PREFIX =
-  "payroll_earlyOt_prompt_suppress_session:";
-
-function earlyOtSessionSuppressStorageKey(uid) {
-  return `${EARLY_OT_SESSION_STORAGE_PREFIX}${uid || "anon"}`;
-}
-
-function readEarlyOtSessionSuppressed(uid) {
-  try {
-    return sessionStorage.getItem(earlyOtSessionSuppressStorageKey(uid)) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeEarlyOtSessionSuppressed(uid, value) {
-  try {
-    const k = earlyOtSessionSuppressStorageKey(uid);
-    if (value) sessionStorage.setItem(k, "1");
-    else sessionStorage.removeItem(k);
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
 
 /**
  * Trang lương: đọc attendance/{ngày} (chỉ xem). Ngày off + ca ngày: giờ quy đổi ở cột TC off.
@@ -132,6 +77,7 @@ export default function PayrollSalaryCalculator() {
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(d);
   }, [searchParams]);
   const [isOffDay, setIsOffDay] = useState(false);
+  const [isHolidayDay, setIsHolidayDay] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
 
@@ -189,10 +135,6 @@ export default function PayrollSalaryCalculator() {
     profilesRef.current = employeeProfilesMap;
   }, [employeeProfilesMap]);
 
-  const applyMerge = useCallback((rawData, profMap) => {
-    return applyAttendanceMerge(rawData, profMap);
-  }, []);
-
   useEffect(() => {
     attendanceRawRef.current = undefined;
     setEmployees([]);
@@ -202,17 +144,20 @@ export default function PayrollSalaryCalculator() {
       const data = snapshot.val();
       attendanceRawRef.current = data;
       setIsOffDay(getIsOffDayFromRaw(data));
-      setEmployees(applyMerge(data, profilesRef.current));
+      setIsHolidayDay(getIsHolidayDayFromRaw(data));
+      setEmployees(mergeAttendanceDayRowsFromRaw(data, profilesRef.current));
       setEarlyOtMap(getEarlyOtPaperworkFromRaw(data));
     });
     return () => unsubscribe();
-  }, [selectedDate, applyMerge]);
+  }, [selectedDate]);
 
   useEffect(() => {
     const raw = attendanceRawRef.current;
     if (raw === undefined) return;
-    setEmployees(applyMerge(raw, employeeProfilesMap));
-  }, [employeeProfilesMap, applyMerge]);
+    setEmployees(
+      mergeAttendanceDayRowsFromRaw(raw, employeeProfilesMap),
+    );
+  }, [employeeProfilesMap]);
 
   useEffect(() => {
     setEarlyOtSuppressed(false);
@@ -285,7 +230,7 @@ export default function PayrollSalaryCalculator() {
       if (earlyOtModalOpen) setEarlyOtModalOpen(false);
       return;
     }
-    if (isOffDay) {
+    if (isOffDay || isHolidayDay) {
       if (earlyOtModalOpen && earlyOtModalMode === "pending") {
         setEarlyOtModalOpen(false);
       }
@@ -299,6 +244,7 @@ export default function PayrollSalaryCalculator() {
     }
   }, [
     isOffDay,
+    isHolidayDay,
     earlyOtSuppressed,
     earlyOtSessionSuppressed,
     pendingEarlyOtEmployees,
@@ -472,10 +418,13 @@ export default function PayrollSalaryCalculator() {
   const payrollExportSheetTitle = useMemo(() => {
     const dateStr = new Date(selectedDate).toLocaleDateString(displayLocale);
     const base = tlPage("exportSheetTitle", "Bảng giờ công nhân viên");
-    return `${base} — ${dateStr}${
-      isOffDay ? ` (${tlPage("exportOffDaySuffix", "Ngày off")})` : ""
-    }`;
-  }, [selectedDate, isOffDay, displayLocale, tlPage]);
+    let suffix = "";
+    if (isHolidayDay)
+      suffix = ` (${tlPage("exportHolidaySuffix", "Ngày lễ")})`;
+    else if (isOffDay)
+      suffix = ` (${tlPage("exportOffDaySuffix", "Ngày off")})`;
+    return `${base} — ${dateStr}${suffix}`;
+  }, [selectedDate, isOffDay, isHolidayDay, displayLocale, tlPage]);
 
   const handleExportPayrollExcelRange = useCallback(
     async (rangeFrom, rangeTo) => {
@@ -509,14 +458,20 @@ export default function PayrollSalaryCalculator() {
           const snap = await get(ref(db, `attendance/${dateKey}`));
           const raw = snap.val();
           if (!raw || typeof raw !== "object") continue;
-          const isOffDay = getIsOffDayFromRaw(raw);
-          const merged = applyMerge(raw, employeeProfilesMap);
+          const od = getIsOffDayFromRaw(raw);
+          const hd = getIsHolidayDayFromRaw(raw);
+          const merged = mergeAttendanceDayRowsFromRaw(
+            raw,
+            employeeProfilesMap,
+          );
           if (!merged.length) continue;
           const earlyOt = getEarlyOtPaperworkFromRaw(raw);
           dayChunks.push({
             dateKey,
             employees: merged,
-            isOffDay,
+            isPayrollOffLikeDay: od || hd,
+            isOffDay: od,
+            isHolidayDay: hd,
             earlyOtPaperworkById: earlyOt,
           });
         }
@@ -538,7 +493,6 @@ export default function PayrollSalaryCalculator() {
           dayChunks,
           tlTable,
           sheetTitle,
-          displayLocale,
         });
         await downloadPayrollWorkbookToFile({
           workbook,
@@ -570,7 +524,13 @@ export default function PayrollSalaryCalculator() {
         setRangeExportBusy(false);
       }
     },
-    [applyMerge, db, displayLocale, employeeProfilesMap, tlPage, tlTable],
+    [
+      db,
+      displayLocale,
+      employeeProfilesMap,
+      tlPage,
+      tlTable,
+    ],
   );
 
   const handleExportPayrollExcel = useCallback(async () => {
@@ -589,7 +549,9 @@ export default function PayrollSalaryCalculator() {
       await downloadPayrollSalaryExcel({
         employees,
         selectedDate,
+        isPayrollOffLikeDay: isOffDay || isHolidayDay,
         isOffDay,
+        isHolidayDay,
         tlTable,
         sheetTitle: payrollExportSheetTitle,
         earlyOtPaperworkById: earlyOtMap,
@@ -614,6 +576,7 @@ export default function PayrollSalaryCalculator() {
     employees,
     selectedDate,
     isOffDay,
+    isHolidayDay,
     tlTable,
     tlPage,
     payrollExportSheetTitle,
@@ -824,16 +787,8 @@ export default function PayrollSalaryCalculator() {
                         showRowModalActions={showRowModalActions}
                         user={user}
                         canEdit={canEditEmployeeRow(emp)}
-                        savingGioVao={false}
-                        editingGioVaoValue={undefined}
-                        savingCaLamViec={false}
-                        editingCaLamViecValue={undefined}
                         tl={tlTable}
                         t={t}
-                        onGioVaoChange={noop}
-                        onGioVaoSave={noop}
-                        onCaLamChange={noop}
-                        onCaLamSave={noop}
                         onEdit={handleOpenEditEmployee}
                         onDelete={noop}
                         canDeleteRow={false}
@@ -841,6 +796,7 @@ export default function PayrollSalaryCalculator() {
                         gridTemplateColumns={attendanceGridTemplateColumns}
                         columnPlan={columnPlan}
                         isOffDay={isOffDay}
+                        isHolidayDay={isHolidayDay}
                       />
                     );
                   })}
@@ -876,21 +832,14 @@ export default function PayrollSalaryCalculator() {
                       showRowModalActions={showRowModalActions}
                       user={user}
                       canEdit={canEditEmployeeRow(emp)}
-                      savingGioVao={false}
-                      editingGioVaoValue={undefined}
-                      savingCaLamViec={false}
-                      editingCaLamViecValue={undefined}
                       tl={tlTable}
                       t={t}
-                      onGioVaoChange={noop}
-                      onGioVaoSave={noop}
-                      onCaLamChange={noop}
-                      onCaLamSave={noop}
                       onEdit={handleOpenEditEmployee}
                       onDelete={noop}
                       canDeleteRow={false}
                       columnPlan={columnPlan}
                       isOffDay={isOffDay}
+                      isHolidayDay={isHolidayDay}
                     />
                   ))}
                 </tbody>

@@ -4,6 +4,7 @@ import {
   foldGioVaoCompare,
   ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH,
   rawMatchesAttendanceTypeOption,
+  getAttendanceLeaveTypeRaw,
 } from "./attendanceGioVaoTypeOptions";
 
 export const normalizeTextValue = (value) => String(value ?? "").trim();
@@ -119,10 +120,12 @@ export function isMaternityForDiligenceRow(row) {
 /** Cùng logic với thống kê combo chart — dùng cho bảng chi tiết khi bấm KPI */
 export function getAttendanceComboFlags(emp) {
   const gioVaoRaw = normalizeTextValue(emp.gioVao);
+  const leaveTypeRaw = normalizeTextValue(getAttendanceLeaveTypeRaw(emp));
   const isTimeFormat = /^\d{1,2}:\d{2}(:\d{2})?$/.test(gioVaoRaw);
+  const textSignalRaw = leaveTypeRaw || (isTimeFormat ? "" : gioVaoRaw);
   const nonStandardTimeIn =
     gioVaoRaw !== "" && !GIO_VAO_HHMM_STRICT.test(gioVaoRaw);
-  const gioVaoNormalized = normalizeTextValue(emp.gioVao)
+  const gioVaoNormalized = normalizeTextValue(textSignalRaw)
     .replace(/\u00a0/g, " ")
     .toUpperCase();
   const gioVaoLatin = gioVaoNormalized
@@ -147,7 +150,7 @@ export function getAttendanceComboFlags(emp) {
    * Tách biệt checkedIn (giờ HH:MM, BGC trong luồng chấm công…).
    */
   const coDiLam =
-    textMatchesCoDiLam(gioVaoRaw) ||
+    textMatchesCoDiLam(textSignalRaw) ||
     textMatchesCoDiLam(emp.chamCong) ||
     textMatchesCoDiLam(emp.phepNam) ||
     textMatchesCoDiLam(emp.pnTon);
@@ -158,13 +161,13 @@ export function getAttendanceComboFlags(emp) {
   const isMaternity =
     hasLeaveCode("TS") ||
     hasText("THAI SAN", "THAISAN") ||
-    gioVaoTextLooksLikeMaternity(gioVaoRaw);
+    gioVaoTextLooksLikeMaternity(textSignalRaw);
   const isNoPermit = hasLeaveCode("KP") || hasText("KHONG PHEP");
   const isUnpaidLeave = hasLeaveCode("KL") || hasText("KHONG LUONG");
   const isSickLeave = hasLeaveCode("PO") || hasText("PHEP OM", "NGHI OM");
   /** Phép tang: giờ vào + chấm công / PN (ghi chú) — đồng bộ với dropdown & Excel */
   const isFuneralLeave =
-    textMatchesFuneralLeave(gioVaoRaw) ||
+    textMatchesFuneralLeave(textSignalRaw) ||
     textMatchesFuneralLeave(emp.chamCong) ||
     textMatchesFuneralLeave(emp.phepNam) ||
     textMatchesFuneralLeave(emp.pnTon);
@@ -173,6 +176,7 @@ export function getAttendanceComboFlags(emp) {
 
   /** Khớp từng loại trong ATTENDANCE_GIO_VAO_TYPE_OPTIONS trên Giờ vào + ghi chú liên quan */
   const scanRaws = [
+    textSignalRaw,
     gioVaoRaw,
     normalizeTextValue(emp.chamCong),
     normalizeTextValue(emp.phepNam),

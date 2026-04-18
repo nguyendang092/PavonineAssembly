@@ -15,16 +15,13 @@ import {
 import {
   canEditAttendanceForEmployee,
   canAddAttendanceForDepartment,
+  isAdminAccess,
 } from "@/config/authRoles";
 import { ATTENDANCE_GIO_VAO_TYPE_OPTIONS } from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
-  GIO_VAO_MODAL_TIME_SENTINEL,
-  GIO_VAO_MODAL_OTHER_SENTINEL,
-  getGioVaoModalSelectValue,
   looksLikeGioVaoTime,
   normalizeTimeForHtmlInput,
-  findGioVaoTypeOptionMatch,
 } from "./attendanceGioVaoModalHelpers";
 
 export const EMPTY_EMPLOYEE_FORM = {
@@ -38,6 +35,7 @@ export const EMPTY_EMPLOYEE_FORM = {
   maBoPhan: "",
   boPhan: "",
   gioVao: "",
+  loaiPhep: "",
   gioRa: "",
   caLamViec: "",
   pnTon: "",
@@ -79,7 +77,13 @@ export default function AttendanceEmployeeFormModal({
   useEffect(() => {
     if (!open) return;
     if (initialRecord && initialRecord.id) {
-      setForm({ ...EMPTY_EMPLOYEE_FORM, ...initialRecord });
+      let merged = { ...EMPTY_EMPLOYEE_FORM, ...initialRecord };
+      const gv = String(merged.gioVao ?? "").trim();
+      const lp = String(merged.loaiPhep ?? "").trim();
+      if (!lp && gv && !looksLikeGioVaoTime(gv)) {
+        merged = { ...merged, loaiPhep: gv, gioVao: "" };
+      }
+      setForm(merged);
       setEditAttendanceKey(initialRecord.id);
     } else {
       setForm({ ...EMPTY_EMPLOYEE_FORM });
@@ -130,44 +134,12 @@ export default function AttendanceEmployeeFormModal({
     setForm((prev) => ({ ...prev, [name]: value }));
   }, []);
 
-  const handleGioVaoModalSelect = useCallback((e) => {
-    const v = e.target.value;
-    if (v === "") {
-      setForm((prev) => ({ ...prev, gioVao: "" }));
-      return;
-    }
-    if (v === GIO_VAO_MODAL_TIME_SENTINEL) {
-      setForm((prev) => {
-        const t0 = normalizeTimeForHtmlInput(prev.gioVao);
-        return {
-          ...prev,
-          gioVao: t0 || "08:00",
-        };
-      });
-      return;
-    }
-    if (v === GIO_VAO_MODAL_OTHER_SENTINEL) {
-      setForm((prev) => ({
-        ...prev,
-        gioVao:
-          prev.gioVao &&
-          !looksLikeGioVaoTime(prev.gioVao) &&
-          !findGioVaoTypeOptionMatch(prev.gioVao)
-            ? prev.gioVao
-            : "",
-      }));
-      return;
-    }
-    setForm((prev) => ({ ...prev, gioVao: v }));
+  const handleGioVaoTimeInput = useCallback((e) => {
+    setForm((prev) => ({ ...prev, gioVao: e.target.value || "" }));
   }, []);
 
-  const handleGioVaoModalTime = useCallback((e) => {
-    const val = e.target.value;
-    setForm((prev) => ({ ...prev, gioVao: val || "" }));
-  }, []);
-
-  const handleGioVaoModalOtherText = useCallback((e) => {
-    setForm((prev) => ({ ...prev, gioVao: e.target.value }));
+  const handleLoaiPhepSelect = useCallback((e) => {
+    setForm((prev) => ({ ...prev, loaiPhep: e.target.value }));
   }, []);
 
   const notify = (alert) => {
@@ -225,43 +197,66 @@ export default function AttendanceEmployeeFormModal({
         const deptKey =
           String(existingProfile.departmentKey ?? "").trim() ||
           slugifyDepartmentKey(form.boPhan);
-        const mergedForm = {
-          ...existingProfile,
-          ...form,
-          businessId: storageKey,
-          departmentKey: deptKey,
-        };
-        const profileDoc = buildEmployeeProfileDocument({
-          form: mergedForm,
-          existingProfile,
-          departmentDisplayName: form.boPhan,
-          departmentKey: deptKey,
-        });
-        const dayDoc = buildEmployeeAttendanceDayDocument({
-          form: mergedForm,
-          existing: existingRaw,
-        });
-        await update(ref(db), {
-          [`${EMPLOYEE_PROFILES_PATH}/${storageKey}`]: profileDoc,
-          [`attendance/${selectedDate}/${editAttendanceKey}`]: {
-            ...dayDoc,
-            id: editAttendanceKey,
-          },
-        });
-        const profileChanges = diffEmployeeProfileDocs(
-          existingProfile,
-          profileDoc,
-        );
-        if (profileChanges.length > 0) {
-          void appendEmployeeProfileHistory({
-            by: user?.email || "",
-            action: "update",
-            source: "attendance",
-            profileKey: storageKey,
-            mnv: String(profileDoc.mnv || form.mnv || ""),
-            hoVaTen: String(profileDoc.hoVaTen || form.hoVaTen || ""),
-            changes: profileChanges,
+        const allowFullEdit = isAdminAccess(user, userRole);
+
+        if (!allowFullEdit) {
+          const mergedFormRestricted = {
+            ...existingProfile,
+            ...existing,
+            businessId: storageKey,
+            departmentKey: deptKey,
+            loaiPhep: form.loaiPhep,
+            caLamViec: form.caLamViec,
+          };
+          const dayDoc = buildEmployeeAttendanceDayDocument({
+            form: mergedFormRestricted,
+            existing: existingRaw,
           });
+          await update(ref(db), {
+            [`attendance/${selectedDate}/${editAttendanceKey}`]: {
+              ...dayDoc,
+              id: editAttendanceKey,
+            },
+          });
+        } else {
+          const mergedForm = {
+            ...existingProfile,
+            ...form,
+            businessId: storageKey,
+            departmentKey: deptKey,
+          };
+          const profileDoc = buildEmployeeProfileDocument({
+            form: mergedForm,
+            existingProfile,
+            departmentDisplayName: form.boPhan,
+            departmentKey: deptKey,
+          });
+          const dayDoc = buildEmployeeAttendanceDayDocument({
+            form: mergedForm,
+            existing: existingRaw,
+          });
+          await update(ref(db), {
+            [`${EMPLOYEE_PROFILES_PATH}/${storageKey}`]: profileDoc,
+            [`attendance/${selectedDate}/${editAttendanceKey}`]: {
+              ...dayDoc,
+              id: editAttendanceKey,
+            },
+          });
+          const profileChanges = diffEmployeeProfileDocs(
+            existingProfile,
+            profileDoc,
+          );
+          if (profileChanges.length > 0) {
+            void appendEmployeeProfileHistory({
+              by: user?.email || "",
+              action: "update",
+              source: "attendance",
+              profileKey: storageKey,
+              mnv: String(profileDoc.mnv || form.mnv || ""),
+              hoVaTen: String(profileDoc.hoVaTen || form.hoVaTen || ""),
+              changes: profileChanges,
+            });
+          }
         }
         onClose();
         notify({
@@ -345,6 +340,9 @@ export default function AttendanceEmployeeFormModal({
   if (!open) return null;
 
   const isEditMode = Boolean(editAttendanceKey);
+  /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP chỉ sửa loại phép + ca làm việc. */
+  const isRestrictedEdit =
+    isEditMode && !isAdminAccess(user, userRole);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/45 p-4 backdrop-blur-[2px]">
@@ -368,6 +366,14 @@ export default function AttendanceEmployeeFormModal({
             ? tl("updateEmployee", "Cập nhật nhân viên")
             : tl("addEmployee", "Thêm nhân viên mới")}
         </h2>
+        {isRestrictedEdit && (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
+            {tl(
+              "restrictedEditManagerHint",
+              "Bạn chỉ có thể sửa Loại phép và Ca làm việc. Chỉ Admin / HR mới chỉnh sửa toàn bộ thông tin.",
+            )}
+          </p>
+        )}
         <form
           onSubmit={handleSubmit}
           className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2"
@@ -382,6 +388,7 @@ export default function AttendanceEmployeeFormModal({
                 name="stt"
                 value={form.stt}
                 onChange={handleChange}
+                disabled={isRestrictedEdit}
                 className={employeeModalFieldClass}
               />
             </div>
@@ -395,6 +402,7 @@ export default function AttendanceEmployeeFormModal({
                 value={form.mnv}
                 onChange={handleChange}
                 required
+                disabled={isRestrictedEdit}
                 className={employeeModalFieldClass}
               />
             </div>
@@ -407,6 +415,7 @@ export default function AttendanceEmployeeFormModal({
                 name="mvt"
                 value={form.mvt}
                 onChange={handleChange}
+                disabled={isRestrictedEdit}
                 className={employeeModalFieldClass}
               />
             </div>
@@ -421,6 +430,7 @@ export default function AttendanceEmployeeFormModal({
               value={form.hoVaTen}
               onChange={handleChange}
               required
+              disabled={isRestrictedEdit}
               className={employeeModalFieldClass}
             />
           </div>
@@ -432,6 +442,7 @@ export default function AttendanceEmployeeFormModal({
               name="gioiTinh"
               value={form.gioiTinh}
               onChange={handleChange}
+              disabled={isRestrictedEdit}
               className={employeeModalFieldClass}
             >
               <option value="YES">{t("attendanceList.female")}</option>
@@ -447,6 +458,7 @@ export default function AttendanceEmployeeFormModal({
               name="ngayThangNamSinh"
               value={form.ngayThangNamSinh}
               onChange={handleChange}
+              disabled={isRestrictedEdit}
               className={employeeModalFieldClass}
             />
           </div>
@@ -459,6 +471,7 @@ export default function AttendanceEmployeeFormModal({
               name="maBoPhan"
               value={form.maBoPhan}
               onChange={handleChange}
+              disabled={isRestrictedEdit}
               className={employeeModalFieldClass}
             />
           </div>
@@ -472,66 +485,41 @@ export default function AttendanceEmployeeFormModal({
               value={form.boPhan}
               onChange={handleChange}
               required
+              disabled={isRestrictedEdit}
               className={employeeModalFieldClass}
             />
           </div>
-          <div className="sm:col-span-2">
+          <div>
             <label className={employeeModalLabelClass}>
               {tl("timeIn", "Giờ vào")}
             </label>
-            <div className="space-y-2">
-              <select
-                value={getGioVaoModalSelectValue(form.gioVao)}
-                onChange={handleGioVaoModalSelect}
-                className={employeeModalFieldClass}
-              >
-                <option value="">
-                  {tl(
-                    "gioVaoModalChoose",
-                    "Chọn loại phép / trạng thái hoặc giờ (HH:MM)…",
-                  )}
-                </option>
-                {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(
-                  ({ value, shortLabel }) => (
-                    <option key={value} value={value}>
-                      {shortLabel} — {value}
-                    </option>
-                  ),
+            <div className="flex flex-wrap items-stretch gap-2">
+              <input
+                type="time"
+                value={normalizeTimeForHtmlInput(form.gioVao) || ""}
+                onChange={handleGioVaoTimeInput}
+                disabled={isRestrictedEdit}
+                className={`${employeeModalFieldClass} min-w-0 flex-1`}
+              />
+              <button
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, gioVao: "" }))}
+                disabled={
+                  isRestrictedEdit || !String(form.gioVao ?? "").trim()
+                }
+                className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                title={tl(
+                  "timeInClearHint",
+                  "Xóa giờ vào (để trống)",
                 )}
-                <option value={GIO_VAO_MODAL_TIME_SENTINEL}>
-                  {tl("gioVaoModalTimeOption", "Giờ vào cụ thể (HH:MM)")}
-                </option>
-                <option value={GIO_VAO_MODAL_OTHER_SENTINEL}>
-                  {tl("gioVaoModalOtherOption", "Khác (nhập tay / dữ liệu cũ)")}
-                </option>
-              </select>
-              {getGioVaoModalSelectValue(form.gioVao) ===
-              GIO_VAO_MODAL_TIME_SENTINEL ? (
-                <input
-                  type="time"
-                  value={normalizeTimeForHtmlInput(form.gioVao) || "08:00"}
-                  onChange={handleGioVaoModalTime}
-                  className={employeeModalFieldClass}
-                />
-              ) : null}
-              {getGioVaoModalSelectValue(form.gioVao) ===
-              GIO_VAO_MODAL_OTHER_SENTINEL ? (
-                <input
-                  type="text"
-                  value={form.gioVao}
-                  onChange={handleGioVaoModalOtherText}
-                  placeholder={tl(
-                    "gioVaoOtherPlaceholder",
-                    "Chỉ dùng khi giá trị không có trong danh sách",
-                  )}
-                  className={employeeModalFieldClass}
-                />
-              ) : null}
+              >
+                {tl("clearTimeIn", "Xóa giờ vào")}
+              </button>
             </div>
             <p className="mt-1.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
               {tl(
-                "gioVaoModalHint",
-                "Chọn từ danh sách để thống kê Dashboard và biểu đồ khớp dữ liệu.",
+                "gioVaoTimeOnlyHint",
+                "Giờ chấm HH:MM — có thể kết hợp với loại phép bên dưới.",
               )}
             </p>
           </div>
@@ -550,12 +538,15 @@ export default function AttendanceEmployeeFormModal({
                     gioRa: e.target.value || "",
                   }))
                 }
+                disabled={isRestrictedEdit}
                 className={`${employeeModalFieldClass} min-w-0 flex-1`}
               />
               <button
                 type="button"
                 onClick={() => setForm((prev) => ({ ...prev, gioRa: "" }))}
-                disabled={!String(form.gioRa ?? "").trim()}
+                disabled={
+                  isRestrictedEdit || !String(form.gioRa ?? "").trim()
+                }
                 className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 title={tl(
                   "timeOutClearHint",
@@ -565,6 +556,42 @@ export default function AttendanceEmployeeFormModal({
                 {tl("clearTimeOut", "Xóa giờ ra")}
               </button>
             </div>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={employeeModalLabelClass}>
+              {tl("leaveTypeColumn", "Loại phép")}
+            </label>
+            <select
+              value={String(form.loaiPhep ?? "").trim()}
+              onChange={handleLoaiPhepSelect}
+              className={employeeModalFieldClass}
+            >
+              <option value="">
+                {tl("leaveTypePlaceholder", "— Không chọn —")}
+              </option>
+              {(() => {
+                const raw = String(form.loaiPhep ?? "").trim();
+                const isStd = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.some(
+                  (o) => o.value === raw,
+                );
+                return !isStd && raw ? (
+                  <option value={raw}>
+                    {raw} {tl("leaveTypeCurrentValue", "(giá trị hiện tại)")}
+                  </option>
+                ) : null;
+              })()}
+              {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(({ value, shortLabel }) => (
+                <option key={value} value={value}>
+                  {shortLabel} — {value}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
+              {tl(
+                "loaiPhepModalHint",
+                "Chọn loại phép / trạng thái (PN, PO, …) — có thể vừa có giờ vào vừa có loại.",
+              )}
+            </p>
           </div>
           <div>
             <label className={employeeModalLabelClass}>

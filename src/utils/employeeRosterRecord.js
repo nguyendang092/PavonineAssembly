@@ -429,6 +429,7 @@ const STRIP_LEGACY_ENGLISH_KEYS = [
 
 const ATTENDANCE_EXTRA_KEYS = [
   "gioVao",
+  "loaiPhep",
   "gioRa",
   "caLamViec",
   "pnTon",
@@ -589,6 +590,7 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
 
   const extras = stripUndefined({
     gioVao: form.gioVao || undefined,
+    loaiPhep: form.loaiPhep || undefined,
     gioRa: form.gioRa || undefined,
     caLamViec: form.caLamViec || undefined,
     pnTon: form.pnTon || undefined,

@@ -29,19 +29,8 @@ import {
   applyOrderToAttendanceRows,
   moveKeyBefore,
 } from "@/utils/chartOrderStorage";
-import {
-  db,
-  ref,
-  onValue,
-  remove,
-  update,
-  get,
-} from "@/services/firebase";
-import {
-  EMPLOYEE_PROFILES_PATH,
-  mergeEmployeeProfileAndDay,
-  employeeProfileStorageKeyFromMnv,
-} from "@/utils/employeeRosterRecord";
+import { db, ref, get, onValue, remove } from "@/services/firebase";
+import { EMPLOYEE_PROFILES_PATH } from "@/utils/employeeRosterRecord";
 import ExcelJS from "exceljs";
 import { handleUploadExcel } from "./AttendanceUploadHandler";
 import AttendanceTableRow, {
@@ -65,13 +54,10 @@ import AttendanceExportRangeModal from "./AttendanceExportRangeModal";
 import AttendanceEmployeeFormModal from "./AttendanceEmployeeFormModal";
 import AttendanceOffDaysModal from "./AttendanceOffDaysModal";
 import {
-  isAttendanceDayMetaKey,
   getIsOffDayFromRaw,
+  getIsHolidayDayFromRaw,
 } from "./attendanceDayMeta";
-import {
-  fetchOffDayDateKeysInMonth,
-  formatOffDayDateKeysCompact,
-} from "./attendanceMonthOffDays";
+import { fetchOffAndHolidayDateKeysInMonth } from "./attendanceMonthOffDays";
 import {
   normalizeTextValue,
   getAttendanceComboFlags,
@@ -79,34 +65,27 @@ import {
 import {
   ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
   formatAttendanceGioVaoDisplay,
+  formatAttendanceLeaveTypeColumnForEmployee,
+  formatAttendanceTimeInColumnDisplay,
+  getAttendanceLeaveTypeRaw,
   isGioVaoLeaveOrStatusType,
 } from "./attendanceGioVaoTypeOptions";
 import {
   COMBO_CHART_METRIC_KEYS,
   COMBO_STAT_LABEL_DEFAULTS,
 } from "./attendanceComboChartConfig";
+import {
+  ATTENDANCE_LEAVE_FILTER_NONE,
+  ATTENDANCE_FILTER_DROPDOWN_HEIGHT_PX,
+  ISO_DATE_KEY_RE,
+  attendanceTableWrapperMinWidthClass,
+  employeeMatchesLoaiPhepFilter,
+} from "./attendanceListShared";
+import { mergeAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 
-const AttendanceComboChartModal = lazy(() =>
-  import("./AttendanceComboChartModal"),
+const AttendanceComboChartModal = lazy(
+  () => import("./AttendanceComboChartModal"),
 );
-
-/** Ngày chọn trên ô date / URL `?date=` — đồng bộ với Firebase path `attendance/YYYY-MM-DD`. */
-const ISO_DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-function attendanceTableWrapperMinWidthClass(columnPlan) {
-  switch (columnPlan) {
-    case "full":
-      return "min-w-[1000px]";
-    case "compact":
-      return "min-w-[920px]";
-    case "narrow":
-      return "min-w-[760px]";
-    case "minimal":
-      return "min-w-[520px]";
-    default:
-      return "min-w-[920px]";
-  }
-}
 
 function AttendanceList() {
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -119,8 +98,12 @@ function AttendanceList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [isOffDay, setIsOffDay] = useState(false);
+  const [isHolidayDay, setIsHolidayDay] = useState(false);
   const [offDaysModalOpen, setOffDaysModalOpen] = useState(false);
-  const [monthOffDayKeys, setMonthOffDayKeys] = useState([]);
+  const [monthOffAndHoliday, setMonthOffAndHoliday] = useState({
+    off: [],
+    holiday: [],
+  });
   const [monthOffDaysLoading, setMonthOffDaysLoading] = useState(false);
   const { t, i18n } = useTranslation();
   const { user, userDepartments, userRole } = useUser();
@@ -158,21 +141,21 @@ function AttendanceList() {
 
   const refreshMonthOffDays = useCallback(async () => {
     if (!user || !isAdminAccess(user, userRole)) {
-      setMonthOffDayKeys([]);
+      setMonthOffAndHoliday({ off: [], holiday: [] });
       return;
     }
     if (!selectedDate || !ISO_DATE_KEY_RE.test(selectedDate)) {
-      setMonthOffDayKeys([]);
+      setMonthOffAndHoliday({ off: [], holiday: [] });
       return;
     }
     setMonthOffDaysLoading(true);
-    setMonthOffDayKeys([]);
+    setMonthOffAndHoliday({ off: [], holiday: [] });
     try {
-      const keys = await fetchOffDayDateKeysInMonth(selectedDate);
-      setMonthOffDayKeys(keys);
+      const oh = await fetchOffAndHolidayDateKeysInMonth(selectedDate);
+      setMonthOffAndHoliday(oh);
     } catch (err) {
       console.error("refreshMonthOffDays:", err);
-      setMonthOffDayKeys([]);
+      setMonthOffAndHoliday({ off: [], holiday: [] });
     } finally {
       setMonthOffDaysLoading(false);
     }
@@ -182,34 +165,31 @@ function AttendanceList() {
     void refreshMonthOffDays();
   }, [refreshMonthOffDays]);
 
-  const monthOffDaysToolbarText = useMemo(
-    () => formatOffDayDateKeysCompact(monthOffDayKeys, displayLocale),
-    [monthOffDayKeys, displayLocale],
-  );
-
   const dayOffToolbarButtonTitle = useMemo(() => {
     const hint = tl(
       "dayOffToolbarHint",
-      "Chọn một hoặc nhiều ngày off (lưu lên Firebase). Ngày đang xem có OFF thì hiển thị huy hiệu.",
+      "Mở danh sách ngày off và ngày lễ trong tháng; chỉnh sửa trong cửa sổ đầy đủ.",
     );
-    if (monthOffDayKeys.length === 0) return hint;
+    const { off, holiday } = monthOffAndHoliday;
+    if (off.length === 0 && holiday.length === 0) return hint;
     return `${hint}\n${tl(
       "dayOffToolbarTitleDates",
       "Ngày off trong tháng (YYYY-MM-DD):",
-    )} ${monthOffDayKeys.join(", ")}`;
-  }, [monthOffDayKeys, tl]);
+    )} ${off.join(", ")}\n${tl(
+      "dayOffToolbarTitleHolidayDates",
+      "Ngày lễ trong tháng (YYYY-MM-DD):",
+    )} ${holiday.join(", ")}`;
+  }, [monthOffAndHoliday, tl]);
 
   const [employees, setEmployees] = useState([]);
-  const [savingCaLamViec, setSavingCaLamViec] = useState({});
-  const [editingCaLamViec, setEditingCaLamViec] = useState({});
-  const [editingGioVao, setEditingGioVao] = useState({});
-  const [savingGioVao, setSavingGioVao] = useState({});
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
-  const [filterGenderSearch, setFilterGenderSearch] = useState("");
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
-  const [gioiTinhFilter, setGioiTinhFilter] = useState([]);
   const [departmentListFilter, setDepartmentListFilter] = useState([]);
-  const [gioVaoFilter, setGioVaoFilter] = useState([]);
+  /** Các `value` trong `ATTENDANCE_GIO_VAO_TYPE_OPTIONS` + `ATTENDANCE_LEAVE_FILTER_NONE` */
+  const [loaiPhepFilter, setLoaiPhepFilter] = useState([]);
+  /** Lọc nhanh: chỉ người chưa có giờ vào và chưa chọn ca (trùng logic cũ «chưa chấm công»). */
+  const [showOnlyUnattendedFilter, setShowOnlyUnattendedFilter] =
+    useState(false);
   const [expandedSections, setExpandedSections] = useState({});
   const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   const [showComboChartModal, setShowComboChartModal] = useState(false);
@@ -236,18 +216,17 @@ function AttendanceList() {
   const [unattendedPopupDismissed, setUnattendedPopupDismissed] =
     useState(false);
   const [filterMenuDropdownOpen, setFilterMenuDropdownOpen] = useState(false);
+  const [offHolidayDropdownOpen, setOffHolidayDropdownOpen] = useState(false);
   const filterMenuRef = useRef(null);
   const filterDropdownAnchorRef = useRef(null);
   const filterMenuPanelRef = useRef(null);
   const actionDropdownRef = useRef(null);
   const printDropdownRef = useRef(null);
+  const offHolidayDropdownRef = useRef(null);
   const exportRangeModalInitializedRef = useRef(false);
   const [filterDropdownPlacement, setFilterDropdownPlacement] = useState(null);
 
-  const quickNoCheckInFilterValue = "chưa_chấm_công";
-  const isQuickNoCheckInActive =
-    gioVaoFilter.length === 1 &&
-    gioVaoFilter.includes(quickNoCheckInFilterValue);
+  const isQuickNoCheckInActive = showOnlyUnattendedFilter;
 
   // Chuẩn hóa tên bộ phận để lọc ổn định (tránh lệch hoa/thường, khoảng trắng).
   const normalizeDepartment = useCallback((value) => {
@@ -258,12 +237,13 @@ function AttendanceList() {
   }, []);
 
   const handleQuickNoCheckInFilter = useCallback(() => {
-    if (isQuickNoCheckInActive) {
-      setGioVaoFilter([]);
-      return;
-    }
-    setGioVaoFilter([quickNoCheckInFilterValue]);
-  }, [isQuickNoCheckInActive, quickNoCheckInFilterValue]);
+    setShowOnlyUnattendedFilter((v) => !v);
+  }, []);
+
+  const allLeaveTypeFilterValues = useMemo(
+    () => ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((o) => o.value),
+    [],
+  );
 
   const unattendedEmployees = useMemo(
     () =>
@@ -294,19 +274,6 @@ function AttendanceList() {
     profilesRef.current = employeeProfilesMap;
   }, [employeeProfilesMap]);
 
-  const applyAttendanceMerge = useCallback((rawData, profMap) => {
-    if (!rawData || typeof rawData !== "object") return [];
-    const arr = Object.entries(rawData)
-      .filter(([id]) => !isAttendanceDayMetaKey(id))
-      .map(([id, emp]) => {
-        const pk = employeeProfileStorageKeyFromMnv(emp?.mnv);
-        const prof = pk ? profMap[pk] : null;
-        return mergeEmployeeProfileAndDay({ ...emp, id }, prof, null);
-      });
-    arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
-    return arr;
-  }, []);
-
   useEffect(() => {
     attendanceRawRef.current = undefined;
     setEmployees([]);
@@ -315,16 +282,17 @@ function AttendanceList() {
       const data = snapshot.val();
       attendanceRawRef.current = data;
       setIsOffDay(getIsOffDayFromRaw(data));
-      setEmployees(applyAttendanceMerge(data, profilesRef.current));
+      setIsHolidayDay(getIsHolidayDayFromRaw(data));
+      setEmployees(mergeAttendanceDayRowsFromRaw(data, profilesRef.current));
     });
     return () => unsubscribe();
-  }, [selectedDate, applyAttendanceMerge]);
+  }, [selectedDate]);
 
   useEffect(() => {
     const raw = attendanceRawRef.current;
     if (raw === undefined) return;
-    setEmployees(applyAttendanceMerge(raw, employeeProfilesMap));
-  }, [employeeProfilesMap, applyAttendanceMerge]);
+    setEmployees(mergeAttendanceDayRowsFromRaw(raw, employeeProfilesMap));
+  }, [employeeProfilesMap]);
 
   useEffect(() => {
     setShowUnattendedPopup(false);
@@ -377,8 +345,7 @@ function AttendanceList() {
   const columnPlan = useAttendanceColumnPlan();
 
   const attendanceGridTemplateColumns = useMemo(
-    () =>
-      getAttendanceGridTemplateColumns(showRowModalActions, columnPlan),
+    () => getAttendanceGridTemplateColumns(showRowModalActions, columnPlan),
     [showRowModalActions, columnPlan],
   );
 
@@ -398,8 +365,9 @@ function AttendanceList() {
           ? Math.max(8, Math.min(r.left, window.innerWidth - w - 8))
           : Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
       const top = r.bottom + 6;
-      const maxHeight = Math.max(160, window.innerHeight - top - 12);
-      setFilterDropdownPlacement({ top, left, width: w, maxHeight });
+      const maxAvail = Math.max(120, window.innerHeight - top - 12);
+      const height = Math.min(ATTENDANCE_FILTER_DROPDOWN_HEIGHT_PX, maxAvail);
+      setFilterDropdownPlacement({ top, left, width: w, height });
     };
     update();
     window.addEventListener("scroll", update, true);
@@ -439,16 +407,45 @@ function AttendanceList() {
       ) {
         setActionDropdownOpen(false);
       }
+
+      if (
+        offHolidayDropdownOpen &&
+        offHolidayDropdownRef.current &&
+        !offHolidayDropdownRef.current.contains(target)
+      ) {
+        setOffHolidayDropdownOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [filterMenuDropdownOpen, printDropdownOpen, actionDropdownOpen]);
+  }, [
+    filterMenuDropdownOpen,
+    printDropdownOpen,
+    actionDropdownOpen,
+    offHolidayDropdownOpen,
+  ]);
 
-  // Always close filter menu when route changes (pathname/query/hash).
+  // Always close menus when route changes (pathname/query/hash).
   useEffect(() => {
     setFilterMenuDropdownOpen(false);
+    setOffHolidayDropdownOpen(false);
   }, [location.pathname, location.search, location.hash]);
+
+  // Khóa scroll nền khi mở modal «Bộ lọc nâng cao» (portal ra body).
+  useEffect(() => {
+    if (!filterOpen) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, [filterOpen]);
 
   const filterAttendanceListRows = useCallback(
     (list) => {
@@ -462,21 +459,14 @@ function AttendanceList() {
 
         if (departmentFilterKey && empDeptKey !== departmentFilterKey)
           return false;
-        if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
-          return false;
         if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
           return false;
-        if (gioVaoFilter.length > 0) {
+        if (showOnlyUnattendedFilter) {
           const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
           const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
-          const isCheckedIn = "đã_chấm_công";
-          const isNotCheckedIn = !hasGioVao && !hasCaLamViec;
-
-          if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;
-          if (isNotCheckedIn && !gioVaoFilter.includes("chưa_chấm_công"))
-            return false;
-          if (!hasGioVao && !isNotCheckedIn) return false;
+          if (hasGioVao || hasCaLamViec) return false;
         }
+        if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) return false;
         if (!q) return true;
         return (
           (emp.hoVaTen || "").toLowerCase().includes(q) ||
@@ -488,9 +478,9 @@ function AttendanceList() {
     [
       searchTerm,
       departmentFilter,
-      gioiTinhFilter,
       departmentListFilter,
-      gioVaoFilter,
+      loaiPhepFilter,
+      showOnlyUnattendedFilter,
       normalizeDepartment,
     ],
   );
@@ -532,7 +522,7 @@ function AttendanceList() {
         ref,
         get,
         employeeProfilesMap,
-        applyAttendanceMerge,
+        applyAttendanceMerge: mergeAttendanceDayRowsFromRaw,
         filterAttendanceListRows,
         displayLocale,
         tl,
@@ -577,8 +567,11 @@ function AttendanceList() {
     exportRangeBusy,
     exportRangeFrom,
     exportRangeTo,
+    db,
+    ref,
+    get,
     employeeProfilesMap,
-    applyAttendanceMerge,
+    mergeAttendanceDayRowsFromRaw,
     filterAttendanceListRows,
     displayLocale,
     tl,
@@ -651,8 +644,7 @@ function AttendanceList() {
   }, [comboChartData]);
 
   const comboChartRowsVisible = useMemo(
-    () =>
-      comboChartDataOrdered.slice(0, comboChartCardsVisibleCount),
+    () => comboChartDataOrdered.slice(0, comboChartCardsVisibleCount),
     [comboChartDataOrdered, comboChartCardsVisibleCount],
   );
 
@@ -821,8 +813,12 @@ function AttendanceList() {
     const deptMap = new Map();
     for (const emp of employees) {
       // Apply other filters except Department
-      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
-        continue;
+      if (showOnlyUnattendedFilter) {
+        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
+        const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
+        if (hasGioVao || hasCaLamViec) continue;
+      }
+      if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) continue;
       const deptLabel = String(emp.boPhan || "").trim();
       const deptKey = normalizeDepartment(deptLabel);
       if (!deptKey) continue;
@@ -831,7 +827,12 @@ function AttendanceList() {
       }
     }
     return Array.from(deptMap.values());
-  }, [employees, gioiTinhFilter, normalizeDepartment]);
+  }, [
+    employees,
+    loaiPhepFilter,
+    showOnlyUnattendedFilter,
+    normalizeDepartment,
+  ]);
 
   // Filtered list for 'bù công' (gioVao là giờ, không phải loại như PN, PO...)
   const buCongEmployees = useMemo(() => {
@@ -852,22 +853,6 @@ function AttendanceList() {
     });
   }, [filteredEmployees]);
 
-  // Get unique genders (cascading filter - based on other selected filters)
-  const genderList = useMemo(() => {
-    const genders = new Set();
-    const selectedDeptKeys = new Set(
-      departmentListFilter.map((dept) => normalizeDepartment(dept)),
-    );
-    for (const emp of employees) {
-      // Apply other filters except Gender
-      const empDeptKey = normalizeDepartment(emp.boPhan);
-      if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
-        continue;
-      if (emp.gioiTinh) genders.add(emp.gioiTinh);
-    }
-    return Array.from(genders).sort();
-  }, [employees, departmentListFilter, normalizeDepartment]);
-
   // Get unique mã BP codes (cascading filter - based on other selected filters)
   // Get unique shifts (cascading filter - based on other selected filters)
   const shiftList = useMemo(() => {
@@ -877,15 +862,25 @@ function AttendanceList() {
     );
     for (const emp of employees) {
       // Apply other filters except Shift
-      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
-        continue;
+      if (showOnlyUnattendedFilter) {
+        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
+        const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
+        if (hasGioVao || hasCaLamViec) continue;
+      }
+      if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) continue;
       const empDeptKey = normalizeDepartment(emp.boPhan);
       if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
         continue;
       if (emp.caLamViec) shifts.add(emp.caLamViec);
     }
     return Array.from(shifts).sort();
-  }, [employees, gioiTinhFilter, departmentListFilter, normalizeDepartment]);
+  }, [
+    employees,
+    loaiPhepFilter,
+    showOnlyUnattendedFilter,
+    departmentListFilter,
+    normalizeDepartment,
+  ]);
 
   // Filter departments based on search
   const filteredDepartments = useMemo(() => {
@@ -1011,87 +1006,9 @@ function AttendanceList() {
     count: filteredEmployees.length,
     getScrollElement: () => tableScrollParentRef.current,
     // Ước lượng an toàn (padding + nhiều cột); measureElement đo lại thực tế
-    estimateSize: () => 46,
+    estimateSize: () => 40,
     overscan: 12,
   });
-
-  const handleGioVaoSelectChange = useCallback((empId, value) => {
-    setEditingGioVao((prev) => ({ ...prev, [empId]: value }));
-  }, []);
-
-  const handleGioVaoSaveClick = useCallback(
-    async (empId, value) => {
-      if (!value) return;
-      setSavingGioVao((prev) => ({ ...prev, [empId]: true }));
-      try {
-        const empRef = ref(db, `attendance/${selectedDate}/${empId}`);
-        await update(empRef, { gioVao: value });
-        setEditingGioVao((prev) => {
-          const newState = { ...prev };
-          delete newState[empId];
-          return newState;
-        });
-        setAlert({
-          show: true,
-          type: "success",
-          message: t("attendanceList.updateSuccess"),
-        });
-      } catch (err) {
-        console.error("Save gioVao error:", err);
-        setAlert({
-          show: true,
-          type: "error",
-          message: tl("updateFail", "❌ Cập nhật thất bại"),
-        });
-      } finally {
-        setSavingGioVao((prev) => {
-          const newState = { ...prev };
-          delete newState[empId];
-          return newState;
-        });
-      }
-    },
-    [selectedDate, t, tl],
-  );
-
-  const handleCaLamSelectChange = useCallback((empId, value) => {
-    setEditingCaLamViec((prev) => ({ ...prev, [empId]: value }));
-  }, []);
-
-  const handleCaLamSaveClick = useCallback(
-    async (empId, value) => {
-      if (!value) return;
-      setSavingCaLamViec((prev) => ({ ...prev, [empId]: true }));
-      try {
-        const empRef = ref(db, `attendance/${selectedDate}/${empId}`);
-        await update(empRef, { caLamViec: value });
-        setEditingCaLamViec((prev) => {
-          const newState = { ...prev };
-          delete newState[empId];
-          return newState;
-        });
-        setAlert({
-          show: true,
-          type: "success",
-          message: t("attendanceList.updateSuccess"),
-        });
-      } catch (err) {
-        console.error("Save caLamViec error:", err);
-        setAlert({
-          show: true,
-          type: "error",
-          message: tl("updateFail", "❌ Cập nhật thất bại"),
-        });
-      } finally {
-        setSavingCaLamViec((prev) => {
-          const newState = { ...prev };
-          delete newState[empId];
-          return newState;
-        });
-      }
-    },
-    [selectedDate, t, tl],
-  );
 
   // Use the extracted upload handler
   const handleUploadExcelWrapper = useCallback(
@@ -1789,6 +1706,7 @@ function AttendanceList() {
           <th style="width:10%">Bộ phận</th>
           <th style="width:8%">Thời gian vào</th>
           <th style="width:8%">Thời gian ra</th>
+          <th style="width:8%">Loại phép</th>
           <th style="width:8%">Ca làm việc</th>
         </tr>
       </thead>
@@ -1833,13 +1751,19 @@ function AttendanceList() {
             <td>${emp.maBoPhan || ""}</td>
             <td class="dept">${emp.boPhan || ""}</td>
             <td style="${
+              formatAttendanceTimeInColumnDisplay(emp.gioVao)
+                ? "color:#15803d;font-weight:bold;"
+                : ""
+            }">${formatAttendanceTimeInColumnDisplay(emp.gioVao || "")}</td>
+            <td>${emp.gioRa || ""}</td>
+            <td style="${
               ["PN", "TS", "PO", "NV"].includes(
-                formatAttendanceGioVaoDisplay(emp.gioVao),
+                formatAttendanceLeaveTypeColumnForEmployee(emp) ||
+                  formatAttendanceGioVaoDisplay(emp.gioVao),
               )
                 ? "color:#c41e3a;font-weight:bold;"
                 : ""
-            }">${formatAttendanceGioVaoDisplay(emp.gioVao || "")}</td>
-            <td>${emp.gioRa || ""}</td>
+            }">${formatAttendanceLeaveTypeColumnForEmployee(emp)}</td>
             <td>${emp.caLamViec || ""}</td>
         </tr>`;
     });
@@ -2091,7 +2015,7 @@ function AttendanceList() {
           emp.mnv || "",
           emp.hoVaTen || "",
           emp.boPhan || "",
-          formatAttendanceGioVaoDisplay(emp.gioVao || ""),
+          formatAttendanceTimeInColumnDisplay(emp.gioVao),
           emp.gioRa || "",
         ]);
         dataRow.alignment = { horizontal: "center", vertical: "middle" };
@@ -2154,20 +2078,14 @@ function AttendanceList() {
                   className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline md:text-xs"
                 >
                   <span aria-hidden>→</span>
-                  {tl(
-                    "seasonalActiveEmployeesTitleShort",
-                    "Điểm danh thời vụ",
-                  )}
+                  {tl("seasonalActiveEmployeesTitleShort", "Điểm danh thời vụ")}
                 </Link>
                 <Link
                   to={`/attendance-salary?date=${encodeURIComponent(selectedDate)}`}
                   className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300 md:text-xs"
                 >
                   <span aria-hidden>→</span>
-                  {tl(
-                    "linkToAttendanceSalaryShort",
-                    "Bảng giờ công / lương",
-                  )}
+                  {tl("linkToAttendanceSalaryShort", "Bảng giờ công / lương")}
                 </Link>
               </nav>
             </div>
@@ -2198,7 +2116,7 @@ function AttendanceList() {
             {
               label: t("attendanceList.quickFilter"),
               onClick: () => {
-                setGioVaoFilter([quickNoCheckInFilterValue]);
+                setShowOnlyUnattendedFilter(true);
                 setShowUnattendedPopup(false);
                 setUnattendedPopupDismissed(true);
               },
@@ -2286,39 +2204,171 @@ function AttendanceList() {
               className="h-8 w-full shrink-0 rounded-md border bg-white px-2 text-sm font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300 sm:w-auto"
             />
             {user && isAdminAccess(user, userRole) ? (
-              <button
-                type="button"
-                onClick={() => setOffDaysModalOpen(true)}
-                className="inline-flex h-8 max-w-full min-w-0 shrink-0 cursor-pointer items-center gap-1.5 overflow-hidden rounded-md border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:ring-blue-500/40 sm:max-w-[min(100vw-10rem,22rem)]"
-                title={dayOffToolbarButtonTitle}
-              >
-                <span className="shrink-0 whitespace-nowrap">
-                  {tl("dayOffToolbarButton", "Ngày off (nhiều ngày)")}
-                </span>
-                {isOffDay ? (
-                  <span className="shrink-0 rounded bg-rose-600 px-1.5 py-px text-[10px] font-extrabold uppercase leading-none tracking-wide text-white">
-                    OFF
-                  </span>
-                ) : null}
-                {monthOffDaysLoading ? (
-                  <span className="min-w-0 truncate text-xs font-normal tabular-nums text-slate-500 dark:text-slate-400">
-                    {tl(
-                      "dayOffToolbarLoading",
-                      "Đang tải danh sách ngày off trong tháng…",
-                    )}
-                  </span>
-                ) : monthOffDaysToolbarText ? (
+              <div className="relative shrink-0" ref={offHolidayDropdownRef}>
+                <button
+                  type="button"
+                  aria-expanded={offHolidayDropdownOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setOffHolidayDropdownOpen((open) => !open)}
+                  className={`inline-flex h-9 max-w-full min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-xl border-2 px-3 text-sm font-bold tracking-tight shadow-md transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-300/70 dark:focus-visible:ring-violet-600/50 sm:max-w-[min(100vw-10rem,19rem)] ${
+                    offHolidayDropdownOpen
+                      ? "border-violet-500 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/35 ring-2 ring-violet-400/90 ring-offset-2 ring-offset-white dark:ring-offset-slate-950"
+                      : "border-violet-400/90 bg-gradient-to-br from-white to-violet-50 text-violet-950 hover:border-violet-500 hover:shadow-lg hover:shadow-violet-500/20 dark:border-violet-500/70 dark:from-slate-900 dark:to-violet-950/80 dark:text-violet-50 dark:hover:border-violet-400 dark:hover:shadow-violet-900/40"
+                  }`}
+                  title={dayOffToolbarButtonTitle}
+                >
                   <span
-                    className="min-w-0 truncate text-xs font-normal tabular-nums text-slate-500 dark:text-slate-400"
-                    title={`${tl("dayOffToolbarMonthPrefix", "Trong tháng:")} ${monthOffDaysToolbarText}`}
+                    className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-sm ${
+                      offHolidayDropdownOpen
+                        ? "bg-white/25 text-lg leading-none"
+                        : "bg-violet-600/15 dark:bg-white/10"
+                    }`}
                   >
-                    <span className="text-slate-400 dark:text-slate-500">
-                      {tl("dayOffToolbarMonthPrefix", "Trong tháng:")}{" "}
-                    </span>
-                    {monthOffDaysToolbarText}
+                    📅
                   </span>
+                  <span className="min-w-0 shrink truncate">
+                    {tl("dayOffHolidayDropdownTrigger", "Ngày OFF / LỄ")}
+                  </span>
+                  {isHolidayDay ? (
+                    <span className="shrink-0 rounded-md border border-amber-300/80 bg-amber-500 px-2 py-0.5 text-[10px] font-extrabold uppercase leading-none tracking-wide text-white shadow-sm dark:border-amber-400/60">
+                      Lễ
+                    </span>
+                  ) : isOffDay ? (
+                    <span className="shrink-0 rounded-md border border-rose-300/80 bg-rose-600 px-2 py-0.5 text-[10px] font-extrabold uppercase leading-none tracking-wide text-white shadow-sm dark:border-rose-400/60">
+                      OFF
+                    </span>
+                  ) : null}
+                  <svg
+                    className={`h-4 w-4 shrink-0 transition-transform ${
+                      offHolidayDropdownOpen
+                        ? "rotate-180 text-white"
+                        : "text-violet-700 dark:text-violet-200"
+                    }`}
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                {offHolidayDropdownOpen ? (
+                  <div
+                    role="menu"
+                    className="absolute left-0 top-full z-[130] mt-2 w-[min(100vw-1rem,23rem)] origin-top overflow-hidden rounded-2xl border-2 border-violet-400/70 bg-white text-left shadow-2xl shadow-violet-900/20 ring-4 ring-violet-500/15 backdrop-blur-sm dark:border-violet-500/50 dark:bg-slate-900 dark:shadow-black/50 dark:ring-violet-400/20"
+                  >
+                    <div className="border-b border-violet-200/80 bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-700 px-4 py-3 dark:border-violet-500/40 dark:from-violet-700 dark:via-indigo-700 dark:to-violet-800">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-white/90">
+                        {tl("dayOffDropdownSelectedLabel", "Ngày đang xem")}
+                      </p>
+                      <p className="mt-2 flex flex-wrap items-center gap-2 text-sm leading-snug text-white">
+                        <span className="rounded-lg bg-black/20 px-2 py-1 font-mono text-sm font-bold tabular-nums tracking-tight">
+                          {selectedDate}
+                        </span>
+                        <span className="text-white/70">—</span>
+                        {isHolidayDay ? (
+                          <span className="rounded-lg border border-amber-300/60 bg-amber-500/95 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white shadow-inner">
+                            HOLIDAY
+                          </span>
+                        ) : isOffDay ? (
+                          <span className="rounded-lg border border-rose-300/60 bg-rose-600 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white shadow-inner">
+                            OFF
+                          </span>
+                        ) : (
+                          <span className="rounded-lg bg-white/20 px-2.5 py-1 text-xs font-semibold">
+                            {tl("dayKindNormal", "Ngày bình thường")}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="max-h-[min(46vh,280px)] overflow-y-auto bg-slate-50/90 px-4 py-3 dark:bg-slate-950/80">
+                      {monthOffDaysLoading ? (
+                        <p className="rounded-lg border border-violet-200/80 bg-white px-3 py-4 text-center text-xs font-medium text-violet-800 dark:border-violet-700/60 dark:bg-slate-900 dark:text-violet-200">
+                          {tl(
+                            "dayOffToolbarLoading",
+                            "Đang tải danh sách ngày off trong tháng…",
+                          )}
+                        </p>
+                      ) : (
+                        <div className="space-y-4 text-xs">
+                          <div className="rounded-xl border border-rose-200/90 bg-white p-3 shadow-sm dark:border-rose-900/60 dark:bg-slate-900">
+                            <p className="flex items-center gap-2 border-l-4 border-rose-500 pl-2 text-[13px] font-extrabold uppercase tracking-wide text-rose-800 dark:border-rose-400 dark:text-rose-100">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-[11px] font-black text-rose-700 dark:bg-rose-950 dark:text-rose-200">
+                                O
+                              </span>
+                              {tl("dayOffDropdownSectionOff", "Ngày off")}
+                            </p>
+                            {monthOffAndHoliday.off.length === 0 ? (
+                              <p className="mt-2 rounded-lg bg-rose-50/80 px-2 py-2 italic text-rose-700/90 dark:bg-rose-950/40 dark:text-rose-200/90">
+                                {tl(
+                                  "dayOffDropdownEmptyOff",
+                                  "Chưa có ngày off trong tháng này.",
+                                )}
+                              </p>
+                            ) : (
+                              <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                                {monthOffAndHoliday.off.map((k) => (
+                                  <li key={k}>
+                                    <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 font-mono text-[11px] font-bold tabular-nums text-rose-950 shadow-sm dark:border-rose-800 dark:bg-rose-950/70 dark:text-rose-50">
+                                      {k}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <div className="rounded-xl border border-amber-200/90 bg-white p-3 shadow-sm dark:border-amber-900/60 dark:bg-slate-900">
+                            <p className="flex items-center gap-2 border-l-4 border-amber-500 pl-2 text-[13px] font-extrabold uppercase tracking-wide text-amber-950 dark:border-amber-400 dark:text-amber-50">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-[11px] dark:bg-amber-950">
+                                ★
+                              </span>
+                              {tl("dayOffDropdownSectionHoliday", "Ngày lễ")}
+                            </p>
+                            {monthOffAndHoliday.holiday.length === 0 ? (
+                              <p className="mt-2 rounded-lg bg-amber-50/90 px-2 py-2 italic text-amber-900/90 dark:bg-amber-950/40 dark:text-amber-100/90">
+                                {tl(
+                                  "dayOffDropdownEmptyHoliday",
+                                  "Chưa có ngày lễ trong tháng này.",
+                                )}
+                              </p>
+                            ) : (
+                              <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                                {monthOffAndHoliday.holiday.map((k) => (
+                                  <li key={k}>
+                                    <span className="inline-flex items-center rounded-lg border border-amber-300/80 bg-amber-50 px-2 py-1 font-mono text-[11px] font-bold tabular-nums text-amber-950 shadow-sm dark:border-amber-700 dark:bg-amber-950/70 dark:text-amber-50">
+                                      {k}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="border-t border-violet-200/80 bg-gradient-to-b from-violet-50/90 to-white px-3 py-3 dark:border-violet-800/80 dark:from-slate-900 dark:to-slate-950">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="w-full rounded-xl bg-gradient-to-r from-violet-600 via-violet-600 to-indigo-600 py-2.5 text-center text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-violet-600/40 transition hover:from-violet-500 hover:to-indigo-500 hover:shadow-xl hover:shadow-violet-500/45 active:scale-[0.99] dark:shadow-violet-900/50"
+                        onClick={() => {
+                          setOffHolidayDropdownOpen(false);
+                          setOffDaysModalOpen(true);
+                        }}
+                      >
+                        {tl(
+                          "dayOffDropdownOpenModal",
+                          "Chỉnh sửa ngày OFF / LỄ",
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 ) : null}
-              </button>
+              </div>
             ) : null}
             <input
               type="text"
@@ -2385,6 +2435,9 @@ function AttendanceList() {
                             {tl("colTimeIn", "Giờ vào")}
                           </th>
                           <th style={{ padding: 8 }}>
+                            {tl("colLeaveType", "Loại phép")}
+                          </th>
+                          <th style={{ padding: 8 }}>
                             {tl("colTimeOut", "Giờ ra")}
                           </th>
                         </tr>
@@ -2406,7 +2459,10 @@ function AttendanceList() {
                             <td style={{ padding: 8 }}>{emp.hoVaTen}</td>
                             <td style={{ padding: 8 }}>{emp.boPhan}</td>
                             <td style={{ textAlign: "center", padding: 8 }}>
-                              {formatAttendanceGioVaoDisplay(emp.gioVao)}
+                              {formatAttendanceTimeInColumnDisplay(emp.gioVao)}
+                            </td>
+                            <td style={{ textAlign: "center", padding: 8 }}>
+                              {formatAttendanceLeaveTypeColumnForEmployee(emp)}
                             </td>
                             <td style={{ textAlign: "center", padding: 8 }}>
                               {emp.gioRa || "-"}
@@ -2442,9 +2498,8 @@ function AttendanceList() {
                   setFilterMenuDropdownOpen(!filterMenuDropdownOpen)
                 }
                 className={`inline-flex h-8 w-auto max-w-full items-center justify-center gap-0.5 whitespace-nowrap rounded-lg border border-slate-300 px-1 text-xs font-bold shadow transition sm:text-sm ${
-                  gioiTinhFilter.length > 0 ||
+                  loaiPhepFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
-                  gioVaoFilter.length > 0 ||
                   isQuickNoCheckInActive
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-gray-600 text-white hover:bg-gray-700"
@@ -2452,9 +2507,8 @@ function AttendanceList() {
               >
                 🔽 {tl("filter", "Bộ lọc")}
                 <span className="text-xs">
-                  {gioiTinhFilter.length > 0 ||
+                  {loaiPhepFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
-                  gioVaoFilter.length > 0 ||
                   isQuickNoCheckInActive
                     ? "✓"
                     : ""}
@@ -2467,96 +2521,109 @@ function AttendanceList() {
                 createPortal(
                   <div
                     ref={filterMenuPanelRef}
-                    className="fixed z-[100] overflow-y-auto overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
+                    className="fixed z-[100] flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
                     style={{
                       top: filterDropdownPlacement.top,
                       left: filterDropdownPlacement.left,
                       width: filterDropdownPlacement.width,
-                      maxHeight: filterDropdownPlacement.maxHeight,
+                      height: filterDropdownPlacement.height,
                     }}
                   >
-                    {/* Bộ lọc nâng cao */}
-                    <button
-                      onClick={() => {
-                        setFilterOpen(true);
-                        setFilterMenuDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 hover:bg-blue-50 border-b flex items-center gap-3 transition ${
-                        gioiTinhFilter.length > 0 ||
-                        departmentListFilter.length > 0 ||
-                        gioVaoFilter.length > 0
-                          ? "bg-blue-50 text-blue-700 font-semibold"
-                          : "text-gray-700"
-                      }`}
-                    >
-                      <span className="text-lg">🔍</span>
-                      <div className="flex-1">
-                        <div className="font-semibold">
-                          {t("attendanceList.advancedFilter")}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {tl(
-                            "advancedFilterDesc",
-                            "Bộ phận, Giới tính, Thời gian",
-                          )}
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* Lọc nhanh */}
-                    <button
-                      onClick={() => {
-                        handleQuickNoCheckInFilter();
-                        setFilterMenuDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 hover:bg-amber-50 border-b flex items-center gap-3 transition ${
-                        isQuickNoCheckInActive
-                          ? "bg-amber-50 text-amber-700 font-semibold"
-                          : "text-gray-700"
-                      }`}
-                    >
-                      <span className="text-lg">⚡</span>
-                      <div className="flex-1">
-                        <div className="font-semibold">
-                          {t("attendanceList.quickFilter")}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {tl("notCheckedIn", "Nhân viên chưa điểm danh")}
-                        </div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        handleOvertimeButton();
-                        setFilterMenuDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-orange-50 border-t flex items-center gap-3 transition text-gray-700"
-                    >
-                      <span className="text-lg">⏰</span>
-                      <div className="flex-1">
-                        <div className="font-semibold">
-                          {t("attendanceList.overtime")}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {tl("registerDailyOvertime", "Đăng ký tăng ca ngày")}
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* Clear Filter */}
-                    {(gioiTinhFilter.length > 0 ||
-                      departmentListFilter.length > 0 ||
-                      gioVaoFilter.length > 0) && (
+                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+                      {/* Bộ lọc nâng cao */}
                       <button
+                        type="button"
                         onClick={() => {
-                          setGioiTinhFilter([]);
+                          setFilterOpen(true);
+                          setFilterMenuDropdownOpen(false);
+                        }}
+                        className={`w-full shrink-0 text-left px-4 py-3 hover:bg-blue-50 border-b flex items-center gap-3 transition ${
+                          loaiPhepFilter.length > 0 ||
+                          departmentListFilter.length > 0
+                            ? "bg-blue-50 text-blue-700 font-semibold"
+                            : "text-gray-700"
+                        }`}
+                      >
+                        <span className="text-lg">🔍</span>
+                        <div className="flex-1">
+                          <div className="font-semibold">
+                            {t("attendanceList.advancedFilter")}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {tl("advancedFilterDesc", "Bộ phận, Loại phép")}
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Lọc nhanh */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleQuickNoCheckInFilter();
+                          setFilterMenuDropdownOpen(false);
+                        }}
+                        className={`w-full shrink-0 text-left px-4 py-3 hover:bg-amber-50 border-b flex items-center gap-3 transition ${
+                          isQuickNoCheckInActive
+                            ? "bg-amber-50 text-amber-700 font-semibold"
+                            : "text-gray-700"
+                        }`}
+                      >
+                        <span className="text-lg">⚡</span>
+                        <div className="flex-1">
+                          <div className="font-semibold">
+                            {t("attendanceList.quickFilter")}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {tl("notCheckedIn", "Nhân viên chưa điểm danh")}
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleOvertimeButton();
+                          setFilterMenuDropdownOpen(false);
+                        }}
+                        className="w-full shrink-0 text-left px-4 py-3 hover:bg-orange-50 border-t flex items-center gap-3 transition text-gray-700"
+                      >
+                        <span className="text-lg">⏰</span>
+                        <div className="flex-1">
+                          <div className="font-semibold">
+                            {t("attendanceList.overtime")}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {tl(
+                              "registerDailyOvertime",
+                              "Đăng ký tăng ca ngày",
+                            )}
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Clear Filter — luôn hiển thị để chiều cao menu không nhảy */}
+                      <button
+                        type="button"
+                        disabled={
+                          loaiPhepFilter.length === 0 &&
+                          departmentListFilter.length === 0 &&
+                          !isQuickNoCheckInActive
+                        }
+                        onClick={() => {
+                          if (
+                            loaiPhepFilter.length === 0 &&
+                            departmentListFilter.length === 0 &&
+                            !isQuickNoCheckInActive
+                          ) {
+                            return;
+                          }
+                          setLoaiPhepFilter([]);
                           setDepartmentListFilter([]);
-                          setGioVaoFilter([]);
+                          setShowOnlyUnattendedFilter(false);
                           setSearchTerm("");
                           setFilterMenuDropdownOpen(false);
                         }}
-                        className="w-full text-left px-4 py-3 hover:bg-red-50 border-t flex items-center gap-3 transition text-gray-700"
+                        className="w-full shrink-0 border-t px-4 py-3 text-left flex items-center gap-3 transition disabled:cursor-not-allowed disabled:opacity-45 text-gray-700 hover:bg-red-50 enabled:hover:text-red-800"
                       >
                         <span className="text-lg">🗑️</span>
                         <div className="flex-1">
@@ -2568,24 +2635,33 @@ function AttendanceList() {
                           </div>
                         </div>
                       </button>
-                    )}
+                    </div>
                   </div>,
                   document.body,
                 )}
 
-              {/* Filter Modal Dialog */}
-              {filterOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
-                  <div className="flex max-h-[85vh] w-full max-w-md flex-col animate-slideUp rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+              {/* Filter Modal — portal + z cao: tránh nằm trong .attendance-filter-menu z-40 nên bị nút Chức năng/In (sibling cùng z-40) đè lên */}
+              {filterOpen &&
+                createPortal(
+                  <div
+                    className="fixed inset-0 z-[140] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm animate-fadeIn"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="attendance-advanced-filter-title"
+                  >
+                    <div className="flex h-[min(620px,85vh)] w-full max-w-md min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl animate-slideUp dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/40">
                     {/* Header */}
-                    <div className="p-5 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
+                    <div className="shrink-0 border-b border-blue-100/80 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 px-4 py-2.5 relative overflow-hidden">
                       <div className="absolute inset-0 bg-white opacity-10"></div>
                       <div className="relative z-10">
-                        <h3 className="font-bold text-white text-xl flex items-center gap-2">
-                          <span className="text-2xl">🔍</span>
+                        <h3
+                          id="attendance-advanced-filter-title"
+                          className="font-bold text-white text-lg flex items-center gap-1.5 leading-tight"
+                        >
+                          <span className="text-xl shrink-0">🔍</span>
                           {t("attendanceList.advancedFilter")}
                         </h3>
-                        <p className="text-xs text-blue-50 mt-1.5 font-medium">
+                        <p className="text-[11px] text-blue-50/95 mt-1 font-medium leading-snug">
                           {tl(
                             "advancedFilterAutoUpdate",
                             "Chọn điều kiện lọc • Kết quả tự động cập nhật",
@@ -2594,8 +2670,8 @@ function AttendanceList() {
                       </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="p-4 overflow-y-auto flex-1">
+                    {/* Content — chiều cao cố định theo khung modal; cuộn bên trong */}
+                    <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
                       {/* Department Filter Section */}
                       <div className="mb-3">
                         <button
@@ -2628,7 +2704,7 @@ function AttendanceList() {
                               placeholder={t("attendanceList.searchDepartment")}
                               className="w-full border-b border-orange-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                             />
-                            <div className="max-h-40 overflow-y-auto">
+                            <div className="max-h-84 overflow-y-auto">
                               {departments.length === 0 ? (
                                 <div className="px-3 py-2 text-sm text-gray-500 italic">
                                   {tl("noData", "Không có dữ liệu")}
@@ -2711,179 +2787,116 @@ function AttendanceList() {
                         )}
                       </div>
 
-                      {/* Gender Filter Section */}
+                      {/* Loại phép */}
                       <div className="mb-3">
                         <button
+                          type="button"
                           onClick={() => {
                             setExpandedSections((prev) => ({
                               ...prev,
-                              gender: !prev.gender,
+                              leaveType: !prev.leaveType,
                             }));
                           }}
                           className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
                         >
                           <span className="flex items-center gap-2">
-                            <span className="text-green-500 text-base">⚧️</span>
-                            <span>{tl("gender", "Giới tính")}</span>
+                            <span className="text-green-500 text-base">📋</span>
+                            <span>{tl("leaveTypeFilter", "Loại phép")}</span>
                           </span>
                           <span className="text-green-600 font-bold">
-                            {expandedSections.gender ? "▼" : "▶"}
+                            {expandedSections.leaveType ? "▼" : "▶"}
                           </span>
                         </button>
-                        {expandedSections.gender && (
+                        {expandedSections.leaveType && (
                           <div className="border-2 border-green-100 rounded-lg mt-2 bg-gradient-to-b from-white to-green-50/30 shadow-inner">
-                            <input
-                              type="text"
-                              value={filterGenderSearch}
-                              onChange={(e) =>
-                                setFilterGenderSearch(e.target.value)
-                              }
-                              placeholder={t("attendanceList.searchGender")}
-                              className="w-full border-b border-green-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                            />
-                            <div className="max-h-40 overflow-y-auto">
-                              {genderList.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                  {tl("noData", "Không có dữ liệu")}
-                                </div>
-                              ) : (
-                                <>
-                                  <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        gioiTinhFilter.length ===
-                                        genderList.length
-                                      }
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setGioiTinhFilter([...genderList]);
-                                        } else {
-                                          setGioiTinhFilter([]);
-                                        }
-                                      }}
-                                      className="mr-2 w-4 h-4 cursor-pointer"
-                                    />
-                                    ✓ Chọn tất cả
-                                  </label>
-                                  {genderList
-                                    .filter((gender) =>
-                                      gender
-                                        .toLowerCase()
-                                        .includes(
-                                          filterGenderSearch.toLowerCase(),
-                                        ),
+                            <div className="max-h-80 overflow-y-auto">
+                              <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    allLeaveTypeFilterValues.length > 0 &&
+                                    allLeaveTypeFilterValues.every((v) =>
+                                      loaiPhepFilter.includes(v),
                                     )
-                                    .map((gender) => (
-                                      <label
-                                        key={gender}
-                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={gioiTinhFilter.includes(
-                                            gender,
-                                          )}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              setGioiTinhFilter([
-                                                ...gioiTinhFilter,
-                                                gender,
-                                              ]);
-                                            } else {
-                                              setGioiTinhFilter(
-                                                gioiTinhFilter.filter(
-                                                  (g) => g !== gender,
-                                                ),
-                                              );
-                                            }
-                                          }}
-                                          className="mr-2 w-4 h-4 cursor-pointer"
-                                        />
-                                        {gender === "YES"
-                                          ? t("attendanceList.femaleLabel")
-                                          : t("attendanceList.maleLabel")}
-                                      </label>
-                                    ))}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Entry Time Filter Section */}
-                      <div className="mb-3">
-                        <button
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              gioVao: !prev.gioVao,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-indigo-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-indigo-500 text-base">
-                              ⏰
-                            </span>
-                            <span>{tl("timeIn", "Thời gian vào")}</span>
-                          </span>
-                          <span className="text-indigo-600 font-bold">
-                            {expandedSections.gioVao ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.gioVao && (
-                          <div className="border-2 border-indigo-100 rounded-lg mt-2 bg-gradient-to-b from-white to-indigo-50/30 shadow-inner">
-                            <div className="max-h-40 overflow-y-auto">
-                              <label className="flex items-center px-3 py-2 hover:bg-indigo-50 cursor-pointer text-sm border-b border-indigo-200 bg-indigo-50/50 font-semibold">
-                                <input
-                                  type="checkbox"
-                                  checked={gioVaoFilter.includes(
-                                    "đã_chấm_công",
-                                  )}
+                                  }
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      setGioVaoFilter([
-                                        ...gioVaoFilter,
-                                        "đã_chấm_công",
+                                      setLoaiPhepFilter([
+                                        ...allLeaveTypeFilterValues,
                                       ]);
                                     } else {
-                                      setGioVaoFilter(
-                                        gioVaoFilter.filter(
-                                          (g) => g !== "đã_chấm_công",
-                                        ),
-                                      );
-                                    }
-                                  }}
-                                  className="mr-2 w-4 h-4 cursor-pointer uppercase"
-                                />
-                                ✅ {tl("checkedIn", "Đã chấm công")}
-                              </label>
-                              <label className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100">
-                                <input
-                                  type="checkbox"
-                                  checked={gioVaoFilter.includes(
-                                    "chưa_chấm_công",
-                                  )}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setGioVaoFilter([
-                                        ...gioVaoFilter,
-                                        "chưa_chấm_công",
-                                      ]);
-                                    } else {
-                                      setGioVaoFilter(
-                                        gioVaoFilter.filter(
-                                          (g) => g !== "chưa_chấm_công",
+                                      setLoaiPhepFilter((prev) =>
+                                        prev.filter(
+                                          (x) =>
+                                            !allLeaveTypeFilterValues.includes(
+                                              x,
+                                            ),
                                         ),
                                       );
                                     }
                                   }}
                                   className="mr-2 w-4 h-4 cursor-pointer"
                                 />
-                                ❎ {tl("notCheckedInShort", "Chưa chấm công")}
+                                ✓ {tl("selectAll", "Chọn tất cả")}
                               </label>
+                              <label className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100">
+                                <input
+                                  type="checkbox"
+                                  checked={loaiPhepFilter.includes(
+                                    ATTENDANCE_LEAVE_FILTER_NONE,
+                                  )}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setLoaiPhepFilter((prev) => [
+                                        ...prev,
+                                        ATTENDANCE_LEAVE_FILTER_NONE,
+                                      ]);
+                                    } else {
+                                      setLoaiPhepFilter((prev) =>
+                                        prev.filter(
+                                          (x) =>
+                                            x !== ATTENDANCE_LEAVE_FILTER_NONE,
+                                        ),
+                                      );
+                                    }
+                                  }}
+                                  className="mr-2 w-4 h-4 cursor-pointer"
+                                />
+                                {tl(
+                                  "leaveTypeFilterNone",
+                                  "Không có loại phép (chỉ giờ / trống)",
+                                )}
+                              </label>
+                              {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((opt) => (
+                                <label
+                                  key={opt.value}
+                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={loaiPhepFilter.includes(opt.value)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setLoaiPhepFilter((prev) => [
+                                          ...prev,
+                                          opt.value,
+                                        ]);
+                                      } else {
+                                        setLoaiPhepFilter((prev) =>
+                                          prev.filter((v) => v !== opt.value),
+                                        );
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  <span className="tabular-nums font-semibold text-gray-700">
+                                    {opt.shortLabel}
+                                  </span>
+                                  <span className="ml-1.5 text-gray-600">
+                                    — {opt.value}
+                                  </span>
+                                </label>
+                              ))}
                             </div>
                           </div>
                         )}
@@ -2891,12 +2904,12 @@ function AttendanceList() {
                     </div>
 
                     {/* Footer - Buttons */}
-                    <div className="p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex gap-3 justify-end">
+                    <div className="shrink-0 p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex flex-wrap gap-3 justify-end">
                       <button
                         onClick={() => {
-                          setGioiTinhFilter([]);
+                          setLoaiPhepFilter([]);
                           setDepartmentListFilter([]);
-                          setGioVaoFilter([]);
+                          setShowOnlyUnattendedFilter(false);
                           setExpandedSections({});
                           setFilterSearchTerm("");
                         }}
@@ -2924,8 +2937,9 @@ function AttendanceList() {
                       </button>
                     </div>
                   </div>
-                </div>
-              )}
+                  </div>,
+                  document.body,
+                )}
             </div>
 
             {/* Action Dropdown (Upload/Export/Add) */}
@@ -3518,10 +3532,7 @@ function AttendanceList() {
             fallback={
               <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm sm:p-4">
                 <p className="rounded-lg bg-slate-900/80 px-4 py-2 text-sm text-white">
-                  {tl(
-                    "comboChartLoading",
-                    "Đang tải biểu đồ theo bộ phận…",
-                  )}
+                  {tl("comboChartLoading", "Đang tải biểu đồ theo bộ phận…")}
                 </p>
               </div>
             }
@@ -3586,16 +3597,8 @@ function AttendanceList() {
                         showRowModalActions={showRowModalActions}
                         user={user}
                         canEdit={canEditEmployee(emp)}
-                        savingGioVao={!!savingGioVao[emp.id]}
-                        editingGioVaoValue={editingGioVao[emp.id]}
-                        savingCaLamViec={!!savingCaLamViec[emp.id]}
-                        editingCaLamViecValue={editingCaLamViec[emp.id]}
                         tl={tl}
                         t={t}
-                        onGioVaoChange={handleGioVaoSelectChange}
-                        onGioVaoSave={handleGioVaoSaveClick}
-                        onCaLamChange={handleCaLamSelectChange}
-                        onCaLamSave={handleCaLamSaveClick}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         canDeleteRow={canDeleteDayRecord}
@@ -3603,6 +3606,7 @@ function AttendanceList() {
                         gridTemplateColumns={attendanceGridTemplateColumns}
                         columnPlan={columnPlan}
                         isOffDay={isOffDay}
+                        isHolidayDay={isHolidayDay}
                       />
                     );
                   })}
@@ -3639,21 +3643,14 @@ function AttendanceList() {
                         showRowModalActions={showRowModalActions}
                         user={user}
                         canEdit={canEditEmployee(emp)}
-                        savingGioVao={!!savingGioVao[emp.id]}
-                        editingGioVaoValue={editingGioVao[emp.id]}
-                        savingCaLamViec={!!savingCaLamViec[emp.id]}
-                        editingCaLamViecValue={editingCaLamViec[emp.id]}
                         tl={tl}
                         t={t}
-                        onGioVaoChange={handleGioVaoSelectChange}
-                        onGioVaoSave={handleGioVaoSaveClick}
-                        onCaLamChange={handleCaLamSelectChange}
-                        onCaLamSave={handleCaLamSaveClick}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         canDeleteRow={canDeleteDayRecord}
                         columnPlan={columnPlan}
                         isOffDay={isOffDay}
+                        isHolidayDay={isHolidayDay}
                       />
                     );
                   })}
@@ -3685,7 +3682,9 @@ function AttendanceList() {
                     {(() => {
                       const timeCounts = {};
                       filteredEmployees.forEach((emp) => {
-                        const time = formatAttendanceGioVaoDisplay(emp.gioVao);
+                        const time = formatAttendanceGioVaoDisplay(
+                          getAttendanceLeaveTypeRaw(emp),
+                        );
                         if (time && !/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) {
                           timeCounts[time] = (timeCounts[time] || 0) + 1;
                         }

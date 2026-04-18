@@ -119,6 +119,53 @@ export function formatAttendanceGioVaoDisplay(raw) {
   return matched?.shortLabel || t;
 }
 
+/** Cột «Thời gian vào»: chỉ HH:MM (không hiển thị loại phép). */
+export function formatAttendanceTimeInColumnDisplay(raw) {
+  const t = String(raw ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ");
+  if (!t) return "";
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) return t;
+  return "";
+}
+
+/** Cột «Loại phép»: viết tắt loại / trạng thái; rỗng nếu `gioVao` là giờ HH:MM. */
+export function formatAttendanceLeaveTypeColumnDisplay(raw) {
+  const t = String(raw ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ");
+  if (!t) return "";
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) return "";
+  return formatAttendanceGioVaoDisplay(t);
+}
+
+/**
+ * Giá trị lưu cho cột «Loại phép» (tách khỏi giờ HH:MM trên `gioVao`).
+ * Ưu tiên `loaiPhep` theo ngày; fallback dữ liệu cũ: cả chuỗi trong `gioVao` khi không phải giờ.
+ * @param {Record<string, unknown> | null | undefined} emp
+ * @returns {string}
+ */
+export function getAttendanceLeaveTypeRaw(emp) {
+  if (emp == null || typeof emp !== "object") return "";
+  const loai = String(emp.loaiPhep ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ");
+  if (loai) return loai;
+  const gv = String(emp.gioVao ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ");
+  if (!gv) return "";
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(gv)) return "";
+  return gv;
+}
+
+/** Cột «Loại phép» từ bản ghi nhân viên (có `loaiPhep` + tương thích cũ). */
+export function formatAttendanceLeaveTypeColumnForEmployee(emp) {
+  return formatAttendanceLeaveTypeColumnDisplay(
+    getAttendanceLeaveTypeRaw(emp),
+  );
+}
+
 /** Giá trị đã gập dấu (để khớp dữ liệu nhập tay / Excel). */
 const FOLDED_OPTION_VALUES = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((o) =>
   foldGioVaoCompare(o.value),

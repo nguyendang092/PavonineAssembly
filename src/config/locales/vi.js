@@ -950,7 +950,7 @@ const vi = {
     colTimeIn: "Giờ vào",
     colTimeOut: "Giờ ra",
     filter: "Bộ lọc",
-    advancedFilterDesc: "Bộ phận, Giới tính, Thời gian",
+    advancedFilterDesc: "Bộ phận, Loại phép",
     advancedFilterAutoUpdate: "Chọn điều kiện lọc • Kết quả tự động cập nhật",
     advancedFilterModalDesc:
       "Chọn điều kiện lọc • Áp dụng cho danh sách trong modal",
@@ -969,7 +969,7 @@ const vi = {
     timeOutClearHint: "Xóa thời gian ra (để trống)",
     workingHours: "Giờ công",
     workingHoursHint:
-      "Giờ vào–ra dạng HH:MM. Vào từ 7:00 đến trước 7:30 và ra trước 17:30 = 8 giờ công (cố định); ngoài khung: khoảng giờ giữa hai mốc, tối đa 8h (phần tăng ca xem cột Giờ TC).",
+      "Giờ vào–ra dạng HH:MM. Ca ngày: vào từ 06:00 đến trước 08:00 thì mốc tính là 08:00; vào trước 06:00 giữ giờ chấm thực. Giờ công = min(chênh lệch, 8h); ra sau 17:30 → cột Giờ TC.",
     overtimeHours: "Giờ công tăng ca (x1.5)",
     overtimeHoursHint:
       "Giờ ra sau 17:30: tính tăng ca từ 17:00, cứ 30 phút = 0,5 giờ.",
@@ -984,7 +984,7 @@ const vi = {
       "Chỉ khi ca «Ca đêm»: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ tăng ca.",
     nightShiftOffDayWorkingHours: "Giờ công ca đêm ngày OFF (X2.0)",
     nightShiftOffDayWorkingHoursHint:
-      "Khi «Ngày off» và ca «Ca đêm»: cùng quy tắc GC ca đêm (đến mốc 05:00, tối đa 8h). Ngày không off thì trống.",
+      "Khi «Ngày off» và ca «Ca đêm»: GC + TC ca đêm gộp (cùng quy tắc mốc 05:00 như ngày thường); cột TC ca đêm «-». Ngày không off thì trống.",
     dayOffToggle: "Ngày off",
     dayOffToolbarButton: "Ngày",
     dayOffToolbarHint:
@@ -1087,19 +1087,23 @@ const vi = {
     table: {
       payrollWorkingHoursHint: "Giờ công sẽ được tính theo giờ vào và giờ ra.",
       payrollOffDayTcHint:
-        "Khi «Ngày off» và ca ngày: giờ làm quy đổi (cùng quy tắc điểm danh). Ngày không off hoặc ca đêm: «-».",
+        "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô (tối đa 8h cho phần khung như điểm danh); cột Giờ TC là «-».",
+      payrollHolidayDayWorkingHoursHint:
+        "Khi «Ngày lễ» và ca ngày: Giờ công BT + TC gộp một ô; cột Giờ TC là «-».",
       nightShiftWorkingHoursHint:
         "Ca đêm: từ giờ vào đến mốc 05:00 (cùng ngày nếu vào trước 05:00, không thì 05:00 hôm sau), tối đa 8 giờ.",
       nightShiftOvertimeHoursHint:
         "Ca đêm: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ TC.",
       nightShiftOffDayWorkingHoursHint:
-        "Ngày off + ca đêm: cùng quy tắc GC ca đêm; ngày thường cột trống.",
+        "Ngày off + ca đêm: GC + TC ca đêm gộp; cột TC ca đêm «-»; ngày thường cột trống.",
+      payrollHolidayNightWorkingHoursHint:
+        "Ngày lễ + ca đêm: GC + TC ca đêm gộp; cột TC ca đêm «-»; cột GC ca đêm «-».",
       payrollTotalGcDay: "Tổng giờ công",
       payrollTotalGcDayHint:
-        "Tổng khối ngày: Giờ công + Giờ TC; khi ngày off (ca ngày) cộng luôn phần hiển thị ở TC off — không gồm cột ca đêm.",
+        "Tổng khối ngày: Giờ công + Giờ TC; ngày off/lễ ca ngày ≈ một cột TC off/GC lễ đã gộp (cột Giờ TC «-»); không gồm cột ca đêm.",
       payrollTotalGcNight: "Tổng giờ công ca đêm",
       payrollTotalGcNightHint:
-        "Tổng khối ca đêm: GC (đến mốc 05:00) + TC ca đêm (sau mốc 05:00) — cùng hai cột GC/TC ca đêm.",
+        "Tổng khối ca đêm: GC + TC; ngày off/lễ ca đêm gộp một số (cột TC ca đêm «-»).",
       offDayColumn: "Ngày off",
       offDayColumnHint:
         "Khi ngày được đánh dấu «Ngày off» trên Điểm danh: hiển thị OFF.",

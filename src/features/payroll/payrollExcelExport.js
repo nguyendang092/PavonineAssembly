@@ -2,6 +2,8 @@ import ExcelJS from "exceljs";
 import { parseLocalDateKey } from "@/utils/dateKey";
 import {
   formatPayrollDayOvertimeHoursCell,
+  formatPayrollTableHolidayDayWorkingCell,
+  formatPayrollTableHolidayNightWorkingCell,
   formatPayrollTableNightShiftOffDayWorkingCell,
   formatPayrollTableNightShiftOvertimeCell,
   formatPayrollTableNightShiftWorkingCell,
@@ -11,21 +13,24 @@ import {
   formatPayrollTableWorkingHoursCell,
   roundHoursToTenths,
 } from "@/features/attendance/attendanceWorkingHours";
-import { formatAttendanceGioVaoDisplay } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import {
+  formatAttendanceLeaveTypeColumnForEmployee,
+  formatAttendanceTimeInColumnDisplay,
+} from "@/features/attendance/attendanceGioVaoTypeOptions";
 
-/** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 20 cột bảng. */
-const PAYROLL_EXCEL_COL_COUNT = 23;
+/** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 24 cột bảng. */
+const PAYROLL_EXCEL_COL_COUNT = 27;
 
 /**
- * Trong `payrollEmployeeRowValues`, 8 cột giờ (Giờ công … Tổng GC ca đêm) bắt đầu ở index này.
+ * Trong `payrollEmployeeRowValues`, cột giờ (Giờ công … Tổng GC ca đêm) bắt đầu ở index này.
  * @see payrollEmployeeRowValues
  */
-const PAYROLL_ROW_HOURS_START = 12;
-const PAYROLL_ROW_HOURS_COUNT = 8;
+const PAYROLL_ROW_HOURS_START = 14;
+const PAYROLL_ROW_HOURS_COUNT = 10;
 
-/** Cột giờ trong sheet (1-based): sau Ngày/Tháng/Năm + STT…Bộ phận = cột 16 … 23. */
-const PAYROLL_EXCEL_HOURS_COL_FIRST = 16;
-const PAYROLL_EXCEL_HOURS_COL_LAST = 23;
+/** Cột giờ trong sheet (1-based): sau Ngày/Tháng/Năm + … + Ngày lễ = cột 18 … 27. */
+const PAYROLL_EXCEL_HOURS_COL_FIRST = 18;
+const PAYROLL_EXCEL_HOURS_COL_LAST = 27;
 
 /**
  * Một chữ số thập phân — tránh Excel hiển thị 3.5 thành 4 khi định dạng 0 chữ số thập phân.
@@ -34,7 +39,11 @@ const PAYROLL_EXCEL_HOURS_COL_LAST = 23;
 const PAYROLL_EXCEL_HOURS_NUM_FMT = "0.0";
 
 function applyPayrollExcelHourColumnNumberFormats(worksheet) {
-  for (let c = PAYROLL_EXCEL_HOURS_COL_FIRST; c <= PAYROLL_EXCEL_HOURS_COL_LAST; c++) {
+  for (
+    let c = PAYROLL_EXCEL_HOURS_COL_FIRST;
+    c <= PAYROLL_EXCEL_HOURS_COL_LAST;
+    c++
+  ) {
     worksheet.getColumn(c).numFmt = PAYROLL_EXCEL_HOURS_NUM_FMT;
   }
 }
@@ -54,12 +63,15 @@ export function payrollExcelHourValueToNumber(formatted) {
 }
 
 /**
- * @param {unknown[]} rest — mảng 20 phần tử từ `payrollEmployeeRowValues`
+ * @param {unknown[]} rest — mảng 24 phần tử từ `payrollEmployeeRowValues`
  * @returns {unknown[]}
  */
 function coercePayrollHourRestToNumbers(rest) {
   return rest.map((v, i) => {
-    if (i < PAYROLL_ROW_HOURS_START || i >= PAYROLL_ROW_HOURS_START + PAYROLL_ROW_HOURS_COUNT) {
+    if (
+      i < PAYROLL_ROW_HOURS_START ||
+      i >= PAYROLL_ROW_HOURS_START + PAYROLL_ROW_HOURS_COUNT
+    ) {
       return v;
     }
     return payrollExcelHourValueToNumber(v);
@@ -67,11 +79,15 @@ function coercePayrollHourRestToNumbers(rest) {
 }
 
 /**
- * ExcelJS đôi khi giữ ô giờ dạng chuỗi sau `addRow` — ép lại từng ô (cột 16–23) về number + numFmt,
+ * ExcelJS đôi khi giữ ô giờ dạng chuỗi sau `addRow` — ép lại từng ô (cột giờ 18–27) về number + numFmt,
  * đồng bộ xuất 1 ngày / nhiều ngày và tránh hiển thị như text.
  */
 function applyPayrollHourNumericCellsToRow(row) {
-  for (let c = PAYROLL_EXCEL_HOURS_COL_FIRST; c <= PAYROLL_EXCEL_HOURS_COL_LAST; c++) {
+  for (
+    let c = PAYROLL_EXCEL_HOURS_COL_FIRST;
+    c <= PAYROLL_EXCEL_HOURS_COL_LAST;
+    c++
+  ) {
     const cell = row.getCell(c);
     const n = payrollExcelHourValueToNumber(cell.value);
     cell.value = n;
@@ -81,13 +97,21 @@ function applyPayrollHourNumericCellsToRow(row) {
   }
 }
 
-function appendPayrollWorksheetDataRow(worksheet, day, month, year, emp, idx, ctx) {
+function appendPayrollWorksheetDataRow(
+  worksheet,
+  day,
+  month,
+  year,
+  emp,
+  idx,
+  ctx,
+) {
   const rest = coercePayrollHourRestToNumbers(
     payrollEmployeeRowValues(emp, idx, ctx),
   );
   const [stt, ...withoutStt] = rest;
   const dataRow = worksheet.addRow([stt, day, month, year, ...withoutStt]);
-  stylePayrollDataRow(dataRow, { nameCol: 7, hoursFromCol: 16 });
+  stylePayrollDataRow(dataRow, { nameCol: 7, hoursFromCol: 18 });
   applyPayrollHourNumericCellsToRow(dataRow);
 }
 
@@ -121,10 +145,24 @@ export function getPayrollExcelDateParts(dateKey) {
 /**
  * @param {object} emp
  * @param {number} idx
- * @param {{ isOffDay: boolean, earlyOtPaperworkById?: Record<string, boolean> }} ctx
+ * @param {{
+ *   isPayrollOffLikeDay?: boolean,
+ *   isOffDay?: boolean,
+ *   isHolidayDay?: boolean,
+ *   earlyOtPaperworkById?: Record<string, boolean>,
+ * }} ctx — `isPayrollOffLikeDay`: off hoặc lễ (TC off). Hiển thị OFF/HOLIDAY từ isOffDay / isHolidayDay.
  */
 export function payrollEmployeeRowValues(emp, idx, ctx) {
-  const { isOffDay, earlyOtPaperworkById = {} } = ctx;
+  const {
+    isPayrollOffLikeDay,
+    isOffDay = false,
+    isHolidayDay = false,
+    earlyOtPaperworkById = {},
+  } = ctx;
+  const offLike =
+    isPayrollOffLikeDay !== undefined
+      ? isPayrollOffLikeDay
+      : Boolean(isOffDay) || Boolean(isHolidayDay);
   const stt =
     emp.stt != null && String(emp.stt).trim() !== "" ? emp.stt : idx + 1;
   return [
@@ -136,14 +174,16 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     emp.ngayThangNamSinh ?? "",
     emp.maBoPhan ?? "",
     emp.boPhan ?? "",
-    formatAttendanceGioVaoDisplay(emp.gioVao ?? ""),
+    formatAttendanceTimeInColumnDisplay(emp.gioVao ?? ""),
     emp.gioRa ?? "",
+    formatAttendanceLeaveTypeColumnForEmployee(emp) || "",
     emp.caLamViec ?? "",
     isOffDay ? "OFF" : "",
+    isHolidayDay ? "HOLIDAY" : "",
     formatPayrollTableWorkingHoursCell(
       emp.gioVao,
       emp.gioRa,
-      isOffDay,
+      offLike,
       emp.caLamViec,
     ),
     formatPayrollDayOvertimeHoursCell(
@@ -152,30 +192,40 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       isOffDay,
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
+      isHolidayDay,
     ),
     formatPayrollTableOffDayTcCell(
       emp.gioVao,
       emp.gioRa,
       isOffDay,
       emp.caLamViec,
+      earlyOtPaperworkById[emp.id],
+    ),
+    formatPayrollTableHolidayDayWorkingCell(
+      emp.gioVao,
+      emp.gioRa,
+      isHolidayDay,
+      emp.caLamViec,
+      earlyOtPaperworkById[emp.id],
     ),
     formatPayrollTableTotalDayGcCell(
       emp.gioVao,
       emp.gioRa,
       isOffDay,
+      isHolidayDay,
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
     ),
     formatPayrollTableNightShiftWorkingCell(
       emp.gioVao,
       emp.gioRa,
-      isOffDay,
+      offLike,
       emp.caLamViec,
     ),
     formatPayrollTableNightShiftOvertimeCell(
       emp.gioVao,
       emp.gioRa,
-      isOffDay,
+      offLike,
       emp.caLamViec,
     ),
     formatPayrollTableNightShiftOffDayWorkingCell(
@@ -184,10 +234,16 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       isOffDay,
       emp.caLamViec,
     ),
+    formatPayrollTableHolidayNightWorkingCell(
+      emp.gioVao,
+      emp.gioRa,
+      isHolidayDay,
+      emp.caLamViec,
+    ),
     formatPayrollTableTotalNightGcCell(
       emp.gioVao,
       emp.gioRa,
-      isOffDay,
+      offLike,
       emp.caLamViec,
     ),
   ];
@@ -209,15 +265,19 @@ function buildPayrollExcelFullHeaders(tlTable) {
     tlTable("department", "Bộ phận"),
     tlTable("timeIn", "Thời gian vào"),
     tlTable("timeOut", "Thời gian ra"),
+    tlTable("leaveTypeColumn", "Loại phép"),
     tlTable("workShift", "Ca làm việc"),
     tlTable("offDayColumn", "Ngày off"),
+    tlTable("holidayDayColumn", "Ngày lễ"),
     tlTable("workingHours", "Giờ công"),
     tlTable("overtimeHours", "Giờ TC"),
     tlTable("offDayOvertimeHours", "TC off"),
+    tlTable("holidayDayWorkingHours", "GC ngày lễ"),
     tlTable("payrollTotalGcDay", "Tổng GC"),
     tlTable("nightShiftWorkingHours", "GC ca đêm"),
     tlTable("nightShiftOvertimeHours", "TC ca đêm"),
     tlTable("nightShiftOffDayWorkingHours", "GC ca đêm off"),
+    tlTable("holidayNightWorkingHours", "GC ca đêm lễ"),
     tlTable("payrollTotalGcNight", "Tổng GC ca đêm"),
   ];
 }
@@ -236,15 +296,19 @@ const PAYROLL_EXCEL_FULL_COLUMN_WIDTHS = [
   { width: 18 },
   { width: 10 },
   { width: 10 },
+  { width: 10 },
   { width: 14 },
-  { width: 5 },
-  { width: 10 },
-  { width: 9 },
-  { width: 10 },
-  { width: 10 },
-  { width: 11 },
-  { width: 11 },
   { width: 12 },
+  { width: 12 },
+  { width: 10 },
+  { width: 10 },
+  { width: 10 },
+  { width: 10 },
+  { width: 10 },
+  { width: 10 },
+  { width: 11 },
+  { width: 11 },
+  { width: 10 },
   { width: 12 },
 ];
 
@@ -288,18 +352,8 @@ function applyHeaderRowStyles(headerRow) {
   });
 }
 
-/**
- * Xuất Excel bảng lương (một ngày): ba cột Ngày / Tháng / Năm + đủ cột giống bảng desktop, cùng layout với xuất nhiều ngày.
- * @param {{ employees: object[], selectedDate: string, isOffDay: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean> }} opts
- */
-export async function buildPayrollSalaryExcelWorkbook({
-  employees,
-  selectedDate,
-  isOffDay,
-  tlTable,
-  sheetTitle,
-  earlyOtPaperworkById = {},
-}) {
+/** Workbook + sheet «Payroll» với dòng tiêu đề và hàng header cột (dùng chung 1 ngày / nhiều ngày). */
+function createPayrollSalaryWorksheetBase(tlTable, sheetTitle) {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Payroll", {
     views: [{ state: "frozen", ySplit: 2 }],
@@ -313,7 +367,6 @@ export async function buildPayrollSalaryExcelWorkbook({
   worksheet.getRow(1).height = 22;
 
   const headers = buildPayrollExcelFullHeaders(tlTable);
-
   const headerRow = worksheet.getRow(2);
   headers.forEach((text, i) => {
     headerRow.getCell(i + 1).value = text;
@@ -321,52 +374,68 @@ export async function buildPayrollSalaryExcelWorkbook({
   applyHeaderRowStyles(headerRow);
   headerRow.height = 18;
 
+  return { workbook, worksheet };
+}
+
+function finalizePayrollWorksheetColumns(worksheet) {
+  worksheet.columns = PAYROLL_EXCEL_FULL_COLUMN_WIDTHS;
+  applyPayrollExcelHourColumnNumberFormats(worksheet);
+}
+
+/**
+ * Xuất Excel bảng lương (một ngày): ba cột Ngày / Tháng / Năm + đủ cột giống bảng desktop, cùng layout với xuất nhiều ngày.
+ * @param {{ employees: object[], selectedDate: string, isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean> }} opts
+ */
+export async function buildPayrollSalaryExcelWorkbook({
+  employees,
+  selectedDate,
+  isPayrollOffLikeDay,
+  isOffDay = false,
+  isHolidayDay = false,
+  tlTable,
+  sheetTitle,
+  earlyOtPaperworkById = {},
+}) {
+  const { workbook, worksheet } = createPayrollSalaryWorksheetBase(
+    tlTable,
+    sheetTitle,
+  );
+
   const { day, month, year } = getPayrollExcelDateParts(selectedDate);
-  const ctx = { isOffDay, earlyOtPaperworkById };
+  const ctx = {
+    isPayrollOffLikeDay,
+    isOffDay,
+    isHolidayDay,
+    earlyOtPaperworkById,
+  };
   employees.forEach((emp, idx) => {
     appendPayrollWorksheetDataRow(worksheet, day, month, year, emp, idx, ctx);
   });
 
-  worksheet.columns = PAYROLL_EXCEL_FULL_COLUMN_WIDTHS;
-  applyPayrollExcelHourColumnNumberFormats(worksheet);
+  finalizePayrollWorksheetColumns(worksheet);
 
   return workbook;
 }
 
 /**
  * Nhiều ngày: một sheet; ba cột đầu là Ngày / Tháng / Năm (số, từ `dateKey` local).
- * @param {{ dayChunks: { dateKey: string, employees: object[], isOffDay: boolean, earlyOtPaperworkById: Record<string, boolean> }[], tlTable: function, sheetTitle: string, displayLocale?: string }} opts
+ * @param {{ dayChunks: { dateKey: string, employees: object[], isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, earlyOtPaperworkById: Record<string, boolean> }[], tlTable: function, sheetTitle: string }} opts
  */
 export async function buildPayrollSalaryExcelWorkbookMultiDay({
   dayChunks,
   tlTable,
   sheetTitle,
-  displayLocale,
 }) {
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("Payroll", {
-    views: [{ state: "frozen", ySplit: 2 }],
-  });
-
-  worksheet.mergeCells(1, 1, 1, PAYROLL_EXCEL_COL_COUNT);
-  const titleCell = worksheet.getCell(1, 1);
-  titleCell.value = sheetTitle;
-  titleCell.font = { bold: true, size: 12, color: { argb: "FF1E293B" } };
-  titleCell.alignment = { vertical: "middle", horizontal: "left" };
-  worksheet.getRow(1).height = 22;
-
-  const headers = buildPayrollExcelFullHeaders(tlTable);
-
-  const headerRow = worksheet.getRow(2);
-  headers.forEach((text, i) => {
-    headerRow.getCell(i + 1).value = text;
-  });
-  applyHeaderRowStyles(headerRow);
-  headerRow.height = 18;
+  const { workbook, worksheet } = createPayrollSalaryWorksheetBase(
+    tlTable,
+    sheetTitle,
+  );
 
   for (const chunk of dayChunks) {
     const ctx = {
-      isOffDay: chunk.isOffDay,
+      isPayrollOffLikeDay: chunk.isPayrollOffLikeDay,
+      isOffDay: chunk.isOffDay ?? false,
+      isHolidayDay: chunk.isHolidayDay ?? false,
       earlyOtPaperworkById: chunk.earlyOtPaperworkById || {},
     };
     const { day, month, year } = getPayrollExcelDateParts(chunk.dateKey);
@@ -375,37 +444,33 @@ export async function buildPayrollSalaryExcelWorkbookMultiDay({
     });
   }
 
-  worksheet.columns = PAYROLL_EXCEL_FULL_COLUMN_WIDTHS;
-  applyPayrollExcelHourColumnNumberFormats(worksheet);
+  finalizePayrollWorksheetColumns(worksheet);
 
   return workbook;
 }
 
-export async function downloadPayrollSalaryExcel(opts) {
-  const { selectedDate } = opts;
-  const workbook = await buildPayrollSalaryExcelWorkbook(opts);
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Bang-gio-cong_${selectedDate}.xlsx`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+const PAYROLL_XLSX_MIME =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-/** @param {{ workbook: object, filename: string }} opts */
-export async function downloadPayrollWorkbookToFile({ workbook, filename }) {
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
+function triggerDownloadXlsxBuffer(buffer, filename) {
+  const blob = new Blob([buffer], { type: PAYROLL_XLSX_MIME });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export async function downloadPayrollSalaryExcel(opts) {
+  const { selectedDate } = opts;
+  const workbook = await buildPayrollSalaryExcelWorkbook(opts);
+  const buffer = await workbook.xlsx.writeBuffer();
+  triggerDownloadXlsxBuffer(buffer, `Bang-gio-cong_${selectedDate}.xlsx`);
+}
+
+/** @param {{ workbook: object, filename: string }} opts */
+export async function downloadPayrollWorkbookToFile({ workbook, filename }) {
+  const buffer = await workbook.xlsx.writeBuffer();
+  triggerDownloadXlsxBuffer(buffer, filename);
 }

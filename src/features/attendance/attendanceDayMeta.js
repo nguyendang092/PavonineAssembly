@@ -49,6 +49,24 @@ export function getIsOffDayFromRaw(rawData) {
 }
 
 /**
+ * Ngày lễ (`_meta.isHolidayDay`) — hiển thị HOLIDAY; công/lương giống ngày off.
+ * @param {Record<string, unknown> | null | undefined} rawData
+ * @returns {boolean}
+ */
+export function getIsHolidayDayFromRaw(rawData) {
+  if (!rawData || typeof rawData !== "object") return false;
+  const m = rawData[ATTENDANCE_DAY_META_KEY];
+  return Boolean(m && typeof m === "object" && m.isHolidayDay);
+}
+
+/** Off hoặc lễ — cùng quy tắc TC off / giờ công. */
+export function getIsPayrollOffLikeDayFromRaw(rawData) {
+  return (
+    getIsOffDayFromRaw(rawData) || getIsHolidayDayFromRaw(rawData)
+  );
+}
+
+/**
  * Gộp patch vào `_meta` mà không xóa `earlyOtPaperwork` / trường khác.
  * @param {unknown} existing
  * @param {Record<string, unknown>} patch

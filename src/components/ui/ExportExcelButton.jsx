@@ -1,6 +1,9 @@
 import React from "react";
 import ExcelJS from "exceljs";
-import { formatAttendanceGioVaoDisplay } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import {
+  formatAttendanceTimeInColumnDisplay,
+  formatAttendanceLeaveTypeColumnForEmployee,
+} from "@/features/attendance/attendanceGioVaoTypeOptions";
 
 export default function ExportExcelButton({
   data = [],
@@ -74,20 +77,20 @@ export default function ExportExcelButton({
       worksheet.getRow(2).height = 28;
 
       // Title + subtitle + date (auto today or selectedDate)
-      worksheet.mergeCells("A4:K4");
+      worksheet.mergeCells("A4:L4");
       const mainTitle = worksheet.getCell("A4");
       mainTitle.value = "DANH SÁCH NHÂN VIÊN HIỆN DIỆN";
       mainTitle.font = { size: 14, bold: true, color: { argb: "FF000000" } };
       mainTitle.alignment = { vertical: "middle", horizontal: "center" };
       worksheet.getRow(4).height = 22;
 
-      worksheet.mergeCells("A5:K5");
+      worksheet.mergeCells("A5:L5");
       const subTitle = worksheet.getCell("A5");
       subTitle.value = "List of Active Employees";
       subTitle.font = { size: 11, bold: true };
       subTitle.alignment = { vertical: "middle", horizontal: "center" };
 
-      worksheet.mergeCells("A6:K6");
+      worksheet.mergeCells("A6:L6");
       const dateCell = worksheet.getCell("A6");
       const dateStr = selectedDate
         ? new Date(selectedDate).toLocaleDateString("vi-VN")
@@ -111,6 +114,7 @@ export default function ExportExcelButton({
         "",
         "",
         "",
+        "",
       ]);
       worksheet.addRow([
         "Ca đêm",
@@ -119,6 +123,7 @@ export default function ExportExcelButton({
         "1/2 PN",
         "7.Không phép/Illegal Leave",
         "KP",
+        "",
         "",
         "",
         "",
@@ -137,6 +142,7 @@ export default function ExportExcelButton({
         "",
         "",
         "",
+        "",
       ]);
       worksheet.addRow([
         "",
@@ -150,6 +156,7 @@ export default function ExportExcelButton({
         "",
         "",
         "",
+        "",
       ]);
       worksheet.addRow([
         "",
@@ -158,6 +165,7 @@ export default function ExportExcelButton({
         "PT",
         "10.Dưỡng sức/Recovery health",
         "DS",
+        "",
         "",
         "",
         "",
@@ -213,6 +221,7 @@ export default function ExportExcelButton({
         "Thời gian vào",
         "Thời gian ra",
         "Ca làm việc",
+        "Loại phép",
       ];
 
       const headerEn = [
@@ -227,6 +236,7 @@ export default function ExportExcelButton({
         "Time in",
         "Time out",
         "Current shift",
+        "Leave type",
       ];
 
       worksheet.addRow(headerVi);
@@ -266,9 +276,10 @@ export default function ExportExcelButton({
           emp.ngayThangNamSinh || "",
           emp.maBoPhan || "",
           emp.boPhan || "",
-          formatAttendanceGioVaoDisplay(emp.gioVao || ""),
+          formatAttendanceTimeInColumnDisplay(emp.gioVao),
           emp.gioRa || "",
           emp.caLamViec || "",
+          formatAttendanceLeaveTypeColumnForEmployee(emp) || "",
         ]);
 
         const isEvenRow = idx % 2 === 0;
@@ -319,6 +330,7 @@ export default function ExportExcelButton({
         { width: 15 },
         { width: 10 },
         { width: 10 },
+        { width: 12 },
         { width: 12 },
       ];
 
