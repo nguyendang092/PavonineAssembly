@@ -12,7 +12,7 @@ function normalizePercents(widths) {
 
 /* full — … | Ngày off | Ngày lễ | Giờ công … GC ngày lễ … | Tổng GC … */
 export const PAYROLL_WIDTHS_FULL_NO_ACTIONS = [
-  2, 3, 3, 10, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 4, 3, 3, 3, 3, 4,
+  2, 3, 3, 13, 4, 7, 4, 5, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 4, 3, 3, 3, 3, 4,
 ];
 
 /** Trọng số cột hành động (Sửa) — nối sau PAYROLL_*_NO_ACTIONS khi `showRowModalActions`. */

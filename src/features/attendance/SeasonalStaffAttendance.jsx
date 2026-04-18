@@ -31,6 +31,10 @@ import {
   formatAttendanceGioVaoDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
+  getAttendanceLeaveTypeBadgeClassName,
+  getAttendanceLeaveTypeColorClassNameForEmployee,
+  getAttendanceLeaveTypePrintStyleAttrForEmployee,
+  getAttendanceLeaveTypeRaw,
   isGioVaoLeaveOrStatusType,
 } from "./attendanceGioVaoTypeOptions";
 import {
@@ -42,6 +46,10 @@ import {
   looksLikeGioVaoTime,
   normalizeTimeForHtmlInput,
 } from "./attendanceGioVaoModalHelpers";
+import {
+  mergeAttendanceExcelIntoExistingRecord,
+  stripAttendanceExcelUploadInternalFields,
+} from "./attendanceExcelUploadMerge";
 import { getAttendanceColWidthPercents } from "./AttendanceTableRow";
 import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
 
@@ -711,29 +719,8 @@ function SeasonalStaffAttendance() {
             : strValue;
         };
 
-        const mergeEmployeeFields = (oldEmp, newEmp) => {
-          const mergedEmp = { ...oldEmp };
-          Object.keys(newEmp).forEach((field) => {
-            if (field === "id") return;
-
-            if (field === "gioVao") {
-              const newValue = newEmp[field];
-              if (
-                newValue !== undefined &&
-                newValue !== null &&
-                newValue !== ""
-              ) {
-                mergedEmp[field] = newValue;
-              }
-              return;
-            }
-
-            if (newEmp[field] !== undefined && newEmp[field] !== "") {
-              mergedEmp[field] = newEmp[field];
-            }
-          });
-          return mergedEmp;
-        };
+        const trimCell = (value) =>
+          value === undefined || value === null ? "" : String(value).trim();
 
         dataRows.forEach((row, index) => {
           // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu, Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc
@@ -771,7 +758,9 @@ function SeasonalStaffAttendance() {
           }
 
           const empKey = `emp_${index}`;
-          const sttNum = Number.isFinite(Number(stt))
+          const excelHasStt =
+            trimCell(stt) !== "" && Number.isFinite(Number(stt));
+          const sttNum = excelHasStt
             ? Number(stt)
             : Object.keys(dataToUpload).length + 1;
 
@@ -788,6 +777,7 @@ function SeasonalStaffAttendance() {
             gioVao: gioVao || "",
             gioRa: gioRa || "",
             caLamViec: caLamViec || "",
+            _excelHasStt: excelHasStt,
           };
         });
         // Upload to Firebase - Merge with existing data to prevent data loss
@@ -814,15 +804,16 @@ function SeasonalStaffAttendance() {
           const isDuplicate = Boolean(existingKey);
 
           if (isDuplicate) {
-            // Update existing employee with new data, chỉ cập nhật gioVao nếu giá trị mới không rỗng
             if (existingKey) {
               const oldEmp = mergedData[existingKey] || {};
-              const mergedEmp = mergeEmployeeFields(oldEmp, newEmp);
+              const mergedEmp = mergeAttendanceExcelIntoExistingRecord(
+                oldEmp,
+                newEmp,
+              );
               mergedData[existingKey] = mergedEmp;
             }
             duplicateCount++;
           } else {
-            // Add new employee
             mergedData[key] = newEmp;
             if (normalizedNewMNV) {
               existingKeyByMNV[normalizedNewMNV] = key;
@@ -831,8 +822,11 @@ function SeasonalStaffAttendance() {
           }
         });
 
-        // Save merged data (attendance)
-        await set(attendanceRef, mergedData);
+        const payload = {};
+        Object.entries(mergedData).forEach(([k, v]) => {
+          payload[k] = stripAttendanceExcelUploadInternalFields(v);
+        });
+        await set(attendanceRef, payload);
 
         // Show result message
         let message = `✅ Upload thành công ${uploadedCount} nhân viên mới`;
@@ -1766,14 +1760,7 @@ function SeasonalStaffAttendance() {
                 : ""
             }">${formatAttendanceTimeInColumnDisplay(emp.gioVao || "")}</td>
             <td>${emp.gioRa || ""}</td>
-            <td style="${
-              ["PN", "TS", "PO", "NV"].includes(
-                formatAttendanceLeaveTypeColumnForEmployee(emp) ||
-                  formatAttendanceGioVaoDisplay(emp.gioVao),
-              )
-                ? "color:#c41e3a;font-weight:bold;"
-                : ""
-            }">${formatAttendanceLeaveTypeColumnForEmployee(emp)}</td>
+            <td style="${getAttendanceLeaveTypePrintStyleAttrForEmployee(emp)}">${formatAttendanceLeaveTypeColumnForEmployee(emp)}</td>
             <td>${emp.caLamViec || ""}</td>
         </tr>`;
     });
@@ -3469,6 +3456,8 @@ function SeasonalStaffAttendance() {
                     const timeCol = formatAttendanceTimeInColumnDisplay(gv);
                     const leaveCol =
                       formatAttendanceLeaveTypeColumnForEmployee(emp);
+                    const leaveTypeColorClass =
+                      getAttendanceLeaveTypeColorClassNameForEmployee(emp);
                     const canEdit = canEditEmployee(emp);
 
                     const timeTd = (
@@ -3500,7 +3489,9 @@ function SeasonalStaffAttendance() {
                     const leaveTd = (
                       <td className="px-1 md:px-1.5 py-0.5 md:py-1 text-xs md:text-sm text-center">
                         {leaveCol ? (
-                          <span className="font-bold text-sm md:text-base text-red-600">
+                          <span
+                            className={`font-bold text-sm md:text-base ${leaveTypeColorClass}`}
+                          >
                             {leaveCol}
                           </span>
                         ) : canEdit ? (
@@ -3662,7 +3653,9 @@ function SeasonalStaffAttendance() {
                     {(() => {
                       const timeCounts = {};
                       filteredEmployees.forEach((emp) => {
-                        const time = formatAttendanceGioVaoDisplay(emp.gioVao);
+                        const time = formatAttendanceGioVaoDisplay(
+                          getAttendanceLeaveTypeRaw(emp),
+                        );
                         if (time && !/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) {
                           timeCounts[time] = (timeCounts[time] || 0) + 1;
                         }
@@ -3671,7 +3664,7 @@ function SeasonalStaffAttendance() {
                         Object.entries(timeCounts).map(([time, count]) => (
                           <span
                             key={time}
-                            className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-bold text-2xs border border-indigo-200"
+                            className={`px-2 py-0.5 rounded font-bold text-2xs border ${getAttendanceLeaveTypeBadgeClassName(time)}`}
                           >
                             {time}: {count}
                           </span>

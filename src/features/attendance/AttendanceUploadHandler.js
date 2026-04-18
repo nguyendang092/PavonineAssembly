@@ -11,6 +11,11 @@ import {
   buildPavoEmployeeId,
   normalizeEmployeeCode,
 } from "@/utils/employeeRosterRecord";
+import {
+  hasAttendanceExcelCellValue,
+  mergeAttendanceExcelIntoExistingRecord,
+  stripAttendanceExcelUploadInternalFields,
+} from "./attendanceExcelUploadMerge";
 
 /** Tìm hồ sơ theo MNV (cột Excel số) — khớp key node hoặc trường mnv. */
 function findProfileForMnv(profileMap, normalizedMnvDigits) {
@@ -189,29 +194,8 @@ export const handleUploadExcel = async ({
       return "";
     };
 
-    /**
-     * Giá trị ô Excel có nội dung (sau trim).
-     * Merge bản ghi đã có (cùng MNV): **chỉ điền** từ Excel vào các field đang **trống** trên Firebase;
-     * field nào Firebase **đã có** dữ liệu thì **giữ nguyên** (không ghi đè Excel để tránh sai lệch).
-     */
-    const hasUploadValue = (value) => {
-      if (value === undefined || value === null) return false;
-      if (typeof value === "number") return Number.isFinite(value);
-      return String(value).trim() !== "";
-    };
-
     const trimCell = (value) =>
       value === undefined || value === null ? "" : String(value).trim();
-
-    /** Bỏ trường nội bộ phục vụ merge (không lưu Firebase). */
-    const stripUploadInternalFields = (record) => {
-      if (!record || typeof record !== "object") return record;
-      const o = { ...record };
-      Object.keys(o).forEach((k) => {
-        if (k.startsWith("_excel")) delete o[k];
-      });
-      return o;
-    };
 
     dataRows.forEach((row, index) => {
       // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu,
@@ -318,30 +302,10 @@ export const handleUploadExcel = async ({
       if (isDuplicate) {
         if (existingKey) {
           const oldEmp = mergedData[existingKey] || {};
-          const mergedEmp = { ...oldEmp };
-
-          Object.keys(newEmp).forEach((field) => {
-            if (field === "id" || field === "mnv") return;
-            if (field.startsWith("_excel")) return;
-
-            if (field === "stt") {
-              if (
-                !hasUploadValue(mergedEmp.stt) &&
-                newEmp._excelHasStt
-              ) {
-                mergedEmp.stt = newEmp.stt;
-              }
-              return;
-            }
-
-            const nv = newEmp[field];
-            if (
-              !hasUploadValue(mergedEmp[field]) &&
-              hasUploadValue(nv)
-            ) {
-              mergedEmp[field] = nv;
-            }
-          });
+          const mergedEmp = mergeAttendanceExcelIntoExistingRecord(
+            oldEmp,
+            newEmp,
+          );
           mergedData[existingKey] = mergedEmp;
           if (!mergedEmp.pnTon && !mergedEmp.phepNam) {
             const prevVal = prevPnTonByMNV[normalizedNewMNV];
@@ -350,8 +314,8 @@ export const handleUploadExcel = async ({
         }
         duplicateCount++;
       } else {
-        let rec = stripUploadInternalFields({ ...newEmp });
-        if (!hasUploadValue(rec.gioiTinh)) rec.gioiTinh = "YES";
+        let rec = stripAttendanceExcelUploadInternalFields({ ...newEmp });
+        if (!hasAttendanceExcelCellValue(rec.gioiTinh)) rec.gioiTinh = "YES";
         if (!rec.pnTon && !rec.phepNam) {
           const prevVal = prevPnTonByMNV[normalizeMNV(rec?.mnv)];
           if (prevVal) rec = { ...rec, pnTon: prevVal };
@@ -366,7 +330,7 @@ export const handleUploadExcel = async ({
 
     const payload = {};
     Object.entries(mergedData).forEach(([k, v]) => {
-      payload[k] = stripUploadInternalFields(v);
+      payload[k] = stripAttendanceExcelUploadInternalFields(v);
     });
     await set(attendanceRef, payload);
 

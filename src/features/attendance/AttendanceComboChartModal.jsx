@@ -16,6 +16,11 @@ import {
   COMBO_CHART_METRIC_KEYS,
   COMBO_STAT_LABEL_DEFAULTS,
 } from "./attendanceComboChartConfig";
+import {
+  getAttendanceLeaveTypeBadgeClassNameForComboStatKey,
+  getAttendanceLeaveTypeColorClassNameForComboStatKey,
+  getAttendanceComboBarFillForMetricKey,
+} from "./attendanceGioVaoTypeOptions";
 
 export default function AttendanceComboChartModal({
   open,
@@ -110,7 +115,7 @@ export default function AttendanceComboChartModal({
                   {label}
                 </p>
                 <p
-                  className={`text-base font-bold ${tile.activeNumClass}`}
+                  className={`text-base font-bold ${getAttendanceLeaveTypeColorClassNameForComboStatKey(tile.key)}`}
                 >
                   {v}
                 </p>
@@ -234,7 +239,7 @@ export default function AttendanceComboChartModal({
                       return (
                         <span
                           key={k}
-                          className="rounded bg-sky-50 px-1.5 py-1 text-sky-900 dark:bg-sky-950/50 dark:text-sky-200 font-semibold uppercase"
+                          className={`rounded border px-1.5 py-1 font-semibold uppercase ${getAttendanceLeaveTypeBadgeClassNameForComboStatKey(k)}`}
                         >
                           {lab}: {n}
                         </span>
@@ -302,13 +307,13 @@ export default function AttendanceComboChartModal({
                             return [value, name];
                           }}
                         />
-                        {COMBO_BAR_SERIES.map(({ dataKey, fill }) =>
+                        {COMBO_BAR_SERIES.map(({ dataKey }) =>
                           row[dataKey] > 0 ? (
                             <Bar
                               key={dataKey}
                               yAxisId="left"
                               dataKey={dataKey}
-                              fill={fill}
+                              fill={getAttendanceComboBarFillForMetricKey(dataKey)}
                               radius={[4, 4, 0, 0]}
                             />
                           ) : null,

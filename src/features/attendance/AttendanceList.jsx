@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   useState,
   useEffect,
   useLayoutEffect,
@@ -43,6 +43,10 @@ import AttendanceTableRow, {
 import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
 import ExportExcelButton from "@/components/ui/ExportExcelButton";
 import UnifiedModal from "@/components/ui/UnifiedModal";
+import {
+  readUnattendedSessionSuppressed,
+  writeUnattendedSessionSuppressed,
+} from "@/features/attendance/attendanceUnattendedSession";
 import AlertMessage from "@/components/ui/AlertMessage";
 import BirthdayCakeBell from "@/features/employee/BirthdayCakeBell";
 import NotificationBell from "@/components/ui/NotificationBell";
@@ -67,6 +71,9 @@ import {
   formatAttendanceGioVaoDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
+  getAttendanceLeaveTypeBadgeClassName,
+  getAttendanceLeaveTypeColorClassName,
+  getAttendanceLeaveTypePrintStyleAttrForEmployee,
   getAttendanceLeaveTypeRaw,
   isGioVaoLeaveOrStatusType,
 } from "./attendanceGioVaoTypeOptions";
@@ -215,6 +222,11 @@ function AttendanceList() {
   const [showUnattendedPopup, setShowUnattendedPopup] = useState(false);
   const [unattendedPopupDismissed, setUnattendedPopupDismissed] =
     useState(false);
+  /** Tự động mở popup: không bật lại khi user đã chọn «không hiển thị trong phiên» (sessionStorage). */
+  const [unattendedSessionSuppressed, setUnattendedSessionSuppressed] =
+    useState(false);
+  const [unattendedSuppressSessionCheckbox, setUnattendedSuppressSessionCheckbox] =
+    useState(false);
   const [filterMenuDropdownOpen, setFilterMenuDropdownOpen] = useState(false);
   const [offHolidayDropdownOpen, setOffHolidayDropdownOpen] = useState(false);
   const filterMenuRef = useRef(null);
@@ -224,6 +236,7 @@ function AttendanceList() {
   const printDropdownRef = useRef(null);
   const offHolidayDropdownRef = useRef(null);
   const exportRangeModalInitializedRef = useRef(false);
+  const prevShowUnattendedPopupRef = useRef(false);
   const [filterDropdownPlacement, setFilterDropdownPlacement] = useState(null);
 
   const isQuickNoCheckInActive = showOnlyUnattendedFilter;
@@ -254,6 +267,19 @@ function AttendanceList() {
       }),
     [employees],
   );
+
+  useEffect(() => {
+    setUnattendedSessionSuppressed(readUnattendedSessionSuppressed(user?.uid));
+  }, [user?.uid]);
+
+  const closeUnattendedPopup = useCallback(() => {
+    setShowUnattendedPopup(false);
+    setUnattendedPopupDismissed(true);
+    if (unattendedSuppressSessionCheckbox) {
+      setUnattendedSessionSuppressed(true);
+      writeUnattendedSessionSuppressed(user?.uid, true);
+    }
+  }, [user?.uid, unattendedSuppressSessionCheckbox]);
 
   const [employeeProfilesMap, setEmployeeProfilesMap] = useState({});
 
@@ -300,7 +326,7 @@ function AttendanceList() {
   }, [selectedDate]);
 
   useEffect(() => {
-    if (unattendedPopupDismissed) return;
+    if (unattendedPopupDismissed || unattendedSessionSuppressed) return;
 
     if (unattendedEmployees.length === 0) {
       setShowUnattendedPopup(false);
@@ -312,7 +338,14 @@ function AttendanceList() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [unattendedEmployees, unattendedPopupDismissed]);
+  }, [unattendedEmployees, unattendedPopupDismissed, unattendedSessionSuppressed]);
+
+  useEffect(() => {
+    if (showUnattendedPopup && !prevShowUnattendedPopupRef.current) {
+      setUnattendedSuppressSessionCheckbox(false);
+    }
+    prevShowUnattendedPopupRef.current = showUnattendedPopup;
+  }, [showUnattendedPopup]);
 
   // Auto-hide alert after 3s
   useEffect(() => {
@@ -1756,14 +1789,7 @@ function AttendanceList() {
                 : ""
             }">${formatAttendanceTimeInColumnDisplay(emp.gioVao || "")}</td>
             <td>${emp.gioRa || ""}</td>
-            <td style="${
-              ["PN", "TS", "PO", "NV"].includes(
-                formatAttendanceLeaveTypeColumnForEmployee(emp) ||
-                  formatAttendanceGioVaoDisplay(emp.gioVao),
-              )
-                ? "color:#c41e3a;font-weight:bold;"
-                : ""
-            }">${formatAttendanceLeaveTypeColumnForEmployee(emp)}</td>
+            <td style="${getAttendanceLeaveTypePrintStyleAttrForEmployee(emp)}">${formatAttendanceLeaveTypeColumnForEmployee(emp)}</td>
             <td>${emp.caLamViec || ""}</td>
         </tr>`;
     });
@@ -2097,28 +2123,39 @@ function AttendanceList() {
         {/* Popup nhân viên chưa điểm danh - sử dụng UnifiedModal */}
         <UnifiedModal
           isOpen={showUnattendedPopup && unattendedEmployees.length > 0}
-          onClose={() => {
-            setShowUnattendedPopup(false);
-            setUnattendedPopupDismissed(true);
-          }}
+          onClose={closeUnattendedPopup}
           variant="primary"
           title={tl("unattendedTitle", "Nhân viên chưa điểm danh")}
           size="lg"
+          footerStart={
+            <label className="flex cursor-pointer items-center gap-2.5 text-left">
+              <input
+                type="checkbox"
+                checked={unattendedSuppressSessionCheckbox}
+                onChange={() =>
+                  setUnattendedSuppressSessionCheckbox((v) => !v)
+                }
+                className="h-[18px] w-[18px] shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-300/70 dark:border-slate-600 dark:text-indigo-500 dark:focus:ring-indigo-800/60"
+              />
+              <span className="min-w-0 text-[11px] font-medium leading-snug text-slate-700 dark:text-slate-300">
+                {tl(
+                  "unattendedSuppressSession",
+                  "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
+                )}
+              </span>
+            </label>
+          }
           actions={[
             {
               label: t("attendanceList.close"),
-              onClick: () => {
-                setShowUnattendedPopup(false);
-                setUnattendedPopupDismissed(true);
-              },
+              onClick: closeUnattendedPopup,
               variant: "secondary",
             },
             {
               label: t("attendanceList.quickFilter"),
               onClick: () => {
                 setShowOnlyUnattendedFilter(true);
-                setShowUnattendedPopup(false);
-                setUnattendedPopupDismissed(true);
+                closeUnattendedPopup();
               },
               variant: "primary",
             },
@@ -2462,7 +2499,15 @@ function AttendanceList() {
                               {formatAttendanceTimeInColumnDisplay(emp.gioVao)}
                             </td>
                             <td style={{ textAlign: "center", padding: 8 }}>
-                              {formatAttendanceLeaveTypeColumnForEmployee(emp)}
+                              <span
+                                className={`font-semibold ${getAttendanceLeaveTypeColorClassName(
+                                  getAttendanceLeaveTypeRaw(emp),
+                                )}`}
+                              >
+                                {formatAttendanceLeaveTypeColumnForEmployee(
+                                  emp,
+                                )}
+                              </span>
                             </td>
                             <td style={{ textAlign: "center", padding: 8 }}>
                               {emp.gioRa || "-"}
@@ -3693,7 +3738,7 @@ function AttendanceList() {
                         Object.entries(timeCounts).map(([time, count]) => (
                           <span
                             key={time}
-                            className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-bold text-2xs border border-indigo-200"
+                            className={`px-2 py-0.5 rounded font-bold text-2xs border ${getAttendanceLeaveTypeBadgeClassName(time)}`}
                           >
                             {time}: {count}
                           </span>

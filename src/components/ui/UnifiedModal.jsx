@@ -15,6 +15,7 @@ import React, { useEffect } from "react";
  * @param {string} size - Kích thước modal: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
  * @param {boolean} showCloseButton - Hiển thị nút X đóng góc phải
  * @param {string} icon - Icon hiển thị bên cạnh title (optional)
+ * @param {React.ReactNode} footerStart - Nội dung bên trái footer (cùng hàng với nút actions)
  */
 const UnifiedModal = ({
   isOpen,
@@ -27,6 +28,7 @@ const UnifiedModal = ({
   size = "lg",
   showCloseButton = true,
   icon,
+  footerStart,
 }) => {
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -147,28 +149,45 @@ const UnifiedModal = ({
         </div>
 
         {/* Footer with Actions */}
-        {actions.length > 0 && (
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-2.5 flex flex-wrap gap-2 justify-end rounded-b-2xl border-t shadow-inner">
-            {actions.map((action, idx) => {
-              const actionVariant = action.variant || "secondary";
-              const buttonClass =
-                actionVariant === "primary"
-                  ? `${currentVariant.buttonPrimary} text-white shadow-lg transform hover:scale-105`
-                  : actionVariant === "danger"
-                    ? "bg-gradient-to-r from-red-500 to-red-700 text-white shadow-lg transform hover:scale-105"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
+        {(actions.length > 0 || footerStart) && (
+          <div
+            className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-2.5 shadow-inner dark:from-slate-900/95 dark:to-slate-950 ${
+              footerStart
+                ? "justify-between rounded-b-2xl"
+                : "justify-end rounded-b-2xl"
+            }`}
+          >
+            {footerStart ? (
+              <div className="min-w-0 flex-1 basis-auto">{footerStart}</div>
+            ) : null}
+            <div
+              className={
+                footerStart
+                  ? "flex shrink-0 flex-wrap items-center justify-end gap-2"
+                  : "flex w-full flex-wrap justify-end gap-2"
+              }
+            >
+              {actions.map((action, idx) => {
+                const actionVariant = action.variant || "secondary";
+                const buttonClass =
+                  actionVariant === "primary"
+                    ? `${currentVariant.buttonPrimary} text-white shadow-lg transform hover:scale-105`
+                    : actionVariant === "danger"
+                      ? "bg-gradient-to-r from-red-500 to-red-700 text-white shadow-lg transform hover:scale-105"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
 
-              return (
-                <button
-                  key={idx}
-                  onClick={action.onClick}
-                  disabled={action.disabled}
-                  className={`px-6 py-3 rounded-xl hover:shadow-xl transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
-                >
-                  {action.label}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={idx}
+                    onClick={action.onClick}
+                    disabled={action.disabled}
+                    className={`rounded-xl px-6 py-3 font-bold transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 ${buttonClass}`}
+                  >
+                    {action.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

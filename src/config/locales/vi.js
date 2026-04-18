@@ -66,6 +66,8 @@ const vi = {
   },
   navbar: {
     getStarted: "Bắt đầu",
+    toolsRegion: "Ngôn ngữ, giao diện và tài khoản",
+    userMenu: "Tài khoản",
     language: "Ngôn ngữ",
     themeSwitchToLight: "Chuyển sang chế độ sáng",
     themeSwitchToDark: "Chuyển sang chế độ tối",
@@ -943,6 +945,8 @@ const vi = {
     unattendedTitle: "Nhân viên chưa điểm danh",
     unattendedSummary:
       "Hiện có {{count}} nhân viên chưa có thời gian vào trong ngày {{date}}.",
+    unattendedSuppressSession:
+      "Không hiển thị trong hôm nay.",
     colIndex: "STT",
     colCode: "MNV",
     colName: "Họ và tên",
@@ -1133,7 +1137,7 @@ const vi = {
       "Kết quả mang tính tham khảo; quy chế lương thực tế có thể khác.",
     backAttendance: "Điểm danh NV",
     pleaseLogin: "Vui lòng đăng nhập.",
-    earlyOtModalDontShowSession: "Không hiển thị",
+    earlyOtModalDontShowSession: "Không hiển thị trong hôm nay.",
     error: "Không tải dữ liệu điểm danh. Thử lại sau.",
     done: "Đã tính xong (ước lượng theo điểm danh).",
     from: "Từ ngày",

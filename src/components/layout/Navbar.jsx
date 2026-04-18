@@ -1,5 +1,11 @@
 /* Đây là component hiển thị navbar */
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useLayoutEffect,
+  useMemo,
+} from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { FiMoon, FiSun } from "react-icons/fi";
@@ -10,6 +16,31 @@ import { menuConfig } from "@/config/menuConfig";
 import { isAdminAccess } from "@/config/authRoles";
 import { useTheme } from "@/contexts/ThemeContext";
 import "./navbar.css";
+
+/** className cho <li> nav cấp 1 có pill (siết margin/padding nhẹ). */
+function navTopItemLiClass(itemKey, baseClass) {
+  const pill =
+    itemKey === "internalAnnouncements" || itemKey === "reports"
+      ? "nav-item-top-pill"
+      : "";
+  return [baseClass, pill].filter(Boolean).join(" ");
+}
+
+/** Bọc nhãn nav cấp 1 (Bản tin / Báo cáo) để áp dụng pill gọn, nổi bật. */
+function NavTopLabel({ itemKey, children }) {
+  const variant =
+    itemKey === "internalAnnouncements"
+      ? "announce"
+      : itemKey === "reports"
+        ? "reports"
+        : null;
+  if (!variant) return children;
+  return (
+    <span className={`nav-link-label nav-link-label--${variant}`}>
+      {children}
+    </span>
+  );
+}
 
 /** Link menu với trạng thái active khớp URL (kể cả `/email` ↔ `/email/login`). */
 function RouterNavLink({ to, onClick, children }) {
@@ -29,6 +60,34 @@ function RouterNavLink({ to, onClick, children }) {
       {children}
     </NavLink>
   );
+}
+
+/** Cắt chuỗi theo số ký tự (Unicode), thêm … nếu dài. */
+function truncateDisplay(str, maxChars) {
+  const s = String(str ?? "").trim();
+  if (!s) return "";
+  const chars = Array.from(s);
+  if (chars.length <= maxChars) return s;
+  return `${chars.slice(0, Math.max(0, maxChars - 1)).join("")}…`;
+}
+
+/**
+ * Nhãn user gọn trên navbar: tên riêng (từ cuối nếu có họ tên),
+ * không có tên thì phần trước @ của email (rút gọn).
+ */
+function getNavbarUserDisplayShort(user) {
+  if (!user) return "";
+  const name = String(user.name ?? "").trim();
+  if (name) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    const piece =
+      parts.length >= 2 ? parts[parts.length - 1] : (parts[0] ?? name);
+    return truncateDisplay(piece, 10);
+  }
+  const email = String(user.email ?? "");
+  const at = email.indexOf("@");
+  const local = at > 0 ? email.slice(0, at) : email;
+  return truncateDisplay(local, 12);
 }
 
 export default function Navbar({ user, setUser, userRole }) {
@@ -128,6 +187,16 @@ export default function Navbar({ user, setUser, userRole }) {
 
   const showAdminOnlyMenu = Boolean(user && isAdminAccess(user, userRole));
 
+  const navbarUserDisplayShort = useMemo(
+    () => getNavbarUserDisplayShort(user),
+    [user],
+  );
+
+  const navbarUserFullLabel = useMemo(
+    () => (user ? String(user.name ?? "").trim() || user.email || "" : ""),
+    [user],
+  );
+
   // Đóng dropdown user khi click ngoài
   useEffect(() => {
     if (!userDropdownOpen) return;
@@ -199,12 +268,19 @@ export default function Navbar({ user, setUser, userRole }) {
             {menuConfig.map((item) => {
               if (item.type === "dropdown") {
                 return (
-                  <li key={item.key} className="mobile-dropdown">
+                  <li
+                    key={item.key}
+                    className={navTopItemLiClass(item.key, "mobile-dropdown")}
+                  >
                     <button
                       className="mobile-dropdown-toggle"
                       onClick={() => toggleMobileDropdown(item.key)}
                     >
-                      <span>{t(item.label)}</span>
+                      <span>
+                        <NavTopLabel itemKey={item.key}>
+                          {t(item.label)}
+                        </NavTopLabel>
+                      </span>
                       <span
                         className={`mobile-arrow ${mobileDropdowns[item.key] ? "open" : ""}`}
                       >
@@ -374,12 +450,14 @@ export default function Navbar({ user, setUser, userRole }) {
                 );
               }
               return (
-                <li key={item.key}>
+                <li key={item.key} className={navTopItemLiClass(item.key)}>
                   <RouterNavLink
                     to={item.path}
                     onClick={() => closeMobileMenu()}
                   >
-                    {t(item.label)}
+                    <NavTopLabel itemKey={item.key}>
+                      {t(item.label)}
+                    </NavTopLabel>
                   </RouterNavLink>
                 </li>
               );
@@ -410,7 +488,6 @@ export default function Navbar({ user, setUser, userRole }) {
             <img
               src="/picture/logo/logo_pavo.jpg"
               alt={t("navbar.logoAlt")}
-              style={{ height: "40px" }}
             />
           </a>
         </div>
@@ -427,9 +504,14 @@ export default function Navbar({ user, setUser, userRole }) {
                 if (item.adminOnly && !showAdminOnlyMenu) return null;
 
                 return (
-                  <li key={item.key}>
+                  <li
+                    key={item.key}
+                    className={navTopItemLiClass(item.key, "nav-li-has-dropdown")}
+                  >
                     <button type="button">
-                      {t(item.label)}
+                      <NavTopLabel itemKey={item.key}>
+                        {t(item.label)}
+                      </NavTopLabel>
                       <span className="dropdown-arrow">▼</span>
                     </button>
                     <ul className="dropdown-menu">
@@ -547,11 +629,13 @@ export default function Navbar({ user, setUser, userRole }) {
               }
 
               return (
-                <li key={item.key}>
+                <li key={item.key} className={navTopItemLiClass(item.key)}>
                   <RouterNavLink
                     to={item.path}
                   >
-                    {t(item.label)}
+                    <NavTopLabel itemKey={item.key}>
+                      {t(item.label)}
+                    </NavTopLabel>
                   </RouterNavLink>
                 </li>
               );
@@ -560,88 +644,110 @@ export default function Navbar({ user, setUser, userRole }) {
         </div>
 
         <div className="user-controls">
-          {/* User Dropdown */}
-          {user ? (
-            <div className="user-dropdown-wrapper">
-              <button
-                className="user-dropdown-btn"
-                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              >
-                <span className="user-avatar">
-                  {user.name
-                    ? user.name[0].toUpperCase()
-                    : user.email[0].toUpperCase()}
-                </span>
-                <span className="user-name-text">
-                  {user.name || user.email}
-                </span>
-                <span className="user-dropdown-arrow">▼</span>
-              </button>
-              {userDropdownOpen && (
-                <div className="user-dropdown-menu">
-                  <button
-                    onClick={() => {
-                      setChangePwOpen(true);
-                      setUserDropdownOpen(false);
-                    }}
-                  >
-                    🔑 {t("navbar.changePassword")}
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleSignOut();
-                      setUserDropdownOpen(false);
-                    }}
-                  >
-                    🚪 {t("navbar.logOut")}
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="nav-button">
-              <div className="anim-layer"></div>
-              <a href="#" onClick={handleSignIn}>
-                {t("navbar.dangNhap")}
-              </a>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="theme-toggle-btn"
-            title={
-              theme === "dark"
-                ? t("navbar.themeSwitchToLight")
-                : t("navbar.themeSwitchToDark")
-            }
-            aria-label={
-              theme === "dark"
-                ? t("navbar.themeSwitchToLight")
-                : t("navbar.themeSwitchToDark")
-            }
-          >
-            {theme === "dark" ? (
-              <FiSun size={20} strokeWidth={2} />
-            ) : (
-              <FiMoon size={20} strokeWidth={2} />
+          <div
+            className="navbar-tools"
+            aria-label={t(
+              "navbar.toolsRegion",
+              "Ngôn ngữ, giao diện và tài khoản",
             )}
-          </button>
+          >
+            <div className="lang-selector">
+              <label className="sr-only" htmlFor="navbar-lang-select">
+                {t("navbar.language")}
+              </label>
+              <select
+                id="navbar-lang-select"
+                value={language}
+                onChange={(e) => handleChangeLanguage(e.target.value)}
+                className="language-dropdown"
+              >
+                {Object.entries(languageOptions).map(([langKey, langLabel]) => (
+                  <option key={langKey} value={langKey}>
+                    {langLabel}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Language Selector */}
-          <div className="lang-selector">
-            <select
-              value={language}
-              onChange={(e) => handleChangeLanguage(e.target.value)}
-              className="language-dropdown"
+            <span className="navbar-tools-divider" aria-hidden />
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="theme-toggle-btn"
+              title={
+                theme === "dark"
+                  ? t("navbar.themeSwitchToLight")
+                  : t("navbar.themeSwitchToDark")
+              }
+              aria-label={
+                theme === "dark"
+                  ? t("navbar.themeSwitchToLight")
+                  : t("navbar.themeSwitchToDark")
+              }
             >
-              {Object.entries(languageOptions).map(([langKey, langLabel]) => (
-                <option key={langKey} value={langKey}>
-                  {langLabel}
-                </option>
-              ))}
-            </select>
+              {theme === "dark" ? (
+                <FiSun size={18} strokeWidth={2} />
+              ) : (
+                <FiMoon size={18} strokeWidth={2} />
+              )}
+            </button>
+
+            <span className="navbar-tools-divider" aria-hidden />
+
+            {user ? (
+              <div className="user-dropdown-wrapper">
+                <button
+                  type="button"
+                  className="user-dropdown-btn user-dropdown-btn--compact"
+                  title={navbarUserFullLabel}
+                  aria-expanded={userDropdownOpen}
+                  aria-haspopup="menu"
+                  aria-label={
+                    navbarUserFullLabel
+                      ? `${t("navbar.userMenu", "Tài khoản")}: ${navbarUserFullLabel}`
+                      : t("navbar.userMenu", "Tài khoản")
+                  }
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                >
+                  <span className="user-avatar" aria-hidden>
+                    {user.name
+                      ? Array.from(user.name.trim())[0]?.toUpperCase() ?? "?"
+                      : Array.from(user.email)[0]?.toUpperCase() ?? "?"}
+                  </span>
+                  <span className="user-name-text">{navbarUserDisplayShort}</span>
+                </button>
+                {userDropdownOpen && (
+                  <div className="user-dropdown-menu">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChangePwOpen(true);
+                        setUserDropdownOpen(false);
+                      }}
+                    >
+                      🔑 {t("navbar.changePassword")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSignOut();
+                        setUserDropdownOpen(false);
+                      }}
+                    >
+                      🚪 {t("navbar.logOut")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="nav-button nav-button--toolbar">
+                <div className="anim-layer" />
+                <a href="#" onClick={handleSignIn}>
+                  {t("navbar.dangNhap")}
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </nav>

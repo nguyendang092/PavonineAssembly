@@ -166,6 +166,142 @@ export function formatAttendanceLeaveTypeColumnForEmployee(emp) {
   );
 }
 
+/**
+ * Màu chữ loại phép (điểm danh / lương / thống kê):
+ * TS — xanh dương; PN & 1/2PN — xanh lá; NV — xám; còn lại — đỏ; không khớp chuẩn — đỏ.
+ * @param {unknown} raw — `loaiPhep` hoặc chuỗi tương đương (shortLabel cũng khớp).
+ */
+export function getAttendanceLeaveTypeColorClassName(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return "text-gray-500 dark:text-gray-400";
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  if (!matched) {
+    return "text-red-600 dark:text-red-400";
+  }
+  const sl = matched.shortLabel;
+  if (sl === "TS") return "text-blue-600 dark:text-blue-400";
+  if (sl === "PN" || sl === "1/2PN") {
+    return "text-green-600 dark:text-green-400";
+  }
+  if (sl === "NV") return "text-gray-600 dark:text-gray-400";
+  return "text-red-600 dark:text-red-400";
+}
+
+export function getAttendanceLeaveTypeColorClassNameForEmployee(emp) {
+  return getAttendanceLeaveTypeColorClassName(getAttendanceLeaveTypeRaw(emp));
+}
+
+/**
+ * Badge «Phân loại phép» (tóm tắt): nền + chữ + viền theo cùng quy tắc.
+ */
+export function getAttendanceLeaveTypeBadgeClassName(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) {
+    return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600";
+  }
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  if (!matched) {
+    return "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800";
+  }
+  const sl = matched.shortLabel;
+  if (sl === "TS") {
+    return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800";
+  }
+  if (sl === "PN" || sl === "1/2PN") {
+    return "bg-green-100 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800";
+  }
+  if (sl === "NV") {
+    return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600";
+  }
+  return "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800";
+}
+
+/** In trang (`window.print`): style inline theo cùng quy tắc màu. */
+export function getAttendanceLeaveTypePrintStyleAttr(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return "";
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  const base = "font-weight:bold;";
+  if (!matched) return `${base}color:#dc2626;`;
+  const sl = matched.shortLabel;
+  if (sl === "TS") return `${base}color:#2563eb;`;
+  if (sl === "PN" || sl === "1/2PN") return `${base}color:#16a34a;`;
+  if (sl === "NV") return `${base}color:#4b5563;`;
+  return `${base}color:#dc2626;`;
+}
+
+export function getAttendanceLeaveTypePrintStyleAttrForEmployee(emp) {
+  return getAttendanceLeaveTypePrintStyleAttr(getAttendanceLeaveTypeRaw(emp));
+}
+
+/**
+ * Attendance Dashboard (thống kê combo): `comboStatKey` → class chữ giống cột Loại phép.
+ * Metric không có trong options (checkedIn, nonStandardTimeIn, nightShift): màu tách biệt.
+ */
+export function getAttendanceLeaveTypeColorClassNameForComboStatKey(metricKey) {
+  const opt = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
+    (o) => o.comboStatKey === metricKey,
+  );
+  if (opt) return getAttendanceLeaveTypeColorClassName(opt.shortLabel);
+  switch (metricKey) {
+    case "checkedIn":
+      return "text-emerald-600 dark:text-emerald-400";
+    case "nonStandardTimeIn":
+      return "text-cyan-600 dark:text-cyan-400";
+    case "nightShift":
+      return "text-indigo-600 dark:text-indigo-400";
+    default:
+      return "text-slate-600 dark:text-slate-400";
+  }
+}
+
+export function getAttendanceLeaveTypeBadgeClassNameForComboStatKey(metricKey) {
+  const opt = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
+    (o) => o.comboStatKey === metricKey,
+  );
+  if (opt) return getAttendanceLeaveTypeBadgeClassName(opt.shortLabel);
+  switch (metricKey) {
+    case "checkedIn":
+      return "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800";
+    case "nonStandardTimeIn":
+      return "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800";
+    case "nightShift":
+      return "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800";
+    default:
+      return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600";
+  }
+}
+
+/** Màu fill cột Bar (Recharts) — đồng bộ TS / PN / NV / đỏ / … */
+export function getAttendanceComboBarFillForMetricKey(metricKey) {
+  const opt = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
+    (o) => o.comboStatKey === metricKey,
+  );
+  if (opt) {
+    const sl = opt.shortLabel;
+    if (sl === "TS") return "#2563eb";
+    if (sl === "PN" || sl === "1/2PN") return "#16a34a";
+    if (sl === "NV") return "#64748b";
+    return "#dc2626";
+  }
+  switch (metricKey) {
+    case "checkedIn":
+      return "#10b981";
+    case "nonStandardTimeIn":
+      return "#06b6d4";
+    case "nightShift":
+      return "#6366f1";
+    default:
+      return "#94a3b8";
+  }
+}
+
 /** Giá trị đã gập dấu (để khớp dữ liệu nhập tay / Excel). */
 const FOLDED_OPTION_VALUES = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((o) =>
   foldGioVaoCompare(o.value),

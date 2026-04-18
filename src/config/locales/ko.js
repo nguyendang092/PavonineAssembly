@@ -65,6 +65,8 @@ const ko = {
   },
   navbar: {
     getStarted: "시작하기",
+    toolsRegion: "언어, 화면 모드 및 계정",
+    userMenu: "계정",
     language: "언어",
     themeSwitchToLight: "밝은 테마로 전환",
     themeSwitchToDark: "어두운 테마로 전환",
@@ -933,6 +935,8 @@ const ko = {
     unattendedTitle: "미체크인 직원",
     unattendedSummary:
       "{{date}} 기준 출근 시간이 없는 직원이 {{count}}명입니다.",
+    unattendedSuppressSession:
+      "현재 로그인 세션에서는 이 대화상자를 다시 자동으로 표시하지 않음",
     colIndex: "번호",
     colCode: "사번",
     colName: "성명",

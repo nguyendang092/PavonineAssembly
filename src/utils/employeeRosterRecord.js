@@ -577,6 +577,23 @@ export function buildEmployeeProfileDocument({
 }
 
 /**
+ * Chuỗi theo ngày: nếu `form` có property thì dùng giá trị (kể cả `""` để xóa trên Firebase);
+ * nếu không có key thì `undefined` — `preserved` + `existing` giữ dữ liệu cũ.
+ * Tránh `form.x || undefined` làm mất `""` và khiến merge giữ nhầm giá trị cũ.
+ *
+ * `gioVao` / `gioRa`: nếu có key nhưng giá trị `null`/`undefined` (sau merge object) thì coi như
+ * xóa — trả `""` để không bị nhánh `preserved` giữ nhầm giờ cũ.
+ */
+function attendanceDayOptionalStringFromForm(form, key) {
+  if (!Object.prototype.hasOwnProperty.call(form, key)) return undefined;
+  const v = form[key];
+  if (v === null || v === undefined) {
+    return key === "gioVao" || key === "gioRa" ? "" : undefined;
+  }
+  return typeof v === "string" ? v.trim() : String(v);
+}
+
+/**
  * attendance/{date}/{key}: stt + mnv + trường chấm công theo ngày.
  */
 export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
@@ -589,24 +606,22 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
       : existing.stt;
 
   const extras = stripUndefined({
-    gioVao: form.gioVao || undefined,
-    loaiPhep: form.loaiPhep || undefined,
-    gioRa: form.gioRa || undefined,
-    caLamViec: form.caLamViec || undefined,
-    pnTon: form.pnTon || undefined,
-    mvt: form.mvt || undefined,
-    maBoPhan: form.maBoPhan || undefined,
-    gioiTinh: form.gioiTinh,
+    gioVao: attendanceDayOptionalStringFromForm(form, "gioVao"),
+    loaiPhep: attendanceDayOptionalStringFromForm(form, "loaiPhep"),
+    gioRa: attendanceDayOptionalStringFromForm(form, "gioRa"),
+    caLamViec: attendanceDayOptionalStringFromForm(form, "caLamViec"),
+    pnTon: attendanceDayOptionalStringFromForm(form, "pnTon"),
+    mvt: attendanceDayOptionalStringFromForm(form, "mvt"),
+    maBoPhan: attendanceDayOptionalStringFromForm(form, "maBoPhan"),
+    gioiTinh: Object.prototype.hasOwnProperty.call(form, "gioiTinh")
+      ? form.gioiTinh
+      : undefined,
   });
 
   const preserved = {};
   ATTENDANCE_EXTRA_KEYS.forEach((k) => {
-    const ex = extras[k];
-    const hasForm =
-      ex !== undefined &&
-      ex !== "" &&
-      !(typeof ex === "string" && ex.trim() === "");
-    if (!hasForm && existing[k] !== undefined && existing[k] !== "") {
+    if (extras[k] !== undefined) return;
+    if (existing[k] !== undefined && existing[k] !== "") {
       preserved[k] = existing[k];
     }
   });
