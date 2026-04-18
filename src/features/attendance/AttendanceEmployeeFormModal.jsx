@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { db, ref, push, update, get } from "@/services/firebase";
 import {
@@ -74,6 +74,18 @@ export default function AttendanceEmployeeFormModal({
   /** Khóa `attendance/{date}/{id}` khi sửa — giữ cố định khi form thay đổi */
   const [editAttendanceKey, setEditAttendanceKey] = useState(null);
 
+  /**
+   * Chỉ reset form khi mở form / đổi người sửa / đổi ngày — không phụ thuộc `initialRecord`
+   * theo tham chiếu (parent re-render) để tránh ghi đè dữ liệu đang chỉnh.
+   */
+  const formInitKey = useMemo(() => {
+    if (!open) return "";
+    if (initialRecord?.id) {
+      return `edit:${String(initialRecord.id)}:${selectedDate}`;
+    }
+    return `add:${selectedDate}`;
+  }, [open, initialRecord?.id, selectedDate]);
+
   useEffect(() => {
     if (!open) return;
     if (initialRecord && initialRecord.id) {
@@ -89,7 +101,8 @@ export default function AttendanceEmployeeFormModal({
       setForm({ ...EMPTY_EMPLOYEE_FORM });
       setEditAttendanceKey(null);
     }
-  }, [open, initialRecord]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialRecord chỉ đọc khi formInitKey đổi; không deps object để tránh reset khi parent tạo {...emp} mới cùng id
+  }, [open, formInitKey]);
 
   /** Khóa cuộn nền (desktop + mobile/iOS): overflow + body fixed + khôi phục scroll khi đóng. */
   useEffect(() => {

@@ -28,12 +28,13 @@ function MyAccessSummary({ variant = "compact" }) {
   const [panelOpen, setPanelOpen] = useState(() => {
     try {
       const v = sessionStorage.getItem(PANEL_STORAGE_KEY);
-      if (v === "0") return false;
       if (v === "1") return true;
+      /** Mặc định đóng (gọn); "0" hoặc chưa lưu → đóng */
+      return false;
     } catch {
       /* ignore */
     }
-    return true;
+    return false;
   });
 
   useEffect(() => {
