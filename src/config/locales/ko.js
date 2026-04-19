@@ -1007,6 +1007,7 @@ const ko = {
     mnv: "사원번호",
     stt: "순번",
     checkedIn: "체크인 완료",
+    buGioCong: "근무시간 보전",
     nonStandardTimeIn: "출근 시각 ≠ HH:MM",
     nonStandardTimeInShort: "≠ HH:MM",
     comboStatDetailBadge: "상세 목록",
@@ -1022,6 +1023,12 @@ const ko = {
     actionsMenu: "기능",
     uploadExcelByDate: "날짜별 Excel 업로드",
     importDataForDate: "해당 날짜 데이터 가져오기",
+    downloadExcelTemplate: "Excel 양식 다운로드(보내기와 동일)",
+    downloadExcelTemplateHint:
+      "보내기와 같은 서식 — 작성 후 선택한 날짜로 업로드",
+    downloadExcelTemplateOk:
+      "Excel 양식을 내려받았습니다. 제목 두 행 아래부터 입력한 뒤 업로드하세요.",
+    downloadExcelTemplateFail: "Excel 양식을 만들 수 없습니다.",
     addNew: "신규 추가",
     deleteAllData: "전체 데이터 삭제",
     print: "인쇄",

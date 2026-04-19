@@ -16,6 +16,66 @@ import {
   mergeAttendanceExcelIntoExistingRecord,
   stripAttendanceExcelUploadInternalFields,
 } from "./attendanceExcelUploadMerge";
+import {
+  ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  rawMatchesAttendanceTypeOption,
+} from "./attendanceGioVaoTypeOptions";
+
+function normalizeHeaderCell(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+/**
+ * Tìm cặp 2 dòng tiêu đề (VN + EN) giống file xuất điểm danh / mẫu, hoặc sheet 2 dòng đầu (legacy).
+ * @returns {{ dataRowStart: number; mnvCol: number }}
+ */
+function findAttendanceExcelLayout(rows) {
+  if (!Array.isArray(rows) || rows.length < 3) {
+    return { dataRowStart: 2, mnvCol: 1 };
+  }
+
+  for (let i = 0; i <= rows.length - 2; i++) {
+    const rv = rows[i];
+    if (!Array.isArray(rv) || rv.length < 3) continue;
+    const c0 = normalizeHeaderCell(rv[0]);
+    const c1 = normalizeHeaderCell(rv[1]);
+    const c2 = normalizeHeaderCell(rv[2]);
+    if (c0 !== "stt" && c0 !== "số thứ tự" && c0 !== "no." && c0 !== "no")
+      continue;
+
+    if (c1 === "mnv" || c1 === "mã nhân viên" || c1 === "mã nv") {
+      return { dataRowStart: i + 2, mnvCol: 1 };
+    }
+    if (
+      (c1.includes("ngày") || c1 === "date") &&
+      (c2 === "mnv" || c2 === "mã nhân viên" || c2 === "mã nv")
+    ) {
+      return { dataRowStart: i + 2, mnvCol: 2 };
+    }
+  }
+
+  return { dataRowStart: 2, mnvCol: 1 };
+}
+
+function trimCell(value) {
+  return value === undefined || value === null ? "" : String(value).trim();
+}
+
+/** Cột cuối: «Loại phép» (text/mã) hoặc PN tồn (số) — khớp xuất Excel. */
+function splitLeaveTypeAndPnTon(raw) {
+  const t = trimCell(raw);
+  if (!t) return { loaiPhep: "", pnTon: "" };
+  if (/^\d+(\.\d+)?$/.test(t)) return { loaiPhep: "", pnTon: t };
+  for (const opt of ATTENDANCE_GIO_VAO_TYPE_OPTIONS) {
+    if (rawMatchesAttendanceTypeOption(t, opt)) {
+      return { loaiPhep: t, pnTon: "" };
+    }
+  }
+  return { loaiPhep: "", pnTon: t };
+}
 
 /** Tìm hồ sơ theo MNV (cột Excel số) — khớp key node hoặc trường mnv. */
 function findProfileForMnv(profileMap, normalizedMnvDigits) {
@@ -78,19 +138,20 @@ export const handleUploadExcel = async ({
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
 
-    // Đọc dạng mảng để bỏ qua 2 dòng header (VN + EN)
+    // Đọc dạng mảng; vị trí bảng dữ liệu tự nhận (file xuất/mẫu có nhiều dòng đầu, hoặc 2 dòng header legacy)
     const rows = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
       defval: "",
       raw: false, // Trả về giá trị đã format
     });
 
-    if (!Array.isArray(rows) || rows.length <= 2) {
+    const { dataRowStart, mnvCol } = findAttendanceExcelLayout(rows);
+    if (!Array.isArray(rows) || rows.length <= dataRowStart) {
       throw new Error(t("attendanceList.excelEmpty"));
     }
 
-    // Bỏ 2 dòng tiêu đề, phần còn lại là dữ liệu
-    const dataRows = rows.slice(2);
+    // Bỏ các dòng trước bảng dữ liệu (file xuất/mẫu có nhiều dòng đầu; legacy: 2 dòng header)
+    const dataRows = rows.slice(dataRowStart);
 
     // ✅ Hàm parse ngày CHUẨN - tránh lệch timezone
     const normalizeDate = (value) => {
@@ -184,36 +245,28 @@ export const handleUploadExcel = async ({
       return Number.isFinite(numericValue) ? String(numericValue) : strValue;
     };
 
-    const getFirstNonEmptyValue = (...values) => {
-      for (const value of values) {
-        if (value !== undefined && value !== null) {
-          const text = String(value).trim();
-          if (text !== "") return text;
-        }
-      }
-      return "";
-    };
-
-    const trimCell = (value) =>
-      value === undefined || value === null ? "" : String(value).trim();
-
     dataRows.forEach((row, index) => {
-      // Kỳ vọng thứ tự cột: STT, MNV, MVT, Họ và tên, Giới tính, Ngày bắt đầu,
-      // Mã BP, Bộ phận, Thời gian vào, Thời gian ra, Ca làm việc, PN tồn (ưu tiên cột P nếu có)
-      const [
-        stt,
-        mnv,
-        mvt,
-        hoVaTen,
-        gioiTinh,
-        ngayThangNamSinh,
-        maBoPhan,
-        boPhan,
-        gioVao,
-        gioRa,
-        caLamViec,
-      ] = row;
-      const pnTonRaw = getFirstNonEmptyValue(row[11], row[14]);
+      // Cột MNV tại mnvCol (1 hoặc 2 nếu có thêm cột «Ngày» như xuất khoảng ngày)
+      const i = mnvCol;
+      const stt = row[0];
+      const mnv = row[i];
+      const mvt = row[i + 1];
+      const hoVaTen = row[i + 2];
+      const gioiTinh = row[i + 3];
+      const ngayThangNamSinh = row[i + 4];
+      const maBoPhan = row[i + 5];
+      const boPhan = row[i + 6];
+      const gioVao = row[i + 7];
+      const gioRa = row[i + 8];
+      const caLamViec = row[i + 9];
+      const lastCol = i + 10;
+      const wideCol = i + 13;
+      const rawLast = trimCell(row[lastCol]);
+      const rawWide = trimCell(row[wideCol]);
+      const fromLast = splitLeaveTypeAndPnTon(rawLast);
+      const fromWide = splitLeaveTypeAndPnTon(rawWide);
+      const loaiPhep = fromLast.loaiPhep || fromWide.loaiPhep;
+      const pnTonVal = fromLast.pnTon || fromWide.pnTon;
 
       // Bỏ qua dòng trống hoàn toàn
       const hasValue = row.some((cell) => String(cell || "").trim() !== "");
@@ -261,7 +314,8 @@ export const handleUploadExcel = async ({
         gioVao: trimCell(gioVao),
         gioRa: trimCell(gioRa),
         caLamViec: trimCell(caLamViec),
-        pnTon: trimCell(pnTonRaw),
+        loaiPhep: trimCell(loaiPhep),
+        pnTon: trimCell(pnTonVal),
         _excelHasStt: excelHasStt,
       };
     });

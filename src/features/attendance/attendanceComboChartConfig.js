@@ -6,7 +6,8 @@
 /** Các trường cộng dồn trên mỗi dòng bộ phận (không gồm total, department). */
 export const COMBO_CHART_METRIC_KEYS = [
   "checkedIn",
-  "coDiLam",
+  "daChamCong",
+  "buGioCong",
   "nonStandardTimeIn",
   "late",
   "annualLeave",
@@ -24,8 +25,9 @@ export const COMBO_CHART_METRIC_KEYS = [
 
 /** Nhãn mặc định (tl key = cùng tên field). */
 export const COMBO_STAT_LABEL_DEFAULTS = {
-  checkedIn: "Đã chấm công",
-  coDiLam: "Có đi làm",
+  checkedIn: "Chấm công",
+  daChamCong: "Đã chấm công",
+  buGioCong: "Bù giờ công",
   nonStandardTimeIn: "Giờ vào ≠ HH:MM",
   late: "Vào trễ",
   annualLeave: "Phép năm",
@@ -44,7 +46,8 @@ export const COMBO_STAT_LABEL_DEFAULTS = {
 /** Ô KPI: chỉ hiện khi đếm > 0 — màu số dùng `getAttendanceLeaveTypeColorClassNameForComboStatKey`. */
 export const COMBO_DASHBOARD_TILES = [
   { key: "checkedIn", tlKey: "checkedIn" },
-  { key: "coDiLam", tlKey: "coDiLam" },
+  { key: "daChamCong", tlKey: "daChamCong" },
+  { key: "buGioCong", tlKey: "buGioCong" },
   { key: "nonStandardTimeIn", tlKey: "nonStandardTimeIn" },
   { key: "late", tlKey: "late" },
   { key: "annualLeave", tlKey: "annualLeave" },

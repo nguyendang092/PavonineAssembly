@@ -33,6 +33,7 @@ import { db, ref, get, onValue, remove } from "@/services/firebase";
 import { EMPLOYEE_PROFILES_PATH } from "@/utils/employeeRosterRecord";
 import ExcelJS from "exceljs";
 import { handleUploadExcel } from "./AttendanceUploadHandler";
+import { downloadAttendanceDiemDanhTemplate } from "./attendanceDiemDanhExcelExport";
 import AttendanceTableRow, {
   ATTENDANCE_VIRTUAL_THRESHOLD,
   AttendanceTableColgroup,
@@ -1067,6 +1068,30 @@ function AttendanceList() {
       employeeProfilesMap,
     ],
   );
+
+  const handleDownloadAttendanceExcelTemplate = useCallback(async () => {
+    try {
+      await downloadAttendanceDiemDanhTemplate({ selectedDate });
+      setAlert({
+        show: true,
+        type: "success",
+        message: tl(
+          "downloadExcelTemplateOk",
+          "Đã tải mẫu Excel — cùng form xuất; điền dữ liệu phía dưới hai dòng tiêu đề rồi upload.",
+        ),
+      });
+    } catch (err) {
+      console.error(err);
+      setAlert({
+        show: true,
+        type: "error",
+        message: tl(
+          "downloadExcelTemplateFail",
+          "Không tạo được file mẫu Excel.",
+        ),
+      });
+    }
+  }, [selectedDate, setAlert, tl]);
 
   // Handle delete all data for selected date
   const handleDeleteAllData = useCallback(async () => {
@@ -3039,6 +3064,28 @@ function AttendanceList() {
                         />
                       </label>
                     )}
+                    {isAdminAccess(user, userRole) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleDownloadAttendanceExcelTemplate();
+                          setActionDropdownOpen(false);
+                        }}
+                        className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                      >
+                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                          📄
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                            {tl(
+                              "downloadExcelTemplate",
+                              "Tải mẫu Excel (đồng bộ xuất)",
+                            )}
+                          </span>
+                        </div>
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         const exportButton = document.querySelector(
@@ -3058,9 +3105,6 @@ function AttendanceList() {
                             defaultValue: "Xuất Excel",
                           })}
                         </span>
-                        <span className="text-xs text-gray-500 mt-0.5">
-                          Export to Excel file
-                        </span>
                       </div>
                     </button>
                     <button
@@ -3078,13 +3122,6 @@ function AttendanceList() {
                         <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
                           {tl(
                             "exportExcelDateRange",
-                            "Xuất Excel (khoảng ngày)",
-                          )}
-                        </span>
-                        <span className="text-xs text-gray-500 mt-0.5">
-                          {tl(
-                            "exportExcelDateRangeHint",
-                            "Từ ngày … đến ngày — một file",
                           )}
                         </span>
                       </div>

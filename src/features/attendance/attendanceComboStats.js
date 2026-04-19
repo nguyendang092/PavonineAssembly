@@ -40,8 +40,8 @@ export function textMatchesFuneralLeave(raw) {
 const CO_DI_LAM_FOLD_FULL = foldGioVaoCompare("Có đi làm");
 const CO_DI_LAM_FOLD_SHORT = foldGioVaoCompare("Có");
 
-/** Khớp loại «Có đi làm» / BGC / ghi tắt Có — dùng cột Giờ vào & ghi chú */
-export function textMatchesCoDiLam(raw) {
+/** Khớp «Bù giờ công» / BGC / «Có đi làm» / ghi tắt Có — dùng cột Giờ vào & ghi chú */
+export function textMatchesBuGioCong(raw) {
   const t = normalizeTextValue(raw).replace(/\u00a0/g, " ");
   if (!t) return false;
   const folded = foldGioVaoCompare(t);
@@ -63,6 +63,8 @@ export function textMatchesCoDiLam(raw) {
   if (tokens.includes("BGC")) return true;
   if (latin.includes("CO DI LAM")) return true;
   if (latin.replace(/\s/g, "").includes("CODILAM")) return true;
+  if (folded === foldGioVaoCompare("Bù giờ công")) return true;
+  if (latin.includes("BU GIO CONG")) return true;
   return false;
 }
 
@@ -146,14 +148,14 @@ export function getAttendanceComboFlags(emp) {
     hasText("CO DI LAM", "DI LAM") ||
     isLate;
   /**
-   * NV quên chấm giờ nhưng có mặt — ghi «Có đi làm» (hoặc BGC/Có) ở Giờ vào / ghi chú.
+   * NV quên chấm giờ nhưng có mặt — ghi «Bù giờ công» / BGC / «Có đi làm» ở Giờ vào / ghi chú.
    * Tách biệt checkedIn (giờ HH:MM, BGC trong luồng chấm công…).
    */
-  const coDiLam =
-    textMatchesCoDiLam(textSignalRaw) ||
-    textMatchesCoDiLam(emp.chamCong) ||
-    textMatchesCoDiLam(emp.phepNam) ||
-    textMatchesCoDiLam(emp.pnTon);
+  const buGioCongMatch =
+    textMatchesBuGioCong(textSignalRaw) ||
+    textMatchesBuGioCong(emp.chamCong) ||
+    textMatchesBuGioCong(emp.phepNam) ||
+    textMatchesBuGioCong(emp.pnTon);
   const isAnnualLeave =
     hasLeaveCode("PN", "PCT") ||
     hasText("PHEP NAM", "1/2PHEPNAM", "1/2 PN", "PHEP CONG TAC");
@@ -202,7 +204,10 @@ export function getAttendanceComboFlags(emp) {
   return {
     nonStandardTimeIn,
     checkedIn: hasCheckIn,
-    coDiLam: coDiLam || typeHitKeys.has("coDiLam"),
+    buGioCong:
+      buGioCongMatch ||
+      typeHitKeys.has("buGioCong") ||
+      typeHitKeys.has("coDiLam"),
     late: isLate || typeHitKeys.has("late"),
     annualLeave: isAnnualLeave || typeHitKeys.has("annualLeave"),
     nightShift: isNightShift,

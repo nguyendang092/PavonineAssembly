@@ -5,7 +5,8 @@
  */
 
 export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = [
-  { value: "Đi làm", shortLabel: "BGC", comboStatKey: "coDiLam" },
+  /** Bù giờ công / BGC — `comboStatKey` dùng xuyên suốt thống kê & lương. */
+  { value: "Bù giờ công", shortLabel: "BGC", comboStatKey: "buGioCong" },
   { value: "Vào trễ", shortLabel: "VT", comboStatKey: "late" },
   { value: "Phép năm", shortLabel: "PN", comboStatKey: "annualLeave" },
   {
@@ -24,7 +25,7 @@ export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = [
   { value: "Tai nạn", shortLabel: "TN", comboStatKey: "laborAccident" },
   { value: "Phép cưới", shortLabel: "PC", comboStatKey: "weddingLeave" },
   /** `value` = mã lưu DB / in biểu (PT); `shortLabel` = tên hiển thị */
-  { value: "PT", shortLabel: "PT", comboStatKey: "funeralLeave" },
+  { value: "Phép tang", shortLabel: "PT", comboStatKey: "funeralLeave" },
   {
     value: "Dưỡng sức",
     shortLabel: "DS",
@@ -97,6 +98,14 @@ export function rawMatchesAttendanceTypeOption(raw, option) {
     .flatMap((x) => x.split("/"))
     .filter(Boolean);
   if (tokens.includes(shortTok)) return true;
+
+  // Dữ liệu cũ / Excel: «Đi làm» — cùng nhóm BGC (đi làm / bù giờ công).
+  if (
+    option.shortLabel === "BGC" &&
+    f === foldGioVaoCompare("Đi làm")
+  ) {
+    return true;
+  }
 
   return false;
 }
@@ -242,9 +251,12 @@ export function getAttendanceLeaveTypePrintStyleAttrForEmployee(emp) {
 
 /**
  * Attendance Dashboard (thống kê combo): `comboStatKey` → class chữ giống cột Loại phép.
- * Metric không có trong options (checkedIn, nonStandardTimeIn, nightShift): màu tách biệt.
+ * Metric không có trong options (checkedIn, nonStandardTimeIn, nightShift) hoặc KPI `buGioCong`: màu tách biệt.
  */
 export function getAttendanceLeaveTypeColorClassNameForComboStatKey(metricKey) {
+  if (metricKey === "buGioCong") {
+    return "text-amber-700 dark:text-amber-400";
+  }
   const opt = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
     (o) => o.comboStatKey === metricKey,
   );
@@ -262,6 +274,9 @@ export function getAttendanceLeaveTypeColorClassNameForComboStatKey(metricKey) {
 }
 
 export function getAttendanceLeaveTypeBadgeClassNameForComboStatKey(metricKey) {
+  if (metricKey === "buGioCong") {
+    return "bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-800";
+  }
   const opt = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
     (o) => o.comboStatKey === metricKey,
   );
@@ -280,6 +295,7 @@ export function getAttendanceLeaveTypeBadgeClassNameForComboStatKey(metricKey) {
 
 /** Màu fill cột Bar (Recharts) — đồng bộ TS / PN / NV / đỏ / … */
 export function getAttendanceComboBarFillForMetricKey(metricKey) {
+  if (metricKey === "buGioCong") return "#d97706";
   const opt = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
     (o) => o.comboStatKey === metricKey,
   );

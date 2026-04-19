@@ -10,7 +10,7 @@ export function classifyAttendanceRowForSalary(row) {
   if (flags.resignedLeave) return "resigned";
 
   const isWork =
-    flags.checkedIn || flags.coDiLam || flags.late;
+    flags.checkedIn || flags.buGioCong || flags.late;
 
   const isPaidLeave =
     flags.annualLeave ||

@@ -1011,6 +1011,7 @@ const vi = {
     dayOffToggleHint:
       "Bật khi ngày đó là ngày nghỉ/off: trên bảng lương, ca ngày hiển thị giờ làm quy đổi ở cột TC off (cùng quy tắc điểm danh); cột Giờ công là «-». Ngày không off: giờ công ở cột Giờ công. Ca đêm: GC nằm ở cột GC ca đêm / GC ca đêm off.",
     checkedIn: "Đã chấm công",
+    buGioCong: "Bù giờ công",
     nonStandardTimeIn: "Giờ vào ≠ HH:MM",
     nonStandardTimeInShort: "≠ HH:MM",
     comboStatDetailBadge: "Chi tiết danh sách",
@@ -1025,6 +1026,12 @@ const vi = {
     actionsMenu: "Chức năng",
     uploadExcelByDate: "Upload Excel theo ngày",
     importDataForDate: "Import dữ liệu cho ngày",
+    downloadExcelTemplate: "Tải file mẫu Excel",
+    downloadExcelTemplateHint:
+      "Cùng bố cục file xuất — điền rồi upload cho ngày đang chọn",
+    downloadExcelTemplateOk:
+      "Đã tải mẫu Excel — cùng form xuất; điền dữ liệu phía dưới hai dòng tiêu đề rồi upload.",
+    downloadExcelTemplateFail: "Không tạo được file mẫu Excel.",
     addNew: "Thêm mới",
     deleteAllData: "Xóa toàn bộ dữ liệu",
     print: "In",
@@ -1062,8 +1069,7 @@ const vi = {
       "✅ Mở cửa sổ in danh sách chấm công ({{count}} nhân viên)",
     noCompensationEmployees: "Không có nhân viên bù công nào",
     overtimeFormTitle: "Biểu mẫu đăng ký tăng ca",
-    exportExcelDateRange: "Xuất Excel (khoảng ngày)",
-    exportExcelDateRangeHint: "Từ ngày … đến ngày — một file",
+    exportExcelDateRange: "Xuất Excel từ ngày … đến ngày …",
     exportRangeModalTitle: "Xuất Excel theo khoảng ngày",
     exportRangeModalHint:
       "Dữ liệu mỗi ngày được gộp hồ sơ giống màn hình điểm danh. Bộ lọc tìm kiếm, bộ phận, giới tính và trạng thái chấm công hiện tại cũng áp dụng cho từng ngày trong file.",
