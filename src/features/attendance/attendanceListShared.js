@@ -1,11 +1,36 @@
 import {
   ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  foldGioVaoCompare,
   getAttendanceLeaveTypeRaw,
   rawMatchesAttendanceTypeOption,
 } from "./attendanceGioVaoTypeOptions";
 
 /** Giá trị đặc biệt trong `loaiPhepFilter`: không có loại phép (chỉ giờ HH:MM hoặc trống). */
 export const ATTENDANCE_LEAVE_FILTER_NONE = "__none__";
+
+/**
+ * Lọc nhanh «chưa điểm danh»: chỉ khi cả ba trường đều trống — giờ vào, loại phép, ca làm việc.
+ * Có bất kỳ giá trị nào trong ba trường → không tính là chưa điểm danh.
+ */
+export function isEmployeeQuickUnattended(emp) {
+  if (emp == null || typeof emp !== "object") return false;
+  const hasGioVao = String(emp.gioVao ?? "").trim() !== "";
+  const hasLoaiPhep = String(emp.loaiPhep ?? "").trim() !== "";
+  const hasCaLamViec = String(emp.caLamViec ?? "").trim() !== "";
+  return !hasGioVao && !hasLoaiPhep && !hasCaLamViec;
+}
+
+function findAttendanceLeaveOptionByFilterValue(sel) {
+  const s = String(sel ?? "").trim();
+  if (!s) return undefined;
+  return ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
+    (o) =>
+      o.value === s ||
+      o.shortLabel === s ||
+      foldGioVaoCompare(o.value) === foldGioVaoCompare(s) ||
+      foldGioVaoCompare(o.shortLabel) === foldGioVaoCompare(s),
+  );
+}
 
 export function employeeMatchesLoaiPhepFilter(emp, selectedValues) {
   if (!selectedValues || selectedValues.length === 0) return true;
@@ -18,7 +43,7 @@ export function employeeMatchesLoaiPhepFilter(emp, selectedValues) {
       if (isNone) return true;
       continue;
     }
-    const opt = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find((o) => o.value === sel);
+    const opt = findAttendanceLeaveOptionByFilterValue(sel);
     if (opt && rawMatchesAttendanceTypeOption(raw, opt)) return true;
   }
   return false;

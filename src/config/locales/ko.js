@@ -921,6 +921,8 @@ const ko = {
     maleLabel: "남",
     btnUpdate: "수정",
     btnAdd: "추가",
+    update: "수정",
+    add: "추가",
     close: "닫기",
     export: "⬇ Excel 내보내기",
     cancel: "취소",

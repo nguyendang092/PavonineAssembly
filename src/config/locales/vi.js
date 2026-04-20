@@ -931,6 +931,8 @@ const vi = {
     maleLabel: "Nam",
     btnUpdate: "Cập nhật",
     btnAdd: "Thêm mới",
+    update: "Cập nhật",
+    add: "Thêm mới",
     close: "Đóng",
     export: "⬇ Xuất Excel",
     cancel: "Hủy",

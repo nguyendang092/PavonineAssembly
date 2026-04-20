@@ -48,6 +48,7 @@ export function foldGioVaoCompare(s) {
   return String(s ?? "")
     .trim()
     .replace(/\u00a0/g, " ")
+    .normalize("NFKC")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
@@ -70,7 +71,8 @@ export const ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH = [
 export function rawMatchesAttendanceTypeOption(raw, option) {
   const t = String(raw ?? "")
     .trim()
-    .replace(/\u00a0/g, " ");
+    .replace(/\u00a0/g, " ")
+    .normalize("NFKC");
   if (!t) return false;
   if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) return false;
 

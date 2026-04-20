@@ -88,6 +88,7 @@ import {
   ISO_DATE_KEY_RE,
   attendanceTableWrapperMinWidthClass,
   employeeMatchesLoaiPhepFilter,
+  isEmployeeQuickUnattended,
 } from "./attendanceListShared";
 import { mergeAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 
@@ -195,7 +196,7 @@ function AttendanceList() {
   const [departmentListFilter, setDepartmentListFilter] = useState([]);
   /** Các `value` trong `ATTENDANCE_GIO_VAO_TYPE_OPTIONS` + `ATTENDANCE_LEAVE_FILTER_NONE` */
   const [loaiPhepFilter, setLoaiPhepFilter] = useState([]);
-  /** Lọc nhanh: chỉ người chưa có giờ vào và chưa chọn ca (trùng logic cũ «chưa chấm công»). */
+  /** Lọc nhanh: chỉ người chưa có giờ vào, loại phép và ca làm việc (cả ba trống = chưa điểm danh). */
   const [showOnlyUnattendedFilter, setShowOnlyUnattendedFilter] =
     useState(false);
   const [expandedSections, setExpandedSections] = useState({});
@@ -260,12 +261,7 @@ function AttendanceList() {
   );
 
   const unattendedEmployees = useMemo(
-    () =>
-      employees.filter((emp) => {
-        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
-        const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
-        return !hasGioVao && !hasCaLamViec;
-      }),
+    () => employees.filter((emp) => isEmployeeQuickUnattended(emp)),
     [employees],
   );
 
@@ -495,11 +491,8 @@ function AttendanceList() {
           return false;
         if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
           return false;
-        if (showOnlyUnattendedFilter) {
-          const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
-          const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
-          if (hasGioVao || hasCaLamViec) return false;
-        }
+        if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp))
+          return false;
         if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) return false;
         if (!q) return true;
         return (
@@ -847,11 +840,7 @@ function AttendanceList() {
     const deptMap = new Map();
     for (const emp of employees) {
       // Apply other filters except Department
-      if (showOnlyUnattendedFilter) {
-        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
-        const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
-        if (hasGioVao || hasCaLamViec) continue;
-      }
+      if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp)) continue;
       if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) continue;
       const deptLabel = String(emp.boPhan || "").trim();
       const deptKey = normalizeDepartment(deptLabel);
@@ -896,11 +885,7 @@ function AttendanceList() {
     );
     for (const emp of employees) {
       // Apply other filters except Shift
-      if (showOnlyUnattendedFilter) {
-        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
-        const hasCaLamViec = normalizeTextValue(emp.caLamViec) !== "";
-        if (hasGioVao || hasCaLamViec) continue;
-      }
+      if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp)) continue;
       if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) continue;
       const empDeptKey = normalizeDepartment(emp.boPhan);
       if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/contexts/UserContext";
@@ -52,6 +53,11 @@ import {
 } from "./attendanceExcelUploadMerge";
 import { getAttendanceColWidthPercents } from "./AttendanceTableRow";
 import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
+import {
+  ATTENDANCE_LEAVE_FILTER_NONE,
+  employeeMatchesLoaiPhepFilter,
+  isEmployeeQuickUnattended,
+} from "./attendanceListShared";
 
 function SeasonalAttendanceColgroup({ showRowModalActions, columnPlan = "full" }) {
   const widths = getAttendanceColWidthPercents(
@@ -75,8 +81,6 @@ function seasonalTableMinWidthClass(columnPlan) {
   if (columnPlan === "minimal") return "min-w-[600px]";
   return "min-w-[920px]";
 }
-
-const normalizeTextValue = (value) => String(value ?? "").trim();
 
 function SeasonalStaffAttendance() {
   // State for alert messages
@@ -110,19 +114,37 @@ function SeasonalStaffAttendance() {
   const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
   const { user, userDepartments, userRole } = useUser();
 
+  const [loaiPhepFilter, setLoaiPhepFilter] = useState([]);
+  const [showOnlyUnattendedFilter, setShowOnlyUnattendedFilter] =
+    useState(false);
+
+  const normalizeDepartment = useCallback((value) => {
+    return String(value || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  }, []);
+
+  const handleQuickNoCheckInFilter = useCallback(() => {
+    setShowOnlyUnattendedFilter((v) => !v);
+  }, []);
+
+  const allLeaveTypeFilterValues = useMemo(
+    () => ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((o) => o.value),
+    [],
+  );
+
+  const isQuickNoCheckInActive = showOnlyUnattendedFilter;
+
   const [employees, setEmployees] = useState([]);
   const [editing, setEditing] = useState(null);
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
-  const [filterGenderSearch, setFilterGenderSearch] = useState("");
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
-  const [gioiTinhFilter, setGioiTinhFilter] = useState([]); // Filter by gender
   const [departmentListFilter, setDepartmentListFilter] = useState([]); // Filter by department in filter section
-  const [gioVaoFilter, setGioVaoFilter] = useState([]); // Filter by entry time status (chưa chấm công, đã chấm công)
   const [expandedSections, setExpandedSections] = useState({}); // Track which sections are expanded
   const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   // Overtime modal-specific filters
   const [modalFilterOpen, setModalFilterOpen] = useState(false);
-  const [modalGioiTinhFilter, setModalGioiTinhFilter] = useState([]);
   const [modalDepartmentListFilter, setModalDepartmentListFilter] = useState(
     [],
   );
@@ -237,50 +259,61 @@ function SeasonalStaffAttendance() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [actionDropdownOpen]);
 
-  // Filter employees
-  const filteredEmployees = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    return employees.filter((emp) => {
-      if (departmentFilter && emp.boPhan !== departmentFilter) return false;
-      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
-        return false;
-      if (
-        departmentListFilter.length > 0 &&
-        !departmentListFilter.includes(emp.boPhan)
-      )
-        return false;
-      // Filter by entry time status
-      if (gioVaoFilter.length > 0) {
-        const hasGioVao = normalizeTextValue(emp.gioVao) !== "";
-        const isCheckedIn = "đã_chấm_công";
-        const isNotCheckedIn = "chưa_chấm_công";
-        if (hasGioVao && !gioVaoFilter.includes(isCheckedIn)) return false;
-        if (!hasGioVao && !gioVaoFilter.includes(isNotCheckedIn)) return false;
-      }
-      if (!q) return true;
-      return (
-        (emp.hoVaTen || "").toLowerCase().includes(q) ||
-        (emp.mnv || "").toLowerCase().includes(q) ||
-        (emp.boPhan || "").toLowerCase().includes(q)
+  useEffect(() => {
+    if (!filterOpen) return undefined;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, [filterOpen]);
+
+  const filterSeasonalAttendanceRows = useCallback(
+    (list) => {
+      const q = searchTerm.trim().toLowerCase();
+      const selectedDeptKeys = new Set(
+        departmentListFilter.map((dept) => normalizeDepartment(dept)),
       );
-    });
-  }, [
-    searchTerm,
-    employees,
-    departmentFilter,
-    gioiTinhFilter,
-    departmentListFilter,
-    gioVaoFilter,
-  ]);
+      return list.filter((emp) => {
+        const empDeptKey = normalizeDepartment(emp.boPhan);
+        const departmentFilterKey = normalizeDepartment(departmentFilter);
+        if (departmentFilterKey && empDeptKey !== departmentFilterKey)
+          return false;
+        if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
+          return false;
+        if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp))
+          return false;
+        if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter))
+          return false;
+        if (!q) return true;
+        return (
+          (emp.hoVaTen || "").toLowerCase().includes(q) ||
+          (emp.mnv || "").toLowerCase().includes(q) ||
+          (emp.boPhan || "").toLowerCase().includes(q)
+        );
+      });
+    },
+    [
+      searchTerm,
+      departmentFilter,
+      departmentListFilter,
+      showOnlyUnattendedFilter,
+      loaiPhepFilter,
+      normalizeDepartment,
+    ],
+  );
+
+  const filteredEmployees = useMemo(
+    () => filterSeasonalAttendanceRows(employees),
+    [employees, filterSeasonalAttendanceRows],
+  );
 
   // Overtime modal: derive unique options and apply modal filters from filteredEmployees
-  const modalUniqueGenders = useMemo(
-    () =>
-      Array.from(
-        new Set(filteredEmployees.map((e) => e.gioiTinh).filter(Boolean)),
-      ),
-    [filteredEmployees],
-  );
   const modalUniqueDepartments = useMemo(
     () =>
       Array.from(
@@ -291,30 +324,24 @@ function SeasonalStaffAttendance() {
   const modalFilteredEmployees = useMemo(() => {
     return filteredEmployees.filter((emp) => {
       if (
-        modalGioiTinhFilter.length > 0 &&
-        !modalGioiTinhFilter.includes(emp.gioiTinh)
-      )
-        return false;
-      if (
         modalDepartmentListFilter.length > 0 &&
         !modalDepartmentListFilter.includes(emp.boPhan)
       )
         return false;
       return true;
     });
-  }, [filteredEmployees, modalGioiTinhFilter, modalDepartmentListFilter]);
+  }, [filteredEmployees, modalDepartmentListFilter]);
 
   // Get unique departments (cascading filter - based on other selected filters)
   const departments = useMemo(() => {
     const depts = new Set();
     for (const emp of employees) {
-      // Apply other filters except Department
-      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
-        continue;
+      if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp)) continue;
+      if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) continue;
       if (emp.boPhan) depts.add(emp.boPhan);
     }
     return Array.from(depts);
-  }, [employees, gioiTinhFilter]);
+  }, [employees, showOnlyUnattendedFilter, loaiPhepFilter]);
 
   // Filtered list for 'bù công' (gioVao là giờ, không phải loại như PN, PO...)
   const buCongEmployees = useMemo(() => {
@@ -335,38 +362,29 @@ function SeasonalStaffAttendance() {
     });
   }, [filteredEmployees]);
 
-  // Get unique genders (cascading filter - based on other selected filters)
-  const genderList = useMemo(() => {
-    const genders = new Set();
-    for (const emp of employees) {
-      // Apply other filters except Gender
-      if (
-        departmentListFilter.length > 0 &&
-        !departmentListFilter.includes(emp.boPhan)
-      )
-        continue;
-      if (emp.gioiTinh) genders.add(emp.gioiTinh);
-    }
-    return Array.from(genders).sort();
-  }, [employees, departmentListFilter]);
-
   // Get unique mã BP codes (cascading filter - based on other selected filters)
   // Get unique shifts (cascading filter - based on other selected filters)
   const shiftList = useMemo(() => {
     const shifts = new Set();
+    const selectedDeptKeys = new Set(
+      departmentListFilter.map((dept) => normalizeDepartment(dept)),
+    );
     for (const emp of employees) {
-      // Apply other filters except Shift
-      if (gioiTinhFilter.length > 0 && !gioiTinhFilter.includes(emp.gioiTinh))
+      const empDeptKey = normalizeDepartment(emp.boPhan);
+      if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
         continue;
-      if (
-        departmentListFilter.length > 0 &&
-        !departmentListFilter.includes(emp.boPhan)
-      )
-        continue;
+      if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp)) continue;
+      if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) continue;
       if (emp.caLamViec) shifts.add(emp.caLamViec);
     }
     return Array.from(shifts).sort();
-  }, [employees, gioiTinhFilter, departmentListFilter]);
+  }, [
+    employees,
+    departmentListFilter,
+    normalizeDepartment,
+    showOnlyUnattendedFilter,
+    loaiPhepFilter,
+  ]);
 
   // Filter departments based on search
   const filteredDepartments = useMemo(() => {
@@ -399,7 +417,7 @@ function SeasonalStaffAttendance() {
       setAlert({
         show: true,
         type: "error",
-        message: "Vui lòng đăng nhập để thực hiện thao tác này",
+        message: t("attendanceList.pleaseLogin"),
       });
       return;
     }
@@ -410,7 +428,7 @@ function SeasonalStaffAttendance() {
         setAlert({
           show: true,
           type: "error",
-          message: "Không tìm thấy bản ghi để cập nhật",
+          message: t("attendanceList.error"),
         });
         return;
       }
@@ -418,7 +436,7 @@ function SeasonalStaffAttendance() {
         setAlert({
           show: true,
           type: "error",
-          message: "Bạn không có quyền chỉnh sửa nhân viên này",
+          message: t("attendanceList.error"),
         });
         return;
       }
@@ -426,7 +444,7 @@ function SeasonalStaffAttendance() {
       setAlert({
         show: true,
         type: "error",
-        message: "Bạn không có quyền thêm nhân viên cho bộ phận này",
+        message: t("attendanceList.error"),
       });
       return;
     }
@@ -485,7 +503,7 @@ function SeasonalStaffAttendance() {
         setAlert({
           show: true,
           type: "error",
-          message: "Vui lòng đăng nhập để thực hiện thao tác này",
+          message: t("attendanceList.pleaseLogin"),
         });
         return;
       }
@@ -500,7 +518,7 @@ function SeasonalStaffAttendance() {
         setAlert({
           show: true,
           type: "error",
-          message: "Bạn không có quyền chỉnh sửa nhân viên này!",
+          message: t("attendanceList.error"),
         });
         return;
       }
@@ -510,10 +528,11 @@ function SeasonalStaffAttendance() {
       if (!lp && gv && !looksLikeGioVaoTime(gv)) {
         next = { ...next, loaiPhep: gv, gioVao: "" };
       }
+      setEditing(emp.id);
       setForm(next);
       setShowModal(true);
     },
-    [user, userRole, userDepartments],
+    [user, userRole, userDepartments, t],
   );
 
   // Handle delete
@@ -523,7 +542,7 @@ function SeasonalStaffAttendance() {
         setAlert({
           show: true,
           type: "error",
-          message: "Vui lòng đăng nhập để thực hiện thao tác này",
+          message: t("attendanceList.pleaseLogin"),
         });
         return;
       }
@@ -532,7 +551,7 @@ function SeasonalStaffAttendance() {
         setAlert({
           show: true,
           type: "error",
-          message: "Bạn không có quyền xóa nhân viên này!",
+          message: t("attendanceList.error"),
         });
         return;
       }
@@ -547,28 +566,30 @@ function SeasonalStaffAttendance() {
         setAlert({
           show: true,
           type: "error",
-          message: "Bạn không có quyền xóa nhân viên này!",
+          message: t("attendanceList.error"),
         });
         return;
       }
-      if (!window.confirm("Bạn có chắc muốn xóa nhân viên này?")) return;
+      if (!window.confirm(t("attendanceList.deleteConfirm"))) return;
 
       try {
         await remove(ref(db, `seasonalAttendance/${selectedDate}/${id}`));
         setAlert({
           show: true,
           type: "success",
-          message: "✅ Xóa thành công",
+          message: t("attendanceList.deleteSuccess", {
+            component: "attendance",
+          }),
         });
       } catch (err) {
         setAlert({
           show: true,
           type: "error",
-          message: "❌ Xóa thất bại",
+          message: t("common.deleteFail"),
         });
       }
     },
-    [user, userRole, userDepartments, employees, selectedDate],
+    [user, userRole, userDepartments, employees, selectedDate, t],
   );
 
   // Handle upload Excel
@@ -2107,80 +2128,91 @@ function SeasonalStaffAttendance() {
                 type="button"
                 onClick={() => setFilterOpen(!filterOpen)}
                 className={`inline-flex h-8 w-auto max-w-full items-center justify-center gap-0.5 whitespace-nowrap rounded-lg border border-slate-300 px-1 text-xs font-bold shadow transition sm:text-sm ${
-                  gioiTinhFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
-                  gioVaoFilter.length > 0
+                  loaiPhepFilter.length > 0 ||
+                  isQuickNoCheckInActive
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-gray-600 text-white hover:bg-gray-700"
                 }`}
               >
                 🔽 {tl("filter", "Bộ lọc")}
                 <span className="text-xs">
-                  {gioiTinhFilter.length > 0 ||
-                  departmentListFilter.length > 0 ||
-                  gioVaoFilter.length > 0
+                  {departmentListFilter.length > 0 ||
+                  loaiPhepFilter.length > 0 ||
+                  isQuickNoCheckInActive
                     ? "✓"
                     : ""}
                 </span>
               </button>
 
-              {/* Filter Modal Dialog */}
-              {filterOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
-                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col animate-slideUp border border-gray-100">
-                    {/* Header */}
-                    <div className="p-5 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
-                      <div className="absolute inset-0 bg-white opacity-10"></div>
-                      <div className="relative z-10">
-                        <h3 className="font-bold text-white text-xl flex items-center gap-2">
-                          <span className="text-2xl">🔍</span>
-                          {t("attendanceList.advancedFilter")}
-                        </h3>
-                        <p className="text-xs text-blue-50 mt-1.5 font-medium">
-                          Chọn điều kiện lọc • Kết quả tự động cập nhật
-                        </p>
+              {/* Bộ lọc nâng cao — portal + layout giống Điểm danh NV chính thức */}
+              {filterOpen &&
+                createPortal(
+                  <div
+                    className="fixed inset-0 z-[140] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm animate-fadeIn"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="seasonal-advanced-filter-title"
+                  >
+                    <div className="flex h-[min(620px,85vh)] w-full max-w-md min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl animate-slideUp dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/40">
+                      <div className="shrink-0 border-b border-blue-100/80 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 px-4 py-2.5 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-white opacity-10"></div>
+                        <div className="relative z-10">
+                          <h3
+                            id="seasonal-advanced-filter-title"
+                            className="font-bold text-white text-lg flex items-center gap-1.5 leading-tight"
+                          >
+                            <span className="text-xl shrink-0">🔍</span>
+                            {t("attendanceList.advancedFilter")}
+                          </h3>
+                          <p className="text-[11px] text-blue-50/95 mt-1 font-medium leading-snug">
+                            {tl(
+                              "advancedFilterAutoUpdate",
+                              "Chọn điều kiện lọc • Kết quả tự động cập nhật",
+                            )}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Content */}
-                    <div className="p-4 overflow-y-auto flex-1">
-                      {/* Department Filter Section */}
-                      <div className="mb-3">
-                        <button
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              department: !prev.department,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-orange-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-orange-500 text-base">
-                              🏢
+                      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
+                        {/* Department — giống AttendanceList */}
+                        <div className="mb-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExpandedSections((prev) => ({
+                                ...prev,
+                                department: !prev.department,
+                              }));
+                            }}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-orange-200 dark:border-orange-900/40 dark:from-orange-950/40 dark:to-amber-950/30"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-orange-500 text-base">
+                                🏢
+                              </span>
+                              <span>{tl("department", "Bộ phận")}</span>
                             </span>
-                            <span>Bộ phận</span>
-                          </span>
-                          <span className="text-orange-600 font-bold">
-                            {expandedSections.department ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.department && (
-                          <div className="border-2 border-orange-100 rounded-lg mt-2 bg-gradient-to-b from-white to-orange-50/30 shadow-inner">
-                            <input
-                              type="text"
-                              value={filterDepartmentSearch}
-                              onChange={(e) =>
-                                setFilterDepartmentSearch(e.target.value)
-                              }
-                              placeholder="🔍 Tìm bộ phận..."
-                              className="w-full border-b border-orange-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                            />
-                            <div className="max-h-40 overflow-y-auto">
-                              {departments.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                  Không có dữ liệu
-                                </div>
+                            <span className="text-orange-600 font-bold">
+                              {expandedSections.department ? "▼" : "▶"}
+                            </span>
+                          </button>
+                          {expandedSections.department && (
+                            <div className="border-2 border-orange-100 rounded-lg mt-2 bg-gradient-to-b from-white to-orange-50/30 shadow-inner dark:border-orange-900/35">
+                              <input
+                                type="text"
+                                value={filterDepartmentSearch}
+                                onChange={(e) =>
+                                  setFilterDepartmentSearch(e.target.value)
+                                }
+                                placeholder={t("attendanceList.searchDepartment")}
+                                className="w-full border-b border-orange-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:border-orange-800 dark:bg-slate-900/80"
+                              />
+                              <div className="max-h-84 overflow-y-auto">
+                                {departments.length === 0 ? (
+                                  <div className="px-3 py-2 text-sm text-gray-500 italic dark:text-slate-400">
+                                    {tl("noData", "Không có dữ liệu")}
+                                  </div>
                               ) : (
                                 <>
                                   <label className="flex items-center px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm border-b-2 border-orange-200 bg-orange-50/50 font-semibold">
@@ -2213,7 +2245,7 @@ function SeasonalStaffAttendance() {
                                       }}
                                       className="mr-2 w-4 h-4 cursor-pointer"
                                     />
-                                    ✓ Chọn tất cả
+                                    ✓ {tl("selectAll", "Chọn tất cả")}
                                   </label>
                                   {departments
                                     .filter((dept) =>
@@ -2226,7 +2258,7 @@ function SeasonalStaffAttendance() {
                                     .map((dept) => (
                                       <label
                                         key={dept}
-                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0 dark:hover:bg-slate-800/80"
                                       >
                                         <input
                                           type="checkbox"
@@ -2259,219 +2291,201 @@ function SeasonalStaffAttendance() {
                         )}
                       </div>
 
-                      {/* Gender Filter Section */}
+                      {/* Loại phép — giống AttendanceList */}
                       <div className="mb-3">
                         <button
+                          type="button"
                           onClick={() => {
                             setExpandedSections((prev) => ({
                               ...prev,
-                              gender: !prev.gender,
+                              leaveType: !prev.leaveType,
                             }));
                           }}
                           className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
                         >
                           <span className="flex items-center gap-2">
-                            <span className="text-green-500 text-base">⚧️</span>
-                            <span>Giới tính</span>
+                            <span className="text-green-500 text-base">📋</span>
+                            <span>{tl("leaveTypeFilter", "Loại phép")}</span>
                           </span>
                           <span className="text-green-600 font-bold">
-                            {expandedSections.gender ? "▼" : "▶"}
+                            {expandedSections.leaveType ? "▼" : "▶"}
                           </span>
                         </button>
-                        {expandedSections.gender && (
+                        {expandedSections.leaveType && (
                           <div className="border-2 border-green-100 rounded-lg mt-2 bg-gradient-to-b from-white to-green-50/30 shadow-inner">
-                            <input
-                              type="text"
-                              value={filterGenderSearch}
-                              onChange={(e) =>
-                                setFilterGenderSearch(e.target.value)
-                              }
-                              placeholder="🔍 Tìm giới tính..."
-                              className="w-full border-b border-green-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                            />
-                            <div className="max-h-40 overflow-y-auto">
-                              {genderList.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                  Không có dữ liệu
-                                </div>
-                              ) : (
-                                <>
-                                  <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        gioiTinhFilter.length ===
-                                        genderList.length
-                                      }
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setGioiTinhFilter([...genderList]);
-                                        } else {
-                                          setGioiTinhFilter([]);
-                                        }
-                                      }}
-                                      className="mr-2 w-4 h-4 cursor-pointer"
-                                    />
-                                    ✓ Chọn tất cả
-                                  </label>
-                                  {genderList
-                                    .filter((gender) =>
-                                      gender
-                                        .toLowerCase()
-                                        .includes(
-                                          filterGenderSearch.toLowerCase(),
-                                        ),
-                                    )
-                                    .map((gender) => (
-                                      <label
-                                        key={gender}
-                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={gioiTinhFilter.includes(
-                                            gender,
-                                          )}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              setGioiTinhFilter([
-                                                ...gioiTinhFilter,
-                                                gender,
-                                              ]);
-                                            } else {
-                                              setGioiTinhFilter(
-                                                gioiTinhFilter.filter(
-                                                  (g) => g !== gender,
-                                                ),
-                                              );
-                                            }
-                                          }}
-                                          className="mr-2 w-4 h-4 cursor-pointer"
-                                        />
-                                        {gender === "YES" ? "Nữ" : "Nam"}
-                                      </label>
-                                    ))}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Entry Time Filter Section */}
-                      <div className="mb-3">
-                        <button
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              gioVao: !prev.gioVao,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-indigo-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-indigo-500 text-base">
-                              ⏰
-                            </span>
-                            <span>Thời gian vào</span>
-                          </span>
-                          <span className="text-indigo-600 font-bold">
-                            {expandedSections.gioVao ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.gioVao && (
-                          <div className="border-2 border-indigo-100 rounded-lg mt-2 bg-gradient-to-b from-white to-indigo-50/30 shadow-inner">
-                            <div className="max-h-40 overflow-y-auto">
-                              <label className="flex items-center px-3 py-2 hover:bg-indigo-50 cursor-pointer text-sm border-b border-indigo-200 bg-indigo-50/50 font-semibold">
+                            <div className="max-h-80 overflow-y-auto">
+                              <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
                                 <input
                                   type="checkbox"
-                                  checked={gioVaoFilter.includes(
-                                    "đã_chấm_công",
-                                  )}
+                                  checked={
+                                    allLeaveTypeFilterValues.length > 0 &&
+                                    allLeaveTypeFilterValues.every((v) =>
+                                      loaiPhepFilter.includes(v),
+                                    )
+                                  }
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      setGioVaoFilter([
-                                        ...gioVaoFilter,
-                                        "đã_chấm_công",
+                                      setLoaiPhepFilter([
+                                        ...allLeaveTypeFilterValues,
                                       ]);
                                     } else {
-                                      setGioVaoFilter(
-                                        gioVaoFilter.filter(
-                                          (g) => g !== "đã_chấm_công",
+                                      setLoaiPhepFilter((prev) =>
+                                        prev.filter(
+                                          (x) =>
+                                            !allLeaveTypeFilterValues.includes(
+                                              x,
+                                            ),
                                         ),
                                       );
                                     }
                                   }}
                                   className="mr-2 w-4 h-4 cursor-pointer"
                                 />
-                                ✅ Đã chấm công
+                                ✓ {tl("selectAll", "Chọn tất cả")}
                               </label>
                               <label className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100">
                                 <input
                                   type="checkbox"
-                                  checked={gioVaoFilter.includes(
-                                    "chưa_chấm_công",
+                                  checked={loaiPhepFilter.includes(
+                                    ATTENDANCE_LEAVE_FILTER_NONE,
                                   )}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      setGioVaoFilter([
-                                        ...gioVaoFilter,
-                                        "chưa_chấm_công",
+                                      setLoaiPhepFilter((prev) => [
+                                        ...prev,
+                                        ATTENDANCE_LEAVE_FILTER_NONE,
                                       ]);
                                     } else {
-                                      setGioVaoFilter(
-                                        gioVaoFilter.filter(
-                                          (g) => g !== "chưa_chấm_công",
+                                      setLoaiPhepFilter((prev) =>
+                                        prev.filter(
+                                          (x) =>
+                                            x !== ATTENDANCE_LEAVE_FILTER_NONE,
                                         ),
                                       );
                                     }
                                   }}
                                   className="mr-2 w-4 h-4 cursor-pointer"
                                 />
-                                ❎ Chưa chấm công
+                                {tl(
+                                  "leaveTypeFilterNone",
+                                  "Không có loại phép (chỉ giờ / trống)",
+                                )}
                               </label>
+                              {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((opt) => (
+                                <label
+                                  key={opt.value}
+                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={loaiPhepFilter.includes(opt.value)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setLoaiPhepFilter((prev) => [
+                                          ...prev,
+                                          opt.value,
+                                        ]);
+                                      } else {
+                                        setLoaiPhepFilter((prev) =>
+                                          prev.filter((v) => v !== opt.value),
+                                        );
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  <span className="tabular-nums font-semibold text-gray-700">
+                                    {opt.shortLabel}
+                                  </span>
+                                  <span className="ml-1.5 text-gray-600">
+                                    — {opt.value}
+                                  </span>
+                                </label>
+                              ))}
                             </div>
                           </div>
                         )}
                       </div>
+
+                      {/* Lọc nhanh — đồng bộ Điểm danh NV chính thức */}
+                      <div className="mb-3 rounded-xl border-2 border-amber-200/90 bg-gradient-to-r from-amber-50/95 to-orange-50/80 p-3 shadow-sm dark:border-amber-800/50 dark:from-amber-950/30 dark:to-orange-950/20">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickNoCheckInFilter()}
+                          className={`flex w-full items-center gap-3 text-left transition ${
+                            isQuickNoCheckInActive
+                              ? "text-amber-800 dark:text-amber-200"
+                              : "text-gray-800 dark:text-slate-200"
+                          }`}
+                        >
+                          <span className="text-xl" aria-hidden>
+                            ⚡
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-semibold text-sm">
+                              {t("attendanceList.quickFilter")}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-gray-600 dark:text-slate-400">
+                              {tl(
+                                "notCheckedIn",
+                                "Nhân viên chưa điểm danh (không giờ vào, loại phép, ca)",
+                              )}
+                            </span>
+                          </span>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                              isQuickNoCheckInActive
+                                ? "bg-amber-500 text-white"
+                                : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                            }`}
+                          >
+                            {isQuickNoCheckInActive
+                              ? tl("filterOn", "Bật")
+                              : tl("filterOff", "Tắt")}
+                          </span>
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Footer - Buttons */}
-                    <div className="p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex gap-3 justify-end">
+                    <div className="shrink-0 p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex flex-wrap gap-3 justify-end dark:border-slate-700 dark:from-slate-900 dark:to-slate-900/95">
                       <button
+                        type="button"
                         onClick={() => {
-                          setGioiTinhFilter([]);
                           setDepartmentListFilter([]);
-                          setGioVaoFilter([]);
+                          setLoaiPhepFilter([]);
+                          setShowOnlyUnattendedFilter(false);
                           setExpandedSections({});
                           setFilterSearchTerm("");
                         }}
-                        className="px-5 py-2.5 rounded-lg text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow"
+                        className="px-5 py-2.5 rounded-lg text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow dark:border-slate-600 dark:text-slate-200 dark:hover:bg-red-950/40"
                       >
-                        🗑️ Xóa tất cả
+                        🗑️ {tl("clearAll", "Xóa tất cả")}
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           setFilterOpen(false);
                           setFilterSearchTerm("");
                         }}
                         className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                       >
-                        ✖️ Hủy
+                        ✖️{" "}
+                        {t("attendanceList.cancel", { defaultValue: "Hủy" })}
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           setFilterOpen(false);
                           setFilterSearchTerm("");
                         }}
                         className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                       >
-                        ✓ Áp dụng
+                        ✓ {tl("apply", "Áp dụng")}
                       </button>
                     </div>
                   </div>
-                </div>
-              )}
+                  </div>,
+                  document.body,
+                )}
             </div>
 
             <button
@@ -2687,7 +2701,10 @@ function SeasonalStaffAttendance() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
             <div className="bg-gradient-to-br from-purple-50 via-white to-purple-200 rounded-2xl shadow-2xl p-8 w-full max-w-2xl relative mx-4 overflow-y-auto max-h-[90vh] border-2 border-blue-200 animate-fadeIn">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setEditing(null);
+                }}
                 className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 rounded-full transition"
                 aria-label={t("attendanceList.close")}
               >
@@ -2964,15 +2981,13 @@ function SeasonalStaffAttendance() {
                 <button
                   onClick={() => setModalFilterOpen(!modalFilterOpen)}
                   className={`px-4 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg ${
-                    modalGioiTinhFilter.length > 0 ||
                     modalDepartmentListFilter.length > 0
                       ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800"
                       : "bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700"
                   }`}
                 >
                   🔍 Lọc
-                  {(modalGioiTinhFilter.length > 0 ||
-                    modalDepartmentListFilter.length > 0) && (
+                  {modalDepartmentListFilter.length > 0 && (
                     <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-xs font-bold">
                       ✓
                     </span>
@@ -3072,73 +3087,12 @@ function SeasonalStaffAttendance() {
                           </div>
                         )}
                       </div>
-
-                      {/* Gender Filter */}
-                      <div className="mb-1">
-                        <button
-                          onClick={() => {
-                            setModalExpandedSections((prev) => ({
-                              ...prev,
-                              gender: !prev.gender,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-green-500 text-base">⚧️</span>
-                            <span>Giới tính</span>
-                          </span>
-                          <span className="text-green-600 font-bold">
-                            {modalExpandedSections.gender ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {modalExpandedSections.gender && (
-                          <div className="border-2 border-green-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-green-50/30 shadow-inner">
-                            {modalUniqueGenders.length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                Không có dữ liệu
-                              </div>
-                            ) : (
-                              modalUniqueGenders.map((gender) => (
-                                <label
-                                  key={gender || "gender-empty"}
-                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={modalGioiTinhFilter.includes(
-                                      gender,
-                                    )}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setModalGioiTinhFilter([
-                                          ...modalGioiTinhFilter,
-                                          gender,
-                                        ]);
-                                      } else {
-                                        setModalGioiTinhFilter(
-                                          modalGioiTinhFilter.filter(
-                                            (g) => g !== gender,
-                                          ),
-                                        );
-                                      }
-                                    }}
-                                    className="mr-2 w-4 h-4 cursor-pointer"
-                                  />
-                                  {gender || tl("unknown", "(Không rõ)")}
-                                </label>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
                     </div>
 
                     {/* Footer Actions */}
                     <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 px-4 pb-4">
                       <button
                         onClick={() => {
-                          setModalGioiTinhFilter([]);
                           setModalDepartmentListFilter([]);
                         }}
                         className="px-3 py-2 text-xs rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 font-medium"

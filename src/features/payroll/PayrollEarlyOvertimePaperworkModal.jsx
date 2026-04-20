@@ -31,6 +31,25 @@ export default function PayrollEarlyOvertimePaperworkModal({
     setSuppressSessionChecked(false);
   }, [open, rows, initialChecked]);
 
+  /** Khóa cuộn nền: scroll nằm trên `#app-main-scroll`, không chỉ `body`. */
+  useEffect(() => {
+    if (!open) return undefined;
+    const html = document.documentElement;
+    const body = document.body;
+    const mainScroll = document.getElementById("app-main-scroll");
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevMainOverflow = mainScroll?.style.overflow ?? "";
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    if (mainScroll) mainScroll.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      if (mainScroll) mainScroll.style.overflow = prevMainOverflow;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const toggle = (id) => {
@@ -65,7 +84,7 @@ export default function PayrollEarlyOvertimePaperworkModal({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden overscroll-none bg-slate-950/75 p-3 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="payroll-early-ot-title"
