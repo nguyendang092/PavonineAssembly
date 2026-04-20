@@ -967,6 +967,7 @@ const vi = {
     department: "Bộ phận",
     noData: "Không có dữ liệu",
     dateOfBirth: "Ngày sinh",
+    joinDate: "Ngày vào làm",
     fullName: "Họ và tên",
     gender: "Giới tính",
     timeIn: "Thời gian vào",

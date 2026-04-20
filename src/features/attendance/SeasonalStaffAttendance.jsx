@@ -59,7 +59,10 @@ import {
   isEmployeeQuickUnattended,
 } from "./attendanceListShared";
 
-function SeasonalAttendanceColgroup({ showRowModalActions, columnPlan = "full" }) {
+function SeasonalAttendanceColgroup({
+  showRowModalActions,
+  columnPlan = "full",
+}) {
   const widths = getAttendanceColWidthPercents(
     showRowModalActions,
     columnPlan,
@@ -288,8 +291,7 @@ function SeasonalStaffAttendance() {
           return false;
         if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp))
           return false;
-        if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter))
-          return false;
+        if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) return false;
         if (!q) return true;
         return (
           (emp.hoVaTen || "").toLowerCase().includes(q) ||
@@ -1726,7 +1728,7 @@ function SeasonalStaffAttendance() {
           <th style="width:7%">MVT</th>
           <th style="width:34%">Họ và tên</th>
           <th style="width:8%">Giới tính</th>
-          <th style="width:12%">Ngày tháng năm sinh</th>
+          <th style="width:12%">Ngày vào làm</th>
           <th style="width:7%">Mã BP</th>
           <th style="width:14%">Bộ phận</th>
           <th style="width:7%">Thời gian vào</th>
@@ -2205,7 +2207,9 @@ function SeasonalStaffAttendance() {
                                 onChange={(e) =>
                                   setFilterDepartmentSearch(e.target.value)
                                 }
-                                placeholder={t("attendanceList.searchDepartment")}
+                                placeholder={t(
+                                  "attendanceList.searchDepartment",
+                                )}
                                 className="w-full border-b border-orange-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:border-orange-800 dark:bg-slate-900/80"
                               />
                               <div className="max-h-84 overflow-y-auto">
@@ -2213,276 +2217,281 @@ function SeasonalStaffAttendance() {
                                   <div className="px-3 py-2 text-sm text-gray-500 italic dark:text-slate-400">
                                     {tl("noData", "Không có dữ liệu")}
                                   </div>
-                              ) : (
-                                <>
-                                  <label className="flex items-center px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm border-b-2 border-orange-200 bg-orange-50/50 font-semibold">
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        departmentListFilter.length ===
-                                        departments.filter((dept) =>
-                                          dept
-                                            .toLowerCase()
-                                            .includes(
-                                              filterDepartmentSearch.toLowerCase(),
-                                            ),
-                                        ).length
-                                      }
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setDepartmentListFilter([
-                                            ...departments.filter((dept) =>
-                                              dept
-                                                .toLowerCase()
-                                                .includes(
-                                                  filterDepartmentSearch.toLowerCase(),
-                                                ),
-                                            ),
-                                          ]);
-                                        } else {
-                                          setDepartmentListFilter([]);
+                                ) : (
+                                  <>
+                                    <label className="flex items-center px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm border-b-2 border-orange-200 bg-orange-50/50 font-semibold">
+                                      <input
+                                        type="checkbox"
+                                        checked={
+                                          departmentListFilter.length ===
+                                          departments.filter((dept) =>
+                                            dept
+                                              .toLowerCase()
+                                              .includes(
+                                                filterDepartmentSearch.toLowerCase(),
+                                              ),
+                                          ).length
                                         }
-                                      }}
-                                      className="mr-2 w-4 h-4 cursor-pointer"
-                                    />
-                                    ✓ {tl("selectAll", "Chọn tất cả")}
-                                  </label>
-                                  {departments
-                                    .filter((dept) =>
-                                      dept
-                                        .toLowerCase()
-                                        .includes(
-                                          filterDepartmentSearch.toLowerCase(),
-                                        ),
-                                    )
-                                    .map((dept) => (
-                                      <label
-                                        key={dept}
-                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0 dark:hover:bg-slate-800/80"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={departmentListFilter.includes(
-                                            dept,
-                                          )}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              setDepartmentListFilter([
-                                                ...departmentListFilter,
-                                                dept,
-                                              ]);
-                                            } else {
-                                              setDepartmentListFilter(
-                                                departmentListFilter.filter(
-                                                  (d) => d !== dept,
-                                                ),
-                                              );
-                                            }
-                                          }}
-                                          className="mr-2 w-4 h-4 cursor-pointer"
-                                        />
-                                        {dept}
-                                      </label>
-                                    ))}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Loại phép — giống AttendanceList */}
-                      <div className="mb-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              leaveType: !prev.leaveType,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-green-500 text-base">📋</span>
-                            <span>{tl("leaveTypeFilter", "Loại phép")}</span>
-                          </span>
-                          <span className="text-green-600 font-bold">
-                            {expandedSections.leaveType ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.leaveType && (
-                          <div className="border-2 border-green-100 rounded-lg mt-2 bg-gradient-to-b from-white to-green-50/30 shadow-inner">
-                            <div className="max-h-80 overflow-y-auto">
-                              <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    allLeaveTypeFilterValues.length > 0 &&
-                                    allLeaveTypeFilterValues.every((v) =>
-                                      loaiPhepFilter.includes(v),
-                                    )
-                                  }
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setLoaiPhepFilter([
-                                        ...allLeaveTypeFilterValues,
-                                      ]);
-                                    } else {
-                                      setLoaiPhepFilter((prev) =>
-                                        prev.filter(
-                                          (x) =>
-                                            !allLeaveTypeFilterValues.includes(
-                                              x,
-                                            ),
-                                        ),
-                                      );
-                                    }
-                                  }}
-                                  className="mr-2 w-4 h-4 cursor-pointer"
-                                />
-                                ✓ {tl("selectAll", "Chọn tất cả")}
-                              </label>
-                              <label className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100">
-                                <input
-                                  type="checkbox"
-                                  checked={loaiPhepFilter.includes(
-                                    ATTENDANCE_LEAVE_FILTER_NONE,
-                                  )}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setLoaiPhepFilter((prev) => [
-                                        ...prev,
-                                        ATTENDANCE_LEAVE_FILTER_NONE,
-                                      ]);
-                                    } else {
-                                      setLoaiPhepFilter((prev) =>
-                                        prev.filter(
-                                          (x) =>
-                                            x !== ATTENDANCE_LEAVE_FILTER_NONE,
-                                        ),
-                                      );
-                                    }
-                                  }}
-                                  className="mr-2 w-4 h-4 cursor-pointer"
-                                />
-                                {tl(
-                                  "leaveTypeFilterNone",
-                                  "Không có loại phép (chỉ giờ / trống)",
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setDepartmentListFilter([
+                                              ...departments.filter((dept) =>
+                                                dept
+                                                  .toLowerCase()
+                                                  .includes(
+                                                    filterDepartmentSearch.toLowerCase(),
+                                                  ),
+                                              ),
+                                            ]);
+                                          } else {
+                                            setDepartmentListFilter([]);
+                                          }
+                                        }}
+                                        className="mr-2 w-4 h-4 cursor-pointer"
+                                      />
+                                      ✓ {tl("selectAll", "Chọn tất cả")}
+                                    </label>
+                                    {departments
+                                      .filter((dept) =>
+                                        dept
+                                          .toLowerCase()
+                                          .includes(
+                                            filterDepartmentSearch.toLowerCase(),
+                                          ),
+                                      )
+                                      .map((dept) => (
+                                        <label
+                                          key={dept}
+                                          className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0 dark:hover:bg-slate-800/80"
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={departmentListFilter.includes(
+                                              dept,
+                                            )}
+                                            onChange={(e) => {
+                                              if (e.target.checked) {
+                                                setDepartmentListFilter([
+                                                  ...departmentListFilter,
+                                                  dept,
+                                                ]);
+                                              } else {
+                                                setDepartmentListFilter(
+                                                  departmentListFilter.filter(
+                                                    (d) => d !== dept,
+                                                  ),
+                                                );
+                                              }
+                                            }}
+                                            className="mr-2 w-4 h-4 cursor-pointer"
+                                          />
+                                          {dept}
+                                        </label>
+                                      ))}
+                                  </>
                                 )}
-                              </label>
-                              {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((opt) => (
-                                <label
-                                  key={opt.value}
-                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                >
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Loại phép — giống AttendanceList */}
+                        <div className="mb-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExpandedSections((prev) => ({
+                                ...prev,
+                                leaveType: !prev.leaveType,
+                              }));
+                            }}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-green-500 text-base">
+                                📋
+                              </span>
+                              <span>{tl("leaveTypeFilter", "Loại phép")}</span>
+                            </span>
+                            <span className="text-green-600 font-bold">
+                              {expandedSections.leaveType ? "▼" : "▶"}
+                            </span>
+                          </button>
+                          {expandedSections.leaveType && (
+                            <div className="border-2 border-green-100 rounded-lg mt-2 bg-gradient-to-b from-white to-green-50/30 shadow-inner">
+                              <div className="max-h-80 overflow-y-auto">
+                                <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
                                   <input
                                     type="checkbox"
-                                    checked={loaiPhepFilter.includes(opt.value)}
+                                    checked={
+                                      allLeaveTypeFilterValues.length > 0 &&
+                                      allLeaveTypeFilterValues.every((v) =>
+                                        loaiPhepFilter.includes(v),
+                                      )
+                                    }
                                     onChange={(e) => {
                                       if (e.target.checked) {
-                                        setLoaiPhepFilter((prev) => [
-                                          ...prev,
-                                          opt.value,
+                                        setLoaiPhepFilter([
+                                          ...allLeaveTypeFilterValues,
                                         ]);
                                       } else {
                                         setLoaiPhepFilter((prev) =>
-                                          prev.filter((v) => v !== opt.value),
+                                          prev.filter(
+                                            (x) =>
+                                              !allLeaveTypeFilterValues.includes(
+                                                x,
+                                              ),
+                                          ),
                                         );
                                       }
                                     }}
                                     className="mr-2 w-4 h-4 cursor-pointer"
                                   />
-                                  <span className="tabular-nums font-semibold text-gray-700">
-                                    {opt.shortLabel}
-                                  </span>
-                                  <span className="ml-1.5 text-gray-600">
-                                    — {opt.value}
-                                  </span>
+                                  ✓ {tl("selectAll", "Chọn tất cả")}
                                 </label>
-                              ))}
+                                <label className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100">
+                                  <input
+                                    type="checkbox"
+                                    checked={loaiPhepFilter.includes(
+                                      ATTENDANCE_LEAVE_FILTER_NONE,
+                                    )}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setLoaiPhepFilter((prev) => [
+                                          ...prev,
+                                          ATTENDANCE_LEAVE_FILTER_NONE,
+                                        ]);
+                                      } else {
+                                        setLoaiPhepFilter((prev) =>
+                                          prev.filter(
+                                            (x) =>
+                                              x !==
+                                              ATTENDANCE_LEAVE_FILTER_NONE,
+                                          ),
+                                        );
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  {tl(
+                                    "leaveTypeFilterNone",
+                                    "Không có loại phép (chỉ giờ / trống)",
+                                  )}
+                                </label>
+                                {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((opt) => (
+                                  <label
+                                    key={opt.value}
+                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={loaiPhepFilter.includes(
+                                        opt.value,
+                                      )}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setLoaiPhepFilter((prev) => [
+                                            ...prev,
+                                            opt.value,
+                                          ]);
+                                        } else {
+                                          setLoaiPhepFilter((prev) =>
+                                            prev.filter((v) => v !== opt.value),
+                                          );
+                                        }
+                                      }}
+                                      className="mr-2 w-4 h-4 cursor-pointer"
+                                    />
+                                    <span className="tabular-nums font-semibold text-gray-700">
+                                      {opt.shortLabel}
+                                    </span>
+                                    <span className="ml-1.5 text-gray-600">
+                                      — {opt.value}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      {/* Lọc nhanh — đồng bộ Điểm danh NV chính thức */}
-                      <div className="mb-3 rounded-xl border-2 border-amber-200/90 bg-gradient-to-r from-amber-50/95 to-orange-50/80 p-3 shadow-sm dark:border-amber-800/50 dark:from-amber-950/30 dark:to-orange-950/20">
-                        <button
-                          type="button"
-                          onClick={() => handleQuickNoCheckInFilter()}
-                          className={`flex w-full items-center gap-3 text-left transition ${
-                            isQuickNoCheckInActive
-                              ? "text-amber-800 dark:text-amber-200"
-                              : "text-gray-800 dark:text-slate-200"
-                          }`}
-                        >
-                          <span className="text-xl" aria-hidden>
-                            ⚡
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-semibold text-sm">
-                              {t("attendanceList.quickFilter")}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-gray-600 dark:text-slate-400">
-                              {tl(
-                                "notCheckedIn",
-                                "Nhân viên chưa điểm danh (không giờ vào, loại phép, ca)",
-                              )}
-                            </span>
-                          </span>
-                          <span
-                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                        {/* Lọc nhanh — đồng bộ Điểm danh NV chính thức */}
+                        <div className="mb-3 rounded-xl border-2 border-amber-200/90 bg-gradient-to-r from-amber-50/95 to-orange-50/80 p-3 shadow-sm dark:border-amber-800/50 dark:from-amber-950/30 dark:to-orange-950/20">
+                          <button
+                            type="button"
+                            onClick={() => handleQuickNoCheckInFilter()}
+                            className={`flex w-full items-center gap-3 text-left transition ${
                               isQuickNoCheckInActive
-                                ? "bg-amber-500 text-white"
-                                : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                                ? "text-amber-800 dark:text-amber-200"
+                                : "text-gray-800 dark:text-slate-200"
                             }`}
                           >
-                            {isQuickNoCheckInActive
-                              ? tl("filterOn", "Bật")
-                              : tl("filterOff", "Tắt")}
-                          </span>
+                            <span className="text-xl" aria-hidden>
+                              ⚡
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-semibold text-sm">
+                                {t("attendanceList.quickFilter")}
+                              </span>
+                              <span className="mt-0.5 block text-xs text-gray-600 dark:text-slate-400">
+                                {tl(
+                                  "notCheckedIn",
+                                  "Nhân viên chưa điểm danh (không giờ vào, loại phép, ca)",
+                                )}
+                              </span>
+                            </span>
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                isQuickNoCheckInActive
+                                  ? "bg-amber-500 text-white"
+                                  : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                              }`}
+                            >
+                              {isQuickNoCheckInActive
+                                ? tl("filterOn", "Bật")
+                                : tl("filterOff", "Tắt")}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex flex-wrap gap-3 justify-end dark:border-slate-700 dark:from-slate-900 dark:to-slate-900/95">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDepartmentListFilter([]);
+                            setLoaiPhepFilter([]);
+                            setShowOnlyUnattendedFilter(false);
+                            setExpandedSections({});
+                            setFilterSearchTerm("");
+                          }}
+                          className="px-5 py-2.5 rounded-lg text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow dark:border-slate-600 dark:text-slate-200 dark:hover:bg-red-950/40"
+                        >
+                          🗑️ {tl("clearAll", "Xóa tất cả")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFilterOpen(false);
+                            setFilterSearchTerm("");
+                          }}
+                          className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                        >
+                          ✖️{" "}
+                          {t("attendanceList.cancel", { defaultValue: "Hủy" })}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFilterOpen(false);
+                            setFilterSearchTerm("");
+                          }}
+                          className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                        >
+                          ✓ {tl("apply", "Áp dụng")}
                         </button>
                       </div>
                     </div>
-
-                    <div className="shrink-0 p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex flex-wrap gap-3 justify-end dark:border-slate-700 dark:from-slate-900 dark:to-slate-900/95">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDepartmentListFilter([]);
-                          setLoaiPhepFilter([]);
-                          setShowOnlyUnattendedFilter(false);
-                          setExpandedSections({});
-                          setFilterSearchTerm("");
-                        }}
-                        className="px-5 py-2.5 rounded-lg text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow dark:border-slate-600 dark:text-slate-200 dark:hover:bg-red-950/40"
-                      >
-                        🗑️ {tl("clearAll", "Xóa tất cả")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFilterOpen(false);
-                          setFilterSearchTerm("");
-                        }}
-                        className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
-                      >
-                        ✖️{" "}
-                        {t("attendanceList.cancel", { defaultValue: "Hủy" })}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFilterOpen(false);
-                          setFilterSearchTerm("");
-                        }}
-                        className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
-                      >
-                        ✓ {tl("apply", "Áp dụng")}
-                      </button>
-                    </div>
-                  </div>
                   </div>,
                   document.body,
                 )}
@@ -2787,7 +2796,7 @@ function SeasonalStaffAttendance() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wide">
-                    Ngày tháng năm sinh
+                    Ngày vào làm
                   </label>
                   <input
                     type="date"
@@ -2840,10 +2849,7 @@ function SeasonalStaffAttendance() {
                       }
                       disabled={!String(form.gioVao ?? "").trim()}
                       className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                      title={tl(
-                        "timeInClearHint",
-                        "Xóa giờ vào (để trống)",
-                      )}
+                      title={tl("timeInClearHint", "Xóa giờ vào (để trống)")}
                     >
                       {tl("clearTimeIn", "Xóa giờ vào")}
                     </button>
@@ -3300,7 +3306,7 @@ function SeasonalStaffAttendance() {
                     {columnPlan === "full" ? (
                       <>
                         <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm font-extrabold text-white uppercase tracking-wide text-center">
-                          Ngày tháng năm sinh
+                          Ngày vào làm
                         </th>
                         <th className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm font-extrabold text-white uppercase tracking-wide text-center">
                           Mã BP

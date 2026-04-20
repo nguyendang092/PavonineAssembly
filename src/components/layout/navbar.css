@@ -222,6 +222,15 @@ body {
     transform: translateY(0);
 }
 
+.nav-items.nav-items--suppress-dropdown .dropdown-menu,
+.nav-items.nav-items--suppress-dropdown .nested-dropdown-menu {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translateY(-4px) !important;
+    transition-duration: 0.08s !important;
+}
+
 .dropdown-menu li {
     display: block;
     margin: 0;

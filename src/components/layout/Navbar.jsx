@@ -105,6 +105,8 @@ export default function Navbar({ user, setUser, userRole }) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileDropdowns, setMobileDropdowns] = useState({});
+  const [desktopDropdownSuppressUntil, setDesktopDropdownSuppressUntil] =
+    useState(0);
   const navbarMeasureRef = useRef(null);
 
   /** Đồng bộ chiều cao navbar → `--app-navbar-height` để nội dung dưới không bị che khi menu xuống dòng. */
@@ -183,6 +185,28 @@ export default function Navbar({ user, setUser, userRole }) {
       ...prev,
       [key]: !prev[key],
     }));
+  };
+
+  const desktopDropdownSuppressed =
+    desktopDropdownSuppressUntil > Date.now();
+
+  useEffect(() => {
+    if (!desktopDropdownSuppressUntil) return undefined;
+    const remaining = desktopDropdownSuppressUntil - Date.now();
+    if (remaining <= 0) {
+      setDesktopDropdownSuppressUntil(0);
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      setDesktopDropdownSuppressUntil(0);
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [desktopDropdownSuppressUntil]);
+
+  const handleDesktopNavClick = () => {
+    // Chặn hover mở lại ngay sau click để dropdown tự đóng mượt và dứt khoát.
+    setDesktopDropdownSuppressUntil(Date.now() + 700);
+    setUserDropdownOpen(false);
   };
 
   const showAdminOnlyMenu = Boolean(user && isAdminAccess(user, userRole));
@@ -497,7 +521,9 @@ export default function Navbar({ user, setUser, userRole }) {
           ☰
         </div>
 
-        <div className="nav-items">
+        <div
+          className={`nav-items ${desktopDropdownSuppressed ? "nav-items--suppress-dropdown" : ""}`}
+        >
           <ul>
             {menuConfig.map((item) => {
               if (item.type === "dropdown") {
@@ -572,6 +598,9 @@ export default function Navbar({ user, setUser, userRole }) {
                                                           <li key={leaf.key}>
                                                             <RouterNavLink
                                                               to={leaf.path}
+                                                              onClick={
+                                                                handleDesktopNavClick
+                                                              }
                                                             >
                                                               {t(leaf.label)}
                                                             </RouterNavLink>
@@ -587,6 +616,9 @@ export default function Navbar({ user, setUser, userRole }) {
                                               <li key={deepSub.key}>
                                                 <RouterNavLink
                                                   to={deepSub.path}
+                                                  onClick={
+                                                    handleDesktopNavClick
+                                                  }
                                                 >
                                                   {t(deepSub.label)}
                                                 </RouterNavLink>
@@ -601,6 +633,7 @@ export default function Navbar({ user, setUser, userRole }) {
                                     <li key={sub.key}>
                                       <RouterNavLink
                                         to={sub.path}
+                                        onClick={handleDesktopNavClick}
                                       >
                                         {t(sub.label)}
                                       </RouterNavLink>
@@ -617,6 +650,7 @@ export default function Navbar({ user, setUser, userRole }) {
                           <li key={child.key}>
                             <RouterNavLink
                               to={child.path}
+                              onClick={handleDesktopNavClick}
                             >
                               {t(child.label)}
                             </RouterNavLink>
@@ -632,6 +666,7 @@ export default function Navbar({ user, setUser, userRole }) {
                 <li key={item.key} className={navTopItemLiClass(item.key)}>
                   <RouterNavLink
                     to={item.path}
+                    onClick={handleDesktopNavClick}
                   >
                     <NavTopLabel itemKey={item.key}>
                       {t(item.label)}

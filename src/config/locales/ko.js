@@ -1003,6 +1003,7 @@ const ko = {
     workShift: "근무조",
     attendance: "출근부",
     dateOfBirth: "생년월일",
+    joinDate: "입사일",
     annualLeave: "연차",
     pnTon: "PN 톤",
     mvt: "지문 ID",

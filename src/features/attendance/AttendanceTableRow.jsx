@@ -925,7 +925,7 @@ export function AttendanceVirtualHeader({
             style={{ gridColumnStart: gcs("dob") }}
             className="hidden min-w-0 items-center justify-center py-px px-1 text-center uppercase text-[10px] font-extrabold tracking-wide text-white md:flex md:px-2 md:py-0.5 md:text-xs"
           >
-            {tl("dateOfBirth", "Ngày tháng năm sinh")}
+            {tl("joinDate", "Ngày vào làm")}
           </div>
           <div
             role="columnheader"
@@ -1435,7 +1435,7 @@ export function AttendanceTableThead({
                 "hidden md:table-cell px-1 md:px-1.5 py-px md:py-0.5 text-[10px] md:text-xs font-extrabold text-white uppercase tracking-wide text-center",
               )}
             >
-              {tl("dateOfBirth", "Ngày tháng năm sinh")}
+              {tl("joinDate", "Ngày vào làm")}
             </th>
             <th
               className={cellClsForAttendanceTable(

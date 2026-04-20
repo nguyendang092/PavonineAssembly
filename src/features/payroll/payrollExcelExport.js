@@ -260,7 +260,7 @@ function buildPayrollExcelFullHeaders(tlTable) {
     tlTable("mvt", "MVT"),
     tlTable("fullName", "Họ và tên"),
     tlTable("gender", "Giới tính"),
-    tlTable("dateOfBirth", "Ngày tháng năm sinh"),
+    tlTable("joinDate", "Ngày vào làm"),
     tlTable("departmentCode", "Mã BP"),
     tlTable("department", "Bộ phận"),
     tlTable("timeIn", "Thời gian vào"),
