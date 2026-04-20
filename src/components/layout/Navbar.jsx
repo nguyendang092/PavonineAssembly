@@ -1,11 +1,5 @@
 /* Đây là component hiển thị navbar */
-import {
-  useState,
-  useEffect,
-  useRef,
-  useLayoutEffect,
-  useMemo,
-} from "react";
+import { useState, useEffect, useRef, useLayoutEffect, useMemo } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { FiMoon, FiSun } from "react-icons/fi";
@@ -51,8 +45,7 @@ function RouterNavLink({ to, onClick, children }) {
       end
       className={({ isActive }) => {
         const active =
-          isActive ||
-          (to === "/email" && location.pathname === "/email/login");
+          isActive || (to === "/email" && location.pathname === "/email/login");
         return active ? "navbar-link-active" : undefined;
       }}
       onClick={onClick}
@@ -187,8 +180,7 @@ export default function Navbar({ user, setUser, userRole }) {
     }));
   };
 
-  const desktopDropdownSuppressed =
-    desktopDropdownSuppressUntil > Date.now();
+  const desktopDropdownSuppressed = desktopDropdownSuppressUntil > Date.now();
 
   useEffect(() => {
     if (!desktopDropdownSuppressUntil) return undefined;
@@ -509,10 +501,7 @@ export default function Navbar({ user, setUser, userRole }) {
       <nav ref={navbarMeasureRef} className="navbar">
         <div className="nav-logo">
           <a href="http://www.pavonine.net/en/">
-            <img
-              src="/picture/logo/logo_pavo.jpg"
-              alt={t("navbar.logoAlt")}
-            />
+            <img src="/picture/logo/logo_pavo.jpg" alt={t("navbar.logoAlt")} />
           </a>
         </div>
 
@@ -532,7 +521,10 @@ export default function Navbar({ user, setUser, userRole }) {
                 return (
                   <li
                     key={item.key}
-                    className={navTopItemLiClass(item.key, "nav-li-has-dropdown")}
+                    className={navTopItemLiClass(
+                      item.key,
+                      "nav-li-has-dropdown",
+                    )}
                   >
                     <button type="button">
                       <NavTopLabel itemKey={item.key}>
@@ -543,7 +535,8 @@ export default function Navbar({ user, setUser, userRole }) {
                     <ul className="dropdown-menu">
                       {item.children.map((child) => {
                         if (child.type === "nested" && child.children) {
-                          if (child.adminOnly && !showAdminOnlyMenu) return null;
+                          if (child.adminOnly && !showAdminOnlyMenu)
+                            return null;
                           return (
                             <li key={child.key} className="nested-dropdown">
                               <button type="button">
@@ -664,10 +657,7 @@ export default function Navbar({ user, setUser, userRole }) {
 
               return (
                 <li key={item.key} className={navTopItemLiClass(item.key)}>
-                  <RouterNavLink
-                    to={item.path}
-                    onClick={handleDesktopNavClick}
-                  >
+                  <RouterNavLink to={item.path} onClick={handleDesktopNavClick}>
                     <NavTopLabel itemKey={item.key}>
                       {t(item.label)}
                     </NavTopLabel>
@@ -747,10 +737,12 @@ export default function Navbar({ user, setUser, userRole }) {
                 >
                   <span className="user-avatar" aria-hidden>
                     {user.name
-                      ? Array.from(user.name.trim())[0]?.toUpperCase() ?? "?"
-                      : Array.from(user.email)[0]?.toUpperCase() ?? "?"}
+                      ? (Array.from(user.name.trim())[0]?.toUpperCase() ?? "?")
+                      : (Array.from(user.email)[0]?.toUpperCase() ?? "?")}
                   </span>
-                  <span className="user-name-text">{navbarUserDisplayShort}</span>
+                  <span className="user-name-text">
+                    {navbarUserDisplayShort}
+                  </span>
                 </button>
                 {userDropdownOpen && (
                   <div className="user-dropdown-menu">

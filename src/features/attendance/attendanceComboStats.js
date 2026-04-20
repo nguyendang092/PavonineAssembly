@@ -127,6 +127,8 @@ export function getAttendanceComboFlags(emp) {
   const textSignalRaw = leaveTypeRaw || (isTimeFormat ? "" : gioVaoRaw);
   const nonStandardTimeIn =
     gioVaoRaw !== "" && !GIO_VAO_HHMM_STRICT.test(gioVaoRaw);
+  // Trường hợp cần theo dõi riêng: không có giờ vào HH:MM nhưng có loại phép.
+  const timeInHashHHMM = gioVaoRaw === "" && leaveTypeRaw !== "";
   const gioVaoNormalized = normalizeTextValue(textSignalRaw)
     .replace(/\u00a0/g, " ")
     .toUpperCase();
@@ -203,6 +205,7 @@ export function getAttendanceComboFlags(emp) {
 
   return {
     nonStandardTimeIn,
+    timeInHashHHMM,
     checkedIn: hasCheckIn,
     buGioCong:
       buGioCongMatch ||

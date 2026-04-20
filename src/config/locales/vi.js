@@ -947,8 +947,7 @@ const vi = {
     unattendedTitle: "Nhân viên chưa điểm danh",
     unattendedSummary:
       "Hiện có {{count}} nhân viên chưa có thời gian vào trong ngày {{date}}.",
-    unattendedSuppressSession:
-      "Không hiển thị trong hôm nay.",
+    unattendedSuppressSession: "Không hiển thị trong hôm nay.",
     colIndex: "STT",
     colCode: "MNV",
     colName: "Họ và tên",
@@ -1016,6 +1015,7 @@ const vi = {
     checkedIn: "Đã chấm công",
     buGioCong: "Bù giờ công",
     nonStandardTimeIn: "Giờ vào ≠ HH:MM",
+    timeInHashHHMM: "Các loại phép",
     nonStandardTimeInShort: "≠ HH:MM",
     comboStatDetailBadge: "Chi tiết danh sách",
     comboStatColShift: "Ca làm việc",
@@ -1042,6 +1042,9 @@ const vi = {
     printOvertimeRegistration: "In đăng ký tăng ca",
     printAttendanceList: "In danh sách chấm công",
     exportOvertimeExcel: "Xuất biểu mẫu Excel",
+    exportImage: "Xuất hình",
+    exportImageFail: "Không thể xuất hình. Vui lòng thử lại.",
+    exportExcelFail: "Không thể xuất Excel. Vui lòng thử lại.",
     updateEmployee: "Cập nhật nhân viên",
     addEmployee: "Thêm nhân viên mới",
     departmentCode: "Mã bộ phận",

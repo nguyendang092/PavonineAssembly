@@ -268,6 +268,8 @@ export function getAttendanceLeaveTypeColorClassNameForComboStatKey(metricKey) {
       return "text-emerald-600 dark:text-emerald-400";
     case "nonStandardTimeIn":
       return "text-cyan-600 dark:text-cyan-400";
+    case "timeInHashHHMM":
+      return "text-orange-600 dark:text-orange-400";
     case "nightShift":
       return "text-indigo-600 dark:text-indigo-400";
     default:
@@ -288,6 +290,8 @@ export function getAttendanceLeaveTypeBadgeClassNameForComboStatKey(metricKey) {
       return "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800";
     case "nonStandardTimeIn":
       return "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800";
+    case "timeInHashHHMM":
+      return "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800";
     case "nightShift":
       return "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800";
     default:
@@ -313,6 +317,8 @@ export function getAttendanceComboBarFillForMetricKey(metricKey) {
       return "#10b981";
     case "nonStandardTimeIn":
       return "#06b6d4";
+    case "timeInHashHHMM":
+      return "#f97316";
     case "nightShift":
       return "#6366f1";
     default:
