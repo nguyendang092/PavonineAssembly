@@ -71,7 +71,6 @@ export async function executeAttendanceDateRangeExport({
   db,
   ref,
   get,
-  employeeProfilesMap,
   applyAttendanceMerge,
   filterAttendanceListRows,
   displayLocale,
@@ -80,7 +79,7 @@ export async function executeAttendanceDateRangeExport({
   const allRows = [];
   for (const dateKey of keys) {
     const snap = await get(ref(db, `attendance/${dateKey}`));
-    const merged = applyAttendanceMerge(snap.val(), employeeProfilesMap);
+    const merged = applyAttendanceMerge(snap.val());
     const filtered = filterAttendanceListRows(merged);
     let stt = 1;
     for (const emp of filtered) {
@@ -369,7 +368,7 @@ export async function executeAttendanceDateRangeExport({
       emp.mvt || "",
       emp.hoVaTen || "",
       emp.gioiTinh === "YES" ? "YES" : "NO",
-      emp.ngayThangNamSinh || "",
+      emp.ngayVaoLam || "",
       emp.maBoPhan || "",
       emp.boPhan || "",
       formatAttendanceTimeInColumnDisplay(emp.gioVao),

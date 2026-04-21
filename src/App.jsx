@@ -66,12 +66,6 @@ const InternalAnnouncements = lazyImport(
 const InternalAnnouncementsLogin = lazyImport(
   () => import("@/features/employee/InternalAnnouncementsLogin"),
 );
-const AllEmployeesManager = lazyImport(
-  () => import("@/features/employee/AllEmployeesManager"),
-);
-const ResignedEmployeesManager = lazyImport(
-  () => import("@/features/employee/ResignedEmployeesManager"),
-);
 const LoginRoute = lazyImport(() => import("@/auth/LoginRoute"));
 
 /** Không hiện nút cuộn nhanh trên màn hình đăng nhập */
@@ -236,8 +230,6 @@ const App = () => {
       Downloads: <Downloads />,
       UserDepartmentManager: <UserDepartmentManager />,
       InternalAnnouncements: <InternalAnnouncements />,
-      AllEmployeesManager: <AllEmployeesManager />,
-      ResignedEmployeesManager: <ResignedEmployeesManager />,
     }),
     [],
   );

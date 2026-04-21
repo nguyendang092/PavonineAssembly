@@ -4,29 +4,15 @@ import ReactDOM from "react-dom";
 import "./BirthdayCakeBell.css";
 import ExcelJS from "exceljs";
 import { db, ref, onValue } from "@/services/firebase";
-import {
-  EMPLOYEE_PROFILES_PATH,
-  mergeEmployeeProfileAndDay,
-  employeeProfileStorageKeyFromMnv,
-} from "@/utils/employeeRosterRecord";
+import { mergeAttendanceDayRowsFromRaw } from "@/features/attendance/mergeAttendanceDayRows";
 
-// attendance/{selectedDate} + employeeProfiles (sinh nhật từ hồ sơ)
+// Sinh nhật trong tháng: chỉ từ `attendance/{selectedDate}` (ngày sinh trên dòng điểm danh).
 export default function BirthdayCakeBell({ selectedDate, inline = false }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [attendanceEmployees, setAttendanceEmployees] = useState([]);
-  const [profileMap, setProfileMap] = useState({});
   const now = new Date();
   const listRef = useRef(null);
-
-  useEffect(() => {
-    const profRef = ref(db, EMPLOYEE_PROFILES_PATH);
-    const unsub = onValue(profRef, (snapshot) => {
-      const v = snapshot.val();
-      setProfileMap(v && typeof v === "object" ? v : {});
-    });
-    return () => unsub();
-  }, []);
 
   useEffect(() => {
     if (!selectedDate) {
@@ -36,21 +22,11 @@ export default function BirthdayCakeBell({ selectedDate, inline = false }) {
 
     const attendanceRef = ref(db, `attendance/${selectedDate}`);
     const unsubscribe = onValue(attendanceRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, emp]) => {
-          const pk = employeeProfileStorageKeyFromMnv(emp?.mnv);
-          const prof = pk ? profileMap[pk] : null;
-          return mergeEmployeeProfileAndDay({ ...emp, id }, prof, null);
-        });
-        setAttendanceEmployees(arr);
-      } else {
-        setAttendanceEmployees([]);
-      }
+      setAttendanceEmployees(mergeAttendanceDayRowsFromRaw(snapshot.val()));
     });
 
     return () => unsubscribe();
-  }, [selectedDate, profileMap]);
+  }, [selectedDate]);
 
   useEffect(() => {
     if (!open) return;

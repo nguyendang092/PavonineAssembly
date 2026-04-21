@@ -2,8 +2,8 @@
  * Hai tầng để scale:
  * - employeeProfiles/{mnvChuan}: hồ sơ ổn định (tên, BP, chức vụ, SĐT, trạng thái, …).
  * - attendance/{date}/{firebaseKey}: chỉ dữ liệu theo ngày (stt, mnv, giờ vào/ra, ca, PN…).
- * mergeEmployeeProfileAndDay() gộp khi đọc (chỉ trường profile trong PROFILE_FIELDS_FOR_ATTENDANCE_MERGE);
- * bản ghi cũ “dồn một node” vẫn hiển thị được.
+ * mergeEmployeeProfileAndDay() gộp khi đọc có profile (chỉ trường trong PROFILE_FIELDS_FOR_ATTENDANCE_MERGE).
+ * Màn điểm danh chính thức / thời vụ: dùng sanitizeAttendanceDayNodeForUi — chỉ trường node điểm danh, không alias profile.
  * Loại phép chỉ ở `loaiPhep`; bản ghi cũ ghi nhầm vào `gioVao` được chuẩn hóa qua applyLegacyGioVaoLeaveMigration.
  * Danh mục BP: employeeDepartments/{key}.
  */
@@ -489,7 +489,6 @@ const ATTENDANCE_EXTRA_KEYS = [
   "loaiPhep",
   "gioRa",
   "caLamViec",
-  "pnTon",
   "mvt",
   "maBoPhan",
   "gioiTinh",
@@ -537,19 +536,92 @@ export function pickProfileFieldsForAttendanceMerge(profileRow) {
   return out;
 }
 
-/** Trường form dùng khi build `attendance/{date}` — tách khỏi toàn bộ hồ sơ. */
+/** Trường form dùng khi build `attendance/{date}` — chỉ node điểm danh (không employeeProfiles). */
 export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
   "mnv",
   "stt",
+  "hoVaTen",
+  "boPhan",
+  "ngayThangNamSinh",
+  "ngayVaoLam",
+  "trangThaiLamViec",
   "gioVao",
   "loaiPhep",
   "gioRa",
   "caLamViec",
-  "pnTon",
   "mvt",
   "maBoPhan",
   "gioiTinh",
 ]);
+
+/** Trường được phép trên bản ghi khi đọc UI điểm danh (chính thức / thời vụ) — không trường hồ sơ. */
+export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
+  "stt",
+  "mnv",
+  "businessId",
+  "mvt",
+  "hoVaTen",
+  "gioiTinh",
+  "ngayThangNamSinh",
+  "ngayVaoLam",
+  "trangThaiLamViec",
+  "maBoPhan",
+  "boPhan",
+  "gioVao",
+  "loaiPhep",
+  "gioRa",
+  "caLamViec",
+  "chamCong",
+  "phepNam",
+]);
+
+export function pickAttendanceDayFields(raw) {
+  if (!raw || typeof raw !== "object") return {};
+  const o = {};
+  for (const k of ATTENDANCE_DAY_UI_ROW_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(raw, k)) {
+      o[k] = raw[k];
+    }
+  }
+  return o;
+}
+
+/**
+ * Chuẩn hóa hiển thị một dòng điểm danh: chỉ từ trường node ngày (không dùng name/position/joinDate/birthDate alias profile).
+ */
+export function normalizeAttendanceDayRowDisplay(emp) {
+  if (!emp || typeof emp !== "object") return emp;
+  const code = businessEmployeeCode(emp);
+  const mnvDisplay =
+    extractMnvSuffixFromStoredId(code) || normalizeMnvSuffix(emp.mnv) || "";
+  const birthRaw = emp.ngayThangNamSinh;
+  const birthNorm = normalizeDateForHtmlInput(birthRaw);
+  return {
+    ...emp,
+    mnv: mnvDisplay || String(emp.mnv ?? "").trim() || code,
+    hoVaTen: String(emp.hoVaTen ?? "").trim(),
+    ngayThangNamSinh: birthNorm || String(birthRaw ?? "").trim(),
+    ngayVaoLam: (() => {
+      const jr = emp.ngayVaoLam;
+      if (jr === undefined || jr === null || String(jr).trim() === "")
+        return "";
+      const jn = normalizeDateForHtmlInput(jr);
+      return jn || String(jr).trim();
+    })(),
+    boPhan: String(emp.boPhan ?? "").trim(),
+  };
+}
+
+/**
+ * Đọc `attendance/{ngày}` hoặc `seasonalAttendance/{ngày}` cho bảng: lọc trường + migrate loại phép legacy + chuẩn MNV/tên.
+ */
+export function sanitizeAttendanceDayNodeForUi(raw, id) {
+  const picked = pickAttendanceDayFields(raw);
+  const withId = { ...picked, id };
+  return normalizeAttendanceDayRowDisplay(
+    applyLegacyGioVaoLeaveMigration(withId),
+  );
+}
 
 /**
  * Chỉ lấy từ `form` các key thuộc node ngày + `businessId` — không trộn profile vào payload lưu điểm danh.
@@ -570,14 +642,10 @@ export function formSliceForAttendanceDayDocument(form, overrides = {}) {
   return { ...o, ...overrides };
 }
 
+/** Trường không lưu vào attendance/{ngày} (chỉ hồ sơ / legacy). Họ tên, BP, ngày sinh nằm trên node ngày. */
 const PROFILE_ONLY_STRIP_FROM_DAY = [
-  "hoVaTen",
-  "boPhan",
-  "ngayThangNamSinh",
   "chucVu",
-  "ngayVaoLam",
   "sdt",
-  "trangThaiLamViec",
   "chuyenCan",
   "phanQuyen",
   "emailDangNhap",
@@ -738,20 +806,49 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
       : existing.stt;
 
   const extras = stripUndefined({
+    hoVaTen: attendanceDayOptionalStringFromForm(form, "hoVaTen"),
+    boPhan: attendanceDayOptionalStringFromForm(form, "boPhan"),
+    ngayThangNamSinh: attendanceDayOptionalStringFromForm(
+      form,
+      "ngayThangNamSinh",
+    ),
     gioVao: attendanceDayOptionalStringFromForm(form, "gioVao"),
     loaiPhep: attendanceDayOptionalStringFromForm(form, "loaiPhep"),
     gioRa: attendanceDayOptionalStringFromForm(form, "gioRa"),
     caLamViec: attendanceDayOptionalStringFromForm(form, "caLamViec"),
-    pnTon: attendanceDayOptionalStringFromForm(form, "pnTon"),
     mvt: attendanceDayOptionalStringFromForm(form, "mvt"),
     maBoPhan: attendanceDayOptionalStringFromForm(form, "maBoPhan"),
     gioiTinh: Object.prototype.hasOwnProperty.call(form, "gioiTinh")
       ? form.gioiTinh
       : undefined,
+    ngayVaoLam: Object.prototype.hasOwnProperty.call(form, "ngayVaoLam")
+      ? (() => {
+          const s = String(form.ngayVaoLam ?? "").trim();
+          if (!s) return "";
+          return normalizeDateForHtmlInput(s) || s;
+        })()
+      : undefined,
+    trangThaiLamViec: Object.prototype.hasOwnProperty.call(
+      form,
+      "trangThaiLamViec",
+    )
+      ? (() => {
+          const s = String(form.trangThaiLamViec ?? "").trim();
+          return s ? normalizeTrangThaiLamViec(s) : "";
+        })()
+      : undefined,
   });
 
   const preserved = {};
-  ATTENDANCE_EXTRA_KEYS.forEach((k) => {
+  const attendancePreserveKeys = [
+    ...ATTENDANCE_EXTRA_KEYS,
+    "hoVaTen",
+    "boPhan",
+    "ngayThangNamSinh",
+    "ngayVaoLam",
+    "trangThaiLamViec",
+  ];
+  attendancePreserveKeys.forEach((k) => {
     if (extras[k] !== undefined) return;
     if (existing[k] !== undefined && existing[k] !== "") {
       preserved[k] = existing[k];
@@ -777,6 +874,24 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
 
   delete merged.firebaseKey;
   return stripUndefined(applyLegacyGioVaoLeaveMigration({ ...merged }));
+}
+
+/**
+ * Khi ghi toàn bộ object vào `attendance/{ngày}/{key}` hoặc `seasonalAttendance/...`:
+ * `{ ...dayDoc, id }` thay thế node → mất trường không nằm trong `dayDoc` (vd. `businessId`, `chamCong`, `phepNam`).
+ * Merge `dayDoc` lên snapshot hiện có — giá trị trong `dayDoc` ghi đè, các trường khác giữ.
+ *
+ * @param {Record<string, unknown>} existing — từ `get()` trước khi lưu (hoặc {})
+ * @param {Record<string, unknown>} dayDoc — payload đã build từ form
+ * @param {string} recordId — `id` bản ghi (Firebase key con)
+ */
+export function mergeAttendanceDayNodeForPersist(existing, dayDoc, recordId) {
+  const ex =
+    existing && typeof existing === "object" ? { ...existing } : {};
+  const d = dayDoc && typeof dayDoc === "object" ? { ...dayDoc } : {};
+  delete ex.firebaseKey;
+  delete d.firebaseKey;
+  return { ...ex, ...d, id: recordId };
 }
 
 /**

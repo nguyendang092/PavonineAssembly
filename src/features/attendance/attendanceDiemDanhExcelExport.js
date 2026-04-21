@@ -3,14 +3,17 @@ import {
   formatAttendanceTimeInColumnDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import { formatTrangThaiLamViecPlain } from "@/features/attendance/attendanceEmploymentStatus";
 
 /**
  * Bố cục sheet điểm danh (1 ngày) — dùng chung xuất Excel / mẫu upload để đồng bộ cột.
  * @param {import("exceljs").Worksheet} worksheet
- * @param {{ data: unknown[]; selectedDate?: string }} opts
+ * @param {{ data: unknown[]; selectedDate?: string; omitWorkStatusColumn?: boolean }} opts — `omitWorkStatusColumn`: điểm danh thời vụ (không cột «Trạng thái LV»).
  */
 export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
-  const { data = [], selectedDate } = opts;
+  const { data = [], selectedDate, omitWorkStatusColumn = false } = opts;
+
+  const titleLastCol = omitWorkStatusColumn ? "L" : "M";
 
   worksheet.mergeCells("B1:F1");
   const companyName = worksheet.getCell("B1");
@@ -66,20 +69,20 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
   worksheet.getRow(1).height = 18;
   worksheet.getRow(2).height = 28;
 
-  worksheet.mergeCells("A4:L4");
+  worksheet.mergeCells(`A4:${titleLastCol}4`);
   const mainTitle = worksheet.getCell("A4");
   mainTitle.value = "DANH SÁCH NHÂN VIÊN HIỆN DIỆN";
   mainTitle.font = { size: 14, bold: true, color: { argb: "FF000000" } };
   mainTitle.alignment = { vertical: "middle", horizontal: "center" };
   worksheet.getRow(4).height = 22;
 
-  worksheet.mergeCells("A5:L5");
+  worksheet.mergeCells(`A5:${titleLastCol}5`);
   const subTitle = worksheet.getCell("A5");
   subTitle.value = "List of Active Employees";
   subTitle.font = { size: 11, bold: true };
   subTitle.alignment = { vertical: "middle", horizontal: "center" };
 
-  worksheet.mergeCells("A6:L6");
+  worksheet.mergeCells(`A6:${titleLastCol}6`);
   const dateCell = worksheet.getCell("A6");
   const dateStr = selectedDate
     ? new Date(selectedDate).toLocaleDateString("vi-VN")
@@ -204,6 +207,7 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
     "Họ và tên",
     "Giới tính",
     "Ngày vào làm",
+    ...(omitWorkStatusColumn ? [] : ["Trạng thái"]),
     "Mã BP",
     "Bộ phận",
     "Thời gian vào",
@@ -219,6 +223,7 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
     "Full name",
     "Gender",
     "Start date",
+    ...(omitWorkStatusColumn ? [] : ["Employment status"]),
     "Code-Dept",
     "Department",
     "Time in",
@@ -261,7 +266,10 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
       emp.mvt || "",
       emp.hoVaTen || "",
       emp.gioiTinh === "YES" ? "YES" : "NO",
-      emp.ngayThangNamSinh || "",
+      emp.ngayVaoLam || "",
+      ...(omitWorkStatusColumn
+        ? []
+        : [formatTrangThaiLamViecPlain(emp.trangThaiLamViec) || ""]),
       emp.maBoPhan || "",
       emp.boPhan || "",
       formatAttendanceTimeInColumnDisplay(emp.gioVao),
@@ -271,9 +279,12 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
     ]);
 
     const isEvenRow = idx % 2 === 0;
+    const deptCol = omitWorkStatusColumn ? 8 : 9;
+    const timeInStyleCol = omitWorkStatusColumn ? 9 : 10;
+    const timeOutStyleCol = omitWorkStatusColumn ? 10 : 11;
     row.eachCell((cell, colNumber) => {
       cell.font = { size: 9 };
-      if (colNumber === 4 || colNumber === 8) {
+      if (colNumber === 4 || colNumber === deptCol) {
         cell.alignment = {
           vertical: "middle",
           horizontal: "left",
@@ -298,22 +309,23 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
         };
       }
 
-      if (colNumber === 9 && cell.value) {
+      if (colNumber === timeInStyleCol && cell.value) {
         cell.font = { size: 9, color: { argb: "FF006400" }, bold: true };
       }
-      if (colNumber === 10 && cell.value) {
+      if (colNumber === timeOutStyleCol && cell.value) {
         cell.font = { size: 9, color: { argb: "FFDC143C" }, bold: true };
       }
     });
   });
 
-  worksheet.columns = [
+  const fullWidths = [
     { width: 5 },
     { width: 10 },
     { width: 10 },
     { width: 25 },
     { width: 8 },
     { width: 15 },
+    { width: 12 },
     { width: 10 },
     { width: 15 },
     { width: 10 },
@@ -321,6 +333,9 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
     { width: 12 },
     { width: 12 },
   ];
+  worksheet.columns = omitWorkStatusColumn
+    ? fullWidths.filter((_, i) => i !== 6)
+    : fullWidths;
 }
 
 /**

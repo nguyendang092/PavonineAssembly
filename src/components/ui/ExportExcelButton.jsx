@@ -11,6 +11,8 @@ export default function ExportExcelButton({
   onSuccess,
   onError,
   title = "📥 Xuất Excel",
+  /** Điểm danh thời vụ: bỏ cột «Trạng thái LV» (khớp bảng giao diện). */
+  omitWorkStatusColumn = false,
 }) {
   const handleClick = async () => {
     try {
@@ -19,6 +21,7 @@ export default function ExportExcelButton({
       await writeAttendanceDiemDanhWorksheet(worksheet, {
         data,
         selectedDate,
+        omitWorkStatusColumn,
       });
 
       const buffer = await workbook.xlsx.writeBuffer();

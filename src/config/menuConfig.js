@@ -54,23 +54,6 @@ export const menuConfig = [
             type: "nested",
             children: [
               {
-                key: "employeeRoster",
-                label: "navbar.employeeRosterMain",
-                type: "nested",
-                children: [
-                  {
-                    key: "employeeRoster",
-                    label: "navbar.employeeRoster",
-                    path: "/employee-roster",
-                  },
-                  {
-                    key: "employeeRosterResigned",
-                    label: "navbar.employeeRosterResigned",
-                    path: "/employee-roster-resigned",
-                  },
-                ],
-              },
-              {
                 key: "attendance",
                 label: "navbar.attendance",
                 type: "nested",
@@ -163,11 +146,6 @@ export const routeConfig = [
   { path: "/performance", element: "PerformanceChart" },
   { path: "/qr-code-generator", element: "QRCodeGenerator" },
   { path: "/attendance-list", element: "AttendanceList" },
-  { path: "/employee-roster", element: "AllEmployeesManager" },
-  {
-    path: "/employee-roster-resigned",
-    element: "ResignedEmployeesManager",
-  },
   { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
   { path: "/attendance-salary", element: "PayrollSalaryCalculator" },
   { path: "/user-department", element: "UserDepartmentManager" },

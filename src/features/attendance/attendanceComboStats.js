@@ -107,13 +107,13 @@ export function gioVaoTextLooksLikeMaternity(raw) {
 
 /**
  * Một dòng attendance/{ngày}: coi là thai sản → không tính vào chuyên cần (bỏ qua ngày).
- * Gồm giờ vào, cờ combo, cột PN/phepNam/chấm công của đúng ngày đó.
+ * Gồm giờ vào, cờ combo, cột ghi chú (phepNam) / chấm công của đúng ngày đó.
  */
 export function isMaternityForDiligenceRow(row) {
   if (!row || typeof row !== "object") return false;
   const flags = getAttendanceComboFlags(row);
   if (flags.maternity) return true;
-  if (isPnTonPhepNamTextMarkedThaiSan(row.pnTon ?? row.phepNam))
+  if (isPnTonPhepNamTextMarkedThaiSan(row.phepNam))
     return true;
   if (isPnTonPhepNamTextMarkedThaiSan(row.chamCong)) return true;
   return false;
@@ -160,8 +160,7 @@ export function getAttendanceComboFlags(emp) {
   const buGioCongMatch =
     textMatchesBuGioCong(textSignalRaw) ||
     textMatchesBuGioCong(emp.chamCong) ||
-    textMatchesBuGioCong(emp.phepNam) ||
-    textMatchesBuGioCong(emp.pnTon);
+    textMatchesBuGioCong(emp.phepNam);
   const isAnnualLeave =
     !halfAnnualHeuristic &&
     (hasLeaveCode("PN", "PCT") || hasText("PHEP NAM", "PHEP CONG TAC"));
@@ -177,8 +176,7 @@ export function getAttendanceComboFlags(emp) {
   const isFuneralLeave =
     textMatchesFuneralLeave(textSignalRaw) ||
     textMatchesFuneralLeave(emp.chamCong) ||
-    textMatchesFuneralLeave(emp.phepNam) ||
-    textMatchesFuneralLeave(emp.pnTon);
+    textMatchesFuneralLeave(emp.phepNam);
   const isResignedLeave = hasLeaveCode("NV") || hasText("NGHI VIEC");
   const isNightShift = caLamViecNormalized.replace(/\s+/g, "") === "s2";
 
@@ -188,7 +186,6 @@ export function getAttendanceComboFlags(emp) {
     gioVaoRaw,
     normalizeTextValue(emp.chamCong),
     normalizeTextValue(emp.phepNam),
-    normalizeTextValue(emp.pnTon),
   ].filter(Boolean);
   const typeHitKeys = new Set();
   for (const raw of scanRaws) {

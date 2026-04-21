@@ -1,16 +1,8 @@
 // AttendanceUploadHandler.js
-// This module exports the Excel upload handler for attendance data.
+// Upload Excel: merge **chỉ** (1) `attendance/{ngày}` đã có + (2) dòng Excel — không dùng employeeProfiles.
 import * as XLSX from "@e965/xlsx";
 import { ref, set, get } from "firebase/database";
-import { getDateKeyBySubtractDays } from "@/utils/dateKey";
 import { getUploadErrorMessage } from "@/utils/uploadErrorMessage";
-import {
-  employeeProfileStorageKeyFromMnv,
-  isEmployeeResigned,
-  businessEmployeeCode,
-  buildPavoEmployeeId,
-  normalizeEmployeeCode,
-} from "@/utils/employeeRosterRecord";
 import {
   hasAttendanceExcelCellValue,
   mergeAttendanceExcelIntoExistingRecord,
@@ -20,6 +12,7 @@ import {
   ATTENDANCE_LOAI_PHEP_OPTIONS,
   rawMatchesAttendanceTypeOption,
 } from "./attendanceGioVaoTypeOptions";
+import { parseTrangThaiLamViecFromExcel } from "./attendanceEmploymentStatus";
 
 function normalizeHeaderCell(value) {
   return String(value ?? "")
@@ -64,34 +57,17 @@ function trimCell(value) {
   return value === undefined || value === null ? "" : String(value).trim();
 }
 
-/** Cột cuối: «Loại phép» (text/mã) hoặc PN tồn (số) — khớp xuất Excel. */
-function splitLeaveTypeAndPnTon(raw) {
+/** Cột «Loại phép» (file xuất/mẫu) — không còn cột phép năm tồn (số); ô chỉ số bỏ qua. */
+function parseLoaiPhepFromExcelCell(raw) {
   const t = trimCell(raw);
-  if (!t) return { loaiPhep: "", pnTon: "" };
-  if (/^\d+(\.\d+)?$/.test(t)) return { loaiPhep: "", pnTon: t };
+  if (!t) return "";
+  if (/^\d+(\.\d+)?$/.test(t)) return "";
   for (const opt of ATTENDANCE_LOAI_PHEP_OPTIONS) {
     if (rawMatchesAttendanceTypeOption(t, opt)) {
-      return { loaiPhep: t, pnTon: "" };
+      return t;
     }
   }
-  return { loaiPhep: "", pnTon: t };
-}
-
-/** Tìm hồ sơ theo MNV (cột Excel số) — khớp key node hoặc trường mnv. */
-function findProfileForMnv(profileMap, normalizedMnvDigits) {
-  if (!profileMap || typeof profileMap !== "object") return null;
-  const pk = employeeProfileStorageKeyFromMnv(normalizedMnvDigits);
-  if (pk && profileMap[pk]) return profileMap[pk];
-  const target = normalizeEmployeeCode(
-    buildPavoEmployeeId(String(normalizedMnvDigits).trim()),
-  );
-  if (!target) return null;
-  for (const prof of Object.values(profileMap)) {
-    if (!prof || typeof prof !== "object") continue;
-    const bc = businessEmployeeCode({ mnv: prof.mnv });
-    if (bc && normalizeEmployeeCode(bc) === target) return prof;
-  }
-  return null;
+  return t;
 }
 
 export const handleUploadExcel = async ({
@@ -102,7 +78,6 @@ export const handleUploadExcel = async ({
   setIsUploadingExcel,
   t,
   db,
-  employeeProfilesMap = {},
 }) => {
   if (!user) {
     setAlert({
@@ -152,6 +127,18 @@ export const handleUploadExcel = async ({
 
     // Bỏ các dòng trước bảng dữ liệu (file xuất/mẫu có nhiều dòng đầu; legacy: 2 dòng header)
     const dataRows = rows.slice(dataRowStart);
+
+    /** Mẫu mới (sau cột «Ngày vào làm»): cột «Trạng thái LV». File cũ không có → bỏ qua. */
+    const headerVnRow = rows[dataRowStart - 2];
+    const headerNorm = Array.isArray(headerVnRow)
+      ? headerVnRow.map((c) => normalizeHeaderCell(c))
+      : [];
+    const hasTrangThaiCol =
+      headerNorm.length > 6 &&
+      (headerNorm[6].includes("trạng thái") ||
+        headerNorm[6].includes("trang thai") ||
+        headerNorm[6].includes("employment status") ||
+        headerNorm[6].includes("work status"));
 
     // ✅ Hàm parse ngày CHUẨN - tránh lệch timezone
     const normalizeDate = (value) => {
@@ -234,7 +221,6 @@ export const handleUploadExcel = async ({
     // Use the selectedDate from the date picker, not the current date
     const attendanceRef = ref(db, `attendance/${selectedDate}`);
     const dataToUpload = {};
-    let skippedResigned = 0;
 
     // Chuẩn hóa MNV để tránh lệch kiểu dữ liệu (number/string) gây trùng.
     const normalizeMNV = (value) => {
@@ -253,20 +239,21 @@ export const handleUploadExcel = async ({
       const mvt = row[i + 1];
       const hoVaTen = row[i + 2];
       const gioiTinh = row[i + 3];
-      const ngayThangNamSinh = row[i + 4];
-      const maBoPhan = row[i + 5];
-      const boPhan = row[i + 6];
-      const gioVao = row[i + 7];
-      const gioRa = row[i + 8];
-      const caLamViec = row[i + 9];
-      const lastCol = i + 10;
-      const wideCol = i + 13;
+      const ngayVaoLamRaw = row[i + 4];
+      const maOffset = hasTrangThaiCol ? 6 : 5;
+      const trangThaiRaw = hasTrangThaiCol ? row[i + 5] : "";
+      const maBoPhan = row[i + maOffset];
+      const boPhan = row[i + maOffset + 1];
+      const gioVao = row[i + maOffset + 2];
+      const gioRa = row[i + maOffset + 3];
+      const caLamViec = row[i + maOffset + 4];
+      const lastCol = i + maOffset + 5;
+      const wideCol = i + maOffset + 8;
       const rawLast = trimCell(row[lastCol]);
       const rawWide = trimCell(row[wideCol]);
-      const fromLast = splitLeaveTypeAndPnTon(rawLast);
-      const fromWide = splitLeaveTypeAndPnTon(rawWide);
-      const loaiPhep = fromLast.loaiPhep || fromWide.loaiPhep;
-      const pnTonVal = fromLast.pnTon || fromWide.pnTon;
+      const loaiPhep =
+        parseLoaiPhepFromExcelCell(rawLast) ||
+        parseLoaiPhepFromExcelCell(rawWide);
 
       // Bỏ qua dòng trống hoàn toàn
       const hasValue = row.some((cell) => String(cell || "").trim() !== "");
@@ -278,12 +265,6 @@ export const handleUploadExcel = async ({
 
       const normalizedMNV = normalizeMNV(mnvNum);
       if (!normalizedMNV) return;
-
-      const profRow = findProfileForMnv(employeeProfilesMap, normalizedMNV);
-      if (profRow && isEmployeeResigned(profRow)) {
-        skippedResigned += 1;
-        return;
-      }
 
       // Trong cùng 1 file, nếu trùng MNV thì lấy dòng xuất hiện sau cùng.
       const existingUploadKey = Object.keys(dataToUpload).find(
@@ -301,6 +282,10 @@ export const handleUploadExcel = async ({
         ? Number(stt)
         : Object.keys(dataToUpload).length + 1;
 
+      const trangThaiParsed = hasTrangThaiCol
+        ? parseTrangThaiLamViecFromExcel(trimCell(trangThaiRaw))
+        : "";
+
       dataToUpload[empKey] = {
         id: empKey,
         stt: sttNum,
@@ -308,14 +293,16 @@ export const handleUploadExcel = async ({
         mvt: trimCell(mvt),
         hoVaTen: trimCell(hoVaTen),
         gioiTinh: trimCell(gioiTinh),
-        ngayThangNamSinh: normalizeDate(ngayThangNamSinh),
+        ngayVaoLam: normalizeDate(ngayVaoLamRaw),
+        ...(trangThaiParsed
+          ? { trangThaiLamViec: trangThaiParsed }
+          : {}),
         maBoPhan: trimCell(maBoPhan),
         boPhan: trimCell(boPhan),
         gioVao: trimCell(gioVao),
         gioRa: trimCell(gioRa),
         caLamViec: trimCell(caLamViec),
         loaiPhep: trimCell(loaiPhep),
-        pnTon: trimCell(pnTonVal),
         _excelHasStt: excelHasStt,
       };
     });
@@ -323,17 +310,6 @@ export const handleUploadExcel = async ({
     // Upload to Firebase - Merge with existing data to prevent data loss
     let uploadedCount = 0;
     let duplicateCount = 0;
-
-    // Lấy pnTon từ đúng ngày liền trước (lịch) để carry-forward nếu Excel không có
-    const yesterdayKey = getDateKeyBySubtractDays(selectedDate, 1);
-    const yesterdaySnap = await get(ref(db, `attendance/${yesterdayKey}`));
-    const prevData = yesterdaySnap.val() || {};
-    const prevPnTonByMNV = {};
-    Object.values(prevData).forEach((emp) => {
-      const key = normalizeMNV(emp?.mnv);
-      const val = String(emp?.pnTon ?? emp?.phepNam ?? "").trim();
-      if (key && val) prevPnTonByMNV[key] = val;
-    });
 
     // Get existing data to merge and check for duplicates
     const snapshot = await get(attendanceRef);
@@ -361,19 +337,11 @@ export const handleUploadExcel = async ({
             newEmp,
           );
           mergedData[existingKey] = mergedEmp;
-          if (!mergedEmp.pnTon && !mergedEmp.phepNam) {
-            const prevVal = prevPnTonByMNV[normalizedNewMNV];
-            if (prevVal) mergedData[existingKey].pnTon = prevVal;
-          }
         }
         duplicateCount++;
       } else {
         let rec = stripAttendanceExcelUploadInternalFields({ ...newEmp });
         if (!hasAttendanceExcelCellValue(rec.gioiTinh)) rec.gioiTinh = "YES";
-        if (!rec.pnTon && !rec.phepNam) {
-          const prevVal = prevPnTonByMNV[normalizeMNV(rec?.mnv)];
-          if (prevVal) rec = { ...rec, pnTon: prevVal };
-        }
         mergedData[key] = rec;
         if (normalizedNewMNV) {
           existingKeyByMNV[normalizedNewMNV] = key;
@@ -392,13 +360,6 @@ export const handleUploadExcel = async ({
     let message = `✅ Upload thành công ${uploadedCount} nhân viên mới`;
     if (duplicateCount > 0) {
       message += `, cập nhật ${duplicateCount} nhân viên đã tồn tại`;
-    }
-    if (skippedResigned > 0) {
-      message += t("attendanceList.uploadSkippedResigned", {
-        count: skippedResigned,
-        defaultValue:
-          "; bỏ qua {{count}} dòng (MNV đã nghỉ việc trong hồ sơ employeeProfiles)",
-      });
     }
     setAlert({
       show: true,

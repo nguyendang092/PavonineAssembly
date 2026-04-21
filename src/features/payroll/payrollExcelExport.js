@@ -17,20 +17,21 @@ import {
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import { formatTrangThaiLamViecPlain } from "@/features/attendance/attendanceEmploymentStatus";
 
-/** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 24 cột bảng. */
-const PAYROLL_EXCEL_COL_COUNT = 27;
+/** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 25 cột bảng. */
+const PAYROLL_EXCEL_COL_COUNT = 28;
 
 /**
  * Trong `payrollEmployeeRowValues`, cột giờ (Giờ công … Tổng GC ca đêm) bắt đầu ở index này.
  * @see payrollEmployeeRowValues
  */
-const PAYROLL_ROW_HOURS_START = 14;
+const PAYROLL_ROW_HOURS_START = 15;
 const PAYROLL_ROW_HOURS_COUNT = 10;
 
-/** Cột giờ trong sheet (1-based): sau Ngày/Tháng/Năm + … + Ngày lễ = cột 18 … 27. */
-const PAYROLL_EXCEL_HOURS_COL_FIRST = 18;
-const PAYROLL_EXCEL_HOURS_COL_LAST = 27;
+/** Cột giờ trong sheet (1-based): sau Ngày/Tháng/Năm + … + Ngày lễ = cột 19 … 28. */
+const PAYROLL_EXCEL_HOURS_COL_FIRST = 19;
+const PAYROLL_EXCEL_HOURS_COL_LAST = 28;
 
 /**
  * Một chữ số thập phân — tránh Excel hiển thị 3.5 thành 4 khi định dạng 0 chữ số thập phân.
@@ -63,7 +64,7 @@ export function payrollExcelHourValueToNumber(formatted) {
 }
 
 /**
- * @param {unknown[]} rest — mảng 24 phần tử từ `payrollEmployeeRowValues`
+ * @param {unknown[]} rest — mảng 24 phần tử (không gồm STT) từ `payrollEmployeeRowValues`
  * @returns {unknown[]}
  */
 function coercePayrollHourRestToNumbers(rest) {
@@ -79,7 +80,7 @@ function coercePayrollHourRestToNumbers(rest) {
 }
 
 /**
- * ExcelJS đôi khi giữ ô giờ dạng chuỗi sau `addRow` — ép lại từng ô (cột giờ 18–27) về number + numFmt,
+ * ExcelJS đôi khi giữ ô giờ dạng chuỗi sau `addRow` — ép lại từng ô (cột giờ 19–28) về number + numFmt,
  * đồng bộ xuất 1 ngày / nhiều ngày và tránh hiển thị như text.
  */
 function applyPayrollHourNumericCellsToRow(row) {
@@ -111,7 +112,7 @@ function appendPayrollWorksheetDataRow(
   );
   const [stt, ...withoutStt] = rest;
   const dataRow = worksheet.addRow([stt, day, month, year, ...withoutStt]);
-  stylePayrollDataRow(dataRow, { nameCol: 7, hoursFromCol: 18 });
+  stylePayrollDataRow(dataRow, { nameCol: 7, hoursFromCol: 19 });
   applyPayrollHourNumericCellsToRow(dataRow);
 }
 
@@ -171,7 +172,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     emp.mvt ?? "",
     emp.hoVaTen ?? "",
     emp.gioiTinh ?? "",
-    emp.ngayThangNamSinh ?? "",
+    emp.ngayVaoLam ?? "",
+    formatTrangThaiLamViecPlain(emp.trangThaiLamViec),
     emp.maBoPhan ?? "",
     emp.boPhan ?? "",
     formatAttendanceTimeInColumnDisplay(emp.gioVao ?? ""),
@@ -261,6 +263,7 @@ function buildPayrollExcelFullHeaders(tlTable) {
     tlTable("fullName", "Họ và tên"),
     tlTable("gender", "Giới tính"),
     tlTable("joinDate", "Ngày vào làm"),
+    tlTable("workStatusColumn", "Trạng thái LV"),
     tlTable("departmentCode", "Mã BP"),
     tlTable("department", "Bộ phận"),
     tlTable("timeIn", "Thời gian vào"),
@@ -291,6 +294,7 @@ const PAYROLL_EXCEL_FULL_COLUMN_WIDTHS = [
   { width: 8 },
   { width: 22 },
   { width: 8 },
+  { width: 12 },
   { width: 14 },
   { width: 10 },
   { width: 18 },

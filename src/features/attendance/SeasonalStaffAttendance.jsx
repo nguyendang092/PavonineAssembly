@@ -28,8 +28,11 @@ import ExportExcelButton from "@/components/ui/ExportExcelButton";
 import NotificationBell from "@/components/ui/NotificationBell";
 import AlertMessage from "@/components/ui/AlertMessage";
 import {
+  sanitizeAttendanceDayNodeForUi,
+  mergeAttendanceDayNodeForPersist,
+} from "@/utils/employeeRosterRecord";
+import {
   ATTENDANCE_LOAI_PHEP_OPTIONS,
-  applyLegacyGioVaoLeaveMigration,
   formatAttendanceGioVaoDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
@@ -51,6 +54,7 @@ import {
   findGioVaoTypeOptionMatch,
 } from "./attendanceGioVaoModalHelpers";
 import {
+  hasAttendanceExcelCellValue,
   mergeAttendanceExcelIntoExistingRecord,
   stripAttendanceExcelUploadInternalFields,
 } from "./attendanceExcelUploadMerge";
@@ -70,6 +74,7 @@ function SeasonalAttendanceColgroup({
     showRowModalActions,
     columnPlan,
     "attendance",
+    columnPlan === "full" ? { seasonalOmitWorkStatus: true } : {},
   );
   return (
     <colgroup>
@@ -81,7 +86,8 @@ function SeasonalAttendanceColgroup({
 }
 
 function seasonalTableMinWidthClass(columnPlan) {
-  if (columnPlan === "full") return "";
+  /** Full: không cột «Trạng thái LV» như điểm danh chính — bảng hẹp hơn một chút. */
+  if (columnPlan === "full") return "min-w-[1180px]";
   if (columnPlan === "compact") return "min-w-[1000px]";
   if (columnPlan === "narrow") return "min-w-[840px]";
   if (columnPlan === "minimal") return "min-w-[600px]";
@@ -181,7 +187,7 @@ function SeasonalStaffAttendance() {
       const data = snapshot.val();
       if (data && typeof data === "object") {
         const arr = Object.entries(data).map(([id, emp]) =>
-          applyLegacyGioVaoLeaveMigration({ id, ...emp }),
+          sanitizeAttendanceDayNodeForUi(emp, id),
         );
         arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
         setEmployees(arr);
@@ -462,7 +468,12 @@ function SeasonalStaffAttendance() {
       delete payload.chamCong;
       if (editing) {
         const empRef = ref(db, `seasonalAttendance/${selectedDate}/${editing}`);
-        await set(empRef, { ...payload, id: editing });
+        const snap = await get(empRef);
+        const existingRaw = snap.val() || {};
+        await set(
+          empRef,
+          mergeAttendanceDayNodeForPersist(existingRaw, payload, editing),
+        );
         setShowModal(false); // Đóng popup sau khi cập nhật thành công
         setAlert({
           show: true,
@@ -472,7 +483,11 @@ function SeasonalStaffAttendance() {
         setEditing(null);
       } else {
         const newRef = push(ref(db, `seasonalAttendance/${selectedDate}`));
-        await set(newRef, { ...payload, id: newRef.key });
+        const newKey = newRef.key;
+        await set(
+          newRef,
+          mergeAttendanceDayNodeForPersist({}, payload, newKey),
+        );
         setShowModal(false); // Đóng popup sau khi thêm mới thành công
         setAlert({
           show: true,
@@ -810,11 +825,10 @@ function SeasonalStaffAttendance() {
             _excelHasStt: excelHasStt,
           };
         });
-        // Upload to Firebase - Merge with existing data to prevent data loss
+        // Upload: chỉ merge Excel + `seasonalAttendance/{ngày}` đã có (một snapshot), không trộn nguồn khác.
         let uploadedCount = 0;
         let duplicateCount = 0;
 
-        // Get existing data to merge and check for duplicates
         const snapshot = await get(attendanceRef);
         const existingData = snapshot.val() || {};
         const existingKeyByMNV = {};
@@ -844,7 +858,9 @@ function SeasonalStaffAttendance() {
             }
             duplicateCount++;
           } else {
-            mergedData[key] = newEmp;
+            let rec = stripAttendanceExcelUploadInternalFields({ ...newEmp });
+            if (!hasAttendanceExcelCellValue(rec.gioiTinh)) rec.gioiTinh = "YES";
+            mergedData[key] = rec;
             if (normalizedNewMNV) {
               existingKeyByMNV[normalizedNewMNV] = key;
             }
@@ -1049,7 +1065,7 @@ function SeasonalStaffAttendance() {
           idx + 1,
           emp.mnv || "",
           emp.hoVaTen || "",
-          emp.ngayThangNamSinh || "",
+          emp.ngayVaoLam || "",
           emp.maBoPhan || "",
           emp.boPhan || "",
           "", // Total overtime hours
@@ -1459,7 +1475,7 @@ function SeasonalStaffAttendance() {
         <td>${idx + 1}</td>
         <td>${emp.mnv || ""}</td>
         <td class="name-col">${emp.hoVaTen || ""}</td>
-        <td>${emp.ngayThangNamSinh || ""}</td>
+        <td>${emp.ngayVaoLam || ""}</td>
         <td>${emp.maBoPhan || ""}</td>
         <td class="dept-col">${emp.boPhan || ""}</td>
         <td></td>
@@ -1781,7 +1797,7 @@ function SeasonalStaffAttendance() {
               : ""
           }</td>
             <td>${gioiTinh}</td>
-            <td>${emp.ngayThangNamSinh || ""}</td>
+            <td>${emp.ngayVaoLam || ""}</td>
             <td>${emp.maBoPhan || ""}</td>
             <td class="dept">${emp.boPhan || ""}</td>
             <td style="${
@@ -1909,7 +1925,7 @@ function SeasonalStaffAttendance() {
           idx + 1,
           emp.mnv || "",
           emp.hoVaTen || "",
-          emp.ngayThangNamSinh || "",
+          emp.ngayVaoLam || "",
           emp.maBoPhan || "",
           emp.boPhan || "",
           "",
@@ -2644,6 +2660,7 @@ function SeasonalStaffAttendance() {
                   <ExportExcelButton
                     data={filteredEmployees}
                     selectedDate={selectedDate}
+                    omitWorkStatusColumn
                     title="📥 Xuất Excel"
                     onSuccess={(msg) =>
                       setAlert({ show: true, type: "success", message: msg })
@@ -2714,26 +2731,27 @@ function SeasonalStaffAttendance() {
 
         {/* Modal Add/Edit */}
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="bg-gradient-to-br from-purple-50 via-white to-purple-200 rounded-2xl shadow-2xl p-8 w-full max-w-2xl relative mx-4 overflow-y-auto max-h-[90vh] border-2 border-blue-200 animate-fadeIn">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-3 sm:p-4">
+            <div className="bg-gradient-to-br from-purple-50 via-white to-purple-200 rounded-2xl shadow-2xl px-4 py-4 sm:px-5 sm:py-5 w-full max-w-2xl relative mx-auto overflow-y-auto max-h-[90vh] border-2 border-blue-200 animate-fadeIn">
               <button
+                type="button"
                 onClick={() => {
                   setShowModal(false);
                   setEditing(null);
                 }}
-                className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 rounded-full transition"
+                className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent p-0 text-2xl font-bold leading-none text-gray-400 transition-colors hover:bg-slate-200/80 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400 dark:hover:bg-slate-700 dark:hover:text-slate-100 dark:focus-visible:ring-blue-500"
                 aria-label={t("attendanceList.close")}
               >
                 ×
               </button>
-              <h2 className="text-xl font-extrabold mb-6 text-black tracking-wide text-center drop-shadow uppercase">
+              <h2 className="text-xl font-extrabold mb-4 text-black tracking-wide text-center drop-shadow uppercase">
                 {editing
                   ? tl("updateEmployee", "Cập nhật nhân viên")
                   : tl("addEmployee", "Thêm nhân viên mới")}
               </h2>
               <form
                 onSubmit={handleSubmit}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
               >
                 <div className="sm:col-span-2 grid min-w-0 grid-cols-3 gap-3 sm:gap-4">
                   <div className="min-w-0">
@@ -2959,7 +2977,7 @@ function SeasonalStaffAttendance() {
                 </div>
                 <button
                   type="submit"
-                  className="sm:col-span-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-extrabold text-base mt-2 shadow-lg hover:from-blue-700 hover:to-purple-700 active:scale-95 transition-all duration-150 tracking-wide"
+                  className="sm:col-span-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2.5 rounded-lg font-extrabold text-sm sm:text-base mt-1 shadow-lg hover:from-blue-700 hover:to-purple-700 active:scale-95 transition-all duration-150 tracking-wide"
                 >
                   {editing
                     ? t("attendanceList.update")
@@ -3197,7 +3215,7 @@ function SeasonalStaffAttendance() {
                           {emp.hoVaTen || ""}
                         </td>
                         <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {emp.ngayThangNamSinh || ""}
+                          {emp.ngayVaoLam || ""}
                         </td>
                         <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
                           {emp.maBoPhan || ""}
@@ -3404,7 +3422,7 @@ function SeasonalStaffAttendance() {
                   {columnPlan === "full" ? (
                     <>
                       <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-semibold text-gray-700">
-                        {emp.ngayThangNamSinh}
+                        {emp.ngayVaoLam}
                       </td>
                       <td className="hidden md:table-cell px-1 md:px-1.5 py-0.5 md:py-1 text-sm text-center font-bold text-gray-700">
                         {emp.maBoPhan}

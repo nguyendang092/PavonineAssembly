@@ -11,7 +11,6 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUser } from "@/contexts/UserContext";
 import { canEditAttendanceForEmployee } from "@/config/authRoles";
 import { db, ref, onValue, get, update } from "@/services/firebase";
-import { EMPLOYEE_PROFILES_PATH } from "@/utils/employeeRosterRecord";
 import { mergeAttendanceDayRowsFromRaw } from "@/features/attendance/mergeAttendanceDayRows";
 import { payrollTableWrapperMinWidthClass } from "@/features/payroll/payrollTableLayout";
 import {
@@ -81,7 +80,6 @@ export default function PayrollSalaryCalculator() {
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
 
-  const [employeeProfilesMap, setEmployeeProfilesMap] = useState({});
   const [employees, setEmployees] = useState([]);
   const [earlyOtMap, setEarlyOtMap] = useState({});
   const [earlyOtModalOpen, setEarlyOtModalOpen] = useState(false);
@@ -97,7 +95,6 @@ export default function PayrollSalaryCalculator() {
   const [excelExportMenuOpen, setExcelExportMenuOpen] = useState(false);
 
   const attendanceRawRef = useRef(undefined);
-  const profilesRef = useRef({});
   const excelExportMenuRef = useRef(null);
 
   /** Nhãn bảng: ưu tiên `salaryCalc.table.*`, fallback `attendanceList.*`. */
@@ -123,19 +120,6 @@ export default function PayrollSalaryCalculator() {
   }, []);
 
   useEffect(() => {
-    const profRef = ref(db, EMPLOYEE_PROFILES_PATH);
-    const unsub = onValue(profRef, (snapshot) => {
-      const v = snapshot.val();
-      setEmployeeProfilesMap(v && typeof v === "object" ? v : {});
-    });
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    profilesRef.current = employeeProfilesMap;
-  }, [employeeProfilesMap]);
-
-  useEffect(() => {
     attendanceRawRef.current = undefined;
     setEmployees([]);
     setEarlyOtMap({});
@@ -145,19 +129,11 @@ export default function PayrollSalaryCalculator() {
       attendanceRawRef.current = data;
       setIsOffDay(getIsOffDayFromRaw(data));
       setIsHolidayDay(getIsHolidayDayFromRaw(data));
-      setEmployees(mergeAttendanceDayRowsFromRaw(data, profilesRef.current));
+      setEmployees(mergeAttendanceDayRowsFromRaw(data));
       setEarlyOtMap(getEarlyOtPaperworkFromRaw(data));
     });
     return () => unsubscribe();
   }, [selectedDate]);
-
-  useEffect(() => {
-    const raw = attendanceRawRef.current;
-    if (raw === undefined) return;
-    setEmployees(
-      mergeAttendanceDayRowsFromRaw(raw, employeeProfilesMap),
-    );
-  }, [employeeProfilesMap]);
 
   useEffect(() => {
     setEarlyOtSuppressed(false);
@@ -460,10 +436,7 @@ export default function PayrollSalaryCalculator() {
           if (!raw || typeof raw !== "object") continue;
           const od = getIsOffDayFromRaw(raw);
           const hd = getIsHolidayDayFromRaw(raw);
-          const merged = mergeAttendanceDayRowsFromRaw(
-            raw,
-            employeeProfilesMap,
-          );
+          const merged = mergeAttendanceDayRowsFromRaw(raw);
           if (!merged.length) continue;
           const earlyOt = getEarlyOtPaperworkFromRaw(raw);
           dayChunks.push({
@@ -524,13 +497,7 @@ export default function PayrollSalaryCalculator() {
         setRangeExportBusy(false);
       }
     },
-    [
-      db,
-      displayLocale,
-      employeeProfilesMap,
-      tlPage,
-      tlTable,
-    ],
+    [db, displayLocale, tlPage, tlTable],
   );
 
   const handleExportPayrollExcel = useCallback(async () => {

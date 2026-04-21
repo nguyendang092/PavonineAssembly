@@ -1,7 +1,10 @@
 /**
  * Quy tắc merge upload Excel → Firebase (điểm danh):
- * - Ô / trường trên Firebase **trống** và Excel **có** dữ liệu → điền từ Excel.
- * - Firebase **đã có** dữ liệu → **không** ghi đè bởi Excel.
+ * **Một nguồn đúng cho mỗi trường:** chỉ hợp nhất **(1) bản ghi đã có** tại `attendance/{ngày}`
+ * và **(2) dòng Excel** vừa parse — không trộn `employeeProfiles` hay ngày khác vào bước merge này.
+ *
+ * - Trường trên Firebase **trống** và Excel **có** dữ liệu → điền từ Excel.
+ * - Firebase **đã có** dữ liệu → **không** ghi đè bởi Excel (giữ chỉnh tay / lần upload trước cùng ngày).
  */
 
 /**

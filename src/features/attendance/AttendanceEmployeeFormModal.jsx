@@ -2,18 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { db, ref, push, update, get } from "@/services/firebase";
 import {
-  EMPLOYEE_PROFILES_PATH,
-  EMPLOYEE_DEPT_CATALOG_PATH,
-  buildEmployeeProfileDocument,
   buildEmployeeAttendanceDayDocument,
   employeeProfileStorageKeyFromMnv,
-  resolveDepartmentKeyForProfileSave,
   formSliceForAttendanceDayDocument,
+  mergeAttendanceDayNodeForPersist,
+  ROSTER_TRANG_THAI_VALUES,
 } from "@/utils/employeeRosterRecord";
-import {
-  appendEmployeeProfileHistory,
-  diffEmployeeProfileDocs,
-} from "@/utils/employeeProfileHistory";
 import {
   canEditAttendanceForEmployee,
   canAddAttendanceForDepartment,
@@ -28,6 +22,14 @@ import {
   findGioVaoTypeOptionMatch,
 } from "./attendanceGioVaoModalHelpers";
 
+const TRANG_THAI_OPTION_DEFAULTS = {
+  dang_lam: "Chính thức",
+  thu_viec: "Thử việc",
+  tam_nghi: "Tạm nghỉ",
+  thai_san: "Thai sản",
+  nghi_viec: "Nghỉ việc",
+};
+
 export const EMPTY_EMPLOYEE_FORM = {
   id: "",
   stt: "",
@@ -36,13 +38,14 @@ export const EMPTY_EMPLOYEE_FORM = {
   hoVaTen: "",
   gioiTinh: "YES",
   ngayThangNamSinh: "",
+  ngayVaoLam: "",
+  trangThaiLamViec: "dang_lam",
   maBoPhan: "",
   boPhan: "",
   gioVao: "",
   loaiPhep: "",
   gioRa: "",
   caLamViec: "",
-  pnTon: "",
 };
 
 const employeeModalFieldClass =
@@ -51,8 +54,8 @@ const employeeModalLabelClass =
   "mb-1 block text-xs font-bold uppercase tracking-wide text-purple-600 dark:text-purple-400";
 
 /**
- * Modal thêm / cập nhật nhân viên (profile + attendance theo ngày).
- * Dùng chung Điểm danh NV và màn tính lương — lưu Firebase `update()` nên mọi màn đang `onValue` đồng bộ.
+ * Modal thêm / cập nhật dòng điểm danh — chỉ ghi `attendance/{ngày}/{key}` (không employeeProfiles).
+ * Dùng chung Điểm danh NV và màn tính lương — `update()` nên mọi màn `onValue` đồng bộ.
  */
 export default function AttendanceEmployeeFormModal({
   open,
@@ -77,8 +80,6 @@ export default function AttendanceEmployeeFormModal({
   const [form, setForm] = useState(() => ({ ...EMPTY_EMPLOYEE_FORM }));
   /** Khóa `attendance/{date}/{id}` khi sửa — giữ cố định khi form thay đổi */
   const [editAttendanceKey, setEditAttendanceKey] = useState(null);
-  /** Danh mục `employeeDepartments` — để `departmentKey` khớp tên `boPhan`, không giữ key cũ lệch. */
-  const [deptCatalog, setDeptCatalog] = useState(null);
 
   /**
    * Chỉ reset form khi mở form / đổi người sửa / đổi ngày — không phụ thuộc `initialRecord`
@@ -113,25 +114,6 @@ export default function AttendanceEmployeeFormModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initialRecord chỉ đọc khi formInitKey đổi; không deps object để tránh reset khi parent tạo {...emp} mới cùng id
   }, [open, formInitKey]);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const snap = await get(ref(db, EMPLOYEE_DEPT_CATALOG_PATH));
-        const v = snap.val();
-        if (!cancelled) {
-          setDeptCatalog(v && typeof v === "object" ? v : {});
-        }
-      } catch {
-        if (!cancelled) setDeptCatalog({});
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
 
   /** Khóa cuộn nền (desktop + mobile/iOS): overflow + body fixed + khôi phục scroll khi đóng. */
   useEffect(() => {
@@ -236,81 +218,31 @@ export default function AttendanceEmployeeFormModal({
           ref(db, `attendance/${selectedDate}/${editAttendanceKey}`),
         );
         const existingRaw = daySnap.val() || {};
-        const profSnap = await get(
-          ref(db, `${EMPLOYEE_PROFILES_PATH}/${storageKey}`),
-        );
-        const existingProfile = profSnap.val() || {};
-        /** Không trộn `loaiPhep` từ profile — chỉ từ node ngày + form (tránh mất PN/BGC khi profile có giá trị cũ). */
-        const { loaiPhep: _omitProfLp, ...profileRest } = existingProfile;
-        const deptKey = resolveDepartmentKeyForProfileSave(
-          form.boPhan,
-          existingProfile.departmentKey,
-          deptCatalog,
-        );
         const allowFullEdit = isAdminAccess(user, userRole);
         const loaiPhepToSave = canonicalAttendanceLoaiPhep(
           String(form.loaiPhep ?? "").trim(),
         );
 
+        const sliceOverrides = {
+          businessId: storageKey,
+          loaiPhep: loaiPhepToSave,
+        };
         if (!allowFullEdit) {
-          const dayDoc = buildEmployeeAttendanceDayDocument({
-            form: formSliceForAttendanceDayDocument(form, {
-              businessId: storageKey,
-              loaiPhep: loaiPhepToSave,
-              caLamViec: form.caLamViec,
-            }),
-            existing: existingRaw,
-          });
-          await update(ref(db), {
-            [`attendance/${selectedDate}/${editAttendanceKey}`]: {
-              ...dayDoc,
-              id: editAttendanceKey,
-            },
-          });
-        } else {
-          const mergedForm = {
-            ...profileRest,
-            ...form,
-            businessId: storageKey,
-            departmentKey: deptKey,
-            loaiPhep: loaiPhepToSave,
-          };
-          const profileDoc = buildEmployeeProfileDocument({
-            form: mergedForm,
-            existingProfile,
-            departmentDisplayName: form.boPhan,
-            departmentKey: deptKey,
-          });
-          const dayDoc = buildEmployeeAttendanceDayDocument({
-            form: formSliceForAttendanceDayDocument(form, {
-              businessId: storageKey,
-              loaiPhep: loaiPhepToSave,
-            }),
-            existing: existingRaw,
-          });
-          await update(ref(db), {
-            [`${EMPLOYEE_PROFILES_PATH}/${storageKey}`]: profileDoc,
-            [`attendance/${selectedDate}/${editAttendanceKey}`]: {
-              ...dayDoc,
-              id: editAttendanceKey,
-            },
-          });
-          const profileChanges = diffEmployeeProfileDocs(
-            existingProfile,
-            profileDoc,
-          );
-          if (profileChanges.length > 0) {
-            void appendEmployeeProfileHistory({
-              by: user?.email || "",
-              action: "update",
-              source: "attendance",
-              profileKey: storageKey,
-              mnv: String(profileDoc.mnv || form.mnv || ""),
-              hoVaTen: String(profileDoc.hoVaTen || form.hoVaTen || ""),
-              changes: profileChanges,
-            });
-          }
+          sliceOverrides.caLamViec = form.caLamViec;
         }
+
+        const dayDoc = buildEmployeeAttendanceDayDocument({
+          form: formSliceForAttendanceDayDocument(form, sliceOverrides),
+          existing: existingRaw,
+        });
+        await update(ref(db), {
+          [`attendance/${selectedDate}/${editAttendanceKey}`]:
+            mergeAttendanceDayNodeForPersist(
+              existingRaw,
+              dayDoc,
+              editAttendanceKey,
+            ),
+        });
         onClose();
         notify({
           show: true,
@@ -334,30 +266,9 @@ export default function AttendanceEmployeeFormModal({
           });
           return;
         }
-        const profSnap = await get(
-          ref(db, `${EMPLOYEE_PROFILES_PATH}/${storageKey}`),
-        );
-        const existingProfile = profSnap.val() || {};
-        const deptKey = resolveDepartmentKeyForProfileSave(
-          form.boPhan,
-          existingProfile.departmentKey,
-          deptCatalog,
-        );
         const loaiPhepToSave = canonicalAttendanceLoaiPhep(
           String(form.loaiPhep ?? "").trim(),
         );
-        const mergedForm = {
-          ...existingProfile,
-          ...form,
-          businessId: storageKey,
-          departmentKey: deptKey,
-        };
-        const profileDoc = buildEmployeeProfileDocument({
-          form: mergedForm,
-          existingProfile,
-          departmentDisplayName: form.boPhan,
-          departmentKey: deptKey,
-        });
         const newRef = push(ref(db, `attendance/${selectedDate}`));
         const newKey = newRef.key;
         const dayDoc = buildEmployeeAttendanceDayDocument({
@@ -368,16 +279,7 @@ export default function AttendanceEmployeeFormModal({
           existing: {},
         });
         await update(ref(db), {
-          [`${EMPLOYEE_PROFILES_PATH}/${storageKey}`]: profileDoc,
           [`attendance/${selectedDate}/${newKey}`]: { ...dayDoc, id: newKey },
-        });
-        void appendEmployeeProfileHistory({
-          by: user?.email || "",
-          action: "create",
-          source: "attendance",
-          profileKey: storageKey,
-          mnv: String(profileDoc.mnv || form.mnv || ""),
-          hoVaTen: String(profileDoc.hoVaTen || form.hoVaTen || ""),
         });
         onClose();
         notify({
@@ -406,9 +308,9 @@ export default function AttendanceEmployeeFormModal({
     isEditMode && !isAdminAccess(user, userRole);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/45 p-4 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/45 p-3 backdrop-blur-[2px] sm:p-4">
       <div
-        className={`relative mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-purple-50 via-white to-indigo-100 p-6 shadow-2xl animate-fadeIn sm:p-8 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950 dark:border-blue-800 ${
+        className={`relative mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-purple-50 via-white to-indigo-100 px-4 py-4 shadow-2xl animate-fadeIn sm:px-5 sm:py-5 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950 dark:border-blue-800 ${
           isEditMode
             ? "ring-2 ring-fuchsia-400/50 shadow-fuchsia-500/10 dark:ring-fuchsia-500/35"
             : "ring-1 ring-blue-200/80 dark:ring-blue-900/60"
@@ -417,18 +319,18 @@ export default function AttendanceEmployeeFormModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-xl font-bold text-purple-400 transition hover:bg-purple-100 hover:text-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-300 dark:text-purple-500 dark:hover:bg-purple-950 dark:hover:text-purple-200"
+          className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent p-0 text-xl font-bold leading-none text-purple-400 transition-colors hover:bg-purple-100 hover:text-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-400 dark:text-purple-500 dark:hover:bg-purple-950 dark:hover:text-purple-200 dark:focus-visible:ring-purple-600"
           aria-label="Đóng"
         >
           ×
         </button>
-        <h2 className="mb-6 border-b-2 border-blue-200/80 bg-gradient-to-r from-blue-700 via-purple-600 to-indigo-600 bg-clip-text pb-4 text-center text-xl font-extrabold tracking-wide text-transparent drop-shadow-sm dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 sm:text-2xl">
+        <h2 className="mb-4 border-b-2 border-blue-200/80 bg-gradient-to-r from-blue-700 via-purple-600 to-indigo-600 bg-clip-text pb-3 text-center text-xl font-extrabold tracking-wide text-transparent drop-shadow-sm dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 sm:text-2xl">
           {isEditMode
             ? tl("updateEmployee", "Cập nhật nhân viên")
             : tl("addEmployee", "Thêm nhân viên mới")}
         </h2>
         {isRestrictedEdit && (
-          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
+          <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
             {tl(
               "restrictedEditManagerHint",
               "Bạn chỉ có thể sửa Loại phép và Ca làm việc. Chỉ Admin / HR mới chỉnh sửa toàn bộ thông tin.",
@@ -437,7 +339,7 @@ export default function AttendanceEmployeeFormModal({
         )}
         <form
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2"
         >
           <div className="sm:col-span-2 grid min-w-0 grid-cols-3 gap-3 sm:gap-4">
             <div className="min-w-0">
@@ -522,6 +424,43 @@ export default function AttendanceEmployeeFormModal({
               disabled={isRestrictedEdit}
               className={employeeModalFieldClass}
             />
+          </div>
+          <div>
+            <label className={employeeModalLabelClass}>
+              {tl("joinDate", "Ngày vào làm")}
+            </label>
+            <input
+              type="date"
+              name="ngayVaoLam"
+              value={form.ngayVaoLam}
+              onChange={handleChange}
+              disabled={isRestrictedEdit}
+              className={employeeModalFieldClass}
+            />
+          </div>
+          <div>
+            <label className={employeeModalLabelClass}>
+              {tl("employmentStatusField", "Trạng thái làm việc")}
+            </label>
+            <select
+              name="trangThaiLamViec"
+              value={form.trangThaiLamViec ?? ""}
+              onChange={handleChange}
+              disabled={isRestrictedEdit}
+              className={employeeModalFieldClass}
+            >
+              <option value="">
+                {tl("employmentStatusPlaceholder", "— Chọn —")}
+              </option>
+              {ROSTER_TRANG_THAI_VALUES.map((v) => (
+                <option key={v} value={v}>
+                  {tl(
+                    `employmentStatusValue_${v}`,
+                    TRANG_THAI_OPTION_DEFAULTS[v] ?? v,
+                  )}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className={employeeModalLabelClass}>
@@ -694,7 +633,7 @@ export default function AttendanceEmployeeFormModal({
           </div>
           <button
             type="submit"
-            className="sm:col-span-2 mt-1 w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 py-3 text-base font-extrabold tracking-wide text-white shadow-lg transition hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 active:scale-95 dark:focus:ring-offset-slate-900"
+            className="sm:col-span-2 mt-0 w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 py-2.5 text-sm font-extrabold tracking-wide text-white shadow-lg transition hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 active:scale-95 sm:text-base dark:focus:ring-offset-slate-900"
           >
             {isEditMode
               ? t("attendanceList.btnUpdate")

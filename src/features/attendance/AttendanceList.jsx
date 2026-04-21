@@ -30,7 +30,6 @@ import {
   moveKeyBefore,
 } from "@/utils/chartOrderStorage";
 import { db, ref, get, onValue, remove } from "@/services/firebase";
-import { EMPLOYEE_PROFILES_PATH } from "@/utils/employeeRosterRecord";
 import ExcelJS from "exceljs";
 import { handleUploadExcel } from "./AttendanceUploadHandler";
 import { downloadAttendanceDiemDanhTemplate } from "./attendanceDiemDanhExcelExport";
@@ -278,24 +277,7 @@ function AttendanceList() {
     }
   }, [user?.uid, unattendedSuppressSessionCheckbox]);
 
-  const [employeeProfilesMap, setEmployeeProfilesMap] = useState({});
-
-  useEffect(() => {
-    const profRef = ref(db, EMPLOYEE_PROFILES_PATH);
-    const unsubscribe = onValue(profRef, (snapshot) => {
-      const v = snapshot.val();
-      setEmployeeProfilesMap(v && typeof v === "object" ? v : {});
-    });
-    return () => unsubscribe();
-  }, []);
-
-  /** Ref để listener attendance chỉ phụ thuộc `selectedDate` — không gỡ/gắn lại onValue khi profiles đổi */
   const attendanceRawRef = useRef(undefined);
-  const profilesRef = useRef({});
-
-  useEffect(() => {
-    profilesRef.current = employeeProfilesMap;
-  }, [employeeProfilesMap]);
 
   useEffect(() => {
     attendanceRawRef.current = undefined;
@@ -306,16 +288,10 @@ function AttendanceList() {
       attendanceRawRef.current = data;
       setIsOffDay(getIsOffDayFromRaw(data));
       setIsHolidayDay(getIsHolidayDayFromRaw(data));
-      setEmployees(mergeAttendanceDayRowsFromRaw(data, profilesRef.current));
+      setEmployees(mergeAttendanceDayRowsFromRaw(data));
     });
     return () => unsubscribe();
   }, [selectedDate]);
-
-  useEffect(() => {
-    const raw = attendanceRawRef.current;
-    if (raw === undefined) return;
-    setEmployees(mergeAttendanceDayRowsFromRaw(raw, employeeProfilesMap));
-  }, [employeeProfilesMap]);
 
   useEffect(() => {
     setShowUnattendedPopup(false);
@@ -548,7 +524,6 @@ function AttendanceList() {
         db,
         ref,
         get,
-        employeeProfilesMap,
         applyAttendanceMerge: mergeAttendanceDayRowsFromRaw,
         filterAttendanceListRows,
         displayLocale,
@@ -597,7 +572,6 @@ function AttendanceList() {
     db,
     ref,
     get,
-    employeeProfilesMap,
     mergeAttendanceDayRowsFromRaw,
     filterAttendanceListRows,
     displayLocale,
@@ -1040,18 +1014,9 @@ function AttendanceList() {
         setIsUploadingExcel,
         t,
         db,
-        employeeProfilesMap,
       });
     },
-    [
-      user,
-      selectedDate,
-      setAlert,
-      setIsUploadingExcel,
-      t,
-      db,
-      employeeProfilesMap,
-    ],
+    [user, selectedDate, setAlert, setIsUploadingExcel, t, db],
   );
 
   const handleDownloadAttendanceExcelTemplate = useCallback(async () => {
@@ -1467,7 +1432,7 @@ function AttendanceList() {
         <td>${idx + 1}</td>
         <td>${emp.mnv || ""}</td>
         <td class="name-col">${emp.hoVaTen || ""}</td>
-        <td>${emp.ngayThangNamSinh || ""}</td>
+        <td>${emp.ngayVaoLam || ""}</td>
         <td>${emp.maBoPhan || ""}</td>
         <td class="dept-col">${emp.boPhan || ""}</td>
         <td></td>
@@ -1744,7 +1709,6 @@ function AttendanceList() {
           <th style="width:7%">MVT</th>
           <th style="width:25%">Họ và tên</th>
           <th style="width:8%">Giới tính</th>
-          <th style="width:11%">Ngày sinh</th>
           <th style="width:7%">Mã BP</th>
           <th style="width:10%">Bộ phận</th>
           <th style="width:8%">Thời gian vào</th>
@@ -1790,7 +1754,6 @@ function AttendanceList() {
               : ""
           }</td>
             <td>${gioiTinh}</td>
-            <td>${emp.ngayThangNamSinh || ""}</td>
             <td>${emp.maBoPhan || ""}</td>
             <td class="dept">${emp.boPhan || ""}</td>
             <td style="${
@@ -1920,7 +1883,7 @@ function AttendanceList() {
           idx + 1,
           emp.mnv || "",
           emp.hoVaTen || "",
-          emp.ngayThangNamSinh || "",
+          emp.ngayVaoLam || "",
           emp.maBoPhan || "",
           emp.boPhan || "",
           "",
@@ -3556,7 +3519,7 @@ function AttendanceList() {
                           {emp.hoVaTen || ""}
                         </td>
                         <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {emp.ngayThangNamSinh || ""}
+                          {emp.ngayVaoLam || ""}
                         </td>
                         <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
                           {emp.maBoPhan || ""}

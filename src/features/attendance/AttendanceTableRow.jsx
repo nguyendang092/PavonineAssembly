@@ -17,6 +17,7 @@ import {
   formatPayrollTableWorkingHoursCell,
 } from "./attendanceWorkingHours";
 import { getPayrollColWidthPercents } from "@/features/payroll/payrollColumnWidths";
+import { formatTrangThaiLamViecTableCell } from "./attendanceEmploymentStatus";
 
 const PAYROLL_EMPTY_CELL = "-";
 /** Điểm danh: ô trống / không nhập giờ — chỉnh sửa qua nút Sửa. */
@@ -47,27 +48,28 @@ const ATTENDANCE_GRID_COL = {
   mvt: 3,
   fullName: 4,
   gender: 5,
-  dob: 6,
-  deptCode: 7,
-  dept: 8,
-  timeIn: 9,
-  timeOut: 10,
-  leaveType: 11,
-  shift: 12,
+  joinDate: 6,
+  workStatus: 7,
+  deptCode: 8,
+  dept: 9,
+  timeIn: 10,
+  timeOut: 11,
+  leaveType: 12,
+  shift: 13,
   /** Cùng dòng ngày: tick «Ngày off» ở Điểm danh → hiển thị OFF. */
-  offDay: 13,
-  holidayDay: 14,
-  workingHours: 15,
-  overtimeHours: 16,
-  offDayOvertimeHours: 17,
-  holidayDayWorkingHours: 18,
-  payrollTotalGcDay: 19,
-  nightShiftWorkingHours: 20,
-  nightShiftOvertimeHours: 21,
-  nightShiftOffDayWorkingHours: 22,
-  holidayNightWorkingHours: 23,
-  payrollTotalGcNight: 24,
-  actions: 25,
+  offDay: 14,
+  holidayDay: 15,
+  workingHours: 16,
+  overtimeHours: 17,
+  offDayOvertimeHours: 18,
+  holidayDayWorkingHours: 19,
+  payrollTotalGcDay: 20,
+  nightShiftWorkingHours: 21,
+  nightShiftOvertimeHours: 22,
+  nightShiftOffDayWorkingHours: 23,
+  holidayNightWorkingHours: 24,
+  payrollTotalGcNight: 25,
+  actions: 26,
 };
 
 /** Cùng thứ tự cột nhưng bỏ ngày sinh + mã BP — % chia lại tròn 100. */
@@ -220,19 +222,20 @@ const FULL_ATTENDANCE_ONLY_NO_ACTIONS = {
   mvt: 3,
   fullName: 4,
   gender: 5,
-  dob: 6,
-  deptCode: 7,
-  dept: 8,
-  timeIn: 9,
-  timeOut: 10,
-  leaveType: 11,
-  shift: 12,
-  offDay: 13,
-  holidayDay: 14,
+  joinDate: 6,
+  workStatus: 7,
+  deptCode: 8,
+  dept: 9,
+  timeIn: 10,
+  timeOut: 11,
+  leaveType: 12,
+  shift: 13,
+  offDay: 14,
+  holidayDay: 15,
 };
 const FULL_ATTENDANCE_ONLY_WITH_ACTIONS = {
   ...FULL_ATTENDANCE_ONLY_NO_ACTIONS,
-  actions: 15,
+  actions: 16,
 };
 const COMPACT_ATTENDANCE_ONLY_NO_ACTIONS = {
   stt: 1,
@@ -300,7 +303,7 @@ function getAttendanceVisibleColumnCount(showRowModalActions, columnPlan) {
           ? "compact"
           : "full";
   const table = {
-    full: { withAct: 15, noAct: 14 },
+    full: { withAct: 16, noAct: 15 },
     compact: { withAct: 13, noAct: 12 },
     narrow: { withAct: 12, noAct: 11 },
     minimal: { withAct: 8, noAct: 7 },
@@ -399,7 +402,12 @@ export function getAttendanceGridColumnStart(
       const map = showRowModalActions
         ? NARROW_ATTENDANCE_ONLY_WITH_ACTIONS
         : NARROW_ATTENDANCE_ONLY_NO_ACTIONS;
-      if (key === "dob" || key === "deptCode" || key === "dept")
+      if (
+        key === "joinDate" ||
+        key === "workStatus" ||
+        key === "deptCode" ||
+        key === "dept"
+      )
         return undefined;
       return map[key];
     }
@@ -407,7 +415,12 @@ export function getAttendanceGridColumnStart(
       const map = showRowModalActions
         ? COMPACT_ATTENDANCE_ONLY_WITH_ACTIONS
         : COMPACT_ATTENDANCE_ONLY_NO_ACTIONS;
-      if (key === "dob" || key === "deptCode") return undefined;
+      if (
+        key === "joinDate" ||
+        key === "workStatus" ||
+        key === "deptCode"
+      )
+        return undefined;
       return map[key];
     }
     const map = showRowModalActions
@@ -425,14 +438,25 @@ export function getAttendanceGridColumnStart(
     const map = showRowModalActions
       ? ATTENDANCE_GRID_COL_NARROW_WITH_ACTIONS
       : ATTENDANCE_GRID_COL_NARROW_NO_ACTIONS;
-    if (key === "dob" || key === "deptCode" || key === "dept") return undefined;
+    if (
+      key === "joinDate" ||
+      key === "workStatus" ||
+      key === "deptCode" ||
+      key === "dept"
+    )
+      return undefined;
     return map[key];
   }
   if (columnPlan === "compact") {
     const map = showRowModalActions
       ? ATTENDANCE_GRID_COL_COMPACT_WITH_ACTIONS
       : ATTENDANCE_GRID_COL_COMPACT_NO_ACTIONS;
-    if (key === "dob" || key === "deptCode") return undefined;
+    if (
+      key === "joinDate" ||
+      key === "workStatus" ||
+      key === "deptCode"
+    )
+      return undefined;
     return map[key];
   }
   return ATTENDANCE_GRID_COL[key];
@@ -450,14 +474,14 @@ export function cellClsForAttendanceTable(s) {
     .trim();
 }
 
-/** % cột — khớp `SeasonalStaffAttendance` colgroup/grid. */
+/** % cột — khớp `SeasonalStaffAttendance` / điểm danh (colgroup/grid). */
 const WIDTHS_WITH_ACTIONS = [
-  2, 4, 4, 14, 4, 7, 4, 8, 6, 6, 6, 6, 6, 3, 3, 5, 4, 4, 4, 4, 3, 6,
+  2, 4, 4, 14, 4, 4, 4, 4, 8, 6, 6, 6, 6, 6, 3, 3, 5, 4, 4, 4, 4, 3, 6,
 ];
 const WIDTHS_NO_ACTIONS = [
-  2, 4, 4, 17, 4, 7, 3, 8, 6, 6, 6, 6, 5, 3, 3, 4, 4, 4, 4, 3, 7,
+  2, 4, 4, 17, 4, 4, 4, 3, 8, 6, 6, 6, 6, 5, 3, 3, 4, 4, 4, 4, 3, 7,
 ];
-/** Bỏ ngày sinh + mã BP — compact (870–1279). */
+/** Bỏ mã BP — compact (870–1279). */
 const WIDTHS_WITH_ACTIONS_COMPACT = [
   8, 6, 6, 11, 6, 15, 11, 5, 6, 5, 11, 3, 3, 5, 5, 4, 4, 4, 3, 7,
 ];
@@ -479,11 +503,15 @@ const WIDTHS_MINIMAL_NO_ACTIONS = [
   16, 16, 14, 5, 5, 12, 8, 3, 3, 5, 5, 4, 3, 14,
 ];
 
-/** @param {"full"|"compact"|"narrow"|"minimal"} [columnPlan="full"] */
+/**
+ * @param {"full"|"compact"|"narrow"|"minimal"} [columnPlan="full"]
+ * @param {{ seasonalOmitWorkStatus?: boolean }} [layoutOptions] — điểm danh thời vụ (`full`): không có cột «Trạng thái LV» → bỏ 1 trọng số (khớp số `<col>` với `<th>`).
+ */
 export function getAttendanceColWidthPercents(
   showRowModalActions,
   columnPlan = "full",
   tableVariant = "attendance",
+  layoutOptions = {},
 ) {
   if (tableVariant === "payroll") {
     return getPayrollColWidthPercents(showRowModalActions, columnPlan);
@@ -505,11 +533,23 @@ export function getAttendanceColWidthPercents(
     base = showRowModalActions ? WIDTHS_WITH_ACTIONS : WIDTHS_NO_ACTIONS;
   }
   const stripped = dropSalaryHoursWidths(base, showRowModalActions);
-  return insertAttendanceOffDayColumnWidths(
+  let result = insertAttendanceOffDayColumnWidths(
     stripped,
     showRowModalActions,
     columnPlan,
   );
+  if (
+    layoutOptions?.seasonalOmitWorkStatus &&
+    tableVariant === "attendance" &&
+    columnPlan === "full" &&
+    result.length > 6
+  ) {
+    const copy = [...result];
+    /** Trùng `FULL_ATTENDANCE_ONLY` cột 7 — `workStatus` — thời vụ không render. */
+    copy.splice(6, 1);
+    result = normalizePercents(copy);
+  }
+  return result;
 }
 
 /** Chuỗi grid-template-columns — header + hàng virtual dùng chung. */
@@ -517,11 +557,13 @@ export function getAttendanceGridTemplateColumns(
   showRowModalActions,
   columnPlan = "full",
   tableVariant = "attendance",
+  layoutOptions = {},
 ) {
   return getAttendanceColWidthPercents(
     showRowModalActions,
     columnPlan,
     tableVariant,
+    layoutOptions,
   )
     .map((w) => `${w}%`)
     .join(" ");
@@ -871,7 +913,8 @@ export function AttendanceVirtualHeader({
     );
   }
 
-  const showBirthAndDeptCode = columnPlan === "full";
+  /** Layout full: Ngày vào làm, trạng thái LV, mã BP (+ bộ phận ở cột riêng). */
+  const showJoinWorkStatusDeptBlock = columnPlan === "full";
   const showDeptColumn = columnPlan === "full" || columnPlan === "compact";
 
   return (
@@ -918,14 +961,21 @@ export function AttendanceVirtualHeader({
       >
         {tl("gender", "Giới tính")}
       </div>
-      {showBirthAndDeptCode ? (
+      {showJoinWorkStatusDeptBlock ? (
         <>
           <div
             role="columnheader"
-            style={{ gridColumnStart: gcs("dob") }}
+            style={{ gridColumnStart: gcs("joinDate") }}
             className="hidden min-w-0 items-center justify-center py-px px-1 text-center uppercase text-[10px] font-extrabold tracking-wide text-white md:flex md:px-2 md:py-0.5 md:text-xs"
           >
             {tl("joinDate", "Ngày vào làm")}
+          </div>
+          <div
+            role="columnheader"
+            style={{ gridColumnStart: gcs("workStatus") }}
+            className="hidden min-w-0 items-center justify-center py-px px-1 text-center uppercase text-[10px] font-extrabold tracking-wide text-white md:flex md:px-2 md:py-0.5 md:text-xs"
+          >
+            {tl("workStatusColumn", "Trạng thái LV")}
           </div>
           <div
             role="columnheader"
@@ -1385,7 +1435,7 @@ export function AttendanceTableThead({
     );
   }
 
-  const showBirthAndDeptCode = columnPlan === "full";
+  const showJoinWorkStatusDeptBlock = columnPlan === "full";
   const showDeptColumn = columnPlan === "full" || columnPlan === "compact";
 
   return (
@@ -1428,7 +1478,7 @@ export function AttendanceTableThead({
         >
           {tl("gender", "Giới tính")}
         </th>
-        {showBirthAndDeptCode ? (
+        {showJoinWorkStatusDeptBlock ? (
           <>
             <th
               className={cellClsForAttendanceTable(
@@ -1436,6 +1486,13 @@ export function AttendanceTableThead({
               )}
             >
               {tl("joinDate", "Ngày vào làm")}
+            </th>
+            <th
+              className={cellClsForAttendanceTable(
+                "hidden md:table-cell px-1 md:px-1.5 py-px md:py-0.5 text-[10px] md:text-xs font-extrabold text-white uppercase tracking-wide text-center",
+              )}
+            >
+              {tl("workStatusColumn", "Trạng thái LV")}
             </th>
             <th
               className={cellClsForAttendanceTable(
@@ -1700,7 +1757,7 @@ function AttendanceTableRow({
     : "text-xs md:text-sm";
   const isGrid = virtualRow != null;
   const isMinimal = columnPlan === "minimal";
-  const showBirthAndDeptCode = columnPlan === "full";
+  const showJoinWorkStatusDeptBlock = columnPlan === "full";
   const showDeptColumn = columnPlan === "full" || columnPlan === "compact";
   const Row = isGrid ? "div" : "tr";
   const Cell = isGrid ? "div" : "td";
@@ -1820,16 +1877,28 @@ function AttendanceTableRow({
           )}
         </Cell>
       ) : null}
-      {showBirthAndDeptCode ? (
+      {showJoinWorkStatusDeptBlock ? (
         <>
           <Cell
             role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("dob"))}
+            style={attendanceGridCellStyle(isGrid, gcs("joinDate"))}
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-semibold text-gray-700",
             )}
           >
-            {payrollDash(emp.ngayThangNamSinh, isPayroll)}
+            {payrollDash(emp.ngayVaoLam, isPayroll)}
+          </Cell>
+          <Cell
+            role={isGrid ? "cell" : undefined}
+            style={attendanceGridCellStyle(isGrid, gcs("workStatus"))}
+            className={cellCls(
+              "hidden md:table-cell px-1 md:px-1.5 py-px text-center text-[11px] font-semibold leading-tight text-gray-800",
+            )}
+          >
+            {payrollDash(
+              formatTrangThaiLamViecTableCell(emp.trangThaiLamViec, tl),
+              isPayroll,
+            )}
           </Cell>
           <Cell
             role={isGrid ? "cell" : undefined}
