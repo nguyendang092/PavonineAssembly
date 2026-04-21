@@ -1,5 +1,5 @@
 import {
-  ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  ATTENDANCE_LOAI_PHEP_OPTIONS,
   foldGioVaoCompare,
   getAttendanceLeaveTypeRaw,
   rawMatchesAttendanceTypeOption,
@@ -23,7 +23,7 @@ export function isEmployeeQuickUnattended(emp) {
 function findAttendanceLeaveOptionByFilterValue(sel) {
   const s = String(sel ?? "").trim();
   if (!s) return undefined;
-  return ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
+  return ATTENDANCE_LOAI_PHEP_OPTIONS.find(
     (o) =>
       o.value === s ||
       o.shortLabel === s ||

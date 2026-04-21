@@ -14,6 +14,7 @@ export function classifyAttendanceRowForSalary(row) {
 
   const isPaidLeave =
     flags.annualLeave ||
+    flags.halfAnnualLeave ||
     flags.sickLeave ||
     flags.maternity ||
     flags.weddingLeave ||

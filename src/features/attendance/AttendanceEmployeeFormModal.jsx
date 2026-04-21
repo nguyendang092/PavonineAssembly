@@ -3,10 +3,12 @@ import { useTranslation } from "react-i18next";
 import { db, ref, push, update, get } from "@/services/firebase";
 import {
   EMPLOYEE_PROFILES_PATH,
+  EMPLOYEE_DEPT_CATALOG_PATH,
   buildEmployeeProfileDocument,
   buildEmployeeAttendanceDayDocument,
   employeeProfileStorageKeyFromMnv,
-  slugifyDepartmentKey,
+  resolveDepartmentKeyForProfileSave,
+  formSliceForAttendanceDayDocument,
 } from "@/utils/employeeRosterRecord";
 import {
   appendEmployeeProfileHistory,
@@ -17,11 +19,13 @@ import {
   canAddAttendanceForDepartment,
   isAdminAccess,
 } from "@/config/authRoles";
-import { ATTENDANCE_GIO_VAO_TYPE_OPTIONS } from "./attendanceGioVaoTypeOptions";
+import { ATTENDANCE_LOAI_PHEP_OPTIONS } from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
   looksLikeGioVaoTime,
   normalizeTimeForHtmlInput,
+  canonicalAttendanceLoaiPhep,
+  findGioVaoTypeOptionMatch,
 } from "./attendanceGioVaoModalHelpers";
 
 export const EMPTY_EMPLOYEE_FORM = {
@@ -73,6 +77,8 @@ export default function AttendanceEmployeeFormModal({
   const [form, setForm] = useState(() => ({ ...EMPTY_EMPLOYEE_FORM }));
   /** Khóa `attendance/{date}/{id}` khi sửa — giữ cố định khi form thay đổi */
   const [editAttendanceKey, setEditAttendanceKey] = useState(null);
+  /** Danh mục `employeeDepartments` — để `departmentKey` khớp tên `boPhan`, không giữ key cũ lệch. */
+  const [deptCatalog, setDeptCatalog] = useState(null);
 
   /**
    * Chỉ reset form khi mở form / đổi người sửa / đổi ngày — không phụ thuộc `initialRecord`
@@ -95,6 +101,10 @@ export default function AttendanceEmployeeFormModal({
       if (!lp && gv && !looksLikeGioVaoTime(gv)) {
         merged = { ...merged, loaiPhep: gv, gioVao: "" };
       }
+      merged = {
+        ...merged,
+        loaiPhep: canonicalAttendanceLoaiPhep(merged.loaiPhep),
+      };
       setForm(merged);
       setEditAttendanceKey(initialRecord.id);
     } else {
@@ -103,6 +113,25 @@ export default function AttendanceEmployeeFormModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initialRecord chỉ đọc khi formInitKey đổi; không deps object để tránh reset khi parent tạo {...emp} mới cùng id
   }, [open, formInitKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await get(ref(db, EMPLOYEE_DEPT_CATALOG_PATH));
+        const v = snap.val();
+        if (!cancelled) {
+          setDeptCatalog(v && typeof v === "object" ? v : {});
+        }
+      } catch {
+        if (!cancelled) setDeptCatalog({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   /** Khóa cuộn nền (desktop + mobile/iOS): overflow + body fixed + khôi phục scroll khi đóng. */
   useEffect(() => {
@@ -152,7 +181,11 @@ export default function AttendanceEmployeeFormModal({
   }, []);
 
   const handleLoaiPhepSelect = useCallback((e) => {
-    setForm((prev) => ({ ...prev, loaiPhep: e.target.value }));
+    const v = e.target.value;
+    setForm((prev) => ({
+      ...prev,
+      loaiPhep: v === "" ? "" : canonicalAttendanceLoaiPhep(v),
+    }));
   }, []);
 
   const notify = (alert) => {
@@ -207,22 +240,25 @@ export default function AttendanceEmployeeFormModal({
           ref(db, `${EMPLOYEE_PROFILES_PATH}/${storageKey}`),
         );
         const existingProfile = profSnap.val() || {};
-        const deptKey =
-          String(existingProfile.departmentKey ?? "").trim() ||
-          slugifyDepartmentKey(form.boPhan);
+        /** Không trộn `loaiPhep` từ profile — chỉ từ node ngày + form (tránh mất PN/BGC khi profile có giá trị cũ). */
+        const { loaiPhep: _omitProfLp, ...profileRest } = existingProfile;
+        const deptKey = resolveDepartmentKeyForProfileSave(
+          form.boPhan,
+          existingProfile.departmentKey,
+          deptCatalog,
+        );
         const allowFullEdit = isAdminAccess(user, userRole);
+        const loaiPhepToSave = canonicalAttendanceLoaiPhep(
+          String(form.loaiPhep ?? "").trim(),
+        );
 
         if (!allowFullEdit) {
-          const mergedFormRestricted = {
-            ...existingProfile,
-            ...existing,
-            businessId: storageKey,
-            departmentKey: deptKey,
-            loaiPhep: form.loaiPhep,
-            caLamViec: form.caLamViec,
-          };
           const dayDoc = buildEmployeeAttendanceDayDocument({
-            form: mergedFormRestricted,
+            form: formSliceForAttendanceDayDocument(form, {
+              businessId: storageKey,
+              loaiPhep: loaiPhepToSave,
+              caLamViec: form.caLamViec,
+            }),
             existing: existingRaw,
           });
           await update(ref(db), {
@@ -233,10 +269,11 @@ export default function AttendanceEmployeeFormModal({
           });
         } else {
           const mergedForm = {
-            ...existingProfile,
+            ...profileRest,
             ...form,
             businessId: storageKey,
             departmentKey: deptKey,
+            loaiPhep: loaiPhepToSave,
           };
           const profileDoc = buildEmployeeProfileDocument({
             form: mergedForm,
@@ -245,7 +282,10 @@ export default function AttendanceEmployeeFormModal({
             departmentKey: deptKey,
           });
           const dayDoc = buildEmployeeAttendanceDayDocument({
-            form: mergedForm,
+            form: formSliceForAttendanceDayDocument(form, {
+              businessId: storageKey,
+              loaiPhep: loaiPhepToSave,
+            }),
             existing: existingRaw,
           });
           await update(ref(db), {
@@ -298,9 +338,14 @@ export default function AttendanceEmployeeFormModal({
           ref(db, `${EMPLOYEE_PROFILES_PATH}/${storageKey}`),
         );
         const existingProfile = profSnap.val() || {};
-        const deptKey =
-          String(existingProfile.departmentKey ?? "").trim() ||
-          slugifyDepartmentKey(form.boPhan);
+        const deptKey = resolveDepartmentKeyForProfileSave(
+          form.boPhan,
+          existingProfile.departmentKey,
+          deptCatalog,
+        );
+        const loaiPhepToSave = canonicalAttendanceLoaiPhep(
+          String(form.loaiPhep ?? "").trim(),
+        );
         const mergedForm = {
           ...existingProfile,
           ...form,
@@ -316,7 +361,10 @@ export default function AttendanceEmployeeFormModal({
         const newRef = push(ref(db, `attendance/${selectedDate}`));
         const newKey = newRef.key;
         const dayDoc = buildEmployeeAttendanceDayDocument({
-          form: mergedForm,
+          form: formSliceForAttendanceDayDocument(form, {
+            businessId: storageKey,
+            loaiPhep: loaiPhepToSave,
+          }),
           existing: {},
         });
         await update(ref(db), {
@@ -584,16 +632,14 @@ export default function AttendanceEmployeeFormModal({
               </option>
               {(() => {
                 const raw = String(form.loaiPhep ?? "").trim();
-                const isStd = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.some(
-                  (o) => o.value === raw,
-                );
+                const isStd = Boolean(findGioVaoTypeOptionMatch(raw));
                 return !isStd && raw ? (
                   <option value={raw}>
                     {raw} {tl("leaveTypeCurrentValue", "(giá trị hiện tại)")}
                   </option>
                 ) : null;
               })()}
-              {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(({ value, shortLabel }) => (
+              {ATTENDANCE_LOAI_PHEP_OPTIONS.map(({ value, shortLabel }) => (
                 <option key={value} value={value}>
                   {shortLabel} — {value}
                 </option>

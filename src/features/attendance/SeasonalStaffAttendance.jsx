@@ -28,7 +28,8 @@ import ExportExcelButton from "@/components/ui/ExportExcelButton";
 import NotificationBell from "@/components/ui/NotificationBell";
 import AlertMessage from "@/components/ui/AlertMessage";
 import {
-  ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  ATTENDANCE_LOAI_PHEP_OPTIONS,
+  applyLegacyGioVaoLeaveMigration,
   formatAttendanceGioVaoDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
@@ -46,6 +47,8 @@ import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
   looksLikeGioVaoTime,
   normalizeTimeForHtmlInput,
+  canonicalAttendanceLoaiPhep,
+  findGioVaoTypeOptionMatch,
 } from "./attendanceGioVaoModalHelpers";
 import {
   mergeAttendanceExcelIntoExistingRecord,
@@ -133,7 +136,7 @@ function SeasonalStaffAttendance() {
   }, []);
 
   const allLeaveTypeFilterValues = useMemo(
-    () => ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((o) => o.value),
+    () => ATTENDANCE_LOAI_PHEP_OPTIONS.map((o) => o.value),
     [],
   );
 
@@ -177,10 +180,9 @@ function SeasonalStaffAttendance() {
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
       if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, emp]) => ({
-          id,
-          ...emp,
-        }));
+        const arr = Object.entries(data).map(([id, emp]) =>
+          applyLegacyGioVaoLeaveMigration({ id, ...emp }),
+        );
         arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
         setEmployees(arr);
       } else {
@@ -409,7 +411,11 @@ function SeasonalStaffAttendance() {
   }, []);
 
   const handleLoaiPhepSelect = useCallback((e) => {
-    setForm((prev) => ({ ...prev, loaiPhep: e.target.value }));
+    const v = e.target.value;
+    setForm((prev) => ({
+      ...prev,
+      loaiPhep: v === "" ? "" : canonicalAttendanceLoaiPhep(v),
+    }));
   }, []);
 
   // Handle submit (add/update)
@@ -530,6 +536,7 @@ function SeasonalStaffAttendance() {
       if (!lp && gv && !looksLikeGioVaoTime(gv)) {
         next = { ...next, loaiPhep: gv, gioVao: "" };
       }
+      next = { ...next, loaiPhep: canonicalAttendanceLoaiPhep(next.loaiPhep) };
       setEditing(emp.id);
       setForm(next);
       setShowModal(true);
@@ -2378,7 +2385,7 @@ function SeasonalStaffAttendance() {
                                     "Không có loại phép (chỉ giờ / trống)",
                                   )}
                                 </label>
-                                {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((opt) => (
+                                {ATTENDANCE_LOAI_PHEP_OPTIONS.map((opt) => (
                                   <label
                                     key={opt.value}
                                     className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
@@ -2887,9 +2894,7 @@ function SeasonalStaffAttendance() {
                     </option>
                     {(() => {
                       const raw = String(form.loaiPhep ?? "").trim();
-                      const isStd = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.some(
-                        (o) => o.value === raw,
-                      );
+                      const isStd = Boolean(findGioVaoTypeOptionMatch(raw));
                       return !isStd && raw ? (
                         <option value={raw}>
                           {raw}{" "}
@@ -2897,7 +2902,7 @@ function SeasonalStaffAttendance() {
                         </option>
                       ) : null;
                     })()}
-                    {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(
+                    {ATTENDANCE_LOAI_PHEP_OPTIONS.map(
                       ({ value, shortLabel }) => (
                         <option key={value} value={value}>
                           {shortLabel} — {value}

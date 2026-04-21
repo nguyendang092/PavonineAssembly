@@ -144,6 +144,10 @@ export function getAttendanceComboFlags(emp) {
   const hasText = (...texts) => texts.some((txt) => gioVaoLatin.includes(txt));
   const caLamViecNormalized = normalizeTextValue(emp.caLamViec).toLowerCase();
   const isLate = hasLeaveCode("VT") || hasText("VAO TRE");
+  /** Tách khỏi PN cả ngày — thống kê Dashboard có ô riêng 1/2PN */
+  const halfAnnualHeuristic =
+    hasLeaveCode("1/2PN") ||
+    hasText("1/2 PHEP NAM", "1/2PHEPNAM", "1/2 PN");
   const hasCheckIn =
     isTimeFormat ||
     hasLeaveCode("BGC") ||
@@ -159,8 +163,8 @@ export function getAttendanceComboFlags(emp) {
     textMatchesBuGioCong(emp.phepNam) ||
     textMatchesBuGioCong(emp.pnTon);
   const isAnnualLeave =
-    hasLeaveCode("PN", "PCT") ||
-    hasText("PHEP NAM", "1/2PHEPNAM", "1/2 PN", "PHEP CONG TAC");
+    !halfAnnualHeuristic &&
+    (hasLeaveCode("PN", "PCT") || hasText("PHEP NAM", "PHEP CONG TAC"));
   const isLaborAccident = hasLeaveCode("TN") || hasText("TNLD", "TAI NAN");
   const isMaternity =
     hasLeaveCode("TS") ||
@@ -178,7 +182,7 @@ export function getAttendanceComboFlags(emp) {
   const isResignedLeave = hasLeaveCode("NV") || hasText("NGHI VIEC");
   const isNightShift = caLamViecNormalized.replace(/\s+/g, "") === "s2";
 
-  /** Khớp từng loại trong ATTENDANCE_GIO_VAO_TYPE_OPTIONS trên Giờ vào + ghi chú liên quan */
+  /** Khớp từng loại trong ATTENDANCE_LOAI_PHEP_OPTIONS (cột loại phép / trạng thái) + ghi chú liên quan */
   const scanRaws = [
     textSignalRaw,
     gioVaoRaw,
@@ -203,6 +207,12 @@ export function getAttendanceComboFlags(emp) {
     hasLeaveCode("DS") ||
     hasText("DUONG SUC", "DUONGSUC");
 
+  const halfAnnualLeave =
+    halfAnnualHeuristic || typeHitKeys.has("halfAnnualLeave");
+  const annualLeave =
+    !halfAnnualLeave &&
+    (isAnnualLeave || typeHitKeys.has("annualLeave"));
+
   return {
     nonStandardTimeIn,
     timeInHashHHMM,
@@ -212,7 +222,8 @@ export function getAttendanceComboFlags(emp) {
       typeHitKeys.has("buGioCong") ||
       typeHitKeys.has("coDiLam"),
     late: isLate || typeHitKeys.has("late"),
-    annualLeave: isAnnualLeave || typeHitKeys.has("annualLeave"),
+    annualLeave,
+    halfAnnualLeave,
     nightShift: isNightShift,
     laborAccident:
       isLaborAccident || typeHitKeys.has("laborAccident"),

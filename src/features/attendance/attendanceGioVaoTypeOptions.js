@@ -1,10 +1,10 @@
 /**
- * Giá trị `gioVao` dạng loại phép / trạng thái (không phải HH:MM).
- * Dùng chung: dropdown điểm danh, thời vụ, gợi ý modal, lọc bù công.
+ * Danh mục loại phép / trạng thái chấm công — **chỉ lưu ở `loaiPhep`** (theo ngày).
+ * `gioVao` chỉ còn giờ HH:MM hoặc trống; không còn gắn loại phép vào cột giờ vào.
  * Khi thêm loại mới: cập nhật mảng này + comboStatKey + getAttendanceComboFlags (attendanceComboStats.js).
  */
 
-export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = [
+export const ATTENDANCE_LOAI_PHEP_OPTIONS = [
   /** Bù giờ công / BGC — `comboStatKey` dùng xuyên suốt thống kê & lương. */
   { value: "Bù giờ công", shortLabel: "BGC", comboStatKey: "buGioCong" },
   { value: "Vào trễ", shortLabel: "VT", comboStatKey: "late" },
@@ -12,7 +12,7 @@ export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = [
   {
     value: "1/2 Phép năm",
     shortLabel: "1/2PN",
-    comboStatKey: "annualLeave",
+    comboStatKey: "halfAnnualLeave",
   },
   {
     value: "Không lương",
@@ -43,6 +43,11 @@ export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = [
   },
 ];
 
+/**
+ * @deprecated Dùng `ATTENDANCE_LOAI_PHEP_OPTIONS`. Tên cũ gắn với thói quen nhập loại phép vào «Giờ vào».
+ */
+export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = ATTENDANCE_LOAI_PHEP_OPTIONS;
+
 /** Gập dấu / khoảng trắng — dùng khớp nhập tay, Excel, NBSP */
 export function foldGioVaoCompare(s) {
   return String(s ?? "")
@@ -58,7 +63,7 @@ export function foldGioVaoCompare(s) {
 
 /** Ưu tiên khớp chuỗi dài trước (vd. «1/2 Phép năm» trước «Phép năm»). */
 export const ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH = [
-  ...ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  ...ATTENDANCE_LOAI_PHEP_OPTIONS,
 ].sort(
   (a, b) =>
     foldGioVaoCompare(b.value).length - foldGioVaoCompare(a.value).length,
@@ -113,10 +118,8 @@ export function rawMatchesAttendanceTypeOption(raw, option) {
 }
 
 /**
- * Chuẩn hóa chuỗi hiển thị `gioVao`:
- * - Nếu là loại phép/trạng thái trong options: hiển thị `shortLabel`
- * - Nếu là giờ HH:MM hoặc dữ liệu khác: giữ nguyên (trim)
- * @param {unknown} raw
+ * Viết tắt loại phép / trạng thái (cùng quy tắc với cột «Loại phép»).
+ * @param {unknown} raw — chuỗi `loaiPhep` hoặc tương đương
  * @returns {string}
  */
 export function formatAttendanceGioVaoDisplay(raw) {
@@ -151,26 +154,37 @@ export function formatAttendanceLeaveTypeColumnDisplay(raw) {
 }
 
 /**
- * Giá trị lưu cho cột «Loại phép» (tách khỏi giờ HH:MM trên `gioVao`).
- * Ưu tiên `loaiPhep` theo ngày; fallback dữ liệu cũ: cả chuỗi trong `gioVao` khi không phải giờ.
+ * Giá trị cột «Loại phép» — **chỉ** từ `loaiPhep`.
+ * Dữ liệu cũ (loại nằm trong `gioVao`) được chuyển bởi `applyLegacyGioVaoLeaveMigration` khi gộp bản ghi / lưu.
  * @param {Record<string, unknown> | null | undefined} emp
  * @returns {string}
  */
 export function getAttendanceLeaveTypeRaw(emp) {
   if (emp == null || typeof emp !== "object") return "";
-  const loai = String(emp.loaiPhep ?? "")
+  return String(emp.loaiPhep ?? "")
     .trim()
     .replace(/\u00a0/g, " ");
-  if (loai) return loai;
+}
+
+/**
+ * Dữ liệu cũ: loại phép / trạng thái nhập nhầm vào `gioVao` (không phải HH:MM).
+ * Gộp sang `loaiPhep` và xóa `gioVao` — gọi khi đọc attendance hoặc trước khi lưu `attendance/{ngày}`.
+ * @param {Record<string, unknown> | null | undefined} emp
+ * @returns {Record<string, unknown>}
+ */
+export function applyLegacyGioVaoLeaveMigration(emp) {
+  if (emp == null || typeof emp !== "object") return emp;
+  const lp = String(emp.loaiPhep ?? "").trim();
+  if (lp) return emp;
   const gv = String(emp.gioVao ?? "")
     .trim()
     .replace(/\u00a0/g, " ");
-  if (!gv) return "";
-  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(gv)) return "";
-  return gv;
+  if (!gv) return emp;
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(gv)) return emp;
+  return { ...emp, loaiPhep: gv, gioVao: "" };
 }
 
-/** Cột «Loại phép» từ bản ghi nhân viên (có `loaiPhep` + tương thích cũ). */
+/** Cột «Loại phép» từ bản ghi nhân viên (sau migrate `loaiPhep` đã đủ). */
 export function formatAttendanceLeaveTypeColumnForEmployee(emp) {
   return formatAttendanceLeaveTypeColumnDisplay(
     getAttendanceLeaveTypeRaw(emp),
@@ -259,7 +273,7 @@ export function getAttendanceLeaveTypeColorClassNameForComboStatKey(metricKey) {
   if (metricKey === "buGioCong") {
     return "text-amber-700 dark:text-amber-400";
   }
-  const opt = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
+  const opt = ATTENDANCE_LOAI_PHEP_OPTIONS.find(
     (o) => o.comboStatKey === metricKey,
   );
   if (opt) return getAttendanceLeaveTypeColorClassName(opt.shortLabel);
@@ -281,7 +295,7 @@ export function getAttendanceLeaveTypeBadgeClassNameForComboStatKey(metricKey) {
   if (metricKey === "buGioCong") {
     return "bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-800";
   }
-  const opt = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
+  const opt = ATTENDANCE_LOAI_PHEP_OPTIONS.find(
     (o) => o.comboStatKey === metricKey,
   );
   if (opt) return getAttendanceLeaveTypeBadgeClassName(opt.shortLabel);
@@ -302,7 +316,7 @@ export function getAttendanceLeaveTypeBadgeClassNameForComboStatKey(metricKey) {
 /** Màu fill cột Bar (Recharts) — đồng bộ TS / PN / NV / đỏ / … */
 export function getAttendanceComboBarFillForMetricKey(metricKey) {
   if (metricKey === "buGioCong") return "#d97706";
-  const opt = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
+  const opt = ATTENDANCE_LOAI_PHEP_OPTIONS.find(
     (o) => o.comboStatKey === metricKey,
   );
   if (opt) {
@@ -327,7 +341,7 @@ export function getAttendanceComboBarFillForMetricKey(metricKey) {
 }
 
 /** Giá trị đã gập dấu (để khớp dữ liệu nhập tay / Excel). */
-const FOLDED_OPTION_VALUES = ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((o) =>
+const FOLDED_OPTION_VALUES = ATTENDANCE_LOAI_PHEP_OPTIONS.map((o) =>
   foldGioVaoCompare(o.value),
 );
 

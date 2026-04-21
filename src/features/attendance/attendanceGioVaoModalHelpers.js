@@ -1,5 +1,5 @@
 import {
-  ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH,
   rawMatchesAttendanceTypeOption,
 } from "./attendanceGioVaoTypeOptions";
 
@@ -22,14 +22,25 @@ export function normalizeTimeForHtmlInput(s) {
   return `${hh}:${mm}`;
 }
 
+/**
+ * Khớp chuỗi loại phép (mã PN, PO, …) với option chuẩn.
+ * Dùng `ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH` để «1/2 Phép năm» khớp trước «Phép năm».
+ */
 export function findGioVaoTypeOptionMatch(raw) {
   const t = String(raw ?? "").trim();
   if (!t) return null;
   return (
-    ATTENDANCE_GIO_VAO_TYPE_OPTIONS.find(
+    ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find(
       (o) => o.value === t || rawMatchesAttendanceTypeOption(t, o),
     ) ?? null
   );
+}
+
+/** Chuẩn hóa giá trị lưu + hiển thị `<select>` Loại phép (alias → `value` đầy đủ). */
+export function canonicalAttendanceLoaiPhep(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return "";
+  return findGioVaoTypeOptionMatch(t)?.value ?? t;
 }
 
 export function getGioVaoModalSelectValue(formGioVao) {

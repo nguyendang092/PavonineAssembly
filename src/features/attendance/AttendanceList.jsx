@@ -68,7 +68,7 @@ import {
   getAttendanceComboFlags,
 } from "./attendanceComboStats";
 import {
-  ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  ATTENDANCE_LOAI_PHEP_OPTIONS,
   formatAttendanceGioVaoDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
@@ -194,7 +194,7 @@ function AttendanceList() {
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
   const [departmentListFilter, setDepartmentListFilter] = useState([]);
-  /** Các `value` trong `ATTENDANCE_GIO_VAO_TYPE_OPTIONS` + `ATTENDANCE_LEAVE_FILTER_NONE` */
+  /** Các `value` trong `ATTENDANCE_LOAI_PHEP_OPTIONS` + `ATTENDANCE_LEAVE_FILTER_NONE` */
   const [loaiPhepFilter, setLoaiPhepFilter] = useState([]);
   /** Lọc nhanh: chỉ người chưa có giờ vào, loại phép và ca làm việc (cả ba trống = chưa điểm danh). */
   const [showOnlyUnattendedFilter, setShowOnlyUnattendedFilter] =
@@ -256,7 +256,7 @@ function AttendanceList() {
   }, []);
 
   const allLeaveTypeFilterValues = useMemo(
-    () => ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((o) => o.value),
+    () => ATTENDANCE_LOAI_PHEP_OPTIONS.map((o) => o.value),
     [],
   );
 
@@ -2922,7 +2922,7 @@ function AttendanceList() {
                                   "Không có loại phép (chỉ giờ / trống)",
                                 )}
                               </label>
-                              {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map((opt) => (
+                              {ATTENDANCE_LOAI_PHEP_OPTIONS.map((opt) => (
                                 <label
                                   key={opt.value}
                                   className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"

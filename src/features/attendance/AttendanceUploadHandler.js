@@ -17,7 +17,7 @@ import {
   stripAttendanceExcelUploadInternalFields,
 } from "./attendanceExcelUploadMerge";
 import {
-  ATTENDANCE_GIO_VAO_TYPE_OPTIONS,
+  ATTENDANCE_LOAI_PHEP_OPTIONS,
   rawMatchesAttendanceTypeOption,
 } from "./attendanceGioVaoTypeOptions";
 
@@ -69,7 +69,7 @@ function splitLeaveTypeAndPnTon(raw) {
   const t = trimCell(raw);
   if (!t) return { loaiPhep: "", pnTon: "" };
   if (/^\d+(\.\d+)?$/.test(t)) return { loaiPhep: "", pnTon: t };
-  for (const opt of ATTENDANCE_GIO_VAO_TYPE_OPTIONS) {
+  for (const opt of ATTENDANCE_LOAI_PHEP_OPTIONS) {
     if (rawMatchesAttendanceTypeOption(t, opt)) {
       return { loaiPhep: t, pnTon: "" };
     }

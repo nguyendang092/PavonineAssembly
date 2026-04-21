@@ -2,9 +2,13 @@
  * Hai tầng để scale:
  * - employeeProfiles/{mnvChuan}: hồ sơ ổn định (tên, BP, chức vụ, SĐT, trạng thái, …).
  * - attendance/{date}/{firebaseKey}: chỉ dữ liệu theo ngày (stt, mnv, giờ vào/ra, ca, PN…).
- * mergeEmployeeProfileAndDay() gộp khi đọc; bản ghi cũ “dồn một node” vẫn hiển thị được.
+ * mergeEmployeeProfileAndDay() gộp khi đọc (chỉ trường profile trong PROFILE_FIELDS_FOR_ATTENDANCE_MERGE);
+ * bản ghi cũ “dồn một node” vẫn hiển thị được.
+ * Loại phép chỉ ở `loaiPhep`; bản ghi cũ ghi nhầm vào `gioVao` được chuẩn hóa qua applyLegacyGioVaoLeaveMigration.
  * Danh mục BP: employeeDepartments/{key}.
  */
+
+import { applyLegacyGioVaoLeaveMigration } from "@/features/attendance/attendanceGioVaoTypeOptions";
 
 export const EMPLOYEE_DEPT_CATALOG_PATH = "employeeDepartments";
 
@@ -149,25 +153,78 @@ export function canonicalStatusFromLegacy(trangThaiLamViec) {
   return CANONICAL_EMPLOYEE_STATUS.ACTIVE;
 }
 
+/**
+ * Tên BP hiển thị: có thể tra `employeeDepartments` theo `department` (legacy) hoặc `departmentKey`.
+ * Nếu tên trong catalog khác `boPhan` đang lưu (vd. key assy_1 → "assy-1" nhưng ô bộ phận là "assy"),
+ * ưu tiên `boPhan` để không đổi bộ phận khi chỉ cập nhật loại phép / giờ vào.
+ */
 export function resolveDepartmentLabel(emp, catalog) {
-  const key = String(emp?.department ?? "").trim();
-  if (key && catalog && catalog[key]?.name) return String(catalog[key].name).trim();
-  return String(emp?.boPhan ?? "").trim();
+  const boPhanRaw = String(emp?.boPhan ?? "").trim();
+  const key = String(emp?.department ?? emp?.departmentKey ?? "").trim();
+  if (!key || !catalog?.[key]?.name) return boPhanRaw;
+
+  const catalogName = String(catalog[key].name).trim();
+  if (
+    boPhanRaw &&
+    catalogName.toLowerCase() !== boPhanRaw.toLowerCase()
+  ) {
+    return boPhanRaw;
+  }
+  return catalogName;
 }
 
+/**
+ * Suy ra khóa BP trong `employeeDepartments`: ưu tiên khớp **tên** với `boPhan` (nguồn đúng hiển thị),
+ * rồi mới legacy `department` / `departmentKey` — tránh key cũ lệch tên (assy_1 vs "assy").
+ */
 export function inferDepartmentKey(emp, catalog) {
-  const k = String(emp?.department ?? "").trim();
-  if (k && catalog && catalog[k]) return k;
   const bp = String(emp?.boPhan ?? "").trim();
-  if (!bp) return "";
   const entries = Object.entries(catalog || {});
-  const found = entries.find(
-    ([, v]) =>
-      String(v?.name ?? "")
-        .trim()
-        .toLowerCase() === bp.toLowerCase(),
-  );
-  if (found) return found[0];
+  if (bp && entries.length) {
+    const found = entries.find(
+      ([, v]) =>
+        String(v?.name ?? "")
+          .trim()
+          .toLowerCase() === bp.toLowerCase(),
+    );
+    if (found) return found[0];
+  }
+  const kLegacy = String(emp?.department ?? "").trim();
+  if (kLegacy && catalog && catalog[kLegacy]) return kLegacy;
+  const kMod = String(emp?.departmentKey ?? "").trim();
+  if (kMod && catalog && catalog[kMod]) return kMod;
+  if (!bp) return "";
+  return slugifyDepartmentKey(bp);
+}
+
+/**
+ * Khóa lưu `employeeProfiles.departmentKey` khi lưu từ form điểm danh — đồng bộ với `boPhan` + danh mục,
+ * không giữ key cũ khi tên BP đã khác (vd. chọn loại phép không được phép làm lệch BP).
+ */
+export function resolveDepartmentKeyForProfileSave(
+  boPhanDisplay,
+  existingDepartmentKey,
+  catalog,
+) {
+  const bp = String(boPhanDisplay ?? "").trim();
+  const existing = String(existingDepartmentKey ?? "").trim();
+  if (!bp) return existing;
+
+  const cat = catalog && typeof catalog === "object" ? catalog : null;
+  if (cat && Object.keys(cat).length > 0) {
+    const matchByName = Object.entries(cat).find(
+      ([, v]) =>
+        String(v?.name ?? "")
+          .trim()
+          .toLowerCase() === bp.toLowerCase(),
+    );
+    if (matchByName) return matchByName[0];
+    if (existing && cat[existing]?.name) {
+      const n = String(cat[existing].name).trim();
+      if (n.toLowerCase() === bp.toLowerCase()) return existing;
+    }
+  }
+
   return slugifyDepartmentKey(bp);
 }
 
@@ -438,6 +495,81 @@ const ATTENDANCE_EXTRA_KEYS = [
   "gioiTinh",
 ];
 
+/**
+ * Chỉ các trường được phép lấy từ `employeeProfiles` khi gộp với `attendance/{ngày}` cho UI.
+ * Không spread cả object profile — tránh lẫn metadata / trường nội bộ không thuộc điểm danh.
+ */
+const PROFILE_FIELDS_FOR_ATTENDANCE_MERGE = Object.freeze([
+  "hoVaTen",
+  "name",
+  "boPhan",
+  "ngayThangNamSinh",
+  "birthDate",
+  "chucVu",
+  "position",
+  "ngayVaoLam",
+  "joinDate",
+  "sdt",
+  "trangThaiLamViec",
+  "status",
+  "chuyenCan",
+  "phanQuyen",
+  "emailDangNhap",
+  "departmentKey",
+  "department",
+  "type",
+  "stt",
+  "mnv",
+  "ngayNghiViec",
+  "hinhThucNghiViec",
+  "thaiSanTuNgay",
+  "thaiSanDenNgay",
+]);
+
+export function pickProfileFieldsForAttendanceMerge(profileRow) {
+  if (!profileRow || typeof profileRow !== "object") return {};
+  const out = {};
+  for (const k of PROFILE_FIELDS_FOR_ATTENDANCE_MERGE) {
+    if (Object.prototype.hasOwnProperty.call(profileRow, k)) {
+      out[k] = profileRow[k];
+    }
+  }
+  return out;
+}
+
+/** Trường form dùng khi build `attendance/{date}` — tách khỏi toàn bộ hồ sơ. */
+export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
+  "mnv",
+  "stt",
+  "gioVao",
+  "loaiPhep",
+  "gioRa",
+  "caLamViec",
+  "pnTon",
+  "mvt",
+  "maBoPhan",
+  "gioiTinh",
+]);
+
+/**
+ * Chỉ lấy từ `form` các key thuộc node ngày + `businessId` — không trộn profile vào payload lưu điểm danh.
+ */
+export function formSliceForAttendanceDayDocument(form, overrides = {}) {
+  const o = {};
+  if (form && typeof form === "object") {
+    for (const k of ATTENDANCE_DAY_FORM_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(form, k)) {
+        o[k] = form[k];
+      }
+    }
+    const bid = overrides.businessId ?? form.businessId ?? form.mnv;
+    if (bid !== undefined && bid !== null && String(bid).trim() !== "") {
+      o.businessId = bid;
+    }
+  }
+  return { ...o, ...overrides };
+}
+
 const PROFILE_ONLY_STRIP_FROM_DAY = [
   "hoVaTen",
   "boPhan",
@@ -644,11 +776,13 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
   });
 
   delete merged.firebaseKey;
-  return stripUndefined(merged);
+  return stripUndefined(applyLegacyGioVaoLeaveMigration({ ...merged }));
 }
 
 /**
- * Gộp profile + node ngày cho UI / quyền. Legacy: node ngày đã chứa đủ hồ sơ thì ưu tiên overlay từ ngày.
+ * Gộp profile + node ngày cho UI / quyền.
+ * Chỉ lấy từ profile các key trong `PROFILE_FIELDS_FOR_ATTENDANCE_MERGE`; node ngày (`dayRow`) vẫn ghi đè trùng tên.
+ * Legacy: node ngày “dồn” đủ hồ sơ thì ưu tiên overlay từ ngày.
  */
 export function mergeEmployeeProfileAndDay(dayRow, profileRow, catalog) {
   if (!dayRow || typeof dayRow !== "object") return dayRow;
@@ -658,16 +792,45 @@ export function mergeEmployeeProfileAndDay(dayRow, profileRow, catalog) {
     String(dayRow.hoVaTen ?? dayRow.name ?? "").trim() !== "" ||
     String(dayRow.boPhan ?? "").trim() !== "";
 
+  /** `loaiPhep` chỉ thuộc node ngày `attendance/{date}` — không kế thừa từ employeeProfiles (tránh ghi đè / trộn PN, BGC, …). */
+  const profileWithoutLoaiPhep =
+    profileRow && typeof profileRow === "object"
+      ? (() => {
+          const { loaiPhep: _profileLoaiPhepOmit, ...rest } = profileRow;
+          return rest;
+        })()
+      : {};
+
+  /**
+   * `boPhan` là tên BP trên hồ sơ; node ngày có thể có bản sao cũ / Excel lệch — không để ngày ghi đè
+   * tên BP khi hồ sơ đã có `boPhan` rõ ràng.
+   */
+  const profileBp = String(profileWithoutLoaiPhep.boPhan ?? "").trim();
+  const dayRowForMerge =
+    profileRow &&
+    profileBp &&
+    dayRow &&
+    typeof dayRow === "object"
+      ? (() => {
+          const { boPhan: _dayBoPhanOmit, ...rest } = dayRow;
+          return rest;
+        })()
+      : dayRow;
+
+  const profileSlice = pickProfileFieldsForAttendanceMerge(profileWithoutLoaiPhep);
+
   let merged;
   if (bundled) {
-    merged = profileRow ? { ...profileRow, ...dayRow } : { ...dayRow };
+    merged = profileRow
+      ? { ...profileSlice, ...dayRowForMerge }
+      : { ...dayRow };
   } else {
-    merged = { ...(profileRow || {}), ...dayRow };
+    merged = { ...profileSlice, ...dayRowForMerge };
   }
   if (firebaseKey) merged.firebaseKey = firebaseKey;
   if (rowId !== undefined && rowId !== null && merged.id === undefined) {
     merged.id = rowId;
   }
-  return enrichEmployeeRow(merged, catalog);
+  return enrichEmployeeRow(applyLegacyGioVaoLeaveMigration(merged), catalog);
 }
 

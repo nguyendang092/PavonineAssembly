@@ -4,7 +4,6 @@ import React, {
   useMemo,
   useCallback,
   useRef,
-  useId,
 } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -16,7 +15,6 @@ import {
   ROLES,
   inferRoleFromMapping,
 } from "@/config/authRoles";
-import { ATTENDANCE_GIO_VAO_TYPE_OPTIONS } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import {
   db,
   ref,
@@ -313,7 +311,6 @@ function AllEmployeesManager({ resignedOnly = false }) {
   const { t, i18n } = useTranslation();
   const { user, userDepartments, userRole } = useUser();
   const todayKey = new Date().toISOString().slice(0, 10);
-  const gioVaoTypeDatalistId = useId();
 
   /** Chỉ dùng cho link sang Điểm danh — không ảnh hưởng danh sách hồ sơ. */
   const [attendanceNavDate, setAttendanceNavDate] = useState(todayKey);
@@ -2370,20 +2367,11 @@ function AllEmployeesManager({ resignedOnly = false }) {
                 </label>
                 <input
                   name="gioVao"
-                  list={gioVaoTypeDatalistId}
                   value={form.gioVao}
                   onChange={handleChange}
-                  placeholder={tr(
-                    "gioVaoPh",
-                    "VD: 08:00 hoặc Phép năm, PN, …",
-                  )}
+                  placeholder={tr("gioVaoPh", "VD: 08:00")}
                   className={inputFieldClass}
                 />
-                <datalist id={gioVaoTypeDatalistId}>
-                  {ATTENDANCE_GIO_VAO_TYPE_OPTIONS.map(({ value }) => (
-                    <option key={value} value={value} />
-                  ))}
-                </datalist>
               </div>
               <div>
                 <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">

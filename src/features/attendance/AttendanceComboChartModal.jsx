@@ -14,6 +14,8 @@ import {
 import { CHART_DRAG_MIME } from "@/utils/chartOrderStorage";
 import {
   COMBO_DASHBOARD_TILES,
+  COMBO_DASHBOARD_TILE_KEYS_HR,
+  COMBO_DASHBOARD_TILE_KEYS_PRODUCTION,
   COMBO_BAR_SERIES,
   COMBO_CHART_METRIC_KEYS,
   COMBO_STAT_LABEL_DEFAULTS,
@@ -45,6 +47,20 @@ export default function AttendanceComboChartModal({
   comboStatEmployeesByKey,
 }) {
   const detailTableCaptureRef = React.useRef(null);
+  const [comboDashboardGroup, setComboDashboardGroup] =
+    React.useState("production");
+  React.useEffect(() => {
+    if (open) setComboDashboardGroup("production");
+  }, [open]);
+
+  const comboDashboardTileKeySet = React.useMemo(() => {
+    const keys =
+      comboDashboardGroup === "production"
+        ? COMBO_DASHBOARD_TILE_KEYS_HR
+        : COMBO_DASHBOARD_TILE_KEYS_PRODUCTION;
+    return new Set(keys);
+  }, [comboDashboardGroup]);
+
   if (!open) return null;
 
   const detailEmployees =
@@ -166,6 +182,17 @@ export default function AttendanceComboChartModal({
                   "Kéo thanh tiêu đề (⋮⋮) để đổi thứ tự biểu đồ — lưu theo tài khoản trên Firebase (đồng bộ mọi máy).",
                 )}
               </p>
+              <p className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-400">
+                {comboDashboardGroup === "hr"
+                  ? tl(
+                      "comboDashboardGroupHintHr",
+                      "Nhóm Nhân sự: BGC, vào trễ, ca đêm, các loại phép / nghỉ.",
+                    )
+                  : tl(
+                      "comboDashboardGroupHintProduction",
+                      "Nhóm Sản xuất: tổng nhân viên, chấm công (tín hiệu rộng), giờ vào lệch / # HH:MM.",
+                    )}
+              </p>
             </div>
             <button
               type="button"
@@ -176,9 +203,34 @@ export default function AttendanceComboChartModal({
               ✕
             </button>
           </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setComboDashboardGroup("production")}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 ${
+                comboDashboardGroup === "production"
+                  ? "border-amber-500 bg-amber-500/15 text-amber-950 shadow-sm dark:border-amber-400 dark:bg-amber-500/15 dark:text-amber-100"
+                  : "border-slate-300/90 bg-white/70 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-400 dark:hover:bg-slate-800"
+              }`}
+            >
+              {tl("comboDashboardGroupProduction", "Sản xuất")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setComboDashboardGroup("hr")}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 ${
+                comboDashboardGroup === "hr"
+                  ? "border-sky-500 bg-sky-500/15 text-sky-900 shadow-sm dark:border-sky-400 dark:bg-sky-500/20 dark:text-sky-100"
+                  : "border-slate-300/90 bg-white/70 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-400 dark:hover:bg-slate-800"
+              }`}
+            >
+              {tl("comboDashboardGroupHr", "Nhân sự")}
+            </button>
+          </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
-            {comboDashboardStats.total > 0 ? (
+            {comboDashboardGroup === "production" &&
+            comboDashboardStats.total > 0 ? (
               <button
                 type="button"
                 onClick={() => setComboStatDetailKey("total")}
@@ -192,7 +244,9 @@ export default function AttendanceComboChartModal({
                 </p>
               </button>
             ) : null}
-            {COMBO_DASHBOARD_TILES.map((tile) => {
+            {COMBO_DASHBOARD_TILES.filter((tile) =>
+              comboDashboardTileKeySet.has(tile.key),
+            ).map((tile) => {
               const v = comboDashboardStats[tile.key];
               if (!v || v <= 0) return null;
               const label = tl(tile.tlKey, COMBO_STAT_LABEL_DEFAULTS[tile.key]);

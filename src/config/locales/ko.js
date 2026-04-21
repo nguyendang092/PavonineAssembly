@@ -1009,7 +1009,14 @@ const ko = {
     mvt: "지문 ID",
     mnv: "사원번호",
     stt: "순번",
-    checkedIn: "체크인 완료",
+    checkedIn: "출근 신호(광범위)",
+    comboDashboardGroupLabel: "KPI 그룹",
+    comboDashboardGroupHr: "인사",
+    comboDashboardGroupProduction: "생산",
+    comboDashboardGroupHintHr:
+      "인사: 보전, 지각, 야간, 각종 휴가·휴직.",
+    comboDashboardGroupHintProduction:
+      "생산: 전체 인원, 광범위 출근, 비표준 출근 시각, # HH:MM.",
     buGioCong: "근무시간 보전",
     nonStandardTimeIn: "출근 시각 ≠ HH:MM",
     timeInHashHHMM: "출근시간 # HH:MM",

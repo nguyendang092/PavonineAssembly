@@ -1012,7 +1012,14 @@ const vi = {
     dayOffMultiLoadingList: "Đang tải các ngày off trong tháng…",
     dayOffToggleHint:
       "Bật khi ngày đó là ngày nghỉ/off: trên bảng lương, ca ngày hiển thị giờ làm quy đổi ở cột TC off (cùng quy tắc điểm danh); cột Giờ công là «-». Ngày không off: giờ công ở cột Giờ công. Ca đêm: GC nằm ở cột GC ca đêm / GC ca đêm off.",
-    checkedIn: "Đã chấm công",
+    checkedIn: "Chấm công",
+    comboDashboardGroupLabel: "Nhóm KPI",
+    comboDashboardGroupHr: "Nhân sự",
+    comboDashboardGroupProduction: "Sản xuất",
+    comboDashboardGroupHintHr:
+      "Nhóm Nhân sự: BGC, vào trễ, ca đêm, các loại phép / nghỉ.",
+    comboDashboardGroupHintProduction:
+      "Nhóm Sản xuất: tổng nhân viên, chấm công, giờ vào lệch / # HH:MM.",
     buGioCong: "Bù giờ công",
     nonStandardTimeIn: "Giờ vào ≠ HH:MM",
     timeInHashHHMM: "Các loại phép",
