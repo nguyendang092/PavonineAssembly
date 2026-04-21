@@ -72,6 +72,31 @@ export const COMBO_DASHBOARD_TILE_KEYS_PRODUCTION = [
   "timeInHashHHMM",
 ];
 
+const COMBO_STATS_PRODUCTION_DEPT_MATCH_KEYS = new Set([
+  "extrusion",
+  "mc",
+  "hairline",
+  "press",
+  "anodizing",
+  "assy",
+  "assydeco",
+  "assyflip",
+  "assykomsa",
+  "assyohf",
+  "assypmf",
+  "assytu",
+]);
+
+export function matchesComboStatsProductionDepartment(
+  normalizeDepartment,
+  boPhanRaw,
+) {
+  const normalized = normalizeDepartment(boPhanRaw);
+  if (!normalized) return false;
+  const matchKey = normalized.replace(/\s+/g, "").replace(/-/g, "");
+  return COMBO_STATS_PRODUCTION_DEPT_MATCH_KEYS.has(matchKey);
+}
+
 /** Ô KPI: chỉ hiện khi đếm > 0 — màu số dùng `getAttendanceLeaveTypeColorClassNameForComboStatKey`. */
 export const COMBO_DASHBOARD_TILES = [
   { key: "checkedIn", tlKey: "checkedIn" },

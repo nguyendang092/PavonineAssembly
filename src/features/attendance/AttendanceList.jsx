@@ -80,6 +80,7 @@ import {
 import {
   COMBO_CHART_METRIC_KEYS,
   COMBO_STAT_LABEL_DEFAULTS,
+  matchesComboStatsProductionDepartment,
 } from "./attendanceComboChartConfig";
 import {
   ATTENDANCE_LEAVE_FILTER_NONE,
@@ -201,6 +202,8 @@ function AttendanceList() {
   const [expandedSections, setExpandedSections] = useState({});
   const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   const [showComboChartModal, setShowComboChartModal] = useState(false);
+  const [comboDashboardGroup, setComboDashboardGroup] =
+    useState("production");
   const [comboChartBodyReady, setComboChartBodyReady] = useState(false);
   const [comboChartCardsVisibleCount, setComboChartCardsVisibleCount] =
     useState(0);
@@ -226,8 +229,10 @@ function AttendanceList() {
   /** Tự động mở popup: không bật lại khi user đã chọn «không hiển thị trong phiên» (sessionStorage). */
   const [unattendedSessionSuppressed, setUnattendedSessionSuppressed] =
     useState(false);
-  const [unattendedSuppressSessionCheckbox, setUnattendedSuppressSessionCheckbox] =
-    useState(false);
+  const [
+    unattendedSuppressSessionCheckbox,
+    setUnattendedSuppressSessionCheckbox,
+  ] = useState(false);
   const [filterMenuDropdownOpen, setFilterMenuDropdownOpen] = useState(false);
   const [offHolidayDropdownOpen, setOffHolidayDropdownOpen] = useState(false);
   const filterMenuRef = useRef(null);
@@ -311,7 +316,11 @@ function AttendanceList() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [unattendedEmployees, unattendedPopupDismissed, unattendedSessionSuppressed]);
+  }, [
+    unattendedEmployees,
+    unattendedPopupDismissed,
+    unattendedSessionSuppressed,
+  ]);
 
   useEffect(() => {
     if (showUnattendedPopup && !prevShowUnattendedPopupRef.current) {
@@ -580,12 +589,18 @@ function AttendanceList() {
 
   /** Giảm tải main thread khi gõ lọc: bảng cập nhật ngay, biểu đồ combo theo sau */
   const deferredFilteredForCharts = useDeferredValue(filteredEmployees);
+  const deferredFilteredForComboStats = useMemo(() => {
+    if (comboDashboardGroup !== "production") return deferredFilteredForCharts;
+    return deferredFilteredForCharts.filter((emp) =>
+      matchesComboStatsProductionDepartment(normalizeDepartment, emp.boPhan),
+    );
+  }, [deferredFilteredForCharts, comboDashboardGroup, normalizeDepartment]);
 
   const comboChartData = useMemo(() => {
     const map = new Map();
     const emptyMetrics = () =>
       Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, 0]));
-    deferredFilteredForCharts.forEach((emp) => {
+    deferredFilteredForComboStats.forEach((emp) => {
       const flags = getAttendanceComboFlags(emp);
       const department =
         normalizeTextValue(emp.boPhan) ||
@@ -603,7 +618,7 @@ function AttendanceList() {
     });
 
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [deferredFilteredForCharts, tl]);
+  }, [deferredFilteredForComboStats, tl]);
 
   const comboChartDataOrdered = useMemo(
     () => applyOrderToAttendanceRows(comboChartData, comboChartDeptOrder),
@@ -650,7 +665,7 @@ function AttendanceList() {
   );
 
   const comboStatEmployeesByKey = useMemo(() => {
-    const list = deferredFilteredForCharts;
+    const list = deferredFilteredForComboStats;
     const buckets = {
       total: [...list],
       ...Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, []])),
@@ -662,7 +677,7 @@ function AttendanceList() {
       }
     }
     return buckets;
-  }, [deferredFilteredForCharts]);
+  }, [deferredFilteredForComboStats]);
 
   const comboStatLabelByKey = useMemo(() => {
     const fromKeys = Object.fromEntries(
@@ -699,7 +714,7 @@ function AttendanceList() {
       cancelled = true;
       cancelAnimationFrame(raf);
     };
-  }, [showComboChartModal]);
+  }, [showComboChartModal, comboDashboardGroup]);
 
   useLayoutEffect(() => {
     if (!comboChartBodyReady) return;
@@ -2105,9 +2120,7 @@ function AttendanceList() {
               <input
                 type="checkbox"
                 checked={unattendedSuppressSessionCheckbox}
-                onChange={() =>
-                  setUnattendedSuppressSessionCheckbox((v) => !v)
-                }
+                onChange={() => setUnattendedSuppressSessionCheckbox((v) => !v)}
                 className="h-[18px] w-[18px] shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-300/70 dark:border-slate-600 dark:text-indigo-500 dark:focus:ring-indigo-800/60"
               />
               <span className="min-w-0 text-[11px] font-medium leading-snug text-slate-700 dark:text-slate-300">
@@ -2498,7 +2511,10 @@ function AttendanceList() {
             <button
               type="button"
               onClick={() =>
-                startTransition(() => setShowComboChartModal(true))
+                startTransition(() => {
+                  setComboDashboardGroup("production");
+                  setShowComboChartModal(true);
+                })
               }
               className="inline-flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-lg border border-emerald-300 bg-emerald-600 px-1 text-xs font-bold text-white shadow transition hover:bg-emerald-700 sm:text-sm dark:border-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
             >
@@ -2668,293 +2684,301 @@ function AttendanceList() {
                     aria-labelledby="attendance-advanced-filter-title"
                   >
                     <div className="flex h-[min(620px,85vh)] w-full max-w-md min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl animate-slideUp dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/40">
-                    {/* Header */}
-                    <div className="shrink-0 border-b border-blue-100/80 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 px-4 py-2.5 relative overflow-hidden">
-                      <div className="absolute inset-0 bg-white opacity-10"></div>
-                      <div className="relative z-10">
-                        <h3
-                          id="attendance-advanced-filter-title"
-                          className="font-bold text-white text-lg flex items-center gap-1.5 leading-tight"
-                        >
-                          <span className="text-xl shrink-0">🔍</span>
-                          {t("attendanceList.advancedFilter")}
-                        </h3>
-                        <p className="text-[11px] text-blue-50/95 mt-1 font-medium leading-snug">
-                          {tl(
-                            "advancedFilterAutoUpdate",
-                            "Chọn điều kiện lọc • Kết quả tự động cập nhật",
-                          )}
-                        </p>
+                      {/* Header */}
+                      <div className="shrink-0 border-b border-blue-100/80 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 px-4 py-2.5 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-white opacity-10"></div>
+                        <div className="relative z-10">
+                          <h3
+                            id="attendance-advanced-filter-title"
+                            className="font-bold text-white text-lg flex items-center gap-1.5 leading-tight"
+                          >
+                            <span className="text-xl shrink-0">🔍</span>
+                            {t("attendanceList.advancedFilter")}
+                          </h3>
+                          <p className="text-[11px] text-blue-50/95 mt-1 font-medium leading-snug">
+                            {tl(
+                              "advancedFilterAutoUpdate",
+                              "Chọn điều kiện lọc • Kết quả tự động cập nhật",
+                            )}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Content — chiều cao cố định theo khung modal; cuộn bên trong */}
-                    <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
-                      {/* Department Filter Section */}
-                      <div className="mb-3">
-                        <button
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              department: !prev.department,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-orange-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-orange-500 text-base">
-                              🏢
+                      {/* Content — chiều cao cố định theo khung modal; cuộn bên trong */}
+                      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
+                        {/* Department Filter Section */}
+                        <div className="mb-3">
+                          <button
+                            onClick={() => {
+                              setExpandedSections((prev) => ({
+                                ...prev,
+                                department: !prev.department,
+                              }));
+                            }}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-orange-200"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-orange-500 text-base">
+                                🏢
+                              </span>
+                              <span>{tl("department", "Bộ phận")}</span>
                             </span>
-                            <span>{tl("department", "Bộ phận")}</span>
-                          </span>
-                          <span className="text-orange-600 font-bold">
-                            {expandedSections.department ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.department && (
-                          <div className="border-2 border-orange-100 rounded-lg mt-2 bg-gradient-to-b from-white to-orange-50/30 shadow-inner">
-                            <input
-                              type="text"
-                              value={filterDepartmentSearch}
-                              onChange={(e) =>
-                                setFilterDepartmentSearch(e.target.value)
-                              }
-                              placeholder={t("attendanceList.searchDepartment")}
-                              className="w-full border-b border-orange-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                            />
-                            <div className="max-h-84 overflow-y-auto">
-                              {departments.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                  {tl("noData", "Không có dữ liệu")}
-                                </div>
-                              ) : (
-                                <>
-                                  <label className="flex items-center px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm border-b-2 border-orange-200 bg-orange-50/50 font-semibold">
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        departmentListFilter.length ===
-                                        departments.filter((dept) =>
-                                          dept
-                                            .toLowerCase()
-                                            .includes(
-                                              filterDepartmentSearch.toLowerCase(),
-                                            ),
-                                        ).length
-                                      }
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setDepartmentListFilter([
-                                            ...departments.filter((dept) =>
-                                              dept
-                                                .toLowerCase()
-                                                .includes(
-                                                  filterDepartmentSearch.toLowerCase(),
-                                                ),
-                                            ),
-                                          ]);
-                                        } else {
-                                          setDepartmentListFilter([]);
-                                        }
-                                      }}
-                                      className="mr-2 w-4 h-4 cursor-pointer"
-                                    />
-                                    ✓ Chọn tất cả
-                                  </label>
-                                  {departments
-                                    .filter((dept) =>
-                                      dept
-                                        .toLowerCase()
-                                        .includes(
-                                          filterDepartmentSearch.toLowerCase(),
-                                        ),
-                                    )
-                                    .map((dept) => (
-                                      <label
-                                        key={dept}
-                                        className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={departmentListFilter.includes(
-                                            dept,
-                                          )}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              setDepartmentListFilter([
-                                                ...departmentListFilter,
-                                                dept,
-                                              ]);
-                                            } else {
-                                              setDepartmentListFilter(
-                                                departmentListFilter.filter(
-                                                  (d) => d !== dept,
-                                                ),
-                                              );
-                                            }
-                                          }}
-                                          className="mr-2 w-4 h-4 cursor-pointer"
-                                        />
-                                        {dept}
-                                      </label>
-                                    ))}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Loại phép */}
-                      <div className="mb-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              leaveType: !prev.leaveType,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-green-500 text-base">📋</span>
-                            <span>{tl("leaveTypeFilter", "Loại phép")}</span>
-                          </span>
-                          <span className="text-green-600 font-bold">
-                            {expandedSections.leaveType ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {expandedSections.leaveType && (
-                          <div className="border-2 border-green-100 rounded-lg mt-2 bg-gradient-to-b from-white to-green-50/30 shadow-inner">
-                            <div className="max-h-80 overflow-y-auto">
-                              <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    allLeaveTypeFilterValues.length > 0 &&
-                                    allLeaveTypeFilterValues.every((v) =>
-                                      loaiPhepFilter.includes(v),
-                                    )
-                                  }
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setLoaiPhepFilter([
-                                        ...allLeaveTypeFilterValues,
-                                      ]);
-                                    } else {
-                                      setLoaiPhepFilter((prev) =>
-                                        prev.filter(
-                                          (x) =>
-                                            !allLeaveTypeFilterValues.includes(
-                                              x,
-                                            ),
-                                        ),
-                                      );
-                                    }
-                                  }}
-                                  className="mr-2 w-4 h-4 cursor-pointer"
-                                />
-                                ✓ {tl("selectAll", "Chọn tất cả")}
-                              </label>
-                              <label className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100">
-                                <input
-                                  type="checkbox"
-                                  checked={loaiPhepFilter.includes(
-                                    ATTENDANCE_LEAVE_FILTER_NONE,
-                                  )}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setLoaiPhepFilter((prev) => [
-                                        ...prev,
-                                        ATTENDANCE_LEAVE_FILTER_NONE,
-                                      ]);
-                                    } else {
-                                      setLoaiPhepFilter((prev) =>
-                                        prev.filter(
-                                          (x) =>
-                                            x !== ATTENDANCE_LEAVE_FILTER_NONE,
-                                        ),
-                                      );
-                                    }
-                                  }}
-                                  className="mr-2 w-4 h-4 cursor-pointer"
-                                />
-                                {tl(
-                                  "leaveTypeFilterNone",
-                                  "Không có loại phép (chỉ giờ / trống)",
+                            <span className="text-orange-600 font-bold">
+                              {expandedSections.department ? "▼" : "▶"}
+                            </span>
+                          </button>
+                          {expandedSections.department && (
+                            <div className="border-2 border-orange-100 rounded-lg mt-2 bg-gradient-to-b from-white to-orange-50/30 shadow-inner">
+                              <input
+                                type="text"
+                                value={filterDepartmentSearch}
+                                onChange={(e) =>
+                                  setFilterDepartmentSearch(e.target.value)
+                                }
+                                placeholder={t(
+                                  "attendanceList.searchDepartment",
                                 )}
-                              </label>
-                              {ATTENDANCE_LOAI_PHEP_OPTIONS.map((opt) => (
-                                <label
-                                  key={opt.value}
-                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                >
+                                className="w-full border-b border-orange-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                              />
+                              <div className="max-h-84 overflow-y-auto">
+                                {departments.length === 0 ? (
+                                  <div className="px-3 py-2 text-sm text-gray-500 italic">
+                                    {tl("noData", "Không có dữ liệu")}
+                                  </div>
+                                ) : (
+                                  <>
+                                    <label className="flex items-center px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm border-b-2 border-orange-200 bg-orange-50/50 font-semibold">
+                                      <input
+                                        type="checkbox"
+                                        checked={
+                                          departmentListFilter.length ===
+                                          departments.filter((dept) =>
+                                            dept
+                                              .toLowerCase()
+                                              .includes(
+                                                filterDepartmentSearch.toLowerCase(),
+                                              ),
+                                          ).length
+                                        }
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setDepartmentListFilter([
+                                              ...departments.filter((dept) =>
+                                                dept
+                                                  .toLowerCase()
+                                                  .includes(
+                                                    filterDepartmentSearch.toLowerCase(),
+                                                  ),
+                                              ),
+                                            ]);
+                                          } else {
+                                            setDepartmentListFilter([]);
+                                          }
+                                        }}
+                                        className="mr-2 w-4 h-4 cursor-pointer"
+                                      />
+                                      ✓ Chọn tất cả
+                                    </label>
+                                    {departments
+                                      .filter((dept) =>
+                                        dept
+                                          .toLowerCase()
+                                          .includes(
+                                            filterDepartmentSearch.toLowerCase(),
+                                          ),
+                                      )
+                                      .map((dept) => (
+                                        <label
+                                          key={dept}
+                                          className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={departmentListFilter.includes(
+                                              dept,
+                                            )}
+                                            onChange={(e) => {
+                                              if (e.target.checked) {
+                                                setDepartmentListFilter([
+                                                  ...departmentListFilter,
+                                                  dept,
+                                                ]);
+                                              } else {
+                                                setDepartmentListFilter(
+                                                  departmentListFilter.filter(
+                                                    (d) => d !== dept,
+                                                  ),
+                                                );
+                                              }
+                                            }}
+                                            className="mr-2 w-4 h-4 cursor-pointer"
+                                          />
+                                          {dept}
+                                        </label>
+                                      ))}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Loại phép */}
+                        <div className="mb-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExpandedSections((prev) => ({
+                                ...prev,
+                                leaveType: !prev.leaveType,
+                              }));
+                            }}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-green-500 text-base">
+                                📋
+                              </span>
+                              <span>{tl("leaveTypeFilter", "Loại phép")}</span>
+                            </span>
+                            <span className="text-green-600 font-bold">
+                              {expandedSections.leaveType ? "▼" : "▶"}
+                            </span>
+                          </button>
+                          {expandedSections.leaveType && (
+                            <div className="border-2 border-green-100 rounded-lg mt-2 bg-gradient-to-b from-white to-green-50/30 shadow-inner">
+                              <div className="max-h-80 overflow-y-auto">
+                                <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
                                   <input
                                     type="checkbox"
-                                    checked={loaiPhepFilter.includes(opt.value)}
+                                    checked={
+                                      allLeaveTypeFilterValues.length > 0 &&
+                                      allLeaveTypeFilterValues.every((v) =>
+                                        loaiPhepFilter.includes(v),
+                                      )
+                                    }
                                     onChange={(e) => {
                                       if (e.target.checked) {
-                                        setLoaiPhepFilter((prev) => [
-                                          ...prev,
-                                          opt.value,
+                                        setLoaiPhepFilter([
+                                          ...allLeaveTypeFilterValues,
                                         ]);
                                       } else {
                                         setLoaiPhepFilter((prev) =>
-                                          prev.filter((v) => v !== opt.value),
+                                          prev.filter(
+                                            (x) =>
+                                              !allLeaveTypeFilterValues.includes(
+                                                x,
+                                              ),
+                                          ),
                                         );
                                       }
                                     }}
                                     className="mr-2 w-4 h-4 cursor-pointer"
                                   />
-                                  <span className="tabular-nums font-semibold text-gray-700">
-                                    {opt.shortLabel}
-                                  </span>
-                                  <span className="ml-1.5 text-gray-600">
-                                    — {opt.value}
-                                  </span>
+                                  ✓ {tl("selectAll", "Chọn tất cả")}
                                 </label>
-                              ))}
+                                <label className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100">
+                                  <input
+                                    type="checkbox"
+                                    checked={loaiPhepFilter.includes(
+                                      ATTENDANCE_LEAVE_FILTER_NONE,
+                                    )}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setLoaiPhepFilter((prev) => [
+                                          ...prev,
+                                          ATTENDANCE_LEAVE_FILTER_NONE,
+                                        ]);
+                                      } else {
+                                        setLoaiPhepFilter((prev) =>
+                                          prev.filter(
+                                            (x) =>
+                                              x !==
+                                              ATTENDANCE_LEAVE_FILTER_NONE,
+                                          ),
+                                        );
+                                      }
+                                    }}
+                                    className="mr-2 w-4 h-4 cursor-pointer"
+                                  />
+                                  {tl(
+                                    "leaveTypeFilterNone",
+                                    "Không có loại phép (chỉ giờ / trống)",
+                                  )}
+                                </label>
+                                {ATTENDANCE_LOAI_PHEP_OPTIONS.map((opt) => (
+                                  <label
+                                    key={opt.value}
+                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={loaiPhepFilter.includes(
+                                        opt.value,
+                                      )}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setLoaiPhepFilter((prev) => [
+                                            ...prev,
+                                            opt.value,
+                                          ]);
+                                        } else {
+                                          setLoaiPhepFilter((prev) =>
+                                            prev.filter((v) => v !== opt.value),
+                                          );
+                                        }
+                                      }}
+                                      className="mr-2 w-4 h-4 cursor-pointer"
+                                    />
+                                    <span className="tabular-nums font-semibold text-gray-700">
+                                      {opt.shortLabel}
+                                    </span>
+                                    <span className="ml-1.5 text-gray-600">
+                                      — {opt.value}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Footer - Buttons */}
+                      <div className="shrink-0 p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex flex-wrap gap-3 justify-end">
+                        <button
+                          onClick={() => {
+                            setLoaiPhepFilter([]);
+                            setDepartmentListFilter([]);
+                            setShowOnlyUnattendedFilter(false);
+                            setExpandedSections({});
+                            setFilterSearchTerm("");
+                          }}
+                          className="px-5 py-2.5 rounded-lg text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow"
+                        >
+                          🗑️ {tl("clearAll", "Xóa tất cả")}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFilterOpen(false);
+                            setFilterSearchTerm("");
+                          }}
+                          className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                        >
+                          ✖️{" "}
+                          {t("attendanceList.cancel", { defaultValue: "Hủy" })}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFilterOpen(false);
+                            setFilterSearchTerm("");
+                          }}
+                          className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                        >
+                          ✓ {tl("apply", "Áp dụng")}
+                        </button>
                       </div>
                     </div>
-
-                    {/* Footer - Buttons */}
-                    <div className="shrink-0 p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex flex-wrap gap-3 justify-end">
-                      <button
-                        onClick={() => {
-                          setLoaiPhepFilter([]);
-                          setDepartmentListFilter([]);
-                          setShowOnlyUnattendedFilter(false);
-                          setExpandedSections({});
-                          setFilterSearchTerm("");
-                        }}
-                        className="px-5 py-2.5 rounded-lg text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow"
-                      >
-                        🗑️ {tl("clearAll", "Xóa tất cả")}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setFilterOpen(false);
-                          setFilterSearchTerm("");
-                        }}
-                        className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
-                      >
-                        ✖️ {t("attendanceList.cancel", { defaultValue: "Hủy" })}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setFilterOpen(false);
-                          setFilterSearchTerm("");
-                        }}
-                        className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
-                      >
-                        ✓ {tl("apply", "Áp dụng")}
-                      </button>
-                    </div>
-                  </div>
                   </div>,
                   document.body,
                 )}
@@ -3037,7 +3061,7 @@ function AttendanceList() {
                     <button
                       onClick={() => {
                         const exportButton = document.querySelector(
-                          '[title="📥 Xuất Excel"]',
+                          '[title="Xuất Excel"]',
                         );
                         if (exportButton) exportButton.click();
                         setActionDropdownOpen(false);
@@ -3068,9 +3092,7 @@ function AttendanceList() {
                       </span>
                       <div className="flex flex-col">
                         <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                          {tl(
-                            "exportExcelDateRange",
-                          )}
+                          {tl("exportExcelDateRange")}
                         </span>
                       </div>
                     </button>
@@ -3126,7 +3148,7 @@ function AttendanceList() {
                   <ExportExcelButton
                     data={filteredEmployees}
                     selectedDate={selectedDate}
-                    title="📥 Xuất Excel"
+                    title="Xuất Excel"
                     onSuccess={(msg) =>
                       setAlert({ show: true, type: "success", message: msg })
                     }
@@ -3570,6 +3592,10 @@ function AttendanceList() {
             <AttendanceComboChartModal
               open
               onClose={() => setShowComboChartModal(false)}
+              comboDashboardGroup={comboDashboardGroup}
+              setComboDashboardGroup={setComboDashboardGroup}
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
               tl={tl}
               t={t}
               comboDashboardStats={comboDashboardStats}

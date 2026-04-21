@@ -217,9 +217,9 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
   ];
 
   const headerEn = [
-    "",
+    "STT",
     "Code",
-    "",
+    "MVT",
     "Full name",
     "Gender",
     "Start date",

@@ -859,7 +859,8 @@ function SeasonalStaffAttendance() {
             duplicateCount++;
           } else {
             let rec = stripAttendanceExcelUploadInternalFields({ ...newEmp });
-            if (!hasAttendanceExcelCellValue(rec.gioiTinh)) rec.gioiTinh = "YES";
+            if (!hasAttendanceExcelCellValue(rec.gioiTinh))
+              rec.gioiTinh = "YES";
             mergedData[key] = rec;
             if (normalizedNewMNV) {
               existingKeyByMNV[normalizedNewMNV] = key;
@@ -2576,7 +2577,7 @@ function SeasonalStaffAttendance() {
                     <button
                       onClick={() => {
                         const exportButton = document.querySelector(
-                          '[title="📥 Xuất Excel"]',
+                          '[title="Xuất Excel"]',
                         );
                         if (exportButton) exportButton.click();
                         setActionDropdownOpen(false);
@@ -2661,7 +2662,7 @@ function SeasonalStaffAttendance() {
                     data={filteredEmployees}
                     selectedDate={selectedDate}
                     omitWorkStatusColumn
-                    title="📥 Xuất Excel"
+                    title="Xuất Excel"
                     onSuccess={(msg) =>
                       setAlert({ show: true, type: "success", message: msg })
                     }

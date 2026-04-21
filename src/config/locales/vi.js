@@ -303,7 +303,7 @@ const vi = {
     employees: "🧑‍🤝‍🧑 Nhân viên",
     addAssignment: "➕ Thêm phân công",
     chart: "📊 Biểu đồ",
-    exportExcel: "📥 Xuất Excel",
+    exportExcel: "Xuất Excel",
     selectDate: "Chọn ngày",
     model: "Model",
     type: "Loại",
@@ -453,8 +453,7 @@ const vi = {
     chartSectionTitle: "Biểu đồ theo ngày",
     chartSectionHint:
       "Mỗi khu vực một khung: cột (lượng đạt) + đường (NG), chú thích dưới biểu đồ.",
-    chartDragHint:
-      "Kéo thanh tiêu đề (⋮⋮) để đổi thứ tự — lưu theo tài khoản trên Firebase (đồng bộ mọi máy).",
+    chartDragHint: "Kéo thanh tiêu đề (⋮⋮) để đổi thứ tự.",
     chartDragHandle: "Kéo để sắp xếp",
     comboBarLabel: "Lượng đạt",
     comboLineLabel: "NG",
@@ -692,7 +691,7 @@ const vi = {
   birthdayCakeBell: {
     buttonTitle: "Xem danh sách sinh nhật tháng này",
     popupTitle: "🎂 Danh sách sinh nhật tháng {{month}}",
-    exportExcel: "⬇ Xuất Excel",
+    exportExcel: "Xuất Excel",
     noBirthdays: "Không có ai sinh nhật tháng này",
     colIndex: "#",
     colName: "Họ và tên",
@@ -702,7 +701,7 @@ const vi = {
   },
   notificationBell: {
     defaultTitle: "DANH SÁCH NHÂN VIÊN BÙ CÔNG",
-    defaultExport: "⬇ Xuất Excel",
+    defaultExport: "Xuất Excel",
     noNotifications: "Không có thông báo",
   },
   userDeptManager: {
@@ -881,6 +880,7 @@ const vi = {
     historyField_hinhThucNghiViec: "Hình thức nghỉ",
   },
   attendanceList: {
+    comboChartTitle: "THỐNG KÊ ĐIỂM DANH MỖI NGÀY ✌️",
     pleaseLogin: "Vui lòng đăng nhập để thực hiện thao tác này",
     updateSuccess: "✅ Cập nhật thành công",
     addSuccess: "✅ Thêm mới thành công",
@@ -934,7 +934,7 @@ const vi = {
     update: "Cập nhật",
     add: "Thêm mới",
     close: "Đóng",
-    export: "⬇ Xuất Excel",
+    export: "Xuất Excel",
     cancel: "Hủy",
     activeEmployeesTitle: "ĐIỂM DANH NHÂN VIÊN",
     activeEmployeesSubtitle: "List of Active Employees",
@@ -1029,10 +1029,9 @@ const vi = {
     comboDashboardGroupLabel: "Nhóm KPI",
     comboDashboardGroupHr: "Nhân sự",
     comboDashboardGroupProduction: "Sản xuất",
-    comboDashboardGroupHintHr:
-      "Nhóm Nhân sự: BGC, vào trễ, ca đêm, các loại phép / nghỉ.",
+    comboDashboardGroupHintHr: "Nhóm HR: Tổng số nhân viên, các loại phép",
     comboDashboardGroupHintProduction:
-      "Nhóm Sản xuất: tổng nhân viên, chấm công, giờ vào lệch / # HH:MM.",
+      "Nhóm SX : Tổng nhân viên, chi tiết các loại phép",
     buGioCong: "Bù giờ công",
     nonStandardTimeIn: "Giờ vào ≠ HH:MM",
     timeInHashHHMM: "Các loại phép",
@@ -1041,8 +1040,8 @@ const vi = {
     comboStatColShift: "Ca làm việc",
     comboChartLoading: "Đang tải biểu đồ theo bộ phận…",
     comboChartLoadingMore: "Đang tải thêm biểu đồ…",
-    comboChartDragHint: "Kéo thanh tiêu đề (⋮⋮) để đổi thứ tự biểu đồ.",
     comboChartDragHandle: "Kéo để sắp xếp",
+    comboChartDragHint: "Kéo thanh tiêu đề (⋮⋮) để đổi thứ tự.",
     notCheckedInShort: "Chưa chấm công",
     clearAll: "Xóa tất cả",
     apply: "Áp dụng",
@@ -1052,8 +1051,7 @@ const vi = {
     downloadExcelTemplate: "Tải file mẫu Excel",
     downloadExcelTemplateHint:
       "Cùng bố cục file xuất — điền rồi upload cho ngày đang chọn",
-    downloadExcelTemplateOk:
-      "Đã tải mẫu Excel — cùng form xuất; điền dữ liệu phía dưới hai dòng tiêu đề rồi upload.",
+    downloadExcelTemplateOk: "✅ Xuất excel thành công",
     downloadExcelTemplateFail: "Không tạo được file mẫu Excel.",
     addNew: "Thêm mới",
     deleteAllData: "Xóa toàn bộ dữ liệu",
