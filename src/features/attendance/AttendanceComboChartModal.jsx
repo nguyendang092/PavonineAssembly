@@ -16,6 +16,8 @@ import {
   COMBO_DASHBOARD_TILES,
   COMBO_DASHBOARD_TILE_KEYS_PRODUCTION,
   COMBO_DASHBOARD_TILE_KEYS_PRODUCTION_DETAIL,
+  COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS,
+  mergeComboProductionDeptPickerKeys,
   COMBO_STAT_LABEL_DEFAULTS,
 } from "./attendanceComboChartConfig";
 import {
@@ -30,6 +32,10 @@ export default function AttendanceComboChartModal({
   onClose,
   comboDashboardGroup,
   setComboDashboardGroup,
+  comboProductionDeptCatalog = [],
+  comboProductionDeptOrder = [],
+  onPersistComboProductionDeptOrder,
+  getComboProductionDeptChartRank,
   selectedDate,
   setSelectedDate,
   tl,
@@ -63,6 +69,59 @@ export default function AttendanceComboChartModal({
     [comboGroupMetricKeys],
   );
   const activeComboMetricKeys = comboGroupMetricKeys;
+
+  const [productionDeptPickerOpen, setProductionDeptPickerOpen] =
+    React.useState(false);
+  const [productionDeptPickerDraft, setProductionDeptPickerDraft] =
+    React.useState([]);
+
+  const productionDeptLabelForPicker = React.useCallback(
+    (mk) =>
+      comboProductionDeptCatalog.find((c) => c.matchKey === mk)?.label ??
+      COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS[mk] ??
+      mk,
+    [comboProductionDeptCatalog],
+  );
+
+  const openProductionDeptPicker = React.useCallback(() => {
+    const base =
+      comboProductionDeptOrder.length > 0
+        ? [...comboProductionDeptOrder]
+        : mergeComboProductionDeptPickerKeys(comboProductionDeptCatalog);
+    setProductionDeptPickerDraft(base);
+    setProductionDeptPickerOpen(true);
+  }, [comboProductionDeptOrder, comboProductionDeptCatalog]);
+
+  const toggleProductionDeptDraftKey = React.useCallback((mk) => {
+    setProductionDeptPickerDraft((prev) => {
+      const i = prev.indexOf(mk);
+      if (i >= 0) return prev.filter((_, j) => j !== i);
+      return [...prev, mk];
+    });
+  }, []);
+
+  const moveProductionDeptDraftKey = React.useCallback((index, dir) => {
+    setProductionDeptPickerDraft((prev) => {
+      const j = index + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[j]] = [next[j], next[index]];
+      return next;
+    });
+  }, []);
+
+  const saveProductionDeptPicker = React.useCallback(() => {
+    const list =
+      productionDeptPickerDraft.length > 0
+        ? [...productionDeptPickerDraft]
+        : mergeComboProductionDeptPickerKeys(comboProductionDeptCatalog);
+    onPersistComboProductionDeptOrder?.(list);
+    setProductionDeptPickerOpen(false);
+  }, [
+    productionDeptPickerDraft,
+    comboProductionDeptCatalog,
+    onPersistComboProductionDeptOrder,
+  ]);
 
   if (!open) return null;
 
@@ -209,16 +268,33 @@ export default function AttendanceComboChartModal({
             >
               {tl("comboDashboardGroupHr", "Nhân sự")}
             </button>
-            <div className="ml-auto flex items-center gap-1.5">
-              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                {tl("date", "Ngày")}:
-              </span>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/35 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-              />
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                  {tl("date", "Ngày")}:
+                </span>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/35 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+              {comboDashboardGroup === "production" ? (
+                <>
+                  <span
+                    className="h-5 w-px shrink-0 self-center bg-slate-300 dark:bg-slate-600"
+                    aria-hidden
+                  />
+                  <button
+                    type="button"
+                    onClick={openProductionDeptPicker}
+                    className="shrink-0 rounded-lg border border-emerald-600/85 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-emerald-950 shadow-sm transition hover:bg-emerald-500/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/55 dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
+                  >
+                    {tl("comboProductionDeptPickerButton", "STT")}
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -346,8 +422,24 @@ export default function AttendanceComboChartModal({
                       >
                         ⋮⋮
                       </span>
-                      <h4 className="min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-800 dark:text-slate-50">
-                        {row.department}
+                      <h4 className="min-w-0 flex flex-1 items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-slate-800 dark:text-slate-50">
+                        {comboDashboardGroup === "production" &&
+                        typeof getComboProductionDeptChartRank === "function" &&
+                        getComboProductionDeptChartRank(row.department) !=
+                          null ? (
+                          <span
+                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-amber-500 text-[10px] font-black text-white shadow-sm"
+                            title={tl(
+                              "comboProductionDeptRankHint",
+                              "Thứ tự BP sản xuất đã chọn",
+                            )}
+                          >
+                            {getComboProductionDeptChartRank(row.department)}
+                          </span>
+                        ) : null}
+                        <span className="min-w-0 truncate">
+                          {row.department}
+                        </span>
                       </h4>
                       <span className="rounded bg-slate-200/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-black dark:bg-slate-800 dark:text-slate-300">
                         {tl("totalEmployees", "Tổng")}: {row.total}
@@ -609,6 +701,158 @@ export default function AttendanceComboChartModal({
             </div>
           </div>
         )}
+        {productionDeptPickerOpen ? (
+          <div
+            className="absolute inset-0 z-[1250] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="combo-production-dept-picker-title"
+            onClick={() => setProductionDeptPickerOpen(false)}
+          >
+            <div
+              className="flex max-h-[min(88vh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-emerald-500/50 bg-white shadow-xl dark:border-emerald-700/60 dark:bg-slate-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-b border-slate-200 bg-emerald-50 px-4 py-3 dark:border-slate-700 dark:bg-emerald-950/40">
+                <h3
+                  id="combo-production-dept-picker-title"
+                  className="text-sm font-bold text-emerald-950 dark:text-emerald-100"
+                >
+                  {tl(
+                    "comboProductionDeptPickerTitle",
+                    "Bộ phận sản xuất — thứ tự hiển thị",
+                  )}
+                </h3>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                  {tl(
+                    "comboProductionDeptPickerHint",
+                    "Chọn BP và sắp thứ tự (1, 2, …). Kéo thả biểu đồ cũng cập nhật thứ tự. BP mới: thêm vào danh mục trong code cấu hình (một chỗ).",
+                  )}
+                </p>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase text-slate-500 dark:text-slate-400">
+                  {tl("comboProductionDeptPickerSelected", "Đã chọn")}
+                </p>
+                {productionDeptPickerDraft.length === 0 ? (
+                  <p className="mb-4 text-xs text-amber-800 dark:text-amber-200">
+                    {tl(
+                      "comboProductionDeptPickerEmpty",
+                      "Chưa chọn — Lưu sẽ dùng danh sách mặc định đầy đủ.",
+                    )}
+                  </p>
+                ) : (
+                  <ol className="mb-4 space-y-2">
+                    {productionDeptPickerDraft.map((mk, idx) => (
+                      <li
+                        key={mk}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-800/90"
+                      >
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                          <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] text-white">
+                            {idx + 1}
+                          </span>
+                          {productionDeptLabelForPicker(mk)}
+                        </span>
+                        <span className="flex shrink-0 gap-1">
+                          <button
+                            type="button"
+                            className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold disabled:opacity-40 dark:border-slate-600"
+                            onClick={() => moveProductionDeptDraftKey(idx, -1)}
+                            disabled={idx === 0}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold disabled:opacity-40 dark:border-slate-600"
+                            onClick={() => moveProductionDeptDraftKey(idx, 1)}
+                            disabled={
+                              idx === productionDeptPickerDraft.length - 1
+                            }
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-rose-300 px-1.5 py-0.5 text-[10px] font-bold text-rose-800 dark:border-rose-700 dark:text-rose-200"
+                            onClick={() => toggleProductionDeptDraftKey(mk)}
+                          >
+                            {tl("comboProductionDeptPickerRemove", "Bỏ")}
+                          </button>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                <p className="mb-2 text-[11px] font-semibold uppercase text-slate-500 dark:text-slate-400">
+                  {tl("comboProductionDeptPickerCatalog", "Danh mục")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {comboProductionDeptCatalog.map(({ matchKey: mk, label }) => {
+                    const selected = productionDeptPickerDraft.indexOf(mk) >= 0;
+                    return (
+                      <button
+                        key={mk}
+                        type="button"
+                        onClick={() => toggleProductionDeptDraftKey(mk)}
+                        className={`rounded-lg border px-2 py-1 text-xs font-bold transition ${
+                          selected
+                            ? "border-emerald-600 bg-emerald-500/20 text-emerald-950 dark:border-emerald-500 dark:text-emerald-100"
+                            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/80">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setProductionDeptPickerDraft(
+                      mergeComboProductionDeptPickerKeys(
+                        comboProductionDeptCatalog,
+                      ),
+                    )
+                  }
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+                >
+                  {tl("comboProductionDeptPickerReset", "Mặc định")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onPersistComboProductionDeptOrder?.([]);
+                    setProductionDeptPickerOpen(false);
+                  }}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+                >
+                  {tl(
+                    "comboProductionDeptPickerClearSaved",
+                    "Xóa cấu hình đã lưu",
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProductionDeptPickerOpen(false)}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+                >
+                  {tl("cancel", "Hủy")}
+                </button>
+                <button
+                  type="button"
+                  onClick={saveProductionDeptPicker}
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700"
+                >
+                  {tl("save", "Lưu")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

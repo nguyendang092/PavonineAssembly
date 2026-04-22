@@ -415,11 +415,7 @@ export function getAttendanceGridColumnStart(
       const map = showRowModalActions
         ? COMPACT_ATTENDANCE_ONLY_WITH_ACTIONS
         : COMPACT_ATTENDANCE_ONLY_NO_ACTIONS;
-      if (
-        key === "joinDate" ||
-        key === "workStatus" ||
-        key === "deptCode"
-      )
+      if (key === "joinDate" || key === "workStatus" || key === "deptCode")
         return undefined;
       return map[key];
     }
@@ -451,11 +447,7 @@ export function getAttendanceGridColumnStart(
     const map = showRowModalActions
       ? ATTENDANCE_GRID_COL_COMPACT_WITH_ACTIONS
       : ATTENDANCE_GRID_COL_COMPACT_NO_ACTIONS;
-    if (
-      key === "joinDate" ||
-      key === "workStatus" ||
-      key === "deptCode"
-    )
+    if (key === "joinDate" || key === "workStatus" || key === "deptCode")
       return undefined;
     return map[key];
   }
@@ -476,7 +468,7 @@ export function cellClsForAttendanceTable(s) {
 
 /** % cột — khớp `SeasonalStaffAttendance` / điểm danh (colgroup/grid). */
 const WIDTHS_WITH_ACTIONS = [
-  2, 4, 4, 14, 4, 4, 4, 4, 8, 6, 6, 6, 6, 6, 3, 3, 5, 4, 4, 4, 4, 3, 6,
+  2, 4, 4, 14, 4, 7, 4, 4, 8, 6, 6, 6, 6, 6, 3, 3, 5, 4, 4, 4, 4, 3, 6,
 ];
 const WIDTHS_NO_ACTIONS = [
   2, 4, 4, 17, 4, 4, 4, 3, 8, 6, 6, 6, 6, 5, 3, 3, 4, 4, 4, 4, 3, 7,

@@ -13,6 +13,8 @@ const RTDB_ROOT = "userPreferences";
 export const CHART_ORDER_KIND = {
   ATTENDANCE_DEPT: "attendanceDept",
   WORKPLACE_AREA: "workplaceArea",
+  /** Thứ tự / tập BP sản xuất trong modal Thống kê (nhóm Sản xuất) — mã nội bộ, lưu theo user. */
+  COMBO_PRODUCTION_DEPT_ORDER: "comboProductionDeptOrder",
 };
 
 /** Khóa localStorage cũ (cho phép dấu chấm trong email). */

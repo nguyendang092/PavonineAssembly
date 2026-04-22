@@ -80,7 +80,8 @@ import {
 import {
   COMBO_CHART_METRIC_KEYS,
   COMBO_STAT_LABEL_DEFAULTS,
-  matchesComboStatsProductionDepartment,
+  attendanceProductionDeptMatchKey,
+  applyProductionStatsRowOrder,
 } from "./attendanceComboChartConfig";
 import {
   ATTENDANCE_LEAVE_FILTER_NONE,
@@ -136,6 +137,20 @@ function AttendanceList() {
         CHART_ORDER_KIND.ATTENDANCE_DEPT,
       );
       if (!cancelled) setComboChartDeptOrder(order);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userEmailKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const order = await hydrateChartOrder(
+        userEmailKey,
+        CHART_ORDER_KIND.COMBO_PRODUCTION_DEPT_ORDER,
+      );
+      if (!cancelled) setComboProductionDeptOrder(order);
     })();
     return () => {
       cancelled = true;
@@ -209,6 +224,9 @@ function AttendanceList() {
     useState(0);
   const [comboStatDetailKey, setComboStatDetailKey] = useState(null);
   const [comboChartDeptOrder, setComboChartDeptOrder] = useState([]);
+  const [comboProductionDeptOrder, setComboProductionDeptOrder] = useState(
+    [],
+  );
   const [comboDragOverDept, setComboDragOverDept] = useState(null);
   const [modalFilterOpen, setModalFilterOpen] = useState(false);
   const [modalGioiTinhFilter, setModalGioiTinhFilter] = useState([]);
@@ -589,12 +607,97 @@ function AttendanceList() {
 
   /** Giảm tải main thread khi gõ lọc: bảng cập nhật ngay, biểu đồ combo theo sau */
   const deferredFilteredForCharts = useDeferredValue(filteredEmployees);
+
+  /** Mọi bộ phận có trong dữ liệu điểm danh (sau bộ lọc) — dùng cho picker BP sản xuất / STT. */
+  const comboProductionDeptCatalog = useMemo(() => {
+    const byMk = new Map();
+    for (const emp of deferredFilteredForCharts) {
+      const label = normalizeTextValue(emp.boPhan);
+      if (!label) continue;
+      const mk = attendanceProductionDeptMatchKey(
+        normalizeDepartment,
+        emp.boPhan,
+      );
+      if (!mk) continue;
+      if (!byMk.has(mk)) byMk.set(mk, { matchKey: mk, label });
+    }
+    return Array.from(byMk.values()).sort((a, b) =>
+      a.label.localeCompare(b.label, "vi", { sensitivity: "base" }),
+    );
+  }, [deferredFilteredForCharts, normalizeDepartment]);
+
   const deferredFilteredForComboStats = useMemo(() => {
     if (comboDashboardGroup !== "production") return deferredFilteredForCharts;
-    return deferredFilteredForCharts.filter((emp) =>
-      matchesComboStatsProductionDepartment(normalizeDepartment, emp.boPhan),
+    const catalogKeys = new Set(
+      comboProductionDeptCatalog.map((c) => c.matchKey),
     );
-  }, [deferredFilteredForCharts, comboDashboardGroup, normalizeDepartment]);
+    if (comboProductionDeptOrder.length === 0) {
+      return deferredFilteredForCharts.filter((emp) => {
+        const mk = attendanceProductionDeptMatchKey(
+          normalizeDepartment,
+          emp.boPhan,
+        );
+        return mk && catalogKeys.has(mk);
+      });
+    }
+    const allow = new Set(comboProductionDeptOrder);
+    return deferredFilteredForCharts.filter((emp) => {
+      const mk = attendanceProductionDeptMatchKey(
+        normalizeDepartment,
+        emp.boPhan,
+      );
+      return mk && allow.has(mk);
+    });
+  }, [
+    deferredFilteredForCharts,
+    comboDashboardGroup,
+    comboProductionDeptOrder,
+    comboProductionDeptCatalog,
+    normalizeDepartment,
+  ]);
+
+  const effectiveProductionDeptOrderForSort = useMemo(
+    () =>
+      comboProductionDeptOrder.length > 0
+        ? comboProductionDeptOrder
+        : comboProductionDeptCatalog.map((c) => c.matchKey),
+    [comboProductionDeptOrder, comboProductionDeptCatalog],
+  );
+
+  const comboProductionDeptRankByMk = useMemo(() => {
+    const m = new Map();
+    effectiveProductionDeptOrderForSort.forEach((mk, i) => {
+      m.set(mk, i + 1);
+    });
+    return m;
+  }, [effectiveProductionDeptOrderForSort]);
+
+  const getComboProductionDeptChartRank = useCallback(
+    (departmentLabel) => {
+      const mk = attendanceProductionDeptMatchKey(
+        normalizeDepartment,
+        departmentLabel,
+      );
+      if (!mk) return null;
+      return comboProductionDeptRankByMk.get(mk) ?? null;
+    },
+    [comboProductionDeptRankByMk, normalizeDepartment],
+  );
+
+  const persistComboProductionDeptOrder = useCallback(
+    (keys) => {
+      const list = Array.isArray(keys)
+        ? keys.filter((x) => typeof x === "string")
+        : [];
+      setComboProductionDeptOrder(list);
+      void persistChartOrder(
+        userEmailKey,
+        CHART_ORDER_KIND.COMBO_PRODUCTION_DEPT_ORDER,
+        list,
+      );
+    },
+    [userEmailKey],
+  );
 
   const comboChartData = useMemo(() => {
     const map = new Map();
@@ -620,14 +723,61 @@ function AttendanceList() {
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [deferredFilteredForComboStats, tl]);
 
-  const comboChartDataOrdered = useMemo(
-    () => applyOrderToAttendanceRows(comboChartData, comboChartDeptOrder),
-    [comboChartData, comboChartDeptOrder],
-  );
+  const comboChartDataOrdered = useMemo(() => {
+    if (comboDashboardGroup !== "production") {
+      return applyOrderToAttendanceRows(comboChartData, comboChartDeptOrder);
+    }
+    return applyProductionStatsRowOrder(
+      comboChartData,
+      effectiveProductionDeptOrderForSort,
+      normalizeDepartment,
+    );
+  }, [
+    comboChartData,
+    comboChartDeptOrder,
+    comboDashboardGroup,
+    effectiveProductionDeptOrderForSort,
+    normalizeDepartment,
+  ]);
 
   const handleComboDeptReorder = useCallback(
     (fromDept, toDept) => {
       if (!fromDept || !toDept || fromDept === toDept) return;
+      if (comboDashboardGroup === "production") {
+        const fromMk = attendanceProductionDeptMatchKey(
+          normalizeDepartment,
+          fromDept,
+        );
+        const toMk = attendanceProductionDeptMatchKey(
+          normalizeDepartment,
+          toDept,
+        );
+        if (!fromMk || !toMk) return;
+        const orderedMks = comboChartDataOrdered
+          .map((r) =>
+            attendanceProductionDeptMatchKey(
+              normalizeDepartment,
+              r.department,
+            ),
+          )
+          .filter(Boolean);
+        const uniq = [];
+        const seen = new Set();
+        for (const mk of orderedMks) {
+          if (!seen.has(mk)) {
+            seen.add(mk);
+            uniq.push(mk);
+          }
+        }
+        const next = moveKeyBefore(uniq, fromMk, toMk);
+        setComboProductionDeptOrder(next);
+        void persistChartOrder(
+          userEmailKey,
+          CHART_ORDER_KIND.COMBO_PRODUCTION_DEPT_ORDER,
+          next,
+        );
+        return;
+      }
       const ordered = applyOrderToAttendanceRows(
         comboChartData,
         comboChartDeptOrder,
@@ -640,7 +790,14 @@ function AttendanceList() {
         next,
       );
     },
-    [comboChartData, comboChartDeptOrder, userEmailKey],
+    [
+      comboDashboardGroup,
+      comboChartData,
+      comboChartDataOrdered,
+      comboChartDeptOrder,
+      normalizeDepartment,
+      userEmailKey,
+    ],
   );
 
   const comboDashboardStats = useMemo(() => {
@@ -3594,6 +3751,10 @@ function AttendanceList() {
               onClose={() => setShowComboChartModal(false)}
               comboDashboardGroup={comboDashboardGroup}
               setComboDashboardGroup={setComboDashboardGroup}
+              comboProductionDeptCatalog={comboProductionDeptCatalog}
+              comboProductionDeptOrder={comboProductionDeptOrder}
+              onPersistComboProductionDeptOrder={persistComboProductionDeptOrder}
+              getComboProductionDeptChartRank={getComboProductionDeptChartRank}
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}
               tl={tl}

@@ -93,14 +93,99 @@ const COMBO_STATS_PRODUCTION_DEPT_MATCH_KEYS = new Set([
   "assytu",
 ]);
 
+/** Thứ tự mặc định khi chưa cấu hình — thêm BP mới: chỉ cần bổ sung vào Set + nhãn picker. */
+export const COMBO_STATS_PRODUCTION_DEPT_DEFAULT_ORDER = Array.from(
+  COMBO_STATS_PRODUCTION_DEPT_MATCH_KEYS,
+).sort();
+
+/** Nhãn hiển thị trong UI chọn BP sản xuất (theo `matchKey`). */
+export const COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS = {
+  extrusion: "Extrusion",
+  mc: "MC",
+  hairline: "HairLine",
+  press: "Press",
+  anodizing: "Anodizing",
+  assy: "Assy",
+  assydeco: "Assy-Deco",
+  assyflip: "Assy-Flip",
+  assykomsa: "Assy-Komsa",
+  assyohf: "Assy-OHF",
+  assypmf: "Assy-PMF",
+  assytu: "Assy-TU",
+};
+
+/**
+ * Khóa so khớp BP sản xuất (chữ thường, bỏ khoảng trắng và `-`).
+ * Dùng cùng quy tắc với `matchesComboStatsProductionDepartment`.
+ */
+export function attendanceProductionDeptMatchKey(normalizeDepartment, boPhanRaw) {
+  const normalized = normalizeDepartment(boPhanRaw);
+  if (!normalized) return "";
+  return normalized.replace(/\s+/g, "").replace(/-/g, "");
+}
+
 export function matchesComboStatsProductionDepartment(
   normalizeDepartment,
   boPhanRaw,
 ) {
-  const normalized = normalizeDepartment(boPhanRaw);
-  if (!normalized) return false;
-  const matchKey = normalized.replace(/\s+/g, "").replace(/-/g, "");
+  const matchKey = attendanceProductionDeptMatchKey(
+    normalizeDepartment,
+    boPhanRaw,
+  );
+  if (!matchKey) return false;
   return COMBO_STATS_PRODUCTION_DEPT_MATCH_KEYS.has(matchKey);
+}
+
+/**
+ * Sắp xếp hàng biểu đồ theo thứ tự `matchKey` đã lưu; phần còn lại theo `total` giảm dần.
+ */
+/**
+ * Thứ tự mở picker: BP mặc định trong config trước, sau đó mọi BP có trong `catalog` (dữ liệu ngày).
+ */
+export function mergeComboProductionDeptPickerKeys(catalog) {
+  const seen = new Set();
+  const out = [];
+  for (const mk of COMBO_STATS_PRODUCTION_DEPT_DEFAULT_ORDER) {
+    if (!seen.has(mk)) {
+      seen.add(mk);
+      out.push(mk);
+    }
+  }
+  const list = Array.isArray(catalog) ? catalog : [];
+  for (const item of list) {
+    const mk = item?.matchKey;
+    if (typeof mk !== "string" || !mk || seen.has(mk)) continue;
+    seen.add(mk);
+    out.push(mk);
+  }
+  return out;
+}
+
+export function applyProductionStatsRowOrder(
+  rows,
+  matchKeyOrder,
+  normalizeDepartment,
+) {
+  if (!rows?.length) return [];
+  if (!matchKeyOrder?.length) return [...rows];
+  const seen = new Set();
+  const out = [];
+  for (const mk of matchKeyOrder) {
+    for (const r of rows) {
+      if (seen.has(r.department)) continue;
+      const rk = attendanceProductionDeptMatchKey(
+        normalizeDepartment,
+        r.department,
+      );
+      if (rk === mk) {
+        out.push(r);
+        seen.add(r.department);
+      }
+    }
+  }
+  const rest = rows.filter((r) => !seen.has(r.department));
+  rest.sort((a, b) => (b.total ?? 0) - (a.total ?? 0));
+  return [...out, ...rest];
 }
 
 /** Ô KPI: chỉ hiện khi đếm > 0 — màu số dùng `getAttendanceLeaveTypeColorClassNameForComboStatKey`. */
