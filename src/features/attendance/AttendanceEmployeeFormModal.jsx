@@ -16,7 +16,6 @@ import {
 import { ATTENDANCE_LOAI_PHEP_OPTIONS } from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
-  looksLikeGioVaoTime,
   normalizeTimeForHtmlInput,
   canonicalAttendanceLoaiPhep,
   findGioVaoTypeOptionMatch,
@@ -37,9 +36,8 @@ export const EMPTY_EMPLOYEE_FORM = {
   mvt: "",
   hoVaTen: "",
   gioiTinh: "YES",
-  ngayThangNamSinh: "",
   ngayVaoLam: "",
-  trangThaiLamViec: "dang_lam",
+  trangThaiLamViec: "",
   maBoPhan: "",
   boPhan: "",
   gioVao: "",
@@ -97,11 +95,6 @@ export default function AttendanceEmployeeFormModal({
     if (!open) return;
     if (initialRecord && initialRecord.id) {
       let merged = { ...EMPTY_EMPLOYEE_FORM, ...initialRecord };
-      const gv = String(merged.gioVao ?? "").trim();
-      const lp = String(merged.loaiPhep ?? "").trim();
-      if (!lp && gv && !looksLikeGioVaoTime(gv)) {
-        merged = { ...merged, loaiPhep: gv, gioVao: "" };
-      }
       merged = {
         ...merged,
         loaiPhep: canonicalAttendanceLoaiPhep(merged.loaiPhep),
@@ -167,6 +160,19 @@ export default function AttendanceEmployeeFormModal({
     setForm((prev) => ({
       ...prev,
       loaiPhep: v === "" ? "" : canonicalAttendanceLoaiPhep(v),
+    }));
+  }, []);
+
+  const handleTrangThaiLamViecSelect = useCallback((e) => {
+    const v = e.target.value;
+    setForm((prev) => ({
+      ...prev,
+      trangThaiLamViec:
+        v === ""
+          ? ""
+          : ROSTER_TRANG_THAI_VALUES.includes(v)
+            ? v
+            : String(v).trim(),
     }));
   }, []);
 
@@ -304,8 +310,7 @@ export default function AttendanceEmployeeFormModal({
 
   const isEditMode = Boolean(editAttendanceKey);
   /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP chỉ sửa loại phép + ca làm việc. */
-  const isRestrictedEdit =
-    isEditMode && !isAdminAccess(user, userRole);
+  const isRestrictedEdit = isEditMode && !isAdminAccess(user, userRole);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/45 p-3 backdrop-blur-[2px] sm:p-4">
@@ -414,19 +419,6 @@ export default function AttendanceEmployeeFormModal({
           </div>
           <div>
             <label className={employeeModalLabelClass}>
-              {tl("dateOfBirth", "Ngày sinh")}
-            </label>
-            <input
-              type="date"
-              name="ngayThangNamSinh"
-              value={form.ngayThangNamSinh}
-              onChange={handleChange}
-              disabled={isRestrictedEdit}
-              className={employeeModalFieldClass}
-            />
-          </div>
-          <div>
-            <label className={employeeModalLabelClass}>
               {tl("joinDate", "Ngày vào làm")}
             </label>
             <input
@@ -444,14 +436,23 @@ export default function AttendanceEmployeeFormModal({
             </label>
             <select
               name="trangThaiLamViec"
-              value={form.trangThaiLamViec ?? ""}
-              onChange={handleChange}
+              value={String(form.trangThaiLamViec ?? "").trim()}
+              onChange={handleTrangThaiLamViecSelect}
               disabled={isRestrictedEdit}
               className={employeeModalFieldClass}
             >
               <option value="">
                 {tl("employmentStatusPlaceholder", "— Chọn —")}
               </option>
+              {(() => {
+                const raw = String(form.trangThaiLamViec ?? "").trim();
+                const isStd = ROSTER_TRANG_THAI_VALUES.includes(raw);
+                return !isStd && raw ? (
+                  <option value={raw}>
+                    {raw} {tl("shiftCurrentValue", "(giá trị hiện tại)")}
+                  </option>
+                ) : null;
+              })()}
               {ROSTER_TRANG_THAI_VALUES.map((v) => (
                 <option key={v} value={v}>
                   {tl(
@@ -489,73 +490,66 @@ export default function AttendanceEmployeeFormModal({
               className={employeeModalFieldClass}
             />
           </div>
-          <div>
-            <label className={employeeModalLabelClass}>
-              {tl("timeIn", "Giờ vào")}
-            </label>
-            <div className="flex flex-wrap items-stretch gap-2">
-              <input
-                type="time"
-                value={normalizeTimeForHtmlInput(form.gioVao) || ""}
-                onChange={handleGioVaoTimeInput}
-                disabled={isRestrictedEdit}
-                className={`${employeeModalFieldClass} min-w-0 flex-1`}
-              />
-              <button
-                type="button"
-                onClick={() => setForm((prev) => ({ ...prev, gioVao: "" }))}
-                disabled={
-                  isRestrictedEdit || !String(form.gioVao ?? "").trim()
-                }
-                className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                title={tl(
-                  "timeInClearHint",
-                  "Xóa giờ vào (để trống)",
-                )}
-              >
-                {tl("clearTimeIn", "Xóa giờ vào")}
-              </button>
+          <div className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 sm:col-span-2">
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("timeIn", "Giờ vào")}
+              </label>
+              <div className="flex min-w-0 flex-wrap items-stretch gap-1.5 sm:gap-2">
+                <input
+                  type="time"
+                  value={normalizeTimeForHtmlInput(form.gioVao) || ""}
+                  onChange={handleGioVaoTimeInput}
+                  disabled={isRestrictedEdit}
+                  className={`${employeeModalFieldClass} min-w-0 flex-1`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, gioVao: "" }))}
+                  disabled={
+                    isRestrictedEdit || !String(form.gioVao ?? "").trim()
+                  }
+                  className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-2 py-2 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 sm:px-3 sm:text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  title={tl("timeInClearHint", "Xóa giờ vào (để trống)")}
+                >
+                  {tl("clearTimeIn", "Xóa giờ vào")}
+                </button>
+              </div>
             </div>
-            <p className="mt-1.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
-              {tl(
-                "gioVaoTimeOnlyHint",
-                "Giờ chấm HH:MM — có thể kết hợp với loại phép bên dưới.",
-              )}
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("timeOut", "Giờ ra")}
+              </label>
+              <div className="flex min-w-0 flex-wrap items-stretch gap-1.5 sm:gap-2">
+                <input
+                  type="time"
+                  name="gioRa"
+                  value={normalizeTimeForHtmlInput(form.gioRa) || ""}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      gioRa: e.target.value || "",
+                    }))
+                  }
+                  disabled={isRestrictedEdit}
+                  className={`${employeeModalFieldClass} min-w-0 flex-1`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, gioRa: "" }))}
+                  disabled={
+                    isRestrictedEdit || !String(form.gioRa ?? "").trim()
+                  }
+                  className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-2 py-2 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 sm:px-3 sm:text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  title={tl("timeOutClearHint", "Xóa thời gian ra (để trống)")}
+                >
+                  {tl("clearTimeOut", "Xóa giờ ra")}
+                </button>
+              </div>
+            </div>
+            <p className="col-span-2 mt-0.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
+              {tl("gioVaoTimeOnlyHint", "Giờ vào & Giờ ra dạng HH:MM.")}
             </p>
-          </div>
-          <div>
-            <label className={employeeModalLabelClass}>
-              {tl("timeOut", "Giờ ra")}
-            </label>
-            <div className="flex flex-wrap items-stretch gap-2">
-              <input
-                type="time"
-                name="gioRa"
-                value={normalizeTimeForHtmlInput(form.gioRa) || ""}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    gioRa: e.target.value || "",
-                  }))
-                }
-                disabled={isRestrictedEdit}
-                className={`${employeeModalFieldClass} min-w-0 flex-1`}
-              />
-              <button
-                type="button"
-                onClick={() => setForm((prev) => ({ ...prev, gioRa: "" }))}
-                disabled={
-                  isRestrictedEdit || !String(form.gioRa ?? "").trim()
-                }
-                className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                title={tl(
-                  "timeOutClearHint",
-                  "Xóa thời gian ra (để trống)",
-                )}
-              >
-                {tl("clearTimeOut", "Xóa giờ ra")}
-              </button>
-            </div>
           </div>
           <div className="sm:col-span-2">
             <label className={employeeModalLabelClass}>
@@ -585,10 +579,7 @@ export default function AttendanceEmployeeFormModal({
               ))}
             </select>
             <p className="mt-1.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
-              {tl(
-                "loaiPhepModalHint",
-                "Chọn loại phép / trạng thái (PN, PO, …) — có thể vừa có giờ vào vừa có loại.",
-              )}
+              {tl("loaiPhepModalHint", "Chọn loại phép (PN, PO, TS …)")}
             </p>
           </div>
           <div>
@@ -625,10 +616,7 @@ export default function AttendanceEmployeeFormModal({
               ))}
             </select>
             <p className="mt-1.5 text-[11px] leading-snug text-blue-700/90 dark:text-blue-300/90">
-              {tl(
-                "caLamViecModalHint",
-                "Chọn ca chuẩn để đồng bộ với bảng điểm danh và thống kê.",
-              )}
+              {tl("caLamViecModalHint", "S1 là Ca ngày, S2 là Ca đêm.")}
             </p>
           </div>
           <button

@@ -4,11 +4,9 @@
  * - attendance/{date}/{firebaseKey}: chỉ dữ liệu theo ngày (stt, mnv, giờ vào/ra, ca, PN…).
  * mergeEmployeeProfileAndDay() gộp khi đọc có profile (chỉ trường trong PROFILE_FIELDS_FOR_ATTENDANCE_MERGE).
  * Màn điểm danh chính thức / thời vụ: dùng sanitizeAttendanceDayNodeForUi — chỉ trường node điểm danh, không alias profile.
- * Loại phép chỉ ở `loaiPhep`; bản ghi cũ ghi nhầm vào `gioVao` được chuẩn hóa qua applyLegacyGioVaoLeaveMigration.
+ * `gioVao`, `loaiPhep`, `caLamViec`, `trangThaiLamViec` giữ độc lập — không tự gộp / đổi trường khi đọc hay lưu node ngày.
  * Danh mục BP: employeeDepartments/{key}.
  */
-
-import { applyLegacyGioVaoLeaveMigration } from "@/features/attendance/attendanceGioVaoTypeOptions";
 
 export const EMPLOYEE_DEPT_CATALOG_PATH = "employeeDepartments";
 
@@ -333,20 +331,19 @@ export function enrichEmployeeRow(emp, catalog) {
   const code = businessEmployeeCode(emp);
   const mnvDisplay =
     extractMnvSuffixFromStoredId(code) || normalizeMnvSuffix(emp.mnv) || "";
-  const birthRaw = emp.ngayThangNamSinh ?? emp.birthDate;
   const joinRaw = emp.ngayVaoLam ?? emp.joinDate;
-  const birthNorm = normalizeDateForHtmlInput(birthRaw);
   const joinNorm = normalizeDateForHtmlInput(joinRaw);
-  return {
+  const out = {
     ...emp,
     mnv: mnvDisplay || String(emp.mnv ?? "").trim() || code,
     hoVaTen: String(emp.name ?? emp.hoVaTen ?? "").trim(),
     chucVu: String(emp.position ?? emp.chucVu ?? "").trim(),
-    ngayThangNamSinh:
-      birthNorm || String(birthRaw ?? "").trim(),
     ngayVaoLam: joinNorm || String(joinRaw ?? "").trim(),
     boPhan: resolveDepartmentLabel(emp, catalog) || String(emp.boPhan ?? "").trim(),
   };
+  delete out.ngayThangNamSinh;
+  delete out.birthDate;
+  return out;
 }
 
 /** Trạng thái làm việc lưu Firebase (đồng bộ AttendanceList). */
@@ -358,10 +355,11 @@ export const ROSTER_TRANG_THAI_VALUES = Object.freeze([
   "nghi_viec",
 ]);
 
+/** Giữ nguyên giá trị đã trim — không ép mặc định (tránh ghi sai trạng thái). */
 export function normalizeTrangThaiLamViec(value) {
   const t = String(value ?? "").trim();
   if (ROSTER_TRANG_THAI_VALUES.includes(t)) return t;
-  return "dang_lam";
+  return t;
 }
 
 /** Hình thức thôi việc (chỉ khi nghỉ việc). */
@@ -502,8 +500,6 @@ const PROFILE_FIELDS_FOR_ATTENDANCE_MERGE = Object.freeze([
   "hoVaTen",
   "name",
   "boPhan",
-  "ngayThangNamSinh",
-  "birthDate",
   "chucVu",
   "position",
   "ngayVaoLam",
@@ -542,7 +538,6 @@ export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
   "stt",
   "hoVaTen",
   "boPhan",
-  "ngayThangNamSinh",
   "ngayVaoLam",
   "trangThaiLamViec",
   "gioVao",
@@ -562,7 +557,6 @@ export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
   "mvt",
   "hoVaTen",
   "gioiTinh",
-  "ngayThangNamSinh",
   "ngayVaoLam",
   "trangThaiLamViec",
   "maBoPhan",
@@ -587,20 +581,17 @@ export function pickAttendanceDayFields(raw) {
 }
 
 /**
- * Chuẩn hóa hiển thị một dòng điểm danh: chỉ từ trường node ngày (không dùng name/position/joinDate/birthDate alias profile).
+ * Chuẩn hóa hiển thị một dòng điểm danh: chỉ từ trường node ngày (không dùng name/position/joinDate alias profile).
  */
 export function normalizeAttendanceDayRowDisplay(emp) {
   if (!emp || typeof emp !== "object") return emp;
   const code = businessEmployeeCode(emp);
   const mnvDisplay =
     extractMnvSuffixFromStoredId(code) || normalizeMnvSuffix(emp.mnv) || "";
-  const birthRaw = emp.ngayThangNamSinh;
-  const birthNorm = normalizeDateForHtmlInput(birthRaw);
-  return {
+  const out = {
     ...emp,
     mnv: mnvDisplay || String(emp.mnv ?? "").trim() || code,
     hoVaTen: String(emp.hoVaTen ?? "").trim(),
-    ngayThangNamSinh: birthNorm || String(birthRaw ?? "").trim(),
     ngayVaoLam: (() => {
       const jr = emp.ngayVaoLam;
       if (jr === undefined || jr === null || String(jr).trim() === "")
@@ -610,17 +601,32 @@ export function normalizeAttendanceDayRowDisplay(emp) {
     })(),
     boPhan: String(emp.boPhan ?? "").trim(),
   };
+  delete out.ngayThangNamSinh;
+  delete out.birthDate;
+  return out;
 }
 
 /**
  * Đọc `attendance/{ngày}` hoặc `seasonalAttendance/{ngày}` cho bảng: lọc trường + migrate loại phép legacy + chuẩn MNV/tên.
  */
 export function sanitizeAttendanceDayNodeForUi(raw, id) {
-  const picked = pickAttendanceDayFields(raw);
+  const source =
+    raw && typeof raw === "object"
+      ? (() => {
+          const o = { ...raw };
+          /** Legacy: thời vụ từng lưu «ngày vào làm» nhầm key `ngayThangNamSinh`. */
+          if (
+            !String(o.ngayVaoLam ?? "").trim() &&
+            String(o.ngayThangNamSinh ?? "").trim()
+          ) {
+            o.ngayVaoLam = o.ngayThangNamSinh;
+          }
+          return o;
+        })()
+      : {};
+  const picked = pickAttendanceDayFields(source);
   const withId = { ...picked, id };
-  return normalizeAttendanceDayRowDisplay(
-    applyLegacyGioVaoLeaveMigration(withId),
-  );
+  return normalizeAttendanceDayRowDisplay(withId);
 }
 
 /**
@@ -642,7 +648,7 @@ export function formSliceForAttendanceDayDocument(form, overrides = {}) {
   return { ...o, ...overrides };
 }
 
-/** Trường không lưu vào attendance/{ngày} (chỉ hồ sơ / legacy). Họ tên, BP, ngày sinh nằm trên node ngày. */
+/** Trường không lưu vào attendance/{ngày} (chỉ hồ sơ / legacy). Họ tên, BP nằm trên node ngày. */
 const PROFILE_ONLY_STRIP_FROM_DAY = [
   "chucVu",
   "sdt",
@@ -678,11 +684,7 @@ export function buildEmployeeProfileDocument({
   const deptKey = String(departmentKey ?? form.departmentKey ?? "").trim();
   const deptName = String(departmentDisplayName ?? "").trim() || deptKey;
 
-  const birthRaw = String(form.ngayThangNamSinh ?? "").trim();
   const joinRaw = String(form.ngayVaoLam ?? form.joinDate ?? "").trim();
-  const birthStored = birthRaw
-    ? normalizeDateForHtmlInput(birthRaw) || birthRaw
-    : undefined;
   const joinStored = joinRaw
     ? normalizeDateForHtmlInput(joinRaw) || joinRaw
     : undefined;
@@ -704,7 +706,6 @@ export function buildEmployeeProfileDocument({
   const core = stripUndefined({
     mnv: mnvStored,
     hoVaTen: hoVaTen || undefined,
-    ngayThangNamSinh: birthStored,
     boPhan: deptName || undefined,
     departmentKey: deptKey || undefined,
     department: deptKey || undefined,
@@ -773,6 +774,8 @@ export function buildEmployeeProfileDocument({
   });
   delete merged.chamCong;
   delete merged.firebaseKey;
+  delete merged.ngayThangNamSinh;
+  delete merged.birthDate;
   return stripUndefined(merged);
 }
 
@@ -808,10 +811,6 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
   const extras = stripUndefined({
     hoVaTen: attendanceDayOptionalStringFromForm(form, "hoVaTen"),
     boPhan: attendanceDayOptionalStringFromForm(form, "boPhan"),
-    ngayThangNamSinh: attendanceDayOptionalStringFromForm(
-      form,
-      "ngayThangNamSinh",
-    ),
     gioVao: attendanceDayOptionalStringFromForm(form, "gioVao"),
     loaiPhep: attendanceDayOptionalStringFromForm(form, "loaiPhep"),
     gioRa: attendanceDayOptionalStringFromForm(form, "gioRa"),
@@ -832,10 +831,7 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
       form,
       "trangThaiLamViec",
     )
-      ? (() => {
-          const s = String(form.trangThaiLamViec ?? "").trim();
-          return s ? normalizeTrangThaiLamViec(s) : "";
-        })()
+      ? String(form.trangThaiLamViec ?? "").trim()
       : undefined,
   });
 
@@ -844,7 +840,6 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
     ...ATTENDANCE_EXTRA_KEYS,
     "hoVaTen",
     "boPhan",
-    "ngayThangNamSinh",
     "ngayVaoLam",
     "trangThaiLamViec",
   ];
@@ -873,7 +868,7 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
   });
 
   delete merged.firebaseKey;
-  return stripUndefined(applyLegacyGioVaoLeaveMigration({ ...merged }));
+  return stripUndefined({ ...merged });
 }
 
 /**
@@ -891,7 +886,10 @@ export function mergeAttendanceDayNodeForPersist(existing, dayDoc, recordId) {
   const d = dayDoc && typeof dayDoc === "object" ? { ...dayDoc } : {};
   delete ex.firebaseKey;
   delete d.firebaseKey;
-  return { ...ex, ...d, id: recordId };
+  const merged = { ...ex, ...d, id: recordId };
+  delete merged.ngayThangNamSinh;
+  delete merged.birthDate;
+  return merged;
 }
 
 /**
@@ -946,6 +944,6 @@ export function mergeEmployeeProfileAndDay(dayRow, profileRow, catalog) {
   if (rowId !== undefined && rowId !== null && merged.id === undefined) {
     merged.id = rowId;
   }
-  return enrichEmployeeRow(applyLegacyGioVaoLeaveMigration(merged), catalog);
+  return enrichEmployeeRow(merged, catalog);
 }
 

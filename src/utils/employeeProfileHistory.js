@@ -8,7 +8,6 @@ const TRACKED_FIELDS = [
   "boPhan",
   "chucVu",
   "ngayVaoLam",
-  "ngayThangNamSinh",
   "ngayNghiViec",
   "hinhThucNghiViec",
   "sdt",

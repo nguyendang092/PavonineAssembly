@@ -11,7 +11,6 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { CHART_DRAG_MIME } from "@/utils/chartOrderStorage";
 import {
   COMBO_DASHBOARD_TILES,
   COMBO_DASHBOARD_TILE_KEYS_PRODUCTION,
@@ -44,9 +43,6 @@ export default function AttendanceComboChartModal({
   comboChartData,
   comboChartBodyReady,
   comboChartRowsVisible,
-  comboDragOverDept,
-  setComboDragOverDept,
-  handleComboDeptReorder,
   comboChartCardsVisibleCount,
   comboChartDataOrdered,
   comboStatDetailKey,
@@ -232,9 +228,6 @@ export default function AttendanceComboChartModal({
                   "Thống kê toàn bộ nhân viên theo bộ phận",
                 )}
               </h3>
-              <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-                {tl("comboChartDragHint")}
-              </p>
             </div>
             <button
               type="button"
@@ -382,46 +375,9 @@ export default function AttendanceComboChartModal({
                 {comboChartRowsVisible.map((row) => (
                   <div
                     key={row.department}
-                    className={`rounded-xl border border-slate-300/85 bg-slate-80 p-1 shadow-[0_1px_3px_rgba(15,23,42,0.08)] transition dark:border-slate-700/90 dark:bg-slate-900/90 ${
-                      comboDragOverDept === row.department
-                        ? "ring-2 ring-sky-400 ring-offset-1 dark:ring-offset-slate-900"
-                        : ""
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                      setComboDragOverDept(row.department);
-                    }}
-                    onDragLeave={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget)) {
-                        setComboDragOverDept((d) =>
-                          d === row.department ? null : d,
-                        );
-                      }
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const from = e.dataTransfer.getData(CHART_DRAG_MIME);
-                      setComboDragOverDept(null);
-                      if (from) handleComboDeptReorder(from, row.department);
-                    }}
+                    className="rounded-xl border border-slate-300/85 bg-slate-80 p-1 shadow-[0_1px_3px_rgba(15,23,42,0.08)] transition dark:border-slate-700/90 dark:bg-slate-900/90"
                   >
-                    <div
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData(CHART_DRAG_MIME, row.department);
-                        e.dataTransfer.effectAllowed = "move";
-                      }}
-                      onDragEnd={() => setComboDragOverDept(null)}
-                      className="mb-1 flex cursor-grab items-center justify-between gap-2 border-b border-slate-200/90 pb-1.5 active:cursor-grabbing dark:border-slate-700/80"
-                    >
-                      <span
-                        className="shrink-0 select-none text-slate-400"
-                        aria-hidden
-                        title={tl("comboChartDragHandle", "Kéo để sắp xếp")}
-                      >
-                        ⋮⋮
-                      </span>
+                    <div className="mb-1 flex items-center justify-between gap-2 border-b border-slate-200/90 pb-1.5 dark:border-slate-700/80">
                       <h4 className="min-w-0 flex flex-1 items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-slate-800 dark:text-slate-50">
                         {comboDashboardGroup === "production" &&
                         typeof getComboProductionDeptChartRank === "function" &&

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-/** Khớp Tailwind `xl` — từ 1280px đầy đủ cột (có ngày sinh + mã BP). */
+/** Khớp Tailwind `xl` — từ 1280px đầy đủ cột (có mã BP). */
 export const ATTENDANCE_TABLE_XL_MIN = "(min-width: 1280px)";
 
 const BP_HIDE_DEPT = 870;
@@ -8,8 +8,8 @@ const BP_MINIMAL = 820;
 
 /**
  * @typedef {"full"|"compact"|"narrow"|"minimal"} AttendanceColumnPlan
- * - full: ≥1280 — đủ cột (gồm ngày sinh, mã BP, bộ phận).
- * - compact: 870–1279 — ẩn ngày sinh + mã BP; vẫn có bộ phận.
+ * - full: ≥1280 — đủ cột (gồm mã BP, bộ phận).
+ * - compact: 870–1279 — ẩn mã BP; vẫn có bộ phận.
  * - narrow: 820–869 — thêm ẩn bộ phận.
  * - minimal: &lt;820 — chỉ MNV, họ tên, giờ vào, ca, (hành động).
  */

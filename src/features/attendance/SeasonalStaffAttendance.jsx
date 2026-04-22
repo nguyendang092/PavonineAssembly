@@ -48,7 +48,6 @@ import {
 } from "./attendanceDayMeta";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
-  looksLikeGioVaoTime,
   normalizeTimeForHtmlInput,
   canonicalAttendanceLoaiPhep,
   findGioVaoTypeOptionMatch,
@@ -171,7 +170,7 @@ function SeasonalStaffAttendance() {
     mvt: "",
     hoVaTen: "",
     gioiTinh: "YES",
-    ngayThangNamSinh: "",
+    ngayVaoLam: "",
     maBoPhan: "",
     boPhan: "",
     gioVao: "",
@@ -502,7 +501,7 @@ function SeasonalStaffAttendance() {
         mvt: "",
         hoVaTen: "",
         gioiTinh: "YES",
-        ngayThangNamSinh: "",
+        ngayVaoLam: "",
         maBoPhan: "",
         boPhan: "",
         gioVao: "",
@@ -546,11 +545,6 @@ function SeasonalStaffAttendance() {
         return;
       }
       let next = { ...emp };
-      const gv = String(next.gioVao ?? "").trim();
-      const lp = String(next.loaiPhep ?? "").trim();
-      if (!lp && gv && !looksLikeGioVaoTime(gv)) {
-        next = { ...next, loaiPhep: gv, gioVao: "" };
-      }
       next = { ...next, loaiPhep: canonicalAttendanceLoaiPhep(next.loaiPhep) };
       setEditing(emp.id);
       setForm(next);
@@ -775,7 +769,7 @@ function SeasonalStaffAttendance() {
             mvt,
             hoVaTen,
             gioiTinh,
-            ngayThangNamSinh,
+            ngayVaoLamCell,
             maBoPhan,
             boPhan,
             gioVao,
@@ -816,7 +810,7 @@ function SeasonalStaffAttendance() {
             mvt: mvt || "",
             hoVaTen: hoVaTen || "",
             gioiTinh: gioiTinh || "YES",
-            ngayThangNamSinh: normalizeDate(ngayThangNamSinh),
+            ngayVaoLam: normalizeDate(ngayVaoLamCell),
             maBoPhan: maBoPhan || "",
             boPhan: boPhan || "",
             gioVao: gioVao || "",
@@ -1763,40 +1757,14 @@ function SeasonalStaffAttendance() {
       </thead>
       <tbody>`;
 
-    // Hàm kiểm tra sinh nhật trong tháng
-    function isBirthdayThisMonth(ngayThangNamSinh) {
-      if (!ngayThangNamSinh) return false;
-      let dateObj;
-      if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(ngayThangNamSinh)) {
-        const [y, m, d] = ngayThangNamSinh.split(/[-\/]/);
-        dateObj = new Date(Number(y), Number(m) - 1, Number(d));
-      } else if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/.test(ngayThangNamSinh)) {
-        const [d, m, y] = ngayThangNamSinh.split(/[-\/]/);
-        dateObj = new Date(Number(y), Number(m) - 1, Number(d));
-      } else {
-        return false;
-      }
-      const now = new Date();
-      return (
-        dateObj &&
-        dateObj.getMonth() === now.getMonth() &&
-        !isNaN(dateObj.getTime())
-      );
-    }
-
     filteredEmployees.forEach((emp, idx) => {
       const gioiTinh = emp.gioiTinh || "";
-      const isBirthday = isBirthdayThisMonth(emp.ngayThangNamSinh);
       html += `
         <tr>
           <td>${emp.stt || idx + 1}</td>
           <td>${emp.mnv || ""}</td>
           <td>${emp.mvt || ""}</td>
-          <td class="name">${emp.hoVaTen || ""}${
-            isBirthday
-              ? ' <span title="Sinh nhật tháng này" style="margin-left:4px;font-size:8px;">🎂</span>'
-              : ""
-          }</td>
+          <td class="name">${emp.hoVaTen || ""}</td>
             <td>${gioiTinh}</td>
             <td>${emp.ngayVaoLam || ""}</td>
             <td>${emp.maBoPhan || ""}</td>
@@ -2606,7 +2574,7 @@ function SeasonalStaffAttendance() {
                             mvt: "",
                             hoVaTen: "",
                             gioiTinh: "YES",
-                            ngayThangNamSinh: "",
+                            ngayVaoLam: "",
                             maBoPhan: "",
                             boPhan: "",
                             gioVao: "",
@@ -2826,8 +2794,8 @@ function SeasonalStaffAttendance() {
                   </label>
                   <input
                     type="date"
-                    name="ngayThangNamSinh"
-                    value={form.ngayThangNamSinh}
+                    name="ngayVaoLam"
+                    value={form.ngayVaoLam}
                     onChange={handleChange}
                     className="w-full rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100"
                   />

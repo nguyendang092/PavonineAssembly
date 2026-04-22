@@ -155,7 +155,7 @@ export function formatAttendanceLeaveTypeColumnDisplay(raw) {
 
 /**
  * Giá trị cột «Loại phép» — **chỉ** từ `loaiPhep`.
- * Dữ liệu cũ (loại nằm trong `gioVao`) được chuyển bởi `applyLegacyGioVaoLeaveMigration` khi gộp bản ghi / lưu.
+ * Tiện ích tùy chọn: tách `loaiPhep` khỏi `gioVao` khi dữ liệu cũ nhập nhầm — pipeline đọc/lưu node ngày không gọi tự động.
  * @param {Record<string, unknown> | null | undefined} emp
  * @returns {string}
  */

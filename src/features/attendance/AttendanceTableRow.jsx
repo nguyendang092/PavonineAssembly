@@ -72,7 +72,7 @@ const ATTENDANCE_GRID_COL = {
   actions: 26,
 };
 
-/** Cùng thứ tự cột nhưng bỏ ngày sinh + mã BP — % chia lại tròn 100. */
+/** Cùng thứ tự cột nhưng bỏ mã BP — % chia lại tròn 100. */
 const ATTENDANCE_GRID_COL_COMPACT_WITH_ACTIONS = {
   stt: 1,
   mnv: 2,
@@ -124,7 +124,7 @@ const ATTENDANCE_GRID_COL_COMPACT_NO_ACTIONS = {
   payrollTotalGcNight: 22,
 };
 
-/** Ẩn ngày sinh + mã BP + bộ phận — 9 cột (có Sửa) hoặc 8 cột. */
+/** Ẩn mã BP + bộ phận — 9 cột (có Sửa) hoặc 8 cột. */
 const ATTENDANCE_GRID_COL_NARROW_WITH_ACTIONS = {
   stt: 1,
   mnv: 2,

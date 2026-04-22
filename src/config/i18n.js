@@ -37,6 +37,8 @@ i18n.use(initReactI18next).init({
   resources,
   lng: getInitialLanguage(),
   fallbackLng: "vi",
+  /** Tắt dòng console.info quảng cáo Locize (i18next v25). */
+  showSupportNotice: false,
   interpolation: {
     escapeValue: false,
   },

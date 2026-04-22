@@ -27,7 +27,6 @@ import {
   hydrateChartOrder,
   persistChartOrder,
   applyOrderToAttendanceRows,
-  moveKeyBefore,
 } from "@/utils/chartOrderStorage";
 import { db, ref, get, onValue, remove } from "@/services/firebase";
 import ExcelJS from "exceljs";
@@ -48,7 +47,6 @@ import {
   writeUnattendedSessionSuppressed,
 } from "@/features/attendance/attendanceUnattendedSession";
 import AlertMessage from "@/components/ui/AlertMessage";
-import BirthdayCakeBell from "@/features/employee/BirthdayCakeBell";
 import NotificationBell from "@/components/ui/NotificationBell";
 import {
   getAttendanceDateRangeExportPlan,
@@ -227,7 +225,6 @@ function AttendanceList() {
   const [comboProductionDeptOrder, setComboProductionDeptOrder] = useState(
     [],
   );
-  const [comboDragOverDept, setComboDragOverDept] = useState(null);
   const [modalFilterOpen, setModalFilterOpen] = useState(false);
   const [modalGioiTinhFilter, setModalGioiTinhFilter] = useState([]);
   const [modalDepartmentListFilter, setModalDepartmentListFilter] = useState(
@@ -739,66 +736,6 @@ function AttendanceList() {
     effectiveProductionDeptOrderForSort,
     normalizeDepartment,
   ]);
-
-  const handleComboDeptReorder = useCallback(
-    (fromDept, toDept) => {
-      if (!fromDept || !toDept || fromDept === toDept) return;
-      if (comboDashboardGroup === "production") {
-        const fromMk = attendanceProductionDeptMatchKey(
-          normalizeDepartment,
-          fromDept,
-        );
-        const toMk = attendanceProductionDeptMatchKey(
-          normalizeDepartment,
-          toDept,
-        );
-        if (!fromMk || !toMk) return;
-        const orderedMks = comboChartDataOrdered
-          .map((r) =>
-            attendanceProductionDeptMatchKey(
-              normalizeDepartment,
-              r.department,
-            ),
-          )
-          .filter(Boolean);
-        const uniq = [];
-        const seen = new Set();
-        for (const mk of orderedMks) {
-          if (!seen.has(mk)) {
-            seen.add(mk);
-            uniq.push(mk);
-          }
-        }
-        const next = moveKeyBefore(uniq, fromMk, toMk);
-        setComboProductionDeptOrder(next);
-        void persistChartOrder(
-          userEmailKey,
-          CHART_ORDER_KIND.COMBO_PRODUCTION_DEPT_ORDER,
-          next,
-        );
-        return;
-      }
-      const ordered = applyOrderToAttendanceRows(
-        comboChartData,
-        comboChartDeptOrder,
-      ).map((r) => r.department);
-      const next = moveKeyBefore(ordered, fromDept, toDept);
-      setComboChartDeptOrder(next);
-      void persistChartOrder(
-        userEmailKey,
-        CHART_ORDER_KIND.ATTENDANCE_DEPT,
-        next,
-      );
-    },
-    [
-      comboDashboardGroup,
-      comboChartData,
-      comboChartDataOrdered,
-      comboChartDeptOrder,
-      normalizeDepartment,
-      userEmailKey,
-    ],
-  );
 
   const comboDashboardStats = useMemo(() => {
     const zero = () =>
@@ -1891,40 +1828,14 @@ function AttendanceList() {
       </thead>
       <tbody>`;
 
-    // Hàm kiểm tra sinh nhật trong tháng
-    function isBirthdayThisMonth(ngayThangNamSinh) {
-      if (!ngayThangNamSinh) return false;
-      let dateObj;
-      if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(ngayThangNamSinh)) {
-        const [y, m, d] = ngayThangNamSinh.split(/[-\/]/);
-        dateObj = new Date(Number(y), Number(m) - 1, Number(d));
-      } else if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/.test(ngayThangNamSinh)) {
-        const [d, m, y] = ngayThangNamSinh.split(/[-\/]/);
-        dateObj = new Date(Number(y), Number(m) - 1, Number(d));
-      } else {
-        return false;
-      }
-      const now = new Date();
-      return (
-        dateObj &&
-        dateObj.getMonth() === now.getMonth() &&
-        !isNaN(dateObj.getTime())
-      );
-    }
-
     filteredEmployees.forEach((emp, idx) => {
       const gioiTinh = emp.gioiTinh || "";
-      const isBirthday = isBirthdayThisMonth(emp.ngayThangNamSinh);
       html += `
         <tr>
           <td>${emp.stt || idx + 1}</td>
           <td>${emp.mnv || ""}</td>
           <td>${emp.mvt || ""}</td>
-          <td class="name">${emp.hoVaTen || ""}${
-            isBirthday
-              ? ' <span title="Sinh nhật tháng này" style="margin-left:4px;font-size:8px;">🎂</span>'
-              : ""
-          }</td>
+          <td class="name">${emp.hoVaTen || ""}</td>
             <td>${gioiTinh}</td>
             <td>${emp.maBoPhan || ""}</td>
             <td class="dept">${emp.boPhan || ""}</td>
@@ -2559,9 +2470,6 @@ function AttendanceList() {
             />
           </div>
           <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto sm:shrink-0 sm:justify-end">
-            <div className="shrink-0">
-              <BirthdayCakeBell selectedDate={selectedDate} inline />
-            </div>
             <div className="shrink-0">
               <NotificationBell
                 inline
@@ -3763,9 +3671,6 @@ function AttendanceList() {
               comboChartData={comboChartData}
               comboChartBodyReady={comboChartBodyReady}
               comboChartRowsVisible={comboChartRowsVisible}
-              comboDragOverDept={comboDragOverDept}
-              setComboDragOverDept={setComboDragOverDept}
-              handleComboDeptReorder={handleComboDeptReorder}
               comboChartCardsVisibleCount={comboChartCardsVisibleCount}
               comboChartDataOrdered={comboChartDataOrdered}
               comboStatDetailKey={comboStatDetailKey}
