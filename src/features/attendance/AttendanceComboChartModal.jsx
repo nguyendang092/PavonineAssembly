@@ -14,8 +14,8 @@ import {
 import { CHART_DRAG_MIME } from "@/utils/chartOrderStorage";
 import {
   COMBO_DASHBOARD_TILES,
-  COMBO_DASHBOARD_TILE_KEYS_HR,
   COMBO_DASHBOARD_TILE_KEYS_PRODUCTION,
+  COMBO_DASHBOARD_TILE_KEYS_PRODUCTION_DETAIL,
   COMBO_STAT_LABEL_DEFAULTS,
 } from "./attendanceComboChartConfig";
 import {
@@ -50,20 +50,19 @@ export default function AttendanceComboChartModal({
 }) {
   const detailTableCaptureRef = React.useRef(null);
 
-  const comboDashboardTileKeySet = React.useMemo(() => {
-    const keys =
-      comboDashboardGroup === "production"
-        ? COMBO_DASHBOARD_TILE_KEYS_HR
-        : COMBO_DASHBOARD_TILE_KEYS_PRODUCTION;
-    return new Set(keys);
-  }, [comboDashboardGroup]);
-  const activeComboMetricKeys = React.useMemo(
+  /** Cùng một tập key cho ô KPI và cột Bar — tránh SX: KPI chi tiết nhưng chart chỉ 3 chỉ số chung. */
+  const comboGroupMetricKeys = React.useMemo(
     () =>
       comboDashboardGroup === "production"
-        ? COMBO_DASHBOARD_TILE_KEYS_PRODUCTION
-        : COMBO_DASHBOARD_TILE_KEYS_HR,
+        ? COMBO_DASHBOARD_TILE_KEYS_PRODUCTION_DETAIL
+        : COMBO_DASHBOARD_TILE_KEYS_PRODUCTION,
     [comboDashboardGroup],
   );
+  const comboDashboardTileKeySet = React.useMemo(
+    () => new Set(comboGroupMetricKeys),
+    [comboGroupMetricKeys],
+  );
+  const activeComboMetricKeys = comboGroupMetricKeys;
 
   if (!open) return null;
 

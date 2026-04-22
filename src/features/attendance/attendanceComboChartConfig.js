@@ -72,6 +72,12 @@ export const COMBO_DASHBOARD_TILE_KEYS_PRODUCTION = [
   "timeInHashHHMM",
 ];
 
+/** Nhóm Sản xuất (thống kê): chấm công + chi tiết từng loại phép / chỉ số như HR. */
+export const COMBO_DASHBOARD_TILE_KEYS_PRODUCTION_DETAIL = [
+  "checkedIn",
+  ...COMBO_DASHBOARD_TILE_KEYS_HR,
+];
+
 const COMBO_STATS_PRODUCTION_DEPT_MATCH_KEYS = new Set([
   "extrusion",
   "mc",
