@@ -68,6 +68,24 @@ export function getFirstDayOfMonthKey(dateKey) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
+/** Ngày cuối tháng (YYYY-MM-DD) theo một date key — cùng quy tắc local với `getFirstDayOfMonthKey`. */
+export function getLastDayOfMonthKey(dateKey) {
+  const d = parseLocalDateKey(dateKey);
+  if (!d) {
+    const m = String(dateKey).match(/^(\d{4})-(\d{2})/);
+    if (!m) return String(dateKey ?? "").slice(0, 10);
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    if (!Number.isFinite(y) || !Number.isFinite(mo)) {
+      return String(dateKey).slice(0, 10);
+    }
+    const last = new Date(y, mo, 0);
+    return formatDateKeyLocal(last);
+  }
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return formatDateKeyLocal(last);
+}
+
 /**
  * Liệt kê mọi YYYY-MM-DD từ fromKey đến toKey (bao gồm hai đầu), theo lịch local.
  * Trả về [] nếu sai định dạng hoặc from > to.

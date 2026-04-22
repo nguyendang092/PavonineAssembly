@@ -11,7 +11,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUser } from "@/contexts/UserContext";
 import { canEditAttendanceForEmployee } from "@/config/authRoles";
 import { db, ref, onValue, get, update } from "@/services/firebase";
-import { mergeAttendanceDayRowsFromRaw } from "@/features/attendance/mergeAttendanceDayRows";
+import { parsePayrollDayFromAttendanceRaw } from "@/features/payroll/buildPayrollDayFromRaw";
 import { payrollTableWrapperMinWidthClass } from "@/features/payroll/payrollTableLayout";
 import {
   readEarlyOtSessionSuppressed,
@@ -28,11 +28,8 @@ import PayrollSalaryTableRow, {
 } from "@/features/payroll/payrollSalaryTableUi";
 import { useAttendanceColumnPlan } from "@/features/attendance/useAttendanceBirthDeptColumns";
 import {
-  getIsOffDayFromRaw,
-  getIsHolidayDayFromRaw,
   ATTENDANCE_DAY_META_KEY,
   ATTENDANCE_DAY_META_EARLY_OT_KEY,
-  getEarlyOtPaperworkFromRaw,
   normalizeEarlyOtPaperworkMap,
 } from "@/features/attendance/attendanceDayMeta";
 import AlertMessage from "@/components/ui/AlertMessage";
@@ -51,6 +48,7 @@ import {
 import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
 import { isEarlyArrivalFor0600PaperworkOvertime } from "@/features/attendance/attendanceWorkingHours";
 import PayrollEarlyOvertimePaperworkModal from "@/features/payroll/PayrollEarlyOvertimePaperworkModal";
+import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimesheetModal";
 import "./payrollTableCompact.css";
 
 const noop = () => {};
@@ -93,6 +91,7 @@ export default function PayrollSalaryCalculator() {
   const [rangeExportModalOpen, setRangeExportModalOpen] = useState(false);
   const [rangeExportBusy, setRangeExportBusy] = useState(false);
   const [excelExportMenuOpen, setExcelExportMenuOpen] = useState(false);
+  const [monthlyTimesheetOpen, setMonthlyTimesheetOpen] = useState(false);
 
   const attendanceRawRef = useRef(undefined);
   const excelExportMenuRef = useRef(null);
@@ -127,10 +126,11 @@ export default function PayrollSalaryCalculator() {
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
       attendanceRawRef.current = data;
-      setIsOffDay(getIsOffDayFromRaw(data));
-      setIsHolidayDay(getIsHolidayDayFromRaw(data));
-      setEmployees(mergeAttendanceDayRowsFromRaw(data));
-      setEarlyOtMap(getEarlyOtPaperworkFromRaw(data));
+      const parsed = parsePayrollDayFromAttendanceRaw(data);
+      setIsOffDay(parsed.isOffDay);
+      setIsHolidayDay(parsed.isHolidayDay);
+      setEmployees(parsed.baseEmployees);
+      setEarlyOtMap(parsed.earlyOtPaperworkById);
     });
     return () => unsubscribe();
   }, [selectedDate]);
@@ -433,19 +433,15 @@ export default function PayrollSalaryCalculator() {
         for (const dateKey of keys) {
           const snap = await get(ref(db, `attendance/${dateKey}`));
           const raw = snap.val();
-          if (!raw || typeof raw !== "object") continue;
-          const od = getIsOffDayFromRaw(raw);
-          const hd = getIsHolidayDayFromRaw(raw);
-          const merged = mergeAttendanceDayRowsFromRaw(raw);
-          if (!merged.length) continue;
-          const earlyOt = getEarlyOtPaperworkFromRaw(raw);
+          const parsed = parsePayrollDayFromAttendanceRaw(raw);
+          if (!parsed.baseEmployees.length) continue;
           dayChunks.push({
             dateKey,
-            employees: merged,
-            isPayrollOffLikeDay: od || hd,
-            isOffDay: od,
-            isHolidayDay: hd,
-            earlyOtPaperworkById: earlyOt,
+            employees: parsed.baseEmployees,
+            isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
+            isOffDay: parsed.isOffDay,
+            isHolidayDay: parsed.isHolidayDay,
+            earlyOtPaperworkById: parsed.earlyOtPaperworkById,
           });
         }
         if (!dayChunks.length) {
@@ -617,6 +613,17 @@ export default function PayrollSalaryCalculator() {
             </select>
           </div>
           <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setMonthlyTimesheetOpen(true)}
+              className="h-8 shrink-0 rounded-lg border-2 border-indigo-500 bg-indigo-50 px-2.5 text-xs font-bold text-indigo-800 shadow-sm transition hover:bg-indigo-100 dark:border-indigo-400/80 dark:bg-indigo-950/50 dark:text-indigo-100 dark:hover:bg-indigo-900/60"
+              title={tlPage(
+                "monthlyTimesheetButtonHint",
+                "Xem lưới điểm danh theo từng ngày trong tháng của ngày đang chọn (cùng bộ lọc tìm / BP).",
+              )}
+            >
+              {tlPage("monthlyTimesheetButton", "Bảng chấm công tháng")}
+            </button>
             {earlyOtEligibleEmployees.length > 0 ? (
               <button
                 type="button"
@@ -844,6 +851,17 @@ export default function PayrollSalaryCalculator() {
         toLabel={tlPage("exportRangeTo", "Đến ngày")}
         exportLabel={tlPage("exportRangeSubmit", "Xuất Excel")}
         cancelLabel={tlPage("exportRangeCancel", "Hủy")}
+      />
+
+      <PayrollMonthlyTimesheetModal
+        open={monthlyTimesheetOpen}
+        onClose={() => setMonthlyTimesheetOpen(false)}
+        anchorDateKey={selectedDate}
+        displayLocale={displayLocale}
+        tlPage={tlPage}
+        searchTerm={searchTerm}
+        departmentFilter={departmentFilter}
+        normalizeDepartment={normalizeDepartment}
       />
 
       <PayrollEarlyOvertimePaperworkModal

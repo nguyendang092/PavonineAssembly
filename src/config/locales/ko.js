@@ -1175,6 +1175,40 @@ const ko = {
     formulaNote:
       "기본급 ÷ 기준일수 × (근무일 + 유급 휴가) − 무급/KP 일수 × 일급.",
     empty: "기간을 선택하고 «급여 계산»을 누르세요.",
+    monthlyTimesheetButton: "월간 출근표",
+    monthlyTimesheetButtonHint:
+      "선택한 날짜가 속한 달의 일별 출근 격자를 봅니다(검색·부서 필터 동일).",
+    monthlyTimesheetTitle: "월간 출근표",
+    monthlyTimesheetHint:
+      "직원당 7행: 1행은 기본근무/휴가, 이후 행은 TC 계수별 시간(0,3~3,9).",
+    monthlyTimesheetCoeffLegendTitle:
+      "연장·야간·휴무·공휴일 계수 안내",
+    monthlyTimesheetCoeffL0:
+      "평일 기본 근무: 계수 0 — 일 칸에 표시하지 않음.",
+    monthlyTimesheetCoeffL03: "야간(05:00까지): 계수 0,3.",
+    monthlyTimesheetCoeffL15:
+      "평일 연장(17:00 이후 + 조기 서류 시): 계수 1,5.",
+    monthlyTimesheetCoeffL20:
+      "야간 연장(05:00 이후) 또는 휴무 주간(합산): 계수 2,0.",
+    monthlyTimesheetCoeffL27: "휴무 야간(합산): 계수 2,7.",
+    monthlyTimesheetCoeffL30: "공휴일 주간(합산): 계수 3,0.",
+    monthlyTimesheetCoeffL39: "공휴일 야간(합산): 계수 3,9.",
+    monthlyTimesheetReload: "새로고침",
+    monthlyTimesheetClose: "닫기",
+    monthlyTimesheetLoading: "출근 데이터 불러오는 중…",
+    monthlyTimesheetEmpty: "이 달에 출근 데이터가 없습니다.",
+    monthlyTimesheetError: "불러오기 실패: {{error}}",
+    monthlyTimesheetNoRowsAfterFilter:
+      "검색·부서 필터에 맞는 직원이 없습니다.",
+    monthlyTimesheetColStt: "번호",
+    monthlyTimesheetColMnv: "사번",
+    monthlyTimesheetColName: "이름",
+    monthlyTimesheetColJoinDate: "입사일",
+    monthlyTimesheetColContract: "계약일",
+    monthlyTimesheetColDept: "부서",
+    monthlyTimesheetColCoeff: "TC 계수",
+    monthlyTimesheetDaysInMonth: "일자",
+    monthlyTimesheetContractDash: "—",
   },
 };
 

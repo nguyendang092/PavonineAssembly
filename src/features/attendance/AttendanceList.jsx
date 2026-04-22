@@ -215,16 +215,13 @@ function AttendanceList() {
   const [expandedSections, setExpandedSections] = useState({});
   const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   const [showComboChartModal, setShowComboChartModal] = useState(false);
-  const [comboDashboardGroup, setComboDashboardGroup] =
-    useState("production");
+  const [comboDashboardGroup, setComboDashboardGroup] = useState("production");
   const [comboChartBodyReady, setComboChartBodyReady] = useState(false);
   const [comboChartCardsVisibleCount, setComboChartCardsVisibleCount] =
     useState(0);
   const [comboStatDetailKey, setComboStatDetailKey] = useState(null);
   const [comboChartDeptOrder, setComboChartDeptOrder] = useState([]);
-  const [comboProductionDeptOrder, setComboProductionDeptOrder] = useState(
-    [],
-  );
+  const [comboProductionDeptOrder, setComboProductionDeptOrder] = useState([]);
   const [modalFilterOpen, setModalFilterOpen] = useState(false);
   const [modalGioiTinhFilter, setModalGioiTinhFilter] = useState([]);
   const [modalDepartmentListFilter, setModalDepartmentListFilter] = useState(
@@ -3661,7 +3658,9 @@ function AttendanceList() {
               setComboDashboardGroup={setComboDashboardGroup}
               comboProductionDeptCatalog={comboProductionDeptCatalog}
               comboProductionDeptOrder={comboProductionDeptOrder}
-              onPersistComboProductionDeptOrder={persistComboProductionDeptOrder}
+              onPersistComboProductionDeptOrder={
+                persistComboProductionDeptOrder
+              }
               getComboProductionDeptChartRank={getComboProductionDeptChartRank}
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}

@@ -1177,6 +1177,41 @@ const vi = {
     formulaNote:
       "Công thức: (lương cơ bản ÷ ngày chuẩn) × (ngày làm + phép hưởng lương) − (ngày KL/KP × một ngày lương).",
     empty: "Chọn khoảng ngày và bấm «Tính lương».",
+    monthlyTimesheetButton: "Bảng chấm công tháng",
+    monthlyTimesheetButtonHint:
+      "Xem lưới điểm danh theo từng ngày trong tháng của ngày đang chọn (cùng bộ lọc tìm / BP).",
+    monthlyTimesheetTitle: "Bảng chấm công tháng",
+    monthlyTimesheetHint:
+      "Mỗi nhân viên 7 dòng: dòng 1 giờ thường / phép; các dòng sau là giờ theo hệ số TC (0,3 … 3,9).",
+    monthlyTimesheetCoeffLegendTitle:
+      "Quy ước hệ số tăng ca / ca đêm / ngày off & lễ",
+    monthlyTimesheetCoeffL0:
+      "Giờ công bình thường (ca ngày): hệ số 0 — không hiển thị trong ô ngày.",
+    monthlyTimesheetCoeffL03: "Ca đêm (đến mốc 05:00): hệ số 0,3.",
+    monthlyTimesheetCoeffL15:
+      "Tăng ca ngày thường (sau 17:00 + giấy 06:00–08:00 nếu có): hệ số 1,5.",
+    monthlyTimesheetCoeffL20:
+      "Tăng ca ca đêm (sau 05:00) hoặc tăng ca ngày off (ca ngày, gộp): hệ số 2,0.",
+    monthlyTimesheetCoeffL27: "Tăng ca ca đêm ngày off (gộp): hệ số 2,7.",
+    monthlyTimesheetCoeffL30:
+      "Tăng ca / giờ công ngày lễ (ca ngày, gộp): hệ số 3,0.",
+    monthlyTimesheetCoeffL39: "Tăng ca ca đêm ngày lễ (gộp): hệ số 3,9.",
+    monthlyTimesheetReload: "Tải lại",
+    monthlyTimesheetClose: "Đóng",
+    monthlyTimesheetLoading: "Đang tải dữ liệu điểm danh…",
+    monthlyTimesheetEmpty: "Không có dữ liệu điểm danh nào trong tháng này.",
+    monthlyTimesheetError: "Không tải được dữ liệu: {{error}}",
+    monthlyTimesheetNoRowsAfterFilter:
+      "Không có nhân viên nào khớp bộ lọc tìm kiếm / bộ phận.",
+    monthlyTimesheetColStt: "STT",
+    monthlyTimesheetColMnv: "MNV",
+    monthlyTimesheetColName: "Họ và tên",
+    monthlyTimesheetColJoinDate: "Ngày vào làm",
+    monthlyTimesheetColContract: "Ngày HĐ",
+    monthlyTimesheetColDept: "BP",
+    monthlyTimesheetColCoeff: "Hệ số TC",
+    monthlyTimesheetDaysInMonth: "Ngày trong tháng",
+    monthlyTimesheetContractDash: "—",
   },
 };
 
