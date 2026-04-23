@@ -93,14 +93,18 @@ const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 function stickyColStyle(colIndex) {
   let left = 0;
   for (let i = 0; i < colIndex; i++) left += STICKY_COL_WIDTHS[i];
+  const isLastStickyCol = colIndex === STICKY_COL_WIDTHS.length - 1;
   return {
     position: "sticky",
     left,
-    zIndex: 40 - colIndex,
+    zIndex: 120 - colIndex,
     width: STICKY_COL_WIDTHS[colIndex],
     minWidth: STICKY_COL_WIDTHS[colIndex],
     maxWidth: colIndex === 1 ? 220 : STICKY_COL_WIDTHS[colIndex],
     boxSizing: "border-box",
+    backgroundClip: "padding-box",
+    transform: "translateZ(0)",
+    borderRight: isLastStickyCol ? "2px solid #000" : "1px solid #94a3b8",
   };
 }
 
@@ -432,14 +436,16 @@ export default function PayrollMonthlyTimesheetModal({
   );
 
   const stickyThBase =
-    "border border-slate-300 bg-slate-100 px-1 py-1 text-left text-[10px] font-semibold text-black shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:border-slate-600 dark:bg-slate-800 dark:text-black";
+    "relative border border-r-0 border-slate-500 !bg-slate-200 bg-clip-padding px-1 py-1 text-left text-[10px] font-bold text-black dark:border-slate-500 dark:!bg-slate-700 dark:text-black";
   const stickyTdBase =
-    "border border-slate-300 bg-white px-1 py-0.5 align-middle text-[9px] text-black shadow-[2px_0_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900 dark:text-black";
-  const strongBorder = "border-2 border-black";
-  const strongBorderBottom = "border-b-2 border-b-black";
-  const strongBorderLeft = "border-l-2 border-l-black";
-  const thinHeadBorder = "border border-slate-300 dark:border-slate-600";
-  const thinBodyBorder = "border border-slate-300 dark:border-slate-700";
+    "relative border border-r-0 border-slate-400 !bg-white bg-clip-padding px-1 py-0.5 align-middle text-[10px] font-medium text-black dark:border-slate-600 dark:!bg-slate-900 dark:text-black";
+  const strongBorder = "!border-2 !border-black !border-solid";
+  const strongBorderBottom = "!border-b-2 !border-b-black !border-solid";
+  const strongBorderLeft = "!border-l-2 !border-l-black !border-solid";
+  const thinHeadBorder =
+    "border border-dashed border-[1px] border-slate-400 dark:border-slate-500";
+  const thinBodyBorder =
+    "border border-dashed border-[1px] border-slate-300 dark:border-slate-600";
   const detailHeaders = [
     tlPage("monthlyRuleColWorkHours", "Tổng giờ công"),
     tlPage("monthlyRuleColWorkDays", "Tổng ngày công bao gồm PN"),
@@ -769,10 +775,10 @@ export default function PayrollMonthlyTimesheetModal({
               className="inline-block min-w-full align-middle"
             >
               <table
-                className={`w-max min-w-full border-separate border-spacing-0 text-left text-black dark:text-black ${strongBorder}`}
+                className={`w-max min-w-full border-collapse text-left text-black dark:text-black ${strongBorder}`}
               >
-                <thead>
-                  <tr className="bg-indigo-50/80 dark:bg-indigo-950/40">
+                <thead className="sticky top-0 z-50">
+                  <tr className="bg-indigo-100 dark:bg-indigo-900/60">
                     {[0, 1, 2, 3, 4, 5].map((ci) => (
                       <th
                         key={`h1-${ci}`}
@@ -929,6 +935,8 @@ export default function PayrollMonthlyTimesheetModal({
                       const subrowEdgeClass = isLastSub
                         ? strongBorderBottom
                         : "";
+                      const blockStartClass =
+                        isFirstSub && empBlockIdx > 0 ? "!border-t-0" : "";
                       const employeeStripe =
                         empBlockIdx % 2 === 0
                           ? "bg-white dark:bg-slate-900"
@@ -998,8 +1006,13 @@ export default function PayrollMonthlyTimesheetModal({
                             </td>
                           ) : null}
                           <td
-                            style={stickyColStyle(5)}
-                            className={`${stickyTdBase} text-center font-mono font-semibold text-black dark:text-black ${subrowEdgeClass}`}
+                            style={{
+                              ...stickyColStyle(5),
+                              ...(isLastSub
+                                ? { borderBottom: "2px solid #000" }
+                                : null),
+                            }}
+                            className={`${stickyTdBase} text-center font-mono font-semibold text-black dark:text-black ${subrowEdgeClass} ${blockStartClass}`}
                           >
                             {sr.coeff == null
                               ? "\u00a0"
@@ -1021,8 +1034,13 @@ export default function PayrollMonthlyTimesheetModal({
                               return (
                                 <td
                                   key={dk}
-                                  style={monthDayCellStyle()}
-                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center text-[9px] text-slate-400 ${baseBg} ${subrowEdgeClass}`}
+                                  style={{
+                                    ...monthDayCellStyle(),
+                                    ...(isLastSub
+                                      ? { borderBottom: "2px solid #000" }
+                                      : null),
+                                  }}
+                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center text-[9px] text-slate-400 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
                                 >
                                   {" "}
                                 </td>
@@ -1033,8 +1051,13 @@ export default function PayrollMonthlyTimesheetModal({
                               return (
                                 <td
                                   key={dk}
-                                  style={monthDayCellStyle()}
-                                  className={`${thinBodyBorder} px-0.5 py-0.5 ${baseBg} ${subrowEdgeClass}`}
+                                  style={{
+                                    ...monthDayCellStyle(),
+                                    ...(isLastSub
+                                      ? { borderBottom: "2px solid #000" }
+                                      : null),
+                                  }}
+                                  className={`${thinBodyBorder} px-0.5 py-0.5 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
                                 />
                               );
                             }
@@ -1067,8 +1090,13 @@ export default function PayrollMonthlyTimesheetModal({
                               return (
                                 <td
                                   key={dk}
-                                  style={monthDayCellStyle()}
-                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle text-[9px] font-bold text-black dark:text-black ${baseBg} ${subrowEdgeClass}`}
+                                  style={{
+                                    ...monthDayCellStyle(),
+                                    ...(isLastSub
+                                      ? { borderBottom: "2px solid #000" }
+                                      : null),
+                                  }}
+                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle text-[9px] font-bold text-black dark:text-black ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
                                 >
                                   {inner}
                                 </td>
@@ -1091,8 +1119,13 @@ export default function PayrollMonthlyTimesheetModal({
                             return (
                               <td
                                 key={dk}
-                                style={monthDayCellStyle()}
-                                className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle font-mono text-[9px] font-bold tabular-nums text-black dark:text-black ${baseBg} ${subrowEdgeClass}`}
+                                style={{
+                                  ...monthDayCellStyle(),
+                                  ...(isLastSub
+                                    ? { borderBottom: "2px solid #000" }
+                                    : null),
+                                }}
+                                className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle font-mono text-[9px] font-bold tabular-nums text-black dark:text-black ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
                               >
                                 {show ? (
                                   <span className="font-bold text-black dark:text-black">
@@ -1163,12 +1196,17 @@ export default function PayrollMonthlyTimesheetModal({
                               return (
                                 <td
                                   key={`detail-${id}-${sr.key}-${idx}`}
-                                  style={monthDetailCellStyle(idx)}
+                                  style={{
+                                    ...monthDetailCellStyle(idx),
+                                    ...(isLastSub
+                                      ? { borderBottom: "2px solid #000" }
+                                      : null),
+                                  }}
                                   className={`${thinBodyBorder} ${groupBg} ${subrowEdgeClass} ${
                                     idx % MONTH_DETAIL_COLS_PER_BLOCK === 0
                                       ? strongBorderLeft
                                       : ""
-                                  } px-1 py-0.5 text-center text-[9px] font-bold text-black dark:text-black`}
+                                  } ${blockStartClass} px-1 py-0.5 text-center text-[9px] font-bold text-black dark:text-black`}
                                 >
                                   {v}
                                 </td>
