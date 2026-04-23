@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import * as XLSX from "@e965/xlsx";
-import { toPng } from "html-to-image";
 import ExcelJS from "exceljs";
 import { db, ref, get } from "@/services/firebase";
 import { buildPayrollMonthDayChunkFromRaw } from "@/features/payroll/buildPayrollDayFromRaw";
@@ -84,11 +83,16 @@ function representativeEmployee(dayChunks, id) {
 }
 
 /** Cột cố định trái: [px] — tổng ~564px trước cột ngày. */
-const STICKY_COL_WIDTHS = [36, 176, 92, 92, 76, 52];
+const STICKY_COL_WIDTHS = [36, 176, 92, 92, 30, 30];
 const MONTH_DAY_COL_WIDTH = 35;
 const MONTH_DETAIL_COL_WIDTH = 45;
 const MONTH_DETAIL_COLS_PER_BLOCK = 15;
 const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
+const MONTH_HEADER_ROW_TOPS_DEFAULT = {
+  row1: 0,
+  row2: 28,
+  row3: 76,
+};
 
 function stickyColStyle(colIndex) {
   let left = 0;
@@ -104,7 +108,7 @@ function stickyColStyle(colIndex) {
     boxSizing: "border-box",
     backgroundClip: "padding-box",
     transform: "translateZ(0)",
-    borderRight: isLastStickyCol ? "2px solid #000" : "1px solid #94a3b8",
+    borderRight: isLastStickyCol ? "2px solid #000" : "1px dashed #94a3b8",
   };
 }
 
@@ -126,22 +130,33 @@ function monthDetailCellStyle() {
   };
 }
 
+function monthHeaderStickyStyle(top, zIndex) {
+  return {
+    position: "sticky",
+    top,
+    zIndex,
+    backgroundClip: "padding-box",
+    isolation: "isolate",
+  };
+}
+
 function detailGroupHeaderTone(groupKey) {
-  if (groupKey === "total") return "bg-slate-100 dark:bg-slate-800/80";
-  if (groupKey === "trial") return "bg-emerald-50/70 dark:bg-emerald-950/25";
-  return "bg-indigo-50/70 dark:bg-indigo-950/25";
+  if (groupKey === "total") return "bg-slate-200 dark:bg-slate-700";
+  if (groupKey === "trial") return "bg-cyan-100 dark:bg-cyan-900";
+  return "bg-violet-100 dark:bg-violet-900";
 }
 
 function detailGroupBodyTone(groupIndex) {
-  if (groupIndex === 0) return "bg-slate-50/60 dark:bg-slate-900/60";
-  if (groupIndex === 1) return "bg-emerald-50/40 dark:bg-emerald-950/12";
-  return "bg-indigo-50/40 dark:bg-indigo-950/12";
+  if (groupIndex === 0) return "bg-slate-50 dark:bg-slate-900";
+  if (groupIndex === 1) return "bg-cyan-50/60 dark:bg-cyan-950/20";
+  return "bg-violet-50/60 dark:bg-violet-950/20";
 }
 
 function parseHtmlTableToGrid(tableEl) {
   const rows = [...tableEl.querySelectorAll("tr")];
   const grid = [];
   const merges = [];
+  const cellStyles = [];
   const occupied = new Map();
 
   const mark = (r, c) => occupied.set(`${r}:${c}`, true);
@@ -164,8 +179,26 @@ function parseHtmlTableToGrid(tableEl) {
         )
         .join("\n")
         .trim();
+      const csObj = window.getComputedStyle(cell);
 
       grid[rIdx][cIdx] = text;
+      cellStyles.push({
+        row: rIdx + 1,
+        col: cIdx + 1,
+        style: {
+          backgroundColor: csObj.backgroundColor,
+          color: csObj.color,
+          fontSize: csObj.fontSize,
+          fontWeight: csObj.fontWeight,
+          textAlign: csObj.textAlign,
+          verticalAlign: csObj.verticalAlign,
+          borderTop: csObj.borderTop,
+          borderRight: csObj.borderRight,
+          borderBottom: csObj.borderBottom,
+          borderLeft: csObj.borderLeft,
+          whiteSpace: csObj.whiteSpace,
+        },
+      });
       for (let rr = rIdx; rr < rIdx + rs; rr += 1) {
         if (!grid[rr]) grid[rr] = [];
         for (let cc = cIdx; cc < cIdx + cs; cc += 1) {
@@ -183,7 +216,63 @@ function parseHtmlTableToGrid(tableEl) {
     });
   });
 
-  return { grid, merges };
+  return { grid, merges, cellStyles };
+}
+
+function rgbStringToArgb(rgbString, fallback = "FF000000") {
+  const s = String(rgbString || "").trim();
+  if (!s || s === "transparent") return null;
+  const m = s.match(
+    /^rgba?\(\s*(\d{1,3})[\s,]+(\d{1,3})[\s,]+(\d{1,3})(?:[\s,\/]+([0-9.]+))?\s*\)$/i,
+  );
+  if (!m) return fallback;
+  const r = Number(m[1]);
+  const g = Number(m[2]);
+  const b = Number(m[3]);
+  const a =
+    m[4] == null ? 1 : Math.max(0, Math.min(1, Number.parseFloat(m[4]) || 0));
+  const alpha = Math.round(a * 255)
+    .toString(16)
+    .padStart(2, "0")
+    .toUpperCase();
+  const rr = Math.max(0, Math.min(255, r))
+    .toString(16)
+    .padStart(2, "0")
+    .toUpperCase();
+  const gg = Math.max(0, Math.min(255, g))
+    .toString(16)
+    .padStart(2, "0")
+    .toUpperCase();
+  const bb = Math.max(0, Math.min(255, b))
+    .toString(16)
+    .padStart(2, "0")
+    .toUpperCase();
+  if (alpha === "00") return null;
+  return `${alpha}${rr}${gg}${bb}`;
+}
+
+function cssBorderToExcelBorder(borderValue, fallbackArgb = "FF94A3B8") {
+  const raw = String(borderValue || "").trim();
+  if (!raw || raw === "none" || raw === "0px") return null;
+  const widthMatch = raw.match(/(\d+(?:\.\d+)?)px/);
+  const styleMatch = raw.match(
+    /\b(solid|dashed|dotted|double|groove|ridge|inset|outset)\b/i,
+  );
+  const colorMatch = raw.match(/rgba?\([^)]+\)/i);
+  const px = widthMatch ? Number.parseFloat(widthMatch[1]) : 1;
+  const cssStyle = styleMatch ? styleMatch[1].toLowerCase() : "solid";
+  const excelStyle =
+    cssStyle === "dashed"
+      ? "dashed"
+      : cssStyle === "dotted"
+        ? "dotted"
+        : cssStyle === "double"
+          ? "double"
+          : px >= 2
+            ? "medium"
+            : "thin";
+  const argb = rgbStringToArgb(colorMatch?.[0], fallbackArgb) || fallbackArgb;
+  return { style: excelStyle, color: { argb } };
 }
 
 function isProbationStatus(raw) {
@@ -204,7 +293,7 @@ function formatProfileDateKey(raw, displayLocale) {
 
 function formatEnglishWeekday3(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-US", { weekday: "short" });
+  return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
 }
 
 function leaveUnitsByCode(leaveShort, code) {
@@ -314,6 +403,9 @@ export default function PayrollMonthlyTimesheetModal({
   const [dayChunks, setDayChunks] = useState([]);
   const [localDepartmentFilter, setLocalDepartmentFilter] = useState("");
   const [localNameFilter, setLocalNameFilter] = useState("");
+  const [headerRowTops, setHeaderRowTops] = useState(
+    MONTH_HEADER_ROW_TOPS_DEFAULT,
+  );
   const tableWrapRef = useRef(null);
   const loadSeqRef = useRef(0);
 
@@ -434,18 +526,55 @@ export default function PayrollMonthlyTimesheetModal({
     () => new Map(dayChunks.map((c) => [c.dateKey, c])),
     [dayChunks],
   );
+  const stickyColsTotalWidth = useMemo(
+    () => STICKY_COL_WIDTHS.reduce((sum, w) => sum + w, 0),
+    [],
+  );
+  const monthDaysWidth = monthRange.keys.length * MONTH_DAY_COL_WIDTH;
+  const modalMonthViewportWidth = stickyColsTotalWidth + monthDaysWidth + 320;
+  const tableViewportHeight = 184 + PAYROLL_MONTHLY_SUBROWS.length * 24 * 4;
+
+  useEffect(() => {
+    if (!open) return;
+    const computeHeaderTops = () => {
+      const root = tableWrapRef.current;
+      if (!root) return;
+      const rows = root.querySelectorAll("thead tr");
+      if (!rows || rows.length < 3) return;
+      const h1 = rows[0].getBoundingClientRect().height || 0;
+      const h2 = rows[1].getBoundingClientRect().height || 0;
+      const nextTops = {
+        row1: 0,
+        row2: Math.round(h1),
+        row3: Math.round(h1 + h2),
+      };
+      setHeaderRowTops((prev) =>
+        prev.row2 === nextTops.row2 && prev.row3 === nextTops.row3
+          ? prev
+          : nextTops,
+      );
+    };
+    computeHeaderTops();
+    const rafId = window.requestAnimationFrame(computeHeaderTops);
+    window.addEventListener("resize", computeHeaderTops);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", computeHeaderTops);
+    };
+  }, [open, monthRange.keys.length, filteredIds.length, loading, loadingMore]);
 
   const stickyThBase =
-    "relative border border-r-0 border-slate-500 !bg-slate-200 bg-clip-padding px-1 py-1 text-left text-[10px] font-bold text-black dark:border-slate-500 dark:!bg-slate-700 dark:text-black";
+    "relative border border-r-0 !border-solid border-[1px] border-slate-400 !bg-slate-100 bg-clip-padding px-1.5 py-1.5 text-left text-[10px] font-bold text-slate-900 dark:border-slate-500 dark:!bg-slate-800 dark:text-slate-100";
   const stickyTdBase =
-    "relative border border-r-0 border-slate-400 !bg-white bg-clip-padding px-1 py-0.5 align-middle text-[10px] font-medium text-black dark:border-slate-600 dark:!bg-slate-900 dark:text-black";
+    "relative border border-r-0 !border-solid border-[1px] border-slate-300 !bg-white bg-clip-padding px-1.5 py-1 align-middle text-[10px] font-medium text-slate-900 dark:border-slate-700 dark:!bg-slate-900 dark:text-slate-100";
   const strongBorder = "!border-2 !border-black !border-solid";
   const strongBorderBottom = "!border-b-2 !border-b-black !border-solid";
   const strongBorderLeft = "!border-l-2 !border-l-black !border-solid";
   const thinHeadBorder =
-    "border border-dashed border-[1px] border-slate-400 dark:border-slate-500";
+    "border !border-solid border-[1px] border-slate-400 dark:border-slate-600";
   const thinBodyBorder =
-    "border border-dashed border-[1px] border-slate-300 dark:border-slate-600";
+    "border !border-solid border-[1px] border-slate-300 dark:border-slate-700";
+  const noTopBorder = "!border-t-0";
   const detailHeaders = [
     tlPage("monthlyRuleColWorkHours", "Tổng giờ công"),
     tlPage("monthlyRuleColWorkDays", "Tổng ngày công bao gồm PN"),
@@ -474,7 +603,7 @@ export default function PayrollMonthlyTimesheetModal({
     const tableEl = getTableElement();
     if (!tableEl) return;
     try {
-      const { grid, merges } = parseHtmlTableToGrid(tableEl);
+      const { grid, merges, cellStyles } = parseHtmlTableToGrid(tableEl);
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet("MonthlyTimesheet");
 
@@ -525,6 +654,61 @@ export default function PayrollMonthlyTimesheetModal({
           cell.font = { size: r <= 3 ? 10 : 9, bold: r <= 3 };
         }
       }
+      cellStyles.forEach(({ row, col, style }) => {
+        const cell = sheet.getCell(row, col);
+        const fillArgb = rgbStringToArgb(style.backgroundColor);
+        if (fillArgb) {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: fillArgb },
+          };
+        }
+        const textArgb = rgbStringToArgb(style.color, "FF000000") || "FF000000";
+        const parsedFontSize = Number.parseFloat(style.fontSize || "");
+        const parsedWeight = Number.parseInt(style.fontWeight || "400", 10);
+        cell.font = {
+          ...(cell.font || {}),
+          color: { argb: textArgb },
+          size: Number.isFinite(parsedFontSize)
+            ? Math.max(8, Math.min(14, parsedFontSize))
+            : cell.font?.size || 9,
+          bold: parsedWeight >= 600,
+        };
+        const alignMap = {
+          left: "left",
+          center: "center",
+          right: "right",
+          start: "left",
+          end: "right",
+          justify: "justify",
+        };
+        const vAlignMap = {
+          top: "top",
+          middle: "middle",
+          bottom: "bottom",
+        };
+        cell.alignment = {
+          ...(cell.alignment || {}),
+          horizontal: alignMap[style.textAlign] || cell.alignment?.horizontal,
+          vertical: vAlignMap[style.verticalAlign] || cell.alignment?.vertical,
+          wrapText: style.whiteSpace !== "nowrap",
+        };
+        cell.border = {
+          top:
+            cssBorderToExcelBorder(style.borderTop, "FFB8C1CC") ||
+            cell.border?.top,
+          right:
+            cssBorderToExcelBorder(style.borderRight, "FFB8C1CC") ||
+            cell.border?.right,
+          bottom:
+            cssBorderToExcelBorder(style.borderBottom, "FFB8C1CC") ||
+            cell.border?.bottom,
+          left:
+            cssBorderToExcelBorder(style.borderLeft, "FFB8C1CC") ||
+            cell.border?.left,
+        };
+      });
 
       // Viền đậm ngoài bảng (giống giao diện)
       for (let c = 1; c <= maxCols; c += 1) {
@@ -585,88 +769,6 @@ export default function PayrollMonthlyTimesheetModal({
     }
   }, [filteredIds.length, getTableElement, monthRange.keys.length, tlPage]);
 
-  const handleDownloadImage = useCallback(async () => {
-    try {
-      const tableEl = getTableElement();
-      if (!tableEl) return;
-      const dataUrl = await toPng(tableEl, {
-        cacheBust: true,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-      });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `BangChamCongThang_${monthRange.first}.png`;
-      a.click();
-    } catch (e) {
-      setError(
-        tlPage("monthlyTimesheetImageError", "Không tải được ảnh: {{error}}", {
-          error: e?.message || String(e),
-        }),
-      );
-    }
-  }, [getTableElement, monthRange.first, tlPage]);
-
-  const buildPrintHtml = useCallback(
-    (tableHtml, autoPrint) => {
-      return `<!doctype html><html><head><meta charset="utf-8"/><title>${monthTitle}</title><style>
-      @page { size: A3 landscape; margin: 8mm; }
-      body { margin: 0; padding: 8px; font-family: Arial, sans-serif; }
-      table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
-      th, td { border: 0.5px solid #cbd5e1; font-size: 10px; line-height: 1.2; color: #000; }
-    </style></head><body>${tableHtml}
-    ${
-      autoPrint
-        ? "<script>window.onload=function(){window.focus();window.print();};</script>"
-        : ""
-    }
-    </body></html>`;
-    },
-    [monthTitle],
-  );
-
-  const handlePreviewPrint = useCallback(() => {
-    const tableEl = getTableElement();
-    if (!tableEl) return;
-    const html = buildPrintHtml(tableEl.outerHTML, false);
-    const w = window.open("", "_blank");
-    if (!w) {
-      setError(
-        tlPage(
-          "monthlyTimesheetPreviewBlocked",
-          "Trình duyệt đang chặn popup. Hãy cho phép popup để xem trước in.",
-        ),
-      );
-      return;
-    }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-  }, [buildPrintHtml, getTableElement, tlPage]);
-
-  const handlePrintA3 = useCallback(() => {
-    const tableEl = getTableElement();
-    if (!tableEl) return;
-    const html = buildPrintHtml(tableEl.outerHTML, true);
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
-    iframe.srcdoc = html;
-    document.body.appendChild(iframe);
-    setTimeout(() => {
-      try {
-        document.body.removeChild(iframe);
-      } catch (_e) {
-        // noop
-      }
-    }, 60000);
-  }, [buildPrintHtml, getTableElement]);
-
   if (!open) return null;
 
   const portal = (
@@ -676,7 +778,13 @@ export default function PayrollMonthlyTimesheetModal({
       aria-modal="true"
       aria-labelledby="payroll-monthly-timesheet-title"
     >
-      <div className="mx-auto flex h-full w-full max-w-[min(100vw-1rem,1920px)] flex-col overflow-hidden rounded-xl border border-indigo-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900">
+      <div
+        className="mx-auto flex w-full flex-col overflow-hidden rounded-xl border border-indigo-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
+        style={{
+          maxWidth: `min(calc(100vw - 1rem), ${modalMonthViewportWidth}px)`,
+          maxHeight: "calc(100vh - 1rem)",
+        }}
+      >
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-2 dark:border-slate-700">
           <div className="min-w-0">
             <h2
@@ -706,7 +814,7 @@ export default function PayrollMonthlyTimesheetModal({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto p-2 sm:p-3">
+        <div className="min-h-0 flex flex-1 flex-col p-2 sm:p-3">
           <div className="mb-2 flex flex-wrap items-center justify-end gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-sky-50 px-2 py-1.5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
             <input
               type="text"
@@ -739,354 +847,415 @@ export default function PayrollMonthlyTimesheetModal({
             >
               {tlPage("monthlyTimesheetExportExcel", "Xuất Excel")}
             </button>
-            <button
-              type="button"
-              onClick={handleDownloadImage}
-              className="rounded-md border border-fuchsia-300 bg-fuchsia-100 px-2.5 py-1 text-xs font-bold text-fuchsia-800 shadow-sm hover:bg-fuchsia-200"
-            >
-              {tlPage("monthlyTimesheetDownloadImage", "Tải hình")}
-            </button>
-            <button
-              type="button"
-              onClick={handlePreviewPrint}
-              className="rounded-md border border-amber-300 bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800 shadow-sm hover:bg-amber-200"
-            >
-              {tlPage("monthlyTimesheetPreview", "Xem trước")}
-            </button>
-            <button
-              type="button"
-              onClick={handlePrintA3}
-              className="rounded-md border border-blue-300 bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-800 shadow-sm hover:bg-blue-200"
-            >
-              {tlPage("monthlyTimesheetPrintA3", "In A3")}
-            </button>
           </div>
-          {loading && !dayChunks.length ? (
-            <p className="py-8 text-center text-sm font-semibold text-slate-600 dark:text-slate-300">
-              {tlPage("monthlyTimesheetLoading", "Đang tải dữ liệu điểm danh…")}
-            </p>
-          ) : error && !dayChunks.length ? (
-            <p className="py-8 text-center text-sm font-semibold text-red-600 dark:text-red-400">
-              {error}
-            </p>
-          ) : (
-            <div
-              ref={tableWrapRef}
-              className="inline-block min-w-full align-middle"
-            >
-              <table
-                className={`w-max min-w-full border-collapse text-left text-black dark:text-black ${strongBorder}`}
+          <div
+            className="min-h-0 overflow-auto"
+            style={{
+              height: `min(calc(100vh - 11.5rem), ${tableViewportHeight}px)`,
+            }}
+          >
+            {loading && !dayChunks.length ? (
+              <p className="py-8 text-center text-sm font-semibold text-slate-600 dark:text-slate-300">
+                {tlPage(
+                  "monthlyTimesheetLoading",
+                  "Đang tải dữ liệu điểm danh…",
+                )}
+              </p>
+            ) : error && !dayChunks.length ? (
+              <p className="py-8 text-center text-sm font-semibold text-red-600 dark:text-red-400">
+                {error}
+              </p>
+            ) : (
+              <div
+                ref={tableWrapRef}
+                className="inline-block min-w-full align-middle"
               >
-                <thead className="sticky top-0 z-50">
-                  <tr className="bg-indigo-100 dark:bg-indigo-900/60">
-                    {[0, 1, 2, 3, 4, 5].map((ci) => (
-                      <th
-                        key={`h1-${ci}`}
-                        rowSpan={3}
-                        style={stickyColStyle(ci)}
-                        className={`${stickyThBase} text-center align-middle`}
-                      >
-                        {ci === 0
-                          ? tlPage("monthlyTimesheetColStt", "STT")
-                          : ci === 1
-                            ? tlPage("monthlyTimesheetColName", "Họ và tên")
-                            : ci === 2
-                              ? tlPage(
-                                  "monthlyTimesheetColJoinDate",
-                                  "Ngày vào làm",
-                                )
-                              : ci === 3
-                                ? tlPage(
-                                    "monthlyTimesheetColContract",
-                                    "Ngày HĐ",
-                                  )
-                                : ci === 4
-                                  ? tlPage("monthlyTimesheetColDept", "BP")
-                                  : tlPage(
-                                      "monthlyTimesheetColCoeff",
-                                      "Hệ số TC",
-                                    )}
-                      </th>
-                    ))}
-                    <th
-                      colSpan={monthRange.keys.length}
-                      className={`${thinHeadBorder} bg-indigo-100/90 px-1 py-1 text-center text-[10px] font-bold uppercase tracking-wide text-black dark:bg-indigo-900/50 dark:text-black`}
-                    >
-                      {tlPage(
-                        "monthlyTimesheetDaysInMonth",
-                        "Ngày trong tháng",
-                      )}
-                    </th>
-                    <th
-                      colSpan={MONTH_DETAIL_COLS_PER_BLOCK}
-                      className={`${thinHeadBorder} ${strongBorderLeft} bg-sky-100 px-1 py-1 text-center text-[10px] font-bold dark:bg-sky-950/40`}
-                    >
-                      {tlPage("monthlyRuleTotalTitle", "THỜI GIAN LÀM VIỆC")}
-                    </th>
-                    <th
-                      colSpan={MONTH_DETAIL_COLS_PER_BLOCK}
-                      className={`${thinHeadBorder} ${strongBorderLeft} bg-sky-100 px-1 py-1 text-center text-[10px] font-bold dark:bg-sky-950/40`}
-                    >
-                      {tlPage("monthlyRuleTrialTitle", "THỜI GIAN THỬ VIỆC")}
-                    </th>
-                    <th
-                      colSpan={MONTH_DETAIL_COLS_PER_BLOCK}
-                      className={`${thinHeadBorder} ${strongBorderLeft} bg-sky-100 px-1 py-1 text-center text-[10px] font-bold dark:bg-sky-950/40`}
-                    >
-                      {tlPage("monthlyRuleOfficialTitle", "THỜI GIAN HỢP ĐỒNG")}
-                    </th>
-                  </tr>
-                  <tr>
-                    {monthRange.keys.map((dk) => {
-                      const pd = parseLocalDateKey(dk);
-                      const dom = pd ? pd.getDate() : "";
-                      const sun = pd && pd.getDay() === 0;
-                      const hol = chunkByDate.get(dk);
-                      const offCol = sun
-                        ? "bg-yellow-200 dark:bg-yellow-900/45"
-                        : hol?.isHolidayDay
-                          ? "bg-amber-100 dark:bg-amber-950/40"
-                          : hol?.isOffDay
-                            ? "bg-sky-50 dark:bg-sky-950/30"
-                            : "bg-slate-50 dark:bg-slate-800/80";
-                      return (
+                <table
+                className={`w-max min-w-full border-collapse text-left text-[10px] text-slate-900 dark:text-slate-100 ${strongBorder}`}
+                >
+                  <thead>
+                    <tr className="bg-slate-100 dark:bg-slate-800">
+                      {[0, 1, 2, 3, 4, 5].map((ci) => (
                         <th
-                          key={dk}
-                          rowSpan={2}
-                          style={monthDayCellStyle()}
-                          className={`${thinHeadBorder} px-0.5 py-0.5 text-center text-[9px] font-semibold leading-tight text-black dark:text-black ${offCol}`}
+                          key={`h1-${ci}`}
+                          rowSpan={3}
+                          style={{
+                            ...stickyColStyle(ci),
+                            ...monthHeaderStickyStyle(
+                              headerRowTops.row1,
+                              180 - ci,
+                            ),
+                          }}
+                          className={`${stickyThBase} text-center align-middle`}
                         >
-                          <div className="flex h-[44px] items-center justify-center overflow-visible">
-                            <div className="-rotate-90 whitespace-nowrap text-center leading-none">
-                              <span>{String(dom).padStart(2, "0")}</span>
-                              <span className="ml-1 text-[8px] font-semibold capitalize text-black dark:text-black">
-                                {formatEnglishWeekday3(pd)}
-                              </span>
-                            </div>
-                          </div>
-                        </th>
-                      );
-                    })}
-                    {DETAIL_GROUP_KEYS.flatMap((groupKey) => {
-                      const groupBg = detailGroupHeaderTone(groupKey);
-                      return [
-                        <th
-                          key={`${groupKey}-workday`}
-                          colSpan={7}
-                          className={`${thinHeadBorder} ${groupBg} ${strongBorderLeft} px-1 py-0.5 text-center text-[9px] font-bold uppercase`}
-                        >
-                          {tlPage("monthlyRuleGroupWorkday", "NGÀY LÀM VIỆC")}
-                        </th>,
-                        <th
-                          key={`${groupKey}-ot`}
-                          colSpan={6}
-                          className={`${thinHeadBorder} ${groupBg} px-1 py-0.5 text-center text-[9px] font-bold uppercase`}
-                        >
-                          {tlPage("monthlyRuleGroupOt", "TĂNG CA (Hrs)")}
-                        </th>,
-                        <th
-                          key={`${groupKey}-sats`}
-                          colSpan={2}
-                          className={`${thinHeadBorder} ${groupBg} px-1 py-0.5 text-center text-[9px] font-bold uppercase`}
-                        >
-                          SAT.S
-                        </th>,
-                      ];
-                    })}
-                  </tr>
-                  <tr>
-                    {DETAIL_GROUP_KEYS.map((groupKey) =>
-                      detailHeaders.map((h, idx) => (
-                        <th
-                          key={`${groupKey}-${h}`}
-                          style={monthDetailCellStyle(idx)}
-                          className={`${thinHeadBorder} ${detailGroupHeaderTone(groupKey)} ${idx === 0 ? strongBorderLeft : ""} px-1 py-0.5 text-center text-[9px] font-semibold`}
-                        >
-                          {h}
-                        </th>
-                      )),
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredIds.map((id, empBlockIdx) => {
-                    const rep = representativeEmployee(dayChunks, id);
-                    const summary = buildMonthlyRuleSummary(
-                      chunkByDate,
-                      monthRange.keys,
-                      id,
-                    );
-                    const sttDisp =
-                      rep?.stt != null && String(rep.stt).trim() !== ""
-                        ? rep.stt
-                        : empBlockIdx + 1;
-                    const joinStr = formatProfileDateKey(
-                      rep?.ngayVaoLam,
-                      displayLocale,
-                    );
-                    const fmt = (n) =>
-                      Number.isFinite(n) && roundHoursForPayrollDisplay(n) !== 0
-                        ? formatCoeffHoursForDisplay(n)
-                        : " ";
-                    return PAYROLL_MONTHLY_SUBROWS.map((sr, si) => {
-                      const isLastSub =
-                        si === PAYROLL_MONTHLY_SUBROWS.length - 1;
-                      const isFirstSub = si === 0;
-                      const subrowEdgeClass = isLastSub
-                        ? strongBorderBottom
-                        : "";
-                      const blockStartClass =
-                        isFirstSub && empBlockIdx > 0 ? "!border-t-0" : "";
-                      const employeeStripe =
-                        empBlockIdx % 2 === 0
-                          ? "bg-white dark:bg-slate-900"
-                          : "bg-slate-50/45 dark:bg-slate-900/80";
-                      return (
-                        <tr
-                          key={`${id}-${sr.key}`}
-                          className={`${employeeStripe} hover:bg-slate-50/70 dark:hover:bg-slate-800/35`}
-                        >
-                          {si === 0 ? (
-                            <td
-                              rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
-                              style={stickyColStyle(0)}
-                              className={`${stickyTdBase} text-center font-semibold tabular-nums ${strongBorderBottom}`}
-                            >
-                              {sttDisp}
-                            </td>
-                          ) : null}
-                          {si === 0 ? (
-                            <td
-                              rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
-                              style={stickyColStyle(1)}
-                              className={`${stickyTdBase} leading-tight ${strongBorderBottom}`}
-                              title={rep?.hoVaTen ?? ""}
-                            >
-                              <div className="text-[11px] font-bold text-black dark:text-black">
-                                {rep?.hoVaTen ?? "—"}
+                          {ci === 4 ? (
+                            <div className="flex h-[56px] items-center justify-center overflow-visible">
+                              <div className="flex -rotate-90 items-center whitespace-nowrap text-center font-bold leading-tight tracking-[0.12em]">
+                                {tlPage("monthlyTimesheetColDept", "BP")}
                               </div>
-                              {rep?.mnv ? (
-                                <div className="mt-0.5 font-mono text-[10px] font-bold text-black dark:text-black">
-                                  {rep.mnv}
-                                </div>
-                              ) : null}
-                            </td>
-                          ) : null}
-                          {si === 0 ? (
-                            <td
-                              rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
-                              style={stickyColStyle(2)}
-                              className={`${stickyTdBase} text-center tabular-nums ${strongBorderBottom}`}
-                            >
-                              {joinStr}
-                            </td>
-                          ) : null}
-                          {si === 0 ? (
-                            <td
-                              rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
-                              style={stickyColStyle(3)}
-                              className={`${stickyTdBase} text-center text-black dark:text-black ${strongBorderBottom}`}
-                            >
-                              {tlPage("monthlyTimesheetContractDash", "—")}
-                            </td>
-                          ) : null}
-                          {si === 0 ? (
-                            <td
-                              rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
-                              style={stickyColStyle(4)}
-                              className={`${stickyTdBase} text-center ${strongBorderBottom}`}
-                            >
-                              {rep?.boPhan ? (
-                                <span className="font-medium">
-                                  {rep.boPhan}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400">—</span>
-                              )}
-                            </td>
-                          ) : null}
-                          <td
+                            </div>
+                          ) : ci === 5 ? (
+                            <div className="flex h-[56px] items-center justify-center overflow-visible">
+                              <div className="flex -rotate-90 items-center whitespace-nowrap text-center font-bold leading-tight tracking-[0.12em]">
+                                {tlPage("monthlyTimesheetColCoeff", "Hệ số TC")}
+                              </div>
+                            </div>
+                          ) : ci === 0 ? (
+                            tlPage("monthlyTimesheetColStt", "STT")
+                          ) : ci === 1 ? (
+                            tlPage("monthlyTimesheetColName", "Họ và tên")
+                          ) : ci === 2 ? (
+                            tlPage(
+                              "monthlyTimesheetColJoinDate",
+                              "Ngày vào làm",
+                            )
+                          ) : (
+                            tlPage("monthlyTimesheetColContract", "Ngày HĐ")
+                          )}
+                        </th>
+                      ))}
+                      <th
+                        colSpan={monthRange.keys.length}
+                        style={monthHeaderStickyStyle(headerRowTops.row1, 90)}
+                        className={`${thinHeadBorder} bg-slate-200 px-1 py-1.5 text-center text-[10px] font-extrabold uppercase tracking-wide text-slate-900 dark:bg-slate-700 dark:text-slate-100`}
+                      >
+                        {tlPage(
+                          "monthlyTimesheetDaysInMonth",
+                          "Ngày trong tháng",
+                        )}
+                      </th>
+                      <th
+                        colSpan={MONTH_DETAIL_COLS_PER_BLOCK}
+                        style={monthHeaderStickyStyle(headerRowTops.row1, 90)}
+                        className={`${thinHeadBorder} ${strongBorderLeft} bg-slate-200 px-1 py-1.5 text-center text-[10px] font-extrabold text-slate-900 dark:bg-slate-700 dark:text-slate-100`}
+                      >
+                        {tlPage("monthlyRuleTotalTitle", "THỜI GIAN LÀM VIỆC")}
+                      </th>
+                      <th
+                        colSpan={MONTH_DETAIL_COLS_PER_BLOCK}
+                        style={monthHeaderStickyStyle(headerRowTops.row1, 90)}
+                        className={`${thinHeadBorder} ${strongBorderLeft} bg-slate-200 px-1 py-1.5 text-center text-[10px] font-extrabold text-slate-900 dark:bg-slate-700 dark:text-slate-100`}
+                      >
+                        {tlPage("monthlyRuleTrialTitle", "THỜI GIAN THỬ VIỆC")}
+                      </th>
+                      <th
+                        colSpan={MONTH_DETAIL_COLS_PER_BLOCK}
+                        style={monthHeaderStickyStyle(headerRowTops.row1, 90)}
+                        className={`${thinHeadBorder} ${strongBorderLeft} bg-slate-200 px-1 py-1.5 text-center text-[10px] font-extrabold text-slate-900 dark:bg-slate-700 dark:text-slate-100`}
+                      >
+                        {tlPage(
+                          "monthlyRuleOfficialTitle",
+                          "THỜI GIAN HỢP ĐỒNG",
+                        )}
+                      </th>
+                    </tr>
+                    <tr>
+                      {monthRange.keys.map((dk) => {
+                        const pd = parseLocalDateKey(dk);
+                        const dom = pd ? pd.getDate() : "";
+                        const sun = pd && pd.getDay() === 0;
+                        const hol = chunkByDate.get(dk);
+                        const offCol = sun
+                          ? "bg-amber-100 dark:bg-amber-900/55"
+                          : hol?.isHolidayDay
+                            ? "bg-rose-100 dark:bg-rose-900/40"
+                            : hol?.isOffDay
+                              ? "bg-cyan-100 dark:bg-cyan-900/35"
+                              : "bg-slate-100 dark:bg-slate-800";
+                        return (
+                          <th
+                            key={dk}
+                            rowSpan={2}
                             style={{
-                              ...stickyColStyle(5),
-                              ...(isLastSub
-                                ? { borderBottom: "2px solid #000" }
-                                : null),
+                              ...monthDayCellStyle(),
+                              ...monthHeaderStickyStyle(headerRowTops.row2, 85),
                             }}
-                            className={`${stickyTdBase} text-center font-mono font-semibold text-black dark:text-black ${subrowEdgeClass} ${blockStartClass}`}
+                            className={`${thinHeadBorder} ${noTopBorder} px-0.5 py-0.5 text-center text-[9px] font-bold leading-tight text-slate-900 dark:text-slate-100 ${offCol}`}
                           >
-                            {sr.coeff == null
-                              ? "\u00a0"
-                              : formatCoeffLabel(sr.coeff, displayLocale)}
-                          </td>
-                          {monthRange.keys.map((dk) => {
-                            const ch = chunkByDate.get(dk);
-                            const pd = parseLocalDateKey(dk);
-                            const sun = pd && pd.getDay() === 0;
-                            let baseBg = "";
-                            if (sun) {
-                              baseBg = "bg-yellow-200 dark:bg-yellow-950/25";
-                            } else if (ch?.isHolidayDay) {
-                              baseBg = "bg-amber-50/90 dark:bg-amber-950/25";
-                            } else if (ch?.isOffDay) {
-                              baseBg = "bg-sky-50/80 dark:bg-sky-950/20";
-                            }
-                            if (!ch) {
-                              return (
-                                <td
-                                  key={dk}
-                                  style={{
-                                    ...monthDayCellStyle(),
-                                    ...(isLastSub
-                                      ? { borderBottom: "2px solid #000" }
-                                      : null),
-                                  }}
-                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center text-[9px] text-slate-400 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
-                                >
-                                  {" "}
-                                </td>
-                              );
-                            }
-                            const emp = ch.byId.get(id);
-                            if (!emp) {
-                              return (
-                                <td
-                                  key={dk}
-                                  style={{
-                                    ...monthDayCellStyle(),
-                                    ...(isLastSub
-                                      ? { borderBottom: "2px solid #000" }
-                                      : null),
-                                  }}
-                                  className={`${thinBodyBorder} px-0.5 py-0.5 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
-                                />
-                              );
-                            }
-                            if (sr.coeff == null) {
-                              const main = getPayrollMonthlyMainRowCell(
-                                emp,
-                                ch,
-                              );
-                              let inner;
-                              if (main.kind === "leave") {
-                                inner = (
-                                  <span
-                                    className={`inline-flex max-w-full justify-center rounded border px-1 py-0.5 text-[10px] font-bold ${main.badgeClass}`}
-                                    title={main.leaveRaw}
+                            <div className="flex h-[52px] items-center justify-center overflow-visible">
+                              <div className="flex -rotate-90 items-center whitespace-nowrap text-center font-bold leading-tight tracking-[0.12em]">
+                                <span className="font-bold">
+                                  {String(dom).padStart(2, "0")}
+                                </span>
+                                <span className="ml-3 text-[9px] font-bold tracking-[0.16em] text-slate-900 dark:text-slate-100">
+                                  {formatEnglishWeekday3(pd)}
+                                </span>
+                              </div>
+                            </div>
+                          </th>
+                        );
+                      })}
+                      {DETAIL_GROUP_KEYS.flatMap((groupKey) => {
+                        const groupBg = detailGroupHeaderTone(groupKey);
+                        return [
+                          <th
+                            key={`${groupKey}-workday`}
+                            colSpan={7}
+                            style={monthHeaderStickyStyle(
+                              headerRowTops.row2,
+                              85,
+                            )}
+                            className={`${thinHeadBorder} ${noTopBorder} ${groupBg} ${strongBorderLeft} px-1 py-1 text-center text-[9px] font-extrabold uppercase tracking-wide text-slate-900 dark:text-slate-100`}
+                          >
+                            {tlPage("monthlyRuleGroupWorkday", "NGÀY LÀM VIỆC")}
+                          </th>,
+                          <th
+                            key={`${groupKey}-ot`}
+                            colSpan={6}
+                            style={monthHeaderStickyStyle(
+                              headerRowTops.row2,
+                              85,
+                            )}
+                            className={`${thinHeadBorder} ${noTopBorder} ${groupBg} px-1 py-1 text-center text-[9px] font-extrabold uppercase tracking-wide text-slate-900 dark:text-slate-100`}
+                          >
+                            {tlPage("monthlyRuleGroupOt", "TĂNG CA (Hrs)")}
+                          </th>,
+                          <th
+                            key={`${groupKey}-sats`}
+                            colSpan={2}
+                            style={monthHeaderStickyStyle(
+                              headerRowTops.row2,
+                              85,
+                            )}
+                            className={`${thinHeadBorder} ${noTopBorder} ${groupBg} px-1 py-1 text-center text-[9px] font-extrabold uppercase tracking-wide text-slate-900 dark:text-slate-100`}
+                          >
+                            SAT.S
+                          </th>,
+                        ];
+                      })}
+                    </tr>
+                    <tr>
+                      {DETAIL_GROUP_KEYS.map((groupKey) =>
+                        detailHeaders.map((h, idx) => (
+                          <th
+                            key={`${groupKey}-${h}`}
+                            style={{
+                              ...monthDetailCellStyle(idx),
+                              ...monthHeaderStickyStyle(headerRowTops.row3, 80),
+                            }}
+                            className={`${thinHeadBorder} ${noTopBorder} ${detailGroupHeaderTone(groupKey)} ${idx === 0 ? strongBorderLeft : ""} px-1 py-1 text-center text-[9px] font-bold text-slate-900 dark:text-slate-100`}
+                          >
+                            {h}
+                          </th>
+                        )),
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredIds.map((id, empBlockIdx) => {
+                      const rep = representativeEmployee(dayChunks, id);
+                      const summary = buildMonthlyRuleSummary(
+                        chunkByDate,
+                        monthRange.keys,
+                        id,
+                      );
+                      const sttDisp =
+                        rep?.stt != null && String(rep.stt).trim() !== ""
+                          ? rep.stt
+                          : empBlockIdx + 1;
+                      const joinStr = formatProfileDateKey(
+                        rep?.ngayVaoLam,
+                        displayLocale,
+                      );
+                      const fmt = (n) =>
+                        Number.isFinite(n) &&
+                        roundHoursForPayrollDisplay(n) !== 0
+                          ? formatCoeffHoursForDisplay(n)
+                          : " ";
+                      return PAYROLL_MONTHLY_SUBROWS.map((sr, si) => {
+                        const isLastSub =
+                          si === PAYROLL_MONTHLY_SUBROWS.length - 1;
+                        const isFirstSub = si === 0;
+                        const subrowEdgeClass = isLastSub
+                          ? strongBorderBottom
+                          : "";
+                        const blockStartClass =
+                          isFirstSub && empBlockIdx > 0 ? "!border-t-0" : "";
+                        const employeeStripe =
+                          empBlockIdx % 2 === 0
+                            ? "bg-white dark:bg-slate-900"
+                            : "bg-slate-50 dark:bg-slate-900/80";
+                        return (
+                          <tr
+                            key={`${id}-${sr.key}`}
+                            className={`${employeeStripe} hover:bg-slate-50/70 dark:hover:bg-slate-800/35`}
+                          >
+                            {si === 0 ? (
+                              <td
+                                rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
+                                style={stickyColStyle(0)}
+                                className={`${stickyTdBase} text-center font-semibold tabular-nums ${strongBorderBottom}`}
+                              >
+                                {sttDisp}
+                              </td>
+                            ) : null}
+                            {si === 0 ? (
+                              <td
+                                rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
+                                style={stickyColStyle(1)}
+                                className={`${stickyTdBase} leading-tight ${strongBorderBottom}`}
+                                title={rep?.hoVaTen ?? ""}
+                              >
+                                <div className="text-[11px] font-bold text-black dark:text-black">
+                                  {rep?.hoVaTen ?? "—"}
+                                </div>
+                                {rep?.mnv ? (
+                                  <div className="mt-0.5 font-mono text-[10px] font-bold text-black dark:text-black">
+                                    {rep.mnv}
+                                  </div>
+                                ) : null}
+                              </td>
+                            ) : null}
+                            {si === 0 ? (
+                              <td
+                                rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
+                                style={stickyColStyle(2)}
+                                className={`${stickyTdBase} text-center tabular-nums ${strongBorderBottom}`}
+                              >
+                                {joinStr}
+                              </td>
+                            ) : null}
+                            {si === 0 ? (
+                              <td
+                                rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
+                                style={stickyColStyle(3)}
+                            className={`${stickyTdBase} text-center text-slate-900 dark:text-slate-100 ${strongBorderBottom}`}
+                              >
+                                {tlPage("monthlyTimesheetContractDash", "—")}
+                              </td>
+                            ) : null}
+                            {si === 0 ? (
+                              <td
+                                rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
+                                style={stickyColStyle(4)}
+                                className={`${stickyTdBase} text-center ${strongBorderBottom}`}
+                              >
+                                <div className="flex h-full items-center justify-center overflow-visible">
+                                  <div className="flex -rotate-90 items-center whitespace-nowrap text-center font-medium leading-tight tracking-[0.05em]">
+                                    {rep?.boPhan ? (
+                                      <span className="font-medium">
+                                        {rep.boPhan}
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-400">—</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            ) : null}
+                            <td
+                              style={{
+                                ...stickyColStyle(5),
+                                ...(isLastSub
+                                  ? { borderBottom: "2px solid #000" }
+                                  : null),
+                              }}
+                              className={`${stickyTdBase} text-center font-mono font-semibold text-black dark:text-black ${subrowEdgeClass} ${blockStartClass}`}
+                            >
+                            <span className="text-[10px]">
+                              {sr.coeff == null
+                                ? "\u00a0"
+                                : Number(sr.coeff).toFixed(1)}
+                            </span>
+                            </td>
+                            {monthRange.keys.map((dk) => {
+                              const ch = chunkByDate.get(dk);
+                              const pd = parseLocalDateKey(dk);
+                              const sun = pd && pd.getDay() === 0;
+                              let baseBg = "";
+                              if (sun) {
+                                baseBg = "bg-amber-100 dark:bg-amber-900/35";
+                              } else if (ch?.isHolidayDay) {
+                                baseBg = "bg-amber-50/90 dark:bg-amber-950/25";
+                              } else if (ch?.isOffDay) {
+                                baseBg = "bg-sky-50/80 dark:bg-sky-950/20";
+                              }
+                              if (!ch) {
+                                return (
+                                  <td
+                                    key={dk}
+                                    style={{
+                                      ...monthDayCellStyle(),
+                                      ...(isLastSub
+                                        ? { borderBottom: "2px solid #000" }
+                                        : null),
+                                    }}
+                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center text-[10px] text-slate-400 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
                                   >
-                                    {main.leaveShort}
-                                  </span>
-                                );
-                              } else if (main.kind === "hours") {
-                                inner = (
-                                  <span className="font-bold tabular-nums text-black dark:text-black">
-                                    {formatCoeffHoursForDisplay(main.hours)}
-                                  </span>
-                                );
-                              } else {
-                                inner = (
-                                  <span className="text-slate-300"> </span>
+                                    {" "}
+                                  </td>
                                 );
                               }
+                              const emp = ch.byId.get(id);
+                              if (!emp) {
+                                return (
+                                  <td
+                                    key={dk}
+                                    style={{
+                                      ...monthDayCellStyle(),
+                                      ...(isLastSub
+                                        ? { borderBottom: "2px solid #000" }
+                                        : null),
+                                    }}
+                                    className={`${thinBodyBorder} px-0.5 py-0.5 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+                                  />
+                                );
+                              }
+                              if (sr.coeff == null) {
+                                const main = getPayrollMonthlyMainRowCell(
+                                  emp,
+                                  ch,
+                                );
+                                let inner;
+                                if (main.kind === "leave") {
+                                  inner = (
+                                    <span
+                                      className={`inline-flex max-w-full justify-center rounded border px-1 py-0.5 text-[10px] font-bold ${main.badgeClass}`}
+                                      title={main.leaveRaw}
+                                    >
+                                      {main.leaveShort}
+                                    </span>
+                                  );
+                                } else if (main.kind === "hours") {
+                                  inner = (
+                                    <span className="font-bold tabular-nums text-black dark:text-black">
+                                      {formatCoeffHoursForDisplay(main.hours)}
+                                    </span>
+                                  );
+                                } else {
+                                  inner = (
+                                    <span className="text-slate-300"> </span>
+                                  );
+                                }
+                                return (
+                                  <td
+                                    key={dk}
+                                    style={{
+                                      ...monthDayCellStyle(),
+                                      ...(isLastSub
+                                        ? { borderBottom: "2px solid #000" }
+                                        : null),
+                                    }}
+                                    className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle text-[10px] font-bold text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+                                  >
+                                    {inner}
+                                  </td>
+                                );
+                              }
+                              const coeffMap = getPayrollMonthlyCoeffHoursMap({
+                                gioVao: emp.gioVao,
+                                gioRa: emp.gioRa,
+                                isOffDay: ch.isOffDay,
+                                isHolidayDay: ch.isHolidayDay,
+                                caLamViec: emp.caLamViec,
+                                payrollEarlyOtPaperwork:
+                                  emp.payrollEarlyOtPaperwork,
+                              });
+                              const h = coeffMap.get(sr.coeff);
+                              const show =
+                                h != null &&
+                                Number.isFinite(h) &&
+                                roundHoursForPayrollDisplay(h) !== 0;
                               return (
                                 <td
                                   key={dk}
@@ -1096,153 +1265,126 @@ export default function PayrollMonthlyTimesheetModal({
                                       ? { borderBottom: "2px solid #000" }
                                       : null),
                                   }}
-                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle text-[9px] font-bold text-black dark:text-black ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+                                className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle font-mono text-[10px] font-bold tabular-nums text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
                                 >
-                                  {inner}
+                                  {show ? (
+                                    <span className="font-bold text-black dark:text-black">
+                                      {formatCoeffHoursForDisplay(h)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300"> </span>
+                                  )}
                                 </td>
                               );
-                            }
-                            const coeffMap = getPayrollMonthlyCoeffHoursMap({
-                              gioVao: emp.gioVao,
-                              gioRa: emp.gioRa,
-                              isOffDay: ch.isOffDay,
-                              isHolidayDay: ch.isHolidayDay,
-                              caLamViec: emp.caLamViec,
-                              payrollEarlyOtPaperwork:
-                                emp.payrollEarlyOtPaperwork,
-                            });
-                            const h = coeffMap.get(sr.coeff);
-                            const show =
-                              h != null &&
-                              Number.isFinite(h) &&
-                              roundHoursForPayrollDisplay(h) !== 0;
-                            return (
-                              <td
-                                key={dk}
-                                style={{
-                                  ...monthDayCellStyle(),
-                                  ...(isLastSub
-                                    ? { borderBottom: "2px solid #000" }
-                                    : null),
-                                }}
-                                className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle font-mono text-[9px] font-bold tabular-nums text-black dark:text-black ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
-                              >
-                                {show ? (
-                                  <span className="font-bold text-black dark:text-black">
-                                    {formatCoeffHoursForDisplay(h)}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-300"> </span>
-                                )}
-                              </td>
-                            );
-                          })}
-                          {(() => {
-                            const isTrial = isProbationStatus(
-                              rep?.trangThaiLamViec,
-                            );
-                            const tcByRow = [
-                              summary.coeff03,
-                              summary.coeff15,
-                              summary.coeff20,
-                              summary.coeff27,
-                              summary.coeff30,
-                              summary.coeff39,
-                            ];
-                            const coeffColBySubrow = {
-                              1: 0,
-                              2: 1,
-                              3: 2,
-                              4: 3,
-                              5: 4,
-                              6: 5,
-                            };
-                            const valuesForStatus = (enabled) =>
-                              Array.from(
-                                { length: MONTH_DETAIL_COLS_PER_BLOCK },
-                                (_, idx) => {
-                                  if (!enabled) return " ";
-                                  if (si === 0) {
-                                    if (idx === 0)
-                                      return fmt(summary.workDays * 8);
-                                    if (idx === 1) return fmt(summary.workDays);
-                                    if (idx === 2)
-                                      return fmt(summary.unpaidDays);
-                                    if (idx === 3) return fmt(summary.pnDays);
-                                    if (idx === 4) return fmt(summary.nbDays);
-                                    if (idx === 5) return fmt(summary.klDays);
-                                    if (idx === 6) return fmt(summary.kpDays);
-                                  }
-                                  const coeffIdx = coeffColBySubrow[si];
-                                  if (
-                                    coeffIdx != null &&
-                                    idx === 7 + coeffIdx
-                                  ) {
-                                    return fmt(tcByRow[coeffIdx]);
-                                  }
-                                  return " ";
-                                },
+                            })}
+                            {(() => {
+                              const isTrial = isProbationStatus(
+                                rep?.trangThaiLamViec,
                               );
-                            const detailValues = [
-                              ...valuesForStatus(true),
-                              ...valuesForStatus(isTrial),
-                              ...valuesForStatus(!isTrial),
-                            ];
-                            const oneRow = detailValues.map((v, idx) => {
-                              const group = Math.floor(
-                                idx / MONTH_DETAIL_COLS_PER_BLOCK,
-                              );
-                              const groupBg = detailGroupBodyTone(group);
-                              return (
-                                <td
-                                  key={`detail-${id}-${sr.key}-${idx}`}
-                                  style={{
-                                    ...monthDetailCellStyle(idx),
-                                    ...(isLastSub
-                                      ? { borderBottom: "2px solid #000" }
-                                      : null),
-                                  }}
-                                  className={`${thinBodyBorder} ${groupBg} ${subrowEdgeClass} ${
-                                    idx % MONTH_DETAIL_COLS_PER_BLOCK === 0
-                                      ? strongBorderLeft
-                                      : ""
-                                  } ${blockStartClass} px-1 py-0.5 text-center text-[9px] font-bold text-black dark:text-black`}
-                                >
-                                  {v}
-                                </td>
-                              );
-                            });
-                            return oneRow;
-                          })()}
-                        </tr>
-                      );
-                    });
-                  })}
-                </tbody>
-              </table>
-              {error && dayChunks.length ? (
-                <p className="mt-2 text-center text-xs text-amber-700 dark:text-amber-300">
-                  {error}
-                </p>
-              ) : null}
-              {loadingMore ? (
-                <p className="mt-2 text-center text-xs font-semibold text-indigo-700 dark:text-indigo-300">
-                  {tlPage(
-                    "monthlyTimesheetLoadingMore",
-                    "Đang tải thêm dữ liệu của tháng...",
-                  )}
-                </p>
-              ) : null}
-              {!filteredIds.length && dayChunks.length ? (
-                <p className="mt-4 text-center text-sm text-slate-600 dark:text-slate-300">
-                  {tlPage(
-                    "monthlyTimesheetNoRowsAfterFilter",
-                    "Không có nhân viên nào khớp bộ lọc tìm kiếm / bộ phận.",
-                  )}
-                </p>
-              ) : null}
-            </div>
-          )}
+                              const tcByRow = [
+                                summary.coeff03,
+                                summary.coeff15,
+                                summary.coeff20,
+                                summary.coeff27,
+                                summary.coeff30,
+                                summary.coeff39,
+                              ];
+                              const coeffColBySubrow = {
+                                1: 0,
+                                2: 1,
+                                3: 2,
+                                4: 3,
+                                5: 4,
+                                6: 5,
+                              };
+                              const valuesForStatus = (enabled) =>
+                                Array.from(
+                                  { length: MONTH_DETAIL_COLS_PER_BLOCK },
+                                  (_, idx) => {
+                                    if (!enabled) return " ";
+                                    if (si === 0) {
+                                      if (idx === 0)
+                                        return fmt(summary.workDays * 8);
+                                      if (idx === 1)
+                                        return fmt(summary.workDays);
+                                      if (idx === 2)
+                                        return fmt(summary.unpaidDays);
+                                      if (idx === 3) return fmt(summary.pnDays);
+                                      if (idx === 4) return fmt(summary.nbDays);
+                                      if (idx === 5) return fmt(summary.klDays);
+                                      if (idx === 6) return fmt(summary.kpDays);
+                                    }
+                                    const coeffIdx = coeffColBySubrow[si];
+                                    if (
+                                      coeffIdx != null &&
+                                      idx === 7 + coeffIdx
+                                    ) {
+                                      return fmt(tcByRow[coeffIdx]);
+                                    }
+                                    return " ";
+                                  },
+                                );
+                              const detailValues = [
+                                ...valuesForStatus(true),
+                                ...valuesForStatus(isTrial),
+                                ...valuesForStatus(!isTrial),
+                              ];
+                              const oneRow = detailValues.map((v, idx) => {
+                                const group = Math.floor(
+                                  idx / MONTH_DETAIL_COLS_PER_BLOCK,
+                                );
+                                const groupBg = detailGroupBodyTone(group);
+                                return (
+                                  <td
+                                    key={`detail-${id}-${sr.key}-${idx}`}
+                                    style={{
+                                      ...monthDetailCellStyle(idx),
+                                      ...(isLastSub
+                                        ? { borderBottom: "2px solid #000" }
+                                        : null),
+                                    }}
+                                    className={`${thinBodyBorder} ${groupBg} ${subrowEdgeClass} ${
+                                      idx % MONTH_DETAIL_COLS_PER_BLOCK === 0
+                                        ? strongBorderLeft
+                                        : ""
+                                    } ${blockStartClass} px-1 py-0.5 text-center text-[10px] font-bold text-slate-900 dark:text-slate-100`}
+                                  >
+                                    {v}
+                                  </td>
+                                );
+                              });
+                              return oneRow;
+                            })()}
+                          </tr>
+                        );
+                      });
+                    })}
+                  </tbody>
+                </table>
+                {error && dayChunks.length ? (
+                  <p className="mt-2 text-center text-xs text-amber-700 dark:text-amber-300">
+                    {error}
+                  </p>
+                ) : null}
+                {loadingMore ? (
+                  <p className="mt-2 text-center text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                    {tlPage(
+                      "monthlyTimesheetLoadingMore",
+                      "Đang tải thêm dữ liệu của tháng...",
+                    )}
+                  </p>
+                ) : null}
+                {!filteredIds.length && dayChunks.length ? (
+                  <p className="mt-4 text-center text-sm text-slate-600 dark:text-slate-300">
+                    {tlPage(
+                      "monthlyTimesheetNoRowsAfterFilter",
+                      "Không có nhân viên nào khớp bộ lọc tìm kiếm / bộ phận.",
+                    )}
+                  </p>
+                ) : null}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

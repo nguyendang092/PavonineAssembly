@@ -1177,10 +1177,10 @@ const vi = {
     formulaNote:
       "Công thức: (lương cơ bản ÷ ngày chuẩn) × (ngày làm + phép hưởng lương) − (ngày KL/KP × một ngày lương).",
     empty: "Chọn khoảng ngày và bấm «Tính lương».",
-    monthlyTimesheetButton: "Bảng chấm công tháng",
+    monthlyTimesheetButton: "Bảng giờ công",
     monthlyTimesheetButtonHint:
       "Xem lưới điểm danh theo từng ngày trong tháng của ngày đang chọn (cùng bộ lọc tìm / BP).",
-    monthlyTimesheetTitle: "Bảng chấm công tháng",
+    monthlyTimesheetTitle: "Bảng giờ công",
     monthlyTimesheetHint:
       "Mỗi nhân viên 7 dòng: dòng 1 giờ thường / phép; các dòng sau là giờ theo hệ số TC (0,3 … 3,9).",
     monthlyTimesheetCoeffLegendTitle:
