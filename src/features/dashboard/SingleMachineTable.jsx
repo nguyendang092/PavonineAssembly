@@ -8,6 +8,14 @@ import LoadingBlock from "@/components/ui/LoadingBlock";
 import { ko } from "date-fns/locale";
 import { useUser } from "@/contexts/UserContext";
 import { logUserAction } from "@/utils/userLog";
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiDroplet,
+  FiSave,
+  FiThermometer,
+} from "react-icons/fi";
+
 const PAGE_SIZE = 10;
 
 const SingleMachineTable = ({ area, machine, selectedMonth, showToast }) => {
@@ -150,112 +158,168 @@ const SingleMachineTable = ({ area, machine, selectedMonth, showToast }) => {
     return format(date, "MM/dd/yyyy");
   };
 
+  const inputClass =
+    "w-full max-w-[6.5rem] rounded-lg border border-slate-200/95 bg-slate-50/80 px-2.5 py-2 text-center text-sm tabular-nums text-slate-800 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] placeholder:text-slate-400 transition focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-400/20 disabled:cursor-not-allowed disabled:opacity-55 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-500/25";
+
   return (
-    <div className="mb-8 border rounded p-4 shadow-md max-w-full">
-      <h3 className="text-xl font-semibold mb-2">
-        {t(`machineNames.${machine}`)}
-      </h3>
+    <div className="mb-6 min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_-12px_rgba(15,23,42,0.14)] dark:border-slate-700 dark:bg-slate-900 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
+      <div
+        className="h-1 bg-gradient-to-r from-amber-500/75 via-slate-300/50 to-sky-500/70 dark:from-amber-500/50 dark:via-slate-500/40 dark:to-sky-500/55"
+        aria-hidden
+      />
+      <div className="border-b border-slate-200/80 bg-slate-50/50 px-5 pb-4 pt-4 dark:border-slate-700 dark:bg-slate-800/40">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl dark:text-white">
+              {t(`machineNames.${machine}`)}
+            </h3>
+          </div>
+          <span className="shrink-0 rounded-full border-2 border-slate-300/90 bg-white px-3 py-1.5 text-sm font-bold tabular-nums tracking-wide text-slate-900 shadow-sm dark:border-slate-500 dark:bg-slate-900 dark:text-slate-50">
+            {selectedMonth}
+          </span>
+        </div>
+      </div>
+
       {loading ? (
         <LoadingBlock
-          className="py-8"
+          className="py-10"
           message={t("temperatureMonitor.loading")}
-          textClassName="text-base text-slate-600 dark:text-slate-400"
+          textClassName="text-sm text-slate-600 dark:text-slate-400"
         />
       ) : (
         <>
-          <table className="w-full border text-sm min-w-max">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border px-2 py-1">
-                  {t("temperatureMonitor.date")}
-                </th>
-                <th className="border px-2 py-1">
-                  {t("temperatureMonitor.temperature")}
-                </th>
-                <th className="border px-2 py-1">
-                  {t("temperatureMonitor.humidity")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedDays.map((date) => {
-                const day = format(date, "dd");
-                return (
-                  <tr key={day}>
-                    <td className="border px-2 py-1 text-center font-semibold text-gray-800">
-                      {formatDate(date)}
-                    </td>
-                    <td className="border px-2 py-1 text-center">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="w-full border px-1 py-0.5 text-center rounded"
-                        value={data.temperature?.[day] || ""}
-                        onChange={(e) =>
-                          handleInputChange("temperature", day, e.target.value)
-                        }
-                        disabled={!user}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-max border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-slate-200/90 bg-slate-100/95 dark:border-slate-700 dark:bg-slate-800/80">
+                  <th className="px-4 py-3.5 text-left text-xs font-extrabold uppercase tracking-[0.1em] text-slate-800 dark:text-slate-100">
+                    {t("temperatureMonitor.date")}
+                  </th>
+                  <th className="px-3 py-3.5 text-center text-xs font-extrabold uppercase tracking-[0.1em] text-slate-800 dark:text-slate-100">
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <FiThermometer
+                        className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400"
+                        aria-hidden
                       />
-                    </td>
-                    <td className="border px-2 py-1 text-center">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        inputMode="decimal"
-                        className="w-full border px-1 py-0.5 text-center rounded"
-                        value={data.humidity?.[day] || ""}
-                        onChange={(e) =>
-                          handleInputChange("humidity", day, e.target.value)
-                        }
-                        disabled={!user}
+                      {t("temperatureMonitor.temperature")}
+                    </span>
+                  </th>
+                  <th className="px-3 py-3.5 text-center text-xs font-extrabold uppercase tracking-[0.1em] text-slate-800 dark:text-slate-100">
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <FiDroplet
+                        className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-400"
+                        aria-hidden
                       />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {/* Pagination */}
-          <div className="flex justify-center items-center mt-4 space-x-2">
-            <button
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border rounded disabled:opacity-50"
-            >
-              {t("temperatureMonitor.previous")}
-            </button>
-            <span>
-              {t("temperatureMonitor.page", {
-                current: currentPage,
-                total: totalPages,
-              })}
-            </span>
-            <button
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 border rounded disabled:opacity-50"
-            >
-              {t("temperatureMonitor.next")}
-            </button>
+                      {t("temperatureMonitor.humidity")}
+                    </span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {pagedDays.map((date, rowIdx) => {
+                  const day = format(date, "dd");
+                  return (
+                    <tr
+                      key={day}
+                      className={
+                        rowIdx % 2 === 0
+                          ? "bg-white dark:bg-slate-900/40"
+                          : "bg-slate-50/40 dark:bg-slate-900/20"
+                      }
+                    >
+                      <td className="whitespace-nowrap px-4 py-2.5 text-left text-sm font-bold tabular-nums text-slate-800 dark:text-slate-200">
+                        {formatDate(date)}
+                      </td>
+                      <td className="border-l border-amber-200/40 bg-amber-50/25 px-3 py-2 text-center dark:border-amber-900/30 dark:bg-amber-950/15">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className={`${inputClass} mx-auto`}
+                          value={data.temperature?.[day] || ""}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "temperature",
+                              day,
+                              e.target.value
+                            )
+                          }
+                          disabled={!user}
+                        />
+                      </td>
+                      <td className="border-l border-sky-200/40 bg-sky-50/25 px-3 py-2 text-center dark:border-sky-900/30 dark:bg-sky-950/15">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          inputMode="decimal"
+                          className={`${inputClass} mx-auto`}
+                          value={data.humidity?.[day] || ""}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "humidity",
+                              day,
+                              e.target.value
+                            )
+                          }
+                          disabled={!user}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          {/* Save Button */}
-          {user && (
-            <div className="flex justify-center mt-6">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                {saving
-                  ? t("temperatureMonitor.saving")
-                  : t("temperatureMonitor.save")}
-              </button>
+          <div className="border-t border-slate-100 px-4 py-4 dark:border-slate-800">
+            <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex justify-center sm:justify-start">
+                <div className="inline-flex items-stretch overflow-hidden rounded-xl border border-slate-200/90 bg-slate-50/90 shadow-sm dark:border-slate-600 dark:bg-slate-800/50">
+                  <button
+                    type="button"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="inline-flex items-center gap-1 border-r border-slate-200/90 px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-white disabled:opacity-40 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+                  >
+                    <FiChevronLeft className="h-4 w-4" aria-hidden />
+                    {t("temperatureMonitor.previous")}
+                  </button>
+                  <span className="flex min-w-[9.5rem] items-center justify-center border-r border-slate-200/90 px-3 py-2 text-xs font-extrabold tabular-nums text-slate-800 dark:border-slate-600 dark:text-slate-100">
+                    {t("temperatureMonitor.page", {
+                      current: currentPage,
+                      total: totalPages,
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="inline-flex items-center gap-1 px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-white disabled:opacity-40 dark:text-slate-200 dark:hover:bg-slate-700/60"
+                  >
+                    {t("temperatureMonitor.next")}
+                    <FiChevronRight className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
+              </div>
+
+              {user && (
+                <div className="flex justify-center sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl bg-slate-800 px-6 py-2.5 text-sm font-bold text-white shadow-sm ring-1 ring-slate-900/10 transition hover:bg-slate-900 hover:shadow-md disabled:opacity-50 dark:bg-slate-600 dark:ring-white/10 dark:hover:bg-slate-500"
+                  >
+                    <FiSave className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                    {saving
+                      ? t("temperatureMonitor.saving")
+                      : t("temperatureMonitor.save")}
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </>
       )}
     </div>

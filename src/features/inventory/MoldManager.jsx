@@ -7,7 +7,6 @@ import { useUser } from "@/contexts/UserContext";
 import { db, ref, set, onValue } from "@/services/firebase";
 import { push, remove, update } from "firebase/database";
 import * as XLSX from "@e965/xlsx";
-import Sidebar from "@/components/layout/Sidebar";
 import AlertMessage from "@/components/ui/AlertMessage";
 
 // Map hiển thị <-> key lưu Firebase
@@ -36,14 +35,6 @@ function MoldManager() {
     }
     return `/picture/molds/${cellValue}`;
   };
-
-  // Sidebar menu mẫu
-  const sidebarItems = [
-    { label: t("moldManager.dashboard"), icon: "🏠" },
-    { label: t("moldManager.moldList"), icon: "🗂️" },
-    { label: t("moldManager.statistics"), icon: "📊" },
-    { label: t("moldManager.settings"), icon: "⚙️" },
-  ];
 
   // Tính tháng trước để hiển thị trong tên cột
   const getPrevMonthLabel = () => {
@@ -132,19 +123,34 @@ function MoldManager() {
     "Mold Size (W*D*H)",
     "Tooling Weight",
     "Date",
-    "Date Received",
-    "Date Released",
     "Location",
     "Type",
     "Pavonine Model",
     "Shot Counter",
     "Molds per Product",
-    "Vendor",
     "NamePlate",
     "Process",
-    "Notes",
     "PM Image",
   ];
+  const columnWidthClasses = {
+    No: "w-[64px]",
+    Subsidiary: "w-[110px]",
+    Model: "w-[110px]",
+    "Production Name": "w-[170px]",
+    "Mold Code": "w-[140px]",
+    "Asset No.": "w-[120px]",
+    "Mold Size (W*D*H)": "w-[130px]",
+    "Tooling Weight": "w-[110px]",
+    Date: "w-[110px]",
+    Location: "w-[95px]",
+    Type: "w-[95px]",
+    "Pavonine Model": "w-[130px]",
+    "Shot Counter": "w-[110px]",
+    "Molds per Product": "w-[110px]",
+    NamePlate: "w-[120px]",
+    Process: "w-[120px]",
+    "PM Image": "w-[96px]",
+  };
 
   // Object mẫu cho form
   const emptyForm = columns.reduce((acc, col) => {
@@ -160,7 +166,6 @@ function MoldManager() {
   const [vendorFilter, setVendorFilter] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Data & form state
   const [molds, setMolds] = useState([]);
@@ -664,51 +669,11 @@ function MoldManager() {
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col md:flex-row"
+      className="min-h-screen w-full flex flex-col"
       style={{ backgroundColor: "#eef4ff" }}
     >
-      {/* Sidebar toggle button (always visible, top left) */}
-      <button
-        className="fixed top-20 left-4 z-50 w-12 h-12 flex items-center justify-center bg-black text-white rounded-full shadow-lg hover:bg-gray-900 transition md:top-20 md:left-4"
-        style={{ display: "block" }}
-        onClick={() => setSidebarOpen((open) => !open)}
-        aria-label={
-          sidebarOpen ? t("moldManager.close") : t("moldManager.dashboard")
-        }
-      >
-        {sidebarOpen ? "✕" : "☰"}
-      </button>
-
-      {/* Sidebar - always fixed for all screen sizes */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        aria-label="Sidebar"
-      >
-        <div className="text-center mb-6">
-          <h2 className="text-xl font-bold text-white">
-            📋 {t("moldManager.title")}
-          </h2>
-        </div>
-        <ul className="space-y-4">
-          {sidebarItems.map((item) => (
-            <li
-              key={item.label}
-              className="flex items-center gap-3 text-base font-medium hover:text-sky-300 cursor-pointer transition"
-            >
-              <span className="text-lg">{item.icon}</span>
-              {item.label}
-            </li>
-          ))}
-        </ul>
-      </Sidebar>
-
       {/* Main content */}
-      <main
-        className={`flex-1 p-4 md:p-8 overflow-auto transition-all duration-300 ${
-          sidebarOpen ? "ml-72" : "ml-0"
-        }`}
-      >
+      <main className="flex-1 p-4 md:p-8 overflow-auto">
         {/* Mobile top bar */}
         <div className="flex items-center justify-center md:hidden mb-3">
           <h1 className="w-full text-center text-xl font-extrabold uppercase tracking-widest text-[#1e293b]">
@@ -865,11 +830,9 @@ function MoldManager() {
                 })}
                 <button
                   type="submit"
-                  className="col-span-1 sm:col-span-2 lg:col-span-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 sm:py-1 rounded font-bold text-sm mt-2"
+                  className="col-span-1 sm:col-span-2 lg:col-span-4 mt-2 inline-flex w-full min-h-[42px] items-center justify-center rounded bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-center text-sm font-bold leading-tight text-white"
                 >
-                  {editing !== null
-                    ? t("moldManager.edit")
-                    : t("moldManager.addNew")}
+                  {editing !== null ? "Cập nhật" : t("moldManager.addNew")}
                 </button>
               </form>
             </div>
@@ -894,9 +857,9 @@ function MoldManager() {
                   onClick={() => {
                     handleDelete(confirmDelete.id);
                   }}
-                  className="px-3 py-1 rounded bg-red-600 text-white font-semibold hover:bg-red-700"
+                  className="inline-flex min-h-[38px] items-center justify-center rounded bg-red-600 px-4 py-2 text-sm font-semibold leading-tight text-white hover:bg-red-700"
                 >
-                  {t("moldManager.delete")}
+                  {t("moldManager.delete") || "Xóa"}
                 </button>
               </div>
             </div>
@@ -911,7 +874,7 @@ function MoldManager() {
                 {columns.map((col) => (
                   <th
                     key={col}
-                    className="border border-gray-200 px-3 py-2 text-center text-blue-900 text-xs font-bold uppercase tracking-wide bg-blue-100"
+                    className={`border border-gray-200 px-2 py-2 text-center text-blue-900 text-xs font-bold uppercase tracking-wide bg-blue-100 ${columnWidthClasses[col] || "w-[120px]"}`}
                   >
                     {getTranslatedColumn(col)}
                   </th>
@@ -928,12 +891,13 @@ function MoldManager() {
                   className={idx % 2 === 0 ? "bg-white" : "bg-blue-100"}
                 >
                   {columns.map((col) => {
+                    const colWidthClass = columnWidthClasses[col] || "w-[120px]";
                     // Xử lý đặc biệt cho cột PM Image - chỉ hiển thị nút
                     if (col === "PM Image") {
                       return (
                         <td
                           key={col}
-                          className="border border-gray-200 px-2 py-1 text-xs text-center align-middle whitespace-nowrap"
+                          className={`border border-gray-200 px-2 py-1 text-xs text-center align-middle whitespace-nowrap ${colWidthClass}`}
                         >
                           <button
                             onClick={() => handleViewPmDetail(m)}
@@ -963,7 +927,7 @@ function MoldManager() {
                     return (
                       <td
                         key={col}
-                        className="border border-gray-200 px-2 py-1 text-xs text-center align-middle"
+                        className={`border border-gray-200 px-2 py-1 text-xs text-center align-middle ${colWidthClass}`}
                       >
                         {isImage && imagePath && !hasImageError ? (
                           <img
@@ -1023,7 +987,7 @@ function MoldManager() {
                           type="button"
                           title={t("moldManager.delete")}
                           aria-label={t("moldManager.delete")}
-                          className="flex h-8 w-8 items-center justify-center rounded-md bg-red-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-red-600 hover:shadow-md"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-red-500 text-sm leading-none text-white shadow-sm transition-all duration-200 hover:bg-red-600 hover:shadow-md"
                         >
                           <span aria-hidden="true">🗑️</span>
                         </button>

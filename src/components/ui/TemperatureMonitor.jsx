@@ -41,6 +41,7 @@ const TemperatureMonitor = () => {
     format(new Date(), "yyyy-MM"),
   );
   const [showAreas, setShowAreas] = useState(false);
+  const [showAreaDetails, setShowAreaDetails] = useState(false);
   const [showMonthInput, setShowMonthInput] = useState(false);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("temperature");
@@ -119,8 +120,12 @@ const TemperatureMonitor = () => {
     setMachinePage(1);
   }, [selectedArea, filteredMachines.length]);
 
+  useEffect(() => {
+    // Đổi khu vực thì thu gọn phần máy (con); danh sách khu vực (tổng) giữ nguyên trạng thái mở/đóng do người dùng
+    setShowAreaDetails(false);
+  }, [selectedArea]);
+
   const [isLoading, setIsLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const handleEditMachine = useCallback(
     async (oldName, newName) => {
       const trimmedNew = newName.trim();
@@ -271,94 +276,152 @@ const TemperatureMonitor = () => {
     setIsLoading(false);
   }, [areas, newMachineName, selectedArea, t, user]);
   return (
-    <div className="" style={{ backgroundColor: "#eef4ff" }}>
-      {/* Toggle Button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed left-4 top-20 z-50 w-12 h-12 flex items-center justify-center rounded-full shadow-lg bg-black text-white hover:bg-gray-900 transition"
-        aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-      >
-        {sidebarOpen ? "✕" : "☰"}
-      </button>
-
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-200 to-indigo-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-        <div className="text-center mb-4">
-          <h2 className="text-xl font-bold text-white">
-            🌡️ {t("temperatureMonitor.title")}
-          </h2>
-        </div>
+      <Sidebar>
         <div className="space-y-4">
-          <p className="uppercase text-sm text-white tracking-wide pt-2">
-            {t("temperatureMonitor.filters")}
-          </p>
-          {/* Area toggle */}
-          <div>
-            <div
+          <div className="rounded-2xl border border-white/20 bg-white/12 px-4 py-4 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+            <h2 className="text-xl font-black tracking-tight text-white sm:text-2xl">
+              🌡️ {t("temperatureMonitor.title")}
+            </h2>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/75">
+              {t("temperatureMonitor.filters")}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+            <button
               onClick={() => setShowAreas(!showAreas)}
-              className="flex items-center space-x-3 hover:bg-white/20 rounded px-3 py-2 cursor-pointer"
+              className="flex w-full items-center gap-3 rounded-xl bg-white/10 px-3 py-2.5 text-left transition hover:bg-white/20"
             >
-              <HiFolder className="text-xl" />
-              <span className="font-semibold">
+              <HiFolder className="text-lg text-white/90" />
+              <span className="text-sm font-bold text-white">
                 {t("temperatureMonitor.area")}
               </span>
-              <span className="ml-auto">{showAreas ? "▲" : "▼"}</span>
-            </div>
-            {showAreas && (
-              <div className="ml-2 mt-2 space-y-2">
+              <span className="ml-auto text-xs text-white/80">
+                {showAreas ? "▲" : "▼"}
+              </span>
+            </button>
+
+            <div
+              className={`mt-2 space-y-1 overflow-hidden transition-all duration-200 ${
+                showAreas
+                  ? "max-h-72 opacity-100 translate-y-0"
+                  : "max-h-0 opacity-0 -translate-y-1 pointer-events-none"
+              }`}
+            >
                 {areaKeys.length === 0 && (
-                  <p className="text-sm text-white/60 italic">
+                  <p className="rounded-lg bg-black/10 px-3 py-2 text-sm italic text-white/70">
                     {t("temperatureMonitor.noArea")}
                   </p>
                 )}
                 {areaKeys.map((areaKey) => (
-                  <div
+                  <button
                     key={areaKey}
-                    className={`px-2 py-1 rounded cursor-pointer ${
-                      selectedArea === areaKey
-                        ? "bg-white/30 font-semibold"
-                        : "hover:bg-white/10"
-                    }`}
                     onClick={() => setSelectedArea(areaKey)}
+                    className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${
+                      selectedArea === areaKey
+                        ? "bg-white text-slate-900 font-bold shadow-sm"
+                        : "bg-transparent text-white/90 hover:bg-white/15"
+                    }`}
                   >
-                    {t(`areas.${areaKey}`)} {/* ✅ hiển thị tên đã dịch */}
-                  </div>
+                    {t(`areas.${areaKey}`)}
+                  </button>
                 ))}
-              </div>
-            )}
+            </div>
           </div>
 
-          {/* Máy đo */}
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+            <button
+              onClick={() => setShowMonthInput(!showMonthInput)}
+              className="flex w-full items-center gap-3 rounded-xl bg-white/10 px-3 py-2.5 transition hover:bg-white/20"
+            >
+              <HiCalendar className="text-lg text-white/90" />
+              <span className="text-sm font-bold text-white">
+                {t("temperatureMonitor.month")}
+              </span>
+              <span className="ml-auto text-xs text-white/80">
+                {showMonthInput ? "▲" : "▼"}
+              </span>
+            </button>
+            <div
+              className={`mt-2 overflow-hidden transition-all duration-200 ${
+                showMonthInput
+                  ? "max-h-24 opacity-100 translate-y-0"
+                  : "max-h-0 opacity-0 -translate-y-1 pointer-events-none"
+              }`}
+            >
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full rounded-lg border border-white/20 bg-white/95 px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              setModalSelectedArea(selectedArea);
+              setIsChartModalOpen(true);
+            }}
+            disabled={!selectedArea}
+            className="flex w-full items-center gap-3 rounded-2xl border border-indigo-300/35 bg-indigo-500/20 px-4 py-3 text-left transition hover:bg-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <FaChartLine className="text-lg text-indigo-100" />
+            <span className="text-sm font-bold text-white">
+              {t("temperatureMonitor.viewChart")}
+            </span>
+          </button>
+
           {selectedArea && (
-            <div className="mt-6">
-              <p className="uppercase text-sm text-white/70 tracking-wide mb-2">
-                {t("temperatureMonitor.area")}: {t(`areas.${selectedArea}`)}
-              </p>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+              <button
+                onClick={() => setShowAreaDetails((prev) => !prev)}
+                className="flex w-full items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-left transition hover:bg-white/20"
+              >
+                <span className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-white">
+                  {t("temperatureMonitor.area")}: {t(`areas.${selectedArea}`)}
+                </span>
+                <span className="ml-auto text-xs text-white/80">
+                  {showAreaDetails ? "▲" : "▼"}
+                </span>
+              </button>
+
+              <div
+                className={`mt-2 overflow-hidden transition-all duration-200 ${
+                  showAreaDetails
+                    ? "max-h-[1200px] opacity-100 translate-y-0"
+                    : "max-h-0 opacity-0 -translate-y-1 pointer-events-none"
+                }`}
+              >
               <input
                 type="text"
                 value={searchMachine}
                 onChange={(e) => setSearchMachine(e.target.value)}
                 placeholder={t("temperatureMonitor.searchMachine")}
-                className="mb-2 w-full rounded border border-white/20 bg-white/95 px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                className="mb-2 w-full rounded-lg border border-white/20 bg-white/95 px-3 py-2 text-sm text-slate-900 outline-none ring-0 placeholder:text-slate-500 focus:border-white/60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 autoComplete="off"
               />
+
               {filteredMachines.length === 0 && !isAddingMachine && (
-                <div className="text-white/80 italic mb-2">
+                <div className="mb-2 rounded-lg bg-black/10 px-3 py-2 text-sm italic text-white/80">
                   {t("temperatureMonitor.noMachineGuide")}
                 </div>
               )}
-              <ul className="space-y-1">
+
+              <ul className="space-y-1.5">
                 {pagedMachines.map((machine) => (
                   <li
                     key={machine}
-                    className="flex items-center justify-between bg-white/10 px-2 py-1 rounded"
+                    className="flex items-center justify-between rounded-lg border border-white/12 bg-white/8 px-2.5 py-2"
                   >
                     {editingMachine === machine ? (
                       <>
                         <input
                           value={editMachineName}
                           onChange={(e) => setEditMachineName(e.target.value)}
-                          className="flex-1 rounded border border-white/20 bg-white/95 px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                          className="flex-1 rounded-md border border-white/20 bg-white/95 px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                           onKeyDown={(e) => {
                             if (e.key === "Enter")
                               handleEditMachine(machine, editMachineName);
@@ -370,30 +433,33 @@ const TemperatureMonitor = () => {
                           onClick={() =>
                             handleEditMachine(machine, editMachineName)
                           }
+                          className="ml-2 rounded-md p-1 text-white hover:bg-white/20"
                         >
                           <FaCheck />
                         </button>
                       </>
                     ) : (
                       <>
-                        <span>
+                        <span className="truncate pr-2 text-sm font-medium text-white">
                           {t(`machineNames.${machine}`, {
                             defaultValue: machine,
                           })}
                         </span>
 
                         {user && (
-                          <div className="flex space-x-2">
+                          <div className="flex space-x-1">
                             <button
                               onClick={() => {
                                 setEditingMachine(machine);
                                 setEditMachineName(machine);
                               }}
+                              className="rounded-md p-1.5 text-white/85 transition hover:bg-white/20 hover:text-white"
                             >
                               <FaEdit />
                             </button>
                             <button
                               onClick={() => handleDeleteMachine(machine)}
+                              className="rounded-md p-1.5 text-white/85 transition hover:bg-red-400/20 hover:text-red-100"
                             >
                               <FaTrash />
                             </button>
@@ -405,17 +471,16 @@ const TemperatureMonitor = () => {
                 ))}
               </ul>
 
-              {/* Pagination for machines */}
               {filteredMachines.length > PAGE_SIZE && (
-                <div className="flex justify-center items-center mt-2 space-x-2">
+                <div className="mt-3 flex items-center justify-center gap-2 text-sm text-white/90">
                   <button
                     onClick={() => setMachinePage((p) => Math.max(1, p - 1))}
                     disabled={machinePage === 1}
-                    className="px-2 py-1 border rounded disabled:opacity-50"
+                    className="rounded-lg border border-white/30 bg-white/10 px-2.5 py-1.5 font-semibold transition hover:bg-white/20 disabled:opacity-50"
                   >
                     {t("temperatureMonitor.previous")}
                   </button>
-                  <span>
+                  <span className="rounded-md bg-black/10 px-2 py-1 text-xs font-bold">
                     {t("temperatureMonitor.page", {
                       current: machinePage,
                       total: totalMachinePages,
@@ -426,7 +491,7 @@ const TemperatureMonitor = () => {
                       setMachinePage((p) => Math.min(totalMachinePages, p + 1))
                     }
                     disabled={machinePage === totalMachinePages}
-                    className="px-2 py-1 border rounded disabled:opacity-50"
+                    className="rounded-lg border border-white/30 bg-white/10 px-2.5 py-1.5 font-semibold transition hover:bg-white/20 disabled:opacity-50"
                   >
                     {t("temperatureMonitor.next")}
                   </button>
@@ -435,16 +500,20 @@ const TemperatureMonitor = () => {
 
               {user &&
                 (isAddingMachine ? (
-                  <div className="flex space-x-1 mt-2">
+                  <div className="mt-3 flex gap-1.5">
                     <input
                       type="text"
                       value={newMachineName}
                       onChange={(e) => setNewMachineName(e.target.value)}
                       placeholder={t("temperatureMonitor.newMachine")}
-                      className="flex-1 rounded border border-white/20 bg-white/95 px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                      className="flex-1 rounded-lg border border-white/20 bg-white/95 px-2.5 py-1.5 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       disabled={isLoading}
                     />
-                    <button onClick={handleAddMachine} disabled={isLoading}>
+                    <button
+                      onClick={handleAddMachine}
+                      disabled={isLoading}
+                      className="rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:opacity-60"
+                    >
                       {isLoading
                         ? t("temperatureMonitor.saving")
                         : t("temperatureMonitor.add")}
@@ -455,6 +524,7 @@ const TemperatureMonitor = () => {
                         setNewMachineName("");
                       }}
                       disabled={isLoading}
+                      className="rounded-lg border border-white/30 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/20 disabled:opacity-60"
                     >
                       {t("temperatureMonitor.cancel")}
                     </button>
@@ -462,64 +532,41 @@ const TemperatureMonitor = () => {
                 ) : (
                   <button
                     onClick={() => setIsAddingMachine(true)}
-                    className="flex items-center space-x-1 text-indigo-300 hover:text-indigo-100 mt-2"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-white/25 bg-white/12 px-3 py-1.5 text-sm font-bold text-white transition hover:bg-white/20"
                     disabled={isLoading}
                   >
                     <FaPlus />
                     <span>{t("temperatureMonitor.addMachine")}</span>
                   </button>
                 ))}
+              </div>
             </div>
           )}
 
-          {/* Chọn tháng */}
-          <div className="mt-6">
-            <div
-              onClick={() => setShowMonthInput(!showMonthInput)}
-              className="flex items-center space-x-3 hover:bg-white/20 rounded px-3 py-2 cursor-pointer"
-            >
-              <HiCalendar className="text-xl" />
-              <span className="font-semibold">
-                {t("temperatureMonitor.month")}
-              </span>
-              <span className="ml-auto">{showMonthInput ? "▲" : "▼"}</span>
-            </div>
-            {showMonthInput && (
-              <div className="ml-6 mt-2">
-                <input
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full rounded border border-white/20 bg-white/95 px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Nút biểu đồ */}
-          <div
-            onClick={() => {
-              setModalSelectedArea(selectedArea);
-              setIsChartModalOpen(true);
-            }}
-            className="flex items-center space-x-3 hover:bg-white/20 rounded px-3 py-2 cursor-pointer mt-6"
-          >
-            <FaChartLine className="text-xl" />
-            <span className="font-semibold">
-              {t("temperatureMonitor.viewChart")}
-            </span>
-          </div>
         </div>
       </Sidebar>
 
       {/* Nội dung chính */}
-      <div className="ml-72 flex-1 px-6 pt-6 pb-0">
-        <div className="min-h-[71.2vh] rounded bg-white p-6 pt-10 shadow dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-          <h2 className="mb-6 text-center text-2xl font-bold text-slate-900 dark:text-slate-100">
-            📋 {t("temperatureMonitor.header")} -{" "}
-            {selectedArea
-              ? t(`areas.${selectedArea}`)
-              : t("temperatureMonitor.noArea")}
+      <div className="flex-1 px-3 pb-4 pt-4 sm:px-4 sm:pb-5 sm:pt-5 md:ml-72 md:px-6 md:pb-6 md:pt-6">
+        <div className="min-h-[71.2vh] rounded-2xl border border-slate-200/95 bg-gradient-to-b from-slate-50 via-white to-slate-100/90 p-6 pt-8 shadow-[0_1px_3px_rgba(15,23,42,0.06),0_20px_50px_-24px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:shadow-none dark:ring-1 dark:ring-slate-800">
+          <h2 className="mb-8 text-center text-2xl font-black tracking-tight text-slate-900 sm:text-3xl dark:text-white">
+            <span
+              className="mr-2 inline-block align-middle opacity-95"
+              aria-hidden
+            >
+              📋
+            </span>
+            <span className="text-slate-900 dark:text-white">
+              {t("temperatureMonitor.header")}
+            </span>
+            <span className="mx-2 font-light text-slate-400 dark:text-slate-500">
+              ·
+            </span>
+            <span className="text-slate-900 dark:text-white">
+              {selectedArea
+                ? t(`areas.${selectedArea}`)
+                : t("temperatureMonitor.noArea")}
+            </span>
           </h2>
 
           {areasLoading ? (
@@ -535,12 +582,9 @@ const TemperatureMonitor = () => {
               {t("temperatureMonitor.noMachine")}
             </p>
           ) : (
-            <div
-              className="grid gap-6"
-              style={{ gridTemplateColumns: "1fr 1fr" }}
-            >
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               {pagedMachines.map((machine) => (
-                <div key={machine} className="overflow-x-auto">
+                <div key={machine} className="min-w-0 overflow-x-auto">
                   <SingleMachineTable
                     machine={machine}
                     selectedMonth={selectedMonth}
@@ -558,18 +602,18 @@ const TemperatureMonitor = () => {
       <Modal
         isOpen={isChartModalOpen}
         onRequestClose={() => setIsChartModalOpen(false)}
-        className="bg-white p-6 rounded-lg shadow-lg w-full max-w-7xl mx-auto mt-20 overflow-y-auto max-h-[90vh]"
+        className="mx-auto mt-16 max-h-[90vh] w-full max-w-7xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
         overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start z-50"
       >
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center space-x-6">
-            <h3 className="text-2xl font-bold">
+            <h3 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl dark:text-white">
               📈 {t("temperatureMonitor.chartTitle")} - {selectedMonth}
             </h3>
             <select
               value={modalSelectedArea}
               onChange={(e) => setModalSelectedArea(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
               {areaKeys.map((areaKey) => (
                 <option key={areaKey} value={areaKey}>
@@ -581,29 +625,29 @@ const TemperatureMonitor = () => {
           </div>
           <button
             onClick={() => setIsChartModalOpen(false)}
-            className="text-red-600 font-bold hover:text-red-800"
+            className="font-bold text-red-600 hover:text-red-800"
           >
             {t("temperatureMonitor.close")} ✖
           </button>
         </div>
 
-        <div className="flex space-x-4 mb-6">
+        <div className="mb-6 flex space-x-4">
           <button
             onClick={() => setActiveTab("temperature")}
-            className={`px-5 py-2 rounded-md font-semibold border ${
+            className={`px-5 py-2 rounded-md font-bold border ${
               activeTab === "temperature"
-                ? "bg-indigo-600 text-white"
-                : "border-gray-300 text-gray-700"
+                ? "bg-indigo-600 text-white shadow"
+                : "border-slate-300 text-slate-700 dark:border-slate-600 dark:text-slate-300"
             }`}
           >
             {t("temperatureMonitor.temperature")}
           </button>
           <button
             onClick={() => setActiveTab("humidity")}
-            className={`px-5 py-2 rounded-md font-semibold border ${
+            className={`px-5 py-2 rounded-md font-bold border ${
               activeTab === "humidity"
-                ? "bg-indigo-600 text-white"
-                : "border-gray-300 text-gray-700"
+                ? "bg-indigo-600 text-white shadow"
+                : "border-slate-300 text-slate-700 dark:border-slate-600 dark:text-slate-300"
             }`}
           >
             {t("temperatureMonitor.humidity")}

@@ -96,14 +96,11 @@ export default function Sidebar({
   return (
     <div
       ref={containerRef}
-      className={`app-sidebar w-80 fixed left-0 text-white p-6 shadow z-20 overflow-y-auto isolate space-y-6 transition-transform duration-300 ${
-        isOpen ? "translate-x-0" : "-translate-x-full"
-      } ${className}`}
-      style={{
-        top: "64px",
-        height: "calc(100vh - 64px)",
-        backgroundColor: "#000000cb",
-      }}
+      className={`app-sidebar isolate space-y-6 p-4 text-white transition-all duration-200 ease-out sm:p-5 md:fixed md:left-0 md:z-20 md:h-[calc(100vh-64px)] md:w-80 md:overflow-y-auto md:p-6 md:shadow ${
+        isOpen
+          ? "translate-x-0 opacity-100"
+          : "-translate-x-full opacity-0 pointer-events-none"
+      } bg-black/80 md:top-16 ${className}`}
     >
       {children}
     </div>
