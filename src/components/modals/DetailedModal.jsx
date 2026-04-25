@@ -254,90 +254,90 @@ export default function DetailedModal({ isOpen, onClose, area }) {
           <div className="grid grid-cols-1 gap-2 xl:grid-cols-6">
             <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 xl:col-span-5 xl:grid-cols-5">
               <div className="flex min-w-0 flex-col">
-              <label
-                className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300"
-                htmlFor="year-select"
-              >
-                Năm
-              </label>
-              <select
-                id="year-select"
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/35 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-100"
-              >
-                {Array.from(
-                  { length: 5 },
-                  (_, i) => new Date().getFullYear() - i,
-                ).map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
+                <label
+                  className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300"
+                  htmlFor="year-select"
+                >
+                  Năm
+                </label>
+                <select
+                  id="year-select"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/35 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-100"
+                >
+                  {Array.from(
+                    { length: 5 },
+                    (_, i) => new Date().getFullYear() - i,
+                  ).map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex min-w-0 flex-col">
-              <label
-                className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300"
-                htmlFor="date-filter"
-              >
-                Ngày
-              </label>
-              <input
-                id="date-filter"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/35 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-100"
-              />
+                <label
+                  className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300"
+                  htmlFor="date-filter"
+                >
+                  Ngày
+                </label>
+                <input
+                  id="date-filter"
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/35 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-100"
+                />
               </div>
 
               <div className="flex min-w-0 flex-col">
-              <label
-                className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300"
-                htmlFor="area-select"
-              >
-                {t("detailedModal.area")}
-              </label>
-              <select
-                id="area-select"
-                value={selectedArea}
-                onChange={(e) => setSelectedArea(e.target.value)}
-                className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/35 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-100"
-              >
-                {areas.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </select>
+                <label
+                  className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300"
+                  htmlFor="area-select"
+                >
+                  {t("detailedModal.area")}
+                </label>
+                <select
+                  id="area-select"
+                  value={selectedArea}
+                  onChange={(e) => setSelectedArea(e.target.value)}
+                  className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/35 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-100"
+                >
+                  {areas.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex min-w-0 flex-col">
-              <label className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-                Tuần hiện tại
-              </label>
-              <div className="rounded-lg border border-slate-300/80 bg-slate-100 px-2.5 py-2 text-xs text-slate-700 dark:border-slate-700/90 dark:bg-slate-800/90 dark:text-slate-200">
-                Tuần {currentWeekNumber} ({currentWeekStart})
-              </div>
+                <label className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                  Tuần hiện tại
+                </label>
+                <div className="rounded-lg border border-slate-300/80 bg-slate-100 px-2.5 py-2 text-xs text-slate-700 dark:border-slate-700/90 dark:bg-slate-800/90 dark:text-slate-200">
+                  Tuần {currentWeekNumber} ({currentWeekStart})
+                </div>
               </div>
 
               <div className="flex min-w-0 flex-col">
-              <label
-                className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300"
-                htmlFor="model-search"
-              >
-                {t("detailedModal.model")}
-              </label>
-              <input
-                id="model-search"
-                type="text"
-                placeholder={t("detailedModal.searchModel")}
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-xs text-slate-800 shadow-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/35 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
+                <label
+                  className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300"
+                  htmlFor="model-search"
+                >
+                  {t("detailedModal.model")}
+                </label>
+                <input
+                  id="model-search"
+                  type="text"
+                  placeholder={t("detailedModal.searchModel")}
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 text-xs text-slate-800 shadow-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/35 dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
               </div>
             </div>
 
