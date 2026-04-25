@@ -64,7 +64,7 @@ export function attendanceTableWrapperMinWidthClass(columnPlan) {
     case "narrow":
       return "min-w-[872px]";
     case "minimal":
-      return "min-w-[624px]";
+      return "min-w-0";
     default:
       return "min-w-[968px]";
   }

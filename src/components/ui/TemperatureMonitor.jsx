@@ -24,6 +24,10 @@ import Sidebar from "@/components/layout/Sidebar";
 
 Modal.setAppElement("#root");
 
+/** Thanh cuộn mỏng, tông trắng mờ — khớp sidebar kính (WebKit + Firefox) */
+const TEMP_SIDEBAR_SCROLL =
+  "overscroll-contain [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.42)_rgba(255,255,255,0.07)] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-white/[0.07] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.28] [&::-webkit-scrollbar-thumb]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)] [&::-webkit-scrollbar-thumb]:transition-colors duration-150 hover:[&::-webkit-scrollbar-thumb]:bg-white/[0.48]";
+
 const PAGE_SIZE = 6;
 const ChartView = lazy(() => import("@/features/dashboard/ChartView"));
 
@@ -304,10 +308,10 @@ const TemperatureMonitor = () => {
             </button>
 
             <div
-              className={`mt-2 space-y-1 overflow-hidden transition-all duration-200 ${
+              className={`mt-2 space-y-1 transition-all duration-200 ${
                 showAreas
-                  ? "max-h-72 opacity-100 translate-y-0"
-                  : "max-h-0 opacity-0 -translate-y-1 pointer-events-none"
+                  ? `max-h-72 overflow-y-auto opacity-100 translate-y-0 ${TEMP_SIDEBAR_SCROLL}`
+                  : "max-h-0 overflow-hidden opacity-0 -translate-y-1 pointer-events-none"
               }`}
             >
                 {areaKeys.length === 0 && (
@@ -389,10 +393,10 @@ const TemperatureMonitor = () => {
               </button>
 
               <div
-                className={`mt-2 overflow-hidden transition-all duration-200 ${
+                className={`mt-2 transition-all duration-200 ${
                   showAreaDetails
-                    ? "max-h-[1200px] opacity-100 translate-y-0"
-                    : "max-h-0 opacity-0 -translate-y-1 pointer-events-none"
+                    ? `max-h-[1200px] overflow-y-auto opacity-100 translate-y-0 ${TEMP_SIDEBAR_SCROLL}`
+                    : "max-h-0 overflow-hidden opacity-0 -translate-y-1 pointer-events-none"
                 }`}
               >
               <input

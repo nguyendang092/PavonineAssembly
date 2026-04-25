@@ -49,7 +49,9 @@ const HonorBoard = lazyImport(() => import("@/features/employee/HonorBoard"));
 const TemperatureMonitor = lazyImport(
   () => import("@/components/ui/TemperatureMonitor"),
 );
-const MoldManager = lazyImport(() => import("@/features/inventory/MoldManager"));
+const MoldManager = lazyImport(
+  () => import("@/features/inventory/MoldManager"),
+);
 const PerformanceChart = lazyImport(
   () => import("@/features/dashboard/PerformanceChart"),
 );
@@ -76,8 +78,12 @@ function ScrollActionPortal({ scrollContainerRef }) {
   if (NO_SCROLL_ACTION_PATHS.has(pathname)) return null;
 
   return createPortal(
-    <div className="pointer-events-auto fixed bottom-6 right-6 z-[9999] flex items-center gap-1.5">
-      <BackToBottom alwaysVisible inline scrollContainerRef={scrollContainerRef} />
+    <div className="pointer-events-auto fixed bottom-2 right-6 z-[9999] flex items-center gap-1.5">
+      <BackToBottom
+        alwaysVisible
+        inline
+        scrollContainerRef={scrollContainerRef}
+      />
       <BackToTop alwaysVisible inline scrollContainerRef={scrollContainerRef} />
     </div>,
     document.body,
@@ -257,11 +263,7 @@ const App = () => {
             style={{ paddingTop: "var(--app-navbar-height, 4rem)" }}
           >
             {user ? <MyAccessSummary variant="compact" /> : null}
-            <Suspense
-              fallback={
-                <LoadingBlock className="min-h-[60vh]" />
-              }
-            >
+            <Suspense fallback={<LoadingBlock className="min-h-[60vh]" />}>
               <Routes>
                 <Route path="/login" element={<LoginRoute />} />
                 <Route
@@ -284,9 +286,7 @@ const App = () => {
                       <Route
                         key={r.path}
                         path={r.path}
-                        element={
-                          <ProtectedRoute>{element}</ProtectedRoute>
-                        }
+                        element={<ProtectedRoute>{element}</ProtectedRoute>}
                       />
                     ) : null;
                   })}

@@ -462,7 +462,7 @@ const vi = {
     grandTotal: "Cộng",
     tableSectionTitle: "Bảng số liệu",
     tableSectionHint:
-      "Chọn chế độ chi tiết hoặc tổng hợp; lọc khu vực khi cần.",
+      "Tổng hợp: một bảng Normal/Rework. Chi tiết: bảng tổng hợp trên, bảng theo ngày (đạt/NG) dưới. Lọc khu vực khi cần.",
     viewDetailed: "Chi tiết",
     viewSummary: "Tổng hợp",
     ngColumn: "NG",

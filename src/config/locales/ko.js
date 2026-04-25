@@ -456,7 +456,8 @@ const ko = {
     axisNg: "NG",
     grandTotal: "합계",
     tableSectionTitle: "수치 표",
-    tableSectionHint: "상세 또는 요약 보기, 필요 시 공정 필터.",
+    tableSectionHint:
+      "요약: Normal/Rework 표 하나. 상세: 위 요약 표, 아래 일자별(양품/NG). 필요 시 공정 필터.",
     viewDetailed: "상세",
     viewSummary: "요약",
     ngColumn: "NG",

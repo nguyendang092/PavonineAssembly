@@ -90,12 +90,21 @@ import {
   isEmployeeQuickUnattended,
 } from "./attendanceListShared";
 import { mergeAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
+import AttendanceSearchActionsBar from "./AttendanceSearchActionsBar";
 
 const AttendanceComboChartModal = lazy(
   () => import("./AttendanceComboChartModal"),
 );
 
-function AttendanceList() {
+function AttendanceList({
+  attendanceRootPath = "attendance",
+  headerTitle,
+  headerSubtitle,
+  counterpartLinkTo = "/seasonal-staff-attendance",
+  counterpartLinkLabelKey = "seasonalActiveEmployeesTitleShort",
+  counterpartLinkLabelDefault = "Điểm danh nhân viên thời vụ",
+  forceVirtualizedRows = false,
+}) {
   const todayKey = new Date().toISOString().slice(0, 10);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
@@ -299,7 +308,7 @@ function AttendanceList() {
   useEffect(() => {
     attendanceRawRef.current = undefined;
     setEmployees([]);
-    const empRef = ref(db, `attendance/${selectedDate}`);
+    const empRef = ref(db, `${attendanceRootPath}/${selectedDate}`);
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
       attendanceRawRef.current = data;
@@ -1078,7 +1087,7 @@ function AttendanceList() {
       if (!window.confirm(t("attendanceList.deleteConfirm"))) return;
 
       try {
-        await remove(ref(db, `attendance/${selectedDate}/${id}`));
+        await remove(ref(db, `${attendanceRootPath}/${selectedDate}/${id}`));
         setAlert({
           show: true,
           type: "success",
@@ -1099,14 +1108,16 @@ function AttendanceList() {
 
   const tableScrollParentRef = useRef(null);
   const shouldVirtualizeTable =
+    forceVirtualizedRows ||
     filteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
+  const rowEstimatePx = 36;
 
   const rowVirtualizer = useVirtualizer({
     count: filteredEmployees.length,
     getScrollElement: () => tableScrollParentRef.current,
-    // Ước lượng an toàn (padding + nhiều cột); measureElement đo lại thực tế
-    estimateSize: () => 40,
-    overscan: 12,
+    // Đồng bộ mật độ hiển thị với chiều cao hàng thực tế.
+    estimateSize: () => rowEstimatePx,
+    overscan: 10,
   });
 
   // Use the extracted upload handler
@@ -1186,7 +1197,7 @@ function AttendanceList() {
     }
     try {
       // Xóa toàn bộ dữ liệu của ngày đã chọn
-      await remove(ref(db, `attendance/${selectedDate}`));
+      await remove(ref(db, `${attendanceRootPath}/${selectedDate}`));
       setAlert({
         show: true,
         type: "success",
@@ -2133,38 +2144,40 @@ function AttendanceList() {
       {/* Main Content */}
       <div className="p-2 md:p-4 transition-all duration-300">
         {/* Header */}
-        <div className="mb-2 md:mb-3">
-          <div className="rounded-lg border-t-4 border-blue-600 bg-white px-2.5 py-1.5 shadow-md md:px-3 md:py-2 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div className="min-w-0">
-                <h1 className="text-base font-bold uppercase leading-tight tracking-wide text-[#1e293b] md:text-lg dark:text-slate-100">
-                  {tl("activeEmployeesTitle", "DANH SÁCH NHÂN VIÊN HIỆN DIỆN")}
+        <div className="mb-1.5 md:mb-2">
+          <div className="rounded-lg border-t-4 border-blue-600 bg-white px-2 py-1 shadow-md md:px-3 md:py-1.5 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+            <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-2">
+              <div className="min-w-0 text-left">
+                <h1 className="text-balance text-sm font-bold uppercase leading-snug tracking-wide text-[#1e293b] md:text-base dark:text-slate-100">
+                  {headerTitle ??
+                    tl("activeEmployeesTitle", "DANH SÁCH NHÂN VIÊN HIỆN DIỆN")}
                 </h1>
-                <p className="mt-0.5 text-[11px] leading-snug text-gray-600 md:text-xs">
-                  {tl("activeEmployeesSubtitle", "List of Active Employees")}
+                <p className="mt-0.5 hidden text-[11px] leading-snug text-gray-600 md:mt-0.5 md:block md:text-xs">
+                  {headerSubtitle ??
+                    tl("activeEmployeesSubtitle", "List of Active Employees")}
                 </p>
-                <p className="mt-0.5 text-[10px] text-gray-500 md:text-[11px]">
+                <p className="mt-0.5 text-[10px] leading-snug text-gray-500 md:mt-0.5 md:text-[11px]">
                   {tl("headerDateLabel", "Ngày")}:{" "}
                   {new Date(selectedDate).toLocaleDateString(displayLocale)}
                 </p>
               </div>
               <nav
-                className="mb-0.5 flex shrink-0 flex-col items-end gap-0.5 text-right"
+                className="flex w-full shrink-0 flex-row flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-slate-100 pt-1 text-left sm:mb-0.5 sm:w-auto sm:flex-nowrap sm:items-end sm:border-0 sm:pt-0 sm:text-right"
                 aria-label={tl("headerQuickLinks", "Liên kết nhanh")}
               >
                 <Link
-                  to="/seasonal-staff-attendance"
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline md:text-xs"
+                  to={counterpartLinkTo}
+                  className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-blue-600 hover:text-blue-700 hover:underline sm:justify-end md:text-xs"
                 >
                   <span aria-hidden>→</span>
-                  {tl("seasonalActiveEmployeesTitleShort", "Điểm danh thời vụ")}
+                  {tl(counterpartLinkLabelKey, counterpartLinkLabelDefault)}
                 </Link>
                 <Link
                   to={`/attendance-salary?date=${encodeURIComponent(selectedDate)}`}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300 md:text-xs"
+                  className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300 sm:justify-end md:text-xs"
                 >
                   <span aria-hidden>→</span>
-                  {tl("linkToAttendanceSalaryShort", "Bảng giờ công / lương")}
+                  {tl("linkToAttendanceSalaryShort", "Giờ công / Lương")}
                 </Link>
               </nav>
             </div>
@@ -2284,21 +2297,24 @@ function AttendanceList() {
 
         {/* Filters and Actions — shrink-0 tránh co mất nút khi danh sách ít / màn hẹp */}
         <div className="mb-2 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          <div className="grid min-w-0 flex-1 grid-cols-2 items-center gap-5 px-1 sm:flex sm:flex-nowrap sm:gap-1.5 sm:px-0 sm:overflow-x-auto sm:whitespace-nowrap">
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="h-8 w-full shrink-0 rounded-md border bg-white px-2 text-sm font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300 sm:w-auto"
+              className="h-8 w-full min-w-0 rounded-md border bg-white px-2.5 text-sm font-semibold text-blue-700 focus:ring-2 focus:ring-blue-300 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300 sm:w-auto"
             />
             {user && isAdminAccess(user, userRole) ? (
-              <div className="relative shrink-0" ref={offHolidayDropdownRef}>
+              <div
+                className="relative min-w-0 pl-1 sm:pl-0"
+                ref={offHolidayDropdownRef}
+              >
                 <button
                   type="button"
                   aria-expanded={offHolidayDropdownOpen}
                   aria-haspopup="menu"
                   onClick={() => setOffHolidayDropdownOpen((open) => !open)}
-                  className={`inline-flex h-9 max-w-full min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-xl border-2 px-3 text-sm font-bold tracking-tight shadow-md transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-300/70 dark:focus-visible:ring-violet-600/50 sm:max-w-[min(100vw-10rem,19rem)] ${
+                  className={`inline-flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-lg border-2 px-3 text-sm font-bold tracking-tight shadow-md transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-300/70 dark:focus-visible:ring-violet-600/50 sm:px-3 sm:max-w-[min(100vw-10rem,19rem)] ${
                     offHolidayDropdownOpen
                       ? "border-violet-500 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/35 ring-2 ring-violet-400/90 ring-offset-2 ring-offset-white dark:ring-offset-slate-950"
                       : "border-violet-400/90 bg-gradient-to-br from-white to-violet-50 text-violet-950 hover:border-violet-500 hover:shadow-lg hover:shadow-violet-500/20 dark:border-violet-500/70 dark:from-slate-900 dark:to-violet-950/80 dark:text-violet-50 dark:hover:border-violet-400 dark:hover:shadow-violet-900/40"
@@ -2347,7 +2363,7 @@ function AttendanceList() {
                 {offHolidayDropdownOpen ? (
                   <div
                     role="menu"
-                    className="absolute left-0 top-full z-[130] mt-2 w-[min(100vw-1rem,23rem)] origin-top overflow-hidden rounded-2xl border-2 border-violet-400/70 bg-white text-left shadow-2xl shadow-violet-900/20 ring-4 ring-violet-500/15 backdrop-blur-sm dark:border-violet-500/50 dark:bg-slate-900 dark:shadow-black/50 dark:ring-violet-400/20"
+                    className="absolute right-0 top-full z-[130] mt-2 w-[min(100vw-1rem,23rem)] max-w-[calc(100vw-1rem)] origin-top overflow-hidden rounded-2xl border-2 border-violet-400/70 bg-white text-left shadow-2xl shadow-violet-900/20 ring-4 ring-violet-500/15 backdrop-blur-sm sm:left-0 sm:right-auto dark:border-violet-500/50 dark:bg-slate-900 dark:shadow-black/50 dark:ring-violet-400/20"
                   >
                     <div className="border-b border-violet-200/80 bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-700 px-4 py-3 dark:border-violet-500/40 dark:from-violet-700 dark:via-indigo-700 dark:to-violet-800">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-white/90">
@@ -2442,7 +2458,7 @@ function AttendanceList() {
                       <button
                         type="button"
                         role="menuitem"
-                        className="w-full rounded-xl bg-gradient-to-r from-violet-600 via-violet-600 to-indigo-600 py-2.5 text-center text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-violet-600/40 transition hover:from-violet-500 hover:to-indigo-500 hover:shadow-xl hover:shadow-violet-500/45 active:scale-[0.99] dark:shadow-violet-900/50"
+                        className="w-full rounded-lg bg-gradient-to-r from-violet-600 via-violet-600 to-indigo-600 py-2.5 text-center text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-violet-600/40 transition hover:from-violet-500 hover:to-indigo-500 hover:shadow-xl hover:shadow-violet-500/45 active:scale-[0.99] dark:shadow-violet-900/50"
                         onClick={() => {
                           setOffHolidayDropdownOpen(false);
                           setOffDaysModalOpen(true);
@@ -2458,16 +2474,15 @@ function AttendanceList() {
                 ) : null}
               </div>
             ) : null}
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={t("attendanceList.searchPlaceholder")}
-              className="h-8 w-full min-w-0 rounded-md border px-2 text-sm focus:ring-2 focus:ring-blue-200 sm:w-48"
-            />
           </div>
-          <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto sm:shrink-0 sm:justify-end">
-            <div className="shrink-0">
+          <AttendanceSearchActionsBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder={t("attendanceList.searchPlaceholder")}
+            layout="three"
+            showSearchOnDesktop
+          >
+            <div className="hidden shrink-0 sm:block">
               <NotificationBell
                 inline
                 count={buCongEmployees.length}
@@ -2578,14 +2593,14 @@ function AttendanceList() {
                   setShowComboChartModal(true);
                 })
               }
-              className="inline-flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-lg border border-emerald-300 bg-emerald-600 px-1 text-xs font-bold text-white shadow transition hover:bg-emerald-700 sm:text-sm dark:border-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+              className="inline-flex h-8 w-full min-w-0 items-center justify-center gap-0.5 rounded-lg border border-emerald-300 bg-emerald-600 px-1 text-xs font-bold text-white shadow transition hover:bg-emerald-700 sm:w-auto sm:text-sm dark:border-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
             >
               📊 {tl("comboChart", "Thống kê")}
             </button>
 
             <div
               ref={filterMenuRef}
-              className="attendance-filter-menu relative z-40 shrink-0"
+              className="attendance-filter-menu relative z-40 min-w-0"
             >
               <button
                 ref={filterDropdownAnchorRef}
@@ -2593,7 +2608,7 @@ function AttendanceList() {
                 onClick={() =>
                   setFilterMenuDropdownOpen(!filterMenuDropdownOpen)
                 }
-                className={`inline-flex h-8 w-auto max-w-full items-center justify-center gap-0.5 whitespace-nowrap rounded-lg border border-slate-300 px-1 text-xs font-bold shadow transition sm:text-sm ${
+                className={`inline-flex h-8 w-full max-w-full items-center justify-center gap-0.5 whitespace-nowrap rounded-lg border border-slate-300 px-1 text-xs font-bold shadow transition sm:w-auto sm:text-sm ${
                   loaiPhepFilter.length > 0 ||
                   departmentListFilter.length > 0 ||
                   isQuickNoCheckInActive
@@ -3007,7 +3022,7 @@ function AttendanceList() {
                       </div>
 
                       {/* Footer - Buttons */}
-                      <div className="shrink-0 p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 flex flex-wrap gap-3 justify-end">
+                      <div className="shrink-0 p-3 sm:p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3 sm:justify-end">
                         <button
                           onClick={() => {
                             setLoaiPhepFilter([]);
@@ -3016,7 +3031,7 @@ function AttendanceList() {
                             setExpandedSections({});
                             setFilterSearchTerm("");
                           }}
-                          className="px-5 py-2.5 rounded-lg text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow"
+                          className="w-full px-2 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs sm:text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow"
                         >
                           🗑️ {tl("clearAll", "Xóa tất cả")}
                         </button>
@@ -3025,7 +3040,7 @@ function AttendanceList() {
                             setFilterOpen(false);
                             setFilterSearchTerm("");
                           }}
-                          className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                          className="w-full px-2 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs sm:text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                         >
                           ✖️{" "}
                           {t("attendanceList.cancel", { defaultValue: "Hủy" })}
@@ -3035,7 +3050,7 @@ function AttendanceList() {
                             setFilterOpen(false);
                             setFilterSearchTerm("");
                           }}
-                          className="px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                          className="w-full px-2 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs sm:text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                         >
                           ✓ {tl("apply", "Áp dụng")}
                         </button>
@@ -3050,7 +3065,7 @@ function AttendanceList() {
             {user && (
               <div
                 ref={actionDropdownRef}
-                className="relative action-dropdown z-40 shrink-0"
+                className="relative action-dropdown z-40 shrink-0 hidden sm:block"
               >
                 <button
                   type="button"
@@ -3225,7 +3240,7 @@ function AttendanceList() {
             {/* Print Dropdown */}
             <div
               ref={printDropdownRef}
-              className="print-dropdown-menu relative z-40 shrink-0"
+              className="print-dropdown-menu relative z-40 shrink-0 hidden sm:block"
             >
               <button
                 type="button"
@@ -3278,7 +3293,7 @@ function AttendanceList() {
                 </div>
               )}
             </div>
-          </div>
+          </AttendanceSearchActionsBar>
         </div>
 
         <AttendanceEmployeeFormModal
@@ -3293,6 +3308,7 @@ function AttendanceList() {
           user={user}
           userRole={userRole}
           userDepartments={userDepartments}
+          attendanceRootPath={attendanceRootPath}
           onAlert={setAlert}
         />
 
@@ -3536,47 +3552,47 @@ function AttendanceList() {
                           "linear-gradient(to right, #3b82f6, #8b5cf6)",
                       }}
                     >
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[40px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[40px]">
                         STT
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[70px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[70px]">
                         MNV
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-left border-r border-blue-400 min-w-[150px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-left border-r border-blue-400 min-w-[150px]">
                         Họ và tên
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
                         Ngày bắt đầu
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[60px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[60px]">
                         Mã BP
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
                         {t("attendanceList.excelHeaderDept")}
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[110px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[110px]">
                         Tổng thời gian làm thêm giờ
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[130px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[130px]">
                         Thời gian dự kiến
                         <br />
                         Từ ...h đến ...h
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[110px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[110px]">
                         Thời gian làm thêm giờ
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[120px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[120px]">
                         Chữ ký người lao động
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[130px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[130px]">
                         Thời gian thực tế
                         <br />
                         Từ ...h đến ...h
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
                         Số giờ làm thêm
                       </th>
-                      <th className="px-3 py-3 text-xs font-extrabold text-white uppercase tracking-wide text-center min-w-[100px]">
+                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center min-w-[100px]">
                         {t("attendanceList.excelHeaderRemark", {
                           defaultValue: "Ghi chú",
                         })}
@@ -3593,43 +3609,43 @@ function AttendanceList() {
                             : "bg-white dark:bg-slate-900"
                         }`}
                       >
-                        <td className="px-3 py-3 text-xs text-gray-800 text-center font-bold border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-800 text-center font-bold border-r border-gray-300">
                           {idx + 1}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-800 text-center font-semibold border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-800 text-center font-semibold border-r border-gray-300">
                           {emp.mnv || ""}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-900 font-medium text-left border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-900 font-medium text-left border-r border-gray-300">
                           {emp.hoVaTen || ""}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
                           {emp.ngayVaoLam || ""}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
                           {emp.maBoPhan || ""}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
                           {emp.boPhan || ""}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
                           {/* Để trống cho người dùng điền */}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
                           {/* Để trống cho người dùng điền */}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
                           {/* Để trống cho người dùng điền */}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
                           {/* Để trống cho người dùng điền */}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
                           {/* Để trống cho người dùng điền */}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-700 text-center border-r border-gray-300">
+                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
                           {/* Để trống cho người dùng điền */}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-700 text-center">
+                        <td className="px-3 py-2 text-xs text-gray-700 text-center">
                           {/* Để trống cho người dùng điền */}
                         </td>
                       </tr>
@@ -3681,11 +3697,19 @@ function AttendanceList() {
         ) : null}
 
         {/* Table — virtual: CSS Grid (header + hàng) cùng grid-template-columns; <tr> absolute không bám colgroup */}
-        <div className="min-w-0 w-full max-w-full overflow-x-auto bg-white rounded-lg shadow-lg">
+        <div
+          className={`min-w-0 w-full max-w-full bg-white rounded-lg shadow-lg ${
+            columnPlan === "minimal" ? "overflow-x-hidden" : "overflow-x-auto"
+          }`}
+        >
           {shouldVirtualizeTable ? (
             <div
               ref={tableScrollParentRef}
-              className="max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
+              className={`max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto ${
+                columnPlan === "minimal"
+                  ? "overflow-x-hidden"
+                  : "overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
+              }`}
             >
               <div
                 className={`w-full max-w-none ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
@@ -3737,7 +3761,11 @@ function AttendanceList() {
           ) : (
             <div
               ref={tableScrollParentRef}
-              className="min-w-0 w-full max-w-full overflow-x-auto"
+              className={`min-w-0 w-full max-w-full ${
+                columnPlan === "minimal"
+                  ? "overflow-x-hidden"
+                  : "overflow-x-auto"
+              }`}
             >
               <table
                 className={`w-full table-fixed border-collapse max-w-none ${attendanceTableWrapperMinWidthClass(columnPlan)}`}

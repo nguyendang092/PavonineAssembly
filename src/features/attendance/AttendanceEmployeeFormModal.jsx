@@ -47,9 +47,12 @@ export const EMPTY_EMPLOYEE_FORM = {
 };
 
 const employeeModalFieldClass =
-  "w-full min-h-[2.5rem] rounded-lg border-2 border-blue-200 bg-white p-2 text-sm font-bold text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-500/40";
+  "w-full min-h-[2.5rem] rounded-lg border-2 border-blue-200 bg-white px-2 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-500/40";
+const employeeModalSelectFieldClass = `${employeeModalFieldClass} appearance-none`;
 const employeeModalLabelClass =
   "mb-1 block text-xs font-bold uppercase tracking-wide text-purple-600 dark:text-purple-400";
+const employeeModalClearTimeButtonClass =
+  "shrink-0 min-w-[6.5rem] rounded-lg border-2 border-slate-300 bg-slate-100 px-4 py-2 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 sm:text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
 
 /**
  * Modal thêm / cập nhật dòng điểm danh — chỉ ghi `attendance/{ngày}/{key}` (không employeeProfiles).
@@ -67,6 +70,7 @@ export default function AttendanceEmployeeFormModal({
   userDepartments,
   onAlert,
   onSaved,
+  attendanceRootPath = "attendance",
 }) {
   const { t } = useTranslation();
   const tl = useCallback(
@@ -221,7 +225,7 @@ export default function AttendanceEmployeeFormModal({
           return;
         }
         const daySnap = await get(
-          ref(db, `attendance/${selectedDate}/${editAttendanceKey}`),
+          ref(db, `${attendanceRootPath}/${selectedDate}/${editAttendanceKey}`),
         );
         const existingRaw = daySnap.val() || {};
         const allowFullEdit = isAdminAccess(user, userRole);
@@ -242,7 +246,7 @@ export default function AttendanceEmployeeFormModal({
           existing: existingRaw,
         });
         await update(ref(db), {
-          [`attendance/${selectedDate}/${editAttendanceKey}`]:
+          [`${attendanceRootPath}/${selectedDate}/${editAttendanceKey}`]:
             mergeAttendanceDayNodeForPersist(
               existingRaw,
               dayDoc,
@@ -275,7 +279,7 @@ export default function AttendanceEmployeeFormModal({
         const loaiPhepToSave = canonicalAttendanceLoaiPhep(
           String(form.loaiPhep ?? "").trim(),
         );
-        const newRef = push(ref(db, `attendance/${selectedDate}`));
+        const newRef = push(ref(db, `${attendanceRootPath}/${selectedDate}`));
         const newKey = newRef.key;
         const dayDoc = buildEmployeeAttendanceDayDocument({
           form: formSliceForAttendanceDayDocument(form, {
@@ -285,7 +289,10 @@ export default function AttendanceEmployeeFormModal({
           existing: {},
         });
         await update(ref(db), {
-          [`attendance/${selectedDate}/${newKey}`]: { ...dayDoc, id: newKey },
+          [`${attendanceRootPath}/${selectedDate}/${newKey}`]: {
+            ...dayDoc,
+            id: newKey,
+          },
         });
         onClose();
         notify({
@@ -315,7 +322,7 @@ export default function AttendanceEmployeeFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/45 p-3 backdrop-blur-[2px] sm:p-4">
       <div
-        className={`relative mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-purple-50 via-white to-indigo-100 px-4 py-4 shadow-2xl animate-fadeIn sm:px-5 sm:py-5 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950 dark:border-blue-800 ${
+        className={`relative mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-purple-50 via-white to-indigo-100 px-4 py-4 shadow-2xl animate-fadeIn sm:px-5 sm:py-5 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950 dark:border-blue-800 ${
           isEditMode
             ? "ring-2 ring-fuchsia-400/50 shadow-fuchsia-500/10 dark:ring-fuchsia-500/35"
             : "ring-1 ring-blue-200/80 dark:ring-blue-900/60"
@@ -346,7 +353,7 @@ export default function AttendanceEmployeeFormModal({
           onSubmit={handleSubmit}
           className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2"
         >
-          <div className="sm:col-span-2 grid min-w-0 grid-cols-3 gap-3 sm:gap-4">
+          <div className="sm:col-span-2 grid min-w-0 grid-cols-3 gap-2 sm:gap-4">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("stt", "STT")}
@@ -402,35 +409,37 @@ export default function AttendanceEmployeeFormModal({
               className={employeeModalFieldClass}
             />
           </div>
-          <div>
-            <label className={employeeModalLabelClass}>
-              {tl("gender", "Giới tính")}
-            </label>
-            <select
-              name="gioiTinh"
-              value={form.gioiTinh}
-              onChange={handleChange}
-              disabled={isRestrictedEdit}
-              className={employeeModalFieldClass}
-            >
-              <option value="YES">{t("attendanceList.female")}</option>
-              <option value="NO">{t("attendanceList.male")}</option>
-            </select>
+          <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:gap-4">
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("gender", "Giới tính")}
+              </label>
+              <select
+                name="gioiTinh"
+                value={form.gioiTinh}
+                onChange={handleChange}
+                disabled={isRestrictedEdit}
+                className={employeeModalSelectFieldClass}
+              >
+                <option value="YES">{t("attendanceList.female")}</option>
+                <option value="NO">{t("attendanceList.male")}</option>
+              </select>
+            </div>
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("joinDate", "Ngày vào làm")}
+              </label>
+              <input
+                type="date"
+                name="ngayVaoLam"
+                value={form.ngayVaoLam}
+                onChange={handleChange}
+                disabled={isRestrictedEdit}
+                className={`${employeeModalFieldClass} appearance-none`}
+              />
+            </div>
           </div>
-          <div>
-            <label className={employeeModalLabelClass}>
-              {tl("joinDate", "Ngày vào làm")}
-            </label>
-            <input
-              type="date"
-              name="ngayVaoLam"
-              value={form.ngayVaoLam}
-              onChange={handleChange}
-              disabled={isRestrictedEdit}
-              className={employeeModalFieldClass}
-            />
-          </div>
-          <div>
+          <div className="min-w-0">
             <label className={employeeModalLabelClass}>
               {tl("employmentStatusField", "Trạng thái làm việc")}
             </label>
@@ -439,7 +448,7 @@ export default function AttendanceEmployeeFormModal({
               value={String(form.trangThaiLamViec ?? "").trim()}
               onChange={handleTrangThaiLamViecSelect}
               disabled={isRestrictedEdit}
-              className={employeeModalFieldClass}
+              className={employeeModalSelectFieldClass}
             >
               <option value="">
                 {tl("employmentStatusPlaceholder", "— Chọn —")}
@@ -463,39 +472,41 @@ export default function AttendanceEmployeeFormModal({
               ))}
             </select>
           </div>
-          <div>
-            <label className={employeeModalLabelClass}>
-              {tl("departmentCode", "Mã BP")}
-            </label>
-            <input
-              type="text"
-              name="maBoPhan"
-              value={form.maBoPhan}
-              onChange={handleChange}
-              disabled={isRestrictedEdit}
-              className={employeeModalFieldClass}
-            />
+          <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:gap-4">
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("departmentCode", "Mã BP")}
+              </label>
+              <input
+                type="text"
+                name="maBoPhan"
+                value={form.maBoPhan}
+                onChange={handleChange}
+                disabled={isRestrictedEdit}
+                className={employeeModalFieldClass}
+              />
+            </div>
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("departmentRequired", "Bộ phận")}
+              </label>
+              <input
+                type="text"
+                name="boPhan"
+                value={form.boPhan}
+                onChange={handleChange}
+                required
+                disabled={isRestrictedEdit}
+                className={employeeModalFieldClass}
+              />
+            </div>
           </div>
-          <div>
-            <label className={employeeModalLabelClass}>
-              {tl("departmentRequired", "Bộ phận")}
-            </label>
-            <input
-              type="text"
-              name="boPhan"
-              value={form.boPhan}
-              onChange={handleChange}
-              required
-              disabled={isRestrictedEdit}
-              className={employeeModalFieldClass}
-            />
-          </div>
-          <div className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 sm:col-span-2">
+          <div className="grid min-w-0 grid-cols-1 gap-x-3 gap-y-2 sm:col-span-2 sm:grid-cols-2">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("timeIn", "Giờ vào")}
               </label>
-              <div className="flex min-w-0 flex-wrap items-stretch gap-1.5 sm:gap-2">
+              <div className="flex min-w-0 flex-nowrap items-stretch gap-1.5 sm:gap-2">
                 <input
                   type="time"
                   value={normalizeTimeForHtmlInput(form.gioVao) || ""}
@@ -509,7 +520,7 @@ export default function AttendanceEmployeeFormModal({
                   disabled={
                     isRestrictedEdit || !String(form.gioVao ?? "").trim()
                   }
-                  className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-2 py-2 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 sm:px-3 sm:text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  className={employeeModalClearTimeButtonClass}
                   title={tl("timeInClearHint", "Xóa giờ vào (để trống)")}
                 >
                   {tl("clearTimeIn", "Xóa giờ vào")}
@@ -520,7 +531,7 @@ export default function AttendanceEmployeeFormModal({
               <label className={employeeModalLabelClass}>
                 {tl("timeOut", "Giờ ra")}
               </label>
-              <div className="flex min-w-0 flex-wrap items-stretch gap-1.5 sm:gap-2">
+              <div className="flex min-w-0 flex-nowrap items-stretch gap-1.5 sm:gap-2">
                 <input
                   type="time"
                   name="gioRa"
@@ -540,7 +551,7 @@ export default function AttendanceEmployeeFormModal({
                   disabled={
                     isRestrictedEdit || !String(form.gioRa ?? "").trim()
                   }
-                  className="shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 px-2 py-2 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 sm:px-3 sm:text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  className={employeeModalClearTimeButtonClass}
                   title={tl("timeOutClearHint", "Xóa thời gian ra (để trống)")}
                 >
                   {tl("clearTimeOut", "Xóa giờ ra")}
@@ -558,7 +569,7 @@ export default function AttendanceEmployeeFormModal({
             <select
               value={String(form.loaiPhep ?? "").trim()}
               onChange={handleLoaiPhepSelect}
-              className={employeeModalFieldClass}
+              className={employeeModalSelectFieldClass}
             >
               <option value="">
                 {tl("leaveTypePlaceholder", "— Không chọn —")}
@@ -582,7 +593,7 @@ export default function AttendanceEmployeeFormModal({
               {tl("loaiPhepModalHint", "Chọn loại phép (PN, PO, TS …)")}
             </p>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className={employeeModalLabelClass}>
               {tl("workShift", "Ca làm việc")}
             </label>
@@ -595,7 +606,7 @@ export default function AttendanceEmployeeFormModal({
                   caLamViec: e.target.value,
                 }))
               }
-              className={employeeModalFieldClass}
+              className={employeeModalSelectFieldClass}
             >
               <option value="">{tl("chooseShift", "Chọn ca")}</option>
               {(() => {
@@ -621,7 +632,7 @@ export default function AttendanceEmployeeFormModal({
           </div>
           <button
             type="submit"
-            className="sm:col-span-2 mt-0 w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 py-2.5 text-sm font-extrabold tracking-wide text-white shadow-lg transition hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 active:scale-95 sm:text-base dark:focus:ring-offset-slate-900"
+            className="sm:col-span-2 mt-0 w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2.5 text-sm font-extrabold tracking-wide text-white shadow-lg transition hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 active:scale-95 sm:text-base dark:focus:ring-offset-slate-900"
           >
             {isEditMode
               ? t("attendanceList.btnUpdate")

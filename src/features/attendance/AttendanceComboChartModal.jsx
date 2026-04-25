@@ -70,6 +70,7 @@ export default function AttendanceComboChartModal({
     React.useState(false);
   const [productionDeptPickerDraft, setProductionDeptPickerDraft] =
     React.useState([]);
+  const [showDetailTiles, setShowDetailTiles] = React.useState(false);
 
   const productionDeptLabelForPicker = React.useCallback(
     (mk) =>
@@ -238,11 +239,11 @@ export default function AttendanceComboChartModal({
               ✕
             </button>
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-3 grid grid-cols-2 items-stretch gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
             <button
               type="button"
               onClick={() => setComboDashboardGroup("production")}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 ${
+              className={`flex h-8 min-w-0 w-full items-center justify-center overflow-hidden whitespace-nowrap rounded-lg border px-0.5 py-1 text-[7px] font-bold uppercase tracking-tight transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:w-auto sm:px-3 sm:text-xs sm:tracking-wide ${
                 comboDashboardGroup === "production"
                   ? "border-amber-500 bg-amber-500/15 text-amber-950 shadow-sm dark:border-amber-400 dark:bg-amber-500/15 dark:text-amber-100"
                   : "border-slate-300/90 bg-white/70 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-400 dark:hover:bg-slate-800"
@@ -253,7 +254,7 @@ export default function AttendanceComboChartModal({
             <button
               type="button"
               onClick={() => setComboDashboardGroup("hr")}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 ${
+              className={`flex h-8 min-w-0 w-full items-center justify-center overflow-hidden whitespace-nowrap rounded-lg border px-0.5 py-1 text-[7px] font-bold uppercase tracking-tight transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:w-auto sm:px-3 sm:text-xs sm:tracking-wide ${
                 comboDashboardGroup === "hr"
                   ? "border-sky-500 bg-sky-500/15 text-sky-900 shadow-sm dark:border-sky-400 dark:bg-sky-500/20 dark:text-sky-100"
                   : "border-slate-300/90 bg-white/70 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-400 dark:hover:bg-slate-800"
@@ -261,79 +262,93 @@ export default function AttendanceComboChartModal({
             >
               {tl("comboDashboardGroupHr", "Nhân sự")}
             </button>
-            <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                  {tl("date", "Ngày")}:
-                </span>
+            <div
+              className={`${
+                comboDashboardGroup === "production"
+                  ? "col-span-1"
+                  : "col-span-2"
+              } sm:col-span-1`}
+            >
+              <label className="flex h-8 w-full min-w-0 items-center gap-1 rounded-lg border border-slate-300/90 bg-white/70 px-1 text-[7px] font-bold uppercase tracking-tight text-slate-700 shadow-sm transition focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/35 sm:rounded-md sm:border-slate-300 sm:bg-white sm:px-2 sm:text-xs sm:font-semibold sm:normal-case sm:tracking-normal dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 sm:dark:bg-slate-900">
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/35 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[7px] font-bold uppercase tracking-tight text-slate-700 outline-none [appearance:textfield] sm:text-xs sm:font-semibold sm:normal-case sm:tracking-normal dark:text-slate-100"
                 />
-              </div>
-              {comboDashboardGroup === "production" ? (
-                <>
-                  <span
-                    className="h-5 w-px shrink-0 self-center bg-slate-300 dark:bg-slate-600"
-                    aria-hidden
-                  />
-                  <button
-                    type="button"
-                    onClick={openProductionDeptPicker}
-                    className="shrink-0 rounded-lg border border-emerald-600/85 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-emerald-950 shadow-sm transition hover:bg-emerald-500/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/55 dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
-                  >
-                    {tl("comboProductionDeptPickerButton", "STT")}
-                  </button>
-                </>
-              ) : null}
+              </label>
             </div>
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-1">
-            {comboDashboardGroup === "production" &&
-            comboDashboardStats.total > 0 ? (
+            {comboDashboardGroup === "production" ? (
               <button
                 type="button"
-                onClick={() => setComboStatDetailKey("total")}
-                className="min-w-[calc(50%-0.16rem)] flex-1 basis-[108px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-1.5 py-1.5 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[100px] sm:max-w-[156px] dark:border-slate-700/90 dark:bg-slate-900/95"
+                onClick={openProductionDeptPicker}
+                className="col-span-1 flex h-8 min-w-0 w-full items-center justify-center overflow-hidden whitespace-nowrap rounded-lg border border-emerald-600/85 px-1 py-1 text-[8px] font-bold uppercase tracking-tight text-emerald-950 shadow-sm transition hover:bg-emerald-500/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/55 sm:col-span-1 sm:w-auto sm:px-3 sm:text-xs sm:tracking-wide dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
               >
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                  {tl("totalEmployees", "Tổng số nhân viên")}
-                </p>
-                <p className="text-base font-bold text-slate-900 dark:text-slate-50">
-                  {comboDashboardStats.total}
-                </p>
+                {tl("comboProductionDeptPickerButton", "STT")}
               </button>
             ) : null}
-            {COMBO_DASHBOARD_TILES.filter((tile) =>
-              comboDashboardTileKeySet.has(tile.key),
-            ).map((tile) => {
-              const v = comboDashboardStats[tile.key];
-              if (!v || v <= 0) return null;
-              const label = tl(tile.tlKey, COMBO_STAT_LABEL_DEFAULTS[tile.key]);
-              const baseBtn =
-                "min-w-[calc(50%-0.16rem)] flex-1 basis-[108px] rounded-lg border border-slate-300/80 bg-slate-50/90 px-1.5 py-1.5 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[100px] sm:max-w-[156px] dark:border-slate-700/90 dark:bg-slate-900/95";
-              return (
+          </div>
+
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowDetailTiles((v) => !v)}
+              className="rounded-lg border border-slate-300/90 bg-white/75 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 sm:text-[10px] dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              {showDetailTiles
+                ? tl("collapseDetailTiles", "Thu gọn")
+                : tl("expandDetailTiles", "Xem chi tiết")}
+            </button>
+          </div>
+
+          {showDetailTiles ? (
+            <div className="mt-2 flex gap-1 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+              {comboDashboardGroup === "production" &&
+              comboDashboardStats.total > 0 ? (
                 <button
-                  key={tile.key}
                   type="button"
-                  onClick={() => setComboStatDetailKey(tile.key)}
-                  className={`${baseBtn} hover:ring-2 hover:ring-sky-500/35`}
+                  onClick={() => setComboStatDetailKey("total")}
+                  className="min-w-[118px] shrink-0 rounded-lg border border-slate-300/80 bg-slate-50/90 px-1.5 py-1.5 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[100px] sm:max-w-[156px] sm:flex-1 sm:basis-[108px] dark:border-slate-700/90 dark:bg-slate-900/95"
                 >
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                    {label}
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-600 sm:text-[10px] dark:text-slate-400">
+                    {tl("totalEmployees", "Tổng số nhân viên")}
                   </p>
-                  <p
-                    className={`text-base font-bold ${getAttendanceLeaveTypeColorClassNameForComboStatKey(tile.key)}`}
-                  >
-                    {v}
+                  <p className="text-sm font-bold text-slate-900 sm:text-base dark:text-slate-50">
+                    {comboDashboardStats.total}
                   </p>
                 </button>
-              );
-            })}
-          </div>
+              ) : null}
+              {COMBO_DASHBOARD_TILES.filter((tile) =>
+                comboDashboardTileKeySet.has(tile.key),
+              ).map((tile) => {
+                const v = comboDashboardStats[tile.key];
+                if (!v || v <= 0) return null;
+                const label = tl(
+                  tile.tlKey,
+                  COMBO_STAT_LABEL_DEFAULTS[tile.key],
+                );
+                const baseBtn =
+                  "min-w-[118px] shrink-0 rounded-lg border border-slate-300/80 bg-slate-50/90 px-1.5 py-1.5 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[100px] sm:max-w-[156px] sm:flex-1 sm:basis-[108px] dark:border-slate-700/90 dark:bg-slate-900/95";
+                return (
+                  <button
+                    key={tile.key}
+                    type="button"
+                    onClick={() => setComboStatDetailKey(tile.key)}
+                    className={`${baseBtn} hover:ring-2 hover:ring-sky-500/35`}
+                  >
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-600 sm:text-[10px] dark:text-slate-400">
+                      {label}
+                    </p>
+                    <p
+                      className={`text-sm font-bold sm:text-base ${getAttendanceLeaveTypeColorClassNameForComboStatKey(tile.key)}`}
+                    >
+                      {v}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-200/35 p-3 dark:bg-black/35 sm:p-5">
@@ -520,37 +535,37 @@ export default function AttendanceComboChartModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="combo-stat-detail-title"
-            className="absolute inset-0 z-[1300] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6"
+            className="absolute inset-0 z-[1300] flex items-center justify-center bg-slate-950/55 p-2 backdrop-blur-sm sm:p-6"
             onClick={() => setComboStatDetailKey(null)}
           >
             <div
-              className="flex max-h-[min(90vh,940px)] w-full max-w-[min(96vw,80rem)] flex-col overflow-hidden rounded-xl border-2 border-sky-400/60 bg-white shadow-[0_20px_40px_-12px_rgba(14,165,233,0.22)] ring-2 ring-sky-200/50 dark:border-sky-500/40 dark:bg-slate-900 dark:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.55)] dark:ring-sky-900/50"
+              className="flex max-h-[88vh] w-full max-w-[98vw] flex-col overflow-hidden rounded-lg border border-sky-400/60 bg-white shadow-[0_20px_40px_-12px_rgba(14,165,233,0.22)] ring-1 ring-sky-200/50 sm:max-h-[min(90vh,940px)] sm:max-w-[min(96vw,80rem)] sm:rounded-xl sm:border-2 sm:ring-2 dark:border-sky-500/40 dark:bg-slate-900 dark:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.55)] dark:ring-sky-900/50"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center gap-2 bg-gradient-to-r from-sky-600 via-sky-500 to-teal-500 px-3 py-2.5 shadow-md sm:px-4 sm:py-3">
+              <div className="flex items-center gap-1.5 bg-gradient-to-r from-sky-600 via-sky-500 to-teal-500 px-2 py-2 shadow-md sm:gap-2 sm:px-4 sm:py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[9px] font-bold uppercase leading-none tracking-[0.12em] text-sky-100/95 text-black">
+                  <p className="text-[8px] font-bold uppercase leading-none tracking-[0.1em] text-sky-100/95 text-black sm:text-[9px] sm:tracking-[0.12em]">
                     {tl("comboStatDetailBadge", "Chi tiết danh sách")}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <h4
                       id="combo-stat-detail-title"
-                      className="text-base font-extrabold leading-tight text-white drop-shadow-sm sm:text-[1.05rem]"
+                      className="text-sm font-extrabold leading-tight text-white drop-shadow-sm sm:text-[1.05rem]"
                     >
                       {detailMetricLabel}
                     </h4>
-                    <span className="inline-flex shrink-0 items-center rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-bold text-white ring-1 ring-white/35">
+                    <span className="inline-flex shrink-0 items-center rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-bold text-white ring-1 ring-white/35 sm:px-2 sm:text-[11px]">
                       {tl("peopleCount", "{{count}} người", {
                         count: detailEmployees.length ?? 0,
                       })}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={handleExportDetailImage}
-                    className="inline-flex h-7 items-center justify-center rounded-md bg-white/15 px-2 text-[11px] font-bold text-white ring-1 ring-white/40 transition hover:bg-white/25 sm:h-8 sm:px-2.5"
+                    className="inline-flex h-7 items-center justify-center rounded-md bg-white/15 px-1.5 text-[10px] font-bold text-white ring-1 ring-white/40 transition hover:bg-white/25 sm:h-8 sm:px-2.5 sm:text-[11px]"
                     title={tl("exportImage", "Xuất hình")}
                   >
                     🖼️ {tl("exportImage", "Xuất hình")}
@@ -558,7 +573,7 @@ export default function AttendanceComboChartModal({
                   <button
                     type="button"
                     onClick={handleExportDetailExcel}
-                    className="inline-flex h-7 items-center justify-center rounded-md bg-white/15 px-2 text-[11px] font-bold text-white ring-1 ring-white/40 transition hover:bg-white/25 sm:h-8 sm:px-2.5"
+                    className="inline-flex h-7 items-center justify-center rounded-md bg-white/15 px-1.5 text-[10px] font-bold text-white ring-1 ring-white/40 transition hover:bg-white/25 sm:h-8 sm:px-2.5 sm:text-[11px]"
                     title={tl("exportExcel", "Xuất Excel")}
                   >
                     📊 {tl("exportExcel", "Xuất Excel")}
@@ -566,41 +581,41 @@ export default function AttendanceComboChartModal({
                   <button
                     type="button"
                     onClick={() => setComboStatDetailKey(null)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 text-base leading-none text-white ring-1 ring-white/40 transition hover:bg-white/25 sm:h-9 sm:w-9 sm:text-lg"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/15 text-sm leading-none text-white ring-1 ring-white/40 transition hover:bg-white/25 sm:h-9 sm:w-9 sm:rounded-lg sm:text-lg"
                     aria-label={t("attendanceList.close")}
                   >
                     ✕
                   </button>
                 </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-auto bg-gradient-to-b from-sky-50/90 to-emerald-50/40 px-2 py-3 sm:px-4 dark:from-slate-950 dark:to-slate-900">
+              <div className="min-h-0 flex-1 overflow-auto bg-gradient-to-b from-sky-50/90 to-emerald-50/40 px-1.5 py-2 sm:px-4 sm:py-3 dark:from-slate-950 dark:to-slate-900">
                 <div
                   ref={detailTableCaptureRef}
                   className="overflow-hidden rounded-xl border-2 border-sky-200/80 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-900"
                 >
-                  <div className="max-h-[min(68vh,760px)] overflow-y-auto overflow-x-hidden">
-                    <table className="w-full table-fixed border-collapse text-left text-[14px] leading-snug sm:text-[15px]">
+                  <div className="max-h-[70vh] overflow-auto sm:max-h-[min(68vh,760px)]">
+                    <table className="min-w-[720px] table-fixed border-collapse text-left text-[11px] leading-snug sm:min-w-0 sm:w-full sm:text-[15px]">
                       <thead className="sticky top-0 z-10 shadow-md">
                         <tr className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white">
-                          <th className="w-12 whitespace-nowrap px-2 py-3 text-center text-xs font-extrabold uppercase tracking-wider text-white">
+                          <th className="w-9 whitespace-nowrap px-1 py-2 text-center text-[10px] font-extrabold uppercase tracking-wide text-white sm:w-12 sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
                             {tl("colIndex", "STT")}
                           </th>
-                          <th className="w-20 whitespace-nowrap px-2 py-3 text-xs font-extrabold uppercase tracking-wider text-white">
+                          <th className="w-11 whitespace-nowrap px-1 py-2 text-[10px] font-extrabold uppercase tracking-wide text-white sm:w-20 sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
                             {tl("colCode", "MNV")}
                           </th>
-                          <th className="w-[24%] px-2 py-3 text-xs font-extrabold uppercase tracking-wider text-white">
+                          <th className="w-[30%] px-1 py-2 text-[10px] font-extrabold uppercase tracking-wide text-white sm:w-[24%] sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
                             {tl("colName", "Họ và tên")}
                           </th>
-                          <th className="w-[20%] px-2 py-3 text-xs font-extrabold uppercase tracking-wider text-white">
+                          <th className="w-[14%] px-1 py-2 text-[10px] font-extrabold uppercase tracking-wide text-white sm:w-[20%] sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
                             {tl("colDepartment", "Bộ phận")}
                           </th>
-                          <th className="w-24 whitespace-nowrap px-2 py-3 text-center text-xs font-extrabold uppercase tracking-wider text-amber-100">
+                          <th className="w-16 whitespace-nowrap px-1 py-2 text-center text-[10px] font-extrabold uppercase tracking-wide text-amber-100 sm:w-24 sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
                             {tl("colTimeIn", "Giờ vào")}
                           </th>
-                          <th className="w-24 px-2 py-3 text-xs font-extrabold uppercase tracking-wider text-rose-100">
+                          <th className="w-16 px-1 py-2 text-[10px] font-extrabold uppercase tracking-wide text-rose-100 sm:w-24 sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
                             {tl("leaveTypeColumn", "Loại phép")}
                           </th>
-                          <th className="w-24 px-2 py-3 text-xs font-extrabold uppercase tracking-wider text-emerald-100">
+                          <th className="w-16 px-1 py-2 text-[10px] font-extrabold uppercase tracking-wide text-emerald-100 sm:w-24 sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
                             {tl("comboStatColShift", "Ca làm việc")}
                           </th>
                         </tr>
@@ -610,7 +625,7 @@ export default function AttendanceComboChartModal({
                           <tr>
                             <td
                               colSpan={7}
-                              className="bg-amber-50/80 px-4 py-14 text-center text-base font-medium text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+                              className="bg-amber-50/80 px-3 py-10 text-center text-sm font-medium text-amber-900 sm:px-4 sm:py-14 sm:text-base dark:bg-amber-950/30 dark:text-amber-200"
                             >
                               {tl("noData", "Không có dữ liệu")}
                             </td>
@@ -621,29 +636,34 @@ export default function AttendanceComboChartModal({
                               key={emp.id ?? `${emp.mnv}-${idx}`}
                               className="odd:bg-white even:bg-sky-50/90 transition-colors hover:bg-amber-50/80 dark:odd:bg-slate-900 dark:even:bg-slate-800/90 dark:hover:bg-slate-700/80"
                             >
-                              <td className="bg-sky-100/50 px-2 py-3 text-center text-base font-bold tabular-nums text-sky-800 dark:bg-sky-950/50 dark:text-sky-200">
+                              <td className="bg-sky-100/50 px-1 py-2 text-center text-sm font-bold tabular-nums text-sky-800 sm:px-2 sm:py-3 sm:text-base dark:bg-sky-950/50 dark:text-sky-200">
                                 {idx + 1}
                               </td>
-                              <td className="px-3 py-3">
-                                <span className="inline-block rounded-md bg-indigo-100 px-2 py-0.5 font-mono text-sm font-bold tabular-nums text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-200">
+                              <td className="px-1.5 py-2 sm:px-3 sm:py-3">
+                                <span className="inline-block rounded-md bg-indigo-100 px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums text-indigo-900 sm:px-2 sm:text-sm dark:bg-indigo-950/80 dark:text-indigo-200">
                                   {emp.mnv ?? ""}
                                 </span>
                               </td>
-                              <td className="break-words px-2 py-2.5 text-sm font-bold text-slate-900 dark:text-white sm:px-3 sm:py-3 sm:text-base">
-                                {emp.hoVaTen ?? ""}
+                              <td className="px-1 py-2 text-[11px] font-semibold text-slate-900 sm:px-3 sm:py-3 sm:text-base sm:font-bold dark:text-white">
+                                <span
+                                  className="block overflow-hidden text-ellipsis whitespace-nowrap sm:whitespace-normal"
+                                  title={emp.hoVaTen ?? ""}
+                                >
+                                  {emp.hoVaTen ?? ""}
+                                </span>
                               </td>
-                              <td className="break-words px-2 py-2.5 text-sm font-medium text-violet-900 dark:text-violet-200 sm:px-3 sm:py-3 sm:text-base">
+                              <td className="break-words px-1 py-2 text-[11px] font-medium text-violet-900 sm:px-3 sm:py-3 sm:text-base dark:text-violet-200">
                                 {emp.boPhan ?? ""}
                               </td>
-                              <td className="whitespace-nowrap bg-emerald-50/70 px-3 py-3 text-center font-mono text-base font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              <td className="whitespace-nowrap bg-emerald-50/70 px-1.5 py-2 text-center font-mono text-[11px] font-bold text-emerald-800 sm:px-3 sm:py-3 sm:text-base dark:bg-emerald-950/40 dark:text-emerald-300">
                                 {emp.gioVao ?? ""}
                               </td>
-                              <td className="whitespace-nowrap bg-rose-50/70 px-3 py-3 text-center text-base font-semibold text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">
+                              <td className="whitespace-nowrap bg-rose-50/70 px-1.5 py-2 text-center text-[11px] font-semibold text-rose-800 sm:px-3 sm:py-3 sm:text-base dark:bg-rose-950/30 dark:text-rose-200">
                                 {formatAttendanceLeaveTypeColumnForEmployee(
                                   emp,
                                 ) || "—"}
                               </td>
-                              <td className="bg-amber-50/60 px-3 py-3 text-base font-semibold text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                              <td className="bg-amber-50/60 px-1.5 py-2 text-[11px] font-semibold text-amber-900 sm:px-3 sm:py-3 sm:text-base dark:bg-amber-950/30 dark:text-amber-200">
                                 {emp.caLamViec ?? ""}
                               </td>
                             </tr>
@@ -676,13 +696,13 @@ export default function AttendanceComboChartModal({
                 >
                   {tl(
                     "comboProductionDeptPickerTitle",
-                    "Bộ phận sản xuất — thứ tự hiển thị",
+                    "Bộ phận sản xuất — Thứ tự hiển thị biểu đồ",
                   )}
                 </h3>
                 <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                   {tl(
                     "comboProductionDeptPickerHint",
-                    "Chọn BP và sắp thứ tự (1, 2, …). Kéo thả biểu đồ cũng cập nhật thứ tự. BP mới: thêm vào danh mục trong code cấu hình (một chỗ).",
+                    "Chọn bộ phận sản xuất và sắp thứ tự (1, 2, 3,...).",
                   )}
                 </p>
               </div>
@@ -764,7 +784,7 @@ export default function AttendanceComboChartModal({
                   })}
                 </div>
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/80">
+              <div className="flex items-center gap-2 overflow-x-auto border-t border-slate-200 bg-slate-50 px-4 py-3 whitespace-nowrap sm:flex-wrap sm:justify-end sm:overflow-visible dark:border-slate-700 dark:bg-slate-950/80">
                 <button
                   type="button"
                   onClick={() =>
@@ -774,7 +794,7 @@ export default function AttendanceComboChartModal({
                       ),
                     )
                   }
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
                 >
                   {tl("comboProductionDeptPickerReset", "Mặc định")}
                 </button>
@@ -784,24 +804,21 @@ export default function AttendanceComboChartModal({
                     onPersistComboProductionDeptOrder?.([]);
                     setProductionDeptPickerOpen(false);
                   }}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
                 >
-                  {tl(
-                    "comboProductionDeptPickerClearSaved",
-                    "Xóa cấu hình đã lưu",
-                  )}
+                  {tl("comboProductionDeptPickerClearSaved", "Reset")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setProductionDeptPickerOpen(false)}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
                 >
                   {tl("cancel", "Hủy")}
                 </button>
                 <button
                   type="button"
                   onClick={saveProductionDeptPicker}
-                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700"
+                  className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700"
                 >
                   {tl("save", "Lưu")}
                 </button>
