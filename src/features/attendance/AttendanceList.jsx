@@ -261,10 +261,16 @@ function AttendanceList({
   const filterMenuPanelRef = useRef(null);
   const actionDropdownRef = useRef(null);
   const printDropdownRef = useRef(null);
+  const actionDropdownAnchorRef = useRef(null);
+  const printDropdownAnchorRef = useRef(null);
+  const actionDropdownPanelRef = useRef(null);
+  const printDropdownPanelRef = useRef(null);
   const offHolidayDropdownRef = useRef(null);
   const exportRangeModalInitializedRef = useRef(false);
   const prevShowUnattendedPopupRef = useRef(false);
   const [filterDropdownPlacement, setFilterDropdownPlacement] = useState(null);
+  const [actionDropdownPlacement, setActionDropdownPlacement] = useState(null);
+  const [printDropdownPlacement, setPrintDropdownPlacement] = useState(null);
 
   const isQuickNoCheckInActive = showOnlyUnattendedFilter;
 
@@ -414,10 +420,76 @@ function AttendanceList({
     };
   }, [filterMenuDropdownOpen]);
 
-  // Unified outside-click handler for top action menus.
+  // Chức năng / In — portal + fixed (thanh công cụ có overflow-x-auto → cắt menu absolute).
+  useLayoutEffect(() => {
+    if (!actionDropdownOpen) {
+      setActionDropdownPlacement(null);
+      return;
+    }
+    const update = () => {
+      const btn = actionDropdownAnchorRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      if (r.width <= 0 && r.height <= 0) return;
+      const w = Math.min(288, window.innerWidth - 16);
+      let left =
+        window.innerWidth < 640
+          ? Math.max(8, Math.min(r.left, window.innerWidth - w - 8))
+          : Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+      const top = r.bottom + 6;
+      const maxHeight = Math.max(160, window.innerHeight - top - 12);
+      setActionDropdownPlacement({ top, left, width: w, maxHeight });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [actionDropdownOpen]);
+
+  useLayoutEffect(() => {
+    if (!printDropdownOpen) {
+      setPrintDropdownPlacement(null);
+      return;
+    }
+    const update = () => {
+      const btn = printDropdownAnchorRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      if (r.width <= 0 && r.height <= 0) return;
+      const w = Math.min(288, window.innerWidth - 16);
+      let left =
+        window.innerWidth < 640
+          ? Math.max(8, Math.min(r.left, window.innerWidth - w - 8))
+          : Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+      const top = r.bottom + 6;
+      const maxHeight = Math.max(160, window.innerHeight - top - 12);
+      setPrintDropdownPlacement({ top, left, width: w, maxHeight });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [printDropdownOpen]);
+
+  // Đóng menu khi click ra ngoài — dùng «click» (không dùng mousedown).
+  // mousedown chạy trước onClick của nút; đóng menu khác + re-render cùng lúc có thể làm mất sự kiện click (Chức năng / In tưởng như hỏng).
   useEffect(() => {
     const handleClickOutside = (event) => {
-      const target = event.target;
+      if (event.button != null && event.button !== 0) return;
+      const raw = event.target;
+      const target =
+        raw instanceof Element
+          ? raw
+          : raw instanceof Node && raw.parentElement
+            ? raw.parentElement
+            : null;
+      if (!target) return;
 
       if (
         filterMenuDropdownOpen &&
@@ -431,7 +503,8 @@ function AttendanceList({
       if (
         printDropdownOpen &&
         printDropdownRef.current &&
-        !printDropdownRef.current.contains(target)
+        !printDropdownRef.current.contains(target) &&
+        !printDropdownPanelRef.current?.contains(target)
       ) {
         setPrintDropdownOpen(false);
       }
@@ -439,7 +512,8 @@ function AttendanceList({
       if (
         actionDropdownOpen &&
         actionDropdownRef.current &&
-        !actionDropdownRef.current.contains(target)
+        !actionDropdownRef.current.contains(target) &&
+        !actionDropdownPanelRef.current?.contains(target)
       ) {
         setActionDropdownOpen(false);
       }
@@ -453,8 +527,8 @@ function AttendanceList({
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
   }, [
     filterMenuDropdownOpen,
     printDropdownOpen,
@@ -466,6 +540,8 @@ function AttendanceList({
   useEffect(() => {
     setFilterMenuDropdownOpen(false);
     setOffHolidayDropdownOpen(false);
+    setActionDropdownOpen(false);
+    setPrintDropdownOpen(false);
   }, [location.pathname, location.search, location.hash]);
 
   // Khóa scroll nền khi mở modal «Bộ lọc nâng cao» (portal ra body).
@@ -2600,7 +2676,7 @@ function AttendanceList({
 
             <div
               ref={filterMenuRef}
-              className="attendance-filter-menu relative z-40 min-w-0"
+              className="attendance-filter-menu relative z-50 min-w-0"
             >
               <button
                 ref={filterDropdownAnchorRef}
@@ -2751,7 +2827,7 @@ function AttendanceList({
                   document.body,
                 )}
 
-              {/* Filter Modal — portal + z cao: tránh nằm trong .attendance-filter-menu z-40 nên bị nút Chức năng/In (sibling cùng z-40) đè lên */}
+              {/* Filter Modal — portal + z cao: tránh nằm trong .attendance-filter-menu nên bị cắt hoặc đè bởi sibling cùng stacking */}
               {filterOpen &&
                 createPortal(
                   <div
@@ -3065,9 +3141,10 @@ function AttendanceList({
             {user && (
               <div
                 ref={actionDropdownRef}
-                className="relative action-dropdown z-40 shrink-0 hidden sm:block"
+                className="relative action-dropdown z-50 shrink-0 hidden sm:block"
               >
                 <button
+                  ref={actionDropdownAnchorRef}
                   type="button"
                   onClick={() => setActionDropdownOpen(!actionDropdownOpen)}
                   className="inline-flex h-8 w-auto max-w-full items-center justify-center gap-0.5 whitespace-nowrap rounded bg-emerald-600 px-1 text-xs font-bold text-white shadow transition hover:bg-emerald-700 sm:text-sm"
@@ -3077,8 +3154,20 @@ function AttendanceList({
                     {actionDropdownOpen ? "▲" : "▼"}
                   </span>
                 </button>
-                {actionDropdownOpen && (
-                  <div className="absolute left-0 top-full z-[100] mt-1.5 max-w-[calc(100vw-2rem)] w-[min(100vw-2rem,18rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-emerald-200 bg-white shadow-2xl dark:border-emerald-800 dark:bg-slate-900 sm:left-auto sm:right-0 sm:w-64">
+                {actionDropdownOpen &&
+                  actionDropdownPlacement &&
+                  createPortal(
+                    <div
+                      ref={actionDropdownPanelRef}
+                      className="fixed z-[120] max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-emerald-200 bg-white shadow-2xl dark:border-emerald-800 dark:bg-slate-900 sm:w-64"
+                      style={{
+                        top: actionDropdownPlacement.top,
+                        left: actionDropdownPlacement.left,
+                        width: actionDropdownPlacement.width,
+                        maxHeight: actionDropdownPlacement.maxHeight,
+                      }}
+                    >
+                      <div className="min-h-0 max-h-full overflow-y-auto overflow-x-hidden overscroll-contain">
                     {isAdminAccess(user, userRole) && (
                       <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
                         <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
@@ -3218,8 +3307,10 @@ function AttendanceList({
                         </div>
                       </button>
                     )}
-                  </div>
-                )}
+                      </div>
+                    </div>,
+                    document.body,
+                  )}
                 {/* Hidden ExportExcelButton for functionality */}
                 <div className="hidden">
                   <ExportExcelButton
@@ -3240,9 +3331,10 @@ function AttendanceList({
             {/* Print Dropdown */}
             <div
               ref={printDropdownRef}
-              className="print-dropdown-menu relative z-40 shrink-0 hidden sm:block"
+              className="print-dropdown-menu relative z-50 shrink-0 hidden sm:block"
             >
               <button
+                ref={printDropdownAnchorRef}
                 type="button"
                 onClick={() => setPrintDropdownOpen(!printDropdownOpen)}
                 className="inline-flex h-8 w-auto max-w-full items-center justify-center gap-0.5 whitespace-nowrap rounded bg-blue-600 px-1 text-xs font-bold text-white shadow transition hover:bg-blue-700 sm:text-sm"
@@ -3250,8 +3342,20 @@ function AttendanceList({
                 🖨️ {tl("print", "In")}
                 <span className="text-xs">{printDropdownOpen ? "▲" : "▼"}</span>
               </button>
-              {printDropdownOpen && (
-                <div className="absolute left-0 top-full z-[100] mt-1.5 max-w-[calc(100vw-2rem)] w-[min(100vw-2rem,18rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-blue-200 bg-white shadow-2xl dark:border-blue-800 dark:bg-slate-900 sm:left-auto sm:right-0 sm:w-64">
+              {printDropdownOpen &&
+                printDropdownPlacement &&
+                createPortal(
+                  <div
+                    ref={printDropdownPanelRef}
+                    className="fixed z-[120] max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-blue-200 bg-white shadow-2xl dark:border-blue-800 dark:bg-slate-900 sm:w-64"
+                    style={{
+                      top: printDropdownPlacement.top,
+                      left: printDropdownPlacement.left,
+                      width: printDropdownPlacement.width,
+                      maxHeight: printDropdownPlacement.maxHeight,
+                    }}
+                  >
+                    <div className="min-h-0 max-h-full overflow-y-auto overflow-x-hidden overscroll-contain">
                   <button
                     onClick={() => {
                       handlePrintOvertimeList();
@@ -3290,8 +3394,10 @@ function AttendanceList({
                       </span>
                     </div>
                   </button>
-                </div>
-              )}
+                    </div>
+                  </div>,
+                  document.body,
+                )}
             </div>
           </AttendanceSearchActionsBar>
         </div>

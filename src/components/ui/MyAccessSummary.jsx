@@ -72,25 +72,28 @@ function MyAccessSummary({ variant = "compact" }) {
 
     if (!panelOpen) {
       return (
-        <button
-          type="button"
-          onClick={togglePanel}
-          className="pointer-events-auto fixed right-3 top-16 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300/90 bg-emerald-50/95 text-lg shadow-md backdrop-blur-sm transition hover:bg-emerald-100 hover:shadow sm:right-4"
-          title={t("userDeptManager.myAccessToggleExpand")}
-          aria-expanded="false"
-          aria-label={t("userDeptManager.myAccessToggleExpand")}
-        >
-          🔐
-        </button>
+        <div className="pointer-events-none fixed right-3 top-24 z-30 sm:right-4">
+          <button
+            type="button"
+            onClick={togglePanel}
+            className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300/90 bg-emerald-50/95 text-lg shadow-md backdrop-blur-sm transition hover:bg-emerald-100 hover:shadow"
+            title={t("userDeptManager.myAccessToggleExpand")}
+            aria-expanded="false"
+            aria-label={t("userDeptManager.myAccessToggleExpand")}
+          >
+            🔐
+          </button>
+        </div>
       );
     }
 
     return (
-      <div
-        className="pointer-events-auto fixed right-3 top-16 z-40 max-w-[min(17.5rem,calc(100vw-1.5rem))] rounded-lg border border-emerald-200/90 bg-emerald-50/95 px-2.5 pb-2 pt-1.5 text-[11px] leading-snug text-emerald-950 shadow-md backdrop-blur-sm sm:right-4 sm:px-3 sm:text-xs"
-        role="region"
-        aria-label={t("userDeptManager.myAccessTitle")}
-      >
+      <div className="pointer-events-none fixed right-3 top-24 z-30 sm:right-4">
+        <div
+          className="pointer-events-auto max-w-[min(17.5rem,calc(100vw-1.5rem))] rounded-lg border border-emerald-200/90 bg-emerald-50/95 px-2.5 pb-2 pt-1.5 text-[11px] leading-snug text-emerald-950 shadow-md backdrop-blur-sm sm:px-3 sm:text-xs"
+          role="region"
+          aria-label={t("userDeptManager.myAccessTitle")}
+        >
         <div className="mb-1 flex items-start justify-between gap-1 border-b border-emerald-200/70 pb-1">
           <p className="min-w-0 flex-1 font-bold leading-tight text-emerald-900">
             {t("userDeptManager.myAccessCompactPrefix")}
@@ -137,6 +140,7 @@ function MyAccessSummary({ variant = "compact" }) {
             {t("userDeptManager.myAccessDetailLink")}
           </Link>
         ) : null}
+        </div>
       </div>
     );
   }
