@@ -1,5 +1,5 @@
 // AttendanceUploadHandler.js
-// Upload Excel: merge **chỉ** (1) `attendance/{ngày}` đã có + (2) dòng Excel — không dùng employeeProfiles.
+// Upload Excel: merge **chỉ** (1) `{attendanceRootPath}/{ngày}` đã có + (2) dòng Excel — không dùng employeeProfiles.
 import * as XLSX from "@e965/xlsx";
 import { ref, set, get } from "firebase/database";
 import { getUploadErrorMessage } from "@/utils/uploadErrorMessage";
@@ -78,6 +78,8 @@ export const handleUploadExcel = async ({
   setIsUploadingExcel,
   t,
   db,
+  /** Firebase path gốc (vd. «attendance», «seasonalAttendance») — khớp `AttendanceList` props */
+  attendanceRootPath = "attendance",
 }) => {
   if (!user) {
     setAlert({
@@ -217,9 +219,8 @@ export const handleUploadExcel = async ({
       return "";
     };
 
-    // Prepare data for Firebase
-    // Use the selectedDate from the date picker, not the current date
-    const attendanceRef = ref(db, `attendance/${selectedDate}`);
+    // Prepare data for Firebase — cùng nhánh với trang đang mở (chính thức / thời vụ)
+    const attendanceRef = ref(db, `${attendanceRootPath}/${selectedDate}`);
     const dataToUpload = {};
 
     // Chuẩn hóa MNV để tránh lệch kiểu dữ liệu (number/string) gây trùng.

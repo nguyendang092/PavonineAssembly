@@ -421,6 +421,8 @@ function AttendanceList({
   }, [filterMenuDropdownOpen]);
 
   // Chức năng / In — portal + fixed (thanh công cụ có overflow-x-auto → cắt menu absolute).
+  // Trên mobile hai nút bị «hidden sm:block» (display:none) — rect = 0: phải đóng menu,
+  // không return sớm để tránh giữ placement cũ → menu portal treo / lệch sau khi responsive.
   useLayoutEffect(() => {
     if (!actionDropdownOpen) {
       setActionDropdownPlacement(null);
@@ -430,7 +432,11 @@ function AttendanceList({
       const btn = actionDropdownAnchorRef.current;
       if (!btn) return;
       const r = btn.getBoundingClientRect();
-      if (r.width <= 0 && r.height <= 0) return;
+      if (r.width <= 0 && r.height <= 0) {
+        setActionDropdownPlacement(null);
+        setActionDropdownOpen(false);
+        return;
+      }
       const w = Math.min(288, window.innerWidth - 16);
       let left =
         window.innerWidth < 640
@@ -458,7 +464,11 @@ function AttendanceList({
       const btn = printDropdownAnchorRef.current;
       if (!btn) return;
       const r = btn.getBoundingClientRect();
-      if (r.width <= 0 && r.height <= 0) return;
+      if (r.width <= 0 && r.height <= 0) {
+        setPrintDropdownPlacement(null);
+        setPrintDropdownOpen(false);
+        return;
+      }
       const w = Math.min(288, window.innerWidth - 16);
       let left =
         window.innerWidth < 640
@@ -476,6 +486,21 @@ function AttendanceList({
       window.removeEventListener("resize", update);
     };
   }, [printDropdownOpen]);
+
+  /** Dưới breakpoint sm nút Chức năng/In không mount hiển thị — đóng menu portal nếu còn mở (xoay máy / resize). */
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    const sync = () => {
+      if (mq.matches) return;
+      setActionDropdownOpen(false);
+      setPrintDropdownOpen(false);
+      setActionDropdownPlacement(null);
+      setPrintDropdownPlacement(null);
+    };
+    mq.addEventListener("change", sync);
+    sync();
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   // Đóng menu khi click ra ngoài — dùng «click» (không dùng mousedown).
   // mousedown chạy trước onClick của nút; đóng menu khác + re-render cùng lúc có thể làm mất sự kiện click (Chức năng / In tưởng như hỏng).
@@ -1207,9 +1232,18 @@ function AttendanceList({
         setIsUploadingExcel,
         t,
         db,
+        attendanceRootPath,
       });
     },
-    [user, selectedDate, setAlert, setIsUploadingExcel, t, db],
+    [
+      user,
+      selectedDate,
+      setAlert,
+      setIsUploadingExcel,
+      t,
+      db,
+      attendanceRootPath,
+    ],
   );
 
   const handleDownloadAttendanceExcelTemplate = useCallback(async () => {
