@@ -151,7 +151,7 @@ export function getPayrollExcelDateParts(dateKey) {
  *   isOffDay?: boolean,
  *   isHolidayDay?: boolean,
  *   earlyOtPaperworkById?: Record<string, boolean>,
- *   lateOtPaperworkById?: Record<string, boolean>,
+ *   lateOtExcludedById?: Record<string, boolean>,
  * }} ctx — `isPayrollOffLikeDay`: off hoặc lễ (TC off). Hiển thị OFF/HOLIDAY từ isOffDay / isHolidayDay.
  */
 export function payrollEmployeeRowValues(emp, idx, ctx) {
@@ -160,7 +160,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     isOffDay = false,
     isHolidayDay = false,
     earlyOtPaperworkById = {},
-    lateOtPaperworkById = {},
+    lateOtExcludedById = {},
   } = ctx;
   const offLike =
     isPayrollOffLikeDay !== undefined
@@ -198,7 +198,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
       isHolidayDay,
-      lateOtPaperworkById[emp.id],
+      lateOtExcludedById[emp.id],
     ),
     formatPayrollTableOffDayTcCell(
       emp.gioVao,
@@ -207,7 +207,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
       emp.loaiPhep,
-      lateOtPaperworkById[emp.id],
+      lateOtExcludedById[emp.id],
     ),
     formatPayrollTableHolidayDayWorkingCell(
       emp.gioVao,
@@ -216,7 +216,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
       emp.loaiPhep,
-      lateOtPaperworkById[emp.id],
+      lateOtExcludedById[emp.id],
     ),
     formatPayrollTableTotalDayGcCell(
       emp.gioVao,
@@ -226,7 +226,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
       emp.loaiPhep,
-      lateOtPaperworkById[emp.id],
+      lateOtExcludedById[emp.id],
     ),
     formatPayrollTableNightShiftWorkingCell(
       emp.gioVao,
@@ -403,7 +403,7 @@ function finalizePayrollWorksheetColumns(worksheet) {
 
 /**
  * Xuất Excel bảng lương (một ngày): ba cột Ngày / Tháng / Năm + đủ cột giống bảng desktop, cùng layout với xuất nhiều ngày.
- * @param {{ employees: object[], selectedDate: string, isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean>, lateOtPaperworkById?: Record<string, boolean> }} opts
+ * @param {{ employees: object[], selectedDate: string, isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean>, lateOtExcludedById?: Record<string, boolean> }} opts
  */
 export async function buildPayrollSalaryExcelWorkbook({
   employees,
@@ -414,7 +414,7 @@ export async function buildPayrollSalaryExcelWorkbook({
   tlTable,
   sheetTitle,
   earlyOtPaperworkById = {},
-  lateOtPaperworkById = {},
+  lateOtExcludedById = {},
 }) {
   const { workbook, worksheet } = createPayrollSalaryWorksheetBase(
     tlTable,
@@ -427,7 +427,7 @@ export async function buildPayrollSalaryExcelWorkbook({
     isOffDay,
     isHolidayDay,
     earlyOtPaperworkById,
-    lateOtPaperworkById,
+    lateOtExcludedById,
   };
   employees.forEach((emp, idx) => {
     appendPayrollWorksheetDataRow(worksheet, day, month, year, emp, idx, ctx);
@@ -440,7 +440,7 @@ export async function buildPayrollSalaryExcelWorkbook({
 
 /**
  * Nhiều ngày: một sheet; ba cột đầu là Ngày / Tháng / Năm (số, từ `dateKey` local).
- * @param {{ dayChunks: { dateKey: string, employees: object[], isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, earlyOtPaperworkById: Record<string, boolean>, lateOtPaperworkById?: Record<string, boolean> }[], tlTable: function, sheetTitle: string }} opts
+ * @param {{ dayChunks: { dateKey: string, employees: object[], isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, earlyOtPaperworkById: Record<string, boolean>, lateOtExcludedById?: Record<string, boolean> }[], tlTable: function, sheetTitle: string }} opts
  */
 export async function buildPayrollSalaryExcelWorkbookMultiDay({
   dayChunks,
@@ -458,7 +458,7 @@ export async function buildPayrollSalaryExcelWorkbookMultiDay({
       isOffDay: chunk.isOffDay ?? false,
       isHolidayDay: chunk.isHolidayDay ?? false,
       earlyOtPaperworkById: chunk.earlyOtPaperworkById || {},
-      lateOtPaperworkById: chunk.lateOtPaperworkById || {},
+      lateOtExcludedById: chunk.lateOtExcludedById || {},
     };
     const { day, month, year } = getPayrollExcelDateParts(chunk.dateKey);
     chunk.employees.forEach((emp, idx) => {

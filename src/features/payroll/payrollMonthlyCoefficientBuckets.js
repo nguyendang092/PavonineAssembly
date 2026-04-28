@@ -31,7 +31,7 @@ const PAYROLL_EARLY_PAPERWORK_OT_HOURS = 2;
  *   isHolidayDay: boolean,
  *   caLamViec: unknown,
  *   payrollEarlyOtPaperwork: boolean | undefined,
- *   payrollLateOtPaperwork: boolean | undefined,
+ *   payrollLateOtExcluded: boolean | undefined,
  * }} p
  * @returns {{ coeff: number; hours: number; key: string }[]}
  */
@@ -43,7 +43,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     isHolidayDay,
     caLamViec,
     payrollEarlyOtPaperwork,
-    payrollLateOtPaperwork,
+    payrollLateOtExcluded,
   } = p;
   const night = isNightShiftCaLamViec(caLamViec);
   const lines = [];
@@ -68,7 +68,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
       caLamViec,
       payrollEarlyOtPaperwork,
       undefined,
-      payrollLateOtPaperwork,
+      payrollLateOtExcluded,
     );
     if (m != null && m > 0) {
       lines.push({ coeff: 3.0, hours: m, key: "dh30" });
@@ -96,7 +96,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
       caLamViec,
       payrollEarlyOtPaperwork,
       undefined,
-      payrollLateOtPaperwork,
+      payrollLateOtExcluded,
     );
     if (m != null && m > 0) {
       lines.push({ coeff: 2.0, hours: m, key: "off20" });
@@ -131,7 +131,8 @@ export function getPayrollMonthlyCoefficientLines(p) {
   ) {
     early = PAYROLL_EARLY_PAPERWORK_OT_HOURS;
   }
-  const ev = payrollLateOtPaperwork === true ? (evening == null ? 0 : evening) : 0;
+  const ev =
+    payrollLateOtExcluded === true ? 0 : evening == null ? 0 : evening;
   const sum15 = roundHoursToTenths(ev + early);
   if (sum15 > 0) {
     lines.push({ coeff: 1.5, hours: sum15, key: "d15" });

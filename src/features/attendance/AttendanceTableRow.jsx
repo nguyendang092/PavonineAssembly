@@ -2260,7 +2260,7 @@ function AttendanceTableRow({
                 emp.caLamViec,
                 emp.payrollEarlyOtPaperwork,
                 isHolidayDay,
-                emp.payrollLateOtPaperwork,
+                emp.payrollLateOtExcluded,
               )}
             </span>
           </Cell>
@@ -2283,7 +2283,7 @@ function AttendanceTableRow({
                 emp.caLamViec,
                 emp.payrollEarlyOtPaperwork,
                 emp.loaiPhep,
-                emp.payrollLateOtPaperwork,
+                emp.payrollLateOtExcluded,
               )}
             </span>
           </Cell>
@@ -2309,7 +2309,7 @@ function AttendanceTableRow({
                 emp.caLamViec,
                 emp.payrollEarlyOtPaperwork,
                 emp.loaiPhep,
-                emp.payrollLateOtPaperwork,
+                emp.payrollLateOtExcluded,
               )}
             </span>
           </Cell>
@@ -2333,7 +2333,7 @@ function AttendanceTableRow({
                 emp.caLamViec,
                 emp.payrollEarlyOtPaperwork,
                 emp.loaiPhep,
-                emp.payrollLateOtPaperwork,
+                emp.payrollLateOtExcluded,
               )}
             </span>
           </Cell>

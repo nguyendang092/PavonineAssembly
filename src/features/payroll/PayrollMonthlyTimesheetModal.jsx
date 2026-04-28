@@ -229,7 +229,7 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
       isHolidayDay: ch.isHolidayDay,
       caLamViec: emp.caLamViec,
       payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
-      payrollLateOtPaperwork: emp.payrollLateOtPaperwork,
+      payrollLateOtExcluded: emp.payrollLateOtExcluded,
       loaiPhep: emp.loaiPhep,
     });
     out.coeff03 += Number(coeffMap.get(0.3) || 0);
@@ -1128,8 +1128,8 @@ export default function PayrollMonthlyTimesheetModal({
                                 caLamViec: emp.caLamViec,
                                 payrollEarlyOtPaperwork:
                                   emp.payrollEarlyOtPaperwork,
-                                payrollLateOtPaperwork:
-                                  emp.payrollLateOtPaperwork,
+                                payrollLateOtExcluded:
+                                  emp.payrollLateOtExcluded,
                                 loaiPhep: emp.loaiPhep,
                               });
                               const h = coeffMap.get(sr.coeff);

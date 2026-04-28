@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 /**
  * Xác nhận có giấy tăng ca khung 06:00–08:00 (vào ≤ 06:00, ca ngày).
- * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: (opts?: { suppressSession?: boolean }) => void, onSave: (updates: Record<string, boolean>, opts?: { suppressSession?: boolean }) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, suppressSessionLabel?: string, timeLabel?: string, timeField?: string }} props
+ * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: (opts?: { suppressSession?: boolean }) => void, onSave: (updates: Record<string, boolean>, opts?: { suppressSession?: boolean }) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, suppressSessionLabel?: string, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
  */
 export default function PayrollEarlyOvertimePaperworkModal({
   open,
@@ -19,9 +19,13 @@ export default function PayrollEarlyOvertimePaperworkModal({
   suppressSessionLabel = "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
   timeLabel = "Vào",
   timeField = "gioVao",
+  searchPlaceholder = "Lọc theo tên / MNV / bộ phận",
+  departmentPlaceholder = "Tất cả bộ phận",
 }) {
   const [checks, setChecks] = useState({});
   const [suppressSessionChecked, setSuppressSessionChecked] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
 
   useEffect(() => {
     if (!open || !rows?.length) return;
@@ -31,7 +35,33 @@ export default function PayrollEarlyOvertimePaperworkModal({
     }
     setChecks(next);
     setSuppressSessionChecked(false);
+    setSearchTerm("");
+    setDepartmentFilter("");
   }, [open, rows, initialChecked]);
+
+  const departmentOptions = useMemo(() => {
+    const set = new Set();
+    for (const emp of rows || []) {
+      const dept = String(emp?.boPhan ?? "").trim();
+      if (dept) set.add(dept);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "vi"));
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    const q = String(searchTerm ?? "").trim().toLowerCase();
+    const deptNeedle = String(departmentFilter ?? "").trim().toLowerCase();
+    return (rows || []).filter((emp) => {
+      const dept = String(emp?.boPhan ?? "").trim();
+      if (deptNeedle && dept.toLowerCase() !== deptNeedle) return false;
+      if (!q) return true;
+      return (
+        String(emp?.hoVaTen ?? "").toLowerCase().includes(q) ||
+        String(emp?.mnv ?? "").toLowerCase().includes(q) ||
+        dept.toLowerCase().includes(q)
+      );
+    });
+  }, [rows, searchTerm, departmentFilter]);
 
   /** Khóa cuộn nền: scroll nằm trên `#app-main-scroll`, không chỉ `body`. */
   useEffect(() => {
@@ -125,9 +155,32 @@ export default function PayrollEarlyOvertimePaperworkModal({
             </div>
           </div>
         </div>
+        <div className="border-b border-sky-200/70 bg-white/90 px-3 py-3 dark:border-sky-900/40 dark:bg-slate-900/95">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={searchPlaceholder}
+              className="h-9 min-w-0 flex-1 rounded-lg border border-sky-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-200/70 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-sky-500 dark:focus:ring-sky-900/50"
+            />
+            <select
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="h-9 rounded-lg border border-sky-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200/70 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-sky-500 dark:focus:ring-sky-900/50"
+            >
+              <option value="">{departmentPlaceholder}</option>
+              {departmentOptions.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         <div className="max-h-[min(62vh,480px)] overflow-y-auto bg-stone-50/40 px-3 py-3 dark:bg-slate-950/50">
           <ul className="space-y-2.5">
-            {rows.map((emp) => (
+            {filteredRows.map((emp) => (
               <li
                 key={emp.id}
                 className="flex flex-wrap items-stretch gap-2 rounded-xl border border-stone-200/70 bg-white pl-1 shadow-sm shadow-stone-300/20 dark:border-slate-700/70 dark:bg-slate-800/50 dark:shadow-none"
@@ -180,6 +233,11 @@ export default function PayrollEarlyOvertimePaperworkModal({
                 </label>
               </li>
             ))}
+            {filteredRows.length === 0 ? (
+              <li className="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400">
+                Không có nhân viên phù hợp bộ lọc.
+              </li>
+            ) : null}
           </ul>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950">

@@ -97,7 +97,7 @@ export default function PayrollSalaryCalculator() {
 
   const [employees, setEmployees] = useState([]);
   const [earlyOtMap, setEarlyOtMap] = useState({});
-  const [lateOtMap, setLateOtMap] = useState({});
+  const [lateOtExcludedMap, setLateOtExcludedMap] = useState({});
   const [earlyOtModalOpen, setEarlyOtModalOpen] = useState(false);
   const [earlyOtSuppressed, setEarlyOtSuppressed] = useState(false);
   /** Tự động mở popup: không bật lại khi user đã chọn «không hiển thị trong phiên» (sessionStorage). */
@@ -143,7 +143,7 @@ export default function PayrollSalaryCalculator() {
     attendanceRawRef.current = undefined;
     setEmployees([]);
     setEarlyOtMap({});
-    setLateOtMap({});
+    setLateOtExcludedMap({});
     const empRef = ref(db, `attendance/${selectedDate}`);
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
@@ -153,7 +153,7 @@ export default function PayrollSalaryCalculator() {
       setIsHolidayDay(parsed.isHolidayDay);
       setEmployees(parsed.baseEmployees);
       setEarlyOtMap(parsed.earlyOtPaperworkById);
-      setLateOtMap(parsed.lateOtPaperworkById || {});
+      setLateOtExcludedMap(parsed.lateOtExcludedById || {});
     });
     return () => unsubscribe();
   }, [selectedDate]);
@@ -213,9 +213,9 @@ export default function PayrollSalaryCalculator() {
       employees.map((e) => ({
         ...e,
         payrollEarlyOtPaperwork: earlyOtMap[e.id],
-        payrollLateOtPaperwork: lateOtMap[e.id],
+        payrollLateOtExcluded: lateOtExcludedMap[e.id],
       })),
-    [employees, earlyOtMap, lateOtMap],
+    [employees, earlyOtMap, lateOtExcludedMap],
   );
 
   /** Vào ≤ 06:00 (ca ngày) — vẫn hiện nút / modal khi ngày off (chỉ tắt tự mở popup). */
@@ -234,7 +234,7 @@ export default function PayrollSalaryCalculator() {
     [earlyOtEligibleEmployees, earlyOtMap],
   );
 
-  /** Ra sau 17:30 (ca ngày) — cần xác nhận có giấy đăng ký tăng ca. */
+  /** Ra sau 17:30 (ca ngày) — mặc định vẫn tính TC; popup dùng để đánh dấu KHÔNG tăng ca. */
   const lateOtEligibleEmployees = useMemo(
     () =>
       sortEmployeesAscForPopup(
@@ -248,8 +248,8 @@ export default function PayrollSalaryCalculator() {
   );
 
   const pendingLateOtEmployees = useMemo(
-    () => lateOtEligibleEmployees.filter((e) => !(e.id in lateOtMap)),
-    [lateOtEligibleEmployees, lateOtMap],
+    () => lateOtEligibleEmployees.filter((e) => !(e.id in lateOtExcludedMap)),
+    [lateOtEligibleEmployees, lateOtExcludedMap],
   );
 
   const lateOtModalRows = useMemo(() => {
@@ -260,9 +260,9 @@ export default function PayrollSalaryCalculator() {
   const lateOtInitialChecked = useCallback(
     (id) => {
       if (lateOtModalMode === "pending") return false;
-      return !!lateOtMap[id];
+      return !!lateOtExcludedMap[id];
     },
-    [lateOtModalMode, lateOtMap],
+    [lateOtModalMode, lateOtExcludedMap],
   );
 
   const earlyOtModalRows = useMemo(() => {
@@ -549,7 +549,7 @@ export default function PayrollSalaryCalculator() {
             isOffDay: parsed.isOffDay,
             isHolidayDay: parsed.isHolidayDay,
             earlyOtPaperworkById: parsed.earlyOtPaperworkById,
-            lateOtPaperworkById: parsed.lateOtPaperworkById || {},
+            lateOtExcludedById: parsed.lateOtExcludedById || {},
           });
         }
         if (!dayChunks.length) {
@@ -626,7 +626,7 @@ export default function PayrollSalaryCalculator() {
         tlTable,
         sheetTitle: payrollExportSheetTitle,
         earlyOtPaperworkById: earlyOtMap,
-        lateOtPaperworkById: lateOtMap,
+        lateOtExcludedById: lateOtExcludedMap,
       });
       setAlert({
         show: true,
@@ -653,7 +653,7 @@ export default function PayrollSalaryCalculator() {
     tlPage,
     payrollExportSheetTitle,
     earlyOtMap,
-    lateOtMap,
+    lateOtExcludedMap,
   ]);
 
   return (
@@ -761,10 +761,10 @@ export default function PayrollSalaryCalculator() {
                 className="h-8 shrink-0 rounded-lg border-2 border-amber-600/90 bg-gradient-to-b from-amber-500 to-orange-600 px-3 text-xs font-bold text-white shadow-md shadow-orange-600/25 transition hover:from-amber-400 hover:to-orange-500 dark:border-amber-500/80 dark:from-amber-600 dark:to-orange-700 dark:hover:from-amber-500 dark:hover:to-orange-600"
                 title={tlPage(
                   "lateOtPaperworkHint",
-                  "Xác nhận có giấy đăng ký tăng ca cho nhân viên ra sau 17:30 (ca ngày).",
+                  "Đánh dấu những nhân viên ra sau 17:30 nhưng KHÔNG tính tăng ca.",
                 )}
               >
-                {tlPage("lateOtPaperworkButton", "Giấy TC >17:30")}
+                {tlPage("lateOtPaperworkButton", "Không TC >17:30")}
               </button>
             ) : null}
             <div className="relative" ref={excelExportMenuRef}>
@@ -1014,6 +1014,14 @@ export default function PayrollSalaryCalculator() {
           "earlyOtModalDontShowSession",
           "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
         )}
+        searchPlaceholder={tlPage(
+          "paperworkModalSearchPlaceholder",
+          "Lọc theo tên / MNV / bộ phận",
+        )}
+        departmentPlaceholder={tlPage(
+          "paperworkModalDepartmentPlaceholder",
+          "Tất cả bộ phận",
+        )}
       />
 
       <PayrollEarlyOvertimePaperworkModal
@@ -1023,21 +1031,29 @@ export default function PayrollSalaryCalculator() {
         onDismiss={handleLateOtDismiss}
         onSave={handleLateOtSave}
         saving={lateOtSaving}
-        title={tlPage("lateOtModalTitle", "Xác nhận giấy tăng ca sau 17:30")}
+        title={tlPage("lateOtModalTitle", "Xác nhận không tăng ca sau 17:30")}
         description={tlPage(
           "lateOtModalDescription",
-          "Nhân viên có giờ ra sau 17:30 (ca ngày) cần xác nhận đã có giấy đăng ký tăng ca.",
+          "Mặc định nhân viên có giờ ra sau 17:30 (ca ngày) vẫn được tính tăng ca. Hãy tick những người KHÔNG tính tăng ca.",
         )}
         saveLabel={tlPage("lateOtModalSave", "Lưu")}
         skipAllLabel={tlPage(
           "lateOtModalSkipAll",
-          "Tất cả chưa có giấy tăng ca",
+          "Tất cả đều có tăng ca",
         )}
         timeLabel={tlPage("timeOutShortLabel", "Ra")}
         timeField="gioRa"
         suppressSessionLabel={tlPage(
           "lateOtModalDontShowSession",
           "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
+        )}
+        searchPlaceholder={tlPage(
+          "paperworkModalSearchPlaceholder",
+          "Lọc theo tên / MNV / bộ phận",
+        )}
+        departmentPlaceholder={tlPage(
+          "paperworkModalDepartmentPlaceholder",
+          "Tất cả bộ phận",
         )}
       />
     </>

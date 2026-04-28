@@ -58,20 +58,20 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
       isHolidayDay: false,
       isPayrollOffLikeDay: false,
       earlyOtPaperworkById: {},
-      lateOtPaperworkById: {},
+      lateOtExcludedById: {},
     };
   }
   const isOffDay = getIsOffDayFromRaw(raw);
   const isHolidayDay = getIsHolidayDayFromRaw(raw);
   const earlyOtPaperworkById = getEarlyOtPaperworkFromRaw(raw);
-  const lateOtPaperworkById = getLateOtPaperworkFromRaw(raw);
+  const lateOtExcludedById = getLateOtPaperworkFromRaw(raw);
   const baseEmployees = sortPayrollEmployeesStable(
     mergeAttendanceDayRowsFromRaw(raw),
   );
   const payrollEmployees = baseEmployees.map((e) => ({
     ...e,
     payrollEarlyOtPaperwork: earlyOtPaperworkById[e.id],
-    payrollLateOtPaperwork: lateOtPaperworkById[e.id],
+    payrollLateOtExcluded: lateOtExcludedById[e.id],
   }));
   return {
     baseEmployees,
@@ -80,7 +80,7 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
     isHolidayDay,
     isPayrollOffLikeDay: isOffDay || isHolidayDay,
     earlyOtPaperworkById,
-    lateOtPaperworkById,
+    lateOtExcludedById,
   };
 }
 
@@ -95,7 +95,7 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
  *   isHolidayDay: boolean,
  *   isPayrollOffLikeDay: boolean,
  *   earlyOtPaperworkById: Record<string, boolean>,
- *   lateOtPaperworkById: Record<string, boolean>,
+ *   lateOtExcludedById: Record<string, boolean>,
  * }}
  */
 export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
@@ -115,6 +115,6 @@ export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
     isHolidayDay: parsed.isHolidayDay,
     isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
     earlyOtPaperworkById: parsed.earlyOtPaperworkById,
-    lateOtPaperworkById: parsed.lateOtPaperworkById,
+    lateOtExcludedById: parsed.lateOtExcludedById,
   };
 }

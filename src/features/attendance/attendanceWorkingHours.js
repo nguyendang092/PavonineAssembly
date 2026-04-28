@@ -320,7 +320,7 @@ export function formatPayrollTableOffDayTcCell(
   caLamViec,
   earlyOtPaperwork,
   leaveTypeRaw,
-  lateOtPaperwork = false,
+  lateOtExcluded = false,
 ) {
   if (hasPayrollLeaveType(leaveTypeRaw)) return PAYROLL_CELL_DASH;
   if (isNightShiftCaLamViec(caLamViec)) {
@@ -337,7 +337,7 @@ export function formatPayrollTableOffDayTcCell(
     caLamViec,
     earlyOtPaperwork,
     leaveTypeRaw,
-    lateOtPaperwork,
+    lateOtExcluded,
   );
   return payrollHoursCellDisplay(
     merged == null ? PAYROLL_CELL_DASH : String(merged),
@@ -354,7 +354,7 @@ export function formatPayrollTableHolidayDayWorkingCell(
   caLamViec,
   earlyOtPaperwork,
   leaveTypeRaw,
-  lateOtPaperwork = false,
+  lateOtExcluded = false,
 ) {
   if (hasPayrollLeaveType(leaveTypeRaw)) return PAYROLL_CELL_DASH;
   if (!isHolidayDay || isNightShiftCaLamViec(caLamViec)) {
@@ -368,7 +368,7 @@ export function formatPayrollTableHolidayDayWorkingCell(
     caLamViec,
     earlyOtPaperwork,
     leaveTypeRaw,
-    lateOtPaperwork,
+    lateOtExcluded,
   );
   return payrollHoursCellDisplay(
     merged == null ? PAYROLL_CELL_DASH : String(merged),
@@ -501,6 +501,7 @@ export function isEarlyArrivalFor0600PaperworkOvertime(gioVao, caLamViec) {
  * Giờ TC khối ngày (cột «Giờ TC»): tăng ca sau 17:30 + (tùy chọn) 2h khi có giấy và vào ≤ 06:00.
  * Ca ngày: **bắt buộc có giờ ra hợp lệ** mới tính TC (kể cả phần giấy sớm) — tránh có 2h TC khi chưa chấm giờ ra.
  * @param {boolean | undefined} earlyOtPaperwork — `true` nếu user xác nhận có giấy.
+ * @param {boolean | undefined} lateOtExcluded — `true` nếu user xác nhận KHONG tinh tang ca sau 17:30.
  * @returns {number | null} null nếu không đọc được giờ ra (ca ngày / ca đêm).
  */
 export function getPayrollDayOvertimeHoursNumeric(
@@ -510,7 +511,7 @@ export function getPayrollDayOvertimeHoursNumeric(
   caLamViec,
   earlyOtPaperwork,
   isHolidayDay = false,
-  lateOtPaperwork = false,
+  lateOtExcluded = false,
 ) {
   if (isNightShiftCaLamViec(caLamViec)) {
     return getOvertimeHoursFromGioRa(gioRa);
@@ -520,7 +521,7 @@ export function getPayrollDayOvertimeHoursNumeric(
   if (eveningRaw == null) {
     return null;
   }
-  const evening = lateOtPaperwork === true ? eveningRaw : 0;
+  const evening = lateOtExcluded === true ? 0 : eveningRaw;
   let early = 0;
   if (
     earlyOtPaperwork === true &&
@@ -544,7 +545,7 @@ export function getPayrollDayShiftOffHolidayMergedHoursNumeric(
   caLamViec,
   earlyOtPaperwork,
   leaveTypeRaw,
-  lateOtPaperwork = false,
+  lateOtExcluded = false,
 ) {
   if (hasPayrollLeaveType(leaveTypeRaw)) return null;
   if (!isStrictOffDay && !isHolidayDay) return null;
@@ -559,7 +560,7 @@ export function getPayrollDayShiftOffHolidayMergedHoursNumeric(
     caLamViec,
     earlyOtPaperwork,
     isHolidayDay,
-    lateOtPaperwork,
+    lateOtExcluded,
   );
   if (h == null && n == null) return null;
   const gc = h == null ? 0 : h;
@@ -578,7 +579,7 @@ export function formatPayrollDayOvertimeHoursCell(
   caLamViec,
   earlyOtPaperwork,
   isHolidayDay = false,
-  lateOtPaperwork = false,
+  lateOtExcluded = false,
 ) {
   if (isNightShiftCaLamViec(caLamViec)) {
     return formatOvertimeHoursLabel(gioRa);
@@ -593,7 +594,7 @@ export function formatPayrollDayOvertimeHoursCell(
     caLamViec,
     earlyOtPaperwork,
     isHolidayDay,
-    lateOtPaperwork,
+    lateOtExcluded,
   );
   if (n == null) return PAYROLL_CELL_DASH;
   if (n === 0) return PAYROLL_CELL_DASH;
@@ -624,7 +625,7 @@ function payrollTotalDayGcNumeric(
   caLamViec,
   earlyOtPaperwork,
   leaveTypeRaw,
-  lateOtPaperwork = false,
+  lateOtExcluded = false,
 ) {
   if (hasPayrollLeaveType(leaveTypeRaw)) {
     if (isHalfPnLeaveType(leaveTypeRaw) && !isStrictOffDay && !isHolidayDay) {
@@ -652,7 +653,7 @@ function payrollTotalDayGcNumeric(
         caLamViec,
         earlyOtPaperwork,
         false,
-        lateOtPaperwork,
+        lateOtExcluded,
       );
       tc = n == null ? 0 : n;
     } else {
@@ -671,7 +672,7 @@ function payrollTotalDayGcNumeric(
       caLamViec,
       earlyOtPaperwork,
       leaveTypeRaw,
-      lateOtPaperwork,
+      lateOtExcluded,
     );
     return roundHoursForPayrollDisplay(merged == null ? 0 : merged);
   }
@@ -686,7 +687,7 @@ export function formatPayrollTableTotalDayGcCell(
   caLamViec,
   earlyOtPaperwork,
   leaveTypeRaw,
-  lateOtPaperwork = false,
+  lateOtExcluded = false,
 ) {
   const sum = payrollTotalDayGcNumeric(
     gioVao,
@@ -696,7 +697,7 @@ export function formatPayrollTableTotalDayGcCell(
     caLamViec,
     earlyOtPaperwork,
     leaveTypeRaw,
-    lateOtPaperwork,
+    lateOtExcluded,
   );
   if (sum === 0) return PAYROLL_CELL_DASH;
   return payrollHoursCellDisplay(String(sum));
