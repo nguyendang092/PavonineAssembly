@@ -182,7 +182,10 @@ function AttendanceList({
     setMonthOffDaysLoading(true);
     setMonthOffAndHoliday({ off: [], holiday: [] });
     try {
-      const oh = await fetchOffAndHolidayDateKeysInMonth(selectedDate);
+      const oh = await fetchOffAndHolidayDateKeysInMonth(
+        selectedDate,
+        attendanceRootPath,
+      );
       setMonthOffAndHoliday(oh);
     } catch (err) {
       console.error("refreshMonthOffDays:", err);
@@ -190,7 +193,7 @@ function AttendanceList({
     } finally {
       setMonthOffDaysLoading(false);
     }
-  }, [user, userRole, selectedDate]);
+  }, [user, userRole, selectedDate, attendanceRootPath]);
 
   useEffect(() => {
     void refreshMonthOffDays();
@@ -3507,6 +3510,7 @@ function AttendanceList({
           user={user}
           tl={tl}
           onSaved={refreshMonthOffDays}
+          attendanceRootPath={attendanceRootPath}
         />
 
         {/* Overtime Modal */}

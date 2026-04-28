@@ -2,6 +2,7 @@ import React, { memo } from "react";
 import {
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
+  getAttendanceLeaveTypeColorClassName,
   getAttendanceLeaveTypeColorClassNameForEmployee,
 } from "./attendanceGioVaoTypeOptions";
 import {
@@ -22,6 +23,39 @@ import { formatTrangThaiLamViecTableCell } from "./attendanceEmploymentStatus";
 const PAYROLL_EMPTY_CELL = "-";
 /** Điểm danh: ô trống / không nhập giờ — chỉnh sửa qua nút Sửa. */
 const ATTENDANCE_EMPTY_CELL = "-";
+
+/**
+ * Cột «Ngày off» / «Ngày lễ»: chữ OFF / HOLIDAY — màu đỏ cùng hệ với cột «Loại phép» (vd. KP, VT…).
+ */
+function AttendanceOffHolidayCellContent({
+  isPayroll,
+  isMinimal,
+  payrollTimeShiftFont,
+  kind,
+  active,
+}) {
+  const empty = isPayroll ? PAYROLL_EMPTY_CELL : ATTENDANCE_EMPTY_CELL;
+  const leaveTypeRedClass = getAttendanceLeaveTypeColorClassName("Không phép");
+  const sizeCls = isPayroll
+    ? payrollTimeShiftFont
+    : isMinimal
+      ? "text-[10px] md:text-base"
+      : "text-xs md:text-base";
+  if (!active) {
+    return (
+      <span
+        className={`tabular-nums ${isPayroll ? "text-gray-500" : "font-normal text-gray-400"}`}
+      >
+        {empty}
+      </span>
+    );
+  }
+  return (
+    <span className={`font-bold ${sizeCls} ${leaveTypeRedClass}`}>
+      {kind === "off" ? "OFF" : "HOLIDAY"}
+    </span>
+  );
+}
 
 /** Bảng lương: null / chỉ khoảng trắng / chuỗi rỗng → `-`. Điểm danh: giữ nguyên. */
 function payrollDash(value, isPayroll) {
@@ -2115,7 +2149,15 @@ function AttendanceTableRow({
             "offDayColumnHint",
             "Khi ngày được đánh dấu «Ngày off» trên Điểm danh: hiển thị OFF.",
           )}
-        />
+        >
+          <AttendanceOffHolidayCellContent
+            isPayroll={false}
+            isMinimal={isMinimal}
+            payrollTimeShiftFont={payrollTimeShiftFont}
+            kind="off"
+            active={isOffDay}
+          />
+        </Cell>
       ) : null}
       {!isPayroll && !isMinimal ? (
         <Cell
@@ -2128,7 +2170,15 @@ function AttendanceTableRow({
             "holidayDayColumnHint",
             "Khi ngày được đánh dấu «Ngày lễ» trên Điểm danh: hiển thị HOLIDAY.",
           )}
-        />
+        >
+          <AttendanceOffHolidayCellContent
+            isPayroll={false}
+            isMinimal={isMinimal}
+            payrollTimeShiftFont={payrollTimeShiftFont}
+            kind="holiday"
+            active={isHolidayDay}
+          />
+        </Cell>
       ) : null}
       {isPayroll && !isMinimal ? (
         <>
@@ -2142,7 +2192,15 @@ function AttendanceTableRow({
               "offDayColumnHint",
               "Khi ngày được đánh dấu «Ngày off» trên Điểm danh: hiển thị OFF.",
             )}
-          />
+          >
+            <AttendanceOffHolidayCellContent
+              isPayroll
+              isMinimal={isMinimal}
+              payrollTimeShiftFont={payrollTimeShiftFont}
+              kind="off"
+              active={isOffDay}
+            />
+          </Cell>
           <Cell
             role={isGrid ? "cell" : undefined}
             style={attendanceGridCellStyle(isGrid, gcs("holidayDay"))}
@@ -2153,7 +2211,15 @@ function AttendanceTableRow({
               "holidayDayColumnHint",
               "Khi ngày được đánh dấu «Ngày lễ» trên Điểm danh: hiển thị HOLIDAY.",
             )}
-          />
+          >
+            <AttendanceOffHolidayCellContent
+              isPayroll
+              isMinimal={isMinimal}
+              payrollTimeShiftFont={payrollTimeShiftFont}
+              kind="holiday"
+              active={isHolidayDay}
+            />
+          </Cell>
           <Cell
             role={isGrid ? "cell" : undefined}
             style={attendanceGridCellStyle(isGrid, gcs("workingHours"))}

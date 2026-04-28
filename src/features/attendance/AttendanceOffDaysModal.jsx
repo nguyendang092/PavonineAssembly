@@ -12,7 +12,7 @@ function sortDraftEntries(arr) {
 }
 
 /**
- * Admin/HR: đánh dấu nhiều ngày off / lễ (Firebase `attendance/{YYYY-MM-DD}/_meta`).
+ * Admin/HR: đánh dấu nhiều ngày off / lễ (Firebase `{attendanceRootPath}/{YYYY-MM-DD}/_meta`).
  * Gộp meta để không ghi đè `earlyOtPaperwork`.
  */
 export default function AttendanceOffDaysModal({
@@ -22,6 +22,7 @@ export default function AttendanceOffDaysModal({
   user,
   tl,
   onSaved,
+  attendanceRootPath = "attendance",
 }) {
   const [draft, setDraft] = useState([]);
   const [snapshot, setSnapshot] = useState([]);
@@ -44,6 +45,7 @@ export default function AttendanceOffDaysModal({
       try {
         const { off, holiday } = await fetchOffAndHolidayDateKeysInMonth(
           selectedDate,
+          attendanceRootPath,
         );
         if (!cancelled) {
           const entries = [
@@ -68,7 +70,7 @@ export default function AttendanceOffDaysModal({
     return () => {
       cancelled = true;
     };
-  }, [open, selectedDate]);
+  }, [open, selectedDate, attendanceRootPath]);
 
   const addOrUpdateDate = useCallback((d, kind) => {
     if (!d || !DATE_KEY.test(d)) return;
@@ -95,7 +97,9 @@ export default function AttendanceOffDaysModal({
         const w = want.get(d);
         const h = had.get(d);
         if (w === h) continue;
-        const snap = await get(ref(db, `attendance/${d}/_meta`));
+        const snap = await get(
+          ref(db, `${attendanceRootPath}/${d}/_meta`),
+        );
         let merged;
         if (!w) {
           merged = mergeAttendanceDayMeta(snap.val(), {
@@ -113,7 +117,7 @@ export default function AttendanceOffDaysModal({
             isHolidayDay: true,
           });
         }
-        updates[`attendance/${d}/_meta`] = merged;
+        updates[`${attendanceRootPath}/${d}/_meta`] = merged;
       }
       if (Object.keys(updates).length > 0) {
         await update(ref(db), updates);
@@ -125,7 +129,7 @@ export default function AttendanceOffDaysModal({
     } finally {
       setBusy(false);
     }
-  }, [user, draft, snapshot, onClose, onSaved]);
+  }, [user, draft, snapshot, onClose, onSaved, attendanceRootPath]);
 
   if (!open) return null;
 
