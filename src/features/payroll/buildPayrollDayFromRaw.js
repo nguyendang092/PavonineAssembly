@@ -1,7 +1,9 @@
 import { mergeAttendanceDayRowsFromRaw } from "@/features/attendance/mergeAttendanceDayRows";
+import { businessEmployeeCode } from "@/utils/employeeRosterRecord";
 import {
   getEarlyOtPaperworkFromRaw,
   getIsHolidayDayFromRaw,
+  getLateOtPaperworkFromRaw,
   getIsOffDayFromRaw,
 } from "@/features/attendance/attendanceDayMeta";
 
@@ -20,10 +22,21 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "payrollEarlyOtPaperwork",
 ];
 
+function sortPayrollEmployeesStable(rows) {
+  return [...rows].sort((a, b) => {
+    const aStt = Number(a?.stt);
+    const bStt = Number(b?.stt);
+    const aSttNorm = Number.isFinite(aStt) ? aStt : Number.POSITIVE_INFINITY;
+    const bSttNorm = Number.isFinite(bStt) ? bStt : Number.POSITIVE_INFINITY;
+    return aSttNorm - bSttNorm;
+  });
+}
+
 export function slimPayrollMonthEmployeeRecord(emp) {
   if (!emp || typeof emp !== "object") return emp;
   const o = {};
   if (emp.id != null) o.id = emp.id;
+  o.monthEmployeeKey = businessEmployeeCode(emp) || String(emp.id ?? "");
   for (const k of PAYROLL_MONTH_SLIM_KEYS) {
     if (Object.prototype.hasOwnProperty.call(emp, k)) o[k] = emp[k];
   }
@@ -45,15 +58,20 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
       isHolidayDay: false,
       isPayrollOffLikeDay: false,
       earlyOtPaperworkById: {},
+      lateOtPaperworkById: {},
     };
   }
   const isOffDay = getIsOffDayFromRaw(raw);
   const isHolidayDay = getIsHolidayDayFromRaw(raw);
   const earlyOtPaperworkById = getEarlyOtPaperworkFromRaw(raw);
-  const baseEmployees = mergeAttendanceDayRowsFromRaw(raw);
+  const lateOtPaperworkById = getLateOtPaperworkFromRaw(raw);
+  const baseEmployees = sortPayrollEmployeesStable(
+    mergeAttendanceDayRowsFromRaw(raw),
+  );
   const payrollEmployees = baseEmployees.map((e) => ({
     ...e,
     payrollEarlyOtPaperwork: earlyOtPaperworkById[e.id],
+    payrollLateOtPaperwork: lateOtPaperworkById[e.id],
   }));
   return {
     baseEmployees,
@@ -62,6 +80,7 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
     isHolidayDay,
     isPayrollOffLikeDay: isOffDay || isHolidayDay,
     earlyOtPaperworkById,
+    lateOtPaperworkById,
   };
 }
 
@@ -71,10 +90,12 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
  *   dateKey: string,
  *   employees: object[],
  *   byId: Map<string, object>,
+ *   byMonthEmployeeKey: Map<string, object>,
  *   isOffDay: boolean,
  *   isHolidayDay: boolean,
  *   isPayrollOffLikeDay: boolean,
  *   earlyOtPaperworkById: Record<string, boolean>,
+ *   lateOtPaperworkById: Record<string, boolean>,
  * }}
  */
 export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
@@ -87,9 +108,13 @@ export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
     dateKey,
     employees: slimEmployees,
     byId: new Map(slimEmployees.map((e) => [e.id, e])),
+    byMonthEmployeeKey: new Map(
+      slimEmployees.map((e) => [e.monthEmployeeKey || e.id, e]),
+    ),
     isOffDay: parsed.isOffDay,
     isHolidayDay: parsed.isHolidayDay,
     isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
     earlyOtPaperworkById: parsed.earlyOtPaperworkById,
+    lateOtPaperworkById: parsed.lateOtPaperworkById,
   };
 }

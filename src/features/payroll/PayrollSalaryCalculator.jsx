@@ -30,7 +30,9 @@ import { useAttendanceColumnPlan } from "@/features/attendance/useAttendanceBirt
 import {
   ATTENDANCE_DAY_META_KEY,
   ATTENDANCE_DAY_META_EARLY_OT_KEY,
+  ATTENDANCE_DAY_META_LATE_OT_KEY,
   normalizeEarlyOtPaperworkMap,
+  normalizeLateOtPaperworkMap,
 } from "@/features/attendance/attendanceDayMeta";
 import AlertMessage from "@/components/ui/AlertMessage";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
@@ -45,13 +47,28 @@ import {
   enumerateDateKeysInclusive,
   getTodayDateKeyLocal,
 } from "@/utils/dateKey";
+import { businessEmployeeCode } from "@/utils/employeeRosterRecord";
 import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
-import { isEarlyArrivalFor0600PaperworkOvertime } from "@/features/attendance/attendanceWorkingHours";
+import {
+  getOvertimeHoursFromGioRa,
+  isEarlyArrivalFor0600PaperworkOvertime,
+  isNightShiftCaLamViec,
+} from "@/features/attendance/attendanceWorkingHours";
 import PayrollEarlyOvertimePaperworkModal from "@/features/payroll/PayrollEarlyOvertimePaperworkModal";
 import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimesheetModal";
 import "./payrollTableCompact.css";
 
 const noop = () => {};
+
+function sortEmployeesAscForPopup(rows) {
+  return [...rows].sort((a, b) => {
+    const aStt = Number(a?.stt);
+    const bStt = Number(b?.stt);
+    const aSttNorm = Number.isFinite(aStt) ? aStt : Number.POSITIVE_INFINITY;
+    const bSttNorm = Number.isFinite(bStt) ? bStt : Number.POSITIVE_INFINITY;
+    return aSttNorm - bSttNorm;
+  });
+}
 
 /**
  * Trang lương: đọc attendance/{ngày} (chỉ xem). Ngày off + ca ngày: giờ quy đổi ở cột TC off.
@@ -80,6 +97,7 @@ export default function PayrollSalaryCalculator() {
 
   const [employees, setEmployees] = useState([]);
   const [earlyOtMap, setEarlyOtMap] = useState({});
+  const [lateOtMap, setLateOtMap] = useState({});
   const [earlyOtModalOpen, setEarlyOtModalOpen] = useState(false);
   const [earlyOtSuppressed, setEarlyOtSuppressed] = useState(false);
   /** Tự động mở popup: không bật lại khi user đã chọn «không hiển thị trong phiên» (sessionStorage). */
@@ -88,6 +106,9 @@ export default function PayrollSalaryCalculator() {
   /** `"pending"` — chỉ NV chưa chọn; `"all"` — tất cả NV đủ điều kiện (sửa lại). */
   const [earlyOtModalMode, setEarlyOtModalMode] = useState("pending");
   const [earlyOtSaving, setEarlyOtSaving] = useState(false);
+  const [lateOtModalOpen, setLateOtModalOpen] = useState(false);
+  const [lateOtModalMode, setLateOtModalMode] = useState("pending");
+  const [lateOtSaving, setLateOtSaving] = useState(false);
   const [rangeExportModalOpen, setRangeExportModalOpen] = useState(false);
   const [rangeExportBusy, setRangeExportBusy] = useState(false);
   const [excelExportMenuOpen, setExcelExportMenuOpen] = useState(false);
@@ -122,6 +143,7 @@ export default function PayrollSalaryCalculator() {
     attendanceRawRef.current = undefined;
     setEmployees([]);
     setEarlyOtMap({});
+    setLateOtMap({});
     const empRef = ref(db, `attendance/${selectedDate}`);
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
@@ -131,6 +153,7 @@ export default function PayrollSalaryCalculator() {
       setIsHolidayDay(parsed.isHolidayDay);
       setEmployees(parsed.baseEmployees);
       setEarlyOtMap(parsed.earlyOtPaperworkById);
+      setLateOtMap(parsed.lateOtPaperworkById || {});
     });
     return () => unsubscribe();
   }, [selectedDate]);
@@ -139,6 +162,8 @@ export default function PayrollSalaryCalculator() {
     setEarlyOtSuppressed(false);
     setEarlyOtModalMode("pending");
     setEarlyOtModalOpen(false);
+    setLateOtModalMode("pending");
+    setLateOtModalOpen(false);
   }, [selectedDate]);
 
   useEffect(() => {
@@ -164,20 +189,42 @@ export default function PayrollSalaryCalculator() {
     [selectedDate],
   );
 
+  const mergeLateOt = useCallback(
+    async (updates) => {
+      const metaRef = ref(
+        db,
+        `attendance/${selectedDate}/${ATTENDANCE_DAY_META_KEY}`,
+      );
+      const snap = await get(metaRef);
+      const metaVal = snap.val();
+      const cur = normalizeLateOtPaperworkMap(
+        metaVal && typeof metaVal === "object"
+          ? metaVal[ATTENDANCE_DAY_META_LATE_OT_KEY]
+          : undefined,
+      );
+      const next = { ...cur, ...updates };
+      await update(metaRef, { [ATTENDANCE_DAY_META_LATE_OT_KEY]: next });
+    },
+    [selectedDate],
+  );
+
   const employeesForPayroll = useMemo(
     () =>
       employees.map((e) => ({
         ...e,
         payrollEarlyOtPaperwork: earlyOtMap[e.id],
+        payrollLateOtPaperwork: lateOtMap[e.id],
       })),
-    [employees, earlyOtMap],
+    [employees, earlyOtMap, lateOtMap],
   );
 
   /** Vào ≤ 06:00 (ca ngày) — vẫn hiện nút / modal khi ngày off (chỉ tắt tự mở popup). */
   const earlyOtEligibleEmployees = useMemo(
     () =>
-      employees.filter((e) =>
-        isEarlyArrivalFor0600PaperworkOvertime(e.gioVao, e.caLamViec),
+      sortEmployeesAscForPopup(
+        employees.filter((e) =>
+          isEarlyArrivalFor0600PaperworkOvertime(e.gioVao, e.caLamViec),
+        ),
       ),
     [employees],
   );
@@ -185,6 +232,37 @@ export default function PayrollSalaryCalculator() {
   const pendingEarlyOtEmployees = useMemo(
     () => earlyOtEligibleEmployees.filter((e) => !(e.id in earlyOtMap)),
     [earlyOtEligibleEmployees, earlyOtMap],
+  );
+
+  /** Ra sau 17:30 (ca ngày) — cần xác nhận có giấy đăng ký tăng ca. */
+  const lateOtEligibleEmployees = useMemo(
+    () =>
+      sortEmployeesAscForPopup(
+        employees.filter((e) => {
+          if (isNightShiftCaLamViec(e.caLamViec)) return false;
+          const ot = getOvertimeHoursFromGioRa(e.gioRa);
+          return Number.isFinite(ot) && ot > 0;
+        }),
+      ),
+    [employees],
+  );
+
+  const pendingLateOtEmployees = useMemo(
+    () => lateOtEligibleEmployees.filter((e) => !(e.id in lateOtMap)),
+    [lateOtEligibleEmployees, lateOtMap],
+  );
+
+  const lateOtModalRows = useMemo(() => {
+    if (lateOtModalMode === "all") return lateOtEligibleEmployees;
+    return pendingLateOtEmployees;
+  }, [lateOtModalMode, lateOtEligibleEmployees, pendingLateOtEmployees]);
+
+  const lateOtInitialChecked = useCallback(
+    (id) => {
+      if (lateOtModalMode === "pending") return false;
+      return !!lateOtMap[id];
+    },
+    [lateOtModalMode, lateOtMap],
   );
 
   const earlyOtModalRows = useMemo(() => {
@@ -271,6 +349,35 @@ export default function PayrollSalaryCalculator() {
     [user?.uid],
   );
 
+  const handleLateOtSave = useCallback(
+    async (updates) => {
+      setLateOtSaving(true);
+      try {
+        await mergeLateOt(updates);
+        setLateOtModalOpen(false);
+        setLateOtModalMode("pending");
+      } catch (err) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "lateOtSaveError",
+            "Không lưu được giấy tăng ca (sau 17:30). Kiểm tra kết nối hoặc quyền ghi.",
+            { error: err?.message || String(err) },
+          ),
+        });
+      } finally {
+        setLateOtSaving(false);
+      }
+    },
+    [mergeLateOt, tlPage],
+  );
+
+  const handleLateOtDismiss = useCallback(() => {
+    setLateOtModalOpen(false);
+    setLateOtModalMode("pending");
+  }, []);
+
   const filterRows = useCallback(
     (list) => {
       const q = searchTerm.trim().toLowerCase();
@@ -291,7 +398,7 @@ export default function PayrollSalaryCalculator() {
   );
 
   const filteredEmployees = useMemo(
-    () => filterRows(employeesForPayroll),
+    () => sortEmployeesAscForPopup(filterRows(employeesForPayroll)),
     [employeesForPayroll, filterRows],
   );
 
@@ -442,6 +549,7 @@ export default function PayrollSalaryCalculator() {
             isOffDay: parsed.isOffDay,
             isHolidayDay: parsed.isHolidayDay,
             earlyOtPaperworkById: parsed.earlyOtPaperworkById,
+            lateOtPaperworkById: parsed.lateOtPaperworkById || {},
           });
         }
         if (!dayChunks.length) {
@@ -518,6 +626,7 @@ export default function PayrollSalaryCalculator() {
         tlTable,
         sheetTitle: payrollExportSheetTitle,
         earlyOtPaperworkById: earlyOtMap,
+        lateOtPaperworkById: lateOtMap,
       });
       setAlert({
         show: true,
@@ -544,6 +653,7 @@ export default function PayrollSalaryCalculator() {
     tlPage,
     payrollExportSheetTitle,
     earlyOtMap,
+    lateOtMap,
   ]);
 
   return (
@@ -639,6 +749,22 @@ export default function PayrollSalaryCalculator() {
                 )}
               >
                 {tlPage("earlyOtPaperworkButton", "Xác nhận tăng ca")}
+              </button>
+            ) : null}
+            {lateOtEligibleEmployees.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setLateOtModalMode("all");
+                  setLateOtModalOpen(true);
+                }}
+                className="h-8 shrink-0 rounded-lg border-2 border-amber-600/90 bg-gradient-to-b from-amber-500 to-orange-600 px-3 text-xs font-bold text-white shadow-md shadow-orange-600/25 transition hover:from-amber-400 hover:to-orange-500 dark:border-amber-500/80 dark:from-amber-600 dark:to-orange-700 dark:hover:from-amber-500 dark:hover:to-orange-600"
+                title={tlPage(
+                  "lateOtPaperworkHint",
+                  "Xác nhận có giấy đăng ký tăng ca cho nhân viên ra sau 17:30 (ca ngày).",
+                )}
+              >
+                {tlPage("lateOtPaperworkButton", "Giấy TC >17:30")}
               </button>
             ) : null}
             <div className="relative" ref={excelExportMenuRef}>
@@ -863,7 +989,7 @@ export default function PayrollSalaryCalculator() {
         departmentFilter={departmentFilter}
         payrollDepartmentOptions={departments}
         onDepartmentFilterChange={setDepartmentFilter}
-        currentEmployeeIds={filteredEmployees.map((e) => e.id)}
+        currentEmployeeIds={filteredEmployees.map((e) => businessEmployeeCode(e) || e.id)}
         normalizeDepartment={normalizeDepartment}
       />
 
@@ -886,6 +1012,31 @@ export default function PayrollSalaryCalculator() {
         )}
         suppressSessionLabel={tlPage(
           "earlyOtModalDontShowSession",
+          "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
+        )}
+      />
+
+      <PayrollEarlyOvertimePaperworkModal
+        open={lateOtModalOpen && lateOtModalRows.length > 0}
+        rows={lateOtModalRows}
+        initialChecked={lateOtInitialChecked}
+        onDismiss={handleLateOtDismiss}
+        onSave={handleLateOtSave}
+        saving={lateOtSaving}
+        title={tlPage("lateOtModalTitle", "Xác nhận giấy tăng ca sau 17:30")}
+        description={tlPage(
+          "lateOtModalDescription",
+          "Nhân viên có giờ ra sau 17:30 (ca ngày) cần xác nhận đã có giấy đăng ký tăng ca.",
+        )}
+        saveLabel={tlPage("lateOtModalSave", "Lưu")}
+        skipAllLabel={tlPage(
+          "lateOtModalSkipAll",
+          "Tất cả chưa có giấy tăng ca",
+        )}
+        timeLabel={tlPage("timeOutShortLabel", "Ra")}
+        timeField="gioRa"
+        suppressSessionLabel={tlPage(
+          "lateOtModalDontShowSession",
           "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
         )}
       />

@@ -96,6 +96,16 @@ const AttendanceComboChartModal = lazy(
   () => import("./AttendanceComboChartModal"),
 );
 
+function sortEmployeesStableAsc(rows) {
+  return [...rows].sort((a, b) => {
+    const aStt = Number(a?.stt);
+    const bStt = Number(b?.stt);
+    const aSttNorm = Number.isFinite(aStt) ? aStt : Number.POSITIVE_INFINITY;
+    const bSttNorm = Number.isFinite(bStt) ? bStt : Number.POSITIVE_INFINITY;
+    return aSttNorm - bSttNorm;
+  });
+}
+
 function AttendanceList({
   attendanceRootPath = "attendance",
   headerTitle,
@@ -327,7 +337,7 @@ function AttendanceList({
       attendanceRawRef.current = data;
       setIsOffDay(getIsOffDayFromRaw(data));
       setIsHolidayDay(getIsHolidayDayFromRaw(data));
-      setEmployees(mergeAttendanceDayRowsFromRaw(data));
+      setEmployees(sortEmployeesStableAsc(mergeAttendanceDayRowsFromRaw(data)));
     });
     return () => unsubscribe();
   }, [selectedDate]);
@@ -658,7 +668,7 @@ function AttendanceList({
   );
 
   const filteredEmployees = useMemo(
-    () => filterAttendanceListRows(employees),
+    () => sortEmployeesStableAsc(filterAttendanceListRows(employees)),
     [employees, filterAttendanceListRows],
   );
 

@@ -5,6 +5,7 @@ import {
   getNightShiftPayrollRegularHoursAndOtMinutes,
   getOvertimeHoursFromGioRa,
   getPayrollDayShiftOffHolidayMergedHoursNumeric,
+  getPayrollHalfDayLeaveWorkedHours,
   isEarlyArrivalFor0600PaperworkOvertime,
   isNightShiftCaLamViec,
   roundHoursForPayrollDisplay,
@@ -30,6 +31,7 @@ const PAYROLL_EARLY_PAPERWORK_OT_HOURS = 2;
  *   isHolidayDay: boolean,
  *   caLamViec: unknown,
  *   payrollEarlyOtPaperwork: boolean | undefined,
+ *   payrollLateOtPaperwork: boolean | undefined,
  * }} p
  * @returns {{ coeff: number; hours: number; key: string }[]}
  */
@@ -41,6 +43,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     isHolidayDay,
     caLamViec,
     payrollEarlyOtPaperwork,
+    payrollLateOtPaperwork,
   } = p;
   const night = isNightShiftCaLamViec(caLamViec);
   const lines = [];
@@ -64,6 +67,8 @@ export function getPayrollMonthlyCoefficientLines(p) {
       true,
       caLamViec,
       payrollEarlyOtPaperwork,
+      undefined,
+      payrollLateOtPaperwork,
     );
     if (m != null && m > 0) {
       lines.push({ coeff: 3.0, hours: m, key: "dh30" });
@@ -90,6 +95,8 @@ export function getPayrollMonthlyCoefficientLines(p) {
       false,
       caLamViec,
       payrollEarlyOtPaperwork,
+      undefined,
+      payrollLateOtPaperwork,
     );
     if (m != null && m > 0) {
       lines.push({ coeff: 2.0, hours: m, key: "off20" });
@@ -124,7 +131,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
   ) {
     early = PAYROLL_EARLY_PAPERWORK_OT_HOURS;
   }
-  const ev = evening == null ? 0 : evening;
+  const ev = payrollLateOtPaperwork === true ? (evening == null ? 0 : evening) : 0;
   const sum15 = roundHoursToTenths(ev + early);
   if (sum15 > 0) {
     lines.push({ coeff: 1.5, hours: sum15, key: "d15" });
@@ -167,17 +174,39 @@ export const PAYROLL_MONTHLY_SUBROWS = [
 
 /**
  * Dòng đầu (hệ số 0): ưu tiên mã phép; không phép thì giờ công ca ngày thường.
- * @returns {{ kind: "leave"; leaveShort: string; leaveRaw: string; badgeClass: string } | { kind: "hours"; hours: number } | { kind: "dash" }}
+ * @returns {{ kind: "leave"; leaveShort: string; leaveRaw: string; badgeClass: string; workedHours?: number } | { kind: "hours"; hours: number } | { kind: "dash" }}
  */
 export function getPayrollMonthlyMainRowCell(emp, ch) {
   const leaveRaw = getAttendanceLeaveTypeRaw(emp);
   if (isAttendanceActualLeaveType(leaveRaw)) {
     const leaveShort = formatAttendanceLeaveTypeColumnForEmployee(emp);
+    let workedHours;
+    // 1/2PN: vẫn có thể đi làm nửa ngày; hiển thị thêm số giờ thực tế trong cùng ô.
+    if (leaveShort === "1/2PN") {
+      const night = isNightShiftCaLamViec(emp.caLamViec);
+      if (!night && !ch.isOffDay && !ch.isHolidayDay) {
+        workedHours =
+          getPayrollHalfDayLeaveWorkedHours(
+            emp.gioVao,
+            emp.gioRa,
+            emp.caLamViec,
+          ) ??
+          (() => {
+            const h = getAttendanceWorkingHoursHours(
+              emp.gioVao,
+              emp.gioRa,
+              emp.caLamViec,
+            );
+            return h != null && h > 0 ? h : undefined;
+          })();
+      }
+    }
     return {
       kind: "leave",
       leaveShort,
       leaveRaw,
       badgeClass: getAttendanceLeaveTypeBadgeClassName(leaveRaw),
+      workedHours,
     };
   }
   const night = isNightShiftCaLamViec(emp.caLamViec);

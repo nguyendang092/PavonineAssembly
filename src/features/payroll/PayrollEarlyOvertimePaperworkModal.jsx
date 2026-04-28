@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 /**
  * Xác nhận có giấy tăng ca khung 06:00–08:00 (vào ≤ 06:00, ca ngày).
- * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: (opts?: { suppressSession?: boolean }) => void, onSave: (updates: Record<string, boolean>, opts?: { suppressSession?: boolean }) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, suppressSessionLabel?: string }} props
+ * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: (opts?: { suppressSession?: boolean }) => void, onSave: (updates: Record<string, boolean>, opts?: { suppressSession?: boolean }) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, suppressSessionLabel?: string, timeLabel?: string, timeField?: string }} props
  */
 export default function PayrollEarlyOvertimePaperworkModal({
   open,
@@ -17,6 +17,8 @@ export default function PayrollEarlyOvertimePaperworkModal({
   closeLabel = "Đóng",
   saving = false,
   suppressSessionLabel = "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
+  timeLabel = "Vào",
+  timeField = "gioVao",
 }) {
   const [checks, setChecks] = useState({});
   const [suppressSessionChecked, setSuppressSessionChecked] = useState(false);
@@ -168,10 +170,10 @@ export default function PayrollEarlyOvertimePaperworkModal({
                         ·
                       </span>
                       <span className="font-medium text-slate-600 dark:text-slate-400">
-                        Vào
+                        {timeLabel}
                       </span>{" "}
                       <span className="text-[12px] font-extrabold text-sky-900 tabular-nums sm:text-[14px] dark:text-sky-200">
-                        {emp.gioVao ?? "—"}
+                        {emp?.[timeField] ?? "—"}
                       </span>
                     </span>
                   </span>

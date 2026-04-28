@@ -194,14 +194,21 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           row[cidx] = " ";
           return;
         }
-        const emp = ch.byId.get(id);
+        const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
         if (!emp) {
           row[cidx] = "";
           return;
         }
         if (sr.coeff == null) {
           const main = getPayrollMonthlyMainRowCell(emp, ch);
-          if (main.kind === "leave") row[cidx] = main.leaveShort || "";
+          if (main.kind === "leave") {
+            const leaveLabel = main.leaveShort || "";
+            if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
+              row[cidx] = `${leaveLabel}\n${formatCoeffHoursForDisplay(main.workedHours)}`;
+            } else {
+              row[cidx] = leaveLabel;
+            }
+          }
           else if (main.kind === "hours")
             row[cidx] = formatCoeffHoursForDisplay(main.hours);
           else row[cidx] = " ";
@@ -214,6 +221,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           isHolidayDay: ch.isHolidayDay,
           caLamViec: emp.caLamViec,
           payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
+          payrollLateOtPaperwork: emp.payrollLateOtPaperwork,
           loaiPhep: emp.loaiPhep,
         });
         const h = coeffMap.get(sr.coeff);

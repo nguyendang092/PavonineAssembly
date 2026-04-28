@@ -24,27 +24,31 @@ import {
 } from "@/utils/dateKey";
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
 
+function parseSortableStt(raw) {
+  const n = Number(raw);
+  if (Number.isFinite(n)) return n;
+  const m = String(raw ?? "").match(/-?\d+(\.\d+)?/);
+  if (!m) return Number.POSITIVE_INFINITY;
+  const parsed = Number(m[0]);
+  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+}
+
 function collectSortedEmployeeIds(dayChunks) {
   const meta = new Map();
   for (const chunk of dayChunks) {
     for (const emp of chunk.employees) {
-      const id = emp.id;
-      const sttNum = Number(emp.stt);
-      const stt = Number.isFinite(sttNum) ? sttNum : 99999;
+      const id = emp.monthEmployeeKey || emp.id;
+      const stt = parseSortableStt(emp.stt);
       const prev = meta.get(id);
       if (!prev) {
         meta.set(id, {
           sttMin: stt,
-          mnv: String(emp.mnv ?? ""),
-          hoVaTen: String(emp.hoVaTen ?? ""),
           boPhan: String(emp.boPhan ?? ""),
           ngayVaoLam: String(emp.ngayVaoLam ?? "").trim(),
         });
       } else {
         meta.set(id, {
           sttMin: Math.min(prev.sttMin, stt),
-          mnv: prev.mnv || String(emp.mnv ?? ""),
-          hoVaTen: prev.hoVaTen || String(emp.hoVaTen ?? ""),
           boPhan: prev.boPhan || String(emp.boPhan ?? ""),
           ngayVaoLam: prev.ngayVaoLam || String(emp.ngayVaoLam ?? "").trim(),
         });
@@ -52,19 +56,14 @@ function collectSortedEmployeeIds(dayChunks) {
     }
   }
   return [...meta.entries()]
-    .sort((a, b) => {
-      if (a[1].sttMin !== b[1].sttMin) return a[1].sttMin - b[1].sttMin;
-      return String(a[1].mnv).localeCompare(String(b[1].mnv), "vi", {
-        numeric: true,
-      });
-    })
+    .sort((a, b) => a[1].sttMin - b[1].sttMin)
     .map(([id]) => id);
 }
 
 function representativeEmployee(dayChunks, id) {
   let out = null;
   for (const ch of dayChunks) {
-    const e = ch.byId.get(id);
+    const e = (ch.byMonthEmployeeKey || ch.byId).get(id);
     if (!e) continue;
     if (!out) out = { ...e };
     else {
@@ -218,6 +217,9 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
       out.pnDays += pnUnits;
       // Quy ước bảng này: Tổng ngày công = ngày có giờ công + phép năm (PN, 1/2PN).
       out.workDays += pnUnits;
+      if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
+        out.workDays += Number(main.workedHours) / 8;
+      }
       out.nbDays += leaveUnitsByCode(main.leaveShort, "NB");
       out.klDays += leaveUnitsByCode(main.leaveShort, "KL");
       out.kpDays += leaveUnitsByCode(main.leaveShort, "KP");
@@ -229,6 +231,7 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
       isHolidayDay: ch.isHolidayDay,
       caLamViec: emp.caLamViec,
       payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
+      payrollLateOtPaperwork: emp.payrollLateOtPaperwork,
       loaiPhep: emp.loaiPhep,
     });
     out.coeff03 += Number(coeffMap.get(0.3) || 0);
@@ -1047,7 +1050,7 @@ export default function PayrollMonthlyTimesheetModal({
                                   </td>
                                 );
                               }
-                              const emp = ch.byId.get(id);
+                              const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
                               if (!emp) {
                                 return (
                                   <td
@@ -1070,11 +1073,21 @@ export default function PayrollMonthlyTimesheetModal({
                                 let inner;
                                 if (main.kind === "leave") {
                                   inner = (
-                                    <span
-                                      className={`inline-flex max-w-full justify-center rounded border px-1 py-0.5 text-[10px] font-bold ${main.badgeClass}`}
-                                      title={main.leaveRaw}
-                                    >
-                                      {main.leaveShort}
+                                    <span className="inline-flex flex-col items-center gap-0.5">
+                                      <span
+                                        className={`inline-flex max-w-full justify-center rounded border px-1 py-0.5 text-[10px] font-bold ${main.badgeClass}`}
+                                        title={main.leaveRaw}
+                                      >
+                                        {main.leaveShort}
+                                      </span>
+                                      {Number.isFinite(main.workedHours) &&
+                                      main.workedHours > 0 ? (
+                                        <span className="font-bold tabular-nums text-black dark:text-black">
+                                          {formatCoeffHoursForDisplay(
+                                            main.workedHours,
+                                          )}
+                                        </span>
+                                      ) : null}
                                     </span>
                                   );
                                 } else if (main.kind === "hours") {
@@ -1111,6 +1124,9 @@ export default function PayrollMonthlyTimesheetModal({
                                 caLamViec: emp.caLamViec,
                                 payrollEarlyOtPaperwork:
                                   emp.payrollEarlyOtPaperwork,
+                                payrollLateOtPaperwork:
+                                  emp.payrollLateOtPaperwork,
+                                loaiPhep: emp.loaiPhep,
                               });
                               const h = coeffMap.get(sr.coeff);
                               const show =
