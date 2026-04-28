@@ -214,6 +214,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           isHolidayDay: ch.isHolidayDay,
           caLamViec: emp.caLamViec,
           payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
+          loaiPhep: emp.loaiPhep,
         });
         const h = coeffMap.get(sr.coeff);
         const show =

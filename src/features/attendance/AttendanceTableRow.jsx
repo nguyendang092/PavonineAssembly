@@ -2237,6 +2237,7 @@ function AttendanceTableRow({
                 emp.gioRa,
                 payrollOffLike,
                 emp.caLamViec,
+                emp.loaiPhep,
               )}
             </span>
           </Cell>
@@ -2280,6 +2281,7 @@ function AttendanceTableRow({
                 isOffDay,
                 emp.caLamViec,
                 emp.payrollEarlyOtPaperwork,
+                emp.loaiPhep,
               )}
             </span>
           </Cell>
@@ -2304,6 +2306,7 @@ function AttendanceTableRow({
                 isHolidayDay,
                 emp.caLamViec,
                 emp.payrollEarlyOtPaperwork,
+                emp.loaiPhep,
               )}
             </span>
           </Cell>
@@ -2326,6 +2329,7 @@ function AttendanceTableRow({
                 isHolidayDay,
                 emp.caLamViec,
                 emp.payrollEarlyOtPaperwork,
+                emp.loaiPhep,
               )}
             </span>
           </Cell>
@@ -2349,6 +2353,7 @@ function AttendanceTableRow({
                 emp.gioRa,
                 payrollOffLike,
                 emp.caLamViec,
+                emp.loaiPhep,
               )}
             </span>
           </Cell>
@@ -2372,6 +2377,7 @@ function AttendanceTableRow({
                 emp.gioRa,
                 payrollOffLike,
                 emp.caLamViec,
+                emp.loaiPhep,
               )}
             </span>
           </Cell>
@@ -2395,6 +2401,7 @@ function AttendanceTableRow({
                 emp.gioRa,
                 isOffDay,
                 emp.caLamViec,
+                emp.loaiPhep,
               )}
             </span>
           </Cell>
@@ -2418,6 +2425,7 @@ function AttendanceTableRow({
                 emp.gioRa,
                 isHolidayDay,
                 emp.caLamViec,
+                emp.loaiPhep,
               )}
             </span>
           </Cell>
@@ -2438,6 +2446,7 @@ function AttendanceTableRow({
                 emp.gioRa,
                 payrollOffLike,
                 emp.caLamViec,
+                emp.loaiPhep,
               )}
             </span>
           </Cell>

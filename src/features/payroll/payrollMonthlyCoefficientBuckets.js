@@ -14,6 +14,7 @@ import {
   formatAttendanceLeaveTypeColumnForEmployee,
   getAttendanceLeaveTypeBadgeClassName,
   getAttendanceLeaveTypeRaw,
+  isAttendanceActualLeaveType,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 /** Đồng bộ với `EARLY_PAPERWORK_OT_HOURS` trong attendanceWorkingHours.js */
 const PAYROLL_EARLY_PAPERWORK_OT_HOURS = 2;
@@ -170,7 +171,7 @@ export const PAYROLL_MONTHLY_SUBROWS = [
  */
 export function getPayrollMonthlyMainRowCell(emp, ch) {
   const leaveRaw = getAttendanceLeaveTypeRaw(emp);
-  if (String(leaveRaw ?? "").trim()) {
+  if (isAttendanceActualLeaveType(leaveRaw)) {
     const leaveShort = formatAttendanceLeaveTypeColumnForEmployee(emp);
     return {
       kind: "leave",
@@ -194,6 +195,8 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
 
 /** Map hệ số → giờ (một ô / dòng). */
 export function getPayrollMonthlyCoeffHoursMap(p) {
+  if (isAttendanceActualLeaveType(p?.loaiPhep)) return new Map();
+
   const m = new Map();
   for (const ln of sortPayrollMonthlyCoefficientLines(
     getPayrollMonthlyCoefficientLines(p),

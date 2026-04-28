@@ -167,6 +167,22 @@ export function getAttendanceLeaveTypeRaw(emp) {
 }
 
 /**
+ * Chỉ coi là nghỉ thực sự khi không phải các trạng thái vẫn có thể đi làm / tính giờ.
+ * `BGC` (Bù giờ công) và `VT` (Vào trễ) không chặn giờ công trên bảng lương.
+ */
+export function isAttendanceActualLeaveType(raw) {
+  const t = String(raw ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ");
+  if (!t) return false;
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  if (!matched) return true;
+  return matched.shortLabel !== "BGC" && matched.shortLabel !== "VT";
+}
+
+/**
  * Dữ liệu cũ: loại phép / trạng thái nhập nhầm vào `gioVao` (không phải HH:MM).
  * Gộp sang `loaiPhep` và xóa `gioVao` — gọi khi đọc attendance hoặc trước khi lưu `attendance/{ngày}`.
  * @param {Record<string, unknown> | null | undefined} emp

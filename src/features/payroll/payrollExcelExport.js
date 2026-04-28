@@ -187,6 +187,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.gioRa,
       offLike,
       emp.caLamViec,
+      emp.loaiPhep,
     ),
     formatPayrollDayOvertimeHoursCell(
       emp.gioVao,
@@ -202,6 +203,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       isOffDay,
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
+      emp.loaiPhep,
     ),
     formatPayrollTableHolidayDayWorkingCell(
       emp.gioVao,
@@ -209,6 +211,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       isHolidayDay,
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
+      emp.loaiPhep,
     ),
     formatPayrollTableTotalDayGcCell(
       emp.gioVao,
@@ -217,36 +220,42 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       isHolidayDay,
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
+      emp.loaiPhep,
     ),
     formatPayrollTableNightShiftWorkingCell(
       emp.gioVao,
       emp.gioRa,
       offLike,
       emp.caLamViec,
+      emp.loaiPhep,
     ),
     formatPayrollTableNightShiftOvertimeCell(
       emp.gioVao,
       emp.gioRa,
       offLike,
       emp.caLamViec,
+      emp.loaiPhep,
     ),
     formatPayrollTableNightShiftOffDayWorkingCell(
       emp.gioVao,
       emp.gioRa,
       isOffDay,
       emp.caLamViec,
+      emp.loaiPhep,
     ),
     formatPayrollTableHolidayNightWorkingCell(
       emp.gioVao,
       emp.gioRa,
       isHolidayDay,
       emp.caLamViec,
+      emp.loaiPhep,
     ),
     formatPayrollTableTotalNightGcCell(
       emp.gioVao,
       emp.gioRa,
       offLike,
       emp.caLamViec,
+      emp.loaiPhep,
     ),
   ];
 }

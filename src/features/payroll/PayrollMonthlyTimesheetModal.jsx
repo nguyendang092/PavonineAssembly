@@ -229,6 +229,7 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
       isHolidayDay: ch.isHolidayDay,
       caLamViec: emp.caLamViec,
       payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
+      loaiPhep: emp.loaiPhep,
     });
     out.coeff03 += Number(coeffMap.get(0.3) || 0);
     out.coeff15 += Number(coeffMap.get(1.5) || 0);
@@ -271,6 +272,8 @@ export default function PayrollMonthlyTimesheetModal({
   departmentFilter = "",
   /** Danh sách BP trên trang lương (`PayrollSalaryCalculator`) — đồng bộ ô «Tất cả bộ phận». */
   payrollDepartmentOptions,
+  /** Tập NV đang hiển thị ở bảng giờ công nhân viên (ngày đang chọn). */
+  currentEmployeeIds,
   /** Gọi khi đổi BP trong modal — giữ một state với `departmentFilter` trên trang lương. */
   onDepartmentFilterChange,
   normalizeDepartment = (v) =>
@@ -428,9 +431,16 @@ export default function PayrollMonthlyTimesheetModal({
 
   const effectiveDepartmentFilter = departmentFilter || "";
   const effectiveSearchTerm = localNameFilter || searchTerm || "";
+  const visibleEmployeeIdSet = useMemo(
+    () => new Set(Array.isArray(currentEmployeeIds) ? currentEmployeeIds : []),
+    [currentEmployeeIds],
+  );
 
   const filteredIds = useMemo(() => {
     return sortedIds.filter((id) => {
+      if (visibleEmployeeIdSet.size > 0 && !visibleEmployeeIdSet.has(id)) {
+        return false;
+      }
       const rep = repById.get(id);
       return (
         rep &&
@@ -444,6 +454,7 @@ export default function PayrollMonthlyTimesheetModal({
   }, [
     sortedIds,
     repById,
+    visibleEmployeeIdSet,
     effectiveSearchTerm,
     effectiveDepartmentFilter,
     normalizeDepartment,

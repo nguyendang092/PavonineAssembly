@@ -863,6 +863,7 @@ export default function PayrollSalaryCalculator() {
         departmentFilter={departmentFilter}
         payrollDepartmentOptions={departments}
         onDepartmentFilterChange={setDepartmentFilter}
+        currentEmployeeIds={filteredEmployees.map((e) => e.id)}
         normalizeDepartment={normalizeDepartment}
       />
 
