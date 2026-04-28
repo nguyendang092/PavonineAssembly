@@ -204,7 +204,7 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
   for (const dk of monthKeys) {
     const ch = dayChunks.get(dk);
     if (!ch) continue;
-    const emp = ch.byId.get(id);
+    const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
     if (!emp) continue;
     const main = getPayrollMonthlyMainRowCell(emp, ch);
     if (main.kind === "hours" && Number.isFinite(main.hours)) {
