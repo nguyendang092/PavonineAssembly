@@ -75,10 +75,12 @@ export async function executeAttendanceDateRangeExport({
   filterAttendanceListRows,
   displayLocale,
   tl,
+  /** Cùng `attendanceRootPath` với màn hình (chính thức / thời vụ) */
+  attendanceRootPath = "attendance",
 }) {
   const allRows = [];
   for (const dateKey of keys) {
-    const snap = await get(ref(db, `attendance/${dateKey}`));
+    const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
     const merged = applyAttendanceMerge(snap.val());
     const filtered = filterAttendanceListRows(merged);
     let stt = 1;

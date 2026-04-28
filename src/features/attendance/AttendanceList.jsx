@@ -266,11 +266,15 @@ function AttendanceList({
   const actionDropdownPanelRef = useRef(null);
   const printDropdownPanelRef = useRef(null);
   const offHolidayDropdownRef = useRef(null);
+  const offHolidayDropdownAnchorRef = useRef(null);
+  const offHolidayDropdownPanelRef = useRef(null);
   const exportRangeModalInitializedRef = useRef(false);
   const prevShowUnattendedPopupRef = useRef(false);
   const [filterDropdownPlacement, setFilterDropdownPlacement] = useState(null);
   const [actionDropdownPlacement, setActionDropdownPlacement] = useState(null);
   const [printDropdownPlacement, setPrintDropdownPlacement] = useState(null);
+  const [offHolidayDropdownPlacement, setOffHolidayDropdownPlacement] =
+    useState(null);
 
   const isQuickNoCheckInActive = showOnlyUnattendedFilter;
 
@@ -487,6 +491,36 @@ function AttendanceList({
     };
   }, [printDropdownOpen]);
 
+  /** Ngày OFF/Lễ — portal + fixed (cùng hàng date có overflow-x-auto → cắt menu absolute). */
+  useLayoutEffect(() => {
+    if (!offHolidayDropdownOpen) {
+      setOffHolidayDropdownPlacement(null);
+      return;
+    }
+    const update = () => {
+      const btn = offHolidayDropdownAnchorRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      if (r.width <= 0 && r.height <= 0) {
+        setOffHolidayDropdownPlacement(null);
+        setOffHolidayDropdownOpen(false);
+        return;
+      }
+      const w = Math.min(368, window.innerWidth - 16);
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+      const top = r.bottom + 8;
+      const maxHeight = Math.max(200, window.innerHeight - top - 12);
+      setOffHolidayDropdownPlacement({ top, left, width: w, maxHeight });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [offHolidayDropdownOpen]);
+
   /** Dưới breakpoint sm nút Chức năng/In không mount hiển thị — đóng menu portal nếu còn mở (xoay máy / resize). */
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 640px)");
@@ -546,7 +580,8 @@ function AttendanceList({
       if (
         offHolidayDropdownOpen &&
         offHolidayDropdownRef.current &&
-        !offHolidayDropdownRef.current.contains(target)
+        !offHolidayDropdownRef.current.contains(target) &&
+        !offHolidayDropdownPanelRef.current?.contains(target)
       ) {
         setOffHolidayDropdownOpen(false);
       }
@@ -659,6 +694,7 @@ function AttendanceList({
         filterAttendanceListRows,
         displayLocale,
         tl,
+        attendanceRootPath,
       });
       if (!result.ok) {
         setAlert({ show: true, ...result.alert });
@@ -707,6 +743,7 @@ function AttendanceList({
     filterAttendanceListRows,
     displayLocale,
     tl,
+    attendanceRootPath,
   ]);
 
   /** Giảm tải main thread khi gõ lọc: bảng cập nhật ngay, biểu đồ combo theo sau */
@@ -2420,6 +2457,7 @@ function AttendanceList({
                 ref={offHolidayDropdownRef}
               >
                 <button
+                  ref={offHolidayDropdownAnchorRef}
                   type="button"
                   aria-expanded={offHolidayDropdownOpen}
                   aria-haspopup="menu"
@@ -2470,12 +2508,21 @@ function AttendanceList({
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                 </button>
-                {offHolidayDropdownOpen ? (
-                  <div
-                    role="menu"
-                    className="absolute right-0 top-full z-[130] mt-2 w-[min(100vw-1rem,23rem)] max-w-[calc(100vw-1rem)] origin-top overflow-hidden rounded-2xl border-2 border-violet-400/70 bg-white text-left shadow-2xl shadow-violet-900/20 ring-4 ring-violet-500/15 backdrop-blur-sm sm:left-0 sm:right-auto dark:border-violet-500/50 dark:bg-slate-900 dark:shadow-black/50 dark:ring-violet-400/20"
-                  >
-                    <div className="border-b border-violet-200/80 bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-700 px-4 py-3 dark:border-violet-500/40 dark:from-violet-700 dark:via-indigo-700 dark:to-violet-800">
+                {offHolidayDropdownOpen &&
+                  offHolidayDropdownPlacement &&
+                  createPortal(
+                    <div
+                      ref={offHolidayDropdownPanelRef}
+                      role="menu"
+                      className="fixed z-[135] flex max-w-[calc(100vw-1rem)] origin-top flex-col overflow-hidden rounded-2xl border-2 border-violet-400/70 bg-white text-left shadow-2xl shadow-violet-900/20 ring-4 ring-violet-500/15 backdrop-blur-sm animate-fadeIn dark:border-violet-500/50 dark:bg-slate-900 dark:shadow-black/50 dark:ring-violet-400/20"
+                      style={{
+                        top: offHolidayDropdownPlacement.top,
+                        left: offHolidayDropdownPlacement.left,
+                        width: offHolidayDropdownPlacement.width,
+                        maxHeight: offHolidayDropdownPlacement.maxHeight,
+                      }}
+                    >
+                      <div className="shrink-0 border-b border-violet-200/80 bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-700 px-4 py-3 dark:border-violet-500/40 dark:from-violet-700 dark:via-indigo-700 dark:to-violet-800">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-white/90">
                         {tl("dayOffDropdownSelectedLabel", "Ngày đang xem")}
                       </p>
@@ -2498,8 +2545,8 @@ function AttendanceList({
                           </span>
                         )}
                       </p>
-                    </div>
-                    <div className="max-h-[min(46vh,280px)] overflow-y-auto bg-slate-50/90 px-4 py-3 dark:bg-slate-950/80">
+                      </div>
+                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50/90 px-4 py-3 dark:bg-slate-950/80">
                       {monthOffDaysLoading ? (
                         <p className="rounded-lg border border-violet-200/80 bg-white px-3 py-4 text-center text-xs font-medium text-violet-800 dark:border-violet-700/60 dark:bg-slate-900 dark:text-violet-200">
                           {tl(
@@ -2563,25 +2610,26 @@ function AttendanceList({
                           </div>
                         </div>
                       )}
-                    </div>
-                    <div className="border-t border-violet-200/80 bg-gradient-to-b from-violet-50/90 to-white px-3 py-3 dark:border-violet-800/80 dark:from-slate-900 dark:to-slate-950">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="w-full rounded-lg bg-gradient-to-r from-violet-600 via-violet-600 to-indigo-600 py-2.5 text-center text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-violet-600/40 transition hover:from-violet-500 hover:to-indigo-500 hover:shadow-xl hover:shadow-violet-500/45 active:scale-[0.99] dark:shadow-violet-900/50"
-                        onClick={() => {
-                          setOffHolidayDropdownOpen(false);
-                          setOffDaysModalOpen(true);
-                        }}
-                      >
-                        {tl(
-                          "dayOffDropdownOpenModal",
-                          "Chỉnh sửa ngày OFF / LỄ",
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
+                      </div>
+                      <div className="shrink-0 border-t border-violet-200/80 bg-gradient-to-b from-violet-50/90 to-white px-3 py-3 dark:border-violet-800/80 dark:from-slate-900 dark:to-slate-950">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="w-full rounded-lg bg-gradient-to-r from-violet-600 via-violet-600 to-indigo-600 py-2.5 text-center text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-violet-600/40 transition hover:from-violet-500 hover:to-indigo-500 hover:shadow-xl hover:shadow-violet-500/45 active:scale-[0.99] dark:shadow-violet-900/50"
+                          onClick={() => {
+                            setOffHolidayDropdownOpen(false);
+                            setOffDaysModalOpen(true);
+                          }}
+                        >
+                          {tl(
+                            "dayOffDropdownOpenModal",
+                            "Chỉnh sửa ngày OFF / LỄ",
+                          )}
+                        </button>
+                      </div>
+                    </div>,
+                    document.body,
+                  )}
               </div>
             ) : null}
           </div>
