@@ -55,9 +55,7 @@ function collectSortedEmployeeIds(dayChunks) {
       }
     }
   }
-  return [...meta.entries()]
-    .sort((a, b) => a[1].sttMin - b[1].sttMin)
-    .map(([id]) => id);
+  return [...meta.keys()];
 }
 
 function representativeEmployee(dayChunks, id) {
@@ -440,20 +438,26 @@ export default function PayrollMonthlyTimesheetModal({
   );
 
   const filteredIds = useMemo(() => {
-    return sortedIds.filter((id) => {
-      if (visibleEmployeeIdSet.size > 0 && !visibleEmployeeIdSet.has(id)) {
-        return false;
-      }
-      const rep = repById.get(id);
-      return (
-        rep &&
-        matchesRowFilter(rep, {
-          searchTerm: effectiveSearchTerm,
-          departmentFilter: effectiveDepartmentFilter,
-          normalizeDepartment,
-        })
-      );
-    });
+    return sortedIds
+      .filter((id) => {
+        if (visibleEmployeeIdSet.size > 0 && !visibleEmployeeIdSet.has(id)) {
+          return false;
+        }
+        const rep = repById.get(id);
+        return (
+          rep &&
+          matchesRowFilter(rep, {
+            searchTerm: effectiveSearchTerm,
+            departmentFilter: effectiveDepartmentFilter,
+            normalizeDepartment,
+          })
+        );
+      })
+      .sort((a, b) => {
+        const aRep = repById.get(a);
+        const bRep = repById.get(b);
+        return parseSortableStt(aRep?.stt) - parseSortableStt(bRep?.stt);
+      });
   }, [
     sortedIds,
     repById,
