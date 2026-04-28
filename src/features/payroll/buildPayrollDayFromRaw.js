@@ -5,6 +5,31 @@ import {
   getIsOffDayFromRaw,
 } from "@/features/attendance/attendanceDayMeta";
 
+/** Chỉ giữ trường cần cho bảng giờ công tháng — giảm heap khi ghép ~31 ngày. */
+const PAYROLL_MONTH_SLIM_KEYS = [
+  "stt",
+  "mnv",
+  "hoVaTen",
+  "boPhan",
+  "ngayVaoLam",
+  "trangThaiLamViec",
+  "gioVao",
+  "gioRa",
+  "caLamViec",
+  "loaiPhep",
+  "payrollEarlyOtPaperwork",
+];
+
+export function slimPayrollMonthEmployeeRecord(emp) {
+  if (!emp || typeof emp !== "object") return emp;
+  const o = {};
+  if (emp.id != null) o.id = emp.id;
+  for (const k of PAYROLL_MONTH_SLIM_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(emp, k)) o[k] = emp[k];
+  }
+  return o;
+}
+
 /**
  * Chuẩn hóa node `attendance/{ngày}` giống bảng lương (`PayrollSalaryCalculator` + `AttendanceTableRow` payroll).
  *
@@ -55,10 +80,13 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
 export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
   const parsed = parsePayrollDayFromAttendanceRaw(raw);
   if (!parsed.payrollEmployees.length) return null;
+  const slimEmployees = parsed.payrollEmployees.map((e) =>
+    slimPayrollMonthEmployeeRecord(e),
+  );
   return {
     dateKey,
-    employees: parsed.payrollEmployees,
-    byId: new Map(parsed.payrollEmployees.map((e) => [e.id, e])),
+    employees: slimEmployees,
+    byId: new Map(slimEmployees.map((e) => [e.id, e])),
     isOffDay: parsed.isOffDay,
     isHolidayDay: parsed.isHolidayDay,
     isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,

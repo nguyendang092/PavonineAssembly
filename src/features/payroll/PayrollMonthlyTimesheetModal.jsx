@@ -6,17 +6,16 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import * as XLSX from "@e965/xlsx";
-import ExcelJS from "exceljs";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { db, ref, get } from "@/services/firebase";
 import { buildPayrollMonthDayChunkFromRaw } from "@/features/payroll/buildPayrollDayFromRaw";
 import {
   formatCoeffHoursForDisplay,
-  formatCoeffLabel,
   getPayrollMonthlyCoeffHoursMap,
   getPayrollMonthlyMainRowCell,
   PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
+import { writePayrollMonthlyTimesheetWorkbook } from "@/features/payroll/payrollMonthlyTimesheetExcelGrid";
 import {
   enumerateDateKeysInclusive,
   getFirstDayOfMonthKey,
@@ -88,6 +87,8 @@ const MONTH_DAY_COL_WIDTH = 35;
 const MONTH_DETAIL_COL_WIDTH = 45;
 const MONTH_DETAIL_COLS_PER_BLOCK = 15;
 const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
+/** Dưới ngưỡng này render đủ dòng; từ ngưỡng trở lên ảo hóa theo khối NV để tránh OOM. */
+const MONTHLY_TIMESHEET_VIRTUAL_THRESHOLD = 14;
 const MONTH_HEADER_ROW_TOPS_DEFAULT = {
   row1: 0,
   row2: 28,
@@ -150,129 +151,6 @@ function detailGroupBodyTone(groupIndex) {
   if (groupIndex === 0) return "bg-slate-50 dark:bg-slate-900";
   if (groupIndex === 1) return "bg-cyan-50/60 dark:bg-cyan-950/20";
   return "bg-violet-50/60 dark:bg-violet-950/20";
-}
-
-function parseHtmlTableToGrid(tableEl) {
-  const rows = [...tableEl.querySelectorAll("tr")];
-  const grid = [];
-  const merges = [];
-  const cellStyles = [];
-  const occupied = new Map();
-
-  const mark = (r, c) => occupied.set(`${r}:${c}`, true);
-  const isOcc = (r, c) => occupied.has(`${r}:${c}`);
-
-  rows.forEach((tr, rIdx) => {
-    if (!grid[rIdx]) grid[rIdx] = [];
-    const cells = [...tr.querySelectorAll("th,td")];
-    let cIdx = 0;
-    cells.forEach((cell) => {
-      while (isOcc(rIdx, cIdx)) cIdx += 1;
-      const rs = Math.max(1, Number(cell.getAttribute("rowspan") || 1));
-      const cs = Math.max(1, Number(cell.getAttribute("colspan") || 1));
-      const text = String(cell.innerText ?? cell.textContent ?? "")
-        .replace(/\r\n/g, "\n")
-        .split("\n")
-        .map((line) => line.replace(/\s+/g, " ").trim())
-        .filter(
-          (line, idx, arr) => line !== "" || (idx > 0 && idx < arr.length - 1),
-        )
-        .join("\n")
-        .trim();
-      const csObj = window.getComputedStyle(cell);
-
-      grid[rIdx][cIdx] = text;
-      cellStyles.push({
-        row: rIdx + 1,
-        col: cIdx + 1,
-        style: {
-          backgroundColor: csObj.backgroundColor,
-          color: csObj.color,
-          fontSize: csObj.fontSize,
-          fontWeight: csObj.fontWeight,
-          textAlign: csObj.textAlign,
-          verticalAlign: csObj.verticalAlign,
-          borderTop: csObj.borderTop,
-          borderRight: csObj.borderRight,
-          borderBottom: csObj.borderBottom,
-          borderLeft: csObj.borderLeft,
-          whiteSpace: csObj.whiteSpace,
-        },
-      });
-      for (let rr = rIdx; rr < rIdx + rs; rr += 1) {
-        if (!grid[rr]) grid[rr] = [];
-        for (let cc = cIdx; cc < cIdx + cs; cc += 1) {
-          mark(rr, cc);
-          if (!(rr === rIdx && cc === cIdx)) grid[rr][cc] = null;
-        }
-      }
-      if (rs > 1 || cs > 1) {
-        merges.push({
-          from: { row: rIdx + 1, col: cIdx + 1 },
-          to: { row: rIdx + rs, col: cIdx + cs },
-        });
-      }
-      cIdx += cs;
-    });
-  });
-
-  return { grid, merges, cellStyles };
-}
-
-function rgbStringToArgb(rgbString, fallback = "FF000000") {
-  const s = String(rgbString || "").trim();
-  if (!s || s === "transparent") return null;
-  const m = s.match(
-    /^rgba?\(\s*(\d{1,3})[\s,]+(\d{1,3})[\s,]+(\d{1,3})(?:[\s,\/]+([0-9.]+))?\s*\)$/i,
-  );
-  if (!m) return fallback;
-  const r = Number(m[1]);
-  const g = Number(m[2]);
-  const b = Number(m[3]);
-  const a =
-    m[4] == null ? 1 : Math.max(0, Math.min(1, Number.parseFloat(m[4]) || 0));
-  const alpha = Math.round(a * 255)
-    .toString(16)
-    .padStart(2, "0")
-    .toUpperCase();
-  const rr = Math.max(0, Math.min(255, r))
-    .toString(16)
-    .padStart(2, "0")
-    .toUpperCase();
-  const gg = Math.max(0, Math.min(255, g))
-    .toString(16)
-    .padStart(2, "0")
-    .toUpperCase();
-  const bb = Math.max(0, Math.min(255, b))
-    .toString(16)
-    .padStart(2, "0")
-    .toUpperCase();
-  if (alpha === "00") return null;
-  return `${alpha}${rr}${gg}${bb}`;
-}
-
-function cssBorderToExcelBorder(borderValue, fallbackArgb = "FF94A3B8") {
-  const raw = String(borderValue || "").trim();
-  if (!raw || raw === "none" || raw === "0px") return null;
-  const widthMatch = raw.match(/(\d+(?:\.\d+)?)px/);
-  const styleMatch = raw.match(
-    /\b(solid|dashed|dotted|double|groove|ridge|inset|outset)\b/i,
-  );
-  const colorMatch = raw.match(/rgba?\([^)]+\)/i);
-  const px = widthMatch ? Number.parseFloat(widthMatch[1]) : 1;
-  const cssStyle = styleMatch ? styleMatch[1].toLowerCase() : "solid";
-  const excelStyle =
-    cssStyle === "dashed"
-      ? "dashed"
-      : cssStyle === "dotted"
-        ? "dotted"
-        : cssStyle === "double"
-          ? "double"
-          : px >= 2
-            ? "medium"
-            : "thin";
-  const argb = rgbStringToArgb(colorMatch?.[0], fallbackArgb) || fallbackArgb;
-  return { style: excelStyle, color: { argb } };
 }
 
 function isProbationStatus(raw) {
@@ -391,6 +269,10 @@ export default function PayrollMonthlyTimesheetModal({
   tlPage,
   searchTerm = "",
   departmentFilter = "",
+  /** Danh sách BP trên trang lương (`PayrollSalaryCalculator`) — đồng bộ ô «Tất cả bộ phận». */
+  payrollDepartmentOptions,
+  /** Gọi khi đổi BP trong modal — giữ một state với `departmentFilter` trên trang lương. */
+  onDepartmentFilterChange,
   normalizeDepartment = (v) =>
     String(v || "")
       .trim()
@@ -401,12 +283,12 @@ export default function PayrollMonthlyTimesheetModal({
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [dayChunks, setDayChunks] = useState([]);
-  const [localDepartmentFilter, setLocalDepartmentFilter] = useState("");
   const [localNameFilter, setLocalNameFilter] = useState("");
   const [headerRowTops, setHeaderRowTops] = useState(
     MONTH_HEADER_ROW_TOPS_DEFAULT,
   );
   const tableWrapRef = useRef(null);
+  const tableBodyScrollRef = useRef(null);
   const loadSeqRef = useRef(0);
 
   const monthRange = useMemo(() => {
@@ -446,7 +328,6 @@ export default function PayrollMonthlyTimesheetModal({
         if (loadSeqRef.current !== currentLoadSeq) return;
         const validBatch = batchResults.filter(Boolean);
         allChunks.push(...validBatch);
-        setDayChunks([...allChunks]);
         if (i === 0) {
           setLoading(false);
         }
@@ -455,6 +336,7 @@ export default function PayrollMonthlyTimesheetModal({
         }
       }
       if (loadSeqRef.current !== currentLoadSeq) return;
+      setDayChunks(allChunks);
       if (!allChunks.length) {
         setError(
           tlPage(
@@ -483,28 +365,73 @@ export default function PayrollMonthlyTimesheetModal({
     void loadMonth();
   }, [open, loadMonth]);
 
+  /** Khóa cuộn trang sau — scroll nằm trên `#app-main-scroll`, không chỉ `body`. */
+  useEffect(() => {
+    if (!open) return undefined;
+    const html = document.documentElement;
+    const body = document.body;
+    const mainScroll = document.getElementById("app-main-scroll");
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevMainOverflow = mainScroll?.style.overflow ?? "";
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    if (mainScroll) mainScroll.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      if (mainScroll) mainScroll.style.overflow = prevMainOverflow;
+    };
+  }, [open]);
+
   const sortedIds = useMemo(
     () => collectSortedEmployeeIds(dayChunks),
     [dayChunks],
   );
 
+  const repById = useMemo(() => {
+    const m = new Map();
+    for (const id of sortedIds) {
+      m.set(id, representativeEmployee(dayChunks, id));
+    }
+    return m;
+  }, [sortedIds, dayChunks]);
+
+  const chunkByDate = useMemo(
+    () => new Map(dayChunks.map((c) => [c.dateKey, c])),
+    [dayChunks],
+  );
+
+  const monthlySummaryById = useMemo(() => {
+    const m = new Map();
+    for (const id of sortedIds) {
+      m.set(id, buildMonthlyRuleSummary(chunkByDate, monthRange.keys, id));
+    }
+    return m;
+  }, [sortedIds, chunkByDate, monthRange.keys]);
+
   const departmentOptions = useMemo(() => {
     const set = new Set();
+    if (Array.isArray(payrollDepartmentOptions)) {
+      for (const raw of payrollDepartmentOptions) {
+        const d = String(raw ?? "").trim();
+        if (d) set.add(d);
+      }
+    }
     sortedIds.forEach((id) => {
-      const rep = representativeEmployee(dayChunks, id);
+      const rep = repById.get(id);
       const d = String(rep?.boPhan ?? "").trim();
       if (d) set.add(d);
     });
     return [...set].sort((a, b) => a.localeCompare(b, "vi"));
-  }, [sortedIds, dayChunks]);
+  }, [sortedIds, repById, payrollDepartmentOptions]);
 
-  const effectiveDepartmentFilter =
-    localDepartmentFilter || departmentFilter || "";
+  const effectiveDepartmentFilter = departmentFilter || "";
   const effectiveSearchTerm = localNameFilter || searchTerm || "";
 
   const filteredIds = useMemo(() => {
     return sortedIds.filter((id) => {
-      const rep = representativeEmployee(dayChunks, id);
+      const rep = repById.get(id);
       return (
         rep &&
         matchesRowFilter(rep, {
@@ -516,16 +443,27 @@ export default function PayrollMonthlyTimesheetModal({
     });
   }, [
     sortedIds,
-    dayChunks,
+    repById,
     effectiveSearchTerm,
     effectiveDepartmentFilter,
     normalizeDepartment,
   ]);
 
-  const chunkByDate = useMemo(
-    () => new Map(dayChunks.map((c) => [c.dateKey, c])),
-    [dayChunks],
-  );
+  const shouldVirtualizeTimesheetBody =
+    filteredIds.length >= MONTHLY_TIMESHEET_VIRTUAL_THRESHOLD;
+
+  const empBlockVirtualizer = useVirtualizer({
+    count: shouldVirtualizeTimesheetBody ? filteredIds.length : 0,
+    getScrollElement: () => tableBodyScrollRef.current,
+    estimateSize: () => PAYROLL_MONTHLY_SUBROWS.length * 26 + 10,
+    overscan: 2,
+  });
+
+  const timesheetTotalColCount =
+    6 +
+    monthRange.keys.length +
+    DETAIL_GROUP_KEYS.length * MONTH_DETAIL_COLS_PER_BLOCK;
+
   const stickyColsTotalWidth = useMemo(
     () => STICKY_COL_WIDTHS.reduce((sum, w) => sum + w, 0),
     [],
@@ -575,170 +513,40 @@ export default function PayrollMonthlyTimesheetModal({
   const thinBodyBorder =
     "border !border-solid border-[1px] border-slate-300 dark:border-slate-700";
   const noTopBorder = "!border-t-0";
-  const detailHeaders = [
-    tlPage("monthlyRuleColWorkHours", "Tổng giờ công"),
-    tlPage("monthlyRuleColWorkDays", "Tổng ngày công bao gồm PN"),
-    tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ không lương"),
-    tlPage("monthlyRuleColPn", "Phép năm (PN)"),
-    tlPage("monthlyRuleColNb", "Nghỉ bù (NB)"),
-    tlPage("monthlyRuleColKl", "Nghỉ KL (KL)"),
-    tlPage("monthlyRuleColKp", "Nghỉ KP (KP)"),
-    "Giờ làm (x0.3)",
-    "TC ngày thường (x1.5)",
-    "TC đêm/TC ngày nghỉ (x2.0)",
-    "TC đêm ngày nghỉ (x2.7)",
-    "TC ngày lễ (x3.0)",
-    "TC đêm ngày lễ (x3.9)",
-    "Sat.S (x2.0)",
-    "Sat.S (x2.7)",
-  ];
-
-  const getTableElement = useCallback(() => {
-    const root = tableWrapRef.current;
-    if (!root) return null;
-    return root.querySelector("table");
-  }, []);
+  const detailHeaders = useMemo(
+    () => [
+      tlPage("monthlyRuleColWorkHours", "Tổng giờ công"),
+      tlPage("monthlyRuleColWorkDays", "Tổng ngày công bao gồm PN"),
+      tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ không lương"),
+      tlPage("monthlyRuleColPn", "Phép năm (PN)"),
+      tlPage("monthlyRuleColNb", "Nghỉ bù (NB)"),
+      tlPage("monthlyRuleColKl", "Nghỉ KL (KL)"),
+      tlPage("monthlyRuleColKp", "Nghỉ KP (KP)"),
+      "Giờ làm (x0.3)",
+      "TC ngày thường (x1.5)",
+      "TC đêm/TC ngày nghỉ (x2.0)",
+      "TC đêm ngày nghỉ (x2.7)",
+      "TC ngày lễ (x3.0)",
+      "TC đêm ngày lễ (x3.9)",
+      "Sat.S (x2.0)",
+      "Sat.S (x2.7)",
+    ],
+    [tlPage],
+  );
 
   const handleExportExcel = useCallback(async () => {
-    const tableEl = getTableElement();
-    if (!tableEl) return;
+    if (!filteredIds.length) return;
     try {
-      const { grid, merges, cellStyles } = parseHtmlTableToGrid(tableEl);
-      const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet("MonthlyTimesheet");
-
-      grid.forEach((row) => {
-        const values = row.map((v) => (v == null ? "" : v));
-        sheet.addRow(values);
+      const buf = await writePayrollMonthlyTimesheetWorkbook({
+        tlPage,
+        monthKeys: monthRange.keys,
+        chunkByDate,
+        filteredIds,
+        repById,
+        summaryById: monthlySummaryById,
+        detailHeaders,
+        displayLocale,
       });
-
-      merges.forEach((m) => {
-        sheet.mergeCells(m.from.row, m.from.col, m.to.row, m.to.col);
-      });
-
-      const maxCols = grid.reduce((m, r) => Math.max(m, r.length), 0);
-      const headerRows = 3;
-      const fixedCols = 6;
-      const daysCols = monthRange.keys.length;
-      const detailBlock = MONTH_DETAIL_COLS_PER_BLOCK;
-      const firstTotalCol = fixedCols + daysCols + 1;
-      const firstTrialCol = firstTotalCol + detailBlock;
-      const firstOfficialCol = firstTrialCol + detailBlock;
-
-      for (let c = 1; c <= maxCols; c += 1) {
-        sheet.getColumn(c).width = c <= 6 ? 16 : 6;
-      }
-
-      const setSide = (cell, side, style, argb = "FF000000") => {
-        const cur = cell.border || {};
-        cell.border = {
-          ...cur,
-          [side]: { style, color: { argb } },
-        };
-      };
-
-      for (let r = 1; r <= sheet.rowCount; r += 1) {
-        for (let c = 1; c <= maxCols; c += 1) {
-          const cell = sheet.getCell(r, c);
-          cell.border = {
-            top: { style: "thin", color: { argb: "FFB8C1CC" } },
-            left: { style: "thin", color: { argb: "FFB8C1CC" } },
-            bottom: { style: "thin", color: { argb: "FFB8C1CC" } },
-            right: { style: "thin", color: { argb: "FFB8C1CC" } },
-          };
-          cell.alignment = {
-            vertical: "middle",
-            horizontal: c <= 2 ? "left" : "center",
-            wrapText: true,
-          };
-          cell.font = { size: r <= 3 ? 10 : 9, bold: r <= 3 };
-        }
-      }
-      cellStyles.forEach(({ row, col, style }) => {
-        const cell = sheet.getCell(row, col);
-        const fillArgb = rgbStringToArgb(style.backgroundColor);
-        if (fillArgb) {
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: fillArgb },
-          };
-        }
-        const textArgb = rgbStringToArgb(style.color, "FF000000") || "FF000000";
-        const parsedFontSize = Number.parseFloat(style.fontSize || "");
-        const parsedWeight = Number.parseInt(style.fontWeight || "400", 10);
-        cell.font = {
-          ...(cell.font || {}),
-          color: { argb: textArgb },
-          size: Number.isFinite(parsedFontSize)
-            ? Math.max(8, Math.min(14, parsedFontSize))
-            : cell.font?.size || 9,
-          bold: parsedWeight >= 600,
-        };
-        const alignMap = {
-          left: "left",
-          center: "center",
-          right: "right",
-          start: "left",
-          end: "right",
-          justify: "justify",
-        };
-        const vAlignMap = {
-          top: "top",
-          middle: "middle",
-          bottom: "bottom",
-        };
-        cell.alignment = {
-          ...(cell.alignment || {}),
-          horizontal: alignMap[style.textAlign] || cell.alignment?.horizontal,
-          vertical: vAlignMap[style.verticalAlign] || cell.alignment?.vertical,
-          wrapText: style.whiteSpace !== "nowrap",
-        };
-        cell.border = {
-          top:
-            cssBorderToExcelBorder(style.borderTop, "FFB8C1CC") ||
-            cell.border?.top,
-          right:
-            cssBorderToExcelBorder(style.borderRight, "FFB8C1CC") ||
-            cell.border?.right,
-          bottom:
-            cssBorderToExcelBorder(style.borderBottom, "FFB8C1CC") ||
-            cell.border?.bottom,
-          left:
-            cssBorderToExcelBorder(style.borderLeft, "FFB8C1CC") ||
-            cell.border?.left,
-        };
-      });
-
-      // Viền đậm ngoài bảng (giống giao diện)
-      for (let c = 1; c <= maxCols; c += 1) {
-        setSide(sheet.getCell(1, c), "top", "medium");
-        setSide(sheet.getCell(sheet.rowCount, c), "bottom", "medium");
-      }
-      for (let r = 1; r <= sheet.rowCount; r += 1) {
-        setSide(sheet.getCell(r, 1), "left", "medium");
-        setSide(sheet.getCell(r, maxCols), "right", "medium");
-      }
-
-      // Viền dọc đậm phân khối: trước Tổng / Thử việc / Hợp đồng
-      [firstTotalCol, firstTrialCol, firstOfficialCol].forEach((col) => {
-        if (col > maxCols) return;
-        for (let r = 1; r <= sheet.rowCount; r += 1) {
-          setSide(sheet.getCell(r, col), "left", "medium");
-        }
-      });
-
-      // Viền ngang đậm sau mỗi block nhân viên (7 dòng / NV)
-      const bodyRows = filteredIds.length * PAYROLL_MONTHLY_SUBROWS.length;
-      for (let i = 1; i <= filteredIds.length; i += 1) {
-        const row = headerRows + i * PAYROLL_MONTHLY_SUBROWS.length;
-        if (row > headerRows + bodyRows) continue;
-        for (let c = 1; c <= maxCols; c += 1) {
-          setSide(sheet.getCell(row, c), "bottom", "medium");
-        }
-      }
-
-      const buf = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buf], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
@@ -767,13 +575,35 @@ export default function PayrollMonthlyTimesheetModal({
         ),
       );
     }
-  }, [filteredIds.length, getTableElement, monthRange.keys.length, tlPage]);
+  }, [
+    chunkByDate,
+    detailHeaders,
+    displayLocale,
+    filteredIds,
+    monthlySummaryById,
+    monthRange.keys,
+    repById,
+    tlPage,
+  ]);
+
+  const virtualEmpItems = shouldVirtualizeTimesheetBody
+    ? empBlockVirtualizer.getVirtualItems()
+    : [];
+  const tbodyPadTop =
+    shouldVirtualizeTimesheetBody && virtualEmpItems.length > 0
+      ? virtualEmpItems[0].start
+      : 0;
+  const tbodyPadBottom =
+    shouldVirtualizeTimesheetBody && virtualEmpItems.length > 0
+      ? empBlockVirtualizer.getTotalSize() -
+        virtualEmpItems[virtualEmpItems.length - 1].end
+      : 0;
 
   if (!open) return null;
 
   const portal = (
     <div
-      className="fixed inset-0 z-[200] flex flex-col bg-black/50 p-2 backdrop-blur-[1px] sm:p-4"
+      className="fixed inset-0 z-[200] flex flex-col overflow-hidden overscroll-none bg-black/50 p-2 backdrop-blur-[1px] sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="payroll-monthly-timesheet-title"
@@ -827,8 +657,11 @@ export default function PayrollMonthlyTimesheetModal({
               className="w-[220px] rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             />
             <select
-              value={localDepartmentFilter}
-              onChange={(e) => setLocalDepartmentFilter(e.target.value)}
+              value={departmentFilter}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (onDepartmentFilterChange) onDepartmentFilterChange(v);
+              }}
               className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             >
               <option value="">
@@ -849,6 +682,7 @@ export default function PayrollMonthlyTimesheetModal({
             </button>
           </div>
           <div
+            ref={tableBodyScrollRef}
             className="min-h-0 overflow-auto"
             style={{
               height: `min(calc(100vh - 11.5rem), ${tableViewportHeight}px)`,
@@ -1042,13 +876,29 @@ export default function PayrollMonthlyTimesheetModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredIds.map((id, empBlockIdx) => {
-                      const rep = representativeEmployee(dayChunks, id);
-                      const summary = buildMonthlyRuleSummary(
-                        chunkByDate,
-                        monthRange.keys,
-                        id,
-                      );
+                    {tbodyPadTop > 0 ? (
+                      <tr aria-hidden className="pointer-events-none">
+                        <td
+                          colSpan={timesheetTotalColCount}
+                          style={{
+                            height: tbodyPadTop,
+                            padding: 0,
+                            border: "none",
+                            lineHeight: 0,
+                          }}
+                        />
+                      </tr>
+                    ) : null}
+                    {(shouldVirtualizeTimesheetBody
+                      ? virtualEmpItems
+                      : filteredIds.map((_, idx) => ({
+                          index: idx,
+                        }))
+                    ).flatMap((vi) => {
+                      const id = filteredIds[vi.index];
+                      const empBlockIdx = vi.index;
+                      const rep = repById.get(id);
+                      const summary = monthlySummaryById.get(id);
                       const sttDisp =
                         rep?.stt != null && String(rep.stt).trim() !== ""
                           ? rep.stt
@@ -1359,6 +1209,19 @@ export default function PayrollMonthlyTimesheetModal({
                         );
                       });
                     })}
+                    {tbodyPadBottom > 0 ? (
+                      <tr aria-hidden className="pointer-events-none">
+                        <td
+                          colSpan={timesheetTotalColCount}
+                          style={{
+                            height: tbodyPadBottom,
+                            padding: 0,
+                            border: "none",
+                            lineHeight: 0,
+                          }}
+                        />
+                      </tr>
+                    ) : null}
                   </tbody>
                 </table>
                 {error && dayChunks.length ? (

@@ -861,6 +861,8 @@ export default function PayrollSalaryCalculator() {
         tlPage={tlPage}
         searchTerm={searchTerm}
         departmentFilter={departmentFilter}
+        payrollDepartmentOptions={departments}
+        onDepartmentFilterChange={setDepartmentFilter}
         normalizeDepartment={normalizeDepartment}
       />
 
