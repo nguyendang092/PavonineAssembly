@@ -3,10 +3,16 @@ import { formatAttendanceLeaveTypeColumnDisplay } from "@/features/attendance/at
 
 /**
  * Giờ công hiển thị trên bảng điểm danh / lương.
- * Ca ngày: **mốc vào hiệu lực** để tính khoảng làm việc — **08:00** nếu chấm từ **06:00**
- * đến **trước 08:00**; **trước 06:00** vẫn dùng **giờ chấm thực**. Giờ công = khoảng
- * (giờ ra − mốc vào hiệu lực), làm tròn 0.1h, **tối đa 8 giờ**
- * (phần trên 8h không cộng ở đây vì đã tách sang cột giờ tăng ca).
+ * Ca ngày: chia khung làm việc thành 2 khoảng loại trừ nghỉ trưa `12:00–13:00`:
+ * - Sáng: `08:00–12:00`
+ * - Chiều: `13:00–17:00`
+ *
+ * Khi chấm sớm: dùng **mốc vào hiệu lực** để tính thời lượng — **08:00** nếu chấm từ
+ * **06:00** đến **trước 08:00**; **trước 06:00** vẫn dùng **giờ chấm thực** (nhưng phần
+ * trước 08:00 vẫn bị loại trừ vì không nằm trong khung làm việc).
+ *
+ * Giờ công = tổng thời lượng (giao thời gian [giờ vào, giờ ra) với các khung làm việc),
+ * làm tròn 0.1h, **tối đa 8 giờ** (phần trên 8h không cộng ở đây vì đã tách sang cột giờ tăng ca).
  *
  * **Ca đêm:** chọn `caLamViec` có chữ «đêm» / «night» (giống thống kê combo). Khi
  * `giờ ra` ≤ `giờ vào` (ví dụ 22:00 → 06:00) hệ thống coi là **qua nửa đêm**:
@@ -184,7 +190,27 @@ export function getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec) {
   if (!night) {
     const aEff = getEffectiveDayShiftClockInMinutes(a);
     if (b <= aEff) return null;
-    const raw = roundHoursToTenths((b - aEff) / 60);
+
+    // Ca ngày = 2 khung làm việc: 08:00-12:00 và 13:00-17:00 (loại trừ 12:00-13:00).
+    const DAY_SHIFT_MORNING_START = 8 * 60;
+    const DAY_SHIFT_MORNING_END = 12 * 60;
+    const DAY_SHIFT_AFTERNOON_START = 13 * 60;
+    const DAY_SHIFT_AFTERNOON_END = 17 * 60;
+
+    const morningMinutes = Math.max(
+      0,
+      Math.min(b, DAY_SHIFT_MORNING_END) -
+        Math.max(aEff, DAY_SHIFT_MORNING_START),
+    );
+    const afternoonMinutes = Math.max(
+      0,
+      Math.min(b, DAY_SHIFT_AFTERNOON_END) -
+        Math.max(aEff, DAY_SHIFT_AFTERNOON_START),
+    );
+    const totalMinutes = morningMinutes + afternoonMinutes;
+    if (totalMinutes <= 0) return null;
+
+    const raw = roundHoursToTenths(totalMinutes / 60);
     return Math.min(raw, MAX_REGULAR_WORKING_HOURS);
   }
 
