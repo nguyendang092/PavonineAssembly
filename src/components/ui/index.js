@@ -2,7 +2,6 @@
 // Central export file for common reusable components
 
 export { default as AlertMessage } from "./AlertMessage";
-export { default as MyAccessSummary } from "./MyAccessSummary";
 export { default as BackToTop } from "./BackToTop";
 export { default as BackToBottom } from "./BackToBottom";
 export { default as Downloads } from "./Downloads";

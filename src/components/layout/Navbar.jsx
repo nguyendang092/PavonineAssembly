@@ -755,6 +755,17 @@ export default function Navbar({ user, setUser, userRole }) {
                     >
                       🔑 {t("navbar.changePassword")}
                     </button>
+                    {showAdminOnlyMenu && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigate("/user-department");
+                          setUserDropdownOpen(false);
+                        }}
+                      >
+                        🔐 {t("navbar.userDepartment")}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {

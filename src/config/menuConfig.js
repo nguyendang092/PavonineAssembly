@@ -68,11 +68,6 @@ export const menuConfig = [
                     label: "navbar.seasonalStaffAttendance",
                     path: "/seasonal-staff-attendance",
                   },
-                  {
-                    key: "userDepartment",
-                    label: "navbar.userDepartment",
-                    path: "/user-department",
-                  },
                 ],
               },
               {

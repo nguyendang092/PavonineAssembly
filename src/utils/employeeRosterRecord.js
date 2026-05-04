@@ -487,6 +487,9 @@ const ATTENDANCE_EXTRA_KEYS = [
   "loaiPhep",
   "gioRa",
   "caLamViec",
+  "includeTapVuInWorkingHours",
+  "includeThaiSanInWorkingHours",
+  "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
   "mvt",
   "maBoPhan",
   "gioiTinh",
@@ -544,6 +547,9 @@ export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
   "loaiPhep",
   "gioRa",
   "caLamViec",
+  "includeTapVuInWorkingHours",
+  "includeThaiSanInWorkingHours",
+  "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
   "mvt",
   "maBoPhan",
   "gioiTinh",
@@ -565,6 +571,9 @@ export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
   "loaiPhep",
   "gioRa",
   "caLamViec",
+  "includeTapVuInWorkingHours",
+  "includeThaiSanInWorkingHours",
+  "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
   "chamCong",
   "phepNam",
 ]);
@@ -815,6 +824,18 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
     loaiPhep: attendanceDayOptionalStringFromForm(form, "loaiPhep"),
     gioRa: attendanceDayOptionalStringFromForm(form, "gioRa"),
     caLamViec: attendanceDayOptionalStringFromForm(form, "caLamViec"),
+    includeTapVuInWorkingHours: attendanceDayOptionalStringFromForm(
+      form,
+      "includeTapVuInWorkingHours",
+    ),
+    includeThaiSanInWorkingHours: attendanceDayOptionalStringFromForm(
+      form,
+      "includeThaiSanInWorkingHours",
+    ),
+    includeTsNvInWorkingHours: attendanceDayOptionalStringFromForm(
+      form,
+      "includeTsNvInWorkingHours",
+    ),
     mvt: attendanceDayOptionalStringFromForm(form, "mvt"),
     maBoPhan: attendanceDayOptionalStringFromForm(form, "maBoPhan"),
     gioiTinh: Object.prototype.hasOwnProperty.call(form, "gioiTinh")

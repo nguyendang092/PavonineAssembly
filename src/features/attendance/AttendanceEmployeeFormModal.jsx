@@ -44,6 +44,8 @@ export const EMPTY_EMPLOYEE_FORM = {
   loaiPhep: "",
   gioRa: "",
   caLamViec: "",
+  includeTapVuInWorkingHours: "",
+  includeThaiSanInWorkingHours: "",
 };
 
 const employeeModalFieldClass =
@@ -99,6 +101,19 @@ export default function AttendanceEmployeeFormModal({
     if (!open) return;
     if (initialRecord && initialRecord.id) {
       let merged = { ...EMPTY_EMPLOYEE_FORM, ...initialRecord };
+      // Legacy: nếu DB chỉ có chế độ chung `includeTsNvInWorkingHours` thì map sang bật cả
+      // tạp vụ + thai sản (để tương thích dữ liệu cũ).
+      const legacyIncludeTsNv =
+        String(merged.includeTsNvInWorkingHours ?? "").trim().toUpperCase() ===
+        "YES";
+      if (legacyIncludeTsNv) {
+        if (!merged.includeTapVuInWorkingHours) {
+          merged.includeTapVuInWorkingHours = "YES";
+        }
+        if (!merged.includeThaiSanInWorkingHours) {
+          merged.includeThaiSanInWorkingHours = "YES";
+        }
+      }
       merged = {
         ...merged,
         loaiPhep: canonicalAttendanceLoaiPhep(merged.loaiPhep),
@@ -111,6 +126,35 @@ export default function AttendanceEmployeeFormModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initialRecord chỉ đọc khi formInitKey đổi; không deps object để tránh reset khi parent tạo {...emp} mới cùng id
   }, [open, formInitKey]);
+
+  const employeeRegimeSelectValue = (() => {
+    const tapOn =
+      String(form.includeTapVuInWorkingHours ?? "").trim().toUpperCase() ===
+      "YES";
+    const thaiOn =
+      String(form.includeThaiSanInWorkingHours ?? "")
+        .trim()
+        .toUpperCase() === "YES";
+    if (tapOn && thaiOn) return "";
+    if (tapOn) return "TAPVU";
+    if (thaiOn) return "THAISAN";
+    return "";
+  })();
+
+  const employeeRegimeBothOn =
+    String(form.includeTapVuInWorkingHours ?? "").trim().toUpperCase() ===
+      "YES" &&
+    String(form.includeThaiSanInWorkingHours ?? "").trim().toUpperCase() ===
+      "YES";
+
+  const handleEmployeeRegimeChange = useCallback((e) => {
+    const v = e.target.value;
+    setForm((prev) => ({
+      ...prev,
+      includeTapVuInWorkingHours: v === "TAPVU" ? "YES" : "",
+      includeThaiSanInWorkingHours: v === "THAISAN" ? "YES" : "",
+    }));
+  }, []);
 
   /** Khóa cuộn nền (desktop + mobile/iOS): overflow + body fixed + khôi phục scroll khi đóng. */
   useEffect(() => {
@@ -439,38 +483,72 @@ export default function AttendanceEmployeeFormModal({
               />
             </div>
           </div>
-          <div className="min-w-0">
-            <label className={employeeModalLabelClass}>
-              {tl("employmentStatusField", "Trạng thái làm việc")}
-            </label>
-            <select
-              name="trangThaiLamViec"
-              value={String(form.trangThaiLamViec ?? "").trim()}
-              onChange={handleTrangThaiLamViecSelect}
-              disabled={isRestrictedEdit}
-              className={employeeModalSelectFieldClass}
-            >
-              <option value="">
-                {tl("employmentStatusPlaceholder", "— Chọn —")}
-              </option>
-              {(() => {
-                const raw = String(form.trangThaiLamViec ?? "").trim();
-                const isStd = ROSTER_TRANG_THAI_VALUES.includes(raw);
-                return !isStd && raw ? (
-                  <option value={raw}>
-                    {raw} {tl("shiftCurrentValue", "(giá trị hiện tại)")}
-                  </option>
-                ) : null;
-              })()}
-              {ROSTER_TRANG_THAI_VALUES.map((v) => (
-                <option key={v} value={v}>
-                  {tl(
-                    `employmentStatusValue_${v}`,
-                    TRANG_THAI_OPTION_DEFAULTS[v] ?? v,
-                  )}
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:col-span-2 sm:grid-cols-2 sm:gap-4">
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("employmentStatusField", "Trạng thái làm việc")}
+              </label>
+              <select
+                name="trangThaiLamViec"
+                value={String(form.trangThaiLamViec ?? "").trim()}
+                onChange={handleTrangThaiLamViecSelect}
+                disabled={isRestrictedEdit}
+                className={employeeModalSelectFieldClass}
+              >
+                <option value="">
+                  {tl("employmentStatusPlaceholder", "— Chọn —")}
                 </option>
-              ))}
-            </select>
+                {(() => {
+                  const raw = String(form.trangThaiLamViec ?? "").trim();
+                  const isStd = ROSTER_TRANG_THAI_VALUES.includes(raw);
+                  return !isStd && raw ? (
+                    <option value={raw}>
+                      {raw} {tl("shiftCurrentValue", "(giá trị hiện tại)")}
+                    </option>
+                  ) : null;
+                })()}
+                {ROSTER_TRANG_THAI_VALUES.map((v) => (
+                  <option key={v} value={v}>
+                    {tl(
+                      `employmentStatusValue_${v}`,
+                      TRANG_THAI_OPTION_DEFAULTS[v] ?? v,
+                    )}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("employeeRegimeField", "Chế độ nhân viên")}
+              </label>
+              <select
+                value={employeeRegimeSelectValue}
+                onChange={handleEmployeeRegimeChange}
+                className={employeeModalSelectFieldClass}
+                disabled={isRestrictedEdit}
+              >
+                <option value="">
+                  {tl("employeeRegimePlaceholder", "— Chọn —")}
+                </option>
+                <option value="TAPVU">
+                  {tl("employeeRegimeTapVu", "Tạp vụ")}
+                </option>
+                <option value="THAISAN">
+                  {tl("employeeRegimeThaiSan", "Thai sản")}
+                </option>
+              </select>
+            </div>
+            <p className="mt-0.5 text-[11px] leading-snug text-blue-700/90 dark:text-blue-300/90 sm:col-span-2">
+              {employeeRegimeBothOn
+                ? tl(
+                    "employeeRegimeBothLegacyHint",
+                    "Đang bật cả tạp vụ và thai sản; chọn một mục để cập nhật.",
+                  )
+                : tl(
+                    "employeeRegimeHint",
+                    "Tạp vụ / Thai sản: loại tương ứng được tính vào Giờ công thay vì bị chặn như phép.",
+                  )}
+            </p>
           </div>
           <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:gap-4">
             <div className="min-w-0">

@@ -223,6 +223,8 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
           payrollLateOtExcluded: emp.payrollLateOtExcluded,
           loaiPhep: emp.loaiPhep,
+          includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
+          includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
         });
         const h = coeffMap.get(sr.coeff);
         const show =

@@ -170,7 +170,13 @@ export function getAttendanceLeaveTypeRaw(emp) {
  * Chỉ coi là nghỉ thực sự khi không phải các trạng thái vẫn có thể đi làm / tính giờ.
  * `BGC` (Bù giờ công) và `VT` (Vào trễ) không chặn giờ công trên bảng lương.
  */
-export function isAttendanceActualLeaveType(raw) {
+export function isAttendanceActualLeaveType(
+  raw,
+  {
+    includeTapVuInWorkingHours = false,
+    includeThaiSanInWorkingHours = false,
+  } = {},
+) {
   const t = String(raw ?? "")
     .trim()
     .replace(/\u00a0/g, " ");
@@ -179,7 +185,15 @@ export function isAttendanceActualLeaveType(raw) {
     rawMatchesAttendanceTypeOption(t, opt),
   );
   if (!matched) return true;
-  return matched.shortLabel !== "BGC" && matched.shortLabel !== "VT";
+
+  // BGC/VT luôn được coi là "không phải phép" (vẫn tính giờ công).
+  if (matched.shortLabel === "BGC" || matched.shortLabel === "VT") return false;
+
+  // Chế độ bao gồm (per employee/day): cho phép TS/NV vẫn tính giờ công.
+  if (matched.shortLabel === "TS" && includeThaiSanInWorkingHours) return false;
+  if (matched.shortLabel === "NV" && includeTapVuInWorkingHours) return false;
+
+  return true;
 }
 
 /**

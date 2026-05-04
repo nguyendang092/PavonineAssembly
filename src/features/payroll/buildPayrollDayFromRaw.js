@@ -19,6 +19,9 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "gioRa",
   "caLamViec",
   "loaiPhep",
+  "includeTapVuInWorkingHours",
+  "includeThaiSanInWorkingHours",
+  "includeTsNvInWorkingHours",
   "payrollEarlyOtPaperwork",
 ];
 

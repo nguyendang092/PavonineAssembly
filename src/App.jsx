@@ -9,7 +9,6 @@ import React, {
 import { createPortal } from "react-dom";
 // firebase for global data fetching
 import { db, ref, onValue } from "@/services/firebase";
-import MyAccessSummary from "@/components/ui/MyAccessSummary";
 import Navbar from "@/components/layout/Navbar";
 import BackToTop from "@/components/ui/BackToTop";
 import BackToBottom from "@/components/ui/BackToBottom";
@@ -262,7 +261,6 @@ const App = () => {
             className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto"
             style={{ paddingTop: "var(--app-navbar-height, 4rem)" }}
           >
-            {user ? <MyAccessSummary variant="compact" /> : null}
             <Suspense fallback={<LoadingBlock className="min-h-[60vh]" />}>
               <Routes>
                 <Route path="/login" element={<LoginRoute />} />

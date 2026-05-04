@@ -29,9 +29,31 @@ import { formatAttendanceLeaveTypeColumnDisplay } from "@/features/attendance/at
  * **Ca đêm ngày off / ngày lễ:** **GC ca đêm** + **TC ca đêm** gộp **một** số (cùng quy tắc mốc 05:00 như ngày thường) — hiển thị ở **GC ca đêm off** / **GC ca đêm ngày lễ**; cột **TC ca đêm** là «-».
  * **Ngày off / ngày lễ + ca ngày:** **Giờ công BT** + **TC chiều/giấy** gộp **một** số ở **TC off** / **GC ngày lễ** (hệ số quy đổi giống nhau — không tách cột Giờ TC).
  * **Ngày không off/lễ:** giờ công / TC như quy tắc khung ca thường.
+ *
+ * **Chế độ Tạp vụ / Thai sản** (`includeTapVuInWorkingHours` / `includeThaiSanInWorkingHours`,
+ * chỉ **ca ngày**): GC = thời lượng liên tục từ mốc vào hiệu lực đến **16:00** hoặc giờ ra
+ * (tùy sớm hơn), **tối đa 8 giờ**. Phần làm sau **16:00** → **Giờ TC** (cùng block 30 phút,
+ * đủ điều kiện khi giờ ra sau **16:30**). Ca đêm không đổi.
  */
 
 const HHMM = /^(\d{1,2}):(\d{2})$/;
+
+function coerceIncludeWorkingHoursFlag(v) {
+  return v === true || String(v ?? "").trim().toUpperCase() === "YES";
+}
+
+/** Ca ngày + cờ Tạp vụ hoặc Thai sản: áp quy tắc mốc 16:00 (GC / TC). */
+function useTapVuThaiSanDayShiftRules(
+  caLamViec,
+  includeTapVuInWorkingHours,
+  includeThaiSanInWorkingHours,
+) {
+  if (isNightShiftCaLamViec(caLamViec)) return false;
+  return (
+    coerceIncludeWorkingHoursFlag(includeTapVuInWorkingHours) ||
+    coerceIncludeWorkingHoursFlag(includeThaiSanInWorkingHours)
+  );
+}
 
 /**
  * Làm tròn về **0.1 giờ**. Không dùng `Math.round(giờ)` trên số giờ thuần (ví dụ `Math.round(3.5) === 4`).
@@ -168,13 +190,41 @@ export function isNightShiftCaLamViec(caLamViec) {
   return s === "S2";
 }
 
+/** Mốc 16:00 — GC chế độ Tạp vụ / Thai sản (ca ngày). */
+const TAP_THAI_DAY_REGULAR_END_MIN = 16 * 60;
+
+/**
+ * TC chiều (Tạp vụ / Thai sản): từ 16:00, block 30 phút; chỉ khi giờ ra sau 16:30.
+ * @param {unknown} gioRa
+ * @returns {number | null}
+ */
+export function getTapVuThaiSanOvertimeHoursFromGioRa(gioRa) {
+  const TAP_THAI_OT_PAY_START_MIN = 16 * 60;
+  const TAP_THAI_OT_ELIGIBLE_AFTER_MIN = 16 * 60 + 30;
+  const b = parseHHMMToMinutes(gioRa);
+  if (b == null) return null;
+  if (b <= TAP_THAI_OT_ELIGIBLE_AFTER_MIN) return 0;
+  const minutesFrom16 = b - TAP_THAI_OT_PAY_START_MIN;
+  if (minutesFrom16 <= 0) return 0;
+  const blocks = Math.floor(minutesFrom16 / 30);
+  return blocks * 0.5;
+}
+
 /**
  * @param {unknown} gioVao
  * @param {unknown} gioRa
  * @param {unknown} [caLamViec] — nếu là ca đêm và ra ≤ vào, tính qua nửa đêm.
+ * @param {unknown} [includeTapVuInWorkingHours]
+ * @param {unknown} [includeThaiSanInWorkingHours]
  * @returns {number | null}
  */
-export function getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec) {
+export function getAttendanceWorkingHoursHours(
+  gioVao,
+  gioRa,
+  caLamViec,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
+) {
   const a = parseHHMMToMinutes(gioVao);
   const b = parseHHMMToMinutes(gioRa);
   if (a == null || b == null) return null;
@@ -184,6 +234,22 @@ export function getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec) {
     if (!night) return null;
     const spanMinutes = MINUTES_PER_DAY - a + b;
     const raw = roundHoursToTenths(spanMinutes / 60);
+    return Math.min(raw, MAX_REGULAR_WORKING_HOURS);
+  }
+
+  if (
+    !night &&
+    useTapVuThaiSanDayShiftRules(
+      caLamViec,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  ) {
+    const aEff = getEffectiveDayShiftClockInMinutes(a);
+    const endCap = Math.min(b, TAP_THAI_DAY_REGULAR_END_MIN);
+    if (endCap <= aEff) return null;
+    const totalMinutes = endCap - aEff;
+    const raw = roundHoursToTenths(totalMinutes / 60);
     return Math.min(raw, MAX_REGULAR_WORKING_HOURS);
   }
 
@@ -222,10 +288,24 @@ export function getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec) {
  * @param {unknown} gioVao
  * @param {unknown} gioRa
  * @param {unknown} [caLamViec]
+ * @param {unknown} [includeTapVuInWorkingHours]
+ * @param {unknown} [includeThaiSanInWorkingHours]
  * @returns {string} Rỗng nếu không tính được.
  */
-export function formatAttendanceWorkingHoursLabel(gioVao, gioRa, caLamViec) {
-  const h = getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec);
+export function formatAttendanceWorkingHoursLabel(
+  gioVao,
+  gioRa,
+  caLamViec,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
+) {
+  const h = getAttendanceWorkingHoursHours(
+    gioVao,
+    gioRa,
+    caLamViec,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+  );
   if (h == null) return "";
   return `${h}`;
 }
@@ -255,8 +335,15 @@ export function getNightShiftPayrollOffHolidayMergedHoursNumeric(
 /** Ký tự thống nhất cho ô không có số / 0 giờ (tránh lẫn em-dash «—»). */
 const PAYROLL_CELL_DASH = "-";
 
-function hasPayrollLeaveType(leaveTypeRaw) {
-  return isAttendanceActualLeaveType(leaveTypeRaw);
+function hasPayrollLeaveType(
+  leaveTypeRaw,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
+) {
+  return isAttendanceActualLeaveType(leaveTypeRaw, {
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+  });
 }
 
 function isHalfPnLeaveType(leaveTypeRaw) {
@@ -273,7 +360,13 @@ const HALF_DAY_MORNING_START_MIN = 8 * 60;
 const HALF_DAY_NOON_MIN = 12 * 60;
 const HALF_DAY_AFTERNOON_END_MIN = 17 * 60;
 
-export function getPayrollHalfDayLeaveWorkedHours(gioVao, gioRa, caLamViec) {
+export function getPayrollHalfDayLeaveWorkedHours(
+  gioVao,
+  gioRa,
+  caLamViec,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
+) {
   if (isNightShiftCaLamViec(caLamViec)) return null;
   const a = parseHHMMToMinutes(gioVao);
   const b = parseHHMMToMinutes(gioRa);
@@ -284,7 +377,13 @@ export function getPayrollHalfDayLeaveWorkedHours(gioVao, gioRa, caLamViec) {
   // 1/2PN nghỉ buổi sáng: làm buổi chiều (từ 12:00) => 4h cố định.
   if (a >= HALF_DAY_NOON_MIN && b > a) return 4;
 
-  const h = getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec);
+  const h = getAttendanceWorkingHoursHours(
+    gioVao,
+    gioRa,
+    caLamViec,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+  );
   if (h == null || h <= 0) return null;
   // Luôn chặn trần 4h cho 1/2PN để không xuất hiện 4.5.
   return Math.min(4, h);
@@ -315,10 +414,24 @@ export function formatPayrollTableWorkingHoursCell(
   isOffDay,
   caLamViec,
   leaveTypeRaw,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
-  if (hasPayrollLeaveType(leaveTypeRaw)) {
+  if (
+    hasPayrollLeaveType(
+      leaveTypeRaw,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  ) {
     if (isHalfPnLeaveType(leaveTypeRaw) && !isOffDay) {
-      const h = getPayrollHalfDayLeaveWorkedHours(gioVao, gioRa, caLamViec);
+      const h = getPayrollHalfDayLeaveWorkedHours(
+        gioVao,
+        gioRa,
+        caLamViec,
+        includeTapVuInWorkingHours,
+        includeThaiSanInWorkingHours,
+      );
       if (h != null && h > 0) return payrollHoursCellDisplay(String(h));
     }
     return PAYROLL_CELL_DASH;
@@ -330,8 +443,13 @@ export function formatPayrollTableWorkingHoursCell(
     return PAYROLL_CELL_DASH;
   }
   return payrollHoursCellDisplay(
-    formatAttendanceWorkingHoursLabel(gioVao, gioRa, caLamViec) ||
-      PAYROLL_CELL_DASH,
+    formatAttendanceWorkingHoursLabel(
+      gioVao,
+      gioRa,
+      caLamViec,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    ) || PAYROLL_CELL_DASH,
   );
 }
 
@@ -347,8 +465,17 @@ export function formatPayrollTableOffDayTcCell(
   earlyOtPaperwork,
   leaveTypeRaw,
   lateOtExcluded = false,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
-  if (hasPayrollLeaveType(leaveTypeRaw)) return PAYROLL_CELL_DASH;
+  if (
+    hasPayrollLeaveType(
+      leaveTypeRaw,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  )
+    return PAYROLL_CELL_DASH;
   if (isNightShiftCaLamViec(caLamViec)) {
     return PAYROLL_CELL_DASH;
   }
@@ -364,6 +491,8 @@ export function formatPayrollTableOffDayTcCell(
     earlyOtPaperwork,
     leaveTypeRaw,
     lateOtExcluded,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
   );
   return payrollHoursCellDisplay(
     merged == null ? PAYROLL_CELL_DASH : String(merged),
@@ -381,8 +510,17 @@ export function formatPayrollTableHolidayDayWorkingCell(
   earlyOtPaperwork,
   leaveTypeRaw,
   lateOtExcluded = false,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
-  if (hasPayrollLeaveType(leaveTypeRaw)) return PAYROLL_CELL_DASH;
+  if (
+    hasPayrollLeaveType(
+      leaveTypeRaw,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  )
+    return PAYROLL_CELL_DASH;
   if (!isHolidayDay || isNightShiftCaLamViec(caLamViec)) {
     return PAYROLL_CELL_DASH;
   }
@@ -395,6 +533,8 @@ export function formatPayrollTableHolidayDayWorkingCell(
     earlyOtPaperwork,
     leaveTypeRaw,
     lateOtExcluded,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
   );
   return payrollHoursCellDisplay(
     merged == null ? PAYROLL_CELL_DASH : String(merged),
@@ -410,8 +550,17 @@ export function formatPayrollTableHolidayNightWorkingCell(
   isHolidayDay,
   caLamViec,
   leaveTypeRaw,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
-  if (hasPayrollLeaveType(leaveTypeRaw)) return PAYROLL_CELL_DASH;
+  if (
+    hasPayrollLeaveType(
+      leaveTypeRaw,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  )
+    return PAYROLL_CELL_DASH;
   if (!isHolidayDay || !isNightShiftCaLamViec(caLamViec)) {
     return PAYROLL_CELL_DASH;
   }
@@ -432,8 +581,17 @@ export function formatPayrollTableNightShiftWorkingCell(
   isOffDay,
   caLamViec,
   leaveTypeRaw,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
-  if (hasPayrollLeaveType(leaveTypeRaw)) return PAYROLL_CELL_DASH;
+  if (
+    hasPayrollLeaveType(
+      leaveTypeRaw,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  )
+    return PAYROLL_CELL_DASH;
   if (!isNightShiftCaLamViec(caLamViec)) return PAYROLL_CELL_DASH;
   if (isOffDay) return PAYROLL_CELL_DASH;
   const parts = getNightShiftPayrollRegularHoursAndOtMinutes(
@@ -455,8 +613,17 @@ export function formatPayrollTableNightShiftOffDayWorkingCell(
   isStrictOffDay,
   caLamViec,
   leaveTypeRaw,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
-  if (hasPayrollLeaveType(leaveTypeRaw)) return PAYROLL_CELL_DASH;
+  if (
+    hasPayrollLeaveType(
+      leaveTypeRaw,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  )
+    return PAYROLL_CELL_DASH;
   if (!isNightShiftCaLamViec(caLamViec)) return PAYROLL_CELL_DASH;
   if (!isStrictOffDay) return PAYROLL_CELL_DASH;
   const merged = getNightShiftPayrollOffHolidayMergedHoursNumeric(
@@ -476,8 +643,17 @@ export function formatPayrollTableNightShiftOvertimeCell(
   payrollOffLike,
   caLamViec,
   leaveTypeRaw,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
-  if (hasPayrollLeaveType(leaveTypeRaw)) return PAYROLL_CELL_DASH;
+  if (
+    hasPayrollLeaveType(
+      leaveTypeRaw,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  )
+    return PAYROLL_CELL_DASH;
   if (!isNightShiftCaLamViec(caLamViec)) return PAYROLL_CELL_DASH;
   if (payrollOffLike) return PAYROLL_CELL_DASH;
   const h = getNightShiftPayrollOvertimeHours(gioVao, gioRa, caLamViec);
@@ -528,6 +704,8 @@ export function isEarlyArrivalFor0600PaperworkOvertime(gioVao, caLamViec) {
  * Ca ngày: **bắt buộc có giờ ra hợp lệ** mới tính TC (kể cả phần giấy sớm) — tránh có 2h TC khi chưa chấm giờ ra.
  * @param {boolean | undefined} earlyOtPaperwork — `true` nếu user xác nhận có giấy.
  * @param {boolean | undefined} lateOtExcluded — `true` nếu user xác nhận KHONG tinh tang ca sau 17:30.
+ * @param {unknown} [includeTapVuInWorkingHours]
+ * @param {unknown} [includeThaiSanInWorkingHours]
  * @returns {number | null} null nếu không đọc được giờ ra (ca ngày / ca đêm).
  */
 export function getPayrollDayOvertimeHoursNumeric(
@@ -538,12 +716,20 @@ export function getPayrollDayOvertimeHoursNumeric(
   earlyOtPaperwork,
   isHolidayDay = false,
   lateOtExcluded = false,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
   if (isNightShiftCaLamViec(caLamViec)) {
     return getOvertimeHoursFromGioRa(gioRa);
   }
 
-  const eveningRaw = getOvertimeHoursFromGioRa(gioRa);
+  const eveningRaw = useTapVuThaiSanDayShiftRules(
+    caLamViec,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+  )
+    ? getTapVuThaiSanOvertimeHoursFromGioRa(gioRa)
+    : getOvertimeHoursFromGioRa(gioRa);
   if (eveningRaw == null) {
     return null;
   }
@@ -572,13 +758,28 @@ export function getPayrollDayShiftOffHolidayMergedHoursNumeric(
   earlyOtPaperwork,
   leaveTypeRaw,
   lateOtExcluded = false,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
-  if (hasPayrollLeaveType(leaveTypeRaw)) return null;
+  if (
+    hasPayrollLeaveType(
+      leaveTypeRaw,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  )
+    return null;
   if (!isStrictOffDay && !isHolidayDay) return null;
   if (isNightShiftCaLamViec(caLamViec)) return null;
   // OFF/HOLIDAY chỉ tính khi có đủ giờ vào + giờ ra hợp lệ.
   if (!hasBothValidAttendanceTimes(gioVao, gioRa)) return null;
-  const h = getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec);
+  const h = getAttendanceWorkingHoursHours(
+    gioVao,
+    gioRa,
+    caLamViec,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+  );
   const n = getPayrollDayOvertimeHoursNumeric(
     gioVao,
     gioRa,
@@ -587,6 +788,8 @@ export function getPayrollDayShiftOffHolidayMergedHoursNumeric(
     earlyOtPaperwork,
     isHolidayDay,
     lateOtExcluded,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
   );
   if (h == null && n == null) return null;
   const gc = h == null ? 0 : h;
@@ -606,6 +809,8 @@ export function formatPayrollDayOvertimeHoursCell(
   earlyOtPaperwork,
   isHolidayDay = false,
   lateOtExcluded = false,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
   if (isNightShiftCaLamViec(caLamViec)) {
     return formatOvertimeHoursLabel(gioRa);
@@ -621,6 +826,8 @@ export function formatPayrollDayOvertimeHoursCell(
     earlyOtPaperwork,
     isHolidayDay,
     lateOtExcluded,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
   );
   if (n == null) return PAYROLL_CELL_DASH;
   if (n === 0) return PAYROLL_CELL_DASH;
@@ -652,17 +859,37 @@ function payrollTotalDayGcNumeric(
   earlyOtPaperwork,
   leaveTypeRaw,
   lateOtExcluded = false,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
-  if (hasPayrollLeaveType(leaveTypeRaw)) {
+  if (
+    hasPayrollLeaveType(
+      leaveTypeRaw,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  ) {
     if (isHalfPnLeaveType(leaveTypeRaw) && !isStrictOffDay && !isHolidayDay) {
-      const h = getPayrollHalfDayLeaveWorkedHours(gioVao, gioRa, caLamViec);
+      const h = getPayrollHalfDayLeaveWorkedHours(
+        gioVao,
+        gioRa,
+        caLamViec,
+        includeTapVuInWorkingHours,
+        includeThaiSanInWorkingHours,
+      );
       return roundHoursForPayrollDisplay(h == null ? 0 : h);
     }
     return 0;
   }
   let gc = 0;
   if (!isNightShiftCaLamViec(caLamViec)) {
-    const h = getAttendanceWorkingHoursHours(gioVao, gioRa, caLamViec);
+    const h = getAttendanceWorkingHoursHours(
+      gioVao,
+      gioRa,
+      caLamViec,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    );
     if (isStrictOffDay || isHolidayDay) {
       gc = 0;
     } else {
@@ -680,6 +907,8 @@ function payrollTotalDayGcNumeric(
         earlyOtPaperwork,
         false,
         lateOtExcluded,
+        includeTapVuInWorkingHours,
+        includeThaiSanInWorkingHours,
       );
       tc = n == null ? 0 : n;
     } else {
@@ -699,6 +928,8 @@ function payrollTotalDayGcNumeric(
       earlyOtPaperwork,
       leaveTypeRaw,
       lateOtExcluded,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
     );
     return roundHoursForPayrollDisplay(merged == null ? 0 : merged);
   }
@@ -714,6 +945,8 @@ export function formatPayrollTableTotalDayGcCell(
   earlyOtPaperwork,
   leaveTypeRaw,
   lateOtExcluded = false,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
   const sum = payrollTotalDayGcNumeric(
     gioVao,
@@ -724,6 +957,8 @@ export function formatPayrollTableTotalDayGcCell(
     earlyOtPaperwork,
     leaveTypeRaw,
     lateOtExcluded,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
   );
   if (sum === 0) return PAYROLL_CELL_DASH;
   return payrollHoursCellDisplay(String(sum));
@@ -736,8 +971,17 @@ export function formatPayrollTableTotalNightGcCell(
   payrollOffLike,
   caLamViec,
   leaveTypeRaw,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
 ) {
-  if (hasPayrollLeaveType(leaveTypeRaw)) return PAYROLL_CELL_DASH;
+  if (
+    hasPayrollLeaveType(
+      leaveTypeRaw,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    )
+  )
+    return PAYROLL_CELL_DASH;
   if (!isNightShiftCaLamViec(caLamViec)) return PAYROLL_CELL_DASH;
   if (payrollOffLike) {
     const merged = getNightShiftPayrollOffHolidayMergedHoursNumeric(

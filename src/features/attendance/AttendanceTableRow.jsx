@@ -1785,6 +1785,16 @@ function AttendanceTableRow({
 }) {
   const isPayroll = tableVariant === "payroll";
   const payrollOffLike = isOffDay || isHolidayDay;
+  const legacyIncludeTsNvInWorkingHours =
+    String(emp.includeTsNvInWorkingHours ?? "").trim().toUpperCase() === "YES";
+  const includeTapVuInWorkingHours =
+    String(emp.includeTapVuInWorkingHours ?? "")
+      .trim()
+      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
+  const includeThaiSanInWorkingHours =
+    String(emp.includeThaiSanInWorkingHours ?? "")
+      .trim()
+      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
   const isMinimal = columnPlan === "minimal";
   /** Bảng lương: cỡ nhỏ hơn ô MNV; `payroll-tight-time` + payrollTableCompact.css */
   const payrollTimeShiftFont = isPayroll
@@ -2238,6 +2248,8 @@ function AttendanceTableRow({
                 payrollOffLike,
                 emp.caLamViec,
                 emp.loaiPhep,
+                includeTapVuInWorkingHours,
+                includeThaiSanInWorkingHours,
               )}
             </span>
           </Cell>
@@ -2261,6 +2273,8 @@ function AttendanceTableRow({
                 emp.payrollEarlyOtPaperwork,
                 isHolidayDay,
                 emp.payrollLateOtExcluded,
+                includeTapVuInWorkingHours,
+                includeThaiSanInWorkingHours,
               )}
             </span>
           </Cell>
@@ -2284,6 +2298,8 @@ function AttendanceTableRow({
                 emp.payrollEarlyOtPaperwork,
                 emp.loaiPhep,
                 emp.payrollLateOtExcluded,
+                includeTapVuInWorkingHours,
+                includeThaiSanInWorkingHours,
               )}
             </span>
           </Cell>
@@ -2310,6 +2326,8 @@ function AttendanceTableRow({
                 emp.payrollEarlyOtPaperwork,
                 emp.loaiPhep,
                 emp.payrollLateOtExcluded,
+                includeTapVuInWorkingHours,
+                includeThaiSanInWorkingHours,
               )}
             </span>
           </Cell>
@@ -2334,6 +2352,8 @@ function AttendanceTableRow({
                 emp.payrollEarlyOtPaperwork,
                 emp.loaiPhep,
                 emp.payrollLateOtExcluded,
+                includeTapVuInWorkingHours,
+                includeThaiSanInWorkingHours,
               )}
             </span>
           </Cell>
@@ -2358,6 +2378,8 @@ function AttendanceTableRow({
                 payrollOffLike,
                 emp.caLamViec,
                 emp.loaiPhep,
+                includeTapVuInWorkingHours,
+                includeThaiSanInWorkingHours,
               )}
             </span>
           </Cell>
@@ -2382,6 +2404,8 @@ function AttendanceTableRow({
                 payrollOffLike,
                 emp.caLamViec,
                 emp.loaiPhep,
+                includeTapVuInWorkingHours,
+                includeThaiSanInWorkingHours,
               )}
             </span>
           </Cell>
@@ -2406,6 +2430,8 @@ function AttendanceTableRow({
                 isOffDay,
                 emp.caLamViec,
                 emp.loaiPhep,
+                includeTapVuInWorkingHours,
+                includeThaiSanInWorkingHours,
               )}
             </span>
           </Cell>
@@ -2430,6 +2456,8 @@ function AttendanceTableRow({
                 isHolidayDay,
                 emp.caLamViec,
                 emp.loaiPhep,
+                includeTapVuInWorkingHours,
+                includeThaiSanInWorkingHours,
               )}
             </span>
           </Cell>
@@ -2451,6 +2479,8 @@ function AttendanceTableRow({
                 payrollOffLike,
                 emp.caLamViec,
                 emp.loaiPhep,
+                includeTapVuInWorkingHours,
+                includeThaiSanInWorkingHours,
               )}
             </span>
           </Cell>

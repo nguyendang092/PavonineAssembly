@@ -231,6 +231,8 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
       payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
       payrollLateOtExcluded: emp.payrollLateOtExcluded,
       loaiPhep: emp.loaiPhep,
+      includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
     });
     out.coeff03 += Number(coeffMap.get(0.3) || 0);
     out.coeff15 += Number(coeffMap.get(1.5) || 0);
@@ -1131,6 +1133,10 @@ export default function PayrollMonthlyTimesheetModal({
                                 payrollLateOtExcluded:
                                   emp.payrollLateOtExcluded,
                                 loaiPhep: emp.loaiPhep,
+                                includeTapVuInWorkingHours:
+                                  emp.includeTapVuInWorkingHours,
+                                includeThaiSanInWorkingHours:
+                                  emp.includeThaiSanInWorkingHours,
                               });
                               const h = coeffMap.get(sr.coeff);
                               const show =
