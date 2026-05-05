@@ -155,7 +155,8 @@ export function scoreSingleWorkday(empLike) {
     return { score: s, absent: false, late: false };
   }
 
-  if (flags.checkedIn) {
+  /** checkedIn (thống kê) không gồm vào trễ — vẫn cộng late/buGioCong để chấm điểm có mặt */
+  if (flags.checkedIn || flags.late || flags.buGioCong) {
     let s = flags.late ? DAY_SCORE_LATE : 1;
     if (hasOvertimeHint(empLike)) s = Math.min(1, s + OT_DAY_BONUS);
     return { score: s, absent: false, late: !!flags.late };

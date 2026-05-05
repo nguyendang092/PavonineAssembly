@@ -210,15 +210,18 @@ export function getAttendanceComboFlags(emp) {
     !halfAnnualLeave &&
     (isAnnualLeave || typeHitKeys.has("annualLeave"));
 
+  /** Trễ được tách ô riêng — không đếm vào checkedIn để cộng các KPI không bị trùng một người hai lần. */
+  const lateFinal = isLate || typeHitKeys.has("late");
+
   return {
     nonStandardTimeIn,
     timeInHashHHMM,
-    checkedIn: hasCheckIn,
+    checkedIn: hasCheckIn && !lateFinal,
     buGioCong:
       buGioCongMatch ||
       typeHitKeys.has("buGioCong") ||
       typeHitKeys.has("coDiLam"),
-    late: isLate || typeHitKeys.has("late"),
+    late: lateFinal,
     annualLeave,
     halfAnnualLeave,
     nightShift: isNightShift,

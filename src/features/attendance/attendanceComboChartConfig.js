@@ -3,6 +3,8 @@
  * Đồng bộ với ATTENDANCE_LOAI_PHEP_OPTIONS (comboStatKey).
  */
 
+import { normalizeTextValue } from "./attendanceComboStats";
+
 /** Các trường cộng dồn trên mỗi dòng bộ phận (không gồm total, department). */
 export const COMBO_CHART_METRIC_KEYS = [
   "checkedIn",
@@ -118,7 +120,10 @@ export const COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS = {
  * Khóa so khớp BP sản xuất (chữ thường, bỏ khoảng trắng và `-`).
  * Dùng cùng quy tắc với `matchesComboStatsProductionDepartment`.
  */
-export function attendanceProductionDeptMatchKey(normalizeDepartment, boPhanRaw) {
+export function attendanceProductionDeptMatchKey(
+  normalizeDepartment,
+  boPhanRaw,
+) {
   const normalized = normalizeDepartment(boPhanRaw);
   if (!normalized) return "";
   return normalized.replace(/\s+/g, "").replace(/-/g, "");
@@ -134,6 +139,25 @@ export function matchesComboStatsProductionDepartment(
   );
   if (!matchKey) return false;
   return COMBO_STATS_PRODUCTION_DEPT_MATCH_KEYS.has(matchKey);
+}
+
+/**
+ * Nhãn một hàng biểu đồ thống kê: BP sản xuất đã cấu hình gộp theo matchKey
+ * (vd. PRESS / Press / press → một hàng «Press»), tránh tách đếm do khác hoa/thường.
+ * @param {(v: unknown) => string} normalizeDepartment
+ */
+export function resolveComboChartDepartmentLabel(
+  normalizeDepartment,
+  boPhanRaw,
+  unknownLabel,
+) {
+  const trimmed = normalizeTextValue(boPhanRaw);
+  if (!trimmed) return unknownLabel;
+  if (!matchesComboStatsProductionDepartment(normalizeDepartment, boPhanRaw)) {
+    return trimmed;
+  }
+  const mk = attendanceProductionDeptMatchKey(normalizeDepartment, boPhanRaw);
+  return COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS[mk] ?? trimmed;
 }
 
 /**

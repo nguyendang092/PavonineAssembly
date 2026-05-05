@@ -80,6 +80,7 @@ import {
   COMBO_STAT_LABEL_DEFAULTS,
   attendanceProductionDeptMatchKey,
   applyProductionStatsRowOrder,
+  resolveComboChartDepartmentLabel,
 } from "./attendanceComboChartConfig";
 import {
   ATTENDANCE_LEAVE_FILTER_NONE,
@@ -859,9 +860,11 @@ function AttendanceList({
       Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, 0]));
     deferredFilteredForComboStats.forEach((emp) => {
       const flags = getAttendanceComboFlags(emp);
-      const department =
-        normalizeTextValue(emp.boPhan) ||
-        tl("unknownDepartment", "Chưa phân bộ phận");
+      const department = resolveComboChartDepartmentLabel(
+        normalizeDepartment,
+        emp.boPhan,
+        tl("unknownDepartment", "Chưa phân bộ phận"),
+      );
       const row = map.get(department) || {
         department,
         total: 0,
@@ -875,7 +878,7 @@ function AttendanceList({
     });
 
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [deferredFilteredForComboStats, tl]);
+  }, [deferredFilteredForComboStats, tl, normalizeDepartment]);
 
   const comboChartDataOrdered = useMemo(() => {
     if (comboDashboardGroup !== "production") {
