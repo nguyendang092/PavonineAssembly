@@ -342,16 +342,16 @@ function InternalAnnouncementsCompose({
       >
         <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-none bg-white shadow-2xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-700 sm:max-h-[95vh] sm:rounded-lg">
           {/* Toolbar */}
-          <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/90 sm:px-4">
-            <h2 id="compose-title" className="text-base font-bold text-slate-900 dark:text-slate-100">
+          <div className="flex flex-shrink-0 flex-col gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/90 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+            <h2 id="compose-title" className="text-sm font-bold text-slate-900 dark:text-slate-100 sm:text-base">
               {t("internalAnnouncements.composeTitle")}
             </h2>
-            <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-0.5 sm:flex-wrap sm:overflow-visible sm:whitespace-normal sm:gap-2">
               <button
                 type="submit"
                 form="compose-form"
                 disabled={uploading}
-                className="inline-flex items-center gap-1 rounded border border-sky-600 bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-700 disabled:opacity-50 sm:text-sm"
+                className="inline-flex shrink-0 items-center gap-1 rounded border border-sky-600 bg-sky-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-sky-700 disabled:opacity-50 sm:px-2.5 sm:text-sm"
               >
                 <span aria-hidden>✈</span> {t("internalAnnouncements.composeSend")}
               </button>
@@ -359,35 +359,37 @@ function InternalAnnouncementsCompose({
                 type="button"
                 onClick={saveDraft}
                 disabled={uploading}
-                className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:text-sm"
+                className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:px-2.5 sm:text-sm"
               >
                 <span aria-hidden>💾</span> {t("internalAnnouncements.composeDraft")}
               </button>
               <button
                 type="button"
                 onClick={() => setPreviewOpen(true)}
-                className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:text-sm"
+                className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:px-2.5 sm:text-sm"
               >
                 <span aria-hidden>👁</span> {t("internalAnnouncements.composePreview")}
               </button>
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:text-sm"
+                className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:px-2.5 sm:text-sm"
               >
                 <span aria-hidden>↺</span> {t("internalAnnouncements.composeReset")}
               </button>
               <select
                 value={autoSave}
                 onChange={(e) => setAutoSave(e.target.value)}
-                className="rounded border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 sm:text-sm"
+                className="shrink-0 rounded border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 sm:text-sm"
               >
                 <option value="off">{t("internalAnnouncements.composeAutoSaveOff")}</option>
                 <option value="1m">{t("internalAnnouncements.composeAutoSave1m")}</option>
               </select>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => {
+                  onClose();
+                }}
                 className="rounded p-1.5 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
                 aria-label={t("internalAnnouncements.cancel")}
               >
@@ -402,7 +404,7 @@ function InternalAnnouncementsCompose({
             className="flex min-h-0 flex-1 flex-col overflow-y-auto"
           >
             {/* Người nhận */}
-            <div className="grid grid-cols-[100px_1fr] items-start gap-x-3 gap-y-2 border-b border-slate-100 px-3 py-2 sm:px-4">
+            <div className="grid grid-cols-1 items-start gap-x-3 gap-y-2 border-b border-slate-100 px-3 py-2 sm:grid-cols-[100px_1fr] sm:px-4">
               <span className="pt-2 text-xs font-medium text-slate-600 sm:text-sm">
                 {t("internalAnnouncements.composeRecipient")}
               </span>
@@ -439,7 +441,7 @@ function InternalAnnouncementsCompose({
             </div>
 
             {/* Cc */}
-            <div className="grid grid-cols-[100px_1fr] items-center gap-x-3 border-b border-slate-100 px-3 py-2 sm:px-4">
+            <div className="grid grid-cols-1 items-center gap-x-3 border-b border-slate-100 px-3 py-2 sm:grid-cols-[100px_1fr] sm:px-4">
               <span className="text-xs font-medium text-slate-600 sm:text-sm">
                 {t("internalAnnouncements.composeCc")}
               </span>
@@ -494,7 +496,7 @@ function InternalAnnouncementsCompose({
             </div>
 
             {/* Tiêu đề + Quan trọng */}
-            <div className="grid grid-cols-[100px_1fr] items-center gap-x-3 border-b border-slate-100 px-3 py-2 sm:px-4">
+            <div className="grid grid-cols-1 items-center gap-x-3 border-b border-slate-100 px-3 py-2 sm:grid-cols-[100px_1fr] sm:px-4">
               <span className="text-xs font-medium text-slate-600 sm:text-sm">
                 {t("internalAnnouncements.fieldTitle")}
               </span>
@@ -558,7 +560,7 @@ function InternalAnnouncementsCompose({
                 ref={dropRef}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
-                className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/80 px-4 py-6 text-center text-xs text-slate-500"
+                className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/80 px-3 py-4 text-center text-xs text-slate-500 sm:px-4 sm:py-6"
               >
                 {t("internalAnnouncements.composeDropHint")}
                 {uploading ? (
@@ -606,7 +608,7 @@ function InternalAnnouncementsCompose({
                 </span>
                 <span className="text-[11px] text-slate-400">HTML</span>
               </div>
-              <div className="compose-quill-wrapper min-h-[280px] flex-1 rounded border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-950">
+              <div className="compose-quill-wrapper min-h-[260px] flex-1 rounded border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-950 sm:min-h-[280px]">
                 <ReactQuill
                   theme="snow"
                   value={bodyHtml}
@@ -674,8 +676,12 @@ function InternalAnnouncementsCompose({
       ) : null}
 
       <style>{`
-        .compose-quill-wrapper .ql-container { min-height: 240px; font-size: 14px; }
-        .compose-quill-wrapper .ql-editor { min-height: 240px; }
+        .compose-quill-wrapper .ql-container { min-height: 210px; font-size: 14px; }
+        .compose-quill-wrapper .ql-editor { min-height: 210px; }
+        @media (min-width: 640px) {
+          .compose-quill-wrapper .ql-container { min-height: 240px; }
+          .compose-quill-wrapper .ql-editor { min-height: 240px; }
+        }
       `}</style>
     </>
   );

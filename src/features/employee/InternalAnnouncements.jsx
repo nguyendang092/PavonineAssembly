@@ -138,7 +138,7 @@ function AnnouncementBody({ body, className, onImageClick }) {
       <div
         className={
           className ||
-          "text-sm leading-relaxed text-slate-800 [&_a]:text-sky-600 [&_img]:max-h-96 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+          "text-sm leading-relaxed text-slate-800 break-words [&_*]:max-w-full [&_a]:break-all [&_a]:text-sky-600 [&_img]:h-auto [&_img]:max-h-96 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_table]:block [&_table]:w-full [&_table]:overflow-x-auto [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
         }
         onClick={handleRichContentClick}
         dangerouslySetInnerHTML={{ __html: raw }}
@@ -364,6 +364,23 @@ function InternalAnnouncements() {
     };
   }, [previewImageSrc]);
 
+  // Mobile reading overlay: khóa scroll nền để tránh kéo trang phía sau.
+  useEffect(() => {
+    const mobileReadingOpen = Boolean(isNarrow && selectedId && selected);
+    if (!mobileReadingOpen) return undefined;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyTouch = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.touchAction = prevBodyTouch;
+    };
+  }, [isNarrow, selectedId, selected]);
+
   const handleComposePublish = async (payload) => {
     if (!user?.email || !canPost) return;
     try {
@@ -424,7 +441,9 @@ function InternalAnnouncements() {
     <button
       type="button"
       onClick={() => setFilter(key)}
-      className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition ${
+      className={`flex items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition ${
+        isNarrow ? "w-auto shrink-0 gap-2" : "w-full"
+      } ${
         active
           ? "bg-sky-50 font-semibold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300"
           : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -453,27 +472,40 @@ function InternalAnnouncements() {
           isNarrow ? "border-b lg:border-b-0" : ""
         }`}
       >
-        <div className="border-b border-slate-200 px-4 py-4 dark:border-slate-700">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            {t("internalAnnouncements.mailBrand")}
-          </h1>
-          {canPost ? (
-            <button
-              type="button"
-              onClick={() => setComposeOpen(true)}
-              className="mt-3 w-full rounded-md bg-sky-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
-            >
-              {t("internalAnnouncements.composeBtn")}
-            </button>
-          ) : (
+        <div className="border-b border-slate-200 px-3 py-3 dark:border-slate-700 sm:px-4 sm:py-4">
+          <div className="flex items-center justify-between gap-2 sm:block">
+            <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-xl">
+              {t("internalAnnouncements.mailBrand")}
+            </h1>
+            {canPost ? (
+              <button
+                type="button"
+                onClick={() => setComposeOpen(true)}
+                className="shrink-0 rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-sky-700 sm:mt-3 sm:w-full sm:px-0 sm:py-2.5 sm:text-sm"
+              >
+                {t("internalAnnouncements.composeBtn")}
+              </button>
+            ) : null}
+          </div>
+          {!canPost ? (
             <p className="mt-2 text-xs leading-snug text-slate-500 dark:text-slate-400">
               {t("internalAnnouncements.readOnlyHint")}
             </p>
-          )}
+          ) : null}
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
-          <p className="px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <nav
+          className={`px-2 py-2.5 ${
+            isNarrow
+              ? "flex items-center gap-1 overflow-x-auto whitespace-nowrap"
+              : "flex-1 space-y-1 overflow-y-auto py-3"
+          }`}
+        >
+          <p
+            className={`px-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 ${
+              isNarrow ? "shrink-0 pb-0" : "pb-1"
+            }`}
+          >
             {t("internalAnnouncements.sidebarMailboxes")}
           </p>
           {sidebarLink(
@@ -499,7 +531,7 @@ function InternalAnnouncements() {
           )}
         </nav>
 
-        <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-700">
+        <div className="hidden border-t border-slate-200 px-4 py-3 dark:border-slate-700 lg:block">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
             <div
               className="h-full rounded-full bg-sky-500"
@@ -515,10 +547,10 @@ function InternalAnnouncements() {
       {/* Main + list + reading pane */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Toolbar */}
-        <header className="flex flex-shrink-0 flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+        <header className="sticky top-0 z-20 flex flex-shrink-0 flex-col gap-2 border-b border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-2">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 sm:text-lg">
                 {t("internalAnnouncements.inboxTitle")}
               </h2>
               <span className="text-sky-600 dark:text-sky-400">★</span>
@@ -530,7 +562,7 @@ function InternalAnnouncements() {
               })}
             </p>
           </div>
-          <div className="flex w-full max-w-md items-center gap-2 sm:w-auto">
+          <div className="flex w-full max-w-md items-center gap-1.5 sm:w-auto sm:gap-2">
             <span className="hidden shrink-0 text-xs text-slate-500 sm:inline">
               {t("internalAnnouncements.searchIn")}
             </span>
@@ -543,7 +575,7 @@ function InternalAnnouncements() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("internalAnnouncements.searchPlaceholder")}
-                className="w-full rounded border border-slate-300 bg-white py-1.5 pl-8 pr-3 text-sm text-slate-900 outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
+                className="w-full rounded border border-slate-300 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-900 outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 sm:text-sm"
               />
             </div>
           </div>
@@ -552,7 +584,7 @@ function InternalAnnouncements() {
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           {/* List column */}
           <div
-            className={`min-h-[50vh] min-w-0 flex-1 overflow-y-auto bg-white dark:bg-slate-900 lg:min-h-0 lg:basis-1/2 ${
+            className={`min-h-[45vh] min-w-0 flex-1 overflow-y-auto bg-white dark:bg-slate-900 lg:min-h-0 lg:basis-1/2 ${
               isNarrow && selectedId ? "hidden" : ""
             }`}
           >
@@ -571,7 +603,7 @@ function InternalAnnouncements() {
                     return (
                       <div
                         key={g.key}
-                        className="bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
+                        className="bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800/80 dark:text-slate-300 sm:px-4 sm:py-2 sm:text-xs"
                       >
                         {formatGroupHeader(g.ts, i18n.language, t)}
                       </div>
@@ -599,7 +631,7 @@ function InternalAnnouncements() {
                           handleOpenRow(row);
                         }
                       }}
-                      className={`flex w-full cursor-pointer items-start gap-2 px-3 py-2.5 text-left transition hover:bg-sky-50/80 dark:hover:bg-sky-950/40 ${
+                      className={`flex w-full cursor-pointer items-start gap-2 px-2.5 py-2.5 text-left transition hover:bg-sky-50/80 sm:px-3 dark:hover:bg-sky-950/40 ${
                         selectedId === row.id ? "bg-sky-50 dark:bg-sky-950/50" : ""
                       }`}
                     >
@@ -640,7 +672,7 @@ function InternalAnnouncements() {
                             {formatTime(row.createdAt, i18n.language)}
                           </span>
                         </div>
-                        <div className="mt-0.5 truncate text-sm text-slate-800 dark:text-slate-200">
+                        <div className="mt-0.5 truncate text-xs text-slate-800 dark:text-slate-200 sm:text-sm">
                           <span className={`font-bold text-red-600 dark:text-red-400 ${unread ? "font-extrabold" : ""}`}>
                             {row.title || "—"}
                           </span>
@@ -661,27 +693,32 @@ function InternalAnnouncements() {
                                     : "·"}
                             </span>
                           ) : null}
-                          <span className="font-normal text-slate-500">
+                          <span className="hidden font-normal text-slate-500 sm:inline">
                             {" "}
                             — {previewText(row.body)}
                           </span>
                         </div>
                       </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1">
+                      <div className="flex shrink-0 flex-col items-end gap-1 pl-1">
                         {canDeleteRow ? (
                           <button
                             type="button"
-                            className="rounded border border-red-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:bg-slate-900 dark:text-red-400 dark:hover:bg-red-950/40"
+                            className="rounded border border-red-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-red-600 hover:bg-red-50 sm:px-2 sm:text-[11px] dark:border-red-900/50 dark:bg-slate-900 dark:text-red-400 dark:hover:bg-red-950/40"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(row);
                             }}
                             title={t("internalAnnouncements.deleteMailHint")}
                           >
-                            {t("internalAnnouncements.deleteMailBtn")}
+                            <span className="sm:hidden" aria-hidden>
+                              🗑
+                            </span>
+                            <span className="hidden sm:inline">
+                              {t("internalAnnouncements.deleteMailBtn")}
+                            </span>
                           </button>
                         ) : null}
-                        <span className="text-[11px] text-slate-400">
+                        <span className="hidden text-[11px] text-slate-400 sm:inline">
                           {approxSizeKb(row.body)}KB
                         </span>
                       </div>
@@ -804,21 +841,22 @@ function InternalAnnouncements() {
 
       {/* Reading — mobile full screen */}
       {isNarrow && selectedId && selected ? (
-        <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-slate-950">
-          <div className="flex flex-shrink-0 items-center gap-3 border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+        <div className="fixed inset-0 z-[1400] flex flex-col overflow-x-hidden bg-white pt-[env(safe-area-inset-top)] dark:bg-slate-950">
+          <div className="flex flex-shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-2.5 py-2 dark:border-slate-700 dark:bg-slate-950">
             <button
               type="button"
               onClick={() => setSelectedId(null)}
-              className="rounded p-2 text-lg text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               aria-label="back"
             >
-              ←
+              <span aria-hidden>←</span>
+              <span>{t("common.back", "Quay lại")}</span>
             </button>
-            <span className="truncate text-sm font-semibold text-slate-800">
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
               {selected.title || "—"}
             </span>
           </div>
-          <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-4">
             <p className="text-xs text-slate-500">
               {formatGroupHeader(selected.createdAt, i18n.language, t)} ·{" "}
               {selected.authorName || selected.authorEmail}
@@ -860,6 +898,7 @@ function InternalAnnouncements() {
               <AnnouncementBody
                 body={selected.body}
                 onImageClick={setPreviewImageSrc}
+                className="text-sm leading-relaxed text-slate-800 break-words [&_*]:max-w-full [&_a]:break-all [&_a]:text-sky-600 [&_img]:h-auto [&_img]:max-h-96 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_table]:block [&_table]:w-full [&_table]:overflow-x-auto [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 dark:text-slate-100"
               />
             </div>
             {user?.email &&

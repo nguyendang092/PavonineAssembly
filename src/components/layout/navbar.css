@@ -18,15 +18,16 @@ body {
     --navbar-dropdown-padding: 10px 6px 7px 6px;
     --navbar-dropdown-bridge: 8px;
 
-    --navbar-z-dropdown: 1000;
-    --navbar-z-nested: 1005;
-    --navbar-z-user-menu: 1100;
+    --navbar-z-dropdown: 1300;
+    --navbar-z-nested: 1305;
+    --navbar-z-user-menu: 1310;
     --navbar-z-mobile-overlay: 9999;
     --navbar-z-close: 10000;
 }
 
 .navbar {
     position: relative;
+    z-index: var(--navbar-z-dropdown);
     display: flex;
     width: 100%;
     max-width: 100%;
@@ -837,14 +838,15 @@ html:not(.dark) .user-dropdown-menu {
         display: inline-block;
     }
 
+
     .mobile-arrow.open {
         transform: rotate(180deg);
     }
 
     .mobile-dropdown-content {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
+        max-height: 1600px;
+        overflow: visible;
+        transition: none;
         background-color: rgba(2, 6, 23, 0.32);
     }
 

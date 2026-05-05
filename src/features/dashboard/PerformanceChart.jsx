@@ -198,7 +198,7 @@ export default function PerformanceChart() {
   }, [user, userRole, selectedYear, data, setYearDataStore]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#eef4ff] dark:bg-slate-950 md:flex-row">
+    <div className="flex min-h-screen flex-col overflow-x-hidden bg-[#eef4ff] dark:bg-slate-950 md:h-screen md:flex-row md:overflow-hidden">
       <PerformanceYearSidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -213,13 +213,13 @@ export default function PerformanceChart() {
         onClick={() => setSidebarOpen((o) => !o)}
         aria-expanded={sidebarOpen}
         aria-label={t("workplaceChart.toggleSidebar")}
-        className="dashboard-no-print fixed left-4 top-20 z-50 flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-md transition hover:bg-slate-50 hover:shadow-lg focus-visible:outline focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+        className="dashboard-no-print fixed left-3 top-[calc(var(--app-navbar-height)+0.5rem)] z-50 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-md transition hover:bg-slate-50 hover:shadow-lg focus-visible:outline focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 md:left-4 md:top-20 md:h-11 md:w-11"
       >
         {sidebarOpen ? "✕" : "☰"}
       </button>
 
       <div
-        className={`dashboard-print-fill flex-1 overflow-hidden p-2 transition-all duration-300 md:p-4 ${
+        className={`dashboard-print-fill flex-1 overflow-y-auto p-2 pt-16 transition-all duration-300 md:overflow-hidden md:p-4 md:pt-4 ${
           sidebarOpen ? "ml-72" : "ml-0"
         }`}
       >

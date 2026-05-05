@@ -83,6 +83,26 @@ function getNavbarUserDisplayShort(user) {
   return truncateDisplay(local, 12);
 }
 
+function collectDropdownKeys(items, acc = []) {
+  items.forEach((item) => {
+    if (!item || typeof item !== "object") return;
+    if (item.type === "dropdown" || item.type === "nested") {
+      if (item.key) acc.push(item.key);
+    }
+    if (Array.isArray(item.children) && item.children.length > 0) {
+      collectDropdownKeys(item.children, acc);
+    }
+  });
+  return acc;
+}
+
+function getMobileExpandedStateFromMenu(items) {
+  return collectDropdownKeys(items).reduce((map, key) => {
+    map[key] = true;
+    return map;
+  }, {});
+}
+
 export default function Navbar({ user, setUser, userRole }) {
   const { theme, toggleTheme } = useTheme();
   const { t, i18n } = useTranslation();
@@ -166,11 +186,28 @@ export default function Navbar({ user, setUser, userRole }) {
     navigate("/login", { replace: true });
   };
 
-  const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
+  const toggleMobileMenu = () => {
+    const nextOpen = !mobileMenuOpen;
+    setMobileMenuOpen(nextOpen);
+    setMobileDropdowns(
+      nextOpen ? getMobileExpandedStateFromMenu(menuConfig) : {},
+    );
+    // Báo cho các màn có portal/dropdown (vd. Attendance) tự đóng lớp nổi khi mở menu mobile.
+    window.dispatchEvent(
+      new CustomEvent("pavonine-mobile-menu-toggle", {
+        detail: { open: nextOpen },
+      }),
+    );
+  };
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
     setMobileDropdowns({});
+    window.dispatchEvent(
+      new CustomEvent("pavonine-mobile-menu-toggle", {
+        detail: { open: false },
+      }),
+    );
   };
 
   const toggleMobileDropdown = (key) => {

@@ -289,6 +289,7 @@ function AttendanceList({
   const [printDropdownPlacement, setPrintDropdownPlacement] = useState(null);
   const [offHolidayDropdownPlacement, setOffHolidayDropdownPlacement] =
     useState(null);
+  const [navbarMobileMenuOpen, setNavbarMobileMenuOpen] = useState(false);
 
   const isQuickNoCheckInActive = showOnlyUnattendedFilter;
 
@@ -548,6 +549,30 @@ function AttendanceList({
     mq.addEventListener("change", sync);
     sync();
     return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  /** Khi mở mobile menu từ Navbar, đóng toàn bộ menu/filter trong Attendance để tránh chồng lớp. */
+  useEffect(() => {
+    const onMobileMenuToggle = (event) => {
+      const open = Boolean(event?.detail?.open);
+      setNavbarMobileMenuOpen(open);
+      if (!open) return;
+      setFilterMenuDropdownOpen(false);
+      setOffHolidayDropdownOpen(false);
+      setActionDropdownOpen(false);
+      setPrintDropdownOpen(false);
+      setFilterOpen(false);
+      setFilterMenuPlacement(null);
+      setOffHolidayDropdownPlacement(null);
+      setActionDropdownPlacement(null);
+      setPrintDropdownPlacement(null);
+    };
+    window.addEventListener("pavonine-mobile-menu-toggle", onMobileMenuToggle);
+    return () =>
+      window.removeEventListener(
+        "pavonine-mobile-menu-toggle",
+        onMobileMenuToggle,
+      );
   }, []);
 
   // Đóng menu khi click ra ngoài — dùng «click» (không dùng mousedown).
@@ -2459,7 +2484,12 @@ function AttendanceList({
         />
 
         {/* Filters and Actions — shrink-0 tránh co mất nút khi danh sách ít / màn hẹp */}
-        <div className="mb-2 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className={`mb-2 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between ${
+            navbarMobileMenuOpen ? "pointer-events-none opacity-0" : ""
+          }`}
+          aria-hidden={navbarMobileMenuOpen}
+        >
           <div className="grid min-w-0 flex-1 grid-cols-2 items-center gap-5 px-1 sm:flex sm:flex-nowrap sm:gap-1.5 sm:px-0 sm:overflow-x-auto sm:whitespace-nowrap">
             <input
               type="date"
@@ -2524,13 +2554,14 @@ function AttendanceList({
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                 </button>
-                {offHolidayDropdownOpen &&
+                {!navbarMobileMenuOpen &&
+                  offHolidayDropdownOpen &&
                   offHolidayDropdownPlacement &&
                   createPortal(
                     <div
                       ref={offHolidayDropdownPanelRef}
                       role="menu"
-                      className="fixed z-[135] flex max-w-[calc(100vw-1rem)] origin-top flex-col overflow-hidden rounded-2xl border-2 border-violet-400/70 bg-white text-left shadow-2xl shadow-violet-900/20 ring-4 ring-violet-500/15 backdrop-blur-sm animate-fadeIn dark:border-violet-500/50 dark:bg-slate-900 dark:shadow-black/50 dark:ring-violet-400/20"
+                      className="fixed z-[1200] flex max-w-[calc(100vw-1rem)] origin-top flex-col overflow-hidden rounded-2xl border-2 border-violet-400/70 bg-white text-left shadow-2xl shadow-violet-900/20 ring-4 ring-violet-500/15 backdrop-blur-sm animate-fadeIn dark:border-violet-500/50 dark:bg-slate-900 dark:shadow-black/50 dark:ring-violet-400/20"
                       style={{
                         top: offHolidayDropdownPlacement.top,
                         left: offHolidayDropdownPlacement.left,
@@ -2539,93 +2570,93 @@ function AttendanceList({
                       }}
                     >
                       <div className="shrink-0 border-b border-violet-200/80 bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-700 px-4 py-3 dark:border-violet-500/40 dark:from-violet-700 dark:via-indigo-700 dark:to-violet-800">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-white/90">
-                        {tl("dayOffDropdownSelectedLabel", "Ngày đang xem")}
-                      </p>
-                      <p className="mt-2 flex flex-wrap items-center gap-2 text-sm leading-snug text-white">
-                        <span className="rounded-lg bg-black/20 px-2 py-1 font-mono text-sm font-bold tabular-nums tracking-tight">
-                          {selectedDate}
-                        </span>
-                        <span className="text-white/70">—</span>
-                        {isHolidayDay ? (
-                          <span className="rounded-lg border border-amber-300/60 bg-amber-500/95 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white shadow-inner">
-                            HOLIDAY
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-white/90">
+                          {tl("dayOffDropdownSelectedLabel", "Ngày đang xem")}
+                        </p>
+                        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm leading-snug text-white">
+                          <span className="rounded-lg bg-black/20 px-2 py-1 font-mono text-sm font-bold tabular-nums tracking-tight">
+                            {selectedDate}
                           </span>
-                        ) : isOffDay ? (
-                          <span className="rounded-lg border border-rose-300/60 bg-rose-600 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white shadow-inner">
-                            OFF
-                          </span>
-                        ) : (
-                          <span className="rounded-lg bg-white/20 px-2.5 py-1 text-xs font-semibold">
-                            {tl("dayKindNormal", "Ngày bình thường")}
-                          </span>
-                        )}
-                      </p>
-                      </div>
-                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50/90 px-4 py-3 dark:bg-slate-950/80">
-                      {monthOffDaysLoading ? (
-                        <p className="rounded-lg border border-violet-200/80 bg-white px-3 py-4 text-center text-xs font-medium text-violet-800 dark:border-violet-700/60 dark:bg-slate-900 dark:text-violet-200">
-                          {tl(
-                            "dayOffToolbarLoading",
-                            "Đang tải danh sách ngày off trong tháng…",
+                          <span className="text-white/70">—</span>
+                          {isHolidayDay ? (
+                            <span className="rounded-lg border border-amber-300/60 bg-amber-500/95 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white shadow-inner">
+                              HOLIDAY
+                            </span>
+                          ) : isOffDay ? (
+                            <span className="rounded-lg border border-rose-300/60 bg-rose-600 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white shadow-inner">
+                              OFF
+                            </span>
+                          ) : (
+                            <span className="rounded-lg bg-white/20 px-2.5 py-1 text-xs font-semibold">
+                              {tl("dayKindNormal", "Ngày bình thường")}
+                            </span>
                           )}
                         </p>
-                      ) : (
-                        <div className="space-y-4 text-xs">
-                          <div className="rounded-xl border border-rose-200/90 bg-white p-3 shadow-sm dark:border-rose-900/60 dark:bg-slate-900">
-                            <p className="flex items-center gap-2 border-l-4 border-rose-500 pl-2 text-[13px] font-extrabold uppercase tracking-wide text-rose-800 dark:border-rose-400 dark:text-rose-100">
-                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-[11px] font-black text-rose-700 dark:bg-rose-950 dark:text-rose-200">
-                                O
-                              </span>
-                              {tl("dayOffDropdownSectionOff", "Ngày off")}
-                            </p>
-                            {monthOffAndHoliday.off.length === 0 ? (
-                              <p className="mt-2 rounded-lg bg-rose-50/80 px-2 py-2 italic text-rose-700/90 dark:bg-rose-950/40 dark:text-rose-200/90">
-                                {tl(
-                                  "dayOffDropdownEmptyOff",
-                                  "Chưa có ngày off trong tháng này.",
-                                )}
-                              </p>
-                            ) : (
-                              <ul className="mt-2.5 flex flex-wrap gap-1.5">
-                                {monthOffAndHoliday.off.map((k) => (
-                                  <li key={k}>
-                                    <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 font-mono text-[11px] font-bold tabular-nums text-rose-950 shadow-sm dark:border-rose-800 dark:bg-rose-950/70 dark:text-rose-50">
-                                      {k}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
+                      </div>
+                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50/90 px-4 py-3 dark:bg-slate-950/80">
+                        {monthOffDaysLoading ? (
+                          <p className="rounded-lg border border-violet-200/80 bg-white px-3 py-4 text-center text-xs font-medium text-violet-800 dark:border-violet-700/60 dark:bg-slate-900 dark:text-violet-200">
+                            {tl(
+                              "dayOffToolbarLoading",
+                              "Đang tải danh sách ngày off trong tháng…",
                             )}
-                          </div>
-                          <div className="rounded-xl border border-amber-200/90 bg-white p-3 shadow-sm dark:border-amber-900/60 dark:bg-slate-900">
-                            <p className="flex items-center gap-2 border-l-4 border-amber-500 pl-2 text-[13px] font-extrabold uppercase tracking-wide text-amber-950 dark:border-amber-400 dark:text-amber-50">
-                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-[11px] dark:bg-amber-950">
-                                ★
-                              </span>
-                              {tl("dayOffDropdownSectionHoliday", "Ngày lễ")}
-                            </p>
-                            {monthOffAndHoliday.holiday.length === 0 ? (
-                              <p className="mt-2 rounded-lg bg-amber-50/90 px-2 py-2 italic text-amber-900/90 dark:bg-amber-950/40 dark:text-amber-100/90">
-                                {tl(
-                                  "dayOffDropdownEmptyHoliday",
-                                  "Chưa có ngày lễ trong tháng này.",
-                                )}
+                          </p>
+                        ) : (
+                          <div className="space-y-4 text-xs">
+                            <div className="rounded-xl border border-rose-200/90 bg-white p-3 shadow-sm dark:border-rose-900/60 dark:bg-slate-900">
+                              <p className="flex items-center gap-2 border-l-4 border-rose-500 pl-2 text-[13px] font-extrabold uppercase tracking-wide text-rose-800 dark:border-rose-400 dark:text-rose-100">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-[11px] font-black text-rose-700 dark:bg-rose-950 dark:text-rose-200">
+                                  O
+                                </span>
+                                {tl("dayOffDropdownSectionOff", "Ngày off")}
                               </p>
-                            ) : (
-                              <ul className="mt-2.5 flex flex-wrap gap-1.5">
-                                {monthOffAndHoliday.holiday.map((k) => (
-                                  <li key={k}>
-                                    <span className="inline-flex items-center rounded-lg border border-amber-300/80 bg-amber-50 px-2 py-1 font-mono text-[11px] font-bold tabular-nums text-amber-950 shadow-sm dark:border-amber-700 dark:bg-amber-950/70 dark:text-amber-50">
-                                      {k}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
+                              {monthOffAndHoliday.off.length === 0 ? (
+                                <p className="mt-2 rounded-lg bg-rose-50/80 px-2 py-2 italic text-rose-700/90 dark:bg-rose-950/40 dark:text-rose-200/90">
+                                  {tl(
+                                    "dayOffDropdownEmptyOff",
+                                    "Chưa có ngày off trong tháng này.",
+                                  )}
+                                </p>
+                              ) : (
+                                <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                                  {monthOffAndHoliday.off.map((k) => (
+                                    <li key={k}>
+                                      <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 font-mono text-[11px] font-bold tabular-nums text-rose-950 shadow-sm dark:border-rose-800 dark:bg-rose-950/70 dark:text-rose-50">
+                                        {k}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                            <div className="rounded-xl border border-amber-200/90 bg-white p-3 shadow-sm dark:border-amber-900/60 dark:bg-slate-900">
+                              <p className="flex items-center gap-2 border-l-4 border-amber-500 pl-2 text-[13px] font-extrabold uppercase tracking-wide text-amber-950 dark:border-amber-400 dark:text-amber-50">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-[11px] dark:bg-amber-950">
+                                  ★
+                                </span>
+                                {tl("dayOffDropdownSectionHoliday", "Ngày lễ")}
+                              </p>
+                              {monthOffAndHoliday.holiday.length === 0 ? (
+                                <p className="mt-2 rounded-lg bg-amber-50/90 px-2 py-2 italic text-amber-900/90 dark:bg-amber-950/40 dark:text-amber-100/90">
+                                  {tl(
+                                    "dayOffDropdownEmptyHoliday",
+                                    "Chưa có ngày lễ trong tháng này.",
+                                  )}
+                                </p>
+                              ) : (
+                                <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                                  {monthOffAndHoliday.holiday.map((k) => (
+                                    <li key={k}>
+                                      <span className="inline-flex items-center rounded-lg border border-amber-300/80 bg-amber-50 px-2 py-1 font-mono text-[11px] font-bold tabular-nums text-amber-950 shadow-sm dark:border-amber-700 dark:bg-amber-950/70 dark:text-amber-50">
+                                        {k}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                       </div>
                       <div className="shrink-0 border-t border-violet-200/80 bg-gradient-to-b from-violet-50/90 to-white px-3 py-3 dark:border-violet-800/80 dark:from-slate-900 dark:to-slate-950">
                         <button
@@ -2774,7 +2805,7 @@ function AttendanceList({
 
             <div
               ref={filterMenuRef}
-              className="attendance-filter-menu relative z-50 min-w-0"
+              className="attendance-filter-menu relative min-w-0"
             >
               <button
                 ref={filterDropdownAnchorRef}
@@ -2801,12 +2832,13 @@ function AttendanceList({
               </button>
 
               {/* Dropdown: portal + fixed để luôn nổi trên footer / vùng scroll */}
-              {filterMenuDropdownOpen &&
+              {!navbarMobileMenuOpen &&
+                filterMenuDropdownOpen &&
                 filterDropdownPlacement &&
                 createPortal(
                   <div
                     ref={filterMenuPanelRef}
-                    className="fixed z-[100] flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
+                    className="fixed z-[1200] flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
                     style={{
                       top: filterDropdownPlacement.top,
                       left: filterDropdownPlacement.left,
@@ -2929,7 +2961,7 @@ function AttendanceList({
               {filterOpen &&
                 createPortal(
                   <div
-                    className="fixed inset-0 z-[140] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm animate-fadeIn"
+                    className="fixed inset-0 z-[1250] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm animate-fadeIn"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="attendance-advanced-filter-title"
@@ -3239,7 +3271,7 @@ function AttendanceList({
             {user && (
               <div
                 ref={actionDropdownRef}
-                className="relative action-dropdown z-50 shrink-0 hidden sm:block"
+              className="relative action-dropdown shrink-0 hidden sm:block"
               >
                 <button
                   ref={actionDropdownAnchorRef}
@@ -3252,12 +3284,13 @@ function AttendanceList({
                     {actionDropdownOpen ? "▲" : "▼"}
                   </span>
                 </button>
-                {actionDropdownOpen &&
+                {!navbarMobileMenuOpen &&
+                  actionDropdownOpen &&
                   actionDropdownPlacement &&
                   createPortal(
                     <div
                       ref={actionDropdownPanelRef}
-                      className="fixed z-[120] max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-emerald-200 bg-white shadow-2xl dark:border-emerald-800 dark:bg-slate-900 sm:w-64"
+                      className="fixed z-[1200] max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-emerald-200 bg-white shadow-2xl dark:border-emerald-800 dark:bg-slate-900 sm:w-64"
                       style={{
                         top: actionDropdownPlacement.top,
                         left: actionDropdownPlacement.left,
@@ -3266,145 +3299,148 @@ function AttendanceList({
                       }}
                     >
                       <div className="min-h-0 max-h-full overflow-y-auto overflow-x-hidden overscroll-contain">
-                    {isAdminAccess(user, userRole) && (
-                      <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
-                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                          📤
-                        </span>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                            {isUploadingExcel
-                              ? "Đang upload..."
-                              : tl(
-                                  "uploadExcelByDate",
-                                  "Upload Excel theo ngày",
-                                )}
-                          </span>
-                          <span className="text-xs text-gray-500 mt-0.5">
-                            {tl("importDataForDate", "Import dữ liệu cho ngày")}
-                            :{" "}
-                            <span className="font-bold text-blue-600">
-                              {selectedDate}
+                        {isAdminAccess(user, userRole) && (
+                          <label className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group cursor-pointer">
+                            <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                              📤
                             </span>
-                          </span>
-                        </div>
-                        <input
-                          type="file"
-                          accept=".xlsx,.xls"
-                          disabled={isUploadingExcel}
-                          onChange={(e) => {
-                            handleUploadExcelWrapper(e);
-                            setActionDropdownOpen(false);
-                          }}
-                          className="hidden"
-                        />
-                      </label>
-                    )}
-                    {isAdminAccess(user, userRole) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void handleDownloadAttendanceExcelTemplate();
-                          setActionDropdownOpen(false);
-                        }}
-                        className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
-                      >
-                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                          📄
-                        </span>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                            {tl(
-                              "downloadExcelTemplate",
-                              "Tải mẫu Excel (đồng bộ xuất)",
-                            )}
-                          </span>
-                        </div>
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        const exportButton = document.querySelector(
-                          '[title="Xuất Excel"]',
-                        );
-                        if (exportButton) exportButton.click();
-                        setActionDropdownOpen(false);
-                      }}
-                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
-                    >
-                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                        📥
-                      </span>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                          {t("attendanceList.export", {
-                            defaultValue: "Xuất Excel",
-                          })}
-                        </span>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowExportRangeModal(true);
-                        setActionDropdownOpen(false);
-                      }}
-                      className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
-                    >
-                      <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                        📅
-                      </span>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                          {tl("exportExcelDateRange")}
-                        </span>
-                      </div>
-                    </button>
-                    {showRowModalActions && (
-                      <>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                                {isUploadingExcel
+                                  ? "Đang upload..."
+                                  : tl(
+                                      "uploadExcelByDate",
+                                      "Upload Excel theo ngày",
+                                    )}
+                              </span>
+                              <span className="text-xs text-gray-500 mt-0.5">
+                                {tl(
+                                  "importDataForDate",
+                                  "Import dữ liệu cho ngày",
+                                )}
+                                :{" "}
+                                <span className="font-bold text-blue-600">
+                                  {selectedDate}
+                                </span>
+                              </span>
+                            </div>
+                            <input
+                              type="file"
+                              accept=".xlsx,.xls"
+                              disabled={isUploadingExcel}
+                              onChange={(e) => {
+                                handleUploadExcelWrapper(e);
+                                setActionDropdownOpen(false);
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        )}
+                        {isAdminAccess(user, userRole) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleDownloadAttendanceExcelTemplate();
+                              setActionDropdownOpen(false);
+                            }}
+                            className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                          >
+                            <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                              📄
+                            </span>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                                {tl(
+                                  "downloadExcelTemplate",
+                                  "Tải mẫu Excel (đồng bộ xuất)",
+                                )}
+                              </span>
+                            </div>
+                          </button>
+                        )}
                         <button
                           onClick={() => {
-                            setEmployeeModalRecord(null);
-                            setShowEmployeeModal(true);
+                            const exportButton = document.querySelector(
+                              '[title="Xuất Excel"]',
+                            );
+                            if (exportButton) exportButton.click();
                             setActionDropdownOpen(false);
                           }}
                           className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
                         >
                           <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                            ➕
+                            📥
                           </span>
                           <div className="flex flex-col">
                             <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
-                              {tl("addNew", "Thêm mới")}
-                            </span>
-                            <span className="text-xs text-gray-500 mt-0.5">
-                              Add new employee
+                              {t("attendanceList.export", {
+                                defaultValue: "Xuất Excel",
+                              })}
                             </span>
                           </div>
                         </button>
-                      </>
-                    )}
-                    {user && isAdminAccess(user, userRole) && (
-                      <button
-                        onClick={() => {
-                          handleDeleteAllData();
-                          setActionDropdownOpen(false);
-                        }}
-                        className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-red-50 hover:to-rose-50 transition-all duration-200 flex items-center gap-3 group"
-                      >
-                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                          🗑️
-                        </span>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-red-600 text-sm group-hover:text-red-700 transition-colors">
-                            {tl("deleteAllData", "Xóa toàn bộ dữ liệu")}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowExportRangeModal(true);
+                            setActionDropdownOpen(false);
+                          }}
+                          className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                        >
+                          <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                            📅
                           </span>
-                          <span className="text-xs text-gray-500 mt-0.5">
-                            Delete all data for {selectedDate}
-                          </span>
-                        </div>
-                      </button>
-                    )}
+                          <div className="flex flex-col">
+                            <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                              {tl("exportExcelDateRange")}
+                            </span>
+                          </div>
+                        </button>
+                        {showRowModalActions && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEmployeeModalRecord(null);
+                                setShowEmployeeModal(true);
+                                setActionDropdownOpen(false);
+                              }}
+                              className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                            >
+                              <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                                ➕
+                              </span>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                                  {tl("addNew", "Thêm mới")}
+                                </span>
+                                <span className="text-xs text-gray-500 mt-0.5">
+                                  Add new employee
+                                </span>
+                              </div>
+                            </button>
+                          </>
+                        )}
+                        {user && isAdminAccess(user, userRole) && (
+                          <button
+                            onClick={() => {
+                              handleDeleteAllData();
+                              setActionDropdownOpen(false);
+                            }}
+                            className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-red-50 hover:to-rose-50 transition-all duration-200 flex items-center gap-3 group"
+                          >
+                            <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                              🗑️
+                            </span>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-red-600 text-sm group-hover:text-red-700 transition-colors">
+                                {tl("deleteAllData", "Xóa toàn bộ dữ liệu")}
+                              </span>
+                              <span className="text-xs text-gray-500 mt-0.5">
+                                Delete all data for {selectedDate}
+                              </span>
+                            </div>
+                          </button>
+                        )}
                       </div>
                     </div>,
                     document.body,
@@ -3429,7 +3465,7 @@ function AttendanceList({
             {/* Print Dropdown */}
             <div
               ref={printDropdownRef}
-              className="print-dropdown-menu relative z-50 shrink-0 hidden sm:block"
+              className="print-dropdown-menu relative shrink-0 hidden sm:block"
             >
               <button
                 ref={printDropdownAnchorRef}
@@ -3440,12 +3476,13 @@ function AttendanceList({
                 🖨️ {tl("print", "In")}
                 <span className="text-xs">{printDropdownOpen ? "▲" : "▼"}</span>
               </button>
-              {printDropdownOpen &&
+              {!navbarMobileMenuOpen &&
+                printDropdownOpen &&
                 printDropdownPlacement &&
                 createPortal(
                   <div
                     ref={printDropdownPanelRef}
-                    className="fixed z-[120] max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-blue-200 bg-white shadow-2xl dark:border-blue-800 dark:bg-slate-900 sm:w-64"
+                    className="fixed z-[1200] max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-blue-200 bg-white shadow-2xl dark:border-blue-800 dark:bg-slate-900 sm:w-64"
                     style={{
                       top: printDropdownPlacement.top,
                       left: printDropdownPlacement.left,
@@ -3454,44 +3491,50 @@ function AttendanceList({
                     }}
                   >
                     <div className="min-h-0 max-h-full overflow-y-auto overflow-x-hidden overscroll-contain">
-                  <button
-                    onClick={() => {
-                      handlePrintOvertimeList();
-                      setPrintDropdownOpen(false);
-                    }}
-                    className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                      📋
-                    </span>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-gray-800 text-sm group-hover:text-blue-700 transition-colors">
-                        {tl("printOvertimeRegistration", "In đăng ký tăng ca")}
-                      </span>
-                      <span className="text-xs text-gray-500 mt-0.5">
-                        Overtime registration form
-                      </span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      handlePrintAttendanceList();
-                      setPrintDropdownOpen(false);
-                    }}
-                    className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 flex items-center gap-3 group"
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                      📝
-                    </span>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-gray-800 text-sm group-hover:text-blue-700 transition-colors">
-                        {tl("printAttendanceList", "In danh sách chấm công")}
-                      </span>
-                      <span className="text-xs text-gray-500 mt-0.5">
-                        Attendance list report
-                      </span>
-                    </div>
-                  </button>
+                      <button
+                        onClick={() => {
+                          handlePrintOvertimeList();
+                          setPrintDropdownOpen(false);
+                        }}
+                        className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 flex items-center gap-3 border-b-2 border-gray-200 group"
+                      >
+                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                          📋
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 text-sm group-hover:text-blue-700 transition-colors">
+                            {tl(
+                              "printOvertimeRegistration",
+                              "In đăng ký tăng ca",
+                            )}
+                          </span>
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            Overtime registration form
+                          </span>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          handlePrintAttendanceList();
+                          setPrintDropdownOpen(false);
+                        }}
+                        className="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 flex items-center gap-3 group"
+                      >
+                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
+                          📝
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 text-sm group-hover:text-blue-700 transition-colors">
+                            {tl(
+                              "printAttendanceList",
+                              "In danh sách chấm công",
+                            )}
+                          </span>
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            Attendance list report
+                          </span>
+                        </div>
+                      </button>
                     </div>
                   </div>,
                   document.body,

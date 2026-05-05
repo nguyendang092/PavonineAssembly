@@ -96,11 +96,11 @@ export default function Sidebar({
   return (
     <div
       ref={containerRef}
-      className={`app-sidebar isolate space-y-6 p-4 text-white transition-all duration-200 ease-out sm:p-5 md:fixed md:left-0 md:z-20 md:h-[calc(100vh-64px)] md:w-80 md:overflow-y-auto md:p-6 md:shadow ${
+      className={`app-sidebar isolate fixed left-0 top-[var(--app-navbar-height)] z-40 h-[calc(100dvh-var(--app-navbar-height))] w-72 overflow-y-auto space-y-6 bg-black/80 p-4 text-white shadow transition-all duration-200 ease-out sm:p-5 md:top-16 md:z-20 md:h-[calc(100vh-64px)] md:w-80 md:p-6 ${
         isOpen
           ? "translate-x-0 opacity-100"
           : "-translate-x-full opacity-0 pointer-events-none"
-      } bg-black/80 md:top-16 ${className}`}
+      } ${className}`}
     >
       {children}
     </div>

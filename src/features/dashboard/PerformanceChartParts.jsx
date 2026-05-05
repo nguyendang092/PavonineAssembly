@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/layout/Sidebar";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -96,7 +96,7 @@ export function PerformanceDataTable({
 
   return (
     <div className="dashboard-report-surface mb-2 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 md:mb-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 px-2 py-2 md:px-4">
+      <div className="flex flex-col gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 px-2 py-2 md:flex-row md:items-center md:justify-between md:px-4">
         <h3 className="text-xs font-semibold text-white md:text-sm">
           <span className="hidden sm:inline">
             {t("performanceChart.tableToolbar")}
@@ -105,7 +105,7 @@ export function PerformanceDataTable({
             {t("performanceChart.tableToolbarShort")}
           </span>
         </h3>
-        <div className="flex flex-wrap items-center justify-end gap-1.5 md:gap-2">
+        <div className="flex w-full flex-wrap items-center justify-start gap-1.5 md:w-auto md:justify-end md:gap-2">
           {canEdit ? (
             <div className="flex max-w-full flex-wrap items-center gap-1.5 text-[10px] md:text-xs">
               <input
@@ -322,12 +322,33 @@ export function PerformanceBarChartCard({
   onDownloadSvg,
 }) {
   const { t } = useTranslation();
+  const [isMobileChart, setIsMobileChart] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false,
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsMobileChart(window.innerWidth < 768);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const mobileChartMinWidth = useMemo(() => {
+    if (!isMobileChart) return 0;
+    return Math.max(560, chartRows.length * 116);
+  }, [isMobileChart, chartRows.length]);
+
+  const axisFontSize = isMobileChart ? 10 : 12;
+  const labelFontSize = isMobileChart ? 10 : 12;
+  const xAxisHeight = isMobileChart ? 58 : 36;
+  const barMaxSize = isMobileChart ? 36 : 50;
+
   return (
     <div
       ref={cardRef}
       className="dashboard-report-surface overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-slate-700 to-slate-900 px-2 py-2 md:px-4">
+      <div className="flex flex-col gap-2 bg-gradient-to-r from-slate-700 to-slate-900 px-2 py-2 md:flex-row md:items-center md:justify-between md:px-4">
         <h3 className="text-xs font-semibold text-white md:text-sm">
           <span className="hidden sm:inline">
             {t("performanceChart.chartToolbar")}
@@ -336,12 +357,12 @@ export function PerformanceBarChartCard({
             {t("performanceChart.chartToolbarShort")}
           </span>
         </h3>
-        <div className="flex items-center gap-1 md:gap-2">
+        <div className="flex w-full items-center gap-1 md:w-auto md:gap-2">
           <button
             type="button"
             onClick={onDownloadPng}
             data-no-export="true"
-            className="rounded border border-white/30 bg-white/15 px-1.5 py-0.5 text-[9px] font-semibold text-white transition hover:bg-white/25 md:px-2 md:py-1 md:text-[11px]"
+            className="flex-1 rounded border border-white/30 bg-white/15 px-1.5 py-0.5 text-[9px] font-semibold text-white transition hover:bg-white/25 md:flex-none md:px-2 md:py-1 md:text-[11px]"
             title={t("performanceChart.exportPng")}
           >
             <span className="hidden sm:inline">
@@ -353,7 +374,7 @@ export function PerformanceBarChartCard({
             type="button"
             onClick={onDownloadSvg}
             data-no-export="true"
-            className="rounded border border-white/30 bg-white/15 px-1.5 py-0.5 text-[9px] font-semibold text-white transition hover:bg-white/25 md:px-2 md:py-1 md:text-[11px]"
+            className="flex-1 rounded border border-white/30 bg-white/15 px-1.5 py-0.5 text-[9px] font-semibold text-white transition hover:bg-white/25 md:flex-none md:px-2 md:py-1 md:text-[11px]"
             title={t("performanceChart.exportSvg")}
           >
             <span className="hidden sm:inline">
@@ -366,15 +387,26 @@ export function PerformanceBarChartCard({
 
       <div
         ref={chartRef}
-        className="h-64 rounded-lg bg-gradient-to-br from-slate-50 to-indigo-50 p-2 dark:from-slate-900 dark:to-slate-800 md:h-96 md:p-4"
+        className="overflow-x-auto rounded-lg bg-gradient-to-br from-slate-50 to-indigo-50 p-2 dark:from-slate-900 dark:to-slate-800 md:p-4"
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartRows}
-            margin={{ top: 20, right: 10, left: 10, bottom: 20 }}
-            barGap={4}
-            barCategoryGap={10}
-          >
+        <div
+          className="h-64 md:h-96"
+          style={{
+            minWidth: isMobileChart ? `${mobileChartMinWidth}px` : undefined,
+          }}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartRows}
+              margin={{
+                top: 20,
+                right: isMobileChart ? 4 : 10,
+                left: isMobileChart ? 2 : 10,
+                bottom: isMobileChart ? 10 : 20,
+              }}
+              barGap={4}
+              barCategoryGap={10}
+            >
             <defs>
               <linearGradient id="colorTarget" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#10b981" stopOpacity={0.9} />
@@ -400,11 +432,27 @@ export function PerformanceBarChartCard({
             />
             <XAxis
               dataKey="team"
-              tick={{ fill: "#1e293b", fontSize: 12, fontWeight: 700 }}
+              interval={0}
+              height={xAxisHeight}
+              tickMargin={8}
+              tick={{
+                fill: "#1e293b",
+                fontSize: axisFontSize,
+                fontWeight: 700,
+              }}
+              tickFormatter={(value) => {
+                const s = String(value ?? "");
+                return s.length > 12 ? `${s.slice(0, 12)}...` : s;
+              }}
               axisLine={{ stroke: "#cbd5e1" }}
             />
             <YAxis
-              tick={{ fill: "#1e293b", fontSize: 12, fontWeight: 700 }}
+              width={isMobileChart ? 34 : 44}
+              tick={{
+                fill: "#1e293b",
+                fontSize: axisFontSize,
+                fontWeight: 700,
+              }}
               axisLine={{ stroke: "#cbd5e1" }}
             />
             <Tooltip
@@ -426,7 +474,7 @@ export function PerformanceBarChartCard({
             <Legend
               wrapperStyle={{
                 paddingTop: "8px",
-                fontSize: "10px",
+                fontSize: isMobileChart ? "9px" : "10px",
                 fontWeight: 600,
               }}
               iconType="circle"
@@ -436,72 +484,81 @@ export function PerformanceBarChartCard({
               fill="url(#colorTarget)"
               name={t("performanceChart.chartTarget")}
               radius={[8, 8, 0, 0]}
-              maxBarSize={50}
+              maxBarSize={barMaxSize}
             >
-              <LabelList
-                dataKey="target"
-                position="top"
-                style={{
-                  fill: "#059669",
-                  fontWeight: "bold",
-                  fontSize: 12,
-                }}
-              />
+              {!isMobileChart ? (
+                <LabelList
+                  dataKey="target"
+                  position="top"
+                  style={{
+                    fill: "#059669",
+                    fontWeight: "bold",
+                    fontSize: labelFontSize,
+                  }}
+                />
+              ) : null}
             </Bar>
             <Bar
               dataKey="total"
               fill="url(#colorTotal)"
               name={t("performanceChart.chartTotal")}
               radius={[8, 8, 0, 0]}
-              maxBarSize={50}
+              maxBarSize={barMaxSize}
             >
-              <LabelList
-                dataKey="total"
-                position="top"
-                style={{
-                  fill: "#4f46e5",
-                  fontWeight: "bold",
-                  fontSize: 12,
-                }}
-              />
+              {!isMobileChart ? (
+                <LabelList
+                  dataKey="total"
+                  position="top"
+                  style={{
+                    fill: "#4f46e5",
+                    fontWeight: "bold",
+                    fontSize: labelFontSize,
+                  }}
+                />
+              ) : null}
             </Bar>
             <Bar
               dataKey="percentage"
               fill="url(#colorPercentage)"
               name={t("performanceChart.chartAchievement")}
               radius={[8, 8, 0, 0]}
-              maxBarSize={50}
+              maxBarSize={barMaxSize}
             >
-              <LabelList
-                dataKey="percentage"
-                position="top"
-                formatter={(value) => `${value}%`}
-                style={{
-                  fill: "#d97706",
-                  fontWeight: "bold",
-                  fontSize: 12,
-                }}
-              />
+              {!isMobileChart ? (
+                <LabelList
+                  dataKey="percentage"
+                  position="top"
+                  formatter={(value) => `${value}%`}
+                  style={{
+                    fill: "#d97706",
+                    fontWeight: "bold",
+                    fontSize: labelFontSize,
+                  }}
+                />
+              ) : null}
             </Bar>
             <Bar
               dataKey="currentWeek"
               fill="url(#colorWeek)"
               name={t("performanceChart.chartCurrentWeek")}
               radius={[8, 8, 0, 0]}
-              maxBarSize={50}
+              maxBarSize={barMaxSize}
             >
-              <LabelList
-                dataKey="currentWeek"
-                position="top"
-                style={{
-                  fill: "#db2777",
-                  fontWeight: "bold",
-                  fontSize: 12,
-                }}
-              />
+              {!isMobileChart ? (
+                <LabelList
+                  dataKey="currentWeek"
+                  position="top"
+                  style={{
+                    fill: "#db2777",
+                    fontWeight: "bold",
+                    fontSize: labelFontSize,
+                  }}
+                />
+              ) : null}
             </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
