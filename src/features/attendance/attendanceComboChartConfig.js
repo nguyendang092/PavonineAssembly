@@ -105,6 +105,7 @@ export const COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS = {
   extrusion: "Extrusion",
   mc: "MC",
   hairline: "HairLine",
+
   press: "Press",
   anodizing: "Anodizing",
   assy: "Assy",

@@ -285,6 +285,7 @@ function UserDepartmentManager() {
                   className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
                 >
                   <option value={ROLES.ADMIN}>{t("userDeptManager.roleAdmin")}</option>
+                  <option value={ROLES.HR}>{t("userDeptManager.roleHR")}</option>
                   <option value={ROLES.MANAGER}>
                     {t("userDeptManager.roleManager")}
                   </option>

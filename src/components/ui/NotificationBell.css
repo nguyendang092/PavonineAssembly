@@ -1,5 +1,7 @@
 .noti-bell-trigger {
   position: relative;
+  /* Badge không tràn ra ngoài — tránh bị cắt bởi ô cha overflow-x-auto (thanh công cụ điểm danh). */
+  overflow: visible;
   border: 1px solid #c7dcff;
   background: linear-gradient(180deg, #ffffff, #f0f7ff);
   color: #1459a6;
@@ -28,9 +30,12 @@
 }
 
 .noti-bell-trigger--inline {
-  width: 36px;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 46px;
   height: 32px;
   min-height: 32px;
+  padding: 0 10px 0 8px;
   border-radius: 8px;
 }
 
@@ -61,22 +66,34 @@
   }
 }
 
+/* Mặc định: inline (thanh công cụ) — badge nằm trong hình nút, không tràn trái/phải/trên (tránh clip overflow-x). */
 .noti-bell-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
+  top: 2px;
+  right: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #ef4444, #dc2626);
   color: #fff;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
+  line-height: 1;
   box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
+}
+
+/* Chuông nổi (fixed): badge lệch góc ngoài nút như trước — không nằm trong ô overflow ngang. */
+.noti-bell-trigger--floating .noti-bell-badge {
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 11px;
 }
 
 .noti-bell-overlay {

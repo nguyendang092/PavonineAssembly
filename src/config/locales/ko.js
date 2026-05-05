@@ -725,10 +725,11 @@ const ko = {
     colRole: "역할",
     roleLabel: "역할 *",
     roleAdmin: "관리자 — 전체 권한",
+    roleHR: "HR — 전체 권한(관리자와 동일, 일자별 출석 전체 삭제 등)",
     roleManager: "매니저 — 부서별 조회/수정",
     roleStaff: "스태프 — 조회만",
     roleHelp:
-      "관리자는 부서 선택이 필요 없습니다. 매니저는 최소 1개 부서가 필요합니다. 스태프는 부서를 비워 전체 조회할 수 있습니다.",
+      "관리자/HR은 부서 선택이 필요 없습니다. 매니저는 최소 1개 부서가 필요합니다. 스태프는 부서를 비워 전체 조회할 수 있습니다.",
     minOneDeptManager: "매니저 역할은 최소 1개 부서를 선택해야 합니다",
     requireEmail: "이메일을 입력해 주세요",
     colDept: "부서",
@@ -959,6 +960,21 @@ const ko = {
     offDayOvertimeHours: "TC off",
     offDayOvertimeHoursHint:
       "레거시 열: 휴무일 근무 시간은 더 이상 여기에 두지 않습니다(근무시간 열로 이동). 항상 «-».",
+    offDayColumn: "휴무일",
+    holidayDayColumn: "공휴일",
+    leaveTypeColumn: "휴가 유형",
+    holidayDayWorkingHours: "공휴일 근무시간",
+    payrollOffDayTcHint:
+      "«휴무일»+주간: 기본+연장(오후/서류)을 한 칸에 합산; 연장 열 «-».",
+    payrollHolidayDayWorkingHoursHint:
+      "«공휴일»+주간: 기본+연장을 한 칸에 합산; 연장 열 «-».",
+    payrollTotalGcDay: "주간 합계(GC)",
+    payrollTotalGcDayHint:
+      "주간 합계: 근무시간+연장; 휴무/공휴 주간은 TC off/GC 공휴일에 합산(연장 열 «-»); 야간 열 제외.",
+    payrollTotalGcNight: "야간 합계(GC)",
+    payrollTotalGcNightHint:
+      "야간 합계: GC+연장; 휴무/공휴 야간은 한 칸에 합산(야간 연장 «-»).",
+    holidayNightWorkingHours: "야간(공휴일)",
     nightShiftWorkingHours: "야간 근무",
     nightShiftWorkingHoursHint:
       "«야간» 근무 시: 출근부터 05:00(당일 05:00 이전 출근이면 당일, 아니면 다음 날 05:00)까지, 최대 8시간.",

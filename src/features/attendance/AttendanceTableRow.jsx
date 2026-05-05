@@ -523,9 +523,7 @@ const WIDTHS_NARROW_NO_ACTIONS = [
 const WIDTHS_MINIMAL_WITH_ACTIONS = [
   9, 24, 12, 5, 5, 8, 3, 3, 8, 5, 5, 4, 3, 8,
 ];
-const WIDTHS_MINIMAL_NO_ACTIONS = [
-  12, 24, 14, 5, 5, 8, 3, 3, 5, 5, 4, 3, 14,
-];
+const WIDTHS_MINIMAL_NO_ACTIONS = [12, 24, 14, 5, 5, 8, 3, 3, 5, 5, 4, 3, 14];
 
 /**
  * @param {"full"|"compact"|"narrow"|"minimal"} [columnPlan="full"]
@@ -831,10 +829,10 @@ export function AttendanceVirtualHeader({
               className="flex min-w-0 items-center justify-center py-px px-1 text-center text-[10px] font-extrabold uppercase leading-tight tracking-wide text-gray-900 md:px-2 md:py-0.5 md:text-xs"
               title={tl(
                 "payrollHolidayDayWorkingHoursHint",
-                "Khi «Ngày lễ» và ca ngày: Giờ công BT + TC gộp một ô; cột Giờ TC là «-».",
+                "Khi cột ngày lễ là HOLIDAY thì giờ công sẽ hiển thị ở cột giờ công ngày lễ.",
               )}
             >
-              {tl("holidayDayWorkingHours", "GC ngày lễ")}
+              {tl("holidayDayWorkingHours", "Giờ công ngày lễ")}
             </div>
             <div
               role="columnheader"
@@ -862,7 +860,7 @@ export function AttendanceVirtualHeader({
                 "Ca đêm: từ giờ vào đến mốc 05:00 (cùng ngày nếu vào trước 05:00, không thì 05:00 hôm sau), tối đa 8 giờ.",
               )}
             >
-              {tl("nightShiftWorkingHours", "GC ca đêm")}
+              {tl("nightShiftWorkingHours", "Giờ công ca đêm")}
             </div>
             <div
               role="columnheader"
@@ -1389,7 +1387,7 @@ export function AttendanceTableThead({
                   "Khi «Ngày lễ» và ca ngày: Giờ công BT + TC gộp một ô; cột Giờ TC là «-».",
                 )}
               >
-                {tl("holidayDayWorkingHours", "GC ngày lễ")}
+                {tl("holidayDayWorkingHours", "Giờ công ngày lễ")}
               </th>
               <th
                 className="px-1 md:px-1.5 py-px md:py-0.5 text-[9px] md:text-xs font-extrabold uppercase tracking-wide text-center leading-tight text-gray-900"
@@ -1668,7 +1666,7 @@ export function AttendanceTableThead({
                 "Khi «Ngày lễ» và ca ngày: Giờ công BT + TC gộp một ô; cột Giờ TC là «-».",
               )}
             >
-              {tl("holidayDayWorkingHours", "GC ngày lễ")}
+              {tl("holidayDayWorkingHours", "Giờ công ngày lễ")}
             </th>
             <th
               className={cellClsForAttendanceTable(
@@ -1786,7 +1784,9 @@ function AttendanceTableRow({
   const isPayroll = tableVariant === "payroll";
   const payrollOffLike = isOffDay || isHolidayDay;
   const legacyIncludeTsNvInWorkingHours =
-    String(emp.includeTsNvInWorkingHours ?? "").trim().toUpperCase() === "YES";
+    String(emp.includeTsNvInWorkingHours ?? "")
+      .trim()
+      .toUpperCase() === "YES";
   const includeTapVuInWorkingHours =
     String(emp.includeTapVuInWorkingHours ?? "")
       .trim()
@@ -2110,7 +2110,7 @@ function AttendanceTableRow({
           <span
             className={
               isPayroll
-              ? `text-blue-600 font-bold ${payrollTimeShiftFont}`
+                ? `text-blue-600 font-bold ${payrollTimeShiftFont}`
                 : isMinimal
                   ? "text-blue-600 font-bold text-[10px] md:text-base"
                   : "text-blue-600 font-bold text-xs md:text-base"

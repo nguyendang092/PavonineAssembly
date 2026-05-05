@@ -4,7 +4,7 @@ export const UserContext = createContext({
   user: null,
   setUser: () => {},
   userDepartments: [],
-  /** Resolved: admin | manager | staff (null when logged out) */
+  /** Resolved: admin | hr | manager | staff (null when logged out) */
   userRole: null,
 });
 

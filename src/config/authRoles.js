@@ -6,6 +6,8 @@ export const ADMIN_OR_HR_EMAILS = [
 
 export const ROLES = {
   ADMIN: "admin",
+  /** HR (Firebase userDepartments.role): cùng quyền đầy đủ với admin trên điểm danh / xóa toàn bộ ngày */
+  HR: "hr",
   MANAGER: "manager",
   STAFF: "staff",
 };
@@ -21,6 +23,7 @@ export function isAdminOrHR(user) {
 export function normalizeRole(role) {
   const r = String(role ?? "").trim().toLowerCase();
   if (r === ROLES.ADMIN) return ROLES.ADMIN;
+  if (r === ROLES.HR) return ROLES.HR;
   if (r === ROLES.MANAGER) return ROLES.MANAGER;
   if (r === ROLES.STAFF) return ROLES.STAFF;
   return null;
@@ -40,10 +43,11 @@ export function inferRoleFromMapping(mapping) {
   return ROLES.STAFF;
 }
 
-/** Full app admin: hardcoded emails or explicit `admin` role in Firebase */
+/** Admin / HR đầy đủ: email {@link ADMIN_OR_HR_EMAILS}, hoặc role Firebase `admin` / `hr`. Manager/Staff: không. */
 export function isAdminAccess(user, userRole) {
   if (isAdminOrHR(user)) return true;
-  return normalizeRole(userRole) === ROLES.ADMIN;
+  const nr = normalizeRole(userRole);
+  return nr === ROLES.ADMIN || nr === ROLES.HR;
 }
 
 /**

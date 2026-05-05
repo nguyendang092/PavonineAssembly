@@ -30,10 +30,13 @@ import { formatAttendanceLeaveTypeColumnDisplay } from "@/features/attendance/at
  * **Ngày off / ngày lễ + ca ngày:** **Giờ công BT** + **TC chiều/giấy** gộp **một** số ở **TC off** / **GC ngày lễ** (hệ số quy đổi giống nhau — không tách cột Giờ TC).
  * **Ngày không off/lễ:** giờ công / TC như quy tắc khung ca thường.
  *
- * **Chế độ Tạp vụ / Thai sản** (`includeTapVuInWorkingHours` / `includeThaiSanInWorkingHours`,
- * chỉ **ca ngày**): GC = thời lượng liên tục từ mốc vào hiệu lực đến **16:00** hoặc giờ ra
- * (tùy sớm hơn), **tối đa 8 giờ**. Phần làm sau **16:00** → **Giờ TC** (cùng block 30 phút,
- * đủ điều kiện khi giờ ra sau **16:30**). Ca đêm không đổi.
+ * **Chế độ Tạp vụ** (`includeTapVuInWorkingHours`, chỉ **ca ngày**): **ca sáng** **07:00–11:30**
+ * (chấm trước 07:00 → mốc vào **07:00**), **tối đa 4,5 giờ**; nghỉ trưa; **ca chiều** **12:30–16:00**,
+ * **tối đa 3,5 giờ**. Tổng GC **tối đa 8 giờ**. Sau **16:00** → **Giờ TC** như hiện tại (block 30 phút, có điều kiện sau 16:30).
+ *
+ * **Chế độ Thai sản** (`includeThaiSanInWorkingHours`, chỉ **ca ngày**, không bật Tạp vụ): GC = thời lượng
+ * liên tục từ mốc vào hiệu lực (ca ngày thường) đến **16:00** hoặc giờ ra, **tối đa 8 giờ**; sau **16:00** → TC như trên.
+ * Ca đêm không đổi.
  */
 
 const HHMM = /^(\d{1,2}):(\d{2})$/;
@@ -42,7 +45,7 @@ function coerceIncludeWorkingHoursFlag(v) {
   return v === true || String(v ?? "").trim().toUpperCase() === "YES";
 }
 
-/** Ca ngày + cờ Tạp vụ hoặc Thai sản: áp quy tắc mốc 16:00 (GC / TC). */
+/** Ca ngày + cờ Tạp vụ hoặc Thai sản: TC chiều từ 16:00 (thay vì 17:00). */
 function useTapVuThaiSanDayShiftRules(
   caLamViec,
   includeTapVuInWorkingHours,
@@ -53,6 +56,23 @@ function useTapVuThaiSanDayShiftRules(
     coerceIncludeWorkingHoursFlag(includeTapVuInWorkingHours) ||
     coerceIncludeWorkingHoursFlag(includeThaiSanInWorkingHours)
   );
+}
+
+/** Chỉ Tạp vụ (ca ngày): khung sáng/chiều tách nghỉ trưa — không dùng cho Thai sản đơn lẻ. */
+function useTapVuOnlyDayShiftRules(caLamViec, includeTapVuInWorkingHours) {
+  if (isNightShiftCaLamViec(caLamViec)) return false;
+  return coerceIncludeWorkingHoursFlag(includeTapVuInWorkingHours);
+}
+
+/** Chỉ Thai sản, không Tạp vụ: GC liên tục đến 16:00 như trước. */
+function useThaiSanOnlyDayShiftRules(
+  caLamViec,
+  includeTapVuInWorkingHours,
+  includeThaiSanInWorkingHours,
+) {
+  if (isNightShiftCaLamViec(caLamViec)) return false;
+  if (coerceIncludeWorkingHoursFlag(includeTapVuInWorkingHours)) return false;
+  return coerceIncludeWorkingHoursFlag(includeThaiSanInWorkingHours);
 }
 
 /**
@@ -190,8 +210,50 @@ export function isNightShiftCaLamViec(caLamViec) {
   return s === "S2";
 }
 
-/** Mốc 16:00 — GC chế độ Tạp vụ / Thai sản (ca ngày). */
+/** Mốc 16:00 — GC chế độ Thai sản (ca ngày, không Tạp vụ). */
 const TAP_THAI_DAY_REGULAR_END_MIN = 16 * 60;
+
+/** Tạp vụ — ca sáng 07:00–11:30 (tối đa 4,5h); ca chiều 12:30–16:00 (tối đa 3,5h). */
+const TAPVU_MORNING_START_MIN = 7 * 60;
+const TAPVU_MORNING_END_MIN = 11 * 60 + 30;
+const TAPVU_MORNING_MAX_MIN = Math.floor(4.5 * 60); // 270 phút
+const TAPVU_AFTERNOON_START_MIN = 12 * 60 + 30;
+const TAPVU_AFTERNOON_END_MIN = 16 * 60;
+const TAPVU_AFTERNOON_MAX_MIN = Math.floor(3.5 * 60); // 210 phút
+
+/**
+ * Chấm trước 07:00 → mốc vào hiệu lực 07:00 (ca Tạp vụ — ca sáng).
+ * @param {number} clockInMin
+ */
+function getEffectiveTapVuMorningClockInMinutes(clockInMin) {
+  if (!Number.isFinite(clockInMin)) return clockInMin;
+  if (clockInMin < TAPVU_MORNING_START_MIN) return TAPVU_MORNING_START_MIN;
+  return clockInMin;
+}
+
+/**
+ * Giờ công GC ca ngày — chế độ Tạp vụ (hai khung, loại trừ trưa).
+ * @param {number} a — parseHHMMToMinutes(gioVao)
+ * @param {number} b — parseHHMMToMinutes(gioRa)
+ * @returns {number | null}
+ */
+function getTapVuDayShiftRegularHoursNumeric(a, b) {
+  const aEffMorning = getEffectiveTapVuMorningClockInMinutes(a);
+  const mStart = Math.max(aEffMorning, TAPVU_MORNING_START_MIN);
+  const mEnd = Math.min(b, TAPVU_MORNING_END_MIN);
+  let morningMin = Math.max(0, mEnd - mStart);
+  morningMin = Math.min(morningMin, TAPVU_MORNING_MAX_MIN);
+
+  const aftStart = Math.max(a, TAPVU_AFTERNOON_START_MIN);
+  const aftEnd = Math.min(b, TAPVU_AFTERNOON_END_MIN);
+  let afternoonMin = Math.max(0, aftEnd - aftStart);
+  afternoonMin = Math.min(afternoonMin, TAPVU_AFTERNOON_MAX_MIN);
+
+  const totalMinutes = morningMin + afternoonMin;
+  if (totalMinutes <= 0) return null;
+  const raw = roundHoursToTenths(totalMinutes / 60);
+  return Math.min(raw, MAX_REGULAR_WORKING_HOURS);
+}
 
 /**
  * TC chiều (Tạp vụ / Thai sản): từ 16:00, block 30 phút; chỉ khi giờ ra sau 16:30.
@@ -237,9 +299,13 @@ export function getAttendanceWorkingHoursHours(
     return Math.min(raw, MAX_REGULAR_WORKING_HOURS);
   }
 
+  if (!night && useTapVuOnlyDayShiftRules(caLamViec, includeTapVuInWorkingHours)) {
+    return getTapVuDayShiftRegularHoursNumeric(a, b);
+  }
+
   if (
     !night &&
-    useTapVuThaiSanDayShiftRules(
+    useThaiSanOnlyDayShiftRules(
       caLamViec,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,

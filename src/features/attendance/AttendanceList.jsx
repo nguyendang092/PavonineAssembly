@@ -2656,7 +2656,7 @@ function AttendanceList({
             layout="three"
             showSearchOnDesktop
           >
-            <div className="hidden shrink-0 sm:block">
+            <div className="hidden shrink-0 overflow-visible sm:block">
               <NotificationBell
                 inline
                 count={buCongEmployees.length}
