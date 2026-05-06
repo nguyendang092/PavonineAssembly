@@ -101,6 +101,7 @@ const vi = {
     performance: "Cải tiến",
     caiTien: "Cải tiến",
     qrCodeGenerator: "Tạo QR Code",
+    inventoryDashboard: "Báo cáo chênh lệch tồn kho",
     attendance: "Điểm danh",
     attendanceList: "Điểm danh NV",
     attendanceSalary: "Bảng giờ công nhân viên",
@@ -607,6 +608,121 @@ const vi = {
       process: "Quy trình",
     },
   },
+  warehouseDashboard: {
+    pageTitle: "Báo cáo tồn kho kho",
+    uploadBtn: "Chọn file Excel",
+    clearBtn: "Xóa dữ liệu",
+    printBtn: "In",
+    loading: "Đang đọc file…",
+    emptyTitle: "Chưa có dữ liệu",
+    emptyHint:
+      "Xuất báo cáo từ ERP/Excel, giữ nguyên tiêu đề cột (THỰC TẾ, STATUS, 창고/Mã kho, 재고금액…), rồi «Chọn file Excel».",
+    errorMissingActual:
+      "Không tìm thấy cột «THỰC TẾ» / số lượng thực tế. Kiểm tra hàng tiêu đề file.",
+    errorEmpty: "Sheet trống hoặc không có dữ liệu.",
+    errorParse: "Không đọc được file. Chọn file .xlsx đúng định dạng.",
+    fileLabel: "File",
+    period: "Kỳ",
+    filterWh: "Lọc kho",
+    filterWhAll: "Tất cả",
+    kpiLines: "Số dòng vật tư",
+    kpiLinesSub: "{{count}} dòng có số «Thực tế»",
+    kpiActualQty: "Tổng SL (Thực tế)",
+    kpiActualValue: "Tổng giá trị tồn (Thực tế)",
+    kpiErpCompare: "ERP: {{v}}",
+    kpiDiscrepancy: "Dòng chênh / cảnh báo",
+    kpiDiscrepancySub: "Gap ≠ 0 hoặc CHECK = FALSE",
+    kpiAligned: "Không phát hiện chênh (theo Gap/CHECK)",
+    chartStatusTitle: "TỈ LỆ HÀNG BÌNH THƯỜNG & HÀNG LỖI",
+    chartWhTitle: "Top kho — giá trị (Thực tế)",
+    chartWhValue: "Giá trị tồn (Thực tế)",
+    tableTopTitle: "Mặt hàng theo giá trị (Thực tế)",
+    tableDetailTitle: "Chi tiết (rút gọn)",
+    tableTruncated:
+      "Hiển thị tối đa 200 dòng đầu (toàn sheet vẫn dùng cho thống kê).",
+    colLabel: "Mặt hàng",
+    colQty: "Thực tế",
+    colValue: "Giá trị",
+    dColWh: "Kho",
+    dColActual: "THỰC TẾ",
+    dColAmount: "Giá trị TT",
+    saveMonthBtn: "Lưu kỳ vào so sánh",
+    saveMonthPrompt: "Nhập kỳ tháng để lưu so sánh (vd: 03-2026)",
+    saveMonthBad: "Không nhận dạng được tháng. Dùng dạng 03-2026 hoặc 2026-03.",
+    saveMonthOk: 'Đã lưu kỳ "{{period}}" vào so sánh.',
+    clearHistoryConfirm: "Xóa hết các kỳ đã lưu trên trình duyệt (máy này)?",
+    removeSnapAria: "Xóa kỳ khỏi danh sách",
+    clearAllSnapsBtn: "Xóa hết kỳ đã lưu",
+    monthCodeSectionTitle: "Chênh lệch (Gap) theo tháng & từng CODE",
+    monthCodeSectionHint:
+      "File có nhiều tháng dùng cột Month; hoặc «Lưu kỳ» từng tháng rồi bật «Kỳ đã lưu» để so sánh. Gap ưu tiên cột Gap, không có thì Thực tế − 전산수량.",
+    includeCurrentToggle: "Gồm file hiện tại",
+    includeSavedToggle: "Gồm kỳ đã lưu ({{count}})",
+    monthBarSignedTotal: "Tổng Gap (có dấu)",
+    monthTotalGapChartTitle: "Tổng Gap theo tháng",
+    codeTrendChartTitle:
+      "Xu hướng Gap theo CODE (top chênh tháng cuối − tháng đầu)",
+    lineChartNeedTwoMonths:
+      "Cần ít nhất hai tháng (sheet nhiều tháng hoặc lưu ≥2 kỳ) để hiển thị đường xu hướng.",
+    monthAnalysisNoRows:
+      "Bật «Gồm file hiện tại» và/hoặc lưu ít nhất một kỳ để hiển thị phân tích.",
+    monthAnalysisNoMonthColumn:
+      "Chưa có cột/tháng hợp lệ sau khi gộp — kiểm tra cột Month hoặc nhập kỳ khi «Lưu kỳ».",
+    codeEmptyLabel: "(Trống CODE)",
+    gapColHint: "Gap {{m}}",
+    swingSubtitle: "Tháng sau cùng − tháng đầu",
+    pivotFootnote:
+      "Mỗi ô là tổng Gap (có dấu) của các dòng cùng CODE trong tháng. Δ Gap = kỳ mới nhất − kỳ cũ nhất (theo các tháng có dữ liệu của CODE đó).",
+    hideZeroActualQty: "Ẩn SL Thực tế = 0",
+    filtersSectionTitle: "Bộ lọc báo cáo",
+    filtersSectionHint:
+      "Chọn kỳ và điều kiện — KPI, biểu đồ và bảng đều cập nhật theo lọc.",
+    filtersHideLabel: "Ẩn dòng không cần xem",
+    colInventoryAmountPhysicalKr: "재고금액(실사)",
+    colWarehouse: "WAREHOUSE",
+    colStatus: "STATUS",
+    colUnit: "UNIT",
+    executiveBadge: "Đọc nhanh cho lãnh đạo",
+    executiveTitle:
+      "Mục đích báo cáo: đo rủi ro tồn kho & chênh lệch thực − sổ",
+    executiveLead:
+      "Nội dung dưới đây tóm tắt rủi ro và tập trung cần chú ý — không phải bản làm việc thao tác từng dòng trong Excel.",
+    executiveBullet1:
+      "Xem tiền tồn thực tế và chỗ «lệch» so với ERP để đánh giá mức độ sai lệch tài chính.",
+    executiveBullet2:
+      "Đếm dòng Gap/cảnh báo CHECK để ưu tiên kiểm kê và xử lý — tránh chỉ nhìn tổng số có vẻ ổn.",
+    executiveBullet3:
+      "Hiểu cơ cấu STATUS và kho nào đang «giữ tiền» (giá trị tồn cao nhất).",
+    executiveBullet4:
+      "Dữ liệu tháng hiện gồm: {{span}}. Phần bảng màu tím bên dưới thể hiện chênh lệch theo tháng · mã và mã Gap lớn.",
+    executiveStatsTitle: "Chỉ số cốt lõi (theo sheet đang hiển thị)",
+    execMetricRowCount: "Tổng dòng báo cáo",
+    execMetricDiscrepancy: "Dòng Gap / CHECK cần chủ động",
+    execMetricDiscrepancyHint: "Gap khác 0 hoặc CHECK = FALSE trong file ERP.",
+    execMetricTotalValueLabel: "Tổng giá trị tồn (실사)",
+    execMetricErpFoot: "Đối chiếu ERP: {{v}}",
+    execMetricValueDeltaLabel: "Chênh thực tế − ERP",
+    execMetricValueDeltaAboveErp:
+      "Thực tế đang CAO HƠN sổ — cần rà luồng ghi nhận / thất thoát hoặc tồn ẩn.",
+    execMetricValueDeltaBelowErp:
+      "Thực tế đang THẤP HƠN sổ — có thể thừa sổ, xuất chưa xử lý đúng.",
+    execMetricValueAligned:
+      "Gần khớp sổ theo giá trị — vẫn nên xem dòng Gap theo từng mã.",
+    execVarianceSignal:
+      "So hai tháng đầu/cuối trong dữ liệu: có {{heavy}} / {{total}} mã có |Δ gap| ≥ {{limit}} · tổng Δ gap có dấu: {{sum}}.",
+    executiveStatsHint:
+      "Các chỉ số trên là tổng từ file sau khi bạn có thể đã chọn một kho ở thanh nút phía trên.",
+    execFilteredInsight:
+      "Khối bảng màu tím + biểu đồ báo cáo bên dưới phản ánh {{rows}} dòng sau các bộ lọc MONTH / CODE / kho / ẩn dòng không cần xem.",
+    overviewVisualBadge: "Nhận định báo cáo",
+    overviewStatusHint: "Tỉ lệ hàng theo trạng thái ERP.",
+    overviewWhHint:
+      "Giá trị tồn kho cao — ưu tiên kiểm soát khi có chênh lệch.",
+    overviewMonthTrendHint:
+      "Đường tím = tổng 월별 차이 (trục trái), đường xanh lá = tổng 코드별 차이 (trục phải).",
+    overviewChartEmpty: "Không đủ dữ liệu STATUS.",
+    overviewWhChartEmpty: "Không đủ dữ liệu kho / giá trị.",
+  },
   common: {
     loading: "Đang tải dữ liệu...",
     noData: "Không có dữ liệu",
@@ -1096,6 +1212,11 @@ const vi = {
     printAttendanceOpened:
       "✅ Mở cửa sổ in danh sách chấm công ({{count}} nhân viên)",
     noCompensationEmployees: "Không có nhân viên bù công nào",
+    seasonalKpStreakTitle: "NHÂN VIÊN KP (≥2 NGÀY LIÊN TIẾP)",
+    seasonalKpStreakEmpty:
+      "Không có nhân viên nào ghi KP từ 2 ngày trở lên (kể cả ngày đang chọn).",
+    seasonalKpStreakColDays: "Ngày KP liên tiếp",
+    seasonalKpStreakLoading: "Đang tải…",
     overtimeFormTitle: "Biểu mẫu đăng ký tăng ca",
     exportExcelDateRange: "Xuất Excel từ ngày … đến ngày …",
     exportRangeModalTitle: "Xuất Excel theo khoảng ngày",

@@ -1038,7 +1038,7 @@ function WorkplaceProductionView() {
         }`}
       >
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="dashboard-report-surface flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+          <div className="dashboard-chart-panel dashboard-report-surface flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
             <div className="shrink-0 border-b border-slate-300/80 bg-gradient-to-b from-slate-200/95 to-slate-100 px-4 pt-4 pb-3 dark:border-slate-800 dark:from-slate-950 dark:to-slate-950">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="min-w-0">
@@ -1159,7 +1159,7 @@ function WorkplaceProductionView() {
                     return (
                       <div
                         key={area}
-                        className={`flex flex-col rounded-xl border border-slate-300/85 bg-slate-50 p-2 shadow-[0_1px_3px_rgba(15,23,42,0.08)] transition dark:border-slate-700/90 dark:bg-slate-900/90 ${
+                        className={`dashboard-chart-panel flex flex-col rounded-xl border border-slate-300/85 bg-slate-50 p-2 transition dark:border-slate-700/90 dark:bg-slate-900/90 ${
                           workplaceDragOverArea === area
                             ? "ring-2 ring-sky-400 ring-offset-1 dark:ring-offset-slate-950"
                             : ""

@@ -552,7 +552,7 @@ const TemperatureMonitor = () => {
 
       {/* Nội dung chính */}
       <div className="flex-1 px-3 pb-4 pt-4 sm:px-4 sm:pb-5 sm:pt-5 md:ml-72 md:px-6 md:pb-6 md:pt-6">
-        <div className="min-h-[71.2vh] rounded-2xl border border-slate-200/95 bg-gradient-to-b from-slate-50 via-white to-slate-100/90 p-6 pt-8 shadow-[0_1px_3px_rgba(15,23,42,0.06),0_20px_50px_-24px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:shadow-none dark:ring-1 dark:ring-slate-800">
+        <div className="min-h-[71.2vh] rounded-2xl border border-slate-200/95 bg-gradient-to-b from-slate-50 via-white to-slate-100/90 p-6 pt-8 backdrop-blur-sm dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:ring-1 dark:ring-slate-800">
           <h2 className="mb-8 text-center text-2xl font-black tracking-tight text-slate-900 sm:text-3xl dark:text-white">
             <span
               className="mr-2 inline-block align-middle opacity-95"
@@ -606,7 +606,7 @@ const TemperatureMonitor = () => {
       <Modal
         isOpen={isChartModalOpen}
         onRequestClose={() => setIsChartModalOpen(false)}
-        className="mx-auto mt-16 max-h-[90vh] w-full max-w-7xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+        className="mx-auto mt-16 max-h-[90vh] w-full max-w-7xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900"
         overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start z-50"
       >
         <div className="flex justify-between items-center mb-6">

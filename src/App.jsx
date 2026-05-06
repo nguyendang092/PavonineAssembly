@@ -57,6 +57,9 @@ const PerformanceChart = lazyImport(
 const QRCodeGenerator = lazyImport(
   () => import("@/components/ui/QRCodeGenerator"),
 );
+const WarehouseInventoryDashboard = lazyImport(
+  () => import("@/features/dashboard/WarehouseInventoryDashboard"),
+);
 const Downloads = lazyImport(() => import("@/components/ui/Downloads"));
 const UserDepartmentManager = lazyImport(
   () => import("@/features/employee/UserDepartmentManager"),
@@ -229,6 +232,7 @@ const App = () => {
       MoldManager: <MoldManager />,
       PerformanceChart: <PerformanceChart />,
       QRCodeGenerator: <QRCodeGenerator />,
+      WarehouseInventoryDashboard: <WarehouseInventoryDashboard />,
       AttendanceList: <AttendanceList />,
       SeasonalStaffAttendance: <SeasonalStaffAttendance />,
       PayrollSalaryCalculator: <PayrollSalaryCalculator />,

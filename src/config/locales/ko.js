@@ -110,6 +110,8 @@ const ko = {
     internalAnnouncements: "공지",
     download: "다운로드",
     files: "파일",
+    qrCodeGenerator: "QR 코드 생성",
+    inventoryDashboard: "창고 재고 대시보드",
   },
   internalAnnouncements: {
     title: "내부 공지",
@@ -194,8 +196,7 @@ const ko = {
     titleRequired: "제목을 입력해 주세요.",
     bodyRequired: "내용을 입력해 주세요.",
     publishSuccess: "공지가 등록되었습니다.",
-    publishFail:
-      "등록에 실패했습니다. Firebase 권한 설정을 확인해 주세요.",
+    publishFail: "등록에 실패했습니다. Firebase 권한 설정을 확인해 주세요.",
     delete: "삭제",
     deleteMailBtn: "공지 삭제",
     deleteMailHint: "목록에서 이 공지를 삭제합니다",
@@ -445,8 +446,7 @@ const ko = {
     kpiAreas: "가동 공정",
     kpiDays: "데이터 일수",
     chartSectionTitle: "일자별 차트",
-    chartSectionHint:
-      "공정별 패널: 막대(양품) + 선(NG), 범례는 차트 아래.",
+    chartSectionHint: "공정별 패널: 막대(양품) + 선(NG), 범례는 차트 아래.",
     chartDragHint:
       "제목 줄(⋮⋮)을 드래그해 순서 변경 — Firebase에 계정별 저장(기기 간 동기화).",
     chartDragHandle: "드래그하여 순서 변경",
@@ -537,8 +537,7 @@ const ko = {
     kpiAreas: "공정 수",
     kpiDays: "기간 일수",
     chartSectionTitle: "일자별 NG 분포",
-    chartSectionHint:
-      "공정별 색상, 세로축은 일자. 옆 표에서 Excel보내기.",
+    chartSectionHint: "공정별 색상, 세로축은 일자. 옆 표에서 Excel보내기.",
   },
   moldManager: {
     title: "금형 관리",
@@ -598,6 +597,143 @@ const ko = {
       pmImage: "금형 PM 이미지",
       process: "공정",
     },
+  },
+  warehouseDashboard: {
+    pageTitle: "재고 보고서 대시보드",
+    pageSubtitle:
+      "월간 재고 엑셀을 올리면 실사 vs 전산 리스크와 주목할 코드를 요약해 의사결정 화면까지 정리합니다.",
+    uploadBtn: "엑셀 파일 선택",
+    clearBtn: "데이터 지우기",
+    printBtn: "인쇄",
+    loading: "파일 읽는 중…",
+    emptyTitle: "데이터 없음",
+    emptyHint:
+      "ERP/엑셀에서 보고서를 내보내고 열 제목을 그대로 유지하세요(THỰC TẾ, STATUS, 창고/코드, 재고금액 등). 이어서 «엑셀 파일 선택»을 누릅니다.",
+    errorMissingActual:
+      "«THỰC TẾ»/실제 수량 열을 찾지 못했습니다. 헤더 행을 확인하세요.",
+    errorEmpty: "시트가 비어 있거나 데이터가 없습니다.",
+    errorParse:
+      "파일을 읽을 수 없습니다. 형식이 맞는 .xlsx 파일인지 확인하세요.",
+    fileLabel: "파일",
+    period: "기간",
+    structuredTableTitle: "월 × 코드 구조 보고 표",
+    filterWh: "창고 필터",
+    filterWhAll: "전체",
+    filterAll: "전체",
+    searchCodePlaceholder: "CODE 입력…",
+    comparisonRowsCount: "{{count}}행",
+    kpiLines: "행 수",
+    kpiLinesSub: "«실제» 수량이 있는 행 {{count}}개",
+    kpiActualQty: "총 수량(실제)",
+    kpiActualValue: "총 재고 금액(실제)",
+    kpiErpCompare: "ERP: {{v}}",
+    kpiDiscrepancy: "차이/경고 행",
+    kpiDiscrepancySub: "Gap ≠ 0 또는 CHECK = FALSE",
+    kpiAligned: "차이 없음(Gap/CHECK 기준)",
+    chartStatusTitle: "정상 품목·불량 품목 비율",
+    chartWhTitle: "창고 TOP — 금액(실사)",
+    chartWhValue: "재고 금액(실사)",
+    tableTopTitle: "금액 상위 품목(실제)",
+    tableDetailTitle: "상세(요약)",
+    tableTruncated: "처음 200행만 표시합니다(통계에는 전체 행이 사용됩니다).",
+    colLabel: "품목",
+    colQty: "실제",
+    colValue: "금액",
+    dColWh: "창고",
+    dColActual: "THỰC TẾ",
+    dColAmount: "실제 금액",
+    saveMonthBtn: "비교용 기간 저장",
+    saveMonthPrompt: "비교에 쓸 월 입력(예: 03-2026)",
+    saveMonthBad: "월 형식을 인식하지 못했습니다. 03-2026 또는 2026-03.",
+    saveMonthOk: '기간 "{{period}}"을(를) 비교 목록에 저장했습니다.',
+    clearHistoryConfirm: "이 PC에 저장된 기간을 모두 삭제할까요?",
+    removeSnapAria: "기간 삭제",
+    clearAllSnapsBtn: "저장된 기간 모두 삭제",
+    monthCodeSectionTitle: "월·코드별 차이(Gap)",
+    monthCodeSectionHint:
+      "Month 열이 여러 달이면 자동 병합하거나, 월별 파일을 «저장»해 누적 비교하세요. Gap은 열 값 우선, 없으면 실제−전산.",
+    includeCurrentToggle: "현재 파일 포함",
+    includeSavedToggle: "저장된 기간 포함 ({{count}})",
+    monthBarSignedTotal: "Gap 합계(부호 포함)",
+    highVarianceBarLabel: "|Δ Gap|",
+    monthTotalGapChartTitle: "월별 Gap 합계",
+    codeTrendChartTitle: "CODE별 Gap 추이(후월−선월 차 큰 순)",
+    lineChartNeedTwoMonths:
+      "추세선은 월이 2개 이상일 때 표시됩니다(멀티 시트 또는 2건 이상 저장).",
+    monthAnalysisNoRows: "파일 포함 또는 저장 기간을 켜 주세요.",
+    monthAnalysisNoMonthColumn:
+      "유효한 Month가 없습니다. 열 이름 또는 저장 시 입력을 확인하세요.",
+    codeEmptyLabel: "(코드 없음)",
+    gapColHint: "{{m}} Gap",
+    swingSubtitle: "막달 − 첫 달",
+    pivotFootnote:
+      "각 셀: 같은 코드·해당 월 행 Gap(부호) 합. Δ Gap: 해당 코드 데이터가 있는 달 중 첫·끝 달 차이.",
+    hideZeroActualQty: "실제 수량 = 0 행 숨기기",
+    hideZeroMonthlyDiff: "월별 차이 = 0 행 숨기기",
+    hideZeroCodeDiff: "코드별 차이 = 0 행 숨기기",
+    filtersSectionTitle: "보고서 필터",
+    filtersSectionHint:
+      "기간·조건을 선택하면 KPI·차트·아래 표가 모두 필터에 맞게 갱신됩니다.",
+    filtersHideLabel: "불필요한 행 숨기기",
+    colInventoryAmountPhysicalKr: "재고금액(실사)",
+    colCategoryKr: "구분",
+    colWarehouseCode: "창고(코드)",
+    colWarehouse: "WAREHOUSE",
+    colActualQty: "수량(실사)",
+    colSystemQtyKr: "수량(전산)",
+    colMonthlyDiffKr: "월별 차이",
+    colCodeDiffKr: "코드별 차이",
+    colStatus: "STATUS",
+    colUnit: "UNIT",
+    executiveBadge: "경영 요약",
+    executiveTitle: "보고 목적: 재고 리스크 및 실사 − 전산 차이 파악",
+    executiveLead:
+      "아래는 실행용 엑셀이 아니라, 경영·리더가 빠르게 볼 핵심만 모은 화면입니다.",
+    executiveBullet1:
+      "실사 금액과 ERP 대비 어느 정도 어긋났는지(재무적 편차 감)를 봅니다.",
+    executiveBullet2: "Gap·CHECK 경고 행 수로 실사·조정 우선순위를 잡습니다.",
+    executiveBullet3:
+      "STATUS 분포와 재고 금액이 큰 창고에서 리스크가 몰리는지 확인합니다.",
+    executiveBullet4:
+      "월 범위 요약: {{span}}. 아래 보라 블록 표·차트에서 월별·코드별 Gap을 봅니다.",
+    executiveStatsTitle: "핵심 지표(현재 업로드된 시트)",
+    execMetricRowCount: "총 행 수",
+    execMetricDiscrepancy: "Gap / CHECK 주의 행",
+    execMetricDiscrepancyHint: "Gap≠0 이거나 CHECK=FALSE인 행입니다.",
+    execMetricTotalValueLabel: "실사 재고 금액 합계",
+    execMetricErpFoot: "ERP 대비: {{v}}",
+    execMetricValueDeltaLabel: "실사 − ERP 차이(금액)",
+    execMetricValueDeltaAboveErp:
+      "실사가 전산보다 큼 — 반영·유출·숨은 재고 등을 점검하세요.",
+    execMetricValueDeltaBelowErp:
+      "실사가 전산보다 작음 — 전산 과다·출고 처리 지연 등 가능성을 봅니다.",
+    execMetricValueAligned:
+      "금액은 비슷해 보여도 행 단위 Gap은 별도 확인이 필요합니다.",
+    execVarianceSignal:
+      "데이터 첫·끝 달 비교: |Δ Gap| ≥ {{limit}}인 코드 {{heavy}} / {{total}}개 · Δ Gap 부호합: {{sum}}.",
+    executiveStatsHint:
+      "위 지표는 상단에서 창고를 좁히면 그 범위의 합계입니다.",
+    execFilteredInsight:
+      "아래 보라 표·차트는 필터(MONTH/CODE/창고·0숨김) 적용 후 {{rows}}행 기준입니다.",
+    overviewVisualBadge: "보고 해석",
+    overviewVisualSectionTitle: "구조 · 자금 묶임 · Gap 추세",
+    overviewVisualSectionSubtitle:
+      "왼쪽: STATUS 분포와 금액 큰 창고. 오른쪽: 필터링된 데이터의 월별 추세와 Gap이 큰 코드.",
+    overviewStatusHint:
+      "ERP STATUS 비율 — 이상 상태가 많으면 ‘재고가 안전하다’는 결론을 내리기 전에 원인을 먼저 설명해야 합니다.",
+    overviewWhHint:
+      "실사 재고 가치를 많이 보유한 창고 — 차이가 있을 때 통제·분석을 우선하세요.",
+    overviewMonthChartTitle: "월별 차이 개요",
+    overviewMonthTrendHint:
+      "필터된 기준: 보라 선 = 월별 차이 합(왼쪽 축), 초록 선 = 코드별 차이 합(오른쪽 축).",
+    overviewTopCodeChartTitle: "코드별 차이가 가장 큰 CODE",
+    overviewCodeBarHint:
+      "코드별 차가 큰 품목 — 회의에서는 창고·원인부터 짚습니다.",
+    overviewChartEmpty: "표시할 STATUS 데이터가 부족합니다.",
+    overviewWhChartEmpty: "창고·금액 데이터가 부족합니다.",
+    tablePageSummary: "{{page}}/{{total}} 페이지 · {{count}}행",
+    paginationPrev: "이전",
+    paginationNext: "다음",
   },
   common: {
     loading: "데이터 로딩 중...",
@@ -955,8 +1091,7 @@ const ko = {
     workingHoursHint:
       "HH:MM. 주간: 출근이 06:00~08:00 미만이면 기준 출근은 08:00; 06:00 미만은 실제 출근 시각 유지. 근무시간=min(차이, 8시간); 퇴근이 17:30 이후면 연장 열 참고.",
     overtimeHours: "연장근무",
-    overtimeHoursHint:
-      "퇴근이 17:30 이후: 17:00부터 30분당 0.5시간 연장.",
+    overtimeHoursHint: "퇴근이 17:30 이후: 17:00부터 30분당 0.5시간 연장.",
     offDayOvertimeHours: "TC off",
     offDayOvertimeHoursHint:
       "레거시 열: 휴무일 근무 시간은 더 이상 여기에 두지 않습니다(근무시간 열로 이동). 항상 «-».",
@@ -1029,8 +1164,7 @@ const ko = {
     comboDashboardGroupLabel: "KPI 그룹",
     comboDashboardGroupHr: "인사",
     comboDashboardGroupProduction: "생산",
-    comboDashboardGroupHintHr:
-      "인사: 보전, 지각, 야간, 각종 휴가·휴직.",
+    comboDashboardGroupHintHr: "인사: 보전, 지각, 야간, 각종 휴가·휴직.",
     comboDashboardGroupHintProduction:
       "생산: 전체 인원, 광범위 출근, 비표준 출근 시각, # HH:MM.",
     buGioCong: "근무시간 보전",
@@ -1075,8 +1209,7 @@ const ko = {
     monthlyDiligence: "근태율",
     monthlyDiligenceTooltip:
       "선택한 날짜가 속한 달 기준 비율입니다. 이번 달은 오늘까지 집계; 지난 달은 해당 월 전체. 출산휴가: 해당 일의 출근 시간이 Thai sản/TS이거나, 그날 PN/근태 메모에 출산 표기 시 그날은 근태율에서 제외. 연차만 쓰면 만점 처리될 수 있으니 출산은 Thai sản 또는 메모에 표기. PN 칸(요약)에 출산 표기 시 열 숨김.",
-    monthlyDiligenceNote:
-      "근태율: 해당 달 기준이며, 이번 달은 오늘까지 반영.",
+    monthlyDiligenceNote: "근태율: 해당 달 기준이며, 이번 달은 오늘까지 반영.",
     monthlyDiligenceExcludedMaternity:
       "근태율 미적용: 연차(PN) 칸에 출산휴가(Thai sản/TS)로 표기된 경우.",
     actions: "작업",
@@ -1093,6 +1226,11 @@ const ko = {
     printOvertimeOpened: "✅ 연장근무 인쇄 창을 열었습니다 ({{count}}명)",
     printAttendanceOpened: "✅ 출근부 인쇄 창을 열었습니다 ({{count}}명)",
     noCompensationEmployees: "보상근무 직원이 없습니다",
+    seasonalKpStreakTitle: "무급결근 KP (연속 2일 이상)",
+    seasonalKpStreakEmpty:
+      "KP가 연속 2일 이상인 직원이 없습니다 (선택한 날 포함).",
+    seasonalKpStreakColDays: "KP 연속 일수",
+    seasonalKpStreakLoading: "불러오는 중…",
     overtimeFormTitle: "연장근무 신청서",
     exportExcelDateRange: "Excel 내보내기 (기간)",
     exportExcelDateRangeHint: "시작일 ~ 종료일 — 한 파일",
@@ -1104,7 +1242,8 @@ const ko = {
     exportRangeWorking: "불러오는 중…",
     exportRangeConfirm: "파일 내보내기",
     exportRangeFillDates: "시작일과 종료일을 모두 선택하세요 (YYYY-MM-DD).",
-    exportRangeInvalid: "날짜 범위가 올바르지 않거나 시작일이 종료일보다 늦습니다.",
+    exportRangeInvalid:
+      "날짜 범위가 올바르지 않거나 시작일이 종료일보다 늦습니다.",
     exportRangeTooLong:
       "한 번에 최대 366일까지 내보낼 수 있습니다. 기간을 줄여 주세요.",
     exportRangeNoData:
@@ -1155,8 +1294,7 @@ const ko = {
     exportOffDaySuffix: "휴무일",
     linkAttendance: "직원 출석부",
     dateLabel: "날짜",
-    calcPlaceholder:
-      "급여 계산 영역(매개변수, 수식 등) — 추후 추가 예정.",
+    calcPlaceholder: "급여 계산 영역(매개변수, 수식 등) — 추후 추가 예정.",
     allDepts: "전체 부서",
     totalEmployees: "총 인원(필터 후)",
     classification: "휴가 유형",
@@ -1167,8 +1305,7 @@ const ko = {
     title: "출근 기반 급여 추정",
     subtitle:
       "attendance/{날짜} 데이터와 출근 통계와 동일한 분류 로직을 사용합니다.",
-    disclaimer:
-      "참고용 결과입니다. 실제 급여 규정과 다를 수 있습니다.",
+    disclaimer: "참고용 결과입니다. 실제 급여 규정과 다를 수 있습니다.",
     backAttendance: "직원 출석부",
     pleaseLogin: "로그인해 주세요.",
     error: "출근 데이터를 불러오지 못했습니다. 잠시 후 다시 시도하세요.",
@@ -1198,13 +1335,10 @@ const ko = {
     monthlyTimesheetTitle: "월간 출근표",
     monthlyTimesheetHint:
       "직원당 7행: 1행은 기본근무/휴가, 이후 행은 TC 계수별 시간(0,3~3,9).",
-    monthlyTimesheetCoeffLegendTitle:
-      "연장·야간·휴무·공휴일 계수 안내",
-    monthlyTimesheetCoeffL0:
-      "평일 기본 근무: 계수 0 — 일 칸에 표시하지 않음.",
+    monthlyTimesheetCoeffLegendTitle: "연장·야간·휴무·공휴일 계수 안내",
+    monthlyTimesheetCoeffL0: "평일 기본 근무: 계수 0 — 일 칸에 표시하지 않음.",
     monthlyTimesheetCoeffL03: "야간(05:00까지): 계수 0,3.",
-    monthlyTimesheetCoeffL15:
-      "평일 연장(17:00 이후 + 조기 서류 시): 계수 1,5.",
+    monthlyTimesheetCoeffL15: "평일 연장(17:00 이후 + 조기 서류 시): 계수 1,5.",
     monthlyTimesheetCoeffL20:
       "야간 연장(05:00 이후) 또는 휴무 주간(합산): 계수 2,0.",
     monthlyTimesheetCoeffL27: "휴무 야간(합산): 계수 2,7.",
@@ -1215,8 +1349,7 @@ const ko = {
     monthlyTimesheetLoading: "출근 데이터 불러오는 중…",
     monthlyTimesheetEmpty: "이 달에 출근 데이터가 없습니다.",
     monthlyTimesheetError: "불러오기 실패: {{error}}",
-    monthlyTimesheetNoRowsAfterFilter:
-      "검색·부서 필터에 맞는 직원이 없습니다.",
+    monthlyTimesheetNoRowsAfterFilter: "검색·부서 필터에 맞는 직원이 없습니다.",
     monthlyTimesheetColStt: "번호",
     monthlyTimesheetColMnv: "사번",
     monthlyTimesheetColName: "이름",

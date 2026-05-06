@@ -40,6 +40,11 @@ export const menuConfig = [
             label: "navbar.qrCodeGenerator",
             path: "/qr-code-generator",
           },
+          {
+            key: "inventoryDashboard",
+            label: "navbar.inventoryDashboard",
+            path: "/stock-variance",
+          },
         ],
       },
 
@@ -140,6 +145,7 @@ export const routeConfig = [
   { path: "/mold", element: "MoldManager" },
   { path: "/performance", element: "PerformanceChart" },
   { path: "/qr-code-generator", element: "QRCodeGenerator" },
+  { path: "/stock-variance", element: "WarehouseInventoryDashboard" },
   { path: "/attendance-list", element: "AttendanceList" },
   { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
   { path: "/attendance-salary", element: "PayrollSalaryCalculator" },

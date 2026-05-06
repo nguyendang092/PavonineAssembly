@@ -233,7 +233,7 @@ export default function PerformanceChart() {
           </div>
         ) : (
           <div className="mx-auto flex h-full max-w-7xl flex-col">
-            <header className="dashboard-report-surface mb-3 rounded-2xl border border-slate-200/90 bg-white/90 px-4 py-3 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/90 md:mb-4 md:px-6 md:py-4">
+            <header className="dashboard-report-surface mb-3 rounded-2xl border border-slate-200/90 bg-white/90 px-4 py-3 text-center dark:border-slate-700 dark:bg-slate-900/90 md:mb-4 md:px-6 md:py-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-400">
                 {t("performanceChart.sidebarSubtitle")}
               </p>

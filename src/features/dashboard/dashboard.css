@@ -29,3 +29,42 @@
     color: #0f172a !important;
   }
 }
+
+/* Warehouse inventory charts — canvas breathing room + soft frame */
+.wah-inv-chart-inner {
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(248, 250, 252, 0.85) 45%,
+    rgba(238, 242, 255, 0.65) 100%
+  );
+  padding: 0.625rem;
+  border: 1px solid rgba(129, 140, 248, 0.35);
+}
+
+.dark .wah-inv-chart-inner {
+  background: linear-gradient(
+    165deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(30, 27, 75, 0.55) 100%
+  );
+  border-color: rgba(99, 102, 241, 0.45);
+}
+
+/* Top kho bar — neutral panel (single-tone chart) */
+.wah-inv-chart-inner.wah-inv-wh-bar-minimal {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.dark .wah-inv-chart-inner.wah-inv-wh-bar-minimal {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+/* Chart panels — flat (no drop shadow on wrappers; datalabels use canvas, no CSS shadow) */
+.dashboard-chart-panel,
+.wah-inv-chart-inner {
+  box-shadow: none !important;
+}

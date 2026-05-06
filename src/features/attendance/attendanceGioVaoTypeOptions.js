@@ -166,6 +166,18 @@ export function getAttendanceLeaveTypeRaw(emp) {
     .replace(/\u00a0/g, " ");
 }
 
+/** Chuỗi `loaiPhep` (đã migrate legacy nếu cần) khớp «Không phép» / KP. */
+export function isAttendanceLeaveTypeKhongPhep(raw) {
+  const t = String(raw ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ");
+  if (!t) return false;
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  return matched?.shortLabel === "KP";
+}
+
 /**
  * Chỉ coi là nghỉ thực sự khi không phải các trạng thái vẫn có thể đi làm / tính giờ.
  * `BGC` (Bù giờ công) và `VT` (Vào trễ) không chặn giờ công trên bảng lương.

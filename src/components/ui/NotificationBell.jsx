@@ -74,12 +74,15 @@ export default function NotificationBell({
           <div className="noti-bell-header">
             <div className="noti-bell-title">{titleDisplay}</div>
             <div className="noti-bell-header-actions">
-              <button
-                onClick={onExport}
-                className="noti-bell-btn noti-bell-btn--export"
-              >
-                {labelDisplay}
-              </button>
+              {typeof onExport === "function" ? (
+                <button
+                  onClick={onExport}
+                  className="noti-bell-btn noti-bell-btn--export"
+                  type="button"
+                >
+                  {labelDisplay}
+                </button>
+              ) : null}
               <button
                 onClick={() => setOpen(false)}
                 className="noti-bell-btn noti-bell-btn--close"

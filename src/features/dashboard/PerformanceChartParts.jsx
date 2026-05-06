@@ -95,7 +95,7 @@ export function PerformanceDataTable({
   const prevWeek = currentWeekNumber - 1;
 
   return (
-    <div className="dashboard-report-surface mb-2 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 md:mb-4">
+    <div className="dashboard-chart-panel dashboard-report-surface mb-2 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white dark:border-slate-700 dark:bg-slate-900 md:mb-4">
       <div className="flex flex-col gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 px-2 py-2 md:flex-row md:items-center md:justify-between md:px-4">
         <h3 className="text-xs font-semibold text-white md:text-sm">
           <span className="hidden sm:inline">
@@ -346,7 +346,7 @@ export function PerformanceBarChartCard({
   return (
     <div
       ref={cardRef}
-      className="dashboard-report-surface overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
+      className="dashboard-chart-panel dashboard-report-surface overflow-hidden rounded-xl border border-gray-100 bg-white dark:border-slate-700 dark:bg-slate-900"
     >
       <div className="flex flex-col gap-2 bg-gradient-to-r from-slate-700 to-slate-900 px-2 py-2 md:flex-row md:items-center md:justify-between md:px-4">
         <h3 className="text-xs font-semibold text-white md:text-sm">
