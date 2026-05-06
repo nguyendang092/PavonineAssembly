@@ -137,6 +137,15 @@ export function resolveWarehouseInventoryColumns(headers) {
       setOnce("lineAmount", i);
       return;
     }
+    if (
+      /차이\s*금액/.test(r) ||
+      /so\s*tien\s*cl/i.test(rLower) ||
+      /số\s*tiền\s*cl/i.test(r) ||
+      /chenh\s*lech\s*tien/i.test(rLower)
+    ) {
+      setOnce("diffAmount", i);
+      return;
+    }
     if (/ghi\s*chú|ghi\s*chu|notes/i.test(r)) {
       setOnce("notes", i);
       return;
@@ -202,6 +211,7 @@ export function parseWarehouseInventoryMatrix(matrix) {
     let amountActual = parseFlexibleNumber(pick(cells, colMap, "amountActual"));
     const amountErp = parseFlexibleNumber(pick(cells, colMap, "amountErp"));
     const lineAmount = parseFlexibleNumber(pick(cells, colMap, "lineAmount"));
+    const diffAmount = parseFlexibleNumber(pick(cells, colMap, "diffAmount"));
 
     if (amountActual == null && unitPrice != null && actualQty != null) {
       amountActual = unitPrice * actualQty;
@@ -231,6 +241,7 @@ export function parseWarehouseInventoryMatrix(matrix) {
       unitPrice,
       amountActual,
       amountErp,
+      diffAmount,
     };
   });
 

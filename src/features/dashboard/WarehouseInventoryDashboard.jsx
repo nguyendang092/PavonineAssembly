@@ -1,4 +1,9 @@
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, {
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   Chart as ChartJS,
@@ -15,7 +20,7 @@ import {
   PointElement,
 } from "chart.js";
 import { Doughnut, Bar, Line } from "react-chartjs-2";
-import { FiUpload, FiRefreshCw, FiPrinter, FiFilter } from "react-icons/fi";
+import { FiUpload, FiRefreshCw, FiFilter } from "react-icons/fi";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import {
   buildMonthCodeGapPivot,
@@ -334,6 +339,14 @@ export default function WarehouseInventoryDashboard() {
         typeof r.amountActual === "number" && Number.isFinite(r.amountActual)
           ? r.amountActual
           : 0;
+      const amtErp =
+        typeof r.amountErp === "number" && Number.isFinite(r.amountErp)
+          ? r.amountErp
+          : 0;
+      const diffAmount =
+        typeof r.diffAmount === "number" && Number.isFinite(r.diffAmount)
+          ? r.diffAmount
+          : amtActual - amtErp;
       if (!grouped.has(key)) {
         grouped.set(key, {
           whCode: whCodeOnly || "—",
@@ -346,8 +359,9 @@ export default function WarehouseInventoryDashboard() {
           actualQty: 0,
           sysQty: 0,
           amountActual: 0,
+          gapAmount: 0,
           monthlyDiff: 0,
-          statusSet: new Set(),
+          reasonSet: new Set(),
           unitSet: new Set(),
         });
       }
@@ -355,13 +369,14 @@ export default function WarehouseInventoryDashboard() {
       if (row.whCode === "—" && whCodeOnly) row.whCode = whCodeOnly;
       if (row.warehouseName === "—" && whNameOnly)
         row.warehouseName = whNameOnly;
-      const statusCell = String(r.status ?? "").trim();
-      if (statusCell) row.statusSet.add(statusCell);
+      const reasonCell = String(r.reason ?? "").trim();
+      if (reasonCell) row.reasonSet.add(reasonCell);
       const unitCell = String(r.unit ?? "").trim();
       if (unitCell) row.unitSet.add(unitCell);
       row.actualQty += actualQty;
       row.sysQty += sysQty;
       row.amountActual += amtActual;
+      row.gapAmount += diffAmount;
       row.monthlyDiff = row.actualQty - row.sysQty;
     }
 
@@ -387,21 +402,19 @@ export default function WarehouseInventoryDashboard() {
     }
 
     const rows = [...grouped.values()].map((g) => {
-      const statuses = [...g.statusSet].sort((a, b) =>
-        a.localeCompare(b, "vi"),
-      );
+      const reasons = [...g.reasonSet].sort((a, b) => a.localeCompare(b, "vi"));
       const units = [...g.unitSet].sort((a, b) => a.localeCompare(b, "vi"));
       const rest = { ...g };
-      delete rest.statusSet;
+      delete rest.reasonSet;
       delete rest.unitSet;
       const k = `${g.whFilterKey}__${g.category}__${g.code}`;
       const prevActual =
         prevActualByKeyMonth.get(`${k}__${g.monthKey}`) ?? null;
       return {
         ...rest,
-        status: statuses.length ? statuses.join(", ") : "—",
+        reason: reasons.length ? reasons.join(", ") : "—",
         unit: units.length ? units.join(", ") : "—",
-        // 코드별 월 증감: 현재 월 실사수량 - 직전(가장 가까운) 월 실사수량
+        // 코드별 월 증감(실사수량): 현재 월 실사수량 - 직전 월 실사수량
         codeDelta: prevActual == null ? 0 : (g.actualQty ?? 0) - prevActual,
         hasPrevMonth: prevActual != null,
       };
@@ -418,7 +431,7 @@ export default function WarehouseInventoryDashboard() {
       if (a.category !== b.category)
         return a.category.localeCompare(b.category, "vi");
       if (a.code !== b.code) return a.code.localeCompare(b.code, "vi");
-      if (a.status !== b.status) return a.status.localeCompare(b.status, "vi");
+      if (a.reason !== b.reason) return a.reason.localeCompare(b.reason, "vi");
       return a.unit.localeCompare(b.unit, "vi");
     });
     return rows;
@@ -442,11 +455,17 @@ export default function WarehouseInventoryDashboard() {
 
   const filteredStructuredRows = useMemo(() => {
     const search = codeSearch.trim().toLowerCase();
+    const isGapDisplayZero = (v) => {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return true;
+      // Đồng bộ với cách hiển thị GAP (maximumFractionDigits: 4)
+      return Math.round(n * 10000) === 0;
+    };
     const baseRows = structuredMonthCodeRows.filter((r) => {
       if (whFilter && r.whFilterKey !== whFilter) return false;
       if (categoryFilter && r.category !== categoryFilter) return false;
       if (monthFilter && r.monthKey !== monthFilter) return false;
-      if (hideZeroMonthlyDiff && Math.abs(r.monthlyDiff) < 1e-9) return false;
+      if (hideZeroMonthlyDiff && isGapDisplayZero(r.monthlyDiff)) return false;
       if (hideZeroActualQty && Math.abs(r.actualQty) < 1e-9) return false;
       if (!search) return true;
       return (
@@ -456,7 +475,7 @@ export default function WarehouseInventoryDashboard() {
         String(r.warehouseName ?? "")
           .toLowerCase()
           .includes(search) ||
-        String(r.status ?? "")
+        String(r.reason ?? "")
           .toLowerCase()
           .includes(search) ||
         String(r.unit ?? "")
@@ -512,7 +531,7 @@ export default function WarehouseInventoryDashboard() {
         (a, b) =>
           compareByNatural(a, b) ||
           a.code.localeCompare(b.code, "vi") ||
-          a.status.localeCompare(b.status, "vi") ||
+          a.reason.localeCompare(b.reason, "vi") ||
           a.unit.localeCompare(b.unit, "vi"),
       );
     }
@@ -533,11 +552,13 @@ export default function WarehouseInventoryDashboard() {
     let sys = 0;
     let monthlyDiff = 0;
     let codeDiff = 0;
+    let gapAmount = 0;
     for (const r of filteredStructuredRows) {
       actual += r.actualQty;
       sys += r.sysQty;
       monthlyDiff += r.monthlyDiff;
       codeDiff += r.codeDelta;
+      gapAmount += typeof r.gapAmount === "number" ? r.gapAmount : 0;
     }
     return {
       rows: filteredStructuredRows.length,
@@ -545,6 +566,8 @@ export default function WarehouseInventoryDashboard() {
       sys,
       monthlyDiff,
       codeDiff,
+      gapAmount,
+      qtyDiffRate: Math.abs(actual) < 1e-9 ? null : monthlyDiff / actual,
     };
   }, [filteredStructuredRows]);
 
@@ -578,12 +601,12 @@ export default function WarehouseInventoryDashboard() {
         monthMap.set(r.monthKey, {
           label: r.month,
           monthlyDiff: 0,
-          codeDiff: 0,
+          monthlyGapAbs: 0,
         });
       }
       const m = monthMap.get(r.monthKey);
       m.monthlyDiff += r.monthlyDiff;
-      m.codeDiff += r.codeDelta;
+      m.monthlyGapAbs += Math.abs(r.monthlyDiff ?? 0);
     }
     const rows = [...monthMap.entries()]
       .sort(([a], [b]) => String(a).localeCompare(String(b)))
@@ -607,8 +630,8 @@ export default function WarehouseInventoryDashboard() {
           pointBorderWidth: 2,
         },
         {
-          label: tl("colCodeMonthSwingKr", "코드별 월 증감 (실사수량)"),
-          data: rows.map((r) => r.codeDiff),
+          label: tl("monthGapAbsTotal", "총 |GAP|"),
+          data: rows.map((r) => r.monthlyGapAbs),
           borderColor: "#059669",
           backgroundColor: "rgba(5, 150, 105, 0.13)",
           borderWidth: 3,
@@ -629,24 +652,24 @@ export default function WarehouseInventoryDashboard() {
     const map = new Map();
     for (const r of filteredStructuredRows) {
       if (!map.has(r.code)) map.set(r.code, 0);
-      map.set(r.code, (map.get(r.code) || 0) + r.codeDelta);
+      map.set(r.code, (map.get(r.code) || 0) + (r.monthlyDiff ?? 0));
     }
     const top = [...map.entries()]
       .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-      .slice(0, 12);
+      .slice(0, 15);
     return {
       labels: top.map(([code]) =>
         code === "∅" ? tl("codeEmptyLabel", "(코드 없음)") : code,
       ),
       datasets: [
         {
-          label: tl("colCodeMonthSwingKr", "코드별 월 증감 (실사수량)"),
+          label: tl("topCodeByGapLabel", "코드별 GAP"),
           data: top.map(([, v]) => v),
           backgroundColor: top.map(([, v]) =>
-            v >= 0 ? "rgba(220,38,38,0.88)" : "rgba(37,99,235,0.88)",
+            v >= 0 ? "rgba(37,99,235,0.88)" : "rgba(220,38,38,0.88)",
           ),
           borderColor: top.map(([, v]) =>
-            v >= 0 ? "rgba(254,226,226,0.98)" : "rgba(219,234,254,0.98)",
+            v >= 0 ? "rgba(219,234,254,0.98)" : "rgba(254,226,226,0.98)",
           ),
           borderWidth: 2,
           borderRadius: 10,
@@ -772,8 +795,6 @@ export default function WarehouseInventoryDashboard() {
     setWhFilter("");
   }, []);
 
-  const printPage = useCallback(() => window.print(), []);
-
   return (
     <div className="dashboard-print-fill w-full px-2 py-3 sm:px-3">
       <header className="dashboard-no-print mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -802,13 +823,6 @@ export default function WarehouseInventoryDashboard() {
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-bold text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
               >
                 <FiRefreshCw /> {tl("clearBtn", "데이터 초기화")}
-              </button>
-              <button
-                type="button"
-                onClick={printPage}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-bold text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-              >
-                <FiPrinter /> {tl("printBtn", "In")}
               </button>
             </>
           ) : null}
@@ -866,7 +880,7 @@ export default function WarehouseInventoryDashboard() {
               )}
             </h2>
 
-            <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
               <KpiCard
                 label={tl("colActualQty", "실사수량")}
                 value={structuredSummary.actual.toLocaleString("vi-VN", {
@@ -889,11 +903,24 @@ export default function WarehouseInventoryDashboard() {
                 tone="rose"
               />
               <KpiCard
-                label={tl("colCodeDiffKr", "코드별 차이")}
-                value={structuredSummary.codeDiff.toLocaleString("vi-VN", {
-                  maximumFractionDigits: 4,
-                })}
+                label={tl("gapAmountLabel", "Số tiền GAP")}
+                value={formatKRW(structuredSummary.gapAmount)}
                 tone="emerald"
+              />
+              <KpiCard
+                label={tl("qtyDiffRateLabel", "Tỉ lệ chênh lệch")}
+                value={
+                  structuredSummary.qtyDiffRate == null
+                    ? "—"
+                    : `${(structuredSummary.qtyDiffRate * 100).toLocaleString(
+                        "vi-VN",
+                        {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        },
+                      )}%`
+                }
+                tone="slate"
               />
             </div>
 
@@ -1163,12 +1190,6 @@ export default function WarehouseInventoryDashboard() {
                         "Tổng quan chênh lệch theo tháng",
                       )}
                     </h4>
-                    <p className="mt-1 text-[11px] font-semibold leading-relaxed text-slate-600 dark:text-slate-400">
-                      {tl(
-                        "overviewMonthTrendHint",
-                        "Theo dữ liệu đang lọc: đường tím = tổng 월별 차이 (trục trái), đường xanh lá = tổng 코드별 차이 (trục phải).",
-                      )}
-                    </p>
                     <div className="mt-3">
                       <div className="wah-inv-chart-inner h-[268px]">
                         <Line
@@ -1266,7 +1287,7 @@ export default function WarehouseInventoryDashboard() {
                     <h4 className="text-xs font-black uppercase tracking-wide text-indigo-950 dark:text-indigo-100">
                       {tl(
                         "overviewTopCodeChartTitle",
-                        "Top CODE có 코드별 차이 lớn nhất",
+                        "TOP MÃ CHÊNH LỆCH THEO GAP",
                       )}
                     </h4>
                     <div className="mt-3">
@@ -1307,8 +1328,8 @@ export default function WarehouseInventoryDashboard() {
                                     ctx.dataset.data[ctx.dataIndex],
                                   );
                                   return v >= 0
-                                    ? "rgba(185,28,28,0.94)"
-                                    : "rgba(29,78,216,0.94)";
+                                    ? "rgba(29,78,216,0.94)"
+                                    : "rgba(185,28,28,0.94)";
                                 },
                                 formatter: (v) =>
                                   Number(v).toLocaleString("vi-VN", {
@@ -1579,7 +1600,7 @@ export default function WarehouseInventoryDashboard() {
                         CODE
                       </th>
                       <th className="whitespace-nowrap px-2 py-2.5 text-[11px] font-black uppercase tracking-wide text-cyan-100">
-                        {tl("colStatus", "상태")}
+                        {tl("colReason", "LÝ DO")}
                       </th>
                       <th className="whitespace-nowrap px-2 py-2.5 text-[11px] font-black uppercase tracking-wide text-sky-100">
                         {tl("colUnit", "단위")}
@@ -1652,10 +1673,10 @@ export default function WarehouseInventoryDashboard() {
                         <td
                           className="max-w-[160px] truncate px-2 py-1.5 text-[11px] font-semibold text-cyan-900 dark:text-cyan-200"
                           title={
-                            r.status !== "—" ? String(r.status) : undefined
+                            r.reason !== "—" ? String(r.reason) : undefined
                           }
                         >
-                          {r.status}
+                          {r.reason}
                         </td>
                         <td
                           className="max-w-[100px] truncate px-2 py-1.5 text-[11px] font-semibold text-sky-900 dark:text-sky-200"
