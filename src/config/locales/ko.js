@@ -773,6 +773,10 @@ const ko = {
     actions: "작업",
     fromDate: "시작일",
     toDate: "종료일",
+    pageNotFound: "페이지를 찾을 수 없습니다",
+    pageNotFoundHint:
+      "주소가 없거나 변경되었을 수 있습니다. 링크를 확인하거나 아래로 이동하세요.",
+    backToHome: "홈으로",
   },
   attendanceTable: {
     reportLabel: "근태 보고서",

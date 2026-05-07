@@ -5,9 +5,11 @@ import { useUser } from "@/contexts/UserContext";
 
 function safeRedirectTarget(from) {
   if (!from || typeof from !== "string") return "/";
-  const path = from.split("?")[0];
-  if (path === "/login" || path === "/email/login" || path === "/normal")
-    return "/";
+  const pathOnly = from.split("?")[0];
+  if (!pathOnly.startsWith("/") || pathOnly.startsWith("//")) return "/";
+  // Tránh vòng lặp /login; `/email/login` là màn đăng nhập riêng → về bản tin
+  if (pathOnly === "/login") return "/";
+  if (pathOnly === "/email/login") return "/email";
   return from;
 }
 

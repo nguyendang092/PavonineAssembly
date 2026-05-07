@@ -773,6 +773,10 @@ const vi = {
     actions: "Thao tác",
     fromDate: "Từ ngày",
     toDate: "Đến ngày",
+    pageNotFound: "Không tìm thấy trang",
+    pageNotFoundHint:
+      "Đường dẫn không tồn tại hoặc đã đổi. Kiểm tra lại link hoặc dùng nút bên dưới.",
+    backToHome: "Về trang chủ",
   },
   attendanceTable: {
     reportLabel: "Báo cáo thời gian",

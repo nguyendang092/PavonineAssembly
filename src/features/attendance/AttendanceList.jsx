@@ -1582,10 +1582,22 @@ function AttendanceList({
       margin-left: auto;
       margin-right: auto;
     }
-    
-    th, td {
+    th {
+    border: 1px solid #000;
+      padding: 0px 10px;
+      text-align: center;
+      vertical-align: middle;
+      color: #000;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      line-height: 1.05;
+    }
+    td {
+    height: 18px;
+    vertical-align: middle;
+  line-height: 1.1;
       border: 1px solid #000;
-      padding: 3px 1px;
+      padding: 3px 5px;
       text-align: center;
       vertical-align: middle;
       color: #000;
@@ -1596,7 +1608,7 @@ function AttendanceList({
     th {
       background-color: #b0b0b0;
       font-weight: bold;
-      font-size: 6.5pt;
+      font-size: 6pt;
     }
     
     .name-col, .dept-col {
@@ -1713,21 +1725,18 @@ function AttendanceList({
   
   <table>
     <thead>
-      <tr style="height: 70px;">
+      <tr style="height: 30px;">
         <th style="width: 3%;">STT</th>
         <th style="width: 5%;">MNV</th>
-        <th style="width: 26%;">Họ và tên</th>
+        <th style="width: 20%;">Họ và tên</th>
         <th style="width: 7%;">Ngày bắt đầu</th>
         <th style="width: 5%;">Mã BP</th>
-        <th style="width: 11%;">Bộ phận</th>
-        <th style="width: 7%;">Tổng thời gian tăng ca</th>
-        <th style="width: 8%;">Thời gian dự kiến<br/>Từ …h đến …h</th>
-        <th style="width: 5%;">Thời gian làm thêm<br/>(Hrs)</th>
-        <th style="width: 9%;">Chữ ký người lao động</th>
-        <th style="width: 8%;">Thời gian thực tế<br/>Từ …h đến …h</th>
-        <th style="width: 5%;">Số giờ làm thêm/ ngày</th>
+        <th style="width: 7%;">Bộ phận</th>
+        <th style="width: 10%;">Thời gian tăng ca<br/>Từ …h đến …h</th>
+        <th style="width: 7%;">Số giờ tăng ca</th>
+        <th style="width: 9%;">Chữ ký NLĐ</th>
         <th style="width: 5%;">Ghi chú</th>
-      </tr>
+      </>
     </thead>
     <tbody>
 `;
@@ -1741,9 +1750,6 @@ function AttendanceList({
         <td>${emp.ngayVaoLam || ""}</td>
         <td>${emp.maBoPhan || ""}</td>
         <td class="dept-col">${emp.boPhan || ""}</td>
-        <td></td>
-        <td></td>
-        <td></td>
         <td></td>
         <td></td>
         <td></td>
@@ -2762,30 +2768,23 @@ function AttendanceList({
                             <tr
                               key={emp.id}
                               style={{
-                                background:
-                                  idx % 2 === 0 ? "#f8fbff" : "#fff",
+                                background: idx % 2 === 0 ? "#f8fbff" : "#fff",
                               }}
                             >
-                              <td
-                                style={{ textAlign: "center", padding: 8 }}
-                              >
+                              <td style={{ textAlign: "center", padding: 8 }}>
                                 {idx + 1}
                               </td>
-                              <td
-                                style={{ textAlign: "center", padding: 8 }}
-                              >
+                              <td style={{ textAlign: "center", padding: 8 }}>
                                 {emp.mnv}
                               </td>
                               <td style={{ padding: 8 }}>{emp.hoVaTen}</td>
                               <td style={{ padding: 8 }}>{emp.boPhan}</td>
-                              <td
-                                style={{ textAlign: "center", padding: 8 }}
-                              >
-                                {formatAttendanceTimeInColumnDisplay(emp.gioVao)}
+                              <td style={{ textAlign: "center", padding: 8 }}>
+                                {formatAttendanceTimeInColumnDisplay(
+                                  emp.gioVao,
+                                )}
                               </td>
-                              <td
-                                style={{ textAlign: "center", padding: 8 }}
-                              >
+                              <td style={{ textAlign: "center", padding: 8 }}>
                                 <span
                                   className={`font-semibold ${getAttendanceLeaveTypeColorClassName(
                                     getAttendanceLeaveTypeRaw(emp),
@@ -2796,9 +2795,7 @@ function AttendanceList({
                                   )}
                                 </span>
                               </td>
-                              <td
-                                style={{ textAlign: "center", padding: 8 }}
-                              >
+                              <td style={{ textAlign: "center", padding: 8 }}>
                                 {emp.gioRa || "-"}
                               </td>
                             </tr>
@@ -3293,7 +3290,7 @@ function AttendanceList({
             {user && (
               <div
                 ref={actionDropdownRef}
-              className="relative action-dropdown shrink-0 hidden sm:block"
+                className="relative action-dropdown shrink-0 hidden sm:block"
               >
                 <button
                   ref={actionDropdownAnchorRef}

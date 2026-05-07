@@ -27,6 +27,7 @@ import {
 } from "react-router-dom";
 import "@/styles/App.css";
 import LoadingBlock from "@/components/ui/LoadingBlock";
+import NotFoundPage from "@/components/ui/NotFoundPage";
 import { lazyImport } from "@/utils/lazyImport";
 /** File rất lớn — lazy() hay gây "Failed to fetch" trong dev (timeout/HMR); import tĩnh để tải cùng graph App. */
 import AttendanceList from "@/features/attendance/AttendanceList";
@@ -251,7 +252,7 @@ const App = () => {
           <div
             className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
               isScrolled
-                ? "bg-white/80 shadow-md backdrop-blur-md dark:bg-slate-900/85"
+                ? "bg-transparent"
                 : "bg-transparent"
             }`}
           >
@@ -280,6 +281,15 @@ const App = () => {
                     </ProtectedRoute>
                   }
                 />
+                {/* Alias: link cũ / bookmark sai → đúng trang điểm danh */}
+                <Route
+                  path="/attendance-table"
+                  element={
+                    <ProtectedRoute>
+                      <Navigate to="/attendance-list" replace />
+                    </ProtectedRoute>
+                  }
+                />
                 {routeConfig
                   .filter((r) => !PUBLIC_ROUTE_PATHS.has(r.path))
                   .map((r) => {
@@ -296,7 +306,7 @@ const App = () => {
                   path="*"
                   element={
                     <ProtectedRoute>
-                      <Navigate to="/" replace />
+                      <NotFoundPage />
                     </ProtectedRoute>
                   }
                 />
