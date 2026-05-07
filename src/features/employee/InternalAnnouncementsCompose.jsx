@@ -355,7 +355,8 @@ function InternalAnnouncementsCompose({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex flex-col bg-black/45 p-0 sm:p-4 sm:items-center sm:justify-center"
+        className="fixed inset-0 flex flex-col bg-black/45 p-0 sm:p-4 sm:items-center sm:justify-center"
+        style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="compose-title"
@@ -660,7 +661,10 @@ function InternalAnnouncementsCompose({
 
       {/* Preview */}
       {previewOpen ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/50 p-4"
+          style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+        >
           <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
               <span className="font-semibold text-slate-900">

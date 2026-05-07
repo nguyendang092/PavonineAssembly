@@ -671,7 +671,7 @@ const ko = {
     pivotFootnote:
       "각 셀: 같은 코드·해당 월 행 Gap(부호) 합. Δ Gap: 해당 코드 데이터가 있는 달 중 첫·끝 달 차이.",
     hideZeroActualQty: "실제 수량 = 0 행 숨기기",
-    hideZeroMonthlyDiff: "월별 차이 = 0 행 숨기기",
+    hideZeroMonthlyDiff: "GAP = 0 행 숨기기",
     hideZeroCodeDiff: "코드별 차이 = 0 행 숨기기",
     filtersSectionTitle: "보고서 필터",
     filtersSectionHint:
@@ -687,7 +687,7 @@ const ko = {
     colWarehouse: "창고",
     colActualQty: "수량(실사)",
     colSystemQtyKr: "수량(전산)",
-    colMonthlyDiffKr: "월별 차이",
+    colMonthlyDiffKr: "GAP",
     colCodeDiffKr: "코드별 차이",
     colStatus: "STATUS",
     colReason: "사유",

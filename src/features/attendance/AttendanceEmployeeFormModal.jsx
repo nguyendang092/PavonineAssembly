@@ -364,7 +364,10 @@ export default function AttendanceEmployeeFormModal({
   const isRestrictedEdit = isEditMode && !isAdminAccess(user, userRole);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/45 p-3 backdrop-blur-[2px] sm:p-4">
+    <div
+      className="fixed inset-0 flex items-center justify-center overflow-hidden overscroll-none bg-black/45 p-3 backdrop-blur-[2px] sm:p-4"
+      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+    >
       <div
         className={`relative mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-purple-50 via-white to-indigo-100 px-4 py-4 shadow-2xl animate-fadeIn sm:px-5 sm:py-5 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950 dark:border-blue-800 ${
           isEditMode

@@ -2,3 +2,16 @@ html, body, #root {
   height: 100%;
   margin: 0;
 }
+
+:root {
+  /* Unified z-index scale */
+  --z-content: 1;
+  --z-scroll-actions: 80;
+  --z-navbar: 90;
+  --z-navbar-dropdown: 110;
+  --z-navbar-drawer: 980;
+  --z-modal-backdrop: 1200;
+  --z-modal-content: 1210;
+  --z-toast: 1300;
+  --z-loading: 1400;
+}

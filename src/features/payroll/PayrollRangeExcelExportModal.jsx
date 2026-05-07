@@ -35,7 +35,8 @@ export default function PayrollRangeExcelExportModal({
 
   return (
     <div
-      className="fixed inset-0 z-[190] flex items-center justify-center bg-slate-900/50 p-3 backdrop-blur-[1px]"
+      className="fixed inset-0 flex items-center justify-center bg-slate-900/50 p-3 backdrop-blur-[1px]"
+      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="payroll-range-export-title"

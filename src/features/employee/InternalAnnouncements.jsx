@@ -841,7 +841,10 @@ function InternalAnnouncements() {
 
       {/* Reading — mobile full screen */}
       {isNarrow && selectedId && selected ? (
-        <div className="fixed inset-0 z-[1400] flex flex-col overflow-x-hidden bg-white pt-[env(safe-area-inset-top)] dark:bg-slate-950">
+        <div
+          className="fixed inset-0 flex flex-col overflow-x-hidden bg-white pt-[env(safe-area-inset-top)] dark:bg-slate-950"
+          style={{ zIndex: "var(--z-modal-content, 1210)" }}
+        >
           <div className="flex flex-shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-2.5 py-2 dark:border-slate-700 dark:bg-slate-950">
             <button
               type="button"
@@ -921,7 +924,8 @@ function InternalAnnouncements() {
 
       {previewImageSrc ? (
         <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-black/75 p-4"
+          style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
           onClick={handleCloseImagePreview}
         >
           <button

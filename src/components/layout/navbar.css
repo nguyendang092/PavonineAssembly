@@ -7,11 +7,11 @@
     --navbar-dropdown-radius: var(--nav-radius-md);
     --navbar-dropdown-padding: 8px;
     --navbar-dropdown-bridge: 8px;
-    --navbar-z-dropdown: 1300;
-    --navbar-z-nested: 1305;
-    --navbar-z-user-menu: 1310;
-    --navbar-z-mobile-overlay: 9999;
-    --navbar-z-close: 10000;
+    --navbar-z-dropdown: var(--z-navbar-dropdown, 110);
+    --navbar-z-nested: calc(var(--z-navbar-dropdown, 110) + 1);
+    --navbar-z-user-menu: calc(var(--z-navbar-dropdown, 110) + 2);
+    --navbar-z-mobile-overlay: var(--z-navbar-drawer, 980);
+    --navbar-z-close: calc(var(--z-navbar-drawer, 980) + 1);
 }
 
 body {
@@ -188,6 +188,7 @@ body {
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
+    z-index: var(--navbar-z-dropdown);
     margin: 0;
     list-style: none;
     min-width: 220px;

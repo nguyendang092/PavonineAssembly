@@ -817,7 +817,8 @@ function WorkplaceProductionView() {
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-expanded={sidebarOpen}
         aria-label={t("workplaceChart.toggleSidebar")}
-        className="dashboard-no-print fixed left-4 top-20 z-50 flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-md transition hover:bg-slate-50 hover:shadow-lg focus-visible:outline focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+        className="dashboard-no-print fixed left-4 top-20 flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-md transition hover:bg-slate-50 hover:shadow-lg focus-visible:outline focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+        style={{ zIndex: "var(--z-scroll-actions, 80)" }}
       >
         {sidebarOpen ? "✕" : "☰"}
       </button>
@@ -1231,7 +1232,8 @@ function WorkplaceProductionView() {
 
       {dataTableOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto overscroll-contain p-2 sm:p-4"
+          className="fixed inset-0 flex items-center justify-center overflow-y-auto overscroll-contain p-2 sm:p-4"
+          style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="workplace-data-table-title"

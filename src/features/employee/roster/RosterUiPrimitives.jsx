@@ -99,7 +99,8 @@ export function RosterModal({ open, title, onClose, children }) {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
+      className="fixed inset-0 flex items-end justify-center sm:items-center sm:p-6"
+      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="roster-modal-title"
@@ -132,7 +133,8 @@ export function RosterMenu({ open, children }) {
   if (!open) return null;
   return (
     <div
-      className="absolute right-0 top-full z-50 mt-1.5 min-w-[13rem] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-900"
+      className="absolute right-0 top-full mt-1.5 min-w-[13rem] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-900"
+      style={{ zIndex: "var(--z-navbar-dropdown, 110)" }}
       role="menu"
     >
       {children}

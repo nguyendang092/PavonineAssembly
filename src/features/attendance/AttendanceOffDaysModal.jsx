@@ -135,7 +135,8 @@ export default function AttendanceOffDaysModal({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="off-days-modal-title"

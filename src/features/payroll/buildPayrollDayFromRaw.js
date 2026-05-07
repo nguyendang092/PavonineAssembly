@@ -103,10 +103,12 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
  */
 export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
   const parsed = parsePayrollDayFromAttendanceRaw(raw);
-  if (!parsed.payrollEmployees.length) return null;
   const slimEmployees = parsed.payrollEmployees.map((e) =>
     slimPayrollMonthEmployeeRecord(e),
   );
+  /** Chỉ `_meta.isOffDay` / `isHolidayDay` như cửa sổ chọn ngày off/lễ — vẫn cần chunk để đổi màu cột và tính Số ngày công. */
+  const hasMetaCalendarFlags = parsed.isOffDay || parsed.isHolidayDay;
+  if (!slimEmployees.length && !hasMetaCalendarFlags) return null;
   return {
     dateKey,
     employees: slimEmployees,

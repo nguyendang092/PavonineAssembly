@@ -380,15 +380,20 @@ export default function WarehouseInventoryDashboard() {
       row.monthlyDiff = row.actualQty - row.sysQty;
     }
 
-    // 코드별 월 증감(실사수량): 직전 데이터가 있는 월과 비교
+    // 코드별 월 증감(실사수량/실사금액): 직전 데이터가 있는 월과 비교
     // (예: 02와 04만 있고 03이 없으면 04는 02와 비교).
     const actualByKeyMonth = new Map();
+    const amountActualByKeyMonth = new Map();
     for (const g of grouped.values()) {
       const k = `${g.whFilterKey}__${g.category}__${g.code}`;
       if (!actualByKeyMonth.has(k)) actualByKeyMonth.set(k, new Map());
       actualByKeyMonth.get(k).set(g.monthKey, g.actualQty ?? 0);
+      if (!amountActualByKeyMonth.has(k))
+        amountActualByKeyMonth.set(k, new Map());
+      amountActualByKeyMonth.get(k).set(g.monthKey, g.amountActual ?? 0);
     }
     const prevActualByKeyMonth = new Map();
+    const prevAmountActualByKeyMonth = new Map();
     for (const [k, m] of actualByKeyMonth.entries()) {
       const monthsSorted = [...m.keys()].sort((a, b) =>
         String(a).localeCompare(String(b)),
@@ -398,6 +403,9 @@ export default function WarehouseInventoryDashboard() {
         const prevKey = i > 0 ? monthsSorted[i - 1] : null;
         const prevActual = prevKey ? (m.get(prevKey) ?? 0) : null;
         prevActualByKeyMonth.set(`${k}__${monthKey}`, prevActual);
+        const amountMap = amountActualByKeyMonth.get(k);
+        const prevAmountActual = prevKey ? (amountMap?.get(prevKey) ?? 0) : null;
+        prevAmountActualByKeyMonth.set(`${k}__${monthKey}`, prevAmountActual);
       }
     }
 
@@ -410,12 +418,17 @@ export default function WarehouseInventoryDashboard() {
       const k = `${g.whFilterKey}__${g.category}__${g.code}`;
       const prevActual =
         prevActualByKeyMonth.get(`${k}__${g.monthKey}`) ?? null;
+      const prevAmountActual =
+        prevAmountActualByKeyMonth.get(`${k}__${g.monthKey}`) ?? null;
       return {
         ...rest,
         reason: reasons.length ? reasons.join(", ") : "—",
         unit: units.length ? units.join(", ") : "—",
         // 코드별 월 증감(실사수량): 현재 월 실사수량 - 직전 월 실사수량
         codeDelta: prevActual == null ? 0 : (g.actualQty ?? 0) - prevActual,
+        // 코드별 월 증감(실사금액): 현재 월 실사금액 - 직전 월 실사금액
+        amountDelta:
+          prevAmountActual == null ? 0 : (g.amountActual ?? 0) - prevAmountActual,
         hasPrevMonth: prevActual != null,
       };
     });
@@ -502,8 +515,9 @@ export default function WarehouseInventoryDashboard() {
     if (softSortMode === "abs_desc") {
       return [...baseRows].sort(
         (a, b) =>
-          Math.abs(b.codeDelta) - Math.abs(a.codeDelta) ||
-          b.codeDelta - a.codeDelta ||
+          Math.abs(Number(b.amountDelta ?? 0)) -
+            Math.abs(Number(a.amountDelta ?? 0)) ||
+          Number(b.amountDelta ?? 0) - Number(a.amountDelta ?? 0) ||
           compareByNatural(a, b) ||
           0,
       );
@@ -511,8 +525,9 @@ export default function WarehouseInventoryDashboard() {
     if (softSortMode === "pos_desc") {
       return [...baseRows].sort(
         (a, b) =>
-          b.codeDelta - a.codeDelta ||
-          Math.abs(b.codeDelta) - Math.abs(a.codeDelta) ||
+          Number(b.amountDelta ?? 0) - Number(a.amountDelta ?? 0) ||
+          Math.abs(Number(b.amountDelta ?? 0)) -
+            Math.abs(Number(a.amountDelta ?? 0)) ||
           compareByNatural(a, b) ||
           0,
       );
@@ -520,8 +535,9 @@ export default function WarehouseInventoryDashboard() {
     if (softSortMode === "neg_asc") {
       return [...baseRows].sort(
         (a, b) =>
-          a.codeDelta - b.codeDelta ||
-          Math.abs(b.codeDelta) - Math.abs(a.codeDelta) ||
+          Number(a.amountDelta ?? 0) - Number(b.amountDelta ?? 0) ||
+          Math.abs(Number(b.amountDelta ?? 0)) -
+            Math.abs(Number(a.amountDelta ?? 0)) ||
           compareByNatural(a, b) ||
           0,
       );
@@ -1705,7 +1721,7 @@ export default function WarehouseInventoryDashboard() {
                           })}
                         </td>
                         <td className="px-2 py-1.5 tabular-nums text-xs font-semibold text-emerald-900 dark:text-emerald-200">
-                          {formatKRW(r.amountActual ?? 0)}
+                          {formatKRW(r.amountDelta ?? 0)}
                         </td>
                       </tr>
                     ))}

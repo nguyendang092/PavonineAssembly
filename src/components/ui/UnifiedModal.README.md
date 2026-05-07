@@ -253,7 +253,7 @@ const [isLoading, setIsLoading] = useState(false);
 ### 4. Multiple Modals - Đúng z-index
 
 ```jsx
-// Modal chính: z-[110] (mặc định)
+// Modal chính: style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
 <UnifiedModal isOpen={showMain} ... />
 
 // Modal phụ (mở từ modal chính): tự điều chỉnh z-index nếu cần
@@ -275,7 +275,10 @@ const [isLoading, setIsLoading] = useState(false);
 ```jsx
 {
   showPopup && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50"
+      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+    >
       <div className="bg-white rounded-lg p-6 max-w-lg">
         <h3 className="text-xl font-bold mb-4">Tiêu đề</h3>
         <p>Nội dung...</p>

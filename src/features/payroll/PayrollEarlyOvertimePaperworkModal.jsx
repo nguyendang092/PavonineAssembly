@@ -116,7 +116,8 @@ export default function PayrollEarlyOvertimePaperworkModal({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden overscroll-none bg-slate-950/75 p-3 backdrop-blur-sm"
+      className="fixed inset-0 flex items-center justify-center overflow-hidden overscroll-none bg-slate-950/75 p-3 backdrop-blur-sm"
+      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="payroll-early-ot-title"

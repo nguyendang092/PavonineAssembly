@@ -41,7 +41,8 @@ function AlertMessage({ alert: alertProp, message, onClose }) {
 
   return (
     <div
-      className="fixed top-6 left-1/2 z-[100] flex max-w-[min(100vw-2rem,28rem)] -translate-x-1/2 justify-center px-3"
+      className="fixed top-6 left-1/2 flex max-w-[min(100vw-2rem,28rem)] -translate-x-1/2 justify-center px-3"
+      style={{ zIndex: "var(--z-toast, 1300)" }}
       role="status"
       aria-live="polite"
     >

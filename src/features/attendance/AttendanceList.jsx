@@ -2568,8 +2568,9 @@ function AttendanceList({
                     <div
                       ref={offHolidayDropdownPanelRef}
                       role="menu"
-                      className="fixed z-[1200] flex max-w-[calc(100vw-1rem)] origin-top flex-col overflow-hidden rounded-2xl border-2 border-violet-400/70 bg-white text-left shadow-2xl shadow-violet-900/20 ring-4 ring-violet-500/15 backdrop-blur-sm animate-fadeIn dark:border-violet-500/50 dark:bg-slate-900 dark:shadow-black/50 dark:ring-violet-400/20"
+                      className="fixed flex max-w-[calc(100vw-1rem)] origin-top flex-col overflow-hidden rounded-2xl border-2 border-violet-400/70 bg-white text-left shadow-2xl shadow-violet-900/20 ring-4 ring-violet-500/15 backdrop-blur-sm animate-fadeIn dark:border-violet-500/50 dark:bg-slate-900 dark:shadow-black/50 dark:ring-violet-400/20"
                       style={{
+                        zIndex: "var(--z-modal-backdrop, 1200)",
                         top: offHolidayDropdownPlacement.top,
                         left: offHolidayDropdownPlacement.left,
                         width: offHolidayDropdownPlacement.width,
@@ -2857,8 +2858,9 @@ function AttendanceList({
                 createPortal(
                   <div
                     ref={filterMenuPanelRef}
-                    className="fixed z-[1200] flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
+                    className="fixed flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
                     style={{
+                      zIndex: "var(--z-modal-backdrop, 1200)",
                       top: filterDropdownPlacement.top,
                       left: filterDropdownPlacement.left,
                       width: filterDropdownPlacement.width,
@@ -2980,7 +2982,8 @@ function AttendanceList({
               {filterOpen &&
                 createPortal(
                   <div
-                    className="fixed inset-0 z-[1250] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm animate-fadeIn"
+                    className="fixed inset-0 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm animate-fadeIn"
+                    style={{ zIndex: "var(--z-modal-content, 1210)" }}
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="attendance-advanced-filter-title"
@@ -3309,8 +3312,9 @@ function AttendanceList({
                   createPortal(
                     <div
                       ref={actionDropdownPanelRef}
-                      className="fixed z-[1200] max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-emerald-200 bg-white shadow-2xl dark:border-emerald-800 dark:bg-slate-900 sm:w-64"
+                      className="fixed max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-emerald-200 bg-white shadow-2xl dark:border-emerald-800 dark:bg-slate-900 sm:w-64"
                       style={{
+                        zIndex: "var(--z-modal-backdrop, 1200)",
                         top: actionDropdownPlacement.top,
                         left: actionDropdownPlacement.left,
                         width: actionDropdownPlacement.width,
@@ -3501,8 +3505,9 @@ function AttendanceList({
                 createPortal(
                   <div
                     ref={printDropdownPanelRef}
-                    className="fixed z-[1200] max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-blue-200 bg-white shadow-2xl dark:border-blue-800 dark:bg-slate-900 sm:w-64"
+                    className="fixed max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-blue-200 bg-white shadow-2xl dark:border-blue-800 dark:bg-slate-900 sm:w-64"
                     style={{
+                      zIndex: "var(--z-modal-backdrop, 1200)",
                       top: printDropdownPlacement.top,
                       left: printDropdownPlacement.left,
                       width: printDropdownPlacement.width,
@@ -3590,7 +3595,10 @@ function AttendanceList({
 
         {/* Overtime Modal */}
         {showOvertimeModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40"
+            style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+          >
             <div className="relative mx-4 max-h-[90vh] w-full max-w-8xl overflow-y-auto rounded-lg bg-white p-6 shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
               <button
                 onClick={() => setShowOvertimeModal(false)}
@@ -3644,7 +3652,10 @@ function AttendanceList({
               </div>
               {/* Popup Filter Panel */}
               {modalFilterOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
+                <div
+                  className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn"
+                  style={{ zIndex: "var(--z-modal-content, 1210)" }}
+                >
                   <div className="flex max-h-[85vh] w-full max-w-md flex-col animate-slideUp rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                     {/* Header */}
                     <div className="p-5 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
@@ -3927,7 +3938,10 @@ function AttendanceList({
         {showComboChartModal ? (
           <Suspense
             fallback={
-              <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm sm:p-4">
+              <div
+                className="fixed inset-0 flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm sm:p-4"
+                style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+              >
                 <p className="rounded-lg bg-slate-900/80 px-4 py-2 text-sm text-white">
                   {tl("comboChartLoading", "Đang tải biểu đồ theo bộ phận…")}
                 </p>

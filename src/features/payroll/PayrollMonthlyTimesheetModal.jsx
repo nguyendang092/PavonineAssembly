@@ -82,7 +82,7 @@ function representativeEmployee(dayChunks, id) {
 const STICKY_COL_WIDTHS = [36, 176, 92, 92, 30, 30];
 const MONTH_DAY_COL_WIDTH = 35;
 const MONTH_DETAIL_COL_WIDTH = 45;
-const MONTH_DETAIL_COLS_PER_BLOCK = 15;
+const MONTH_DETAIL_COLS_PER_BLOCK = 16;
 const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 /** Dưới ngưỡng này render đủ dòng; từ ngưỡng trở lên ảo hóa theo khối NV để tránh OOM. */
 const MONTHLY_TIMESHEET_VIRTUAL_THRESHOLD = 14;
@@ -184,9 +184,42 @@ function leaveUnitsByCode(leaveShort, code) {
   return 0;
 }
 
+/** KL, KP, NV — không vào «Tổng ngày công bao gồm PN». */
+function leaveExcludedFromIncludedWorkDays(leaveShort) {
+  return (
+    leaveUnitsByCode(leaveShort, "KL") > 0 ||
+    leaveUnitsByCode(leaveShort, "KP") > 0 ||
+    leaveUnitsByCode(leaveShort, "NV") > 0
+  );
+}
+
+function sumPayrollMonthlyCoeffHours(coeffMap) {
+  let s = 0;
+  if (!coeffMap) return s;
+  for (const v of coeffMap.values()) {
+    if (Number.isFinite(v) && v > 0) s += v;
+  }
+  return s;
+}
+
+/** 1/2PN mặc định 0,5 ngày; đủ giờ làm thực tế thì được tính trọn 1 ngày công. */
+const HALF_PN_FULL_DAY_WORKED_HOURS = 4;
+
+function countSundaysInMonthKeys(monthKeys) {
+  let n = 0;
+  for (const dk of monthKeys) {
+    const pd = parseLocalDateKey(dk);
+    if (pd && pd.getDay() === 0) n += 1;
+  }
+  return n;
+}
+
 function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
+  const baseCalendarWorkDays =
+    monthKeys.length - countSundaysInMonthKeys(monthKeys);
+
   const out = {
-    workDays: 0,
+    workDays: 0, // "Tổng ngày công bao gồm PN"
     unpaidDays: 0,
     pnDays: 0,
     nbDays: 0,
@@ -200,28 +233,74 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
     coeff39: 0,
     sats20: 0,
     sats27: 0,
+    soNgayCong: baseCalendarWorkDays,
   };
+
+  const addCoeffHoursToTotals = (coeffMap) => {
+    out.coeff03 += Number(coeffMap.get(0.3) || 0);
+    out.coeff15 += Number(coeffMap.get(1.5) || 0);
+    out.coeff20 += Number(coeffMap.get(2.0) || 0);
+    out.coeff27 += Number(coeffMap.get(2.7) || 0);
+    out.coeff30 += Number(coeffMap.get(3.0) || 0);
+    out.coeff39 += Number(coeffMap.get(3.9) || 0);
+  };
+
+  const computeHolidayWorkCreditForDash = (ch, coeffSum) => {
+    // HOLIDAY: không có giờ công vẫn tính đủ 1 ngày công.
+    return ch.isHolidayDay || coeffSum > 0 ? 1 : 0;
+  };
+
+  const computeIncludedWorkDayCreditForLeave = ({
+    ch,
+    main,
+    coeffSum,
+    pnUnits,
+  }) => {
+    const workedH =
+      Number.isFinite(main.workedHours) && main.workedHours > 0
+        ? main.workedHours
+        : 0;
+
+    const isHalfPnLeave = main.leaveShort === "1/2PN";
+    const dayWorked =
+      workedH > 0 &&
+      (!isHalfPnLeave || workedH >= HALF_PN_FULL_DAY_WORKED_HOURS)
+        ? 1
+        : 0;
+
+    let dayLeavePaid = 0;
+    if (!leaveExcludedFromIncludedWorkDays(main.leaveShort)) {
+      if (pnUnits > 0) dayLeavePaid = pnUnits;
+      else {
+        const nbU = leaveUnitsByCode(main.leaveShort, "NB");
+        dayLeavePaid = nbU > 0 ? nbU : 1;
+      }
+    }
+
+    let dayAdd = Math.max(dayWorked, dayLeavePaid);
+
+    // HOLIDAY: nếu không có giờ công thì vẫn tính ít nhất 1 ngày công,
+    // kể cả khi `loaiPhep` đang là phép (KL/KP/NV/...).
+    if (ch.isHolidayDay && coeffSum <= 0 && dayWorked === 0) {
+      dayAdd = Math.max(dayAdd, 1);
+    }
+
+    return dayAdd;
+  };
+
   for (const dk of monthKeys) {
     const ch = dayChunks.get(dk);
     if (!ch) continue;
+
     const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
-    if (!emp) continue;
+    // Nếu ngày đó có cờ HOLIDAY trong `_meta` nhưng không có dòng nhân viên,
+    // vẫn phải tính 1 ngày công (dù không có "danh sách" điểm danh cho ngày đó).
+    if (!emp) {
+      if (ch.isHolidayDay) out.workDays += 1;
+      continue;
+    }
+
     const main = getPayrollMonthlyMainRowCell(emp, ch);
-    if (main.kind === "hours" && Number.isFinite(main.hours)) {
-      out.workDays += Number(main.hours) / 8;
-    }
-    if (main.kind === "leave") {
-      const pnUnits = leaveUnitsByCode(main.leaveShort, "PN");
-      out.pnDays += pnUnits;
-      // Quy ước bảng này: Tổng ngày công = ngày có giờ công + phép năm (PN, 1/2PN).
-      out.workDays += pnUnits;
-      if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
-        out.workDays += Number(main.workedHours) / 8;
-      }
-      out.nbDays += leaveUnitsByCode(main.leaveShort, "NB");
-      out.klDays += leaveUnitsByCode(main.leaveShort, "KL");
-      out.kpDays += leaveUnitsByCode(main.leaveShort, "KP");
-    }
     const coeffMap = getPayrollMonthlyCoeffHoursMap({
       gioVao: emp.gioVao,
       gioRa: emp.gioRa,
@@ -234,13 +313,30 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
       includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
     });
-    out.coeff03 += Number(coeffMap.get(0.3) || 0);
-    out.coeff15 += Number(coeffMap.get(1.5) || 0);
-    out.coeff20 += Number(coeffMap.get(2.0) || 0);
-    out.coeff27 += Number(coeffMap.get(2.7) || 0);
-    out.coeff30 += Number(coeffMap.get(3.0) || 0);
-    out.coeff39 += Number(coeffMap.get(3.9) || 0);
+    const coeffSum = sumPayrollMonthlyCoeffHours(coeffMap);
+
+    if (main.kind === "leave") {
+      const pnUnits = leaveUnitsByCode(main.leaveShort, "PN");
+      out.pnDays += pnUnits;
+      out.nbDays += leaveUnitsByCode(main.leaveShort, "NB");
+      out.klDays += leaveUnitsByCode(main.leaveShort, "KL");
+      out.kpDays += leaveUnitsByCode(main.leaveShort, "KP");
+
+      out.workDays += computeIncludedWorkDayCreditForLeave({
+        ch,
+        main,
+        coeffSum,
+        pnUnits,
+      });
+    } else if (main.kind === "hours") {
+      out.workDays += 1;
+    } else {
+      out.workDays += computeHolidayWorkCreditForDash(ch, coeffSum);
+    }
+
+    addCoeffHoursToTotals(coeffMap);
   }
+
   out.unpaidDays = out.klDays + out.kpDays;
   return out;
 }
@@ -535,6 +631,7 @@ export default function PayrollMonthlyTimesheetModal({
   const noTopBorder = "!border-t-0";
   const detailHeaders = useMemo(
     () => [
+      tlPage("monthlyRuleColSoNgayCong", "Số ngày công"),
       tlPage("monthlyRuleColWorkHours", "Tổng giờ công"),
       tlPage("monthlyRuleColWorkDays", "Tổng ngày công bao gồm PN"),
       tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ không lương"),
@@ -623,7 +720,8 @@ export default function PayrollMonthlyTimesheetModal({
 
   const portal = (
     <div
-      className="fixed inset-0 z-[200] flex flex-col overflow-hidden overscroll-none bg-black/50 p-2 backdrop-blur-[1px] sm:p-4"
+      className="fixed inset-0 flex flex-col overflow-hidden overscroll-none bg-black/50 p-2 backdrop-blur-[1px] sm:p-4"
+      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="payroll-monthly-timesheet-title"
@@ -844,7 +942,7 @@ export default function PayrollMonthlyTimesheetModal({
                         return [
                           <th
                             key={`${groupKey}-workday`}
-                            colSpan={7}
+                            colSpan={8}
                             style={monthHeaderStickyStyle(
                               headerRowTops.row2,
                               85,
@@ -1191,20 +1289,22 @@ export default function PayrollMonthlyTimesheetModal({
                                     if (!enabled) return " ";
                                     if (si === 0) {
                                       if (idx === 0)
-                                        return fmt(summary.workDays * 8);
+                                        return fmt(summary.soNgayCong);
                                       if (idx === 1)
-                                        return fmt(summary.workDays);
+                                        return fmt(summary.workDays * 8);
                                       if (idx === 2)
+                                        return fmt(summary.workDays);
+                                      if (idx === 3)
                                         return fmt(summary.unpaidDays);
-                                      if (idx === 3) return fmt(summary.pnDays);
-                                      if (idx === 4) return fmt(summary.nbDays);
-                                      if (idx === 5) return fmt(summary.klDays);
-                                      if (idx === 6) return fmt(summary.kpDays);
+                                      if (idx === 4) return fmt(summary.pnDays);
+                                      if (idx === 5) return fmt(summary.nbDays);
+                                      if (idx === 6) return fmt(summary.klDays);
+                                      if (idx === 7) return fmt(summary.kpDays);
                                     }
                                     const coeffIdx = coeffColBySubrow[si];
                                     if (
                                       coeffIdx != null &&
-                                      idx === 7 + coeffIdx
+                                      idx === 8 + coeffIdx
                                     ) {
                                       return fmt(tcByRow[coeffIdx]);
                                     }

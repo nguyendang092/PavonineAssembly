@@ -10,7 +10,10 @@ export const LoadingProvider = ({ children }) => {
   return (
     <LoadingContext.Provider value={{ loading, setLoading }}>
       {loading && (
-        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white/80 backdrop-blur-[2px] dark:bg-slate-950/85">
+        <div
+          className="fixed inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[2px] dark:bg-slate-950/85"
+          style={{ zIndex: "var(--z-loading, 1400)" }}
+        >
           <LoadingBlock />
         </div>
       )}

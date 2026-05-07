@@ -229,7 +229,10 @@ export default function DetailedModal({ isOpen, onClose, area }) {
 
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm sm:p-4">
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm sm:p-4"
+      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+    >
       <div className="relative flex min-h-0 max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-300/80 bg-gradient-to-b from-slate-200/95 to-slate-100 px-4 py-3 dark:border-slate-800 dark:from-slate-950 dark:to-slate-950 sm:px-5">
           <div className="min-w-0">

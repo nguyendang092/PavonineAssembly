@@ -122,7 +122,7 @@
   font-weight: 600;
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
   animation: slideInFade 0.3s ease forwards;
-  z-index: 9999;
+  z-index: var(--z-toast, 1300);
   min-width: 220px;
   cursor: pointer;
   user-select: none;

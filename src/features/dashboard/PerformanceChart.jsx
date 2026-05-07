@@ -213,7 +213,8 @@ export default function PerformanceChart() {
         onClick={() => setSidebarOpen((o) => !o)}
         aria-expanded={sidebarOpen}
         aria-label={t("workplaceChart.toggleSidebar")}
-        className="dashboard-no-print fixed left-3 top-[calc(var(--app-navbar-height)+0.5rem)] z-50 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-md transition hover:bg-slate-50 hover:shadow-lg focus-visible:outline focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 md:left-4 md:top-20 md:h-11 md:w-11"
+        className="dashboard-no-print fixed left-3 top-[calc(var(--app-navbar-height)+0.5rem)] flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-md transition hover:bg-slate-50 hover:shadow-lg focus-visible:outline focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 md:left-4 md:top-20 md:h-11 md:w-11"
+        style={{ zIndex: "var(--z-scroll-actions, 80)" }}
       >
         {sidebarOpen ? "✕" : "☰"}
       </button>

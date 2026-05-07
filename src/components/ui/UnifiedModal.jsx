@@ -93,7 +93,8 @@ const UnifiedModal = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[110] p-4 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn"
+      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
       onClick={handleBackdropClick}
     >
       <div

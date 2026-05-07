@@ -60,7 +60,10 @@ export default function ChangePasswordModal({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+    >
       <div className="relative w-full max-w-xs rounded-lg bg-white p-6 shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
         <button
           onClick={onClose}

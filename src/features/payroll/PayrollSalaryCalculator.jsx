@@ -797,7 +797,8 @@ export default function PayrollSalaryCalculator() {
               {excelExportMenuOpen ? (
                 <ul
                   role="menu"
-                  className="absolute right-0 top-full z-[120] mt-1 min-w-[14.5rem] overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg ring-1 ring-black/5 dark:border-slate-600 dark:bg-slate-800 dark:ring-white/10"
+                  className="absolute right-0 top-full mt-1 min-w-[14.5rem] overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg ring-1 ring-black/5 dark:border-slate-600 dark:bg-slate-800 dark:ring-white/10"
+                  style={{ zIndex: "var(--z-navbar-dropdown, 110)" }}
                 >
                   <li role="none">
                     <button

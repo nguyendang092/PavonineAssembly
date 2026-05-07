@@ -11,7 +11,7 @@ import {
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
-const MONTH_DETAIL_COLS_PER_BLOCK = 15;
+const MONTH_DETAIL_COLS_PER_BLOCK = 16;
 const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 
 function formatEnglishWeekday3(date) {
@@ -128,8 +128,8 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   let col = 6 + days;
   for (let gi = 0; gi < DETAIL_GROUP_KEYS.length; gi++) {
     r1[col] = tlPage("monthlyRuleGroupWorkday", "NGÀY LÀM VIỆC");
-    pushMerge(1, col, 1, col + 6);
-    col += 7;
+    pushMerge(1, col, 1, col + 7);
+    col += 8;
     r1[col] = tlPage("monthlyRuleGroupOt", "TĂNG CA (Hrs)");
     pushMerge(1, col, 1, col + 5);
     col += 6;
@@ -248,16 +248,17 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           if (!enabled) return " ";
           if (!summary) return " ";
           if (si === 0) {
-            if (idx === 0) return fmt(summary.workDays * 8);
-            if (idx === 1) return fmt(summary.workDays);
-            if (idx === 2) return fmt(summary.unpaidDays);
-            if (idx === 3) return fmt(summary.pnDays);
-            if (idx === 4) return fmt(summary.nbDays);
-            if (idx === 5) return fmt(summary.klDays);
-            if (idx === 6) return fmt(summary.kpDays);
+            if (idx === 0) return fmt(summary.soNgayCong);
+            if (idx === 1) return fmt(summary.workDays * 8);
+            if (idx === 2) return fmt(summary.workDays);
+            if (idx === 3) return fmt(summary.unpaidDays);
+            if (idx === 4) return fmt(summary.pnDays);
+            if (idx === 5) return fmt(summary.nbDays);
+            if (idx === 6) return fmt(summary.klDays);
+            if (idx === 7) return fmt(summary.kpDays);
           }
           const coeffIdx = coeffColBySubrow[si];
-          if (coeffIdx != null && idx === 7 + coeffIdx)
+          if (coeffIdx != null && idx === 8 + coeffIdx)
             return fmt(tcByRow[coeffIdx]);
           return " ";
         });

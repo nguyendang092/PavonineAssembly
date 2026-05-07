@@ -731,7 +731,10 @@ function MoldManager() {
 
         {/* Modal */}
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40"
+            style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+          >
             <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 w-full max-w-3xl relative animate-fadeIn mx-2">
               <button
                 onClick={() => setShowModal(false)}
@@ -841,7 +844,10 @@ function MoldManager() {
 
         {/* Modal xác nhận xóa - đặt ngoài table */}
         {confirmDelete.show && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40"
+            style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+          >
             <div className="bg-white rounded-xl shadow-xl p-5 w-80 max-w-full border border-gray-300">
               <h3 className="text-base font-bold mb-4 text-[#1e293b] text-center">
                 {t("moldManager.confirmDeleteMessage")}
@@ -1003,7 +1009,8 @@ function MoldManager() {
         {/* Image Zoom Modal */}
         {imageZoom.show && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90"
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-90"
+            style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
             onClick={() => setImageZoom({ show: false, src: "", alt: "" })}
           >
             <div className="relative w-full h-full p-8 flex items-center justify-center">
@@ -1039,7 +1046,10 @@ function MoldManager() {
 
         {/* Detail Modal */}
         {detailModal.show && detailModal.mold && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40"
+            style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+          >
             <div className="bg-white rounded-lg shadow-xl p-5 w-full max-w-4xl relative mx-4 overflow-y-auto max-h-[90vh]">
               <button
                 onClick={closeDetailModal}
@@ -1107,7 +1117,10 @@ function MoldManager() {
 
         {/* PM Detail Modal */}
         {pmDetailModal.show && pmDetailModal.mold && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40"
+            style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+          >
             <div className="bg-white rounded-lg shadow-xl p-5 w-full max-w-5xl relative mx-4 overflow-y-auto max-h-[90vh]">
               <button
                 onClick={closePmDetailModal}

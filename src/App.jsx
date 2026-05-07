@@ -73,15 +73,44 @@ const InternalAnnouncementsLogin = lazyImport(
 );
 const LoginRoute = lazyImport(() => import("@/auth/LoginRoute"));
 
-/** Không hiện nút cuộn nhanh trên màn hình đăng nhập */
-const NO_SCROLL_ACTION_PATHS = new Set(["/login", "/email/login"]);
+const AUTH_PATHS = new Set(["/login", "/email/login"]);
+const NAVBAR_SCROLLED_CLASS =
+  "bg-indigo-100/90 backdrop-blur-md border-b border-indigo-200 shadow-md dark:bg-slate-900/85 dark:border-slate-700";
+const ROUTE_COMPONENTS = {
+  WorkplaceDashboardNormal,
+  CertificateGenerator1,
+  CertificateGenerator2,
+  HonorBoard,
+  TemperatureMonitor,
+  MoldManager,
+  PerformanceChart,
+  QRCodeGenerator,
+  WarehouseInventoryDashboard,
+  AttendanceList,
+  SeasonalStaffAttendance,
+  PayrollSalaryCalculator,
+  Downloads,
+  UserDepartmentManager,
+  InternalAnnouncements,
+};
+
+function clearSessionAndRedirectToLogin(setUser) {
+  localStorage.removeItem("userLogin");
+  setUser(null);
+  if (window.location.pathname !== "/login") {
+    window.location.replace("/login");
+  }
+}
 
 function ScrollActionPortal({ scrollContainerRef }) {
   const { pathname } = useLocation();
-  if (NO_SCROLL_ACTION_PATHS.has(pathname)) return null;
+  if (AUTH_PATHS.has(pathname)) return null;
 
   return createPortal(
-    <div className="pointer-events-auto fixed bottom-2 right-6 z-[9999] flex items-center gap-1.5">
+    <div
+      className="pointer-events-auto fixed bottom-2 right-6 flex items-center gap-1.5"
+      style={{ zIndex: "var(--z-scroll-actions)" }}
+    >
       <BackToBottom
         alwaysVisible
         inline
@@ -90,6 +119,38 @@ function ScrollActionPortal({ scrollContainerRef }) {
       <BackToTop alwaysVisible inline scrollContainerRef={scrollContainerRef} />
     </div>,
     document.body,
+  );
+}
+
+function NavbarShell({ isScrolled, user, setUser, userRole }) {
+  const { pathname } = useLocation();
+  if (AUTH_PATHS.has(pathname)) return null;
+  return (
+    <div
+      className={`fixed top-0 left-0 w-full transition-all duration-300 ${
+        isScrolled ? NAVBAR_SCROLLED_CLASS : "bg-transparent"
+      }`}
+      style={{ zIndex: "var(--z-navbar)" }}
+    >
+      <Navbar user={user} setUser={setUser} userRole={userRole} />
+    </div>
+  );
+}
+
+function MainScrollShell({ mainScrollRef, children }) {
+  const { pathname } = useLocation();
+  const hideNavbar = AUTH_PATHS.has(pathname);
+  return (
+    <div
+      id="app-main-scroll"
+      ref={mainScrollRef}
+      className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto"
+      style={{
+        paddingTop: hideNavbar ? "0px" : "var(--app-navbar-height, 4rem)",
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -144,29 +205,20 @@ const App = () => {
         return undefined;
       }
       const { expire } = JSON.parse(loginData);
-      if (
-        typeof expire !== "number" ||
-        !Number.isFinite(expire) ||
-        Date.now() >= expire
-      ) {
-        localStorage.removeItem("userLogin");
-        setUser(null);
-        if (window.location.pathname !== "/login") {
-          window.location.replace("/login");
-        }
+      if (typeof expire !== "number" || !Number.isFinite(expire)) {
+        clearSessionAndRedirectToLogin(setUser);
+        return undefined;
+      }
+      if (Date.now() >= expire) {
+        clearSessionAndRedirectToLogin(setUser);
         return undefined;
       }
       const delay = expire - Date.now();
       timerId = window.setTimeout(() => {
-        localStorage.removeItem("userLogin");
-        setUser(null);
-        if (window.location.pathname !== "/login") {
-          window.location.replace("/login");
-        }
+        clearSessionAndRedirectToLogin(setUser);
       }, delay);
     } catch {
-      localStorage.removeItem("userLogin");
-      setUser(null);
+      clearSessionAndRedirectToLogin(setUser);
     }
 
     return () => {
@@ -216,56 +268,33 @@ const App = () => {
     if (!el) return undefined;
     el.scrollTo({ top: 0, behavior: "auto" });
     const handleScroll = () => {
-      setIsScrolled(el.scrollTop > 100);
+      // Bật nền navbar sớm để người dùng luôn thấy phân tách.
+      const scrolled =
+        (el?.scrollTop ?? 0) > 4 ||
+        (window.scrollY ?? window.pageYOffset ?? 0) > 4;
+      setIsScrolled(scrolled);
     };
     handleScroll();
     el.addEventListener("scroll", handleScroll, { passive: true });
-    return () => el.removeEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
-
-  const routeElements = useMemo(
-    () => ({
-      WorkplaceDashboardNormal: <WorkplaceDashboardNormal />,
-      CertificateGenerator1: <CertificateGenerator1 />,
-      CertificateGenerator2: <CertificateGenerator2 />,
-      HonorBoard: <HonorBoard />,
-      TemperatureMonitor: <TemperatureMonitor />,
-      MoldManager: <MoldManager />,
-      PerformanceChart: <PerformanceChart />,
-      QRCodeGenerator: <QRCodeGenerator />,
-      WarehouseInventoryDashboard: <WarehouseInventoryDashboard />,
-      AttendanceList: <AttendanceList />,
-      SeasonalStaffAttendance: <SeasonalStaffAttendance />,
-      PayrollSalaryCalculator: <PayrollSalaryCalculator />,
-      Downloads: <Downloads />,
-      UserDepartmentManager: <UserDepartmentManager />,
-      InternalAnnouncements: <InternalAnnouncements />,
-    }),
-    [],
-  );
 
   return (
     <UserContext.Provider value={userContextValue}>
       <Router>
         <div className="min-h-screen flex flex-col bg-gray-50 text-slate-900 transition-colors duration-200 dark:bg-slate-950 dark:text-slate-100">
-          {/* Navbar cố định */}
-          <div
-            className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-              isScrolled
-                ? "bg-transparent"
-                : "bg-transparent"
-            }`}
-          >
-            <Navbar user={user} setUser={setUser} userRole={userRole} />
-          </div>
+          <NavbarShell
+            isScrolled={isScrolled}
+            user={user}
+            setUser={setUser}
+            userRole={userRole}
+          />
 
-          {/* Nội dung chính */}
-          <div
-            id="app-main-scroll"
-            ref={mainScrollRef}
-            className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto"
-            style={{ paddingTop: "var(--app-navbar-height, 4rem)" }}
-          >
+          <MainScrollShell mainScrollRef={mainScrollRef}>
             <Suspense fallback={<LoadingBlock className="min-h-[60vh]" />}>
               <Routes>
                 <Route path="/login" element={<LoginRoute />} />
@@ -293,12 +322,16 @@ const App = () => {
                 {routeConfig
                   .filter((r) => !PUBLIC_ROUTE_PATHS.has(r.path))
                   .map((r) => {
-                    const element = routeElements[r.element];
-                    return element ? (
+                    const RouteComponent = ROUTE_COMPONENTS[r.element];
+                    return RouteComponent ? (
                       <Route
                         key={r.path}
                         path={r.path}
-                        element={<ProtectedRoute>{element}</ProtectedRoute>}
+                        element={
+                          <ProtectedRoute>
+                            <RouteComponent />
+                          </ProtectedRoute>
+                        }
                       />
                     ) : null;
                   })}
@@ -312,7 +345,7 @@ const App = () => {
                 />
               </Routes>
             </Suspense>
-          </div>
+          </MainScrollShell>
 
           {/* Footer */}
           <Footer />
