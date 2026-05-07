@@ -45,6 +45,18 @@ export const menuConfig = [
             label: "navbar.inventoryDashboard",
             path: "/stock-variance",
           },
+          {
+            key: "mc",
+            label: "navbar.mc",
+            type: "nested",
+            children: [
+              {
+                key: "mcDefectReport",
+                label: "navbar.mcDefectReport",
+                path: "/mc-defect-report",
+              },
+            ],
+          },
         ],
       },
 
@@ -146,6 +158,7 @@ export const routeConfig = [
   { path: "/performance", element: "PerformanceChart" },
   { path: "/qr-code-generator", element: "QRCodeGenerator" },
   { path: "/stock-variance", element: "WarehouseInventoryDashboard" },
+  { path: "/mc-defect-report", element: "MCDefectReportDashboard" },
   { path: "/attendance-list", element: "AttendanceList" },
   { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
   { path: "/attendance-salary", element: "PayrollSalaryCalculator" },

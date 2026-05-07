@@ -102,6 +102,8 @@ const vi = {
     caiTien: "Cải tiến",
     qrCodeGenerator: "Tạo QR Code",
     inventoryDashboard: "Báo cáo chênh lệch tồn kho",
+    mc: "MC",
+    mcDefectReport: "Báo cáo hàng lỗi",
     attendance: "Điểm danh",
     attendanceList: "Điểm danh NV",
     attendanceSalary: "Bảng giờ công nhân viên",
@@ -119,6 +121,13 @@ const vi = {
     ADMIN: "ADMIN",
     hrAttendance: "Chấm công & nhân sự",
     attendanceSalaryTitle: "Giờ công",
+  },
+  mcDefectReport: {
+    badge: "Sản xuất / MC",
+    title: "Dashboard báo cáo hàng lỗi",
+    subtitle:
+      "Khung trang đã sẵn sàng. Bạn có thể bắt đầu xây dựng biểu đồ và bảng phân tích lỗi tại đây.",
+    placeholder: "Khu vực hiển thị dashboard báo cáo hàng lỗi MC",
   },
   internalAnnouncements: {
     title: "Thông báo nội bộ",

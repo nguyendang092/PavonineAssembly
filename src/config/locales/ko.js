@@ -112,6 +112,15 @@ const ko = {
     files: "파일",
     qrCodeGenerator: "QR 코드 생성",
     inventoryDashboard: "창고 재고 대시보드",
+    mc: "MC",
+    mcDefectReport: "불량 보고서",
+  },
+  mcDefectReport: {
+    badge: "Production / MC",
+    title: "불량 보고 대시보드",
+    subtitle:
+      "기본 페이지 틀이 준비되었습니다. 이 화면에서 불량 분석 차트와 테이블을 구성할 수 있습니다.",
+    placeholder: "MC 불량 보고 대시보드 영역",
   },
   internalAnnouncements: {
     title: "내부 공지",
