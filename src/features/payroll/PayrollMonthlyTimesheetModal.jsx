@@ -338,6 +338,8 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
   }
 
   out.unpaidDays = out.klDays + out.kpDays;
+  // "Tổng ngày công bao gồm PN" không được vượt "Số ngày công".
+  out.workDays = Math.min(out.workDays, out.soNgayCong);
   return out;
 }
 
