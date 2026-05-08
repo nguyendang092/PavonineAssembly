@@ -214,12 +214,6 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
         if (sr.coeff == null) {
           const main = getPayrollMonthlyMainRowCell(emp, ch);
           if (main.kind === "leave") {
-            const hasWorkedHours =
-              Number.isFinite(main.workedHours) && main.workedHours > 0;
-            if (ch.isHolidayDay && hasWorkedHours) {
-              row[cidx] = formatCoeffHoursForDisplay(main.workedHours);
-              return;
-            }
             const leaveLabel = main.leaveShort || "";
             if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
               row[cidx] = `${leaveLabel}\n${formatCoeffHoursForDisplay(main.workedHours)}`;
@@ -229,7 +223,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           }
           else if (main.kind === "hours")
             row[cidx] = formatCoeffHoursForDisplay(main.hours);
-          else row[cidx] = ch.isHolidayDay && coeffMap.size <= 0 ? "NL" : " ";
+          else row[cidx] = ch.isHolidayDay ? "NL" : " ";
           return;
         }
         const h = coeffMap.get(sr.coeff);

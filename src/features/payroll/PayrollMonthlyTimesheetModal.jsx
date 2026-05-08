@@ -1193,18 +1193,6 @@ export default function PayrollMonthlyTimesheetModal({
                                 );
                                 let inner;
                                 if (main.kind === "leave") {
-                                  const hasWorkedHours =
-                                    Number.isFinite(main.workedHours) &&
-                                    main.workedHours > 0;
-                                  if (ch.isHolidayDay && hasWorkedHours) {
-                                    inner = (
-                                      <span className="font-bold tabular-nums text-black dark:text-black">
-                                        {formatCoeffHoursForDisplay(
-                                          main.workedHours,
-                                        )}
-                                      </span>
-                                    );
-                                  } else {
                                   inner = (
                                     <span className="inline-flex flex-col items-center gap-0.5">
                                       <span
@@ -1223,7 +1211,6 @@ export default function PayrollMonthlyTimesheetModal({
                                       ) : null}
                                     </span>
                                   );
-                                  }
                                 } else if (main.kind === "hours") {
                                   inner = (
                                     <span className="font-bold tabular-nums text-black dark:text-black">
@@ -1231,27 +1218,7 @@ export default function PayrollMonthlyTimesheetModal({
                                     </span>
                                   );
                                 } else {
-                                  const coeffMap =
-                                    getPayrollMonthlyCoeffHoursMap({
-                                      gioVao: emp.gioVao,
-                                      gioRa: emp.gioRa,
-                                      isOffDay: ch.isOffDay,
-                                      isHolidayDay: ch.isHolidayDay,
-                                      caLamViec: emp.caLamViec,
-                                      payrollEarlyOtPaperwork:
-                                        emp.payrollEarlyOtPaperwork,
-                                      payrollLateOtExcluded:
-                                        emp.payrollLateOtExcluded,
-                                      loaiPhep: emp.loaiPhep,
-                                      includeTapVuInWorkingHours:
-                                        emp.includeTapVuInWorkingHours,
-                                      includeThaiSanInWorkingHours:
-                                        emp.includeThaiSanInWorkingHours,
-                                    });
-                                  const coeffSum =
-                                    sumPayrollMonthlyCoeffHours(coeffMap);
-                                  const shouldShowHolidayNl =
-                                    ch.isHolidayDay && coeffSum <= 0;
+                                  const shouldShowHolidayNl = ch.isHolidayDay;
                                   inner = (
                                     <span
                                       className={

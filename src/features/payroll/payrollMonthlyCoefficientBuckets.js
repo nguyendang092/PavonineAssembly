@@ -207,6 +207,7 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     String(emp.includeThaiSanInWorkingHours ?? "")
       .trim()
       .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
+
   if (
     isAttendanceActualLeaveType(leaveRaw, {
       includeTapVuInWorkingHours,
