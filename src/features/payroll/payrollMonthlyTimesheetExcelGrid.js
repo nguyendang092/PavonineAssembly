@@ -196,22 +196,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
         }
         const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
         if (!emp) {
-          row[cidx] = "";
-          return;
-        }
-        if (sr.coeff == null) {
-          const main = getPayrollMonthlyMainRowCell(emp, ch);
-          if (main.kind === "leave") {
-            const leaveLabel = main.leaveShort || "";
-            if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
-              row[cidx] = `${leaveLabel}\n${formatCoeffHoursForDisplay(main.workedHours)}`;
-            } else {
-              row[cidx] = leaveLabel;
-            }
-          }
-          else if (main.kind === "hours")
-            row[cidx] = formatCoeffHoursForDisplay(main.hours);
-          else row[cidx] = " ";
+          row[cidx] = sr.coeff == null && ch.isHolidayDay ? "NL" : "";
           return;
         }
         const coeffMap = getPayrollMonthlyCoeffHoursMap({
@@ -226,6 +211,27 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
           includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
         });
+        if (sr.coeff == null) {
+          const main = getPayrollMonthlyMainRowCell(emp, ch);
+          if (main.kind === "leave") {
+            const hasWorkedHours =
+              Number.isFinite(main.workedHours) && main.workedHours > 0;
+            if (ch.isHolidayDay && hasWorkedHours) {
+              row[cidx] = formatCoeffHoursForDisplay(main.workedHours);
+              return;
+            }
+            const leaveLabel = main.leaveShort || "";
+            if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
+              row[cidx] = `${leaveLabel}\n${formatCoeffHoursForDisplay(main.workedHours)}`;
+            } else {
+              row[cidx] = leaveLabel;
+            }
+          }
+          else if (main.kind === "hours")
+            row[cidx] = formatCoeffHoursForDisplay(main.hours);
+          else row[cidx] = ch.isHolidayDay && coeffMap.size <= 0 ? "NL" : " ";
+          return;
+        }
         const h = coeffMap.get(sr.coeff);
         const show =
           h != null &&

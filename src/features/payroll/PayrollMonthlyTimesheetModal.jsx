@@ -193,6 +193,13 @@ function leaveExcludedFromIncludedWorkDays(leaveShort) {
   );
 }
 
+function countedLeaveUnitsForWorkDays(leaveShort) {
+  const codes = ["PN", "TN", "PT", "PC", "NB", "NL"];
+  let total = 0;
+  for (const code of codes) total += leaveUnitsByCode(leaveShort, code);
+  return total;
+}
+
 function sumPayrollMonthlyCoeffHours(coeffMap) {
   let s = 0;
   if (!coeffMap) return s;
@@ -220,6 +227,7 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
 
   const out = {
     workDays: 0, // "Tổng ngày công bao gồm PN"
+    workHours: 0, // "Tổng giờ công" chỉ tính giờ thực tế
     unpaidDays: 0,
     pnDays: 0,
     nbDays: 0,
@@ -254,7 +262,6 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
     ch,
     main,
     coeffSum,
-    pnUnits,
   }) => {
     const workedH =
       Number.isFinite(main.workedHours) && main.workedHours > 0
@@ -270,11 +277,7 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
 
     let dayLeavePaid = 0;
     if (!leaveExcludedFromIncludedWorkDays(main.leaveShort)) {
-      if (pnUnits > 0) dayLeavePaid = pnUnits;
-      else {
-        const nbU = leaveUnitsByCode(main.leaveShort, "NB");
-        dayLeavePaid = nbU > 0 ? nbU : 1;
-      }
+      dayLeavePaid = countedLeaveUnitsForWorkDays(main.leaveShort);
     }
 
     let dayAdd = Math.max(dayWorked, dayLeavePaid);
@@ -314,6 +317,9 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
       includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
     });
     const coeffSum = sumPayrollMonthlyCoeffHours(coeffMap);
+    const addWorkedHours = (hours) => {
+      if (Number.isFinite(hours) && hours > 0) out.workHours += hours;
+    };
 
     if (main.kind === "leave") {
       const pnUnits = leaveUnitsByCode(main.leaveShort, "PN");
@@ -321,16 +327,19 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
       out.nbDays += leaveUnitsByCode(main.leaveShort, "NB");
       out.klDays += leaveUnitsByCode(main.leaveShort, "KL");
       out.kpDays += leaveUnitsByCode(main.leaveShort, "KP");
+      addWorkedHours(main.workedHours);
 
       out.workDays += computeIncludedWorkDayCreditForLeave({
         ch,
         main,
         coeffSum,
-        pnUnits,
       });
     } else if (main.kind === "hours") {
+      addWorkedHours(main.hours);
+      addWorkedHours(coeffSum);
       out.workDays += 1;
     } else {
+      addWorkedHours(coeffSum);
       out.workDays += computeHolidayWorkCreditForDash(ch, coeffSum);
     }
 
@@ -633,9 +642,9 @@ export default function PayrollMonthlyTimesheetModal({
   const noTopBorder = "!border-t-0";
   const detailHeaders = useMemo(
     () => [
-      tlPage("monthlyRuleColSoNgayCong", "Số ngày công"),
+      tlPage("monthlyRuleColSoNgayCong", "Số ngày công chuẩn"),
       tlPage("monthlyRuleColWorkHours", "Tổng giờ công"),
-      tlPage("monthlyRuleColWorkDays", "Tổng ngày công bao gồm PN"),
+      tlPage("monthlyRuleColWorkDays", "Số ngày công thực tế"),
       tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ không lương"),
       tlPage("monthlyRuleColPn", "Phép năm (PN)"),
       tlPage("monthlyRuleColNb", "Nghỉ bù (NB)"),
@@ -825,7 +834,7 @@ export default function PayrollMonthlyTimesheetModal({
                 className="inline-block min-w-full align-middle"
               >
                 <table
-                className={`w-max min-w-full border-collapse text-left text-[10px] text-slate-900 dark:text-slate-100 ${strongBorder}`}
+                  className={`w-max min-w-full border-collapse text-left text-[10px] text-slate-900 dark:text-slate-100 ${strongBorder}`}
                 >
                   <thead>
                     <tr className="bg-slate-100 dark:bg-slate-800">
@@ -1089,7 +1098,7 @@ export default function PayrollMonthlyTimesheetModal({
                               <td
                                 rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
                                 style={stickyColStyle(3)}
-                            className={`${stickyTdBase} text-center text-slate-900 dark:text-slate-100 ${strongBorderBottom}`}
+                                className={`${stickyTdBase} text-center text-slate-900 dark:text-slate-100 ${strongBorderBottom}`}
                               >
                                 {tlPage("monthlyTimesheetContractDash", "—")}
                               </td>
@@ -1122,11 +1131,11 @@ export default function PayrollMonthlyTimesheetModal({
                               }}
                               className={`${stickyTdBase} text-center font-mono font-semibold text-black dark:text-black ${subrowEdgeClass} ${blockStartClass}`}
                             >
-                            <span className="text-[10px]">
-                              {sr.coeff == null
-                                ? "\u00a0"
-                                : Number(sr.coeff).toFixed(1)}
-                            </span>
+                              <span className="text-[10px]">
+                                {sr.coeff == null
+                                  ? "\u00a0"
+                                  : Number(sr.coeff).toFixed(1)}
+                              </span>
                             </td>
                             {monthRange.keys.map((dk) => {
                               const ch = chunkByDate.get(dk);
@@ -1150,14 +1159,18 @@ export default function PayrollMonthlyTimesheetModal({
                                         ? { borderBottom: "2px solid #000" }
                                         : null),
                                     }}
-                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center text-[10px] text-slate-400 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+                                    className={`${thinBodyBorder} px-0.5 py-0.5 text-center text-[10px] text-slate-400 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
                                   >
                                     {" "}
                                   </td>
                                 );
                               }
-                              const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
+                              const emp = (
+                                ch.byMonthEmployeeKey || ch.byId
+                              ).get(id);
                               if (!emp) {
+                                const shouldShowHolidayNl =
+                                  sr.coeff == null && ch.isHolidayDay;
                                 return (
                                   <td
                                     key={dk}
@@ -1167,8 +1180,10 @@ export default function PayrollMonthlyTimesheetModal({
                                         ? { borderBottom: "2px solid #000" }
                                         : null),
                                     }}
-                                    className={`${thinBodyBorder} px-0.5 py-0.5 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
-                                  />
+                                    className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle text-[10px] font-bold text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+                                  >
+                                    {shouldShowHolidayNl ? "NL" : " "}
+                                  </td>
                                 );
                               }
                               if (sr.coeff == null) {
@@ -1178,6 +1193,18 @@ export default function PayrollMonthlyTimesheetModal({
                                 );
                                 let inner;
                                 if (main.kind === "leave") {
+                                  const hasWorkedHours =
+                                    Number.isFinite(main.workedHours) &&
+                                    main.workedHours > 0;
+                                  if (ch.isHolidayDay && hasWorkedHours) {
+                                    inner = (
+                                      <span className="font-bold tabular-nums text-black dark:text-black">
+                                        {formatCoeffHoursForDisplay(
+                                          main.workedHours,
+                                        )}
+                                      </span>
+                                    );
+                                  } else {
                                   inner = (
                                     <span className="inline-flex flex-col items-center gap-0.5">
                                       <span
@@ -1196,6 +1223,7 @@ export default function PayrollMonthlyTimesheetModal({
                                       ) : null}
                                     </span>
                                   );
+                                  }
                                 } else if (main.kind === "hours") {
                                   inner = (
                                     <span className="font-bold tabular-nums text-black dark:text-black">
@@ -1203,8 +1231,37 @@ export default function PayrollMonthlyTimesheetModal({
                                     </span>
                                   );
                                 } else {
+                                  const coeffMap =
+                                    getPayrollMonthlyCoeffHoursMap({
+                                      gioVao: emp.gioVao,
+                                      gioRa: emp.gioRa,
+                                      isOffDay: ch.isOffDay,
+                                      isHolidayDay: ch.isHolidayDay,
+                                      caLamViec: emp.caLamViec,
+                                      payrollEarlyOtPaperwork:
+                                        emp.payrollEarlyOtPaperwork,
+                                      payrollLateOtExcluded:
+                                        emp.payrollLateOtExcluded,
+                                      loaiPhep: emp.loaiPhep,
+                                      includeTapVuInWorkingHours:
+                                        emp.includeTapVuInWorkingHours,
+                                      includeThaiSanInWorkingHours:
+                                        emp.includeThaiSanInWorkingHours,
+                                    });
+                                  const coeffSum =
+                                    sumPayrollMonthlyCoeffHours(coeffMap);
+                                  const shouldShowHolidayNl =
+                                    ch.isHolidayDay && coeffSum <= 0;
                                   inner = (
-                                    <span className="text-slate-300"> </span>
+                                    <span
+                                      className={
+                                        shouldShowHolidayNl
+                                          ? "font-bold text-black dark:text-black"
+                                          : "text-slate-300"
+                                      }
+                                    >
+                                      {shouldShowHolidayNl ? "NL" : " "}
+                                    </span>
                                   );
                                 }
                                 return (
@@ -1252,7 +1309,7 @@ export default function PayrollMonthlyTimesheetModal({
                                       ? { borderBottom: "2px solid #000" }
                                       : null),
                                   }}
-                                className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle font-mono text-[10px] font-bold tabular-nums text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle font-mono text-[10px] font-bold tabular-nums text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
                                 >
                                   {show ? (
                                     <span className="font-bold text-black dark:text-black">
@@ -1293,7 +1350,7 @@ export default function PayrollMonthlyTimesheetModal({
                                       if (idx === 0)
                                         return fmt(summary.soNgayCong);
                                       if (idx === 1)
-                                        return fmt(summary.workDays * 8);
+                                        return fmt(summary.workHours);
                                       if (idx === 2)
                                         return fmt(summary.workDays);
                                       if (idx === 3)
