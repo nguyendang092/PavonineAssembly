@@ -22,7 +22,15 @@ import {
   getLastDayOfMonthKey,
   parseLocalDateKey,
 } from "@/utils/dateKey";
+import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
+import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
+import {
+  canAddAttendanceForDepartment,
+  canEditAttendanceForEmployee,
+  isAdminAccess,
+} from "@/config/authRoles";
+import { canEditPayrollMonthTimesheetGridCell } from "@/config/featurePermissions";
 
 function parseSortableStt(raw) {
   const n = Number(raw);
@@ -70,6 +78,8 @@ function representativeEmployee(dayChunks, id) {
         hoVaTen: out.hoVaTen || e.hoVaTen,
         boPhan: out.boPhan || e.boPhan,
         mnv: out.mnv || e.mnv,
+        mvt: out.mvt || e.mvt,
+        maBoPhan: out.maBoPhan || e.maBoPhan,
         ngayVaoLam: out.ngayVaoLam || e.ngayVaoLam,
         stt: out.stt != null && String(out.stt).trim() !== "" ? out.stt : e.stt,
       };
@@ -91,6 +101,43 @@ const MONTH_HEADER_ROW_TOPS_DEFAULT = {
   row2: 28,
   row3: 76,
 };
+
+/** Ô ngày trên lưới tháng — bấm mở form điểm danh (khi có quyền). */
+const MONTH_DAY_CELL_INTERACTIVE =
+  "cursor-pointer hover:bg-indigo-100/75 dark:hover:bg-indigo-950/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500";
+
+/** Ô ngày: class + props a11y khi được phép sửa điểm danh. */
+function payrollMonthTimesheetDayCellA11y({
+  canEdit,
+  dateKey,
+  rowId,
+  openDayCellEditor,
+  tlPage,
+}) {
+  if (!canEdit) return { className: "", props: {} };
+  const activate = () => openDayCellEditor(dateKey, rowId);
+  return {
+    className: MONTH_DAY_CELL_INTERACTIVE,
+    props: {
+      role: "button",
+      tabIndex: 0,
+      title: tlPage(
+        "monthlyTimesheetDayCellEditHint",
+        "Bấm để sửa điểm danh ngày này.",
+      ),
+      onClick: (e) => {
+        e.preventDefault();
+        activate();
+      },
+      onKeyDown: (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          activate();
+        }
+      },
+    },
+  };
+}
 
 function stickyColStyle(colIndex) {
   let left = 0;
@@ -194,7 +241,7 @@ function leaveExcludedFromIncludedWorkDays(leaveShort) {
 }
 
 function countedLeaveUnitsForWorkDays(leaveShort) {
-  const codes = ["PN", "TN", "PT", "PC", "NB", "NL"];
+  const codes = ["PN", "TN", "PT", "PC", "NB", "NL", "CT"];
   let total = 0;
   for (const code of codes) total += leaveUnitsByCode(leaveShort, code);
   return total;
@@ -258,11 +305,7 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
     return ch.isHolidayDay || coeffSum > 0 ? 1 : 0;
   };
 
-  const computeIncludedWorkDayCreditForLeave = ({
-    ch,
-    main,
-    coeffSum,
-  }) => {
+  const computeIncludedWorkDayCreditForLeave = ({ ch, main, coeffSum }) => {
     const workedH =
       Number.isFinite(main.workedHours) && main.workedHours > 0
         ? main.workedHours
@@ -309,6 +352,7 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
       gioRa: emp.gioRa,
       isOffDay: ch.isOffDay,
       isHolidayDay: ch.isHolidayDay,
+      isCompensatoryDay: ch.isCompensatoryDay,
       caLamViec: emp.caLamViec,
       payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
       payrollLateOtExcluded: emp.payrollLateOtExcluded,
@@ -391,6 +435,13 @@ export default function PayrollMonthlyTimesheetModal({
       .trim()
       .replace(/\s+/g, " ")
       .toLowerCase(),
+  /** Mở form điểm danh khi bấm ô ngày — cùng quyền với bảng lương. */
+  user = null,
+  userRole = null,
+  userDepartments = null,
+  onAlert,
+  /** Danh sách NV ngày đang chọn trên trang lương (fallback khi mở form). */
+  employees = [],
 }) {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -403,6 +454,10 @@ export default function PayrollMonthlyTimesheetModal({
   const tableWrapRef = useRef(null);
   const tableBodyScrollRef = useRef(null);
   const loadSeqRef = useRef(0);
+  const [dayCellFormOpen, setDayCellFormOpen] = useState(false);
+  const [dayCellFormDate, setDayCellFormDate] = useState("");
+  const [dayCellFormInitial, setDayCellFormInitial] = useState(null);
+  const [dayCellFormEmployees, setDayCellFormEmployees] = useState([]);
 
   const monthRange = useMemo(() => {
     const first = getFirstDayOfMonthKey(anchorDateKey);
@@ -497,6 +552,14 @@ export default function PayrollMonthlyTimesheetModal({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (open) return;
+    setDayCellFormOpen(false);
+    setDayCellFormDate("");
+    setDayCellFormInitial(null);
+    setDayCellFormEmployees([]);
+  }, [open]);
+
   const sortedIds = useMemo(
     () => collectSortedEmployeeIds(dayChunks),
     [dayChunks],
@@ -513,6 +576,101 @@ export default function PayrollMonthlyTimesheetModal({
   const chunkByDate = useMemo(
     () => new Map(dayChunks.map((c) => [c.dateKey, c])),
     [dayChunks],
+  );
+
+  const openDayCellEditor = useCallback(
+    (dateKey, rowId) => {
+      if (!user) {
+        onAlert?.({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "monthlyTimesheetLoginToEdit",
+            "Đăng nhập để chỉnh sửa điểm danh.",
+          ),
+        });
+        return;
+      }
+      if (!isAdminAccess(user, userRole)) {
+        onAlert?.({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "monthlyTimesheetAdminHrOnlyEdit",
+            "Chỉ Admin / HR được sửa điểm danh từ lưới tháng.",
+          ),
+        });
+        return;
+      }
+      const ch = chunkByDate.get(dateKey);
+      if (!ch) return;
+      const rep = repById.get(rowId);
+      if (!rep) return;
+      const dayEmp = (ch.byMonthEmployeeKey || ch.byId).get(rowId);
+      const dayEmps = Array.isArray(ch.employees) ? ch.employees : [];
+      if (dayEmp) {
+        const permEmp = {
+          ...rep,
+          ...dayEmp,
+          boPhan: dayEmp.boPhan || rep.boPhan,
+        };
+        if (
+          !canEditAttendanceForEmployee({
+            user,
+            userRole,
+            userDepartments,
+            employee: permEmp,
+          })
+        ) {
+          onAlert?.({
+            show: true,
+            type: "error",
+            message: tlPage(
+              "monthlyTimesheetNoEditPermission",
+              "Bạn không có quyền sửa nhân viên này.",
+            ),
+          });
+          return;
+        }
+        setDayCellFormEmployees(dayEmps);
+        setDayCellFormDate(dateKey);
+        setDayCellFormInitial({ ...rep, ...dayEmp });
+        setDayCellFormOpen(true);
+        return;
+      }
+      if (
+        !canAddAttendanceForDepartment({
+          user,
+          userRole,
+          userDepartments,
+          boPhan: rep.boPhan,
+        })
+      ) {
+        onAlert?.({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "monthlyTimesheetNoAddPermission",
+            "Bạn không có quyền thêm điểm danh cho bộ phận này.",
+          ),
+        });
+        return;
+      }
+      const { id: _omitId, ...repNoId } = rep;
+      setDayCellFormEmployees(dayEmps);
+      setDayCellFormDate(dateKey);
+      setDayCellFormInitial({ ...repNoId, id: "" });
+      setDayCellFormOpen(true);
+    },
+    [
+      user,
+      chunkByDate,
+      repById,
+      userRole,
+      userDepartments,
+      onAlert,
+      tlPage,
+    ],
   );
 
   const monthlySummaryById = useMemo(() => {
@@ -643,7 +801,7 @@ export default function PayrollMonthlyTimesheetModal({
   const detailHeaders = useMemo(
     () => [
       tlPage("monthlyRuleColSoNgayCong", "Số ngày công chuẩn"),
-      tlPage("monthlyRuleColWorkHours", "Tổng giờ công"),
+      tlPage("monthlyRuleColWorkHours", "Tổng giờ công thực tế"),
       tlPage("monthlyRuleColWorkDays", "Số ngày công thực tế"),
       tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ không lương"),
       tlPage("monthlyRuleColPn", "Phép năm (PN)"),
@@ -729,8 +887,9 @@ export default function PayrollMonthlyTimesheetModal({
 
   if (!open) return null;
 
-  const portal = (
-    <div
+  return createPortal(
+    <>
+      <div
       className="fixed inset-0 flex flex-col overflow-hidden overscroll-none bg-black/50 p-2 backdrop-blur-[1px] sm:p-4"
       style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
       role="dialog"
@@ -922,9 +1081,11 @@ export default function PayrollMonthlyTimesheetModal({
                           ? "bg-amber-100 dark:bg-amber-900/55"
                           : hol?.isHolidayDay
                             ? "bg-rose-100 dark:bg-rose-900/40"
-                            : hol?.isOffDay
-                              ? "bg-cyan-100 dark:bg-cyan-900/35"
-                              : "bg-slate-100 dark:bg-slate-800";
+                            : hol?.isCompensatoryDay
+                              ? "bg-teal-100 dark:bg-teal-900/40"
+                              : hol?.isOffDay
+                                ? "bg-cyan-100 dark:bg-cyan-900/35"
+                                : "bg-slate-100 dark:bg-slate-800";
                         return (
                           <th
                             key={dk}
@@ -1146,6 +1307,8 @@ export default function PayrollMonthlyTimesheetModal({
                                 baseBg = "bg-amber-100 dark:bg-amber-900/35";
                               } else if (ch?.isHolidayDay) {
                                 baseBg = "bg-amber-50/90 dark:bg-amber-950/25";
+                              } else if (ch?.isCompensatoryDay) {
+                                baseBg = "bg-teal-50/85 dark:bg-teal-950/25";
                               } else if (ch?.isOffDay) {
                                 baseBg = "bg-sky-50/80 dark:bg-sky-950/20";
                               }
@@ -1168,9 +1331,28 @@ export default function PayrollMonthlyTimesheetModal({
                               const emp = (
                                 ch.byMonthEmployeeKey || ch.byId
                               ).get(id);
+                              const canEditThisDayCell =
+                                canEditPayrollMonthTimesheetGridCell({
+                                  loading,
+                                  user,
+                                  rep,
+                                  rowDayEmp: emp,
+                                  userRole,
+                                  userDepartments,
+                                });
+                              const { className: dayCellInteractCls, props: dayCellInteract } =
+                                payrollMonthTimesheetDayCellA11y({
+                                  canEdit: canEditThisDayCell,
+                                  dateKey: dk,
+                                  rowId: id,
+                                  openDayCellEditor,
+                                  tlPage,
+                                });
                               if (!emp) {
-                                const shouldShowHolidayNl =
-                                  sr.coeff == null && ch.isHolidayDay;
+                                const dayCode =
+                                  sr.coeff == null
+                                    ? payrollMonthMainRowDashMark(ch, null)
+                                    : " ";
                                 return (
                                   <td
                                     key={dk}
@@ -1180,9 +1362,10 @@ export default function PayrollMonthlyTimesheetModal({
                                         ? { borderBottom: "2px solid #000" }
                                         : null),
                                     }}
-                                    className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle text-[10px] font-bold text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+                                    className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle text-[10px] font-bold text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass} ${dayCellInteractCls}`}
+                                    {...dayCellInteract}
                                   >
-                                    {shouldShowHolidayNl ? "NL" : " "}
+                                    {dayCode}
                                   </td>
                                 );
                               }
@@ -1218,16 +1401,17 @@ export default function PayrollMonthlyTimesheetModal({
                                     </span>
                                   );
                                 } else {
-                                  const shouldShowHolidayNl = ch.isHolidayDay;
+                                  const dayMark =
+                                    payrollMonthMainRowDashMark(ch, emp);
                                   inner = (
                                     <span
                                       className={
-                                        shouldShowHolidayNl
+                                        dayMark !== " "
                                           ? "font-bold text-black dark:text-black"
                                           : "text-slate-300"
                                       }
                                     >
-                                      {shouldShowHolidayNl ? "NL" : " "}
+                                      {dayMark}
                                     </span>
                                   );
                                 }
@@ -1240,7 +1424,8 @@ export default function PayrollMonthlyTimesheetModal({
                                         ? { borderBottom: "2px solid #000" }
                                         : null),
                                     }}
-                                    className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle text-[10px] font-bold text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+                                    className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle text-[10px] font-bold text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass} ${dayCellInteractCls}`}
+                                    {...dayCellInteract}
                                   >
                                     {inner}
                                   </td>
@@ -1251,6 +1436,7 @@ export default function PayrollMonthlyTimesheetModal({
                                 gioRa: emp.gioRa,
                                 isOffDay: ch.isOffDay,
                                 isHolidayDay: ch.isHolidayDay,
+                                isCompensatoryDay: ch.isCompensatoryDay,
                                 caLamViec: emp.caLamViec,
                                 payrollEarlyOtPaperwork:
                                   emp.payrollEarlyOtPaperwork,
@@ -1276,7 +1462,8 @@ export default function PayrollMonthlyTimesheetModal({
                                       ? { borderBottom: "2px solid #000" }
                                       : null),
                                   }}
-                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle font-mono text-[10px] font-bold tabular-nums text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+                                  className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle font-mono text-[10px] font-bold tabular-nums text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass} ${dayCellInteractCls}`}
+                                  {...dayCellInteract}
                                 >
                                   {show ? (
                                     <span className="font-bold text-black dark:text-black">
@@ -1414,7 +1601,28 @@ export default function PayrollMonthlyTimesheetModal({
         </div>
       </div>
     </div>
+      <AttendanceEmployeeFormModal
+        open={dayCellFormOpen}
+        onClose={() => {
+          setDayCellFormOpen(false);
+          setDayCellFormInitial(null);
+        }}
+        initialRecord={dayCellFormInitial}
+        selectedDate={dayCellFormDate}
+        employees={
+          dayCellFormEmployees.length > 0 ? dayCellFormEmployees : employees
+        }
+        user={user}
+        userRole={userRole}
+        userDepartments={userDepartments}
+        onAlert={onAlert}
+        onSaved={() => void loadMonth()}
+        dayIsCompensatory={Boolean(
+          dayCellFormDate &&
+            chunkByDate.get(dayCellFormDate)?.isCompensatoryDay,
+        )}
+      />
+    </>,
+    document.body,
   );
-
-  return createPortal(portal, document.body);
 }

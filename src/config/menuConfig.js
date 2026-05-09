@@ -163,6 +163,7 @@ export const routeConfig = [
   { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
   { path: "/attendance-salary", element: "PayrollSalaryCalculator" },
   { path: "/user-department", element: "UserDepartmentManager" },
+  { path: "/permission-catalog", element: "PermissionCatalogPage" },
   { path: "/email", element: "InternalAnnouncements" },
   { path: "/downloads", element: "Downloads" },
 ];

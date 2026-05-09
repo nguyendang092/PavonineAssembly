@@ -107,6 +107,7 @@ const ko = {
     seasonalStaffAttendance: "임시직 출석부",
     attendanceSalary: "급여 추정(출근)",
     userDepartment: "사용자 권한",
+    permissionCatalog: "권한·기능 안내",
     internalAnnouncements: "공지",
     download: "다운로드",
     files: "파일",

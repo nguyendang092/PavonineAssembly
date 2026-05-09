@@ -18,29 +18,36 @@ export function dateKeysInMonth(anchorYyyyMmDd) {
 }
 
 /**
- * Đọc ngày off / ngày lễ trong tháng (`_meta.isOffDay` / `_meta.isHolidayDay`).
+ * Đọc ngày off / lễ / nghỉ bù trong tháng (`_meta.isOffDay` / `isHolidayDay` / `isCompensatoryDay`).
  * @param {string} anchorYyyyMmDd
  * @param {string} [attendanceRootPath="attendance"] — cùng nguồn với `AttendanceList` (chính thức / thời vụ)
- * @returns {Promise<{ off: string[], holiday: string[] }>}
+ * @returns {Promise<{ off: string[], holiday: string[], compensatory: string[] }>}
  */
 export async function fetchOffAndHolidayDateKeysInMonth(
   anchorYyyyMmDd,
   attendanceRootPath = "attendance",
 ) {
   const keys = dateKeysInMonth(anchorYyyyMmDd);
-  if (keys.length === 0) return { off: [], holiday: [] };
+  if (keys.length === 0)
+    return { off: [], holiday: [], compensatory: [] };
   const snaps = await Promise.all(
     keys.map((d) => get(ref(db, `${attendanceRootPath}/${d}/_meta`))),
   );
   const off = [];
   const holiday = [];
+  const compensatory = [];
   for (let i = 0; i < keys.length; i++) {
     const meta = snaps[i].val();
     if (!meta || typeof meta !== "object") continue;
     if (meta.isHolidayDay) holiday.push(keys[i]);
+    else if (meta.isCompensatoryDay) compensatory.push(keys[i]);
     else if (meta.isOffDay) off.push(keys[i]);
   }
-  return { off: off.sort(), holiday: holiday.sort() };
+  return {
+    off: off.sort(),
+    holiday: holiday.sort(),
+    compensatory: compensatory.sort(),
+  };
 }
 
 /**

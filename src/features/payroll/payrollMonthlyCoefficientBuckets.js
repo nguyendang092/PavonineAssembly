@@ -30,6 +30,7 @@ const PAYROLL_EARLY_PAPERWORK_OT_HOURS = 2;
  *   gioRa: unknown,
  *   isOffDay: boolean,
  *   isHolidayDay: boolean,
+ *   isCompensatoryDay?: boolean,
  *   caLamViec: unknown,
  *   payrollEarlyOtPaperwork: boolean | undefined,
  *   payrollLateOtExcluded: boolean | undefined,
@@ -42,10 +43,12 @@ export function getPayrollMonthlyCoefficientLines(p) {
     gioRa,
     isOffDay,
     isHolidayDay,
+    isCompensatoryDay = false,
     caLamViec,
     payrollEarlyOtPaperwork,
     payrollLateOtExcluded,
   } = p;
+  const strictOffDay = isOffDay || isCompensatoryDay;
   const legacyIncludeTsNvInWorkingHours =
     String(p?.includeTsNvInWorkingHours ?? "").trim().toUpperCase() === "YES";
   const includeTapVuInWorkingHours =
@@ -89,7 +92,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     return lines;
   }
 
-  if (isOffDay) {
+  if (strictOffDay) {
     if (night) {
       const m = getNightShiftPayrollOffHolidayMergedHoursNumeric(
         gioVao,
@@ -192,7 +195,10 @@ export const PAYROLL_MONTHLY_SUBROWS = [
 ];
 
 /**
- * Dòng đầu (hệ số 0): ưu tiên mã phép; không phép thì giờ công ca ngày thường.
+ * Dòng đầu (hệ số 0): ưu tiên mã phép; không phép thì giờ công (khi tính được).
+ * Ngày nghỉ bù **không** ép `dash` trước khi tính giờ: có chấm công thì hiển thị giờ;
+ * không giờ / không phép → `dash`, lớp UI gắn nhãn NB (giống trước).
+ * Ngày off / lễ và ca đêm vẫn luôn `dash` ở dòng này (giờ TC nằm các dòng hệ số).
  * @returns {{ kind: "leave"; leaveShort: string; leaveRaw: string; badgeClass: string; workedHours?: number } | { kind: "hours"; hours: number } | { kind: "dash" }}
  */
 export function getPayrollMonthlyMainRowCell(emp, ch) {
@@ -219,7 +225,7 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     // 1/2PN: vẫn có thể đi làm nửa ngày; hiển thị thêm số giờ thực tế trong cùng ô.
     if (leaveShort === "1/2PN") {
       const night = isNightShiftCaLamViec(emp.caLamViec);
-      if (!night && !ch.isOffDay && !ch.isHolidayDay) {
+      if (!night && !ch.isOffDay && !ch.isHolidayDay && !ch.isCompensatoryDay) {
         workedHours =
           getPayrollHalfDayLeaveWorkedHours(
             emp.gioVao,

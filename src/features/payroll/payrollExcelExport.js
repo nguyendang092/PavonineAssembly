@@ -64,7 +64,7 @@ export function payrollExcelHourValueToNumber(formatted) {
 }
 
 /**
- * @param {unknown[]} rest — mảng 24 phần tử (không gồm STT) từ `payrollEmployeeRowValues`
+ * @param {unknown[]} rest — mảng 25 phần tử (gồm STT) từ `payrollEmployeeRowValues`
  * @returns {unknown[]}
  */
 function coercePayrollHourRestToNumbers(rest) {
@@ -150,22 +150,27 @@ export function getPayrollExcelDateParts(dateKey) {
  *   isPayrollOffLikeDay?: boolean,
  *   isOffDay?: boolean,
  *   isHolidayDay?: boolean,
+ *   isCompensatoryDay?: boolean,
  *   earlyOtPaperworkById?: Record<string, boolean>,
  *   lateOtExcludedById?: Record<string, boolean>,
- * }} ctx — `isPayrollOffLikeDay`: off hoặc lễ (TC off). Hiển thị OFF/HOLIDAY từ isOffDay / isHolidayDay.
+ * }} ctx — `isCompensatoryDay` vẫn dùng cho công thức giờ; không còn cột «Nghỉ bù» trên sheet (chỉ OFF/HOLIDAY + khối giờ).
  */
 export function payrollEmployeeRowValues(emp, idx, ctx) {
   const {
     isPayrollOffLikeDay,
     isOffDay = false,
     isHolidayDay = false,
+    isCompensatoryDay = false,
     earlyOtPaperworkById = {},
     lateOtExcludedById = {},
   } = ctx;
   const offLike =
     isPayrollOffLikeDay !== undefined
       ? isPayrollOffLikeDay
-      : Boolean(isOffDay) || Boolean(isHolidayDay);
+      : Boolean(isOffDay) ||
+        Boolean(isHolidayDay) ||
+        Boolean(isCompensatoryDay);
+  const strictOff = Boolean(isOffDay) || Boolean(isCompensatoryDay);
   const legacyIncludeTsNvInWorkingHours =
     String(emp.includeTsNvInWorkingHours ?? "").trim().toUpperCase() === "YES";
   const includeTapVuInWorkingHours =
@@ -213,11 +218,12 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       lateOtExcludedById[emp.id],
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      isCompensatoryDay,
     ),
     formatPayrollTableOffDayTcCell(
       emp.gioVao,
       emp.gioRa,
-      isOffDay,
+      strictOff,
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
       emp.loaiPhep,
@@ -239,7 +245,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     formatPayrollTableTotalDayGcCell(
       emp.gioVao,
       emp.gioRa,
-      isOffDay,
+      strictOff,
       isHolidayDay,
       emp.caLamViec,
       earlyOtPaperworkById[emp.id],
@@ -269,7 +275,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     formatPayrollTableNightShiftOffDayWorkingCell(
       emp.gioVao,
       emp.gioRa,
-      isOffDay,
+      strictOff,
       emp.caLamViec,
       emp.loaiPhep,
       includeTapVuInWorkingHours,
@@ -433,7 +439,7 @@ function finalizePayrollWorksheetColumns(worksheet) {
 
 /**
  * Xuất Excel bảng lương (một ngày): ba cột Ngày / Tháng / Năm + đủ cột giống bảng desktop, cùng layout với xuất nhiều ngày.
- * @param {{ employees: object[], selectedDate: string, isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean>, lateOtExcludedById?: Record<string, boolean> }} opts
+ * @param {{ employees: object[], selectedDate: string, isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, isCompensatoryDay?: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean>, lateOtExcludedById?: Record<string, boolean> }} opts
  */
 export async function buildPayrollSalaryExcelWorkbook({
   employees,
@@ -441,6 +447,7 @@ export async function buildPayrollSalaryExcelWorkbook({
   isPayrollOffLikeDay,
   isOffDay = false,
   isHolidayDay = false,
+  isCompensatoryDay = false,
   tlTable,
   sheetTitle,
   earlyOtPaperworkById = {},
@@ -456,6 +463,7 @@ export async function buildPayrollSalaryExcelWorkbook({
     isPayrollOffLikeDay,
     isOffDay,
     isHolidayDay,
+    isCompensatoryDay,
     earlyOtPaperworkById,
     lateOtExcludedById,
   };
@@ -470,7 +478,7 @@ export async function buildPayrollSalaryExcelWorkbook({
 
 /**
  * Nhiều ngày: một sheet; ba cột đầu là Ngày / Tháng / Năm (số, từ `dateKey` local).
- * @param {{ dayChunks: { dateKey: string, employees: object[], isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, earlyOtPaperworkById: Record<string, boolean>, lateOtExcludedById?: Record<string, boolean> }[], tlTable: function, sheetTitle: string }} opts
+ * @param {{ dayChunks: { dateKey: string, employees: object[], isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, isCompensatoryDay?: boolean, earlyOtPaperworkById: Record<string, boolean>, lateOtExcludedById?: Record<string, boolean> }[], tlTable: function, sheetTitle: string }} opts
  */
 export async function buildPayrollSalaryExcelWorkbookMultiDay({
   dayChunks,
@@ -487,6 +495,7 @@ export async function buildPayrollSalaryExcelWorkbookMultiDay({
       isPayrollOffLikeDay: chunk.isPayrollOffLikeDay,
       isOffDay: chunk.isOffDay ?? false,
       isHolidayDay: chunk.isHolidayDay ?? false,
+      isCompensatoryDay: chunk.isCompensatoryDay ?? false,
       earlyOtPaperworkById: chunk.earlyOtPaperworkById || {},
       lateOtExcludedById: chunk.lateOtExcludedById || {},
     };

@@ -69,6 +69,18 @@ function NavbarUserMenu({
               🔐 {t("navbar.userDepartment")}
             </button>
           ) : null}
+          {showAdminOnlyMenu ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                navigate("/permission-catalog");
+                setUserDropdownOpen(false);
+              }}
+            >
+              📋 {t("navbar.permissionCatalog", "Phân quyền & chức năng")}
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"

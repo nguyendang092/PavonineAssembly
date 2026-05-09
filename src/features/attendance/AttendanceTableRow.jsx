@@ -50,9 +50,11 @@ function AttendanceOffHolidayCellContent({
       </span>
     );
   }
+  const label =
+    kind === "off" ? "OFF" : kind === "holiday" ? "HOLIDAY" : "NB";
   return (
     <span className={`font-bold ${sizeCls} ${leaveTypeRedClass}`}>
-      {kind === "off" ? "OFF" : "HOLIDAY"}
+      {label}
     </span>
   );
 }
@@ -1779,10 +1781,12 @@ function AttendanceTableRow({
   gridTemplateColumns,
   isOffDay = false,
   isHolidayDay = false,
+  isCompensatoryDay = false,
   tableVariant = "attendance",
 }) {
   const isPayroll = tableVariant === "payroll";
-  const payrollOffLike = isOffDay || isHolidayDay;
+  const payrollOffLike = isOffDay || isHolidayDay || isCompensatoryDay;
+  const strictOffDay = isOffDay || isCompensatoryDay;
   const legacyIncludeTsNvInWorkingHours =
     String(emp.includeTsNvInWorkingHours ?? "")
       .trim()
@@ -2275,6 +2279,7 @@ function AttendanceTableRow({
                 emp.payrollLateOtExcluded,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                isCompensatoryDay,
               )}
             </span>
           </Cell>
@@ -2293,7 +2298,7 @@ function AttendanceTableRow({
               {formatPayrollTableOffDayTcCell(
                 emp.gioVao,
                 emp.gioRa,
-                isOffDay,
+                strictOffDay,
                 emp.caLamViec,
                 emp.payrollEarlyOtPaperwork,
                 emp.loaiPhep,
@@ -2346,7 +2351,7 @@ function AttendanceTableRow({
               {formatPayrollTableTotalDayGcCell(
                 emp.gioVao,
                 emp.gioRa,
-                isOffDay,
+                strictOffDay,
                 isHolidayDay,
                 emp.caLamViec,
                 emp.payrollEarlyOtPaperwork,
@@ -2427,7 +2432,7 @@ function AttendanceTableRow({
               {formatPayrollTableNightShiftOffDayWorkingCell(
                 emp.gioVao,
                 emp.gioRa,
-                isOffDay,
+                strictOffDay,
                 emp.caLamViec,
                 emp.loaiPhep,
                 includeTapVuInWorkingHours,
@@ -2554,6 +2559,7 @@ function propsAreEqual(prev, next) {
     prev.gridTemplateColumns === next.gridTemplateColumns &&
     prev.isOffDay === next.isOffDay &&
     prev.isHolidayDay === next.isHolidayDay &&
+    prev.isCompensatoryDay === next.isCompensatoryDay &&
     prev.tableVariant === next.tableVariant
   );
 }

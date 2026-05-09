@@ -84,10 +84,58 @@ export function getIsHolidayDayFromRaw(rawData) {
   return Boolean(m && typeof m === "object" && m.isHolidayDay);
 }
 
-/** Off hoặc lễ — cùng quy tắc TC off / giờ công. */
+/**
+ * Nghỉ bù (`_meta.isCompensatoryDay`) — công/lương như ngày off (TC off, không phải cột lễ).
+ * Cấu hình trong menu OFF/Lễ/Nghỉ bù + bảng Lương; không có cột riêng trên bảng điểm danh.
+ * @param {Record<string, unknown> | null | undefined} rawData
+ * @returns {boolean}
+ */
+export function getIsCompensatoryDayFromRaw(rawData) {
+  if (!rawData || typeof rawData !== "object") return false;
+  const m = rawData[ATTENDANCE_DAY_META_KEY];
+  return Boolean(m && typeof m === "object" && m.isCompensatoryDay);
+}
+
+/**
+ * Giá trị lưu «Không» (`NO` / tương đương) — không hiện NB trên lưới tháng.
+ * @param {unknown} storedValue — trường `duocNghiBu` (không truyền cả object `emp`).
+ */
+export function isDuocNghiBuExplicitlyNo(storedValue) {
+  const v = String(storedValue ?? "").trim().toUpperCase();
+  return v === "NO" || v === "FALSE" || v === "0";
+}
+
+/**
+ * Form điểm danh: đồng bộ `duocNghiBu` với cờ ngày nghỉ bù lịch.
+ * @returns {"" | "NO" | "YES"}
+ */
+export function normalizeDuocNghiBuForForm(dayIsCompensatory, storedRaw) {
+  if (!dayIsCompensatory) return "";
+  return isDuocNghiBuExplicitlyNo(storedRaw) ? "NO" : "YES";
+}
+
+/**
+ * Lưới tháng / Excel: ký hiệu ô dòng chính khi `getPayrollMonthlyMainRowCell` trả `dash`.
+ * `emp == null` = chưa có dòng điểm danh → NB theo lịch (nếu ngày nghỉ bù).
+ * @param {{ isHolidayDay?: boolean, isCompensatoryDay?: boolean } | null | undefined} ch
+ * @param {unknown} emp
+ */
+export function payrollMonthMainRowDashMark(ch, emp) {
+  if (!ch) return " ";
+  if (ch.isHolidayDay) return "NL";
+  if (ch.isCompensatoryDay) {
+    if (emp == null) return "NB";
+    return isDuocNghiBuExplicitlyNo(emp?.duocNghiBu) ? " " : "NB";
+  }
+  return " ";
+}
+
+/** Off, lễ hoặc nghỉ bù — cùng khối «ngày không làm BT» (giờ công / TC). */
 export function getIsPayrollOffLikeDayFromRaw(rawData) {
   return (
-    getIsOffDayFromRaw(rawData) || getIsHolidayDayFromRaw(rawData)
+    getIsOffDayFromRaw(rawData) ||
+    getIsHolidayDayFromRaw(rawData) ||
+    getIsCompensatoryDayFromRaw(rawData)
   );
 }
 

@@ -8,6 +8,7 @@ import {
   getPayrollMonthlyCoeffHoursMap,
   PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
+import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
@@ -196,7 +197,8 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
         }
         const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
         if (!emp) {
-          row[cidx] = sr.coeff == null && ch.isHolidayDay ? "NL" : "";
+          row[cidx] =
+            sr.coeff == null ? payrollMonthMainRowDashMark(ch, null) : "";
           return;
         }
         const coeffMap = getPayrollMonthlyCoeffHoursMap({
@@ -204,6 +206,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           gioRa: emp.gioRa,
           isOffDay: ch.isOffDay,
           isHolidayDay: ch.isHolidayDay,
+          isCompensatoryDay: ch.isCompensatoryDay,
           caLamViec: emp.caLamViec,
           payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
           payrollLateOtExcluded: emp.payrollLateOtExcluded,
@@ -223,7 +226,8 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           }
           else if (main.kind === "hours")
             row[cidx] = formatCoeffHoursForDisplay(main.hours);
-          else row[cidx] = ch.isHolidayDay ? "NL" : " ";
+          else
+            row[cidx] = payrollMonthMainRowDashMark(ch, emp);
           return;
         }
         const h = coeffMap.get(sr.coeff);

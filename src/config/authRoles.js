@@ -1,3 +1,7 @@
+/**
+ * Quy tắc vai trò dùng chung (Admin / HR / Manager / Staff).
+ * Ma trận theo **màn hình & chức năng** (route, file, mô tả tiếng Việt): `featurePermissions.js`.
+ */
 /** Emails with full access (admin / HR) — single source of truth */
 export const ADMIN_OR_HR_EMAILS = [
   "admin@gmail.com",

@@ -58,6 +58,7 @@ import AttendanceOffDaysModal from "./AttendanceOffDaysModal";
 import {
   getIsOffDayFromRaw,
   getIsHolidayDayFromRaw,
+  getIsCompensatoryDayFromRaw,
 } from "./attendanceDayMeta";
 import { fetchOffAndHolidayDateKeysInMonth } from "./attendanceMonthOffDays";
 import {
@@ -128,10 +129,12 @@ function AttendanceList({
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [isOffDay, setIsOffDay] = useState(false);
   const [isHolidayDay, setIsHolidayDay] = useState(false);
+  const [isCompensatoryDay, setIsCompensatoryDay] = useState(false);
   const [offDaysModalOpen, setOffDaysModalOpen] = useState(false);
   const [monthOffAndHoliday, setMonthOffAndHoliday] = useState({
     off: [],
     holiday: [],
+    compensatory: [],
   });
   const [monthOffDaysLoading, setMonthOffDaysLoading] = useState(false);
   const { t, i18n } = useTranslation();
@@ -184,15 +187,15 @@ function AttendanceList({
 
   const refreshMonthOffDays = useCallback(async () => {
     if (!user || !isAdminAccess(user, userRole)) {
-      setMonthOffAndHoliday({ off: [], holiday: [] });
+      setMonthOffAndHoliday({ off: [], holiday: [], compensatory: [] });
       return;
     }
     if (!selectedDate || !ISO_DATE_KEY_RE.test(selectedDate)) {
-      setMonthOffAndHoliday({ off: [], holiday: [] });
+      setMonthOffAndHoliday({ off: [], holiday: [], compensatory: [] });
       return;
     }
     setMonthOffDaysLoading(true);
-    setMonthOffAndHoliday({ off: [], holiday: [] });
+    setMonthOffAndHoliday({ off: [], holiday: [], compensatory: [] });
     try {
       const oh = await fetchOffAndHolidayDateKeysInMonth(
         selectedDate,
@@ -201,7 +204,7 @@ function AttendanceList({
       setMonthOffAndHoliday(oh);
     } catch (err) {
       console.error("refreshMonthOffDays:", err);
-      setMonthOffAndHoliday({ off: [], holiday: [] });
+      setMonthOffAndHoliday({ off: [], holiday: [], compensatory: [] });
     } finally {
       setMonthOffDaysLoading(false);
     }
@@ -216,15 +219,23 @@ function AttendanceList({
       "dayOffToolbarHint",
       "Mở danh sách ngày off và ngày lễ trong tháng; chỉnh sửa trong cửa sổ đầy đủ.",
     );
-    const { off, holiday } = monthOffAndHoliday;
-    if (off.length === 0 && holiday.length === 0) return hint;
+    const { off, holiday, compensatory } = monthOffAndHoliday;
+    if (
+      off.length === 0 &&
+      holiday.length === 0 &&
+      compensatory.length === 0
+    )
+      return hint;
     return `${hint}\n${tl(
       "dayOffToolbarTitleDates",
       "Ngày off trong tháng (YYYY-MM-DD):",
     )} ${off.join(", ")}\n${tl(
       "dayOffToolbarTitleHolidayDates",
       "Ngày lễ trong tháng (YYYY-MM-DD):",
-    )} ${holiday.join(", ")}`;
+    )} ${holiday.join(", ")}\n${tl(
+      "dayOffToolbarTitleCompensatoryDates",
+      "Ngày nghỉ bù trong tháng (YYYY-MM-DD):",
+    )} ${compensatory.join(", ")}`;
   }, [monthOffAndHoliday, tl]);
 
   const [employees, setEmployees] = useState([]);
@@ -340,6 +351,7 @@ function AttendanceList({
       attendanceRawRef.current = data;
       setIsOffDay(getIsOffDayFromRaw(data));
       setIsHolidayDay(getIsHolidayDayFromRaw(data));
+      setIsCompensatoryDay(getIsCompensatoryDayFromRaw(data));
       setEmployees(sortEmployeesStableAsc(mergeAttendanceDayRowsFromRaw(data)));
     });
     return () => unsubscribe();
@@ -2532,11 +2544,18 @@ function AttendanceList({
                     📅
                   </span>
                   <span className="min-w-0 shrink truncate">
-                    {tl("dayOffHolidayDropdownTrigger", "Ngày OFF / LỄ")}
+                    {tl(
+                      "dayOffHolidayDropdownTrigger",
+                      "Ngày OFF / LỄ / NGHỈ BÙ",
+                    )}
                   </span>
                   {isHolidayDay ? (
                     <span className="shrink-0 rounded-md border border-amber-300/80 bg-amber-500 px-2 py-0.5 text-[10px] font-extrabold uppercase leading-none tracking-wide text-white shadow-sm dark:border-amber-400/60">
                       Lễ
+                    </span>
+                  ) : isCompensatoryDay ? (
+                    <span className="shrink-0 rounded-md border border-teal-300/80 bg-teal-600 px-2 py-0.5 text-[10px] font-extrabold uppercase leading-none tracking-wide text-white shadow-sm dark:border-teal-400/60">
+                      NB
                     </span>
                   ) : isOffDay ? (
                     <span className="shrink-0 rounded-md border border-rose-300/80 bg-rose-600 px-2 py-0.5 text-[10px] font-extrabold uppercase leading-none tracking-wide text-white shadow-sm dark:border-rose-400/60">
@@ -2589,6 +2608,10 @@ function AttendanceList({
                           {isHolidayDay ? (
                             <span className="rounded-lg border border-amber-300/60 bg-amber-500/95 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white shadow-inner">
                               HOLIDAY
+                            </span>
+                          ) : isCompensatoryDay ? (
+                            <span className="rounded-lg border border-teal-300/60 bg-teal-600 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white shadow-inner">
+                              NB
                             </span>
                           ) : isOffDay ? (
                             <span className="rounded-lg border border-rose-300/60 bg-rose-600 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white shadow-inner">
@@ -2663,6 +2686,35 @@ function AttendanceList({
                                 </ul>
                               )}
                             </div>
+                            <div className="rounded-xl border border-teal-200/90 bg-white p-3 shadow-sm dark:border-teal-900/60 dark:bg-slate-900">
+                              <p className="flex items-center gap-2 border-l-4 border-teal-500 pl-2 text-[13px] font-extrabold uppercase tracking-wide text-teal-900 dark:border-teal-400 dark:text-teal-50">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-100 text-[10px] font-black text-teal-800 dark:bg-teal-950 dark:text-teal-100">
+                                  B
+                                </span>
+                                {tl(
+                                  "dayOffDropdownSectionCompensatory",
+                                  "Nghỉ bù",
+                                )}
+                              </p>
+                              {monthOffAndHoliday.compensatory.length === 0 ? (
+                                <p className="mt-2 rounded-lg bg-teal-50/90 px-2 py-2 italic text-teal-900/90 dark:bg-teal-950/40 dark:text-teal-100/90">
+                                  {tl(
+                                    "dayOffDropdownEmptyCompensatory",
+                                    "Chưa có ngày nghỉ bù trong tháng này.",
+                                  )}
+                                </p>
+                              ) : (
+                                <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                                  {monthOffAndHoliday.compensatory.map((k) => (
+                                    <li key={k}>
+                                      <span className="inline-flex items-center rounded-lg border border-teal-300/80 bg-teal-50 px-2 py-1 font-mono text-[11px] font-bold tabular-nums text-teal-950 shadow-sm dark:border-teal-700 dark:bg-teal-950/70 dark:text-teal-50">
+                                        {k}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2678,7 +2730,7 @@ function AttendanceList({
                         >
                           {tl(
                             "dayOffDropdownOpenModal",
-                            "Chỉnh sửa ngày OFF / LỄ",
+                            "Chỉnh sửa ngày OFF / LỄ / NGHỈ BÙ",
                           )}
                         </button>
                       </div>
@@ -3581,6 +3633,7 @@ function AttendanceList({
           userDepartments={userDepartments}
           attendanceRootPath={attendanceRootPath}
           onAlert={setAlert}
+          dayIsCompensatory={isCompensatoryDay}
         />
 
         <AttendanceOffDaysModal
@@ -4033,6 +4086,7 @@ function AttendanceList({
                         columnPlan={columnPlan}
                         isOffDay={isOffDay}
                         isHolidayDay={isHolidayDay}
+                        isCompensatoryDay={isCompensatoryDay}
                       />
                     );
                   })}
@@ -4081,6 +4135,7 @@ function AttendanceList({
                         columnPlan={columnPlan}
                         isOffDay={isOffDay}
                         isHolidayDay={isHolidayDay}
+                        isCompensatoryDay={isCompensatoryDay}
                       />
                     );
                   })}

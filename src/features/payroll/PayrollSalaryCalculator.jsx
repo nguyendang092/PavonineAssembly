@@ -92,6 +92,7 @@ export default function PayrollSalaryCalculator() {
   }, [searchParams]);
   const [isOffDay, setIsOffDay] = useState(false);
   const [isHolidayDay, setIsHolidayDay] = useState(false);
+  const [isCompensatoryDay, setIsCompensatoryDay] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
 
@@ -151,6 +152,7 @@ export default function PayrollSalaryCalculator() {
       const parsed = parsePayrollDayFromAttendanceRaw(data);
       setIsOffDay(parsed.isOffDay);
       setIsHolidayDay(parsed.isHolidayDay);
+      setIsCompensatoryDay(parsed.isCompensatoryDay);
       setEmployees(parsed.baseEmployees);
       setEarlyOtMap(parsed.earlyOtPaperworkById);
       setLateOtExcludedMap(parsed.lateOtExcludedById || {});
@@ -284,7 +286,7 @@ export default function PayrollSalaryCalculator() {
       if (earlyOtModalOpen) setEarlyOtModalOpen(false);
       return;
     }
-    if (isOffDay || isHolidayDay) {
+    if (isOffDay || isHolidayDay || isCompensatoryDay) {
       if (earlyOtModalOpen && earlyOtModalMode === "pending") {
         setEarlyOtModalOpen(false);
       }
@@ -299,6 +301,7 @@ export default function PayrollSalaryCalculator() {
   }, [
     isOffDay,
     isHolidayDay,
+    isCompensatoryDay,
     earlyOtSuppressed,
     earlyOtSessionSuppressed,
     pendingEarlyOtEmployees,
@@ -504,10 +507,12 @@ export default function PayrollSalaryCalculator() {
     let suffix = "";
     if (isHolidayDay)
       suffix = ` (${tlPage("exportHolidaySuffix", "Ngày lễ")})`;
+    else if (isCompensatoryDay)
+      suffix = ` (${tlPage("exportCompensatorySuffix", "Nghỉ bù")})`;
     else if (isOffDay)
       suffix = ` (${tlPage("exportOffDaySuffix", "Ngày off")})`;
     return `${base} — ${dateStr}${suffix}`;
-  }, [selectedDate, isOffDay, isHolidayDay, displayLocale, tlPage]);
+  }, [selectedDate, isOffDay, isHolidayDay, isCompensatoryDay, displayLocale, tlPage]);
 
   const handleExportPayrollExcelRange = useCallback(
     async (rangeFrom, rangeTo) => {
@@ -548,6 +553,7 @@ export default function PayrollSalaryCalculator() {
             isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
             isOffDay: parsed.isOffDay,
             isHolidayDay: parsed.isHolidayDay,
+            isCompensatoryDay: parsed.isCompensatoryDay,
             earlyOtPaperworkById: parsed.earlyOtPaperworkById,
             lateOtExcludedById: parsed.lateOtExcludedById || {},
           });
@@ -620,9 +626,10 @@ export default function PayrollSalaryCalculator() {
       await downloadPayrollSalaryExcel({
         employees,
         selectedDate,
-        isPayrollOffLikeDay: isOffDay || isHolidayDay,
+        isPayrollOffLikeDay: isOffDay || isHolidayDay || isCompensatoryDay,
         isOffDay,
         isHolidayDay,
+        isCompensatoryDay,
         tlTable,
         sheetTitle: payrollExportSheetTitle,
         earlyOtPaperworkById: earlyOtMap,
@@ -649,6 +656,7 @@ export default function PayrollSalaryCalculator() {
     selectedDate,
     isOffDay,
     isHolidayDay,
+    isCompensatoryDay,
     tlTable,
     tlPage,
     payrollExportSheetTitle,
@@ -898,6 +906,7 @@ export default function PayrollSalaryCalculator() {
                         columnPlan={columnPlan}
                         isOffDay={isOffDay}
                         isHolidayDay={isHolidayDay}
+                        isCompensatoryDay={isCompensatoryDay}
                       />
                     );
                   })}
@@ -941,6 +950,7 @@ export default function PayrollSalaryCalculator() {
                       columnPlan={columnPlan}
                       isOffDay={isOffDay}
                       isHolidayDay={isHolidayDay}
+                      isCompensatoryDay={isCompensatoryDay}
                     />
                   ))}
                 </tbody>
@@ -963,6 +973,7 @@ export default function PayrollSalaryCalculator() {
         userRole={userRole}
         userDepartments={userDepartments}
         onAlert={setAlert}
+        dayIsCompensatory={isCompensatoryDay}
       />
 
       <PayrollRangeExcelExportModal
@@ -992,6 +1003,11 @@ export default function PayrollSalaryCalculator() {
         onDepartmentFilterChange={setDepartmentFilter}
         currentEmployeeIds={filteredEmployees.map((e) => businessEmployeeCode(e) || e.id)}
         normalizeDepartment={normalizeDepartment}
+        user={user}
+        userRole={userRole}
+        userDepartments={userDepartments}
+        onAlert={setAlert}
+        employees={employees}
       />
 
       <PayrollEarlyOvertimePaperworkModal

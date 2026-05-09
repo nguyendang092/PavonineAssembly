@@ -113,6 +113,7 @@ const vi = {
     attendanceTable: "Thời gian chấm công",
     seasonalStaffAttendance: "Điểm danh NV thời vụ",
     userDepartment: "Phân quyền User",
+    permissionCatalog: "Phân quyền & chức năng",
     internalAnnouncements: "Thông báo",
     download: "Download",
     files: "Tài liệu",

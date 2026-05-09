@@ -12,7 +12,7 @@ function sortDraftEntries(arr) {
 }
 
 /**
- * Admin/HR: đánh dấu nhiều ngày off / lễ (Firebase `{attendanceRootPath}/{YYYY-MM-DD}/_meta`).
+ * Admin/HR: đánh dấu nhiều ngày off / lễ / nghỉ bù (Firebase `{attendanceRootPath}/{YYYY-MM-DD}/_meta`).
  * Gộp meta để không ghi đè `earlyOtPaperwork`.
  */
 export default function AttendanceOffDaysModal({
@@ -43,14 +43,16 @@ export default function AttendanceOffDaysModal({
     setListLoading(true);
     (async () => {
       try {
-        const { off, holiday } = await fetchOffAndHolidayDateKeysInMonth(
-          selectedDate,
-          attendanceRootPath,
-        );
+        const { off, holiday, compensatory } =
+          await fetchOffAndHolidayDateKeysInMonth(
+            selectedDate,
+            attendanceRootPath,
+          );
         if (!cancelled) {
           const entries = [
             ...off.map((k) => ({ key: k, kind: "off" })),
             ...holiday.map((k) => ({ key: k, kind: "holiday" })),
+            ...compensatory.map((k) => ({ key: k, kind: "compensatory" })),
           ];
           const sorted = sortDraftEntries(entries);
           setDraft(sorted);
@@ -74,7 +76,7 @@ export default function AttendanceOffDaysModal({
 
   const addOrUpdateDate = useCallback((d, kind) => {
     if (!d || !DATE_KEY.test(d)) return;
-    if (kind !== "off" && kind !== "holiday") return;
+    if (kind !== "off" && kind !== "holiday" && kind !== "compensatory") return;
     setDraft((prev) => {
       const without = prev.filter((x) => x.key !== d);
       return sortDraftEntries([...without, { key: d, kind }]);
@@ -105,16 +107,25 @@ export default function AttendanceOffDaysModal({
           merged = mergeAttendanceDayMeta(snap.val(), {
             isOffDay: false,
             isHolidayDay: false,
+            isCompensatoryDay: false,
           });
         } else if (w === "off") {
           merged = mergeAttendanceDayMeta(snap.val(), {
             isOffDay: true,
             isHolidayDay: false,
+            isCompensatoryDay: false,
+          });
+        } else if (w === "holiday") {
+          merged = mergeAttendanceDayMeta(snap.val(), {
+            isOffDay: false,
+            isHolidayDay: true,
+            isCompensatoryDay: false,
           });
         } else {
           merged = mergeAttendanceDayMeta(snap.val(), {
             isOffDay: false,
-            isHolidayDay: true,
+            isHolidayDay: false,
+            isCompensatoryDay: true,
           });
         }
         updates[`${attendanceRootPath}/${d}/_meta`] = merged;
@@ -154,13 +165,13 @@ export default function AttendanceOffDaysModal({
         >
           {tl(
             "dayOffMultiModalTitle",
-            "Chọn nhiều ngày off / lễ",
+            "Chọn nhiều ngày off / lễ / nghỉ bù",
           )}
         </h2>
         <p className="mb-3 text-xs text-slate-600 dark:text-slate-400">
           {tl(
             "dayOffMultiModalHint",
-            "Chọn loại ngày (off hoặc lễ), thêm ngày vào danh sách rồi Lưu. Off → cột Ngày off = OFF; lễ → cột Ngày lễ = HOLIDAY (công/lương giống ngày off).",
+            "Chọn loại ngày (off, lễ hoặc nghỉ bù), thêm ngày vào danh sách rồi Lưu. Off → OFF; lễ → HOLIDAY; nghỉ bù → NB (công/lương như ngày off).",
           )}
         </p>
         <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -172,6 +183,9 @@ export default function AttendanceOffDaysModal({
           >
             <option value="off">{tl("dayKindOff", "Ngày off")}</option>
             <option value="holiday">{tl("dayKindHoliday", "Ngày lễ")}</option>
+            <option value="compensatory">
+              {tl("dayKindCompensatory", "Nghỉ bù")}
+            </option>
           </select>
           <input
             type="date"
@@ -208,7 +222,7 @@ export default function AttendanceOffDaysModal({
             <p className="text-center text-xs text-slate-500 dark:text-slate-400">
               {tl(
                 "dayOffMultiLoadingList",
-                "Đang tải các ngày off / lễ trong tháng…",
+                "Đang tải các ngày off / lễ / nghỉ bù trong tháng…",
               )}
             </p>
           ) : draft.length === 0 ? (
@@ -223,14 +237,18 @@ export default function AttendanceOffDaysModal({
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${
                     kind === "holiday"
                       ? "bg-amber-100 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100"
-                      : "bg-violet-100 text-violet-900 dark:bg-violet-900/50 dark:text-violet-100"
+                      : kind === "compensatory"
+                        ? "bg-teal-100 text-teal-950 dark:bg-teal-900/45 dark:text-teal-50"
+                        : "bg-violet-100 text-violet-900 dark:bg-violet-900/50 dark:text-violet-100"
                   }`}
                 >
                   <span>{key}</span>
                   <span className="rounded bg-white/70 px-1 text-[10px] uppercase dark:bg-black/30">
                     {kind === "holiday"
                       ? tl("dayKindHolidayBadge", "Lễ")
-                      : "OFF"}
+                      : kind === "compensatory"
+                        ? tl("dayKindCompensatoryBadge", "NB")
+                        : "OFF"}
                   </span>
                   <button
                     type="button"

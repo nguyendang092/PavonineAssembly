@@ -107,10 +107,7 @@ export function rawMatchesAttendanceTypeOption(raw, option) {
   if (tokens.includes(shortTok)) return true;
 
   // Dữ liệu cũ / Excel: «Đi làm» — cùng nhóm BGC (đi làm / bù giờ công).
-  if (
-    option.shortLabel === "BGC" &&
-    f === foldGioVaoCompare("Đi làm")
-  ) {
+  if (option.shortLabel === "BGC" && f === foldGioVaoCompare("Đi làm")) {
     return true;
   }
 
@@ -228,9 +225,7 @@ export function applyLegacyGioVaoLeaveMigration(emp) {
 
 /** Cột «Loại phép» từ bản ghi nhân viên (sau migrate `loaiPhep` đã đủ). */
 export function formatAttendanceLeaveTypeColumnForEmployee(emp) {
-  return formatAttendanceLeaveTypeColumnDisplay(
-    getAttendanceLeaveTypeRaw(emp),
-  );
+  return formatAttendanceLeaveTypeColumnDisplay(getAttendanceLeaveTypeRaw(emp));
 }
 
 /**

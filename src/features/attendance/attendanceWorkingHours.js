@@ -877,17 +877,19 @@ export function formatPayrollDayOvertimeHoursCell(
   lateOtExcluded = false,
   includeTapVuInWorkingHours = false,
   includeThaiSanInWorkingHours = false,
+  isCompensatoryDay = false,
 ) {
+  const strictOff = isOffDay || isCompensatoryDay;
   if (isNightShiftCaLamViec(caLamViec)) {
     return formatOvertimeHoursLabel(gioRa);
   }
-  if (isOffDay || isHolidayDay) {
+  if (strictOff || isHolidayDay) {
     return PAYROLL_CELL_DASH;
   }
   const n = getPayrollDayOvertimeHoursNumeric(
     gioVao,
     gioRa,
-    isOffDay,
+    strictOff,
     caLamViec,
     earlyOtPaperwork,
     isHolidayDay,

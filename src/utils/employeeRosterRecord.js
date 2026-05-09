@@ -547,6 +547,7 @@ export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
   "loaiPhep",
   "gioRa",
   "caLamViec",
+  "duocNghiBu",
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
@@ -571,6 +572,7 @@ export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
   "loaiPhep",
   "gioRa",
   "caLamViec",
+  "duocNghiBu",
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
@@ -806,6 +808,17 @@ function attendanceDayOptionalStringFromForm(form, key) {
 }
 
 /**
+ * MVT / mã BP: form để trống không ghi đè giá trị cũ trên Firebase (tránh mất khi payload thiếu trường / bản ghi slim).
+ */
+function attendanceDayNonWipingOptionalStringFromForm(form, key) {
+  if (!Object.prototype.hasOwnProperty.call(form, key)) return undefined;
+  const v = form[key];
+  if (v === null || v === undefined) return undefined;
+  const s = typeof v === "string" ? v.trim() : String(v).trim();
+  return s || undefined;
+}
+
+/**
  * attendance/{date}/{key}: stt + mnv + trường chấm công theo ngày.
  */
 export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
@@ -824,6 +837,7 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
     loaiPhep: attendanceDayOptionalStringFromForm(form, "loaiPhep"),
     gioRa: attendanceDayOptionalStringFromForm(form, "gioRa"),
     caLamViec: attendanceDayOptionalStringFromForm(form, "caLamViec"),
+    duocNghiBu: attendanceDayOptionalStringFromForm(form, "duocNghiBu"),
     includeTapVuInWorkingHours: attendanceDayOptionalStringFromForm(
       form,
       "includeTapVuInWorkingHours",
@@ -836,8 +850,8 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
       form,
       "includeTsNvInWorkingHours",
     ),
-    mvt: attendanceDayOptionalStringFromForm(form, "mvt"),
-    maBoPhan: attendanceDayOptionalStringFromForm(form, "maBoPhan"),
+    mvt: attendanceDayNonWipingOptionalStringFromForm(form, "mvt"),
+    maBoPhan: attendanceDayNonWipingOptionalStringFromForm(form, "maBoPhan"),
     gioiTinh: Object.prototype.hasOwnProperty.call(form, "gioiTinh")
       ? form.gioiTinh
       : undefined,

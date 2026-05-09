@@ -2,6 +2,7 @@ import { mergeAttendanceDayRowsFromRaw } from "@/features/attendance/mergeAttend
 import { businessEmployeeCode } from "@/utils/employeeRosterRecord";
 import {
   getEarlyOtPaperworkFromRaw,
+  getIsCompensatoryDayFromRaw,
   getIsHolidayDayFromRaw,
   getLateOtPaperworkFromRaw,
   getIsOffDayFromRaw,
@@ -11,6 +12,8 @@ import {
 const PAYROLL_MONTH_SLIM_KEYS = [
   "stt",
   "mnv",
+  "mvt",
+  "maBoPhan",
   "hoVaTen",
   "boPhan",
   "ngayVaoLam",
@@ -19,6 +22,7 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "gioRa",
   "caLamViec",
   "loaiPhep",
+  "duocNghiBu",
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTsNvInWorkingHours",
@@ -59,6 +63,7 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
       payrollEmployees: [],
       isOffDay: false,
       isHolidayDay: false,
+      isCompensatoryDay: false,
       isPayrollOffLikeDay: false,
       earlyOtPaperworkById: {},
       lateOtExcludedById: {},
@@ -66,6 +71,7 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
   }
   const isOffDay = getIsOffDayFromRaw(raw);
   const isHolidayDay = getIsHolidayDayFromRaw(raw);
+  const isCompensatoryDay = getIsCompensatoryDayFromRaw(raw);
   const earlyOtPaperworkById = getEarlyOtPaperworkFromRaw(raw);
   const lateOtExcludedById = getLateOtPaperworkFromRaw(raw);
   const baseEmployees = sortPayrollEmployeesStable(
@@ -81,7 +87,9 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
     payrollEmployees,
     isOffDay,
     isHolidayDay,
-    isPayrollOffLikeDay: isOffDay || isHolidayDay,
+    isCompensatoryDay,
+    isPayrollOffLikeDay:
+      isOffDay || isHolidayDay || isCompensatoryDay,
     earlyOtPaperworkById,
     lateOtExcludedById,
   };
@@ -96,6 +104,7 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
  *   byMonthEmployeeKey: Map<string, object>,
  *   isOffDay: boolean,
  *   isHolidayDay: boolean,
+ *   isCompensatoryDay: boolean,
  *   isPayrollOffLikeDay: boolean,
  *   earlyOtPaperworkById: Record<string, boolean>,
  *   lateOtExcludedById: Record<string, boolean>,
@@ -106,8 +115,11 @@ export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
   const slimEmployees = parsed.payrollEmployees.map((e) =>
     slimPayrollMonthEmployeeRecord(e),
   );
-  /** Chỉ `_meta.isOffDay` / `isHolidayDay` như cửa sổ chọn ngày off/lễ — vẫn cần chunk để đổi màu cột và tính Số ngày công. */
-  const hasMetaCalendarFlags = parsed.isOffDay || parsed.isHolidayDay;
+  /** `_meta` off / lễ / nghỉ bù — chunk để đổi màu cột và tính Số ngày công. */
+  const hasMetaCalendarFlags =
+    parsed.isOffDay ||
+    parsed.isHolidayDay ||
+    parsed.isCompensatoryDay;
   if (!slimEmployees.length && !hasMetaCalendarFlags) return null;
   return {
     dateKey,
@@ -118,6 +130,7 @@ export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
     ),
     isOffDay: parsed.isOffDay,
     isHolidayDay: parsed.isHolidayDay,
+    isCompensatoryDay: parsed.isCompensatoryDay,
     isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
     earlyOtPaperworkById: parsed.earlyOtPaperworkById,
     lateOtExcludedById: parsed.lateOtExcludedById,

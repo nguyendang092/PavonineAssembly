@@ -16,10 +16,37 @@ import {
 import { ATTENDANCE_LOAI_PHEP_OPTIONS } from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
+  normalizeDuocNghiBuForForm,
+  isDuocNghiBuExplicitlyNo,
+} from "@/features/attendance/attendanceDayMeta";
+import {
   normalizeTimeForHtmlInput,
   canonicalAttendanceLoaiPhep,
   findGioVaoTypeOptionMatch,
 } from "./attendanceGioVaoModalHelpers";
+
+/**
+ * Map legacy `includeTsNvInWorkingHours` + chuẩn hóa `loaiPhep` khi mở form từ snapshot.
+ */
+function applyLegacyIncludeTsNvAndCanonicalPhep(record) {
+  let merged = { ...record };
+  const legacyIncludeTsNv =
+    String(merged.includeTsNvInWorkingHours ?? "")
+      .trim()
+      .toUpperCase() === "YES";
+  if (legacyIncludeTsNv) {
+    if (!merged.includeTapVuInWorkingHours) {
+      merged.includeTapVuInWorkingHours = "YES";
+    }
+    if (!merged.includeThaiSanInWorkingHours) {
+      merged.includeThaiSanInWorkingHours = "YES";
+    }
+  }
+  return {
+    ...merged,
+    loaiPhep: canonicalAttendanceLoaiPhep(merged.loaiPhep),
+  };
+}
 
 const TRANG_THAI_OPTION_DEFAULTS = {
   dang_lam: "Chính thức",
@@ -44,6 +71,7 @@ export const EMPTY_EMPLOYEE_FORM = {
   loaiPhep: "",
   gioRa: "",
   caLamViec: "",
+  duocNghiBu: "",
   includeTapVuInWorkingHours: "",
   includeThaiSanInWorkingHours: "",
 };
@@ -73,6 +101,8 @@ export default function AttendanceEmployeeFormModal({
   onAlert,
   onSaved,
   attendanceRootPath = "attendance",
+  /** Ngày đang sửa có cờ nghỉ bù trong OFF/Lễ/Nghỉ bù — mặc định «Có»; không cờ thì khóa «Không». */
+  dayIsCompensatory = false,
 }) {
   const { t } = useTranslation();
   const tl = useCallback(
@@ -92,34 +122,49 @@ export default function AttendanceEmployeeFormModal({
   const formInitKey = useMemo(() => {
     if (!open) return "";
     if (initialRecord?.id) {
-      return `edit:${String(initialRecord.id)}:${selectedDate}`;
+      return `edit:${String(initialRecord.id)}:${selectedDate}:c${dayIsCompensatory ? 1 : 0}`;
     }
-    return `add:${selectedDate}`;
-  }, [open, initialRecord?.id, selectedDate]);
+    const addSeed =
+      initialRecord?.mnv ||
+      initialRecord?.monthEmployeeKey ||
+      initialRecord?.hoVaTen ||
+      "";
+    return `add:${selectedDate}:${addSeed}:c${dayIsCompensatory ? 1 : 0}`;
+  }, [
+    open,
+    initialRecord?.id,
+    initialRecord?.mnv,
+    initialRecord?.monthEmployeeKey,
+    initialRecord?.hoVaTen,
+    selectedDate,
+    dayIsCompensatory,
+  ]);
 
   useEffect(() => {
     if (!open) return;
     if (initialRecord && initialRecord.id) {
-      let merged = { ...EMPTY_EMPLOYEE_FORM, ...initialRecord };
-      // Legacy: nếu DB chỉ có chế độ chung `includeTsNvInWorkingHours` thì map sang bật cả
-      // tạp vụ + thai sản (để tương thích dữ liệu cũ).
-      const legacyIncludeTsNv =
-        String(merged.includeTsNvInWorkingHours ?? "").trim().toUpperCase() ===
-        "YES";
-      if (legacyIncludeTsNv) {
-        if (!merged.includeTapVuInWorkingHours) {
-          merged.includeTapVuInWorkingHours = "YES";
-        }
-        if (!merged.includeThaiSanInWorkingHours) {
-          merged.includeThaiSanInWorkingHours = "YES";
-        }
-      }
-      merged = {
-        ...merged,
-        loaiPhep: canonicalAttendanceLoaiPhep(merged.loaiPhep),
-      };
+      const merged = applyLegacyIncludeTsNvAndCanonicalPhep({
+        ...EMPTY_EMPLOYEE_FORM,
+        ...initialRecord,
+      });
+      merged.duocNghiBu = normalizeDuocNghiBuForForm(
+        dayIsCompensatory,
+        merged.duocNghiBu,
+      );
       setForm(merged);
       setEditAttendanceKey(initialRecord.id);
+    } else if (initialRecord && typeof initialRecord === "object") {
+      const merged = applyLegacyIncludeTsNvAndCanonicalPhep({
+        ...EMPTY_EMPLOYEE_FORM,
+        ...initialRecord,
+        id: "",
+      });
+      merged.duocNghiBu = normalizeDuocNghiBuForForm(
+        dayIsCompensatory,
+        merged.duocNghiBu,
+      );
+      setForm(merged);
+      setEditAttendanceKey(null);
     } else {
       setForm({ ...EMPTY_EMPLOYEE_FORM });
       setEditAttendanceKey(null);
@@ -129,8 +174,9 @@ export default function AttendanceEmployeeFormModal({
 
   const employeeRegimeSelectValue = (() => {
     const tapOn =
-      String(form.includeTapVuInWorkingHours ?? "").trim().toUpperCase() ===
-      "YES";
+      String(form.includeTapVuInWorkingHours ?? "")
+        .trim()
+        .toUpperCase() === "YES";
     const thaiOn =
       String(form.includeThaiSanInWorkingHours ?? "")
         .trim()
@@ -142,10 +188,12 @@ export default function AttendanceEmployeeFormModal({
   })();
 
   const employeeRegimeBothOn =
-    String(form.includeTapVuInWorkingHours ?? "").trim().toUpperCase() ===
-      "YES" &&
-    String(form.includeThaiSanInWorkingHours ?? "").trim().toUpperCase() ===
-      "YES";
+    String(form.includeTapVuInWorkingHours ?? "")
+      .trim()
+      .toUpperCase() === "YES" &&
+    String(form.includeThaiSanInWorkingHours ?? "")
+      .trim()
+      .toUpperCase() === "YES";
 
   const handleEmployeeRegimeChange = useCallback((e) => {
     const v = e.target.value;
@@ -392,7 +440,7 @@ export default function AttendanceEmployeeFormModal({
           <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
             {tl(
               "restrictedEditManagerHint",
-              "Bạn chỉ có thể sửa Loại phép và Ca làm việc. Chỉ Admin / HR mới chỉnh sửa toàn bộ thông tin.",
+              "Bạn chỉ có thể sửa Loại phép, Ca làm việc và Nghỉ bù (khi ngày được đánh dấu nghỉ bù). Chỉ Admin / HR mới chỉnh sửa toàn bộ thông tin.",
             )}
           </p>
         )}
@@ -674,42 +722,71 @@ export default function AttendanceEmployeeFormModal({
               {tl("loaiPhepModalHint", "Chọn loại phép (PN, PO, TS …)")}
             </p>
           </div>
-          <div className="min-w-0">
-            <label className={employeeModalLabelClass}>
-              {tl("workShift", "Ca làm việc")}
-            </label>
-            <select
-              name="caLamViec"
-              value={form.caLamViec ?? ""}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  caLamViec: e.target.value,
-                }))
-              }
-              className={employeeModalSelectFieldClass}
-            >
-              <option value="">{tl("chooseShift", "Chọn ca")}</option>
-              {(() => {
-                const raw = String(form.caLamViec ?? "").trim();
-                const isStd = ATTENDANCE_CA_LAM_VIEC_OPTIONS.some(
-                  (o) => o.value === raw,
-                );
-                return !isStd && raw ? (
-                  <option value={raw}>
-                    {raw} {tl("shiftCurrentValue", "(giá trị hiện tại)")}
+          <div className="sm:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("workShift", "Ca làm việc")}
+              </label>
+              <select
+                name="caLamViec"
+                value={form.caLamViec ?? ""}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    caLamViec: e.target.value,
+                  }))
+                }
+                disabled={isRestrictedEdit}
+                className={employeeModalSelectFieldClass}
+              >
+                <option value="">{tl("chooseShift", "Chọn ca")}</option>
+                {(() => {
+                  const raw = String(form.caLamViec ?? "").trim();
+                  const isStd = ATTENDANCE_CA_LAM_VIEC_OPTIONS.some(
+                    (o) => o.value === raw,
+                  );
+                  return !isStd && raw ? (
+                    <option value={raw}>
+                      {raw} {tl("shiftCurrentValue", "(giá trị hiện tại)")}
+                    </option>
+                  ) : null;
+                })()}
+                {ATTENDANCE_CA_LAM_VIEC_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
-                ) : null;
-              })()}
-              {ATTENDANCE_CA_LAM_VIEC_OPTIONS.map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1.5 text-[11px] leading-snug text-blue-700/90 dark:text-blue-300/90">
-              {tl("caLamViecModalHint", "S1 là Ca ngày, S2 là Ca đêm.")}
-            </p>
+                ))}
+              </select>
+              <p className="mt-1.5 text-[11px] leading-snug text-blue-700/90 dark:text-blue-300/90">
+                {tl("caLamViecModalHint", "S1 là Ca ngày, S2 là Ca đêm.")}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("compensatoryLeaveField", "Nghỉ bù")}
+              </label>
+              <select
+                name="duocNghiBu"
+                value={
+                  !dayIsCompensatory
+                    ? ""
+                    : isDuocNghiBuExplicitlyNo(form.duocNghiBu)
+                      ? "NO"
+                      : "YES"
+                }
+                disabled={!dayIsCompensatory}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    duocNghiBu: e.target.value === "NO" ? "NO" : "YES",
+                  }))
+                }
+                className={employeeModalSelectFieldClass}
+              >
+                <option value="NO">{tl("compensatoryLeaveNo", "Không")}</option>
+                <option value="YES">{tl("compensatoryLeaveYes", "Có")}</option>
+              </select>
+            </div>
           </div>
           <button
             type="submit"

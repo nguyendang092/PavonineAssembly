@@ -68,6 +68,9 @@ const Downloads = lazyImport(() => import("@/components/ui/Downloads"));
 const UserDepartmentManager = lazyImport(
   () => import("@/features/employee/UserDepartmentManager"),
 );
+const PermissionCatalogPage = lazyImport(
+  () => import("@/features/admin/PermissionCatalogPage"),
+);
 const InternalAnnouncements = lazyImport(
   () => import("@/features/employee/InternalAnnouncements"),
 );
@@ -95,6 +98,7 @@ const ROUTE_COMPONENTS = {
   PayrollSalaryCalculator,
   Downloads,
   UserDepartmentManager,
+  PermissionCatalogPage,
   InternalAnnouncements,
 };
 
