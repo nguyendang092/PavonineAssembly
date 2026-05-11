@@ -743,7 +743,11 @@ const ko = {
       "ERP STATUS 비율 — 이상 상태가 많으면 ‘재고가 안전하다’는 결론을 내리기 전에 원인을 먼저 설명해야 합니다.",
     overviewWhHint:
       "실사 재고 가치를 많이 보유한 창고 — 차이가 있을 때 통제·분석을 우선하세요.",
-    overviewMonthChartTitle: "월별 차이 개요",
+    overviewTopCodeAmountChartTitle: "코드별 월별 차이 금액 TOP",
+    overviewTopCodeAmountHint:
+      "|GAP| 기준 차이 금액이 큰 코드 — 빨간색은 음수.",
+    overviewTopCodeAmountChartEmpty: "표시할 차이 금액 데이터가 없습니다.",
+    topCodeByAmountLabel: "코드별 차이 금액",
     overviewMonthTrendHint:
       "필터된 기준: 보라 선 = 월별 차이 합(왼쪽 축), 초록 선 = 코드별 차이 합(오른쪽 축).",
     overviewTopCodeChartTitle: "코드별 차이가 가장 큰 CODE",

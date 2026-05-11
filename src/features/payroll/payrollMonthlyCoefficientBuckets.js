@@ -196,9 +196,9 @@ export const PAYROLL_MONTHLY_SUBROWS = [
 
 /**
  * Dòng đầu (hệ số 0): ưu tiên mã phép; không phép thì giờ công (khi tính được).
- * Ngày nghỉ bù **không** ép `dash` trước khi tính giờ: có chấm công thì hiển thị giờ;
- * không giờ / không phép → `dash`, lớp UI gắn nhãn NB (giống trước).
- * Ngày off / lễ và ca đêm vẫn luôn `dash` ở dòng này (giờ TC nằm các dòng hệ số).
+ * Ngày off / lễ / **nghỉ bù** và ca đêm luôn `dash` ở dòng này — lớp UI gắn nhãn
+ * tương ứng (OFF / NL / NB) qua `payrollMonthMainRowDashMark`; giờ công đẩy
+ * sang các dòng hệ số (2.0 cho off & nghỉ bù, 3.0 cho lễ, …) đồng bộ với NL.
  * @returns {{ kind: "leave"; leaveShort: string; leaveRaw: string; badgeClass: string; workedHours?: number } | { kind: "hours"; hours: number } | { kind: "dash" }}
  */
 export function getPayrollMonthlyMainRowCell(emp, ch) {
@@ -255,7 +255,12 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     };
   }
   const night = isNightShiftCaLamViec(emp.caLamViec);
-  if (night || ch.isOffDay || ch.isHolidayDay) {
+  /**
+   * Ngày nghỉ bù (NB) đồng bộ cơ chế với ngày lễ (NL): dòng chính luôn `dash`
+   * → dashMark hiển thị «NB» dù có hay không có giờ công; giờ công tính sang
+   * dòng hệ số 2.0 qua nhánh `strictOffDay`.
+   */
+  if (night || ch.isOffDay || ch.isHolidayDay || ch.isCompensatoryDay) {
     return { kind: "dash" };
   }
   const h = getAttendanceWorkingHoursHours(

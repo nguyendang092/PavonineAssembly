@@ -1,9 +1,4 @@
-import React, {
-  useMemo,
-  useState,
-  useCallback,
-  useEffect,
-} from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Chart as ChartJS,
@@ -19,7 +14,7 @@ import {
   LineController,
   PointElement,
 } from "chart.js";
-import { Doughnut, Bar, Line } from "react-chartjs-2";
+import { Doughnut, Bar } from "react-chartjs-2";
 import { FiUpload, FiRefreshCw, FiFilter } from "react-icons/fi";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import {
@@ -404,7 +399,9 @@ export default function WarehouseInventoryDashboard() {
         const prevActual = prevKey ? (m.get(prevKey) ?? 0) : null;
         prevActualByKeyMonth.set(`${k}__${monthKey}`, prevActual);
         const amountMap = amountActualByKeyMonth.get(k);
-        const prevAmountActual = prevKey ? (amountMap?.get(prevKey) ?? 0) : null;
+        const prevAmountActual = prevKey
+          ? (amountMap?.get(prevKey) ?? 0)
+          : null;
         prevAmountActualByKeyMonth.set(`${k}__${monthKey}`, prevAmountActual);
       }
     }
@@ -428,7 +425,9 @@ export default function WarehouseInventoryDashboard() {
         codeDelta: prevActual == null ? 0 : (g.actualQty ?? 0) - prevActual,
         // 코드별 월 증감(실사금액): 현재 월 실사금액 - 직전 월 실사금액
         amountDelta:
-          prevAmountActual == null ? 0 : (g.amountActual ?? 0) - prevAmountActual,
+          prevAmountActual == null
+            ? 0
+            : (g.amountActual ?? 0) - prevAmountActual,
         hasPrevMonth: prevActual != null,
       };
     });
@@ -610,60 +609,6 @@ export default function WarehouseInventoryDashboard() {
     return maxAbs > 0 ? maxAbs : 1;
   }, [filteredStructuredRows]);
 
-  const overviewMonthChart = useMemo(() => {
-    const monthMap = new Map();
-    for (const r of filteredStructuredRows) {
-      if (!monthMap.has(r.monthKey)) {
-        monthMap.set(r.monthKey, {
-          label: r.month,
-          monthlyDiff: 0,
-          monthlyGapAbs: 0,
-        });
-      }
-      const m = monthMap.get(r.monthKey);
-      m.monthlyDiff += r.monthlyDiff;
-      m.monthlyGapAbs += Math.abs(r.monthlyDiff ?? 0);
-    }
-    const rows = [...monthMap.entries()]
-      .sort(([a], [b]) => String(a).localeCompare(String(b)))
-      .map(([, v]) => v);
-    return {
-      labels: rows.map((r) => r.label),
-      datasets: [
-        {
-          label: tl("colMonthlyDiffKr", "월별 차이"),
-          data: rows.map((r) => r.monthlyDiff),
-          borderColor: "#7c3aed",
-          backgroundColor: "rgba(124, 58, 237, 0.14)",
-          borderWidth: 3,
-          fill: true,
-          yAxisID: "y",
-          tension: 0.35,
-          pointRadius: 6,
-          pointHoverRadius: 9,
-          pointBackgroundColor: "#ffffff",
-          pointBorderColor: "#7c3aed",
-          pointBorderWidth: 2,
-        },
-        {
-          label: tl("monthGapAbsTotal", "총 |GAP|"),
-          data: rows.map((r) => r.monthlyGapAbs),
-          borderColor: "#059669",
-          backgroundColor: "rgba(5, 150, 105, 0.13)",
-          borderWidth: 3,
-          fill: true,
-          yAxisID: "y1",
-          tension: 0.35,
-          pointRadius: 6,
-          pointHoverRadius: 9,
-          pointBackgroundColor: "#ffffff",
-          pointBorderColor: "#059669",
-          pointBorderWidth: 2,
-        },
-      ],
-    };
-  }, [filteredStructuredRows, tl]);
-
   const overviewTopCodeDiffChart = useMemo(() => {
     const map = new Map();
     for (const r of filteredStructuredRows) {
@@ -694,6 +639,74 @@ export default function WarehouseInventoryDashboard() {
       ],
     };
   }, [filteredStructuredRows, tl]);
+
+  /**
+   * TOP mã có «tiền chênh lệch» lớn nhất (theo |gapAmount|) — bar ngang. Dùng
+   * |gapAmount| để cột luôn mọc trái → phải; gradient indigo / hồng đỏ tăng độ
+   * sang trọng. Giá trị có dấu giữ trong `signedValues` để tooltip / datalabel
+   * hiển thị âm/dương.
+   */
+  const overviewTopCodeAmountChart = useMemo(() => {
+    const map = new Map();
+    for (const r of filteredStructuredRows) {
+      const amt = typeof r.gapAmount === "number" ? r.gapAmount : 0;
+      if (!map.has(r.code)) map.set(r.code, 0);
+      map.set(r.code, (map.get(r.code) || 0) + amt);
+    }
+    const top = [...map.entries()]
+      .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+      .slice(0, 15);
+    const signedValues = top.map(([, v]) => v);
+
+    /** Tạo gradient ngang (xanh tím cho dương, hồng đỏ cho âm). */
+    const makeBarGradient = (chart, isNegative) => {
+      const area = chart?.chartArea;
+      if (!area) return isNegative ? "#ef4444" : "#6366f1";
+      const ctx = chart.ctx;
+      const g = ctx.createLinearGradient(area.left, 0, area.right, 0);
+      if (isNegative) {
+        g.addColorStop(0, "rgba(252, 165, 165, 0.95)");
+        g.addColorStop(0.55, "rgba(239, 68, 68, 0.97)");
+        g.addColorStop(1, "rgba(190, 18, 60, 0.98)");
+      } else {
+        g.addColorStop(0, "rgba(165, 180, 252, 0.95)");
+        g.addColorStop(0.55, "rgba(99, 102, 241, 0.97)");
+        g.addColorStop(1, "rgba(76, 29, 149, 0.98)");
+      }
+      return g;
+    };
+
+    return {
+      labels: top.map(([code]) =>
+        code === "∅" ? tl("codeEmptyLabel", "(코드 없음)") : code,
+      ),
+      signedValues,
+      datasets: [
+        {
+          label: tl("topCodeByAmountLabel", "Tiền chênh lệch theo mã"),
+          data: signedValues.map((v) => Math.abs(v)),
+          signedValues,
+          backgroundColor: (ctx) =>
+            makeBarGradient(ctx.chart, signedValues[ctx.dataIndex] < 0),
+          hoverBackgroundColor: (ctx) =>
+            makeBarGradient(ctx.chart, signedValues[ctx.dataIndex] < 0),
+          borderColor: signedValues.map((v) =>
+            v >= 0 ? "rgba(67, 56, 202, 0.95)" : "rgba(159, 18, 57, 0.95)",
+          ),
+          borderWidth: 1.5,
+          borderRadius: 10,
+          borderSkipped: false,
+          maxBarThickness: 30,
+        },
+      ],
+    };
+  }, [filteredStructuredRows, tl]);
+
+  const overviewTopCodeAmountChartHeightPx = useMemo(() => {
+    const n = overviewTopCodeAmountChart.labels.length;
+    if (n === 0) return 180;
+    return Math.min(420, Math.max(180, 36 + n * 24));
+  }, [overviewTopCodeAmountChart.labels.length]);
 
   const warehouseOptions = useMemo(() => {
     const keys = new Set();
@@ -1199,106 +1212,6 @@ export default function WarehouseInventoryDashboard() {
                 </div>
 
                 <div className="flex flex-col gap-4 lg:col-span-8">
-                  <div className="dashboard-chart-panel rounded-2xl border-2 border-indigo-300/55 bg-gradient-to-br from-white via-amber-50/25 to-white p-4 dark:border-indigo-800 dark:from-slate-900 dark:via-amber-950/20 dark:to-slate-900">
-                    <h4 className="text-xs font-black uppercase tracking-wide text-indigo-950 dark:text-indigo-100">
-                      {tl(
-                        "overviewMonthChartTitle",
-                        "Tổng quan chênh lệch theo tháng",
-                      )}
-                    </h4>
-                    <div className="mt-3">
-                      <div className="wah-inv-chart-inner h-[268px]">
-                        <Line
-                          data={overviewMonthChart}
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            interaction: { mode: "index", intersect: false },
-                            layout: {
-                              padding: {
-                                top: 18,
-                                bottom: 12,
-                                left: 6,
-                                right: 10,
-                              },
-                            },
-                            plugins: {
-                              legend: {
-                                position: "bottom",
-                                labels: {
-                                  boxWidth: 14,
-                                  padding: 16,
-                                  font: { size: 11, weight: "700" },
-                                  color: "#475569",
-                                },
-                              },
-                              datalabels: {
-                                display: (ctx) =>
-                                  ctx.dataset.data[ctx.dataIndex] != null &&
-                                  Number.isFinite(
-                                    Number(ctx.dataset.data[ctx.dataIndex]),
-                                  ),
-                                align: (ctx) =>
-                                  ctx.datasetIndex === 0 ? "top" : "bottom",
-                                anchor: "center",
-                                offset: (ctx) =>
-                                  ctx.datasetIndex === 0 ? -14 : 14,
-                                borderRadius: 10,
-                                padding: {
-                                  top: 5,
-                                  right: 8,
-                                  bottom: 5,
-                                  left: 8,
-                                },
-                                borderWidth: 0,
-                                font: { size: 10, weight: "800" },
-                                color: "#ffffff",
-                                backgroundColor: (ctx) =>
-                                  ctx.datasetIndex === 0
-                                    ? "rgba(124,58,237,0.94)"
-                                    : "rgba(5,150,105,0.94)",
-                                formatter: (value) =>
-                                  Number(value).toLocaleString("vi-VN", {
-                                    maximumFractionDigits: 2,
-                                  }),
-                              },
-                            },
-                            scales: {
-                              x: {
-                                grid: { display: false },
-                                ticks: {
-                                  font: { size: 10, weight: "700" },
-                                  color: "#475569",
-                                },
-                              },
-                              y: {
-                                type: "linear",
-                                position: "left",
-                                grid: { display: false },
-                                ticks: {
-                                  font: { size: 10, weight: "600" },
-                                  color: "#6d28d9",
-                                  callback: (v) =>
-                                    Number(v).toLocaleString("vi-VN"),
-                                },
-                              },
-                              y1: {
-                                type: "linear",
-                                position: "right",
-                                grid: { display: false },
-                                ticks: {
-                                  font: { size: 10, weight: "600" },
-                                  color: "#047857",
-                                  callback: (v) =>
-                                    Number(v).toLocaleString("vi-VN"),
-                                },
-                              },
-                            },
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
                   <div className="dashboard-chart-panel rounded-2xl border-2 border-indigo-300/55 bg-gradient-to-br from-white via-rose-50/25 to-white p-4 dark:border-indigo-800 dark:from-slate-900 dark:via-rose-950/25 dark:to-slate-900">
                     <h4 className="text-xs font-black uppercase tracking-wide text-indigo-950 dark:text-indigo-100">
                       {tl(
@@ -1375,6 +1288,178 @@ export default function WarehouseInventoryDashboard() {
                             },
                           }}
                         />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="dashboard-chart-panel relative overflow-hidden rounded-2xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50/70 via-white to-violet-50/55 p-4 shadow-[0_18px_48px_-32px_rgba(76,29,149,0.4)] ring-1 ring-indigo-100/50 dark:border-indigo-800/60 dark:from-slate-900 dark:via-slate-900 dark:to-violet-950/30 dark:shadow-[0_18px_48px_-30px_rgba(124,58,237,0.55)] dark:ring-indigo-900/40">
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-indigo-300/40 via-violet-300/30 to-transparent blur-3xl dark:from-indigo-500/30 dark:via-violet-500/20"
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute -bottom-16 -left-10 h-32 w-32 rounded-full bg-gradient-to-br from-rose-200/35 via-rose-100/20 to-transparent blur-3xl dark:from-rose-500/25 dark:via-rose-500/10"
+                    />
+                    <h4 className="relative bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-700 bg-clip-text text-xs font-black uppercase tracking-[0.14em] text-transparent dark:from-indigo-300 dark:via-violet-300 dark:to-fuchsia-300">
+                      {tl(
+                        "overviewTopCodeAmountChartTitle",
+                        "TOP MÃ CHÊNH LỆCH TIỀN THEO THÁNG",
+                      )}
+                    </h4>
+                    <div className="relative mt-3 rounded-xl border border-white/70 bg-white/70 p-3 shadow-inner backdrop-blur-[1px] dark:border-slate-800/80 dark:bg-slate-950/40">
+                      <div
+                        className="wah-inv-chart-inner wah-inv-wh-bar-minimal"
+                        style={{ height: overviewTopCodeAmountChartHeightPx }}
+                      >
+                        {overviewTopCodeAmountChart.labels.length > 0 ? (
+                          <Bar
+                            data={overviewTopCodeAmountChart}
+                            options={{
+                              indexAxis: "y",
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              layout: {
+                                padding: {
+                                  top: 4,
+                                  bottom: 4,
+                                  left: 2,
+                                  right: 188,
+                                },
+                              },
+                              datasets: {
+                                bar: {
+                                  categoryPercentage: 0.78,
+                                  barPercentage: 0.92,
+                                },
+                              },
+                              plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                  titleFont: { size: 12, weight: "700" },
+                                  bodyFont: { size: 12, weight: "600" },
+                                  padding: 4,
+                                  callbacks: {
+                                    title: (items) =>
+                                      items[0]?.label != null
+                                        ? String(items[0].label)
+                                        : "",
+                                    label: (ctx) => {
+                                      const signed =
+                                        ctx.dataset.signedValues?.[
+                                          ctx.dataIndex
+                                        ];
+                                      const v =
+                                        typeof signed === "number"
+                                          ? signed
+                                          : Number(ctx.parsed.x);
+                                      return `${ctx.dataset.label ?? ""}: ${formatKRW(v)}`;
+                                    },
+                                  },
+                                },
+                                datalabels: {
+                                  display: (ctx) =>
+                                    Number.isFinite(
+                                      Number(ctx.dataset.data[ctx.dataIndex]),
+                                    ) &&
+                                    Number(ctx.dataset.data[ctx.dataIndex]) !==
+                                      0,
+                                  anchor: "end",
+                                  align: "end",
+                                  offset: 10,
+                                  clamp: false,
+                                  clip: false,
+                                  textAlign: "end",
+                                  borderRadius: 999,
+                                  borderWidth: 1,
+                                  borderColor: (ctx) => {
+                                    const signed =
+                                      ctx.dataset.signedValues?.[ctx.dataIndex];
+                                    return signed < 0
+                                      ? "rgba(225, 29, 72, 0.85)"
+                                      : "rgba(99, 102, 241, 0.85)";
+                                  },
+                                  backgroundColor: (ctx) => {
+                                    const signed =
+                                      ctx.dataset.signedValues?.[ctx.dataIndex];
+                                    return signed < 0
+                                      ? "rgba(255, 241, 242, 0.96)"
+                                      : "rgba(238, 242, 255, 0.96)";
+                                  },
+                                  padding: {
+                                    top: 3,
+                                    right: 9,
+                                    bottom: 3,
+                                    left: 9,
+                                  },
+                                  color: (ctx) => {
+                                    const signed =
+                                      ctx.dataset.signedValues?.[ctx.dataIndex];
+                                    return signed < 0 ? "#9f1239" : "#3730a3";
+                                  },
+                                  font: { size: 10, weight: "800" },
+                                  formatter: (_v, ctx) => {
+                                    const signed =
+                                      ctx.dataset.signedValues?.[ctx.dataIndex];
+                                    return formatKRW(
+                                      Number(
+                                        typeof signed === "number"
+                                          ? signed
+                                          : _v,
+                                      ),
+                                    );
+                                  },
+                                },
+                              },
+                              scales: {
+                                x: {
+                                  beginAtZero: true,
+                                  min: 0,
+                                  grid: {
+                                    display: false,
+                                    drawTicks: false,
+                                  },
+                                  border: {
+                                    display: false,
+                                  },
+                                  ticks: {
+                                    maxTicksLimit: 7,
+                                    font: { size: 11, weight: "700" },
+                                    color: "#6d28d9",
+                                    callback: (v) => formatKRW(Number(v)),
+                                  },
+                                },
+                                y: {
+                                  grid: { display: false },
+                                  border: { display: false },
+                                  ticks: {
+                                    autoSkip: false,
+                                    maxRotation: 0,
+                                    font: { size: 11, weight: "700" },
+                                    color: "#312e81",
+                                    padding: 10,
+                                    callback: (_tickVal, idx) => {
+                                      const label = String(
+                                        overviewTopCodeAmountChart.labels[
+                                          idx
+                                        ] ?? "",
+                                      );
+                                      return label.length > 22
+                                        ? `${label.slice(0, 20)}…`
+                                        : label;
+                                    },
+                                  },
+                                },
+                              },
+                            }}
+                          />
+                        ) : (
+                          <p className="flex h-full items-center justify-center text-center text-xs font-medium text-slate-500">
+                            {tl(
+                              "overviewTopCodeAmountChartEmpty",
+                              "Chưa có dữ liệu tiền chênh lệch để hiển thị.",
+                            )}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

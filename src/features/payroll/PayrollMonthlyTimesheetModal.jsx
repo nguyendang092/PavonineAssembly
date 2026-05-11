@@ -22,7 +22,10 @@ import {
   getLastDayOfMonthKey,
   parseLocalDateKey,
 } from "@/utils/dateKey";
-import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
+import {
+  isDuocNghiBuExplicitlyNo,
+  payrollMonthMainRowDashMark,
+} from "@/features/attendance/attendanceDayMeta";
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import {
@@ -300,9 +303,22 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
     out.coeff39 += Number(coeffMap.get(3.9) || 0);
   };
 
-  const computeHolidayWorkCreditForDash = (ch, coeffSum) => {
+  /**
+   * Có «NB» hiển thị trên ô lưới: tức là ngày nghỉ bù + NV chưa từ chối nhận NB
+   * (`duocNghiBu !== "NO"`). Khi `emp` null → mặc định coi như có NB.
+   */
+  const isNbVisibleForCompDay = (ch, emp) => {
+    if (!ch?.isCompensatoryDay) return false;
+    if (emp == null) return true;
+    return !isDuocNghiBuExplicitlyNo(emp.duocNghiBu);
+  };
+
+  const computeHolidayWorkCreditForDash = (ch, coeffSum, emp) => {
     // HOLIDAY: không có giờ công vẫn tính đủ 1 ngày công.
-    return ch.isHolidayDay || coeffSum > 0 ? 1 : 0;
+    if (ch.isHolidayDay) return 1;
+    // NB: có «NB» hiển thị hoặc có giờ công của ngày NB → 1 ngày công.
+    if (isNbVisibleForCompDay(ch, emp)) return 1;
+    return coeffSum > 0 ? 1 : 0;
   };
 
   const computeIncludedWorkDayCreditForLeave = ({ ch, main, coeffSum }) => {
@@ -339,10 +355,10 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
     if (!ch) continue;
 
     const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
-    // Nếu ngày đó có cờ HOLIDAY trong `_meta` nhưng không có dòng nhân viên,
-    // vẫn phải tính 1 ngày công (dù không có "danh sách" điểm danh cho ngày đó).
+    // Nếu ngày đó có cờ HOLIDAY / nghỉ bù trong `_meta` nhưng không có dòng
+    // nhân viên, vẫn phải tính 1 ngày công (đồng bộ NB & NL).
     if (!emp) {
-      if (ch.isHolidayDay) out.workDays += 1;
+      if (ch.isHolidayDay || isNbVisibleForCompDay(ch, null)) out.workDays += 1;
       continue;
     }
 
@@ -384,7 +400,7 @@ function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
       out.workDays += 1;
     } else {
       addWorkedHours(coeffSum);
-      out.workDays += computeHolidayWorkCreditForDash(ch, coeffSum);
+      out.workDays += computeHolidayWorkCreditForDash(ch, coeffSum, emp);
     }
 
     addCoeffHoursToTotals(coeffMap);

@@ -248,7 +248,6 @@ function AttendanceList({
   const [showOnlyUnattendedFilter, setShowOnlyUnattendedFilter] =
     useState(false);
   const [expandedSections, setExpandedSections] = useState({});
-  const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   const [showComboChartModal, setShowComboChartModal] = useState(false);
   const [comboDashboardGroup, setComboDashboardGroup] = useState("production");
   const [comboChartBodyReady, setComboChartBodyReady] = useState(false);
@@ -257,12 +256,6 @@ function AttendanceList({
   const [comboStatDetailKey, setComboStatDetailKey] = useState(null);
   const [comboChartDeptOrder, setComboChartDeptOrder] = useState([]);
   const [comboProductionDeptOrder, setComboProductionDeptOrder] = useState([]);
-  const [modalFilterOpen, setModalFilterOpen] = useState(false);
-  const [modalGioiTinhFilter, setModalGioiTinhFilter] = useState([]);
-  const [modalDepartmentListFilter, setModalDepartmentListFilter] = useState(
-    [],
-  );
-  const [modalExpandedSections, setModalExpandedSections] = useState({});
   const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
   const [actionDropdownOpen, setActionDropdownOpen] = useState(false);
   const [isUploadingExcel, setIsUploadingExcel] = useState(false);
@@ -1076,46 +1069,6 @@ function AttendanceList({
     if (n === 0) setComboStatDetailKey(null);
   }, [showComboChartModal, comboStatDetailKey, comboDashboardStats]);
 
-  // Overtime modal: derive unique options and apply modal filters from filteredEmployees
-  const modalUniqueGenders = useMemo(
-    () =>
-      Array.from(
-        new Set(filteredEmployees.map((e) => e.gioiTinh).filter(Boolean)),
-      ),
-    [filteredEmployees],
-  );
-  const modalUniqueDepartments = useMemo(
-    () =>
-      Array.from(
-        new Set(filteredEmployees.map((e) => e.boPhan).filter(Boolean)),
-      ),
-    [filteredEmployees],
-  );
-  const modalFilteredEmployees = useMemo(() => {
-    const modalSelectedDeptKeys = new Set(
-      modalDepartmentListFilter.map((dept) => normalizeDepartment(dept)),
-    );
-    return filteredEmployees.filter((emp) => {
-      const empDeptKey = normalizeDepartment(emp.boPhan);
-      if (
-        modalGioiTinhFilter.length > 0 &&
-        !modalGioiTinhFilter.includes(emp.gioiTinh)
-      )
-        return false;
-      if (
-        modalSelectedDeptKeys.size > 0 &&
-        !modalSelectedDeptKeys.has(empDeptKey)
-      )
-        return false;
-      return true;
-    });
-  }, [
-    filteredEmployees,
-    modalGioiTinhFilter,
-    modalDepartmentListFilter,
-    normalizeDepartment,
-  ]);
-
   // Get unique departments (cascading filter - based on other selected filters)
   const departments = useMemo(() => {
     const deptMap = new Map();
@@ -1468,22 +1421,9 @@ function AttendanceList({
     return String(value);
   }, []);
 
-  // Handle Overtime button - open modal
-  const handleOvertimeButton = useCallback(() => {
-    if (filteredEmployees.length === 0) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: t("attendanceList.noEmployees"),
-      });
-      return;
-    }
-    setShowOvertimeModal(true);
-  }, [filteredEmployees, t]);
-
-  // Print overtime list (from modal)
+  // Print overtime list (theo bộ lọc danh sách hiện tại)
   const handlePrintOvertimeList = useCallback(() => {
-    if (modalFilteredEmployees.length === 0) {
+    if (filteredEmployees.length === 0) {
       setAlert({
         show: true,
         type: "error",
@@ -1748,12 +1688,12 @@ function AttendanceList({
         <th style="width: 7%;">Số giờ tăng ca</th>
         <th style="width: 9%;">Chữ ký NLĐ</th>
         <th style="width: 5%;">Ghi chú</th>
-      </>
+      </tr>
     </thead>
     <tbody>
 `;
 
-    modalFilteredEmployees.forEach((emp, idx) => {
+    filteredEmployees.forEach((emp, idx) => {
       htmlContent += `
       <tr>
         <td>${idx + 1}</td>
@@ -1788,10 +1728,10 @@ function AttendanceList({
       show: true,
       type: "success",
       message: t("attendanceList.printOvertimeOpened", {
-        count: modalFilteredEmployees.length,
+        count: filteredEmployees.length,
       }),
     });
-  }, [modalFilteredEmployees, selectedDate]);
+  }, [filteredEmployees, selectedDate, displayLocale, t]);
 
   // Print main attendance list (using current filters)
   const handlePrintAttendanceList = useCallback(() => {
@@ -2085,191 +2025,6 @@ function AttendanceList({
       }),
     });
   }, [filteredEmployees, selectedDate]);
-
-  // Export overtime form (from modal)
-  const handleExportOvertimeForm = useCallback(async () => {
-    try {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Overtime Form");
-
-      const logoResponse = await fetch("/picture/logo/logo_pavo.jpg");
-      const logoBlob = await logoResponse.blob();
-      const logoArrayBuffer = await logoBlob.arrayBuffer();
-      const logoId = workbook.addImage({
-        buffer: logoArrayBuffer,
-        extension: "jpeg",
-      });
-      worksheet.addImage(logoId, {
-        tl: { col: 0, row: 0 },
-        ext: { width: 80, height: 40 },
-      });
-
-      worksheet.mergeCells("A1:M1");
-      const titleCell = worksheet.getCell("A1");
-      titleCell.value = "ĐĂNG KÝ LÀM THÊM GIỜ / OVERTIME REGISTRATION";
-      titleCell.font = { bold: true, size: 14, color: { argb: "FFFF0000" } };
-      titleCell.alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.mergeCells("A2:M2");
-      const dateInfoCell = worksheet.getCell("A2");
-      const overtimeDate = new Date(selectedDate);
-      dateInfoCell.value = `Ngày/Date: ${overtimeDate.toLocaleDateString(
-        "vi-VN",
-      )}`;
-      dateInfoCell.font = { bold: true, size: 11 };
-      dateInfoCell.alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.addRow([]);
-
-      const headerRow1 = worksheet.addRow([
-        "STT",
-        "MNV",
-        "Họ và tên",
-        "Ngày bắt đầu",
-        "Mã BP",
-        "Bộ phận",
-        "Tổng thời gian làm thêm giờ",
-        "Thời gian dự kiến\nTừ ...h đến ...h",
-        "Thời gian làm thêm giờ",
-        "Chữ ký người lao động",
-        "Thời gian thực tế\nTừ ...h đến ...h",
-        "Số giờ làm thêm",
-        "Ghi chú",
-      ]);
-      const headerRow2 = worksheet.addRow([
-        "No.",
-        "Code",
-        "Full name",
-        "Start working date",
-        "Code-Dept",
-        "Department",
-        "Total overtime hours",
-        "Estimated Time OT\n(From..... To....)",
-        "Total hours OT\n(Hrs)",
-        "Employees sign",
-        "Fact Time OT\n(From..... To....)",
-        "Total hours OT\n(Hrs)",
-        "Remark",
-      ]);
-
-      [headerRow1, headerRow2].forEach((row) => {
-        row.height = 40;
-        row.eachCell((cell) => {
-          cell.font = { bold: true, size: 9 };
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFD3D3D3" },
-          };
-          cell.alignment = {
-            vertical: "middle",
-            horizontal: "center",
-            wrapText: true,
-          };
-          cell.border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
-          };
-        });
-      });
-
-      // Sử dụng modalFilteredEmployees (đã lọc theo bộ phận & giới tính)
-      modalFilteredEmployees.forEach((emp, idx) => {
-        const row = worksheet.addRow([
-          idx + 1,
-          emp.mnv || "",
-          emp.hoVaTen || "",
-          emp.ngayVaoLam || "",
-          emp.maBoPhan || "",
-          emp.boPhan || "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-        ]);
-        row.height = 30;
-        row.eachCell((cell, colNumber) => {
-          cell.font = { size: 9 };
-
-          // Căn chỉnh: tên căn trái, còn lại căn giữa
-          if (colNumber === 3) {
-            cell.alignment = {
-              vertical: "middle",
-              horizontal: "left",
-              indent: 1,
-              wrapText: true,
-            };
-          } else {
-            cell.alignment = {
-              vertical: "middle",
-              horizontal: "center",
-              wrapText: true,
-            };
-          }
-
-          cell.border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
-          };
-
-          if (idx % 2 === 0) {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFF0F8FF" },
-            };
-          }
-        });
-      });
-
-      worksheet.columns = [
-        { width: 5 },
-        { width: 10 },
-        { width: 25 },
-        { width: 12 },
-        { width: 10 },
-        { width: 15 },
-        { width: 12 },
-        { width: 15 },
-        { width: 10 },
-        { width: 15 },
-        { width: 15 },
-        { width: 10 },
-        { width: 15 },
-      ];
-
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `PAVONINE_DangKyTangCa_${selectedDate}.xlsx`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-
-      setAlert({
-        show: true,
-        type: "success",
-        message: `✅ Xuất biểu mẫu tăng ca thành công! ${modalFilteredEmployees.length} nhân viên.`,
-      });
-    } catch (err) {
-      console.error("Export Overtime Form Error:", err);
-      setAlert({
-        show: true,
-        type: "error",
-        message: `❌ Xuất biểu mẫu tăng ca thất bại! ${err.message || ""}`,
-      });
-    }
-  }, [modalFilteredEmployees, selectedDate]);
 
   // Export Bu Cong Excel
   const handleExportBuCongExcel = useCallback(async () => {
@@ -2969,28 +2724,6 @@ function AttendanceList({
                         </div>
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleOvertimeButton();
-                          setFilterMenuDropdownOpen(false);
-                        }}
-                        className="w-full shrink-0 text-left px-4 py-3 hover:bg-orange-50 border-t flex items-center gap-3 transition text-gray-700"
-                      >
-                        <span className="text-lg">⏰</span>
-                        <div className="flex-1">
-                          <div className="font-semibold">
-                            {t("attendanceList.overtime")}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {tl(
-                              "registerDailyOvertime",
-                              "Đăng ký tăng ca ngày",
-                            )}
-                          </div>
-                        </div>
-                      </button>
-
                       {/* Clear Filter — luôn hiển thị để chiều cao menu không nhảy */}
                       <button
                         type="button"
@@ -3301,8 +3034,8 @@ function AttendanceList({
                         </div>
                       </div>
 
-                      {/* Footer - Buttons */}
-                      <div className="shrink-0 p-3 sm:p-5 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3 sm:justify-end">
+                      {/* Footer — luôn một hàng (tránh sm:flex + w-full làm nút chồng dọc) */}
+                      <div className="shrink-0 flex flex-row flex-nowrap items-stretch gap-2 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 p-3 sm:gap-3 sm:p-5">
                         <button
                           onClick={() => {
                             setLoaiPhepFilter([]);
@@ -3311,7 +3044,7 @@ function AttendanceList({
                             setExpandedSections({});
                             setFilterSearchTerm("");
                           }}
-                          className="w-full px-2 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs sm:text-sm text-gray-700 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600 font-semibold transition-all duration-200 shadow-sm hover:shadow"
+                          className="min-w-0 flex-1 px-1.5 py-2 text-center text-[11px] font-semibold leading-tight text-gray-700 shadow-sm transition-all duration-200 hover:shadow sm:px-3 sm:py-2.5 sm:text-sm rounded-lg border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600"
                         >
                           🗑️ {tl("clearAll", "Xóa tất cả")}
                         </button>
@@ -3320,7 +3053,7 @@ function AttendanceList({
                             setFilterOpen(false);
                             setFilterSearchTerm("");
                           }}
-                          className="w-full px-2 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs sm:text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                          className="min-w-0 flex-1 px-1.5 py-2 text-center text-[11px] font-semibold leading-tight text-white shadow-md transition-all duration-200 hover:shadow-lg sm:px-3 sm:py-2.5 sm:text-sm rounded-lg bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700"
                         >
                           ✖️{" "}
                           {t("attendanceList.cancel", { defaultValue: "Hủy" })}
@@ -3330,7 +3063,7 @@ function AttendanceList({
                             setFilterOpen(false);
                             setFilterSearchTerm("");
                           }}
-                          className="w-full px-2 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs sm:text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                          className="min-w-0 flex-1 px-1.5 py-2 text-center text-[11px] font-semibold leading-tight text-white shadow-md transition-all duration-200 hover:shadow-lg sm:px-3 sm:py-2.5 sm:text-sm rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
                         >
                           ✓ {tl("apply", "Áp dụng")}
                         </button>
@@ -3568,6 +3301,7 @@ function AttendanceList({
                   >
                     <div className="min-h-0 max-h-full overflow-y-auto overflow-x-hidden overscroll-contain">
                       <button
+                        type="button"
                         onClick={() => {
                           handlePrintOvertimeList();
                           setPrintDropdownOpen(false);
@@ -3646,347 +3380,6 @@ function AttendanceList({
           attendanceRootPath={attendanceRootPath}
         />
 
-        {/* Overtime Modal */}
-        {showOvertimeModal && (
-          <div
-            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40"
-            style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
-          >
-            <div className="relative mx-4 max-h-[90vh] w-full max-w-8xl overflow-y-auto rounded-lg bg-white p-6 shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-              <button
-                onClick={() => setShowOvertimeModal(false)}
-                className="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white text-2xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 z-20"
-              >
-                ×
-              </button>
-              <h2 className="text-lg font-bold mb-4 text-[#1e293b]">
-                {t("attendanceList.overtimeFormTitle", {
-                  defaultValue: "Biểu mẫu đăng ký tăng ca",
-                })}
-              </h2>
-              <p className="text-sm text-gray-600 mb-4">
-                {tl("dateLabel", "Ngày/Date")}:{" "}
-                {new Date(selectedDate).toLocaleDateString(displayLocale)}
-              </p>
-
-              {/* Filter and Export */}
-              <div className="mb-4 flex flex-wrap gap-3 items-center justify-between">
-                <button
-                  onClick={() => setModalFilterOpen(!modalFilterOpen)}
-                  className={`px-4 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg ${
-                    modalGioiTinhFilter.length > 0 ||
-                    modalDepartmentListFilter.length > 0
-                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800"
-                      : "bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700"
-                  }`}
-                >
-                  🔍 Lọc
-                  {(modalGioiTinhFilter.length > 0 ||
-                    modalDepartmentListFilter.length > 0) && (
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-xs font-bold">
-                      ✓
-                    </span>
-                  )}
-                </button>
-                <div className="flex gap-3">
-                  <button
-                    onClick={handlePrintOvertimeList}
-                    className="px-2 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition whitespace-nowrap"
-                  >
-                    🖨️ {tl("printList", "In danh sách")}
-                  </button>
-                  <button
-                    onClick={handleExportOvertimeForm}
-                    className="px-2 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow hover:bg-orange-700 transition whitespace-nowrap"
-                  >
-                    ⬇️ {tl("exportOvertimeExcel", "Xuất biểu mẫu Excel")}
-                  </button>
-                </div>
-              </div>
-              {/* Popup Filter Panel */}
-              {modalFilterOpen && (
-                <div
-                  className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn"
-                  style={{ zIndex: "var(--z-modal-content, 1210)" }}
-                >
-                  <div className="flex max-h-[85vh] w-full max-w-md flex-col animate-slideUp rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-                    {/* Header */}
-                    <div className="p-5 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
-                      <div className="absolute inset-0 bg-white opacity-10"></div>
-                      <div className="relative z-10">
-                        <h3 className="font-bold text-white text-xl flex items-center gap-2">
-                          <span className="text-2xl">🔍</span>
-                          {t("attendanceList.advancedFilter")}
-                        </h3>
-                        <p className="text-xs text-blue-50 mt-1.5 font-medium">
-                          {tl(
-                            "advancedFilterModalDesc",
-                            "Chọn điều kiện lọc • Áp dụng cho danh sách trong modal",
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-4 overflow-y-auto flex-1 space-y-3">
-                      {/* Department Filter */}
-                      <div className="mb-1">
-                        <button
-                          onClick={() => {
-                            setModalExpandedSections((prev) => ({
-                              ...prev,
-                              dept: !prev.dept,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-blue-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-blue-500 text-base">🏢</span>
-                            <span>{tl("department", "Bộ phận")}</span>
-                          </span>
-                          <span className="text-blue-600 font-bold">
-                            {modalExpandedSections.dept ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {modalExpandedSections.dept && (
-                          <div className="border-2 border-blue-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-blue-50/30 shadow-inner">
-                            {modalUniqueDepartments.length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                {tl("noData", "Không có dữ liệu")}
-                              </div>
-                            ) : (
-                              modalUniqueDepartments.map((dept) => (
-                                <label
-                                  key={dept || "dept-empty"}
-                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={modalDepartmentListFilter.includes(
-                                      dept,
-                                    )}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setModalDepartmentListFilter([
-                                          ...modalDepartmentListFilter,
-                                          dept,
-                                        ]);
-                                      } else {
-                                        setModalDepartmentListFilter(
-                                          modalDepartmentListFilter.filter(
-                                            (d) => d !== dept,
-                                          ),
-                                        );
-                                      }
-                                    }}
-                                    className="mr-2 w-4 h-4 cursor-pointer"
-                                  />
-                                  {dept || tl("unknown", "(Không rõ)")}
-                                </label>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Gender Filter */}
-                      <div className="mb-1">
-                        <button
-                          onClick={() => {
-                            setModalExpandedSections((prev) => ({
-                              ...prev,
-                              gender: !prev.gender,
-                            }));
-                          }}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-green-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-green-500 text-base">⚧️</span>
-                            <span>{tl("gender", "Giới tính")}</span>
-                          </span>
-                          <span className="text-green-600 font-bold">
-                            {modalExpandedSections.gender ? "▼" : "▶"}
-                          </span>
-                        </button>
-                        {modalExpandedSections.gender && (
-                          <div className="border-2 border-green-100 rounded-lg mt-2 max-h-40 overflow-y-auto bg-gradient-to-b from-white to-green-50/30 shadow-inner">
-                            {modalUniqueGenders.length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-gray-500 italic">
-                                {tl("noData", "Không có dữ liệu")}
-                              </div>
-                            ) : (
-                              modalUniqueGenders.map((gender) => (
-                                <label
-                                  key={gender || "gender-empty"}
-                                  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={modalGioiTinhFilter.includes(
-                                      gender,
-                                    )}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setModalGioiTinhFilter([
-                                          ...modalGioiTinhFilter,
-                                          gender,
-                                        ]);
-                                      } else {
-                                        setModalGioiTinhFilter(
-                                          modalGioiTinhFilter.filter(
-                                            (g) => g !== gender,
-                                          ),
-                                        );
-                                      }
-                                    }}
-                                    className="mr-2 w-4 h-4 cursor-pointer"
-                                  />
-                                  {gender || tl("unknown", "(Không rõ)")}
-                                </label>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Footer Actions */}
-                    <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 px-4 pb-4">
-                      <button
-                        onClick={() => {
-                          setModalGioiTinhFilter([]);
-                          setModalDepartmentListFilter([]);
-                        }}
-                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                      >
-                        {tl("clearFilter", "Xóa bộ lọc")}
-                      </button>
-                      <button
-                        onClick={() => setModalFilterOpen(false)}
-                        className="px-3 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow font-medium"
-                      >
-                        {t("attendanceList.close")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Table with consistent styling */}
-              <div className="mt-6 flex max-h-[500px] flex-col overflow-x-auto rounded-lg bg-white shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-                <table className="w-full border-collapse min-w-[1400px]">
-                  <thead>
-                    <tr
-                      className="sticky top-0 z-10"
-                      style={{
-                        background:
-                          "linear-gradient(to right, #3b82f6, #8b5cf6)",
-                      }}
-                    >
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[40px]">
-                        STT
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[70px]">
-                        MNV
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-left border-r border-blue-400 min-w-[150px]">
-                        Họ và tên
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
-                        Ngày bắt đầu
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[60px]">
-                        Mã BP
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
-                        {t("attendanceList.excelHeaderDept")}
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[110px]">
-                        Tổng thời gian làm thêm giờ
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[130px]">
-                        Thời gian dự kiến
-                        <br />
-                        Từ ...h đến ...h
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[110px]">
-                        Thời gian làm thêm giờ
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[120px]">
-                        Chữ ký người lao động
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[130px]">
-                        Thời gian thực tế
-                        <br />
-                        Từ ...h đến ...h
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center border-r border-blue-400 min-w-[100px]">
-                        Số giờ làm thêm
-                      </th>
-                      <th className="px-3 py-2 text-xs font-extrabold text-white uppercase tracking-wide text-center min-w-[100px]">
-                        {t("attendanceList.excelHeaderRemark", {
-                          defaultValue: "Ghi chú",
-                        })}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modalFilteredEmployees.map((emp, idx) => (
-                      <tr
-                        key={emp.id || idx}
-                        className={`border-b transition-colors hover:bg-blue-100 ${
-                          idx % 2 === 0
-                            ? "bg-blue-50 dark:bg-slate-800/70"
-                            : "bg-white dark:bg-slate-900"
-                        }`}
-                      >
-                        <td className="px-3 py-2 text-xs text-gray-800 text-center font-bold border-r border-gray-300">
-                          {idx + 1}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-800 text-center font-semibold border-r border-gray-300">
-                          {emp.mnv || ""}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-900 font-medium text-left border-r border-gray-300">
-                          {emp.hoVaTen || ""}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {emp.ngayVaoLam || ""}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {emp.maBoPhan || ""}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {emp.boPhan || ""}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {/* Để trống cho người dùng điền */}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {/* Để trống cho người dùng điền */}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {/* Để trống cho người dùng điền */}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {/* Để trống cho người dùng điền */}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {/* Để trống cho người dùng điền */}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 text-center border-r border-gray-300">
-                          {/* Để trống cho người dùng điền */}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 text-center">
-                          {/* Để trống cho người dùng điền */}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
 
         {showComboChartModal ? (
           <Suspense

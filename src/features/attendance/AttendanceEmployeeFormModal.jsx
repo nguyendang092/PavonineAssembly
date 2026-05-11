@@ -440,7 +440,7 @@ export default function AttendanceEmployeeFormModal({
           <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
             {tl(
               "restrictedEditManagerHint",
-              "Bạn chỉ có thể sửa Loại phép, Ca làm việc và Nghỉ bù (khi ngày được đánh dấu nghỉ bù). Chỉ Admin / HR mới chỉnh sửa toàn bộ thông tin.",
+              "Bạn chỉ có thể sửa Loại phép, Ca làm việc và Nghỉ bù.",
             )}
           </p>
         )}
@@ -589,17 +589,6 @@ export default function AttendanceEmployeeFormModal({
                 </option>
               </select>
             </div>
-            <p className="mt-0.5 text-[11px] leading-snug text-blue-700/90 dark:text-blue-300/90 sm:col-span-2">
-              {employeeRegimeBothOn
-                ? tl(
-                    "employeeRegimeBothLegacyHint",
-                    "Đang bật cả tạp vụ và thai sản; chọn một mục để cập nhật.",
-                  )
-                : tl(
-                    "employeeRegimeHint",
-                    "Tạp vụ / Thai sản: loại tương ứng được tính vào Giờ công thay vì bị chặn như phép.",
-                  )}
-            </p>
           </div>
           <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:gap-4">
             <div className="min-w-0">
@@ -687,9 +676,6 @@ export default function AttendanceEmployeeFormModal({
                 </button>
               </div>
             </div>
-            <p className="col-span-2 mt-0.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
-              {tl("gioVaoTimeOnlyHint", "Giờ vào & Giờ ra dạng HH:MM.")}
-            </p>
           </div>
           <div className="sm:col-span-2">
             <label className={employeeModalLabelClass}>

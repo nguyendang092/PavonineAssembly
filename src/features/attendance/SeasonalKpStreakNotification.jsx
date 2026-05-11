@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import NotificationBell from "@/components/ui/NotificationBell";
 import { db, ref, get } from "@/services/firebase";
-import { getDateKeyBySubtractDays } from "@/utils/dateKey";
+import { getDateKeyBySubtractDays, parseLocalDateKey } from "@/utils/dateKey";
 import { sanitizeAttendanceDayNodeForUi } from "@/utils/employeeRosterRecord";
 import {
   applyLegacyGioVaoLeaveMigration,
@@ -15,6 +15,12 @@ import {
 import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 
 const MAX_KP_STREAK_LOOKBACK_DAYS = 90;
+
+/** Chủ nhật bị loại khỏi chuỗi KP (không tính, cũng không phá streak). */
+function isSundayDateKey(dateKey) {
+  const d = parseLocalDateKey(dateKey);
+  return Boolean(d) && d.getDay() === 0;
+}
 
 function leaveRawForStreakFromEmployee(emp) {
   return getAttendanceLeaveTypeRaw(
@@ -47,6 +53,9 @@ async function computeKhongPhepStreakRows({
 }) {
   if (!ISO_DATE_KEY_RE.test(String(selectedDate ?? ""))) return [];
 
+  /** Chủ nhật bị loại khỏi chuỗi: ngày đang chọn là CN ⇒ không hiển thị. */
+  if (isSundayDateKey(selectedDate)) return [];
+
   const kpToday = filteredEmployees.filter((e) =>
     isAttendanceLeaveTypeKhongPhep(leaveRawForStreakFromEmployee(e)),
   );
@@ -65,6 +74,8 @@ async function computeKhongPhepStreakRows({
     offset++
   ) {
     const dateKey = getDateKeyBySubtractDays(selectedDate, offset);
+    /** Bỏ qua Chủ nhật: không fetch, không tăng streak, không phá streak — chỉ lùi tiếp. */
+    if (isSundayDateKey(dateKey)) continue;
     const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
     const raw = snap.exists() ? snap.val() : null;
     const next = new Set();

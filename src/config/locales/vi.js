@@ -711,6 +711,12 @@ const vi = {
     colCodeDiffKr: "Chênh lệch theo mã",
     colCodeMonthSwingKr: "Chênh lệch theo tháng",
     gapAmountLabel: "Số tiền GAP",
+    overviewTopCodeAmountChartTitle: "TOP mã chênh lệch tiền theo tháng",
+    overviewTopCodeAmountHint:
+      "Mã có số tiền chênh lệch lớn nhất theo |GAP| — đỏ là âm.",
+    overviewTopCodeAmountChartEmpty:
+      "Chưa có dữ liệu tiền chênh lệch để hiển thị.",
+    topCodeByAmountLabel: "Tiền chênh lệch theo mã",
     qtyDiffRateLabel: "Tỉ lệ chênh lệch",
     highVarianceBarLabel: "|Δ Gap|",
     tablePageSummary: "Trang {{page}}/{{total}} · {{count}} dòng",

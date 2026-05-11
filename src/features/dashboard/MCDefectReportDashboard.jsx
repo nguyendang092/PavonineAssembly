@@ -838,7 +838,7 @@ export default function MCDefectReportDashboard() {
                 <BarChart
                   data={byEmployeeData}
                   layout="vertical"
-                  margin={{ top: 6, right: 4, left: 1, bottom: 3 }}
+                  margin={{ top: 6, right: 1, left: 1, bottom: 3 }}
                 >
                   <XAxis
                     type="number"
@@ -848,12 +848,12 @@ export default function MCDefectReportDashboard() {
                   <YAxis
                     type="category"
                     dataKey="employee"
-                    width={175}
+                    width={150}
                     interval={0}
                     tick={{ fontSize: 11, fill: "#0f172a", fontWeight: 600 }}
                     tickFormatter={(v) =>
-                      String(v || "").length > 18
-                        ? `${String(v).slice(0, 18)}...`
+                      String(v || "").length > 30
+                        ? `${String(v).slice(0, 30)}...`
                         : String(v || "")
                     }
                   />
