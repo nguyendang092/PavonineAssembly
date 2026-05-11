@@ -190,7 +190,7 @@ const AddEmployeeModal = ({
     setLoading(true);
 
     try {
-      let employeeId = newEmployee.employeeId || `PAVO${Date.now()}`;
+      let employeeId = newEmployee.employeeId || `emp_${Date.now()}`;
 
       const employeeRef = ref(db, `attendance/${areaKey}/${employeeId}`);
       const snapshot = await get(employeeRef);

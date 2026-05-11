@@ -16,44 +16,58 @@ export const menuConfig = [
         type: "nested",
         children: [
           {
-            key: "sanLuong",
-            label: "navbar.sanLuong",
-            path: "/normal",
-          },
-          {
-            key: "nhietdo",
-            label: "navbar.nhietdo",
-            path: "/nhietdo",
-          },
-          {
-            key: "mold",
-            label: "navbar.mold",
-            path: "/mold",
-          },
-          {
-            key: "caiTien",
-            label: "navbar.caiTien",
-            path: "/performance",
-          },
-          {
-            key: "qrCodeGenerator",
-            label: "navbar.qrCodeGenerator",
-            path: "/qr-code-generator",
-          },
-          {
-            key: "inventoryDashboard",
-            label: "navbar.inventoryDashboard",
-            path: "/stock-variance",
-          },
-          {
-            key: "mc",
-            label: "navbar.mc",
+            key: "productionManagement",
+            label: "navbar.productionManagement",
             type: "nested",
             children: [
               {
+                key: "nhietdo",
+                label: "navbar.nhietdo",
+                path: "/nhietdo",
+              },
+              {
+                key: "mold",
+                label: "navbar.mold",
+                path: "/mold",
+              },
+              {
+                key: "qrCodeGenerator",
+                label: "navbar.qrCodeGenerator",
+                path: "/qr-code-generator",
+              },
+            ],
+          },
+          {
+            key: "productionReportsSummary",
+            label: "navbar.productionReportsSummary",
+            type: "nested",
+            children: [
+              {
+                key: "sanLuong",
+                label: "navbar.sanLuong",
+                path: "/normal",
+              },
+              {
+                key: "caiTien",
+                label: "navbar.caiTien",
+                path: "/performance",
+              },
+              {
+                key: "inventoryDashboard",
+                label: "navbar.inventoryDashboard",
+                path: "/stock-variance",
+              },
+              {
                 key: "mcDefectReport",
                 label: "navbar.mcDefectReport",
-                path: "/mc-defect-report",
+                type: "nested",
+                children: [
+                  {
+                    key: "mc",
+                    label: "navbar.mc",
+                    path: "/mc-defect-report",
+                  },
+                ],
               },
             ],
           },

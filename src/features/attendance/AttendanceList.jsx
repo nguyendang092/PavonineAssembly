@@ -21,7 +21,10 @@ import {
   canDeleteEmployeeData,
   ROLES,
 } from "@/config/authRoles";
-import { getFirstDayOfMonthKey } from "@/utils/dateKey";
+import {
+  getFirstDayOfMonthKey,
+  getDateKeyBySubtractDays,
+} from "@/utils/dateKey";
 import {
   CHART_ORDER_KIND,
   hydrateChartOrder,
@@ -92,6 +95,7 @@ import {
   isEmployeeQuickUnattended,
 } from "./attendanceListShared";
 import { mergeAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
+import { computePrevDayWorkedMissingTodayByDepartment } from "./attendancePrevDayAbsence";
 import AttendanceSearchActionsBar from "./AttendanceSearchActionsBar";
 import SeasonalKpStreakNotification from "./SeasonalKpStreakNotification";
 
@@ -184,6 +188,11 @@ function AttendanceList({
     [t],
   );
   const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
+
+  const prevDayCompareDateKey = useMemo(() => {
+    if (!ISO_DATE_KEY_RE.test(selectedDate)) return "";
+    return getDateKeyBySubtractDays(selectedDate, 1);
+  }, [selectedDate]);
 
   const refreshMonthOffDays = useCallback(async () => {
     if (!user || !isAdminAccess(user, userRole)) {
@@ -349,6 +358,41 @@ function AttendanceList({
     });
     return () => unsubscribe();
   }, [selectedDate]);
+
+  const [prevDayEmployeesForCompare, setPrevDayEmployeesForCompare] = useState(
+    [],
+  );
+  const [prevDayCompareLoading, setPrevDayCompareLoading] = useState(false);
+
+  /** Một lần GET `attendance/{ngày trước}` — so sánh «có điểm danh hôm trước nhưng không có tên hôm nay». */
+  useEffect(() => {
+    if (!ISO_DATE_KEY_RE.test(selectedDate)) {
+      setPrevDayEmployeesForCompare([]);
+      setPrevDayCompareLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    const prevKey = getDateKeyBySubtractDays(selectedDate, 1);
+    setPrevDayCompareLoading(true);
+    setPrevDayEmployeesForCompare([]);
+    get(ref(db, `${attendanceRootPath}/${prevKey}`))
+      .then((snap) => {
+        if (cancelled) return;
+        setPrevDayEmployeesForCompare(
+          mergeAttendanceDayRowsFromRaw(snap.val()),
+        );
+      })
+      .catch((err) => {
+        console.error("prev-day attendance compare:", err);
+        if (!cancelled) setPrevDayEmployeesForCompare([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPrevDayCompareLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate, attendanceRootPath]);
 
   useEffect(() => {
     setShowUnattendedPopup(false);
@@ -704,6 +748,30 @@ function AttendanceList({
     [employees, filterAttendanceListRows],
   );
 
+  const prevDayFilteredEmployees = useMemo(
+    () =>
+      sortEmployeesStableAsc(
+        filterAttendanceListRows(prevDayEmployeesForCompare),
+      ),
+    [prevDayEmployeesForCompare, filterAttendanceListRows],
+  );
+
+  const prevDayAbsenceByDept = useMemo(
+    () =>
+      computePrevDayWorkedMissingTodayByDepartment({
+        prevDayEmployees: prevDayFilteredEmployees,
+        todayEmployees: filteredEmployees,
+        normalizeDepartment,
+        unknownDepartmentLabel: tl("unknownDepartment", "Chưa phân bộ phận"),
+      }),
+    [
+      prevDayFilteredEmployees,
+      filteredEmployees,
+      normalizeDepartment,
+      tl,
+    ],
+  );
+
   useEffect(() => {
     if (!showExportRangeModal) {
       exportRangeModalInitializedRef.current = false;
@@ -908,8 +976,37 @@ function AttendanceList({
       map.set(department, row);
     });
 
+    for (const [dept, emps] of prevDayAbsenceByDept.entries()) {
+      const list = [...emps];
+      if (!map.has(dept)) {
+        map.set(dept, {
+          department: dept,
+          total: 0,
+          ...emptyMetrics(),
+          prevDayMissingFromAttendance: list,
+          prevDayMissingCount: list.length,
+        });
+      } else {
+        const row = map.get(dept);
+        row.prevDayMissingFromAttendance = list;
+        row.prevDayMissingCount = list.length;
+      }
+    }
+
+    for (const row of map.values()) {
+      if (row.prevDayMissingCount === undefined) {
+        row.prevDayMissingFromAttendance = [];
+        row.prevDayMissingCount = 0;
+      }
+    }
+
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [deferredFilteredForComboStats, tl, normalizeDepartment]);
+  }, [
+    deferredFilteredForComboStats,
+    normalizeDepartment,
+    tl,
+    prevDayAbsenceByDept,
+  ]);
 
   const comboChartDataOrdered = useMemo(() => {
     if (comboDashboardGroup !== "production") {
@@ -3407,6 +3504,8 @@ function AttendanceList({
               getComboProductionDeptChartRank={getComboProductionDeptChartRank}
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}
+              prevDayCompareDateKey={prevDayCompareDateKey}
+              prevDayCompareLoading={prevDayCompareLoading}
               tl={tl}
               t={t}
               comboDashboardStats={comboDashboardStats}

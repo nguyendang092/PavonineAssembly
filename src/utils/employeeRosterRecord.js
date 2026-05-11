@@ -1,6 +1,6 @@
 /**
  * Hai tầng để scale:
- * - employeeProfiles/{mnvChuan}: hồ sơ ổn định (tên, BP, chức vụ, SĐT, trạng thái, …).
+ * - employeeProfiles/{mnv}: hồ sơ ổn định (tên, BP, chức vụ, SĐT, trạng thái, …) — khóa = MNV đã trim.
  * - attendance/{date}/{firebaseKey}: chỉ dữ liệu theo ngày (stt, mnv, giờ vào/ra, ca, PN…).
  * mergeEmployeeProfileAndDay() gộp khi đọc có profile (chỉ trường trong PROFILE_FIELDS_FOR_ATTENDANCE_MERGE).
  * Màn điểm danh chính thức / thời vụ: dùng sanitizeAttendanceDayNodeForUi — chỉ trường node điểm danh, không alias profile.
@@ -10,17 +10,12 @@
 
 export const EMPLOYEE_DEPT_CATALOG_PATH = "employeeDepartments";
 
-/** Hồ sơ nhân viên (key = mnv chuẩn hóa, thường PAVO…). */
+/** Hồ sơ nhân viên — khóa RTDB = MNV (chuỗi đã trim, không tiền tố). */
 export const EMPLOYEE_PROFILES_PATH = "employeeProfiles";
 
-/** Khóa lưu profile: PAVO+MNV nếu MNV chỉ là số; giữ nguyên nếu đã có tiền tố PAVO. */
+/** Khóa lưu profile: đúng MNV người dùng nhập (chỉ trim). */
 export function employeeProfileStorageKeyFromMnv(mnvRaw) {
-  const s = String(mnvRaw ?? "").trim();
-  if (!s) return "";
-  const up = s.toUpperCase();
-  if (up.startsWith(PAVO_ID_PREFIX)) return normalizeEmployeeCode(up);
-  if (/^\d+$/.test(s)) return buildPavoEmployeeId(s);
-  return normalizeEmployeeCode(up);
+  return String(mnvRaw ?? "").trim();
 }
 
 export const CANONICAL_EMPLOYEE_STATUS = {
@@ -37,58 +32,25 @@ export const CANONICAL_EMPLOYEE_TYPE = {
 };
 
 export function normalizeEmployeeCode(value) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "";
-  if (/^\d+$/.test(raw)) {
-    const asNumber = Number(raw);
-    return Number.isFinite(asNumber) ? String(asNumber) : raw;
-  }
-  return raw.toUpperCase();
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
-export const PAVO_ID_PREFIX = "PAVO";
-
-/** Phần MNV sau tiền tố PAVO (trim, bỏ khoảng trắng, in hoa). */
+/** MNV / mã hiển thị: trim và bỏ khoảng trắng nội bộ (không ép PAVO / in hoa). */
 export function normalizeMnvSuffix(value) {
   return String(value ?? "")
     .trim()
-    .replace(/\s+/g, "")
-    .toUpperCase();
-}
-
-/** id lưu Firebase = PAVO + MNV (VD: PAVO001, PAVO12A). */
-export function buildPavoEmployeeId(mnvSuffix) {
-  const part = normalizeMnvSuffix(mnvSuffix);
-  if (!part) return "";
-  return `${PAVO_ID_PREFIX}${part}`;
-}
-
-/** Lấy phần MNV để hiển thị trong form (bỏ tiền tố PAVO nếu có). */
-export function extractMnvSuffixFromStoredId(idOrMnv) {
-  const s = String(idOrMnv ?? "").trim().toUpperCase();
-  if (s.startsWith(PAVO_ID_PREFIX)) {
-    return normalizeMnvSuffix(s.slice(PAVO_ID_PREFIX.length));
-  }
-  return normalizeMnvSuffix(idOrMnv);
+    .replace(/\s+/g, "");
 }
 
 /**
- * Excel: cột id đầy đủ PAVO… hoặc chỉ MNV; hoặc cột mnv riêng.
+ * Excel: ưu tiên cột id, sau đó cột mnv — không gộp tiền tố.
  */
 export function resolveExcelBusinessId(idCell, mnvCell) {
   const idRaw = String(idCell ?? "").trim();
   const mnvRaw = String(mnvCell ?? "").trim();
-  const up = idRaw.toUpperCase();
-  if (up.startsWith(PAVO_ID_PREFIX)) {
-    return normalizeEmployeeCode(idRaw);
-  }
-  if (idRaw) {
-    return buildPavoEmployeeId(idRaw);
-  }
-  if (mnvRaw) {
-    return buildPavoEmployeeId(mnvRaw);
-  }
-  return "";
+  return idRaw || mnvRaw || "";
 }
 
 /** RTDB push ids look like -Ox0abcd123... */
@@ -98,22 +60,18 @@ export function isLikelyFirebasePushKey(v) {
 }
 
 /**
- * Mã chuẩn để so khớp mnv giữa attendance / profile (PAVO001, hoặc chỉ số "001" → PAVO001).
+ * So khớp MNV giữa các nguồn: trim + bỏ khoảng trắng nội bộ (không tiền tố PAVO).
  */
 export function canonicalAttendanceMnvForMatch(raw) {
-  const s = String(raw ?? "").trim();
-  if (!s) return "";
-  const up = s.toUpperCase();
-  if (up.startsWith(PAVO_ID_PREFIX)) return normalizeEmployeeCode(up);
-  if (/^\d+$/.test(s)) return buildPavoEmployeeId(s);
-  return normalizeEmployeeCode(s);
+  return normalizeMnvSuffix(raw);
 }
 
+/** MNV nếu có; không thì `id` bản ghi (bỏ qua push key Firebase). */
 export function businessEmployeeCode(emp) {
-  const m = String(emp?.mnv ?? "").trim();
-  if (m) return canonicalAttendanceMnvForMatch(m);
+  const m = normalizeMnvSuffix(String(emp?.mnv ?? ""));
+  if (m) return m;
   const id = String(emp?.id ?? "").trim();
-  if (id && !isLikelyFirebasePushKey(id)) return canonicalAttendanceMnvForMatch(id);
+  if (id && !isLikelyFirebasePushKey(id)) return id;
   return "";
 }
 
@@ -328,14 +286,13 @@ export function normalizeDateForHtmlInput(value) {
 /** Merge canonical + legacy for table, filters, permissions (boPhan = display name). */
 export function enrichEmployeeRow(emp, catalog) {
   if (!emp || typeof emp !== "object") return emp;
-  const code = businessEmployeeCode(emp);
   const mnvDisplay =
-    extractMnvSuffixFromStoredId(code) || normalizeMnvSuffix(emp.mnv) || "";
+    normalizeMnvSuffix(emp.mnv) || String(emp.mnv ?? "").trim();
   const joinRaw = emp.ngayVaoLam ?? emp.joinDate;
   const joinNorm = normalizeDateForHtmlInput(joinRaw);
   const out = {
     ...emp,
-    mnv: mnvDisplay || String(emp.mnv ?? "").trim() || code,
+    mnv: mnvDisplay || String(emp.mnv ?? "").trim(),
     hoVaTen: String(emp.name ?? emp.hoVaTen ?? "").trim(),
     chucVu: String(emp.position ?? emp.chucVu ?? "").trim(),
     ngayVaoLam: joinNorm || String(joinRaw ?? "").trim(),
@@ -596,12 +553,11 @@ export function pickAttendanceDayFields(raw) {
  */
 export function normalizeAttendanceDayRowDisplay(emp) {
   if (!emp || typeof emp !== "object") return emp;
-  const code = businessEmployeeCode(emp);
   const mnvDisplay =
-    extractMnvSuffixFromStoredId(code) || normalizeMnvSuffix(emp.mnv) || "";
+    normalizeMnvSuffix(emp.mnv) || String(emp.mnv ?? "").trim();
   const out = {
     ...emp,
-    mnv: mnvDisplay || String(emp.mnv ?? "").trim() || code,
+    mnv: mnvDisplay || String(emp.mnv ?? "").trim(),
     hoVaTen: String(emp.hoVaTen ?? "").trim(),
     ngayVaoLam: (() => {
       const jr = emp.ngayVaoLam;
@@ -618,7 +574,7 @@ export function normalizeAttendanceDayRowDisplay(emp) {
 }
 
 /**
- * Đọc `attendance/{ngày}` hoặc `seasonalAttendance/{ngày}` cho bảng: lọc trường + migrate loại phép legacy + chuẩn MNV/tên.
+ * Đọc `attendance/{ngày}` hoặc `seasonalAttendance/{ngày}` cho bảng: lọc trường + migrate loại phép legacy + trim MNV/tên.
  */
 export function sanitizeAttendanceDayNodeForUi(raw, id) {
   const source =
@@ -701,7 +657,7 @@ export function buildEmployeeProfileDocument({
     : undefined;
 
   const mnvStored =
-    extractMnvSuffixFromStoredId(businessId) || businessId || undefined;
+    normalizeMnvSuffix(businessId) || businessId || undefined;
 
   const hasExplicitTrangThai = Object.prototype.hasOwnProperty.call(
     form,
@@ -824,7 +780,7 @@ function attendanceDayNonWipingOptionalStringFromForm(form, key) {
 export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
   const businessId = normalizeEmployeeCode(form.businessId ?? form.mnv ?? "");
   const mnvStored =
-    extractMnvSuffixFromStoredId(businessId) || businessId || undefined;
+    normalizeMnvSuffix(businessId) || businessId || undefined;
   const sttNum =
     form.stt !== "" && form.stt != null && Number.isFinite(Number(form.stt))
       ? Number(form.stt)
