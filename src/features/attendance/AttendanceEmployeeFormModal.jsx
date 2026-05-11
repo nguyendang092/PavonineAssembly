@@ -736,7 +736,6 @@ export default function AttendanceEmployeeFormModal({
                     caLamViec: e.target.value,
                   }))
                 }
-                disabled={isRestrictedEdit}
                 className={employeeModalSelectFieldClass}
               >
                 <option value="">{tl("chooseShift", "Chọn ca")}</option>
