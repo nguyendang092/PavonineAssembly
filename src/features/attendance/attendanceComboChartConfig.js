@@ -127,7 +127,18 @@ export function attendanceProductionDeptMatchKey(
 ) {
   const normalized = normalizeDepartment(boPhanRaw);
   if (!normalized) return "";
-  return normalized.replace(/\s+/g, "").replace(/-/g, "");
+  const compact = normalized.replace(/\s+/g, "").replace(/-/g, "");
+  if (COMBO_STATS_PRODUCTION_DEPT_MATCH_KEYS.has(compact)) return compact;
+  /** VD «3 MC», «01 Press» → cùng khóa với «MC», «Press» (gộp thống kê + so ngày trước). */
+  const withoutLeadingOrdinal = compact.replace(/^\d+/, "");
+  if (
+    withoutLeadingOrdinal &&
+    withoutLeadingOrdinal !== compact &&
+    COMBO_STATS_PRODUCTION_DEPT_MATCH_KEYS.has(withoutLeadingOrdinal)
+  ) {
+    return withoutLeadingOrdinal;
+  }
+  return compact;
 }
 
 export function matchesComboStatsProductionDepartment(

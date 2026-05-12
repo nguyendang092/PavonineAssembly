@@ -1,4 +1,15 @@
-/** Logic cờ thống kê combo (điểm danh) — dùng cho modal Thống kê và bảng chi tiết KPI */
+/**
+ * Cờ KPI thống kê combo (`getAttendanceComboFlags`) — modal Thống kê điểm danh, drill-down KPI,
+ * `monthlyDiligenceScore`, và `classifyAttendanceRowForSalary` (ước lương đơn giản).
+ *
+ * **Không dùng cho tính giờ công (GC/TC):** số giờ trên bảng điểm danh / lương tháng lấy từ
+ * `attendanceWorkingHours.js` (`getAttendanceWorkingHoursHours`, `formatPayrollTableWorkingHoursCell`, …)
+ * và `payrollMonthlyCoefficientBuckets.js` (`getPayrollMonthlyMainRowCell`, `getPayrollMonthlyCoeffHoursMap`),
+ * dựa trên `gioVao` / `gioRa` / `loaiPhep` + `isAttendanceActualLeaveType` — **không** import cờ ở đây.
+ *
+ * Chỉnh logic KPI (vd. tránh đếm trùng PN + «Chấm công») **không** đổi công thức giờ công trừ khi
+ * đồng thời sửa các module trên.
+ */
 
 import {
   foldGioVaoCompare,
@@ -6,6 +17,7 @@ import {
   rawMatchesAttendanceTypeOption,
   getAttendanceLeaveTypeRaw,
 } from "./attendanceGioVaoTypeOptions";
+import { isNightShiftCaLamViec } from "./attendanceWorkingHours";
 
 export const normalizeTextValue = (value) => String(value ?? "").trim();
 
@@ -142,7 +154,8 @@ export function getAttendanceComboFlags(emp) {
   const hasLeaveCode = (...codes) =>
     codes.some((code) => gioVaoTokens.includes(code));
   const hasText = (...texts) => texts.some((txt) => gioVaoLatin.includes(txt));
-  const caLamViecNormalized = normalizeTextValue(emp.caLamViec).toLowerCase();
+  /** Ca đêm chỉ theo cột «Ca làm việc» — đồng bộ `isNightShiftCaLamViec` (lương / giờ công). */
+  const isNightShiftRow = isNightShiftCaLamViec(emp.caLamViec);
   const isLate = hasLeaveCode("VT") || hasText("VAO TRE");
   /** Tách khỏi PN cả ngày — thống kê Dashboard có ô riêng 1/2PN */
   const halfAnnualHeuristic =
@@ -178,7 +191,6 @@ export function getAttendanceComboFlags(emp) {
     textMatchesFuneralLeave(emp.chamCong) ||
     textMatchesFuneralLeave(emp.phepNam);
   const isResignedLeave = hasLeaveCode("NV") || hasText("NGHI VIEC");
-  const isNightShift = caLamViecNormalized.replace(/\s+/g, "") === "s2";
 
   /** Khớp từng loại trong ATTENDANCE_LOAI_PHEP_OPTIONS (cột loại phép / trạng thái) + ghi chú liên quan */
   const scanRaws = [
@@ -213,18 +225,54 @@ export function getAttendanceComboFlags(emp) {
   /** Trễ được tách ô riêng — không đếm vào checkedIn để cộng các KPI không bị trùng một người hai lần. */
   const lateFinal = isLate || typeHitKeys.has("late");
 
+  /**
+   * Đã xếp loại phép / trạng thái nghỉ (PN, PO, …): không đếm trùng ô «Chấm công» /
+   * giờ vào lệch chuẩn / «#» — ví dụ còn HH:MM hoặc ghi «đột xuất» ở Giờ vào nhưng
+   * cột Loại phép đã chuyển PN.
+   * (VT/BGC không nằm đây — vẫn xử lý qua lateFinal / buGioCong.)
+   */
+  const leaveStatSuppressesAttendanceSurface =
+    annualLeave ||
+    halfAnnualLeave ||
+    (isSickLeave || typeHitKeys.has("sickLeave")) ||
+    (isUnpaidLeave || typeHitKeys.has("unpaidLeave")) ||
+    (isNoPermit || typeHitKeys.has("noPermit")) ||
+    (isMaternity || typeHitKeys.has("maternity")) ||
+    (isLaborAccident || typeHitKeys.has("laborAccident")) ||
+    weddingLeave ||
+    (isFuneralLeave || typeHitKeys.has("funeralLeave")) ||
+    recuperationLeave ||
+    (isResignedLeave || typeHitKeys.has("resignedLeave"));
+
+  /**
+   * Ca đêm (cột ca) độc lập với chấm công / giờ vào: không đếm trùng các ô
+   * checkedIn, buGioCong, nonStandardTimeIn, timeInHashHHMM khi là ca đêm.
+   */
+  const gioVaoComboMetricsActive = !isNightShiftRow;
+
   return {
-    nonStandardTimeIn,
-    timeInHashHHMM,
-    checkedIn: hasCheckIn && !lateFinal,
+    nonStandardTimeIn:
+      nonStandardTimeIn &&
+      gioVaoComboMetricsActive &&
+      !leaveStatSuppressesAttendanceSurface,
+    timeInHashHHMM:
+      timeInHashHHMM &&
+      gioVaoComboMetricsActive &&
+      !leaveStatSuppressesAttendanceSurface,
+    checkedIn:
+      hasCheckIn &&
+      !lateFinal &&
+      gioVaoComboMetricsActive &&
+      !leaveStatSuppressesAttendanceSurface,
     buGioCong:
-      buGioCongMatch ||
-      typeHitKeys.has("buGioCong") ||
-      typeHitKeys.has("coDiLam"),
+      gioVaoComboMetricsActive &&
+      (buGioCongMatch ||
+        typeHitKeys.has("buGioCong") ||
+        typeHitKeys.has("coDiLam")),
     late: lateFinal,
     annualLeave,
     halfAnnualLeave,
-    nightShift: isNightShift,
+    nightShift: isNightShiftRow,
     laborAccident:
       isLaborAccident || typeHitKeys.has("laborAccident"),
     maternity: isMaternity || typeHitKeys.has("maternity"),

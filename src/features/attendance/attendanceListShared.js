@@ -32,13 +32,13 @@ function findAttendanceLeaveOptionByFilterValue(sel) {
   );
 }
 
-export function employeeMatchesLoaiPhepFilter(emp, selectedValues) {
-  if (!selectedValues || selectedValues.length === 0) return true;
+export function employeeMatchesLoaiPhepFilterSet(emp, selectedSet) {
+  if (!selectedSet || selectedSet.size === 0) return true;
   const raw = getAttendanceLeaveTypeRaw(emp);
   const trimmed = String(raw || "").trim();
   const isNone = !trimmed;
 
-  for (const sel of selectedValues) {
+  for (const sel of selectedSet) {
     if (sel === ATTENDANCE_LEAVE_FILTER_NONE) {
       if (isNone) return true;
       continue;
@@ -47,6 +47,11 @@ export function employeeMatchesLoaiPhepFilter(emp, selectedValues) {
     if (opt && rawMatchesAttendanceTypeOption(raw, opt)) return true;
   }
   return false;
+}
+
+export function employeeMatchesLoaiPhepFilter(emp, selectedValues) {
+  if (!selectedValues || selectedValues.length === 0) return true;
+  return employeeMatchesLoaiPhepFilterSet(emp, new Set(selectedValues));
 }
 
 /** Ngày chọn trên ô date / URL `?date=` — đồng bộ với Firebase path `attendance/YYYY-MM-DD`. */

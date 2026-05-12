@@ -14,7 +14,7 @@ import { formatAttendanceLeaveTypeColumnDisplay } from "@/features/attendance/at
  * Giờ công = tổng thời lượng (giao thời gian [giờ vào, giờ ra) với các khung làm việc),
  * làm tròn 0.1h, **tối đa 8 giờ** (phần trên 8h không cộng ở đây vì đã tách sang cột giờ tăng ca).
  *
- * **Ca đêm:** chọn `caLamViec` có chữ «đêm» / «night» (giống thống kê combo). Khi
+ * **Ca đêm:** `caLamViec` là **S2** (cùng quy tắc `isNightShiftCaLamViec` / thống kê combo). Khi
  * `giờ ra` ≤ `giờ vào` (ví dụ 22:00 → 06:00) hệ thống coi là **qua nửa đêm**:
  * thời lượng = (24h − vào) + ra, trần 8h. Cột **Giờ TC** (tăng ca sau 17:30) vẫn
  * theo quy tắc ngày — ca đêm ra sáng thường không tính TC kiểu đó; cần quy định
@@ -37,6 +37,10 @@ import { formatAttendanceLeaveTypeColumnDisplay } from "@/features/attendance/at
  * **Chế độ Thai sản** (`includeThaiSanInWorkingHours`, chỉ **ca ngày**, không bật Tạp vụ): GC = thời lượng
  * liên tục từ mốc vào hiệu lực (ca ngày thường) đến **16:00** hoặc giờ ra, **tối đa 8 giờ**; sau **16:00** → TC như trên.
  * Ca đêm không đổi.
+ *
+ * **Tách khỏi thống kê combo** (`getAttendanceComboFlags` trong `attendanceComboStats.js`): GC/TC và
+ * dòng chính bảng lương tháng dựa trên `gioVao` / `gioRa` / `loaiPhep` và `isAttendanceActualLeaveType`
+ * (`payrollMonthlyCoefficientBuckets`, `hasPayrollLeaveType` trong file này), không đọc cờ KPI combo.
  */
 
 const HHMM = /^(\d{1,2}):(\d{2})$/;

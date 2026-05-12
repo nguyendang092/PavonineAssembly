@@ -38,8 +38,6 @@ export default function AttendanceComboChartModal({
   getComboProductionDeptChartRank,
   selectedDate,
   setSelectedDate,
-  prevDayCompareDateKey = "",
-  prevDayCompareLoading = false,
   tl,
   t,
   comboDashboardStats,
@@ -295,22 +293,11 @@ export default function AttendanceComboChartModal({
             ) : null}
           </div>
 
-          <div className="mt-2 flex w-full items-center gap-2">
-            {prevDayCompareLoading ? (
-              <p className="max-w-[min(100%,28rem)] text-[9px] font-semibold text-slate-500 dark:text-slate-400">
-                {tl(
-                  "prevDayCompareLoading",
-                  "Đang tải dữ liệu ngày trước để so sánh…",
-                  {
-                    prevDate: prevDayCompareDateKey || "—",
-                  },
-                )}
-              </p>
-            ) : null}
+          <div className="mt-2 flex w-full items-center justify-end">
             <button
               type="button"
               onClick={() => setShowDetailTiles((v) => !v)}
-              className="ms-auto rounded-lg border border-slate-300/90 bg-white/75 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 sm:text-[10px] dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="rounded-lg border border-slate-300/90 bg-white/75 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 sm:text-[10px] dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-300 dark:hover:bg-slate-700"
             >
               {showDetailTiles
                 ? tl("collapseDetailTiles", "Thu gọn")
@@ -453,47 +440,6 @@ export default function AttendanceComboChartModal({
                         );
                       })}
                     </div>
-                    {(() => {
-                      const n = row.prevDayMissingCount ?? 0;
-                      if (n <= 0 || prevDayCompareLoading) return null;
-                      const missing = row.prevDayMissingFromAttendance ?? [];
-                      const preview = 6;
-                      const shown = missing.slice(0, preview);
-                      const rest = Math.max(0, missing.length - preview);
-                      return (
-                        <div className="mb-1.5 rounded-md border border-amber-500/55 bg-amber-500/[0.12] px-1.5 py-1 text-[9px] leading-snug text-amber-950 dark:border-amber-400/45 dark:bg-amber-500/10 dark:text-amber-50">
-                          <p className="font-bold">
-                            {tl(
-                              "prevDayAbsentFromListBanner",
-                              "So với {{prevDate}}: {{count}} nhân viên hôm qua đã có giờ vào / loại phép / ca nhưng hôm nay không còn trên danh sách — có thể nghỉ việc hoặc bị cắt (theo bộ lọc).",
-                              {
-                                count: n,
-                                prevDate: prevDayCompareDateKey || "—",
-                              },
-                            )}
-                          </p>
-                          <ul className="mt-0.5 list-none space-y-0.5 font-medium text-[8.5px] opacity-95">
-                            {shown.map((emp, idx) => (
-                              <li
-                                key={`${String(emp.id ?? "").trim() || "id"}-${String(emp.mnv ?? "").trim() || "mnv"}-${idx}`}
-                              >
-                                {tl("prevDayAbsentNameLine", "{{mnv}} — {{name}}", {
-                                  mnv: String(emp.mnv ?? "").trim() || "—",
-                                  name: String(emp.hoVaTen ?? "").trim() || "—",
-                                })}
-                              </li>
-                            ))}
-                          </ul>
-                          {rest > 0 ? (
-                            <p className="mt-0.5 text-[8.5px] font-semibold opacity-90">
-                              {tl("prevDayAbsentNamesMore", "… và thêm {{count}} người", {
-                                count: rest,
-                              })}
-                            </p>
-                          ) : null}
-                        </div>
-                      );
-                    })()}
                     <div className="mx-auto h-[180px] w-full sm:h-[190px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart
@@ -513,13 +459,6 @@ export default function AttendanceComboChartModal({
                           <XAxis dataKey="department" hide />
                           <YAxis
                             yAxisId="left"
-                            allowDecimals={false}
-                            width={22}
-                            tick={{ fill: "#94a3b8", fontSize: 10 }}
-                          />
-                          <YAxis
-                            yAxisId="right"
-                            orientation="right"
                             allowDecimals={false}
                             width={22}
                             tick={{ fill: "#94a3b8", fontSize: 10 }}
@@ -565,7 +504,7 @@ export default function AttendanceComboChartModal({
                           )}
                           {row.total > 0 ? (
                             <Line
-                              yAxisId="right"
+                              yAxisId="left"
                               type="monotone"
                               dataKey="total"
                               stroke="#7c3aed"

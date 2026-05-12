@@ -21,10 +21,7 @@ import {
   canDeleteEmployeeData,
   ROLES,
 } from "@/config/authRoles";
-import {
-  getFirstDayOfMonthKey,
-  getDateKeyBySubtractDays,
-} from "@/utils/dateKey";
+import { getFirstDayOfMonthKey } from "@/utils/dateKey";
 import {
   CHART_ORDER_KIND,
   hydrateChartOrder,
@@ -91,11 +88,10 @@ import {
   ATTENDANCE_FILTER_DROPDOWN_HEIGHT_PX,
   ISO_DATE_KEY_RE,
   attendanceTableWrapperMinWidthClass,
-  employeeMatchesLoaiPhepFilter,
+  employeeMatchesLoaiPhepFilterSet,
   isEmployeeQuickUnattended,
 } from "./attendanceListShared";
 import { mergeAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
-import { computePrevDayWorkedMissingTodayByDepartment } from "./attendancePrevDayAbsence";
 import AttendanceSearchActionsBar from "./AttendanceSearchActionsBar";
 import SeasonalKpStreakNotification from "./SeasonalKpStreakNotification";
 
@@ -188,11 +184,6 @@ function AttendanceList({
     [t],
   );
   const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
-
-  const prevDayCompareDateKey = useMemo(() => {
-    if (!ISO_DATE_KEY_RE.test(selectedDate)) return "";
-    return getDateKeyBySubtractDays(selectedDate, 1);
-  }, [selectedDate]);
 
   const refreshMonthOffDays = useCallback(async () => {
     if (!user || !isAdminAccess(user, userRole)) {
@@ -324,6 +315,29 @@ function AttendanceList({
     [],
   );
 
+  const loaiPhepFilterSet = useMemo(
+    () => new Set(loaiPhepFilter),
+    [loaiPhepFilter],
+  );
+
+  /**
+   * Áp bộ lọc loại phép vào bảng / useMemo nặng sau một nhịp (React concurrent).
+   * Checkbox vẫn dùng `loaiPhepFilter` / `loaiPhepFilterSet` tức thì — không bị trễ cảm giác tick.
+   */
+  const deferredLoaiPhepFilter = useDeferredValue(loaiPhepFilter);
+  const deferredLoaiPhepFilterSet = useMemo(
+    () => new Set(deferredLoaiPhepFilter),
+    [deferredLoaiPhepFilter],
+  );
+
+  /** Checkbox «Chọn tất cả» loại phép — tránh .every/.includes lặp trên mỗi render nặng. */
+  const allLeaveTypesSelectAllChecked = useMemo(
+    () =>
+      allLeaveTypeFilterValues.length > 0 &&
+      allLeaveTypeFilterValues.every((v) => loaiPhepFilterSet.has(v)),
+    [allLeaveTypeFilterValues, loaiPhepFilterSet],
+  );
+
   const unattendedEmployees = useMemo(
     () => employees.filter((emp) => isEmployeeQuickUnattended(emp)),
     [employees],
@@ -357,41 +371,6 @@ function AttendanceList({
       setEmployees(sortEmployeesStableAsc(mergeAttendanceDayRowsFromRaw(data)));
     });
     return () => unsubscribe();
-  }, [selectedDate]);
-
-  const [prevDayEmployeesForCompare, setPrevDayEmployeesForCompare] = useState(
-    [],
-  );
-  const [prevDayCompareLoading, setPrevDayCompareLoading] = useState(false);
-
-  /** Một lần GET `attendance/{ngày trước}` — so sánh «có điểm danh hôm trước nhưng không có tên hôm nay». */
-  useEffect(() => {
-    if (!ISO_DATE_KEY_RE.test(selectedDate)) {
-      setPrevDayEmployeesForCompare([]);
-      setPrevDayCompareLoading(false);
-      return undefined;
-    }
-    let cancelled = false;
-    const prevKey = getDateKeyBySubtractDays(selectedDate, 1);
-    setPrevDayCompareLoading(true);
-    setPrevDayEmployeesForCompare([]);
-    get(ref(db, `${attendanceRootPath}/${prevKey}`))
-      .then((snap) => {
-        if (cancelled) return;
-        setPrevDayEmployeesForCompare(
-          mergeAttendanceDayRowsFromRaw(snap.val()),
-        );
-      })
-      .catch((err) => {
-        console.error("prev-day attendance compare:", err);
-        if (!cancelled) setPrevDayEmployeesForCompare([]);
-      })
-      .finally(() => {
-        if (!cancelled) setPrevDayCompareLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
   }, [selectedDate, attendanceRootPath]);
 
   useEffect(() => {
@@ -709,7 +688,13 @@ function AttendanceList({
   }, [filterOpen]);
 
   const filterAttendanceListRows = useCallback(
-    (list) => {
+    (list, opts = {}) => {
+      const {
+        omitQuickUnattendedFilter = false,
+        omitLoaiPhepFilter = false,
+        omitDepartmentFilters = false,
+        omitSearch = false,
+      } = opts;
       const q = searchTerm.trim().toLowerCase();
       const selectedDeptKeys = new Set(
         departmentListFilter.map((dept) => normalizeDepartment(dept)),
@@ -718,18 +703,41 @@ function AttendanceList({
         const empDeptKey = normalizeDepartment(emp.boPhan);
         const departmentFilterKey = normalizeDepartment(departmentFilter);
 
-        if (departmentFilterKey && empDeptKey !== departmentFilterKey)
+        if (
+          !omitDepartmentFilters &&
+          departmentFilterKey &&
+          empDeptKey !== departmentFilterKey
+        )
           return false;
-        if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
+        if (
+          !omitDepartmentFilters &&
+          selectedDeptKeys.size > 0 &&
+          !selectedDeptKeys.has(empDeptKey)
+        )
           return false;
-        if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp))
+        if (
+          !omitQuickUnattendedFilter &&
+          showOnlyUnattendedFilter &&
+          !isEmployeeQuickUnattended(emp)
+        )
           return false;
-        if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) return false;
-        if (!q) return true;
+        if (
+          !omitLoaiPhepFilter &&
+          deferredLoaiPhepFilterSet.size > 0 &&
+          !employeeMatchesLoaiPhepFilterSet(emp, deferredLoaiPhepFilterSet)
+        )
+          return false;
+        if (omitSearch || !q) return true;
+        const qn = q;
         return (
-          (emp.hoVaTen || "").toLowerCase().includes(q) ||
-          (emp.mnv || "").toLowerCase().includes(q) ||
-          (emp.boPhan || "").toLowerCase().includes(q)
+          (emp.hoVaTen || "").toLowerCase().includes(qn) ||
+          String(emp.mnv ?? "")
+            .toLowerCase()
+            .includes(qn) ||
+          String(emp.mvt ?? "")
+            .toLowerCase()
+            .includes(qn) ||
+          (emp.boPhan || "").toLowerCase().includes(qn)
         );
       });
     },
@@ -737,7 +745,7 @@ function AttendanceList({
       searchTerm,
       departmentFilter,
       departmentListFilter,
-      loaiPhepFilter,
+      deferredLoaiPhepFilterSet,
       showOnlyUnattendedFilter,
       normalizeDepartment,
     ],
@@ -748,29 +756,8 @@ function AttendanceList({
     [employees, filterAttendanceListRows],
   );
 
-  const prevDayFilteredEmployees = useMemo(
-    () =>
-      sortEmployeesStableAsc(
-        filterAttendanceListRows(prevDayEmployeesForCompare),
-      ),
-    [prevDayEmployeesForCompare, filterAttendanceListRows],
-  );
-
-  const prevDayAbsenceByDept = useMemo(
-    () =>
-      computePrevDayWorkedMissingTodayByDepartment({
-        prevDayEmployees: prevDayFilteredEmployees,
-        todayEmployees: filteredEmployees,
-        normalizeDepartment,
-        unknownDepartmentLabel: tl("unknownDepartment", "Chưa phân bộ phận"),
-      }),
-    [
-      prevDayFilteredEmployees,
-      filteredEmployees,
-      normalizeDepartment,
-      tl,
-    ],
-  );
+  /** Bảng / tóm tắt / bù công / virtualizer — cùng nhịp concurrent, giảm đơ khi lọc nặng. */
+  const deferredFilteredEmployees = useDeferredValue(filteredEmployees);
 
   useEffect(() => {
     if (!showExportRangeModal) {
@@ -859,13 +846,10 @@ function AttendanceList({
     attendanceRootPath,
   ]);
 
-  /** Giảm tải main thread khi gõ lọc: bảng cập nhật ngay, biểu đồ combo theo sau */
-  const deferredFilteredForCharts = useDeferredValue(filteredEmployees);
-
-  /** Mọi bộ phận có trong dữ liệu điểm danh (sau bộ lọc) — dùng cho picker BP sản xuất / STT. */
+  /** Biểu đồ combo: cùng snapshot đã trì hoãn với bảng (giảm đơ khi lọc nặng). Mọi BP trong dữ liệu sau bộ lọc — picker BP / STT. */
   const comboProductionDeptCatalog = useMemo(() => {
     const byMk = new Map();
-    for (const emp of deferredFilteredForCharts) {
+    for (const emp of deferredFilteredEmployees) {
       const label = normalizeTextValue(emp.boPhan);
       if (!label) continue;
       const mk = attendanceProductionDeptMatchKey(
@@ -878,15 +862,15 @@ function AttendanceList({
     return Array.from(byMk.values()).sort((a, b) =>
       a.label.localeCompare(b.label, "vi", { sensitivity: "base" }),
     );
-  }, [deferredFilteredForCharts, normalizeDepartment]);
+  }, [deferredFilteredEmployees, normalizeDepartment]);
 
   const deferredFilteredForComboStats = useMemo(() => {
-    if (comboDashboardGroup !== "production") return deferredFilteredForCharts;
+    if (comboDashboardGroup !== "production") return deferredFilteredEmployees;
     const catalogKeys = new Set(
       comboProductionDeptCatalog.map((c) => c.matchKey),
     );
     if (comboProductionDeptOrder.length === 0) {
-      return deferredFilteredForCharts.filter((emp) => {
+      return deferredFilteredEmployees.filter((emp) => {
         const mk = attendanceProductionDeptMatchKey(
           normalizeDepartment,
           emp.boPhan,
@@ -895,7 +879,7 @@ function AttendanceList({
       });
     }
     const allow = new Set(comboProductionDeptOrder);
-    return deferredFilteredForCharts.filter((emp) => {
+    return deferredFilteredEmployees.filter((emp) => {
       const mk = attendanceProductionDeptMatchKey(
         normalizeDepartment,
         emp.boPhan,
@@ -903,7 +887,7 @@ function AttendanceList({
       return mk && allow.has(mk);
     });
   }, [
-    deferredFilteredForCharts,
+    deferredFilteredEmployees,
     comboDashboardGroup,
     comboProductionDeptOrder,
     comboProductionDeptCatalog,
@@ -976,37 +960,8 @@ function AttendanceList({
       map.set(department, row);
     });
 
-    for (const [dept, emps] of prevDayAbsenceByDept.entries()) {
-      const list = [...emps];
-      if (!map.has(dept)) {
-        map.set(dept, {
-          department: dept,
-          total: 0,
-          ...emptyMetrics(),
-          prevDayMissingFromAttendance: list,
-          prevDayMissingCount: list.length,
-        });
-      } else {
-        const row = map.get(dept);
-        row.prevDayMissingFromAttendance = list;
-        row.prevDayMissingCount = list.length;
-      }
-    }
-
-    for (const row of map.values()) {
-      if (row.prevDayMissingCount === undefined) {
-        row.prevDayMissingFromAttendance = [];
-        row.prevDayMissingCount = 0;
-      }
-    }
-
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [
-    deferredFilteredForComboStats,
-    normalizeDepartment,
-    tl,
-    prevDayAbsenceByDept,
-  ]);
+  }, [deferredFilteredForComboStats, normalizeDepartment, tl]);
 
   const comboChartDataOrdered = useMemo(() => {
     if (comboDashboardGroup !== "production") {
@@ -1172,7 +1127,7 @@ function AttendanceList({
     for (const emp of employees) {
       // Apply other filters except Department
       if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp)) continue;
-      if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) continue;
+      if (!employeeMatchesLoaiPhepFilterSet(emp, deferredLoaiPhepFilterSet)) continue;
       const deptLabel = String(emp.boPhan || "").trim();
       const deptKey = normalizeDepartment(deptLabel);
       if (!deptKey) continue;
@@ -1183,7 +1138,7 @@ function AttendanceList({
     return Array.from(deptMap.values());
   }, [
     employees,
-    loaiPhepFilter,
+    deferredLoaiPhepFilterSet,
     showOnlyUnattendedFilter,
     normalizeDepartment,
   ]);
@@ -1192,7 +1147,7 @@ function AttendanceList({
   const buCongEmployees = useMemo(() => {
     // Strictly matches hh:mm or hh:mm:ss (no extra chars, no spaces)
     const timeRegex = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
-    return filteredEmployees.filter((emp) => {
+    return deferredFilteredEmployees.filter((emp) => {
       const gioVaoRaw = (emp.gioVao || "").trim();
       const gioRa = (emp.gioRa || "").trim();
       if (!gioVaoRaw || isGioVaoLeaveOrStatusType(gioVaoRaw)) return false;
@@ -1205,7 +1160,7 @@ function AttendanceList({
       // Nếu không có giờ vào và không có giờ ra thì không phải bù công
       return false;
     });
-  }, [filteredEmployees]);
+  }, [deferredFilteredEmployees]);
 
   // Get unique mã BP codes (cascading filter - based on other selected filters)
   // Get unique shifts (cascading filter - based on other selected filters)
@@ -1217,7 +1172,7 @@ function AttendanceList({
     for (const emp of employees) {
       // Apply other filters except Shift
       if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp)) continue;
-      if (!employeeMatchesLoaiPhepFilter(emp, loaiPhepFilter)) continue;
+      if (!employeeMatchesLoaiPhepFilterSet(emp, deferredLoaiPhepFilterSet)) continue;
       const empDeptKey = normalizeDepartment(emp.boPhan);
       if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
         continue;
@@ -1226,7 +1181,7 @@ function AttendanceList({
     return Array.from(shifts).sort();
   }, [
     employees,
-    loaiPhepFilter,
+    deferredLoaiPhepFilterSet,
     showOnlyUnattendedFilter,
     departmentListFilter,
     normalizeDepartment,
@@ -1351,11 +1306,11 @@ function AttendanceList({
   const tableScrollParentRef = useRef(null);
   const shouldVirtualizeTable =
     forceVirtualizedRows ||
-    filteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
+    deferredFilteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
   const rowEstimatePx = 36;
 
   const rowVirtualizer = useVirtualizer({
-    count: filteredEmployees.length,
+    count: deferredFilteredEmployees.length,
     getScrollElement: () => tableScrollParentRef.current,
     // Đồng bộ mật độ hiển thị với chiều cao hàng thực tế.
     estimateSize: () => rowEstimatePx,
@@ -2601,7 +2556,7 @@ function AttendanceList({
           >
             {attendanceRootPath === "seasonalAttendance" ? (
               <SeasonalKpStreakNotification
-                filteredEmployees={filteredEmployees}
+                filteredEmployees={deferredFilteredEmployees}
                 selectedDate={selectedDate}
                 attendanceRootPath={attendanceRootPath}
               />
@@ -2714,18 +2669,20 @@ function AttendanceList({
             )}
 
             {/* Filter Dropdown Menu */}
-            <button
-              type="button"
-              onClick={() =>
-                startTransition(() => {
-                  setComboDashboardGroup("production");
-                  setShowComboChartModal(true);
-                })
-              }
-              className="inline-flex h-8 w-full min-w-0 items-center justify-center gap-0.5 rounded-lg border border-emerald-300 bg-emerald-600 px-1 text-xs font-bold text-white shadow transition hover:bg-emerald-700 sm:w-auto sm:text-sm dark:border-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
-            >
-              📊 {tl("comboChart", "Thống kê")}
-            </button>
+            <div className="flex min-w-0 w-full flex-col gap-1 sm:w-auto sm:flex-row sm:gap-1">
+              <button
+                type="button"
+                onClick={() =>
+                  startTransition(() => {
+                    setComboDashboardGroup("production");
+                    setShowComboChartModal(true);
+                  })
+                }
+                className="inline-flex h-8 w-full min-w-0 items-center justify-center gap-0.5 rounded-lg border border-emerald-300 bg-emerald-600 px-1 text-xs font-bold text-white shadow transition hover:bg-emerald-700 sm:w-auto sm:text-sm dark:border-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+              >
+                📊 {tl("comboChart", "Thống kê")}
+              </button>
+            </div>
 
             <div
               ref={filterMenuRef}
@@ -3038,26 +2995,25 @@ function AttendanceList({
                                 <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
                                   <input
                                     type="checkbox"
-                                    checked={
-                                      allLeaveTypeFilterValues.length > 0 &&
-                                      allLeaveTypeFilterValues.every((v) =>
-                                        loaiPhepFilter.includes(v),
-                                      )
-                                    }
+                                    checked={allLeaveTypesSelectAllChecked}
                                     onChange={(e) => {
                                       if (e.target.checked) {
-                                        setLoaiPhepFilter([
-                                          ...allLeaveTypeFilterValues,
-                                        ]);
+                                        startTransition(() => {
+                                          setLoaiPhepFilter([
+                                            ...allLeaveTypeFilterValues,
+                                          ]);
+                                        });
                                       } else {
-                                        setLoaiPhepFilter((prev) =>
-                                          prev.filter(
-                                            (x) =>
-                                              !allLeaveTypeFilterValues.includes(
-                                                x,
-                                              ),
-                                          ),
-                                        );
+                                        const remove =
+                                          allLeaveTypeFilterValues;
+                                        startTransition(() => {
+                                          setLoaiPhepFilter((prev) => {
+                                            if (remove.length === 0)
+                                              return prev;
+                                            const rm = new Set(remove);
+                                            return prev.filter((x) => !rm.has(x));
+                                          });
+                                        });
                                       }
                                     }}
                                     className="mr-2 w-4 h-4 cursor-pointer"
@@ -3504,8 +3460,6 @@ function AttendanceList({
               getComboProductionDeptChartRank={getComboProductionDeptChartRank}
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}
-              prevDayCompareDateKey={prevDayCompareDateKey}
-              prevDayCompareLoading={prevDayCompareLoading}
               tl={tl}
               t={t}
               comboDashboardStats={comboDashboardStats}
@@ -3557,7 +3511,7 @@ function AttendanceList({
                   }}
                 >
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const emp = filteredEmployees[virtualRow.index];
+                    const emp = deferredFilteredEmployees[virtualRow.index];
                     const idx = virtualRow.index;
                     return (
                       <AttendanceTableRow
@@ -3609,7 +3563,7 @@ function AttendanceList({
                   columnPlan={columnPlan}
                 />
                 <tbody>
-                  {filteredEmployees.map((emp, idx) => {
+                  {deferredFilteredEmployees.map((emp, idx) => {
                     return (
                       <AttendanceTableRow
                         key={emp.id}
@@ -3648,7 +3602,7 @@ function AttendanceList({
                   <span className="text-blue-600 text-lg">📊</span>
                   {tl("totalEmployees", "Tổng số nhân viên")}:
                   <span className="ml-1 text-lg text-blue-700">
-                    {filteredEmployees.length}
+                    {deferredFilteredEmployees.length}
                   </span>
                 </span>
                 {/* Phân loại phép */}
@@ -3658,7 +3612,7 @@ function AttendanceList({
                   <span className="flex flex-wrap gap-1 ml-1">
                     {(() => {
                       const timeCounts = {};
-                      filteredEmployees.forEach((emp) => {
+                      deferredFilteredEmployees.forEach((emp) => {
                         const time = formatAttendanceGioVaoDisplay(
                           getAttendanceLeaveTypeRaw(emp),
                         );
@@ -3690,7 +3644,7 @@ function AttendanceList({
                   <span className="flex flex-wrap gap-1 ml-1">
                     {(() => {
                       const shiftCounts = {};
-                      filteredEmployees.forEach((emp) => {
+                      deferredFilteredEmployees.forEach((emp) => {
                         const shift = emp.caLamViec;
                         if (shift) {
                           shiftCounts[shift] = (shiftCounts[shift] || 0) + 1;

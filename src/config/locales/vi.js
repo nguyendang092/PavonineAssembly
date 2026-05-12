@@ -1149,12 +1149,6 @@ const vi = {
     comboStatColShift: "Ca làm việc",
     comboChartLoading: "Đang tải biểu đồ theo bộ phận…",
     comboChartLoadingMore: "Đang tải thêm biểu đồ…",
-    prevDayCompareLoading:
-      "Đang so sánh với ngày {{prevDate}} (điểm danh ngày trước)…",
-    prevDayAbsentFromListBanner:
-      "So với {{prevDate}}: {{count}} nhân viên hôm qua đã có giờ vào / loại phép / ca nhưng hôm nay không còn trên danh sách — có thể nghỉ việc hoặc bị cắt (theo bộ lọc).",
-    prevDayAbsentNameLine: "{{mnv}} — {{name}}",
-    prevDayAbsentNamesMore: "… và thêm {{count}} người",
     comboChartDragHandle: "Kéo để sắp xếp",
     comboChartDragHint: "Kéo thanh tiêu đề (⋮⋮) để đổi thứ tự.",
     notCheckedInShort: "Chưa chấm công",
@@ -1331,6 +1325,16 @@ const vi = {
     monthlyTimesheetCoeffL39: "Tăng ca ca đêm ngày lễ (gộp): hệ số 3,9.",
     monthlyTimesheetReload: "Tải lại",
     monthlyTimesheetClose: "Đóng",
+    monthlyTimesheetZoomLabel: "Tỉ lệ",
+    monthlyTimesheetZoomOut: "Thu nhỏ",
+    monthlyTimesheetZoomIn: "Phóng to",
+    monthlyTimesheetZoomReset: "Mặc định",
+    monthlyTimesheetZoomHint:
+      "Thu nhỏ để xem tổng quan, phóng to để đọc rõ ô từng ngày.",
+    monthlyTimesheetPrintA3: "In A3 (TG làm việc)",
+    monthlyTimesheetPrintBlocked:
+      "Trình duyệt đã chặn cửa sổ mới — không thể mở bản in.",
+    monthlyTimesheetPrintGenerated: "Theo bộ lọc hiện tại trên lưới.",
     monthlyTimesheetLoading: "Đang tải dữ liệu điểm danh…",
     monthlyTimesheetEmpty: "Không có dữ liệu điểm danh nào trong tháng này.",
     monthlyTimesheetError: "Không tải được dữ liệu: {{error}}",

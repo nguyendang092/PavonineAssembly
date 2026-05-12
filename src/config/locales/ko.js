@@ -1156,12 +1156,6 @@ const ko = {
     comboStatColShift: "근무 조",
     comboChartLoading: "부서별 차트 불러오는 중…",
     comboChartLoadingMore: "차트 추가 로드 중…",
-    prevDayCompareLoading:
-      "{{prevDate}} 출근 데이터와 비교하는 중…",
-    prevDayAbsentFromListBanner:
-      "{{prevDate}} 대비: 전일 출근·휴가·조 정보가 있었으나 오늘 명단에 없는 직원 {{count}}명(퇴사·명단 제외 등, 현재 필터 기준).",
-    prevDayAbsentNameLine: "{{mnv}} — {{name}}",
-    prevDayAbsentNamesMore: "… 외 {{count}}명",
     comboChartDragHint:
       "제목 줄(⋮⋮)을 드래그해 차트 순서 변경 — Firebase에 계정별 저장(기기 간 동기화).",
     comboChartDragHandle: "드래그하여 순서 변경",
@@ -1333,6 +1327,18 @@ const ko = {
     monthlyTimesheetCoeffL39: "공휴일 야간(합산): 계수 3,9.",
     monthlyTimesheetReload: "새로고침",
     monthlyTimesheetClose: "닫기",
+    monthlyTimesheetZoomLabel: "격자 크기",
+    monthlyTimesheetZoomOut: "격자 축소",
+    monthlyTimesheetZoomIn: "격자 확대",
+    monthlyTimesheetZoomReset: "기본",
+    monthlyTimesheetZoomHint:
+      "축소하면 한눈에, 확대하면 날짜 칸을 크게 볼 수 있습니다. 브라우저에 저장됩니다.",
+    monthlyTimesheetPrintA3: "A3 인쇄(근무시간)",
+    monthlyTimesheetPrintBlocked:
+      "브라우저가 새 창을 차단해 인쇄를 열 수 없습니다.",
+    monthlyTimesheetPrintA3Hint:
+      "A3 가로. «근무 시간» 블록만 인쇄(수습/계약 블록 제외).",
+    monthlyTimesheetPrintGenerated: "현재 그리드 필터 기준.",
     monthlyTimesheetLoading: "출근 데이터 불러오는 중…",
     monthlyTimesheetEmpty: "이 달에 출근 데이터가 없습니다.",
     monthlyTimesheetError: "불러오기 실패: {{error}}",

@@ -1,7 +1,12 @@
 import { getAttendanceComboFlags } from "@/features/attendance/attendanceComboStats";
 
 /**
- * Phân loại một dòng điểm danh (đã merge profile) phục vụ ước lương.
+ * Phân loại một dòng điểm danh (đã merge profile) phục vụ ước lương **đơn giản** trong UI.
+ * Dùng `getAttendanceComboFlags` (cùng nguồn với KPI combo / điểm chuyên cần).
+ *
+ * **Bảng lương tháng / tổng giờ / hệ số:** dùng `getPayrollMonthlyMainRowCell` và
+ * `getAttendanceWorkingHoursHours` — không gọi hàm này.
+ *
  * Thứ tự: nghỉ việc → đi làm / vào trễ → phép hưởng lương → không lương / KP → vắng.
  */
 export function classifyAttendanceRowForSalary(row) {
@@ -10,7 +15,10 @@ export function classifyAttendanceRowForSalary(row) {
   if (flags.resignedLeave) return "resigned";
 
   const isWork =
-    flags.checkedIn || flags.buGioCong || flags.late;
+    flags.checkedIn ||
+    flags.buGioCong ||
+    flags.late ||
+    flags.nightShift;
 
   const isPaidLeave =
     flags.annualLeave ||

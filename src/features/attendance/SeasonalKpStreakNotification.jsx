@@ -3,7 +3,11 @@ import { useTranslation } from "react-i18next";
 import NotificationBell from "@/components/ui/NotificationBell";
 import { db, ref, get } from "@/services/firebase";
 import { getDateKeyBySubtractDays, parseLocalDateKey } from "@/utils/dateKey";
-import { sanitizeAttendanceDayNodeForUi } from "@/utils/employeeRosterRecord";
+import {
+  sanitizeAttendanceDayNodeForUi,
+  canonicalAttendanceMnvForMatch,
+} from "@/utils/employeeRosterRecord";
+import { isAttendanceDayMetaKey } from "./attendanceDayMeta";
 import {
   applyLegacyGioVaoLeaveMigration,
   formatAttendanceLeaveTypeColumnForEmployee,
@@ -16,7 +20,10 @@ import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 
 const MAX_KP_STREAK_LOOKBACK_DAYS = 90;
 
-/** Chủ nhật bị loại khỏi chuỗi KP (không tính, cũng không phá streak). */
+/**
+ * Chủ nhật không tham gia chuỗi KP: không đọc Firebase, không cộng ngày, không làm mất nhịp —
+ * ví dụ T7 (9) + T2 (11) vẫn nối được khi đang xem T2, bỏ qua CN (10).
+ */
 function isSundayDateKey(dateKey) {
   const d = parseLocalDateKey(dateKey);
   return Boolean(d) && d.getDay() === 0;
@@ -36,6 +43,80 @@ function leaveRawForStreakFromDayNode(node, id) {
   );
 }
 
+/**
+ * Khóa ổn định theo MNV để nối chuỗi KP giữa các ngày (id Firebase push có thể đổi).
+ * Không có MNV: fallback businessId, rồi `__fb:{id}`.
+ */
+function streakKeyForKpEmp(emp) {
+  if (emp == null || typeof emp !== "object") return "__fb:unknown";
+  const m = canonicalAttendanceMnvForMatch(emp.mnv);
+  if (m) return m.toLowerCase();
+  const bid = canonicalAttendanceMnvForMatch(emp.businessId);
+  if (bid) return `bid:${bid.toLowerCase()}`;
+  const id = String(emp.id ?? "").trim();
+  return id ? `__fb:${id}` : "__fb:unknown";
+}
+
+/** Mã dùng để ghép dòng cùng nhân viên trên snapshot một ngày. */
+function attendanceMatchCodesFromEmp(emp) {
+  const codes = new Set();
+  if (emp == null || typeof emp !== "object") return codes;
+  for (const raw of [emp.mnv, emp.mvt, emp.businessId]) {
+    const c = canonicalAttendanceMnvForMatch(raw);
+    if (c) codes.add(c.toLowerCase());
+  }
+  return codes;
+}
+
+/**
+ * Tìm node nhân viên trên `raw` theo MNV/MVT/businessId (không dùng key Firebase).
+ * Nhiều dòng trùng mã: ưu tiên trùng họ tên; không chắc → null.
+ * @returns {{ node: object, firebaseKey: string } | null}
+ */
+function findDayNodeOnRawForEmp(raw, empToday) {
+  if (!raw || typeof raw !== "object" || empToday == null) return null;
+  const want = attendanceMatchCodesFromEmp(empToday);
+  if (want.size === 0) return null;
+  const nameNorm = (v) =>
+    String(v ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  const nameT = nameNorm(empToday?.hoVaTen);
+  const matches = [];
+  for (const [entryKey, node] of Object.entries(raw)) {
+    if (isAttendanceDayMetaKey(entryKey)) continue;
+    if (node == null || typeof node !== "object" || Array.isArray(node)) {
+      continue;
+    }
+    const sanitized = sanitizeAttendanceDayNodeForUi(node, entryKey);
+    const got = attendanceMatchCodesFromEmp(sanitized);
+    let hit = false;
+    for (const w of want) {
+      if (got.has(w)) {
+        hit = true;
+        break;
+      }
+    }
+    if (hit) matches.push({ node, sanitized, entryKey });
+  }
+  if (matches.length === 0) return null;
+  if (matches.length === 1) {
+    const m0 = matches[0];
+    return { node: m0.node, firebaseKey: m0.entryKey };
+  }
+  if (nameT) {
+    const byName = matches.filter(
+      (m) => nameNorm(m.sanitized.hoVaTen) === nameT,
+    );
+    if (byName.length === 1) {
+      const m0 = byName[0];
+      return { node: m0.node, firebaseKey: m0.entryKey };
+    }
+  }
+  return null;
+}
+
 function sortStreakRowsStableAsc(rows) {
   return [...rows].sort((a, b) => {
     const aStt = Number(a?.emp?.stt);
@@ -53,19 +134,29 @@ async function computeKhongPhepStreakRows({
 }) {
   if (!ISO_DATE_KEY_RE.test(String(selectedDate ?? ""))) return [];
 
-  /** Chủ nhật bị loại khỏi chuỗi: ngày đang chọn là CN ⇒ không hiển thị. */
-  if (isSundayDateKey(selectedDate)) return [];
-
-  const kpToday = filteredEmployees.filter((e) =>
+  const kpTodayAll = filteredEmployees.filter((e) =>
     isAttendanceLeaveTypeKhongPhep(leaveRawForStreakFromEmployee(e)),
   );
-  if (kpToday.length === 0) return [];
+  if (kpTodayAll.length === 0) return [];
+
+  /** Một dòng / MNV (MNV là khóa chuỗi KP). */
+  const kpToday = [];
+  const seenStreakKey = new Set();
+  for (const e of kpTodayAll) {
+    const sk = streakKeyForKpEmp(e);
+    if (seenStreakKey.has(sk)) continue;
+    seenStreakKey.add(sk);
+    kpToday.push(e);
+  }
 
   const streak = new Map();
+  const streakKeyToEmp = new Map();
   let active = new Set();
   for (const e of kpToday) {
-    active.add(e.id);
-    streak.set(e.id, 1);
+    const sk = streakKeyForKpEmp(e);
+    active.add(sk);
+    streak.set(sk, 1);
+    streakKeyToEmp.set(sk, e);
   }
 
   for (
@@ -74,20 +165,25 @@ async function computeKhongPhepStreakRows({
     offset++
   ) {
     const dateKey = getDateKeyBySubtractDays(selectedDate, offset);
-    /** Bỏ qua Chủ nhật: không fetch, không tăng streak, không phá streak — chỉ lùi tiếp. */
-    if (isSundayDateKey(dateKey)) continue;
+    if (isSundayDateKey(dateKey)) {
+      continue;
+    }
     const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
     const raw = snap.exists() ? snap.val() : null;
     const next = new Set();
-    for (const id of active) {
-      const node = raw?.[id];
+    for (const streakKey of active) {
+      const empToday = streakKeyToEmp.get(streakKey);
+      const hit = findDayNodeOnRawForEmp(raw, empToday);
       if (
-        node != null &&
-        typeof node === "object" &&
-        isAttendanceLeaveTypeKhongPhep(leaveRawForStreakFromDayNode(node, id))
+        hit != null &&
+        hit.node != null &&
+        typeof hit.node === "object" &&
+        isAttendanceLeaveTypeKhongPhep(
+          leaveRawForStreakFromDayNode(hit.node, hit.firebaseKey),
+        )
       ) {
-        streak.set(id, (streak.get(id) ?? 1) + 1);
-        next.add(id);
+        streak.set(streakKey, (streak.get(streakKey) ?? 1) + 1);
+        next.add(streakKey);
       }
     }
     active = next;
@@ -95,7 +191,8 @@ async function computeKhongPhepStreakRows({
 
   const out = [];
   for (const emp of kpToday) {
-    const streakDays = streak.get(emp.id) ?? 1;
+    const sk = streakKeyForKpEmp(emp);
+    const streakDays = streak.get(sk) ?? 1;
     if (streakDays >= 2) out.push({ emp, streakDays });
   }
   return sortStreakRowsStableAsc(out);
@@ -103,7 +200,8 @@ async function computeKhongPhepStreakRows({
 
 /**
  * Điểm danh thời vụ: thay cho danh sách «bù công» — báo NV có loại phép KP
- * liên tiếp từ ≥2 ngày (tính cả ngày điểm danh đang chọn).
+ * liên tiếp từ ≥2 ngày (tính cả ngày điểm danh đang chọn). Chủ nhật bị bỏ qua
+ * khi lùi ngày (không ngắt chuỗi giữa thứ Bảy và thứ Hai).
  */
 export default function SeasonalKpStreakNotification({
   filteredEmployees,
@@ -225,7 +323,7 @@ export default function SeasonalKpStreakNotification({
               <tbody>
                 {rows.map(({ emp, streakDays }, idx) => (
                   <tr
-                    key={emp.id}
+                    key={streakKeyForKpEmp(emp)}
                     style={{
                       background: idx % 2 === 0 ? "#fef2f2" : "#fff",
                     }}
