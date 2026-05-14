@@ -3,6 +3,10 @@
  * Màn điểm danh: sanitizeAttendanceDayNodeForUi — chỉ trường node ngày.
  * Danh mục BP (tuỳ chọn): employeeDepartments/{key}.
  */
+import {
+  canonicalAttendanceLoaiPhepValue,
+  normalizeAttendanceDayRecord,
+} from "@/features/attendance/attendanceGioVaoTypeOptions";
 
 export const EMPLOYEE_DEPT_CATALOG_PATH = "employeeDepartments";
 
@@ -13,19 +17,6 @@ export const EMPLOYEE_DEPT_CATALOG_PATH = "employeeDepartments";
 export function attendanceMnvStorageKey(mnvRaw) {
   return normalizeMnvSuffix(mnvRaw);
 }
-
-export const CANONICAL_EMPLOYEE_STATUS = {
-  ACTIVE: "active",
-  PROBATION: "probation",
-  LEAVE: "leave",
-  INACTIVE: "inactive",
-};
-
-export const CANONICAL_EMPLOYEE_TYPE = {
-  OFFICIAL: "official",
-  SEASONAL: "seasonal",
-  CONTRACT: "contract",
-};
 
 export function normalizeEmployeeCode(value) {
   return String(value ?? "")
@@ -78,31 +69,6 @@ export function slugifyDepartmentKey(name) {
     .replace(/\s+/g, "_")
     .replace(/[^a-z0-9_]/g, "");
   return s || "dept";
-}
-
-export function legacyStatusFromCanonical(status) {
-  const s = String(status || "").trim();
-  if (s === CANONICAL_EMPLOYEE_STATUS.PROBATION) return "thu_viec";
-  if (s === CANONICAL_EMPLOYEE_STATUS.LEAVE) return "tam_nghi";
-  if (s === CANONICAL_EMPLOYEE_STATUS.INACTIVE) return "nghi_viec";
-  return "dang_lam";
-}
-
-/** Hồ sơ roster: đã nghỉ việc (Firebase `nghi_viec` hoặc legacy `inactive`). */
-export function isEmployeeResigned(emp) {
-  const v =
-    emp?.trangThaiLamViec ?? legacyStatusFromCanonical(emp?.status);
-  const key = String(v ?? "").trim().toLowerCase();
-  return key === "nghi_viec" || key === "inactive";
-}
-
-export function canonicalStatusFromLegacy(trangThaiLamViec) {
-  const v = String(trangThaiLamViec || "").trim();
-  if (v === "thu_viec") return CANONICAL_EMPLOYEE_STATUS.PROBATION;
-  if (v === "tam_nghi" || v === "thai_san")
-    return CANONICAL_EMPLOYEE_STATUS.LEAVE;
-  if (v === "nghi_viec") return CANONICAL_EMPLOYEE_STATUS.INACTIVE;
-  return CANONICAL_EMPLOYEE_STATUS.ACTIVE;
 }
 
 /**
@@ -204,129 +170,6 @@ export function normalizeDateForHtmlInput(value) {
   return "";
 }
 
-/** Trạng thái làm việc lưu Firebase (đồng bộ AttendanceList). */
-export const ROSTER_TRANG_THAI_VALUES = Object.freeze([
-  "dang_lam",
-  "thu_viec",
-  "tam_nghi",
-  "thai_san",
-  "nghi_viec",
-]);
-
-/** Giữ nguyên giá trị đã trim — không ép mặc định (tránh ghi sai trạng thái). */
-export function normalizeTrangThaiLamViec(value) {
-  const t = String(value ?? "").trim();
-  if (ROSTER_TRANG_THAI_VALUES.includes(t)) return t;
-  return t;
-}
-
-/** Hình thức thôi việc (chỉ khi nghỉ việc). */
-export const HINH_THUC_NGHI_VIEC = Object.freeze({
-  CO_DON: "co_don",
-  NGHI_NGANG: "nghi_ngang",
-});
-
-export function normalizeHinhThucNghiViec(value) {
-  const t = String(value ?? "").trim().toLowerCase();
-  if (t === HINH_THUC_NGHI_VIEC.CO_DON || t === "codon") return "co_don";
-  if (t === HINH_THUC_NGHI_VIEC.NGHI_NGANG || t === "nghingang")
-    return "nghi_ngang";
-  return "";
-}
-
-/** Ô Excel → co_don | nghi_ngang | "". */
-export function hinhThucNghiViecFromExcelCell(raw) {
-  const s = String(raw ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "");
-  if (!s) return "";
-  if (
-    s === "co_don" ||
-    s === "codon" ||
-    s.includes("co don") ||
-    s === "with_letter" ||
-    s === "formal"
-  )
-    return "co_don";
-  if (
-    s === "nghi_ngang" ||
-    s === "nghingang" ||
-    s.includes("nghi ngang") ||
-    s === "abrupt" ||
-    s === "no_notice" ||
-    s === "quit"
-  )
-    return "nghi_ngang";
-  return normalizeHinhThucNghiViec(raw);
-}
-
-/** Ô Excel / form tự do → mã trạng thái lưu Firebase. */
-export function trangThaiLamViecFromExcelCell(raw) {
-  const s = String(raw ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "");
-  if (!s) return "dang_lam";
-  if (
-    s === "dang_lam" ||
-    s === "active" ||
-    s === "working" ||
-    s === "work" ||
-    s === "employed" ||
-    s === "current" ||
-    s === "yes" ||
-    s === "true" ||
-    s === "1" ||
-    s.includes("dang lam") ||
-    s.includes("dang lam viec")
-  )
-    return "dang_lam";
-  if (s === "thu_viec" || s === "probation" || s.includes("thu viec"))
-    return "thu_viec";
-  if (
-    s === "tam_nghi" ||
-    s === "leave" ||
-    s === "on_leave" ||
-    s === "suspension" ||
-    s.includes("tam nghi")
-  )
-    return "tam_nghi";
-  if (
-    s === "thai_san" ||
-    s === "thaisan" ||
-    s.includes("thai san") ||
-    s === "maternity" ||
-    s === "pregnancy" ||
-    s.includes("maternity")
-  )
-    return "thai_san";
-  if (
-    s === "nghi_viec" ||
-    s === "inactive" ||
-    s === "stop" ||
-    s === "stopped" ||
-    s === "quit" ||
-    s === "resign" ||
-    s === "resigned" ||
-    s === "resignation" ||
-    s === "terminated" ||
-    s === "termination" ||
-    s === "retired" ||
-    s === "retirement" ||
-    s === "layoff" ||
-    s === "laid_off" ||
-    s === "no" ||
-    s === "false" ||
-    s === "0" ||
-    s.includes("nghi viec")
-  )
-    return "nghi_viec";
-  return normalizeTrangThaiLamViec(raw);
-}
-
 const STRIP_LEGACY_ENGLISH_KEYS = [
   "id",
   "name",
@@ -361,7 +204,6 @@ export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
   "boPhan",
   "ngayVaoLam",
   "ngayHopDong",
-  "trangThaiLamViec",
   "gioVao",
   "loaiPhep",
   "gioRa",
@@ -385,7 +227,6 @@ export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
   "gioiTinh",
   "ngayVaoLam",
   "ngayHopDong",
-  "trangThaiLamViec",
   "maBoPhan",
   "boPhan",
   "gioVao",
@@ -493,6 +334,7 @@ const PROFILE_ONLY_STRIP_FROM_DAY = [
   "status",
   "type",
   "updatedAt",
+  "trangThaiLamViec",
   "ngayNghiViec",
   "hinhThucNghiViec",
   "thaiSanTuNgay",
@@ -543,7 +385,10 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
     hoVaTen: attendanceDayOptionalStringFromForm(form, "hoVaTen"),
     boPhan: attendanceDayOptionalStringFromForm(form, "boPhan"),
     gioVao: attendanceDayOptionalStringFromForm(form, "gioVao"),
-    loaiPhep: attendanceDayOptionalStringFromForm(form, "loaiPhep"),
+    loaiPhep: (() => {
+      const s = attendanceDayOptionalStringFromForm(form, "loaiPhep");
+      return s ? canonicalAttendanceLoaiPhepValue(s) : undefined;
+    })(),
     gioRa: attendanceDayOptionalStringFromForm(form, "gioRa"),
     caLamViec: attendanceDayOptionalStringFromForm(form, "caLamViec"),
     duocNghiBu: attendanceDayOptionalStringFromForm(form, "duocNghiBu"),
@@ -578,12 +423,6 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
           return normalizeDateForHtmlInput(s) || s;
         })()
       : undefined,
-    trangThaiLamViec: Object.prototype.hasOwnProperty.call(
-      form,
-      "trangThaiLamViec",
-    )
-      ? String(form.trangThaiLamViec ?? "").trim()
-      : undefined,
   });
 
   const preserved = {};
@@ -593,7 +432,6 @@ export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
     "boPhan",
     "ngayVaoLam",
     "ngayHopDong",
-    "trangThaiLamViec",
   ];
   attendancePreserveKeys.forEach((k) => {
     if (extras[k] !== undefined) return;
@@ -641,5 +479,5 @@ export function mergeAttendanceDayNodeForPersist(existing, dayDoc, recordId) {
   const merged = { ...ex, ...d, id: recordId };
   delete merged.ngayThangNamSinh;
   delete merged.birthDate;
-  return merged;
+  return normalizeAttendanceDayRecord(merged);
 }

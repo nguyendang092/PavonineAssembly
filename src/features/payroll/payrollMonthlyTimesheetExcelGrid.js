@@ -13,6 +13,7 @@ import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWor
 import {
   buildMonthlyDetailFlatValues,
   fmtPayrollMonthlySummaryCell,
+  isPayrollMonthDayOnOrAfterJoin,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
@@ -177,6 +178,10 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
       monthKeys.forEach((dk, di) => {
         const ch = chunkByDate.get(dk);
         const cidx = 6 + di;
+        if (!isPayrollMonthDayOnOrAfterJoin(dk, rep?.ngayVaoLam)) {
+          row[cidx] = " ";
+          return;
+        }
         if (!ch) {
           row[cidx] = " ";
           return;

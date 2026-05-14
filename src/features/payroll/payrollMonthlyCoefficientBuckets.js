@@ -13,10 +13,13 @@ import {
   roundHoursToTenths,
 } from "@/features/attendance/attendanceWorkingHours";
 import {
+  formatAttendanceGioVaoDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
   getAttendanceLeaveTypeBadgeClassName,
   getAttendanceLeaveTypeRaw,
   isAttendanceActualLeaveType,
+  isAttendanceBuGioCongType,
+  normalizeAttendanceDayRecord,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 /** Đồng bộ với `EARLY_PAPERWORK_OT_HOURS` trong attendanceWorkingHours.js */
 const PAYROLL_EARLY_PAPERWORK_OT_HOURS = 2;
@@ -135,7 +138,8 @@ export function getPayrollMonthlyCoefficientLines(p) {
       }
       const otH = getNightShiftPayrollOvertimeHoursFromOtMinutes(parts.otMinutes);
       if (Number.isFinite(otH) && otH > 0) {
-        lines.push({ coeff: 2.0, hours: otH, key: "nt20" });
+        /** Đồng bộ cột «TC ca đêm (X1.5)» trên bảng giờ công nhân viên. */
+        lines.push({ coeff: 1.5, hours: otH, key: "nt15" });
       }
     }
     return lines;
@@ -196,13 +200,15 @@ export const PAYROLL_MONTHLY_SUBROWS = [
 
 /**
  * Dòng đầu (hệ số 0): ưu tiên mã phép; không phép thì giờ công (khi tính được).
+ * **BGC** (chưa có giờ vào): badge «BGC» — có mặt, giờ bổ sung sau; đã có giờ → số giờ.
  * Ngày off / lễ / **nghỉ bù** và ca đêm luôn `dash` ở dòng này — lớp UI gắn nhãn
  * tương ứng (OFF / NL / NB) qua `payrollMonthMainRowDashMark`; giờ công đẩy
  * sang các dòng hệ số (2.0 cho off & nghỉ bù, 3.0 cho lễ, …) đồng bộ với NL.
  * @returns {{ kind: "leave"; leaveShort: string; leaveRaw: string; badgeClass: string; workedHours?: number } | { kind: "hours"; hours: number } | { kind: "dash" }}
  */
 export function getPayrollMonthlyMainRowCell(emp, ch) {
-  const leaveRaw = getAttendanceLeaveTypeRaw(emp);
+  const day = normalizeAttendanceDayRecord(emp);
+  const leaveRaw = getAttendanceLeaveTypeRaw(day);
   const legacyIncludeTsNvInWorkingHours =
     String(emp.includeTsNvInWorkingHours ?? "").trim().toUpperCase() === "YES";
   const includeTapVuInWorkingHours =
@@ -252,6 +258,26 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
       leaveRaw,
       badgeClass: getAttendanceLeaveTypeBadgeClassName(leaveRaw),
       workedHours,
+    };
+  }
+  if (isAttendanceBuGioCongType(leaveRaw)) {
+    const night = isNightShiftCaLamViec(emp.caLamViec);
+    if (night || ch.isOffDay || ch.isHolidayDay || ch.isCompensatoryDay) {
+      return { kind: "dash" };
+    }
+    const h = getAttendanceWorkingHoursHours(
+      emp.gioVao,
+      emp.gioRa,
+      emp.caLamViec,
+      includeTapVuInWorkingHours,
+      includeThaiSanInWorkingHours,
+    );
+    if (h != null && h > 0) return { kind: "hours", hours: h };
+    return {
+      kind: "leave",
+      leaveShort: formatAttendanceGioVaoDisplay(leaveRaw),
+      leaveRaw,
+      badgeClass: getAttendanceLeaveTypeBadgeClassName(leaveRaw),
     };
   }
   const night = isNightShiftCaLamViec(emp.caLamViec);

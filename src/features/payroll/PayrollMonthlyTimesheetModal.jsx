@@ -16,7 +16,10 @@ import {
   PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import { writePayrollMonthlyTimesheetWorkbook } from "@/features/payroll/payrollMonthlyTimesheetExcelGrid";
-import { buildMonthlyRuleSummary } from "@/features/payroll/payrollMonthlyRuleSummary";
+import {
+  buildMonthlyRuleSummary,
+  isPayrollMonthDayOnOrAfterJoin,
+} from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
   enumerateDateKeysInclusive,
   getFirstDayOfMonthKey,
@@ -24,6 +27,13 @@ import {
   parseLocalDateKey,
 } from "@/utils/dateKey";
 import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
+import {
+  getAttendanceLeaveTypeCompactBadgeClassName,
+  getAttendanceLeaveTypeEmphasisBadgeClassName,
+  getAttendanceLeaveTypeEmphasisCellClassName,
+  getAttendanceLeaveTypeEmphasisPrintCellBg,
+  getAttendanceLeaveTypeEmphasisPrintStyleAttr,
+} from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import {
@@ -147,8 +157,8 @@ const MONTH_DAY_MAIN_CELL_CLASS =
 const MONTH_DAY_MAIN_VALUE_CLASS =
   "text-[10px] leading-none font-bold tabular-nums text-black dark:text-black";
 
-const MONTH_DAY_LEAVE_BADGE_CLASS =
-  "inline-block max-w-full whitespace-nowrap rounded border px-0.5 py-px text-[10px] leading-none font-bold";
+const MONTH_DAY_LEAVE_BADGE_BASE_CLASS =
+  "inline-block max-w-full box-border overflow-hidden whitespace-nowrap rounded border px-0.5 py-px text-[10px] leading-none font-bold";
 
 /** In A3 — cùng cỡ với ô ngày dòng chính (6.5pt). */
 const MONTH_DAY_PRINT_MAIN_FONT_STYLE =
@@ -250,6 +260,46 @@ function formatEnglishWeekday3(date) {
   return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
 }
 
+/** Thứ 7: xám đậm; Chủ nhật: xám nhạt hơn — lưới tháng (header ngày). */
+function monthTimesheetDayHeaderClass(pd, ch) {
+  if (pd) {
+    const dow = pd.getDay();
+    if (dow === 0) return "bg-yellow-200 dark:bg-slate-700/55";
+    if (dow === 6) return "bg-slate-500 dark:bg-slate-600";
+  }
+  if (ch?.isHolidayDay) return "bg-teal-200 dark:bg-rose-900/40";
+  if (ch?.isCompensatoryDay) return "bg-lime-200 dark:bg-teal-900/40";
+  if (ch?.isOffDay) return "bg-fuchsia-200 dark:bg-cyan-900/35";
+  return "bg-slate-100 dark:bg-slate-800";
+}
+
+/** Thứ 7: xám đậm; Chủ nhật: xám nhạt hơn — lưới tháng (ô ngày). */
+function monthTimesheetDayBodyClass(pd, ch) {
+  if (pd) {
+    const dow = pd.getDay();
+    if (dow === 0) return "bg-yellow-100 dark:bg-slate-800/55";
+    if (dow === 6) return "bg-slate-400 dark:bg-slate-700";
+  }
+  if (ch?.isHolidayDay) return "bg-teal-100 dark:bg-amber-950/25";
+  if (ch?.isCompensatoryDay) return "bg-lime-100 dark:bg-teal-950/25";
+  if (ch?.isOffDay) return "bg-fuchsia-100 dark:bg-sky-950/20";
+  return "";
+}
+
+/** Màu nền ô ngày — bản in A3. */
+function monthTimesheetDayBgPrint(ch, pd) {
+  if (pd) {
+    const dow = pd.getDay();
+    if (dow === 0) return "#C7C7C7";
+    if (dow === 6) return "#94a3b8";
+  }
+  if (!ch) return "#f8fafc";
+  if (ch.isHolidayDay) return "#ffe4e6";
+  if (ch.isCompensatoryDay) return "#ccfbf1";
+  if (ch.isOffDay) return "#e0f2fe";
+  return "#f1f5f9";
+}
+
 function matchesRowFilter(
   emp,
   { searchTerm, departmentFilter, normalizeDepartment },
@@ -327,22 +377,19 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
     6: 5,
   };
 
-  const dayCellBg = (ch, pd) => {
-    if (!ch) return "#f8fafc";
-    const sun = pd && pd.getDay() === 0;
-    if (sun) return "#fef3c7";
-    if (ch.isHolidayDay) return "#ffe4e6";
-    if (ch.isCompensatoryDay) return "#ccfbf1";
-    if (ch.isOffDay) return "#e0f2fe";
-    return "#f1f5f9";
-  };
+  const dayCellBg = (ch, pd) => monthTimesheetDayBgPrint(ch, pd);
 
   const appendDayCells = (id, sr, isLastSub, parts) => {
+    const joinDate = repById.get(id)?.ngayVaoLam;
     for (const dk of monthKeys) {
       const ch = chunkByDate.get(dk);
       const pd = parseLocalDateKey(dk);
       const bg = dayCellBg(ch, pd);
       const btm = isLastSub ? "border-bottom:2px solid #000" : "";
+      if (!isPayrollMonthDayOnOrAfterJoin(dk, joinDate)) {
+        parts.push(`<td style="background:${bg};${btm}"> </td>`);
+        continue;
+      }
       if (!ch) {
         parts.push(`<td style="background:${bg};${btm}"> </td>`);
         continue;
@@ -362,7 +409,7 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
         const main = getPayrollMonthlyMainRowCell(emp, ch);
         let inner = " ";
         if (main.kind === "leave") {
-          inner = `<span style="display:inline-block;white-space:nowrap;border:1px solid #334155;padding:1px 2px;border-radius:2px;${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(main.leaveShort || "")}</span>`;
+          inner = `<span style="${getAttendanceLeaveTypeEmphasisPrintStyleAttr(main.leaveRaw, main.leaveShort)}">${escapeHtml(main.leaveShort || "")}</span>`;
           if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
             inner += `<br/><span style="${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(formatCoeffHoursForDisplay(main.workedHours))}</span>`;
           }
@@ -373,7 +420,7 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
           inner = `<span style="${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(String(dayMark))}</span>`;
         }
         parts.push(
-          `<td style="background:${bg};${btm};text-align:center;vertical-align:middle;${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${inner}</td>`,
+          `<td style="background:${main.kind === "leave" ? getAttendanceLeaveTypeEmphasisPrintCellBg(main.leaveRaw) : bg};${btm};text-align:center;vertical-align:middle;${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${inner}</td>`,
         );
         continue;
       }
@@ -716,17 +763,23 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
       text-align: center; 
       margin-bottom: 4px; 
     }
+
+    @media print {
+      .pct-print-screen-hint {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 <body>
   <h1>${escapeHtml(labels.docTitle)}</h1>
-  <p class="hint">${escapeHtml(labels.printHint)}</p>
+  <p class="hint pct-print-screen-hint">${escapeHtml(labels.printHint)}</p>
   <table class="print-ts">
     ${colgroupParts.join("")}
     <thead>${theadParts.join("")}</thead>
     <tbody>${bodyParts.join("")}</tbody>
   </table>
-  <p class="hint">${escapeHtml(labels.generatedHint)}</p>
+  <p class="hint pct-print-screen-hint">${escapeHtml(labels.generatedHint)}</p>
 </body>
 </html>`;
 }
@@ -1169,9 +1222,9 @@ export default function PayrollMonthlyTimesheetModal({
       tlPage("monthlyRuleColKl", "Nghỉ KL (KL)"),
       tlPage("monthlyRuleColKp", "Nghỉ KP (KP)"),
       "Giờ làm (X0.3)",
-      "TC ngày thường (X1.5)",
-      "TC ca đêm / ngày nghỉ (X2.0)",
-      "TC ca đêm / ngày lễ (X2.7)",
+      "TC ngày thường / TC ca đêm (X1.5)",
+      "TC ngày off ca ngày (X2.0)",
+      "TC ca đêm ngày off (X2.7)",
       "TC ngày lễ (X3.0)",
       "TC đêm ngày lễ (x3.9)",
       "Sat.S (X2.0)",
@@ -1245,6 +1298,14 @@ export default function PayrollMonthlyTimesheetModal({
       groupWorkday: tlPage("monthlyRuleGroupWorkday", "NGÀY LÀM VIỆC"),
       groupOt: tlPage("monthlyRuleGroupOt", "TĂNG CA (Hrs)"),
       groupSats: "SAT.S",
+      printHint: tlPage(
+        "monthlyTimesheetPrintA3Hint",
+        "Khổ A3 ngang — chỉ in khối THỜI GIAN LÀM VIỆC (không in thử việc / hợp đồng).",
+      ),
+      generatedHint: tlPage(
+        "monthlyTimesheetPrintGenerated",
+        "Theo bộ lọc đang hiển thị trên lưới.",
+      ),
     };
     const html = buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
       monthKeys: monthRange.keys,
@@ -1562,17 +1623,8 @@ export default function PayrollMonthlyTimesheetModal({
                         {monthRange.keys.map((dk) => {
                           const pd = parseLocalDateKey(dk);
                           const dom = pd ? pd.getDate() : "";
-                          const sun = pd && pd.getDay() === 0;
                           const hol = chunkByDate.get(dk);
-                          const offCol = sun
-                            ? "bg-amber-100 dark:bg-amber-900/55"
-                            : hol?.isHolidayDay
-                              ? "bg-rose-100 dark:bg-rose-900/40"
-                              : hol?.isCompensatoryDay
-                                ? "bg-teal-100 dark:bg-teal-900/40"
-                                : hol?.isOffDay
-                                  ? "bg-cyan-100 dark:bg-cyan-900/35"
-                                  : "bg-slate-100 dark:bg-slate-800";
+                          const offCol = monthTimesheetDayHeaderClass(pd, hol);
                           return (
                             <th
                               key={dk}
@@ -1777,17 +1829,30 @@ export default function PayrollMonthlyTimesheetModal({
                               {monthRange.keys.map((dk) => {
                                 const ch = chunkByDate.get(dk);
                                 const pd = parseLocalDateKey(dk);
-                                const sun = pd && pd.getDay() === 0;
-                                let baseBg = "";
-                                if (sun) {
-                                  baseBg = "bg-amber-100 dark:bg-amber-900/35";
-                                } else if (ch?.isHolidayDay) {
-                                  baseBg =
-                                    "bg-amber-50/90 dark:bg-amber-950/25";
-                                } else if (ch?.isCompensatoryDay) {
-                                  baseBg = "bg-teal-50/85 dark:bg-teal-950/25";
-                                } else if (ch?.isOffDay) {
-                                  baseBg = "bg-sky-50/80 dark:bg-sky-950/20";
+                                const baseBg = monthTimesheetDayBodyClass(
+                                  pd,
+                                  ch,
+                                );
+                                const beforeJoin =
+                                  !isPayrollMonthDayOnOrAfterJoin(
+                                    dk,
+                                    rep?.ngayVaoLam,
+                                  );
+                                if (beforeJoin) {
+                                  return (
+                                    <td
+                                      key={dk}
+                                      style={{
+                                        ...monthDayCellStyle(),
+                                        ...(isLastSub
+                                          ? { borderBottom: "2px solid #000" }
+                                          : null),
+                                      }}
+                                      className={`${thinBodyBorder} px-0.5 py-0.5 text-center text-[10px] text-slate-300 ${baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+                                    >
+                                      {" "}
+                                    </td>
+                                  );
                                 }
                                 if (!ch) {
                                   return (
@@ -1854,11 +1919,12 @@ export default function PayrollMonthlyTimesheetModal({
                                     ch,
                                   );
                                   let inner;
-                                  if (main.kind === "leave") {
+                                  const isLeaveCell = main.kind === "leave";
+                                  if (isLeaveCell) {
                                     inner = (
                                       <span className="inline-flex flex-col items-center gap-px leading-none">
                                         <span
-                                          className={`${MONTH_DAY_LEAVE_BADGE_CLASS} ${main.badgeClass}`}
+                                          className={`${MONTH_DAY_LEAVE_BADGE_BASE_CLASS} ${getAttendanceLeaveTypeEmphasisBadgeClassName(main.leaveRaw)} ${getAttendanceLeaveTypeCompactBadgeClassName(main.leaveShort)}`}
                                           title={main.leaveRaw}
                                         >
                                           {main.leaveShort}
@@ -1911,7 +1977,7 @@ export default function PayrollMonthlyTimesheetModal({
                                           ? { borderBottom: "2px solid #000" }
                                           : null),
                                       }}
-                                      className={`${thinBodyBorder} ${MONTH_DAY_MAIN_CELL_CLASS} ${baseBg} ${subrowEdgeClass} ${blockStartClass} ${dayCellInteractCls}`}
+                                      className={`${thinBodyBorder} ${MONTH_DAY_MAIN_CELL_CLASS} ${isLeaveCell ? getAttendanceLeaveTypeEmphasisCellClassName(main.leaveRaw) : baseBg} ${subrowEdgeClass} ${blockStartClass} ${dayCellInteractCls}`}
                                       {...dayCellInteract}
                                     >
                                       {inner}

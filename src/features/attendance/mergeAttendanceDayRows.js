@@ -1,4 +1,5 @@
 import { isAttendanceDayMetaKey } from "./attendanceDayMeta";
+import { normalizeAttendanceDayRecord } from "./attendanceGioVaoTypeOptions";
 import { sanitizeAttendanceDayNodeForUi } from "@/utils/attendanceEmployeeRecord";
 
 /**
@@ -9,7 +10,9 @@ export function mergeAttendanceDayRowsFromRaw(rawData) {
   if (!rawData || typeof rawData !== "object") return [];
   const arr = Object.entries(rawData)
     .filter(([id]) => !isAttendanceDayMetaKey(id))
-    .map(([id, emp]) => sanitizeAttendanceDayNodeForUi(emp, id));
+    .map(([id, emp]) =>
+      normalizeAttendanceDayRecord(sanitizeAttendanceDayNodeForUi(emp, id)),
+    );
   arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
   return arr;
 }

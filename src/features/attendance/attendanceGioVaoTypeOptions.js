@@ -43,6 +43,251 @@ export const ATTENDANCE_LOAI_PHEP_OPTIONS = [
   },
 ];
 
+/** Giá trị chuẩn lưu `loaiPhep` cho BGC — hiển thị viết tắt «BGC». */
+export const ATTENDANCE_BGC_LOAI_PHEP_VALUE = "Bù giờ công";
+
+/**
+ * Alias BGC (loại phép / giờ vào / ghi chú) — gộp về {@link ATTENDANCE_BGC_LOAI_PHEP_VALUE}.
+ * Không khớp riêng «Có» (quá ngắn, dễ nhầm).
+ */
+export function textMatchesAttendanceBuGioCongAlias(raw) {
+  const t = String(raw ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ")
+    .normalize("NFKC");
+  if (!t) return false;
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) return false;
+
+  const folded = foldGioVaoCompare(t);
+  if (folded === foldGioVaoCompare(ATTENDANCE_BGC_LOAI_PHEP_VALUE)) return true;
+  if (folded === foldGioVaoCompare("BGC")) return true;
+  if (folded === foldGioVaoCompare("Đi làm")) return true;
+  if (folded === foldGioVaoCompare("Có đi làm")) return true;
+
+  const compact = folded.replace(/\s/g, "");
+  if (compact === "BUGIOCONG" || compact === "CODILAM") return true;
+  if (compact.includes("CODILAM")) return true;
+
+  const latin = t
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const tokens = latin
+    .split(/[^A-Z0-9/]+/)
+    .flatMap((x) => x.split("/"))
+    .filter(Boolean);
+  if (tokens.includes("BGC")) return true;
+  if (latin.includes("BU GIO CONG")) return true;
+  if (latin.includes("CO DI LAM")) return true;
+  if (latin.replace(/\s/g, "").includes("CODILAM")) return true;
+
+  return false;
+}
+
+/** Phép tang / PT / FUNERAL — chuẩn hóa & KPI combo. */
+export function textMatchesFuneralLeave(raw) {
+  const t = String(raw ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ");
+  if (!t) return false;
+  const folded = foldGioVaoCompare(t);
+  if (
+    folded === foldGioVaoCompare("Phép tang") ||
+    folded === foldGioVaoCompare("PT")
+  ) {
+    return true;
+  }
+  const compact = folded.replace(/\s/g, "");
+  if (compact === "PT" || compact === "PHEPTANG") return true;
+  const latin = t
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const tokens = latin
+    .split(/[^A-Z0-9/]+/)
+    .flatMap((x) => x.split("/"))
+    .filter(Boolean);
+  if (tokens.includes("PT")) return true;
+  if (latin.includes("PHEP TANG") || latin.includes("FUNERAL")) return true;
+  if (latin.replace(/\s/g, "").includes("PHEPTANG")) return true;
+  return false;
+}
+
+function parseLoaiPhepLatin(raw) {
+  const t = String(raw ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ")
+    .normalize("NFKC");
+  if (!t) return null;
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) return null;
+  const folded = foldGioVaoCompare(t);
+  const latin = t
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const compact = folded.replace(/\s/g, "");
+  const tokens = latin
+    .split(/[^A-Z0-9/]+/)
+    .flatMap((x) => x.split("/"))
+    .filter(Boolean);
+  return { t, folded, latin, compact, tokens };
+}
+
+function loaiPhepAliasHasToken(p, ...codes) {
+  return codes.some((code) => p.tokens.includes(code));
+}
+
+function loaiPhepAliasLatinIncludes(p, ...phrases) {
+  return phrases.some((ph) => p.latin.includes(ph));
+}
+
+function attendanceLoaiPhepOptionByShortLabel(shortLabel) {
+  return (
+    ATTENDANCE_LOAI_PHEP_OPTIONS.find((o) => o.shortLabel === shortLabel) ??
+    null
+  );
+}
+
+/** Thứ tự: 1/2PN trước PN; CT (PHEP CONG TAC) trước PN. */
+const LOAI_PHEP_EXTENDED_ALIAS_RULES = [
+  {
+    shortLabel: "1/2PN",
+    match: (p) =>
+      p.folded === foldGioVaoCompare("1/2 PN") ||
+      p.folded === foldGioVaoCompare("1/2PN") ||
+      p.compact === "PN1/2" ||
+      loaiPhepAliasHasToken(p, "1/2PN") ||
+      loaiPhepAliasLatinIncludes(p, "1/2 PHEP NAM", "1/2PHEPNAM"),
+  },
+  {
+    shortLabel: "BGC",
+    match: (p) => textMatchesAttendanceBuGioCongAlias(p.t),
+  },
+  {
+    shortLabel: "VT",
+    match: (p) =>
+      loaiPhepAliasHasToken(p, "VT") ||
+      loaiPhepAliasLatinIncludes(p, "VAO TRE"),
+  },
+  {
+    shortLabel: "KL",
+    match: (p) =>
+      loaiPhepAliasHasToken(p, "KL") ||
+      loaiPhepAliasLatinIncludes(p, "KHONG LUONG") ||
+      p.compact === "KHONGLUONG",
+  },
+  {
+    shortLabel: "KP",
+    match: (p) =>
+      loaiPhepAliasHasToken(p, "KP") ||
+      loaiPhepAliasLatinIncludes(p, "KHONG PHEP") ||
+      p.compact === "KHONGPHEP",
+  },
+  {
+    shortLabel: "TS",
+    match: (p) =>
+      loaiPhepAliasLatinIncludes(p, "THAI SAN", "THAISAN", "MATERNITY") ||
+      p.compact.includes("THAISAN") ||
+      (p.tokens.length === 1 && p.tokens[0] === "TS") ||
+      p.folded === foldGioVaoCompare("TS"),
+  },
+  {
+    shortLabel: "PO",
+    match: (p) =>
+      loaiPhepAliasHasToken(p, "PO") ||
+      loaiPhepAliasLatinIncludes(p, "PHEP OM", "NGHI OM") ||
+      p.compact === "PHEPOM",
+  },
+  {
+    shortLabel: "TN",
+    match: (p) =>
+      loaiPhepAliasHasToken(p, "TN") ||
+      loaiPhepAliasLatinIncludes(p, "TNLD", "TAI NAN") ||
+      p.compact.includes("TNLD"),
+  },
+  {
+    shortLabel: "PC",
+    match: (p) =>
+      loaiPhepAliasHasToken(p, "PC") ||
+      loaiPhepAliasLatinIncludes(p, "PHEP CUOI", "PHEPCUOI"),
+  },
+  {
+    shortLabel: "PT",
+    match: (p) => textMatchesFuneralLeave(p.t),
+  },
+  {
+    shortLabel: "DS",
+    match: (p) =>
+      loaiPhepAliasHasToken(p, "DS") ||
+      loaiPhepAliasLatinIncludes(p, "DUONG SUC", "DUONGSUC"),
+  },
+  {
+    shortLabel: "CT",
+    match: (p) =>
+      loaiPhepAliasHasToken(p, "CT") ||
+      loaiPhepAliasLatinIncludes(p, "PHEP CONG TAC", "PHEPCONGTAC", "CONG TAC"),
+  },
+  {
+    shortLabel: "PN",
+    match: (p) =>
+      loaiPhepAliasHasToken(p, "PN") ||
+      loaiPhepAliasLatinIncludes(p, "PHEP NAM", "PHEPNAM"),
+  },
+  {
+    shortLabel: "NV",
+    match: (p) =>
+      loaiPhepAliasHasToken(p, "NV") ||
+      loaiPhepAliasLatinIncludes(p, "NGHI VIEC", "NGHIVIEC"),
+  },
+];
+
+/**
+ * Alias legacy (PHEP NAM, KHONG PHEP, …) → option chuẩn.
+ * @param {unknown} raw
+ * @returns {typeof ATTENDANCE_LOAI_PHEP_OPTIONS[number] | null}
+ */
+export function matchAttendanceLoaiPhepAliasOption(raw) {
+  const p = parseLoaiPhepLatin(raw);
+  if (!p) return null;
+  for (const rule of LOAI_PHEP_EXTENDED_ALIAS_RULES) {
+    if (rule.match(p)) return attendanceLoaiPhepOptionByShortLabel(rule.shortLabel);
+  }
+  return null;
+}
+
+/**
+ * Khớp chuỗi với option chuẩn: `rawMatches` rồi alias mở rộng.
+ * @param {unknown} raw
+ * @returns {typeof ATTENDANCE_LOAI_PHEP_OPTIONS[number] | null}
+ */
+export function matchAttendanceLoaiPhepOptionIncludingAliases(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return null;
+  const direct = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((o) =>
+    rawMatchesAttendanceTypeOption(t, o),
+  );
+  if (direct) return direct;
+  return matchAttendanceLoaiPhepAliasOption(t);
+}
+
+/**
+ * Chuẩn hóa giá trị lưu `loaiPhep` (alias → `value` đầy đủ trong options).
+ */
+export function canonicalAttendanceLoaiPhepValue(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return "";
+  return matchAttendanceLoaiPhepOptionIncludingAliases(t)?.value ?? t;
+}
+
 /**
  * @deprecated Dùng `ATTENDANCE_LOAI_PHEP_OPTIONS`. Tên cũ gắn với thói quen nhập loại phép vào «Giờ vào».
  */
@@ -106,8 +351,7 @@ export function rawMatchesAttendanceTypeOption(raw, option) {
     .filter(Boolean);
   if (tokens.includes(shortTok)) return true;
 
-  // Dữ liệu cũ / Excel: «Đi làm» — cùng nhóm BGC (đi làm / bù giờ công).
-  if (option.shortLabel === "BGC" && f === foldGioVaoCompare("Đi làm")) {
+  if (option.shortLabel === "BGC" && textMatchesAttendanceBuGioCongAlias(t)) {
     return true;
   }
 
@@ -124,9 +368,7 @@ export function formatAttendanceGioVaoDisplay(raw) {
     .trim()
     .replace(/\u00a0/g, " ");
   if (!t) return "";
-  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
-    rawMatchesAttendanceTypeOption(t, opt),
-  );
+  const matched = matchAttendanceLoaiPhepOptionIncludingAliases(t);
   return matched?.shortLabel || t;
 }
 
@@ -158,7 +400,8 @@ export function formatAttendanceLeaveTypeColumnDisplay(raw) {
  */
 export function getAttendanceLeaveTypeRaw(emp) {
   if (emp == null || typeof emp !== "object") return "";
-  return String(emp.loaiPhep ?? "")
+  const normalized = normalizeAttendanceDayRecord(emp);
+  return String(normalized.loaiPhep ?? "")
     .trim()
     .replace(/\u00a0/g, " ");
 }
@@ -173,6 +416,18 @@ export function isAttendanceLeaveTypeKhongPhep(raw) {
     rawMatchesAttendanceTypeOption(t, opt),
   );
   return matched?.shortLabel === "KP";
+}
+
+/** `loaiPhep` khớp BGC — quên chấm công, có mặt; giờ vào bổ sung sau. */
+export function isAttendanceBuGioCongType(raw) {
+  const t = String(raw ?? "")
+    .trim()
+    .replace(/\u00a0/g, " ");
+  if (!t) return false;
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  return matched?.shortLabel === "BGC";
 }
 
 /**
@@ -214,13 +469,46 @@ export function isAttendanceActualLeaveType(
 export function applyLegacyGioVaoLeaveMigration(emp) {
   if (emp == null || typeof emp !== "object") return emp;
   const lp = String(emp.loaiPhep ?? "").trim();
-  if (lp) return emp;
+  if (lp) {
+    const canon = canonicalAttendanceLoaiPhepValue(lp);
+    return canon === lp ? emp : { ...emp, loaiPhep: canon };
+  }
   const gv = String(emp.gioVao ?? "")
     .trim()
     .replace(/\u00a0/g, " ");
   if (!gv) return emp;
   if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(gv)) return emp;
-  return { ...emp, loaiPhep: gv, gioVao: "" };
+  return {
+    ...emp,
+    loaiPhep: canonicalAttendanceLoaiPhepValue(gv),
+    gioVao: "",
+  };
+}
+
+/**
+ * Chuẩn hóa node điểm danh/ngày: alias → `value` chuẩn (`loaiPhep`);
+ * gỡ text loại phép khỏi `gioVao`; ghi chú → `loaiPhep` khi trống.
+ */
+export function normalizeAttendanceDayRecord(emp) {
+  if (emp == null || typeof emp !== "object") return emp;
+  let next = applyLegacyGioVaoLeaveMigration(emp);
+  if (!String(next.loaiPhep ?? "").trim()) {
+    for (const key of ["chamCong", "phepNam"]) {
+      const raw = String(next[key] ?? "").trim();
+      if (!raw) continue;
+      const matched = matchAttendanceLoaiPhepOptionIncludingAliases(raw);
+      if (matched) {
+        next = { ...next, loaiPhep: matched.value };
+        break;
+      }
+    }
+  } else {
+    const canon = canonicalAttendanceLoaiPhepValue(next.loaiPhep);
+    if (canon !== String(next.loaiPhep ?? "").trim()) {
+      next = { ...next, loaiPhep: canon };
+    }
+  }
+  return next;
 }
 
 /** Cột «Loại phép» từ bản ghi nhân viên (sau migrate `loaiPhep` đã đủ). */
@@ -248,6 +536,9 @@ export function getAttendanceLeaveTypeColorClassName(raw) {
     return "text-green-600 dark:text-green-400";
   }
   if (sl === "NV") return "text-gray-600 dark:text-gray-400";
+  if (sl === "BGC" || sl === "VT") {
+    return "text-amber-700 dark:text-amber-400";
+  }
   return "text-red-600 dark:text-red-400";
 }
 
@@ -279,7 +570,119 @@ export function getAttendanceLeaveTypeBadgeClassName(raw) {
   if (sl === "NV") {
     return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600";
   }
+  if (sl === "BGC" || sl === "VT") {
+    return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800";
+  }
   return "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800";
+}
+
+/** Badge loại phép — nền đậm hơn (lưới tháng), viền mảnh. */
+export function getAttendanceLeaveTypeEmphasisBadgeClassName(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) {
+    return "bg-slate-300 text-slate-900 border-slate-400 dark:bg-slate-600 dark:text-slate-100 dark:border-slate-500";
+  }
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  if (!matched) {
+    return "bg-red-300 text-red-950 border-red-400 dark:bg-red-900/75 dark:text-red-50 dark:border-red-700";
+  }
+  const sl = matched.shortLabel;
+  if (sl === "TS") {
+    return "bg-blue-300 text-blue-950 border-blue-400 dark:bg-blue-900/75 dark:text-blue-50 dark:border-blue-600";
+  }
+  if (sl === "PN" || sl === "1/2PN") {
+    return "bg-green-300 text-green-950 border-green-400 dark:bg-green-900/75 dark:text-green-50 dark:border-green-600";
+  }
+  if (sl === "NV") {
+    return "bg-slate-300 text-slate-900 border-slate-400 dark:bg-slate-600 dark:text-slate-100 dark:border-slate-500";
+  }
+  if (sl === "BGC" || sl === "VT") {
+    return "bg-amber-300 text-amber-950 border-amber-400 dark:bg-amber-900/75 dark:text-amber-50 dark:border-amber-600";
+  }
+  return "bg-red-300 text-red-950 border-red-400 dark:bg-red-900/75 dark:text-red-50 dark:border-red-700";
+}
+
+/** Mã phép dài (vd. 1/2PN) — cỡ chữ nhỏ hơn để vừa ô lưới tháng. */
+export function isAttendanceLeaveShortLabelCompact(leaveShort) {
+  return String(leaveShort ?? "").trim().toUpperCase() === "1/2PN";
+}
+
+export function getAttendanceLeaveTypeCompactBadgeClassName(leaveShort) {
+  return isAttendanceLeaveShortLabelCompact(leaveShort)
+    ? "!text-[8px] px-px tracking-tight"
+    : "";
+}
+
+/** Nền cả ô ngày khi có loại phép — đậm hơn badge 1 bậc (lưới tháng). */
+export function getAttendanceLeaveTypeEmphasisCellClassName(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) {
+    return "bg-slate-400 dark:bg-slate-700";
+  }
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  if (!matched) return "bg-red-400 dark:bg-red-950/80";
+  const sl = matched.shortLabel;
+  if (sl === "TS") return "bg-blue-400 dark:bg-blue-950/80";
+  if (sl === "PN" || sl === "1/2PN") {
+    return "bg-green-400 dark:bg-green-950/80";
+  }
+  if (sl === "NV") return "bg-slate-400 dark:bg-slate-700";
+  if (sl === "BGC" || sl === "VT") {
+    return "bg-amber-400 dark:bg-amber-950/80";
+  }
+  return "bg-red-400 dark:bg-red-950/80";
+}
+
+/** In A3: badge loại phép — nền đậm, viền mảnh. */
+export function getAttendanceLeaveTypeEmphasisPrintStyleAttr(raw, leaveShort) {
+  const compact = isAttendanceLeaveShortLabelCompact(leaveShort);
+  const fontSize = compact ? "5.5pt" : "6.5pt";
+  const pad = compact ? "0 1px" : "1px 3px";
+  const base = `display:inline-block;max-width:100%;box-sizing:border-box;white-space:nowrap;padding:${pad};border-radius:2px;font-size:${fontSize};line-height:1;font-weight:700;border:1px solid;`;
+  const t = String(raw ?? "").trim();
+  if (!t) {
+    return `${base}background:#cbd5e1;color:#0f172a;border-color:#94a3b8;`;
+  }
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  if (!matched) {
+    return `${base}background:#fca5a5;color:#450a0a;border-color:#f87171;`;
+  }
+  const sl = matched.shortLabel;
+  if (sl === "TS") {
+    return `${base}background:#93c5fd;color:#172554;border-color:#60a5fa;`;
+  }
+  if (sl === "PN" || sl === "1/2PN") {
+    return `${base}background:#86efac;color:#052e16;border-color:#4ade80;`;
+  }
+  if (sl === "NV") {
+    return `${base}background:#cbd5e1;color:#0f172a;border-color:#94a3b8;`;
+  }
+  if (sl === "BGC" || sl === "VT") {
+    return `${base}background:#fcd34d;color:#451a03;border-color:#fbbf24;`;
+  }
+  return `${base}background:#fca5a5;color:#450a0a;border-color:#f87171;`;
+}
+
+/** In A3: nền cả ô ngày khi có loại phép — đậm hơn badge 1 bậc. */
+export function getAttendanceLeaveTypeEmphasisPrintCellBg(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return "#94a3b8";
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  if (!matched) return "#f87171";
+  const sl = matched.shortLabel;
+  if (sl === "TS") return "#60a5fa";
+  if (sl === "PN" || sl === "1/2PN") return "#4ade80";
+  if (sl === "NV") return "#94a3b8";
+  if (sl === "BGC" || sl === "VT") return "#fbbf24";
+  return "#f87171";
 }
 
 /** In trang (`window.print`): style inline theo cùng quy tắc màu. */
@@ -396,7 +799,6 @@ const FOLDED_EXTRA_LEAVE_MARKERS = [
   "NV",
   "VT",
   "BGC",
-  "PCT",
   "PN1/2",
   "1/2PN",
   "1/2 PN",

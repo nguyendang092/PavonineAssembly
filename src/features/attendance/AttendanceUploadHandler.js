@@ -9,10 +9,9 @@ import {
   stripAttendanceExcelUploadInternalFields,
 } from "./attendanceExcelUploadMerge";
 import {
-  ATTENDANCE_LOAI_PHEP_OPTIONS,
-  rawMatchesAttendanceTypeOption,
+  canonicalAttendanceLoaiPhepValue,
+  normalizeAttendanceDayRecord,
 } from "./attendanceGioVaoTypeOptions";
-import { parseTrangThaiLamViecFromExcel } from "./attendanceEmploymentStatus";
 
 function normalizeHeaderCell(value) {
   return String(value ?? "")
@@ -62,12 +61,7 @@ function parseLoaiPhepFromExcelCell(raw) {
   const t = trimCell(raw);
   if (!t) return "";
   if (/^\d+(\.\d+)?$/.test(t)) return "";
-  for (const opt of ATTENDANCE_LOAI_PHEP_OPTIONS) {
-    if (rawMatchesAttendanceTypeOption(t, opt)) {
-      return t;
-    }
-  }
-  return t;
+  return canonicalAttendanceLoaiPhepValue(t);
 }
 
 export const handleUploadExcel = async ({
@@ -130,7 +124,7 @@ export const handleUploadExcel = async ({
     // Bỏ các dòng trước bảng dữ liệu (file xuất/mẫu có nhiều dòng đầu; legacy: 2 dòng header)
     const dataRows = rows.slice(dataRowStart);
 
-    /** Mẫu mới (sau cột «Ngày vào làm»): cột «Ngày HĐ» (hoặc legacy «Trạng thái LV»). */
+    /** Mẫu mới (sau cột «Ngày vào làm»): cột «Ngày HĐ». */
     const headerVnRow = rows[dataRowStart - 2];
     const headerNorm = Array.isArray(headerVnRow)
       ? headerVnRow.map((c) => normalizeHeaderCell(c))
@@ -144,14 +138,7 @@ export const handleUploadExcel = async ({
         col6.includes("ngay hd") ||
         col6.includes("contract date") ||
         col6.includes("contract"));
-    const hasTrangThaiCol =
-      !hasContractDateCol &&
-      headerNorm.length > 6 &&
-      (col6.includes("trạng thái") ||
-        col6.includes("trang thai") ||
-        col6.includes("employment status") ||
-        col6.includes("work status"));
-    const hasProfileExtraCol = hasContractDateCol || hasTrangThaiCol;
+    const hasProfileExtraCol = hasContractDateCol;
 
     // ✅ Hàm parse ngày CHUẨN - tránh lệch timezone
     const normalizeDate = (value) => {
@@ -294,9 +281,6 @@ export const handleUploadExcel = async ({
         ? Number(stt)
         : Object.keys(dataToUpload).length + 1;
 
-      const trangThaiParsed = hasTrangThaiCol
-        ? parseTrangThaiLamViecFromExcel(trimCell(profileExtraRaw))
-        : "";
       const ngayHopDongParsed = hasContractDateCol
         ? normalizeDate(profileExtraRaw)
         : "";
@@ -310,17 +294,15 @@ export const handleUploadExcel = async ({
         gioiTinh: trimCell(gioiTinh),
         ngayVaoLam: normalizeDate(ngayVaoLamRaw),
         ...(ngayHopDongParsed ? { ngayHopDong: ngayHopDongParsed } : {}),
-        ...(trangThaiParsed
-          ? { trangThaiLamViec: trangThaiParsed }
-          : {}),
         maBoPhan: trimCell(maBoPhan),
         boPhan: trimCell(boPhan),
         gioVao: trimCell(gioVao),
         gioRa: trimCell(gioRa),
         caLamViec: trimCell(caLamViec),
-        loaiPhep: trimCell(loaiPhep),
+        loaiPhep,
         _excelHasStt: excelHasStt,
       };
+      dataToUpload[empKey] = normalizeAttendanceDayRecord(dataToUpload[empKey]);
     });
 
     // Upload to Firebase - Merge with existing data to prevent data loss
@@ -356,7 +338,9 @@ export const handleUploadExcel = async ({
         }
         duplicateCount++;
       } else {
-        let rec = stripAttendanceExcelUploadInternalFields({ ...newEmp });
+        let rec = normalizeAttendanceDayRecord(
+          stripAttendanceExcelUploadInternalFields({ ...newEmp }),
+        );
         if (!hasAttendanceExcelCellValue(rec.gioiTinh)) rec.gioiTinh = "YES";
         mergedData[key] = rec;
         if (normalizedNewMNV) {

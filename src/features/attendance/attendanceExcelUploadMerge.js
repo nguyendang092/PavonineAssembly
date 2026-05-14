@@ -7,6 +7,8 @@
  * - Firebase **đã có** dữ liệu → **không** ghi đè bởi Excel (giữ chỉnh tay / lần upload trước cùng ngày).
  */
 
+import { normalizeAttendanceDayRecord } from "./attendanceGioVaoTypeOptions";
+
 /**
  * Giá trị ô được coi là đã có dữ liệu (sau trim; số hợp lệ tính là có).
  */
@@ -56,5 +58,5 @@ export function mergeAttendanceExcelIntoExistingRecord(oldEmp, newEmp) {
     }
   });
 
-  return mergedEmp;
+  return normalizeAttendanceDayRecord(mergedEmp);
 }

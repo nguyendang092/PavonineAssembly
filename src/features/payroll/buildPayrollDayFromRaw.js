@@ -18,7 +18,6 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "boPhan",
   "ngayVaoLam",
   "ngayHopDong",
-  "trangThaiLamViec",
   "gioVao",
   "gioRa",
   "caLamViec",

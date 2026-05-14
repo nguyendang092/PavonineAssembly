@@ -51,6 +51,26 @@ export function monthlyWorkPhaseForDateKey(
   return null;
 }
 
+/** Ngày trong tháng có được tính giờ công cho NV (từ ngày vào làm trở đi). */
+export function isPayrollMonthDayOnOrAfterJoin(dateKey, ngayVaoLamRaw) {
+  const join = normalizeProfileDateKey(ngayVaoLamRaw);
+  const dk = String(dateKey ?? "").trim();
+  if (!join || !dk) return true;
+  return dk >= join;
+}
+
+/** Số ngày công chuẩn tháng (trừ CN) từ ngày vào làm; không có ngày vào làm → cả tháng. */
+export function countEmployedStandardWorkDaysInMonth(monthKeys, ngayVaoLamRaw) {
+  let n = 0;
+  for (const dk of monthKeys) {
+    if (!isPayrollMonthDayOnOrAfterJoin(dk, ngayVaoLamRaw)) continue;
+    const pd = parseLocalDateKey(dk);
+    if (pd && pd.getDay() === 0) continue;
+    n += 1;
+  }
+  return n;
+}
+
 /** Số ngày công lịch (trừ Chủ nhật) trong tháng thuộc giai đoạn; `phase === null` = cả tháng. */
 export function countPhaseCalendarWorkDaysInMonth(
   monthKeys,
@@ -122,7 +142,7 @@ const HALF_PN_FULL_DAY_WORKED_HOURS = 4;
 
 /**
  * Tổng hợp 3 khối cột chi tiết tháng:
- * - **THỜI GIAN LÀM VIỆC** (`total`): luôn cả tháng.
+ * - **THỜI GIAN LÀM VIỆC** (`total`): từ ngày vào làm (nếu có) đến hết tháng.
  * - **THỜI GIAN THỬ VIỆC** (`trial`): có ngày HĐ — ngày từ ngày vào làm đến trước ngày HĐ.
  * - **THỜI GIAN HỢP ĐỒNG** (`official`): từ ngày HĐ; không có ngày HĐ → mặc định toàn bộ (từ ngày vào làm).
  * - **Số ngày công chuẩn** (`soNgayCong`): cùng một giá trị cả tháng cho cả 3 khối.
@@ -136,7 +156,7 @@ export function buildMonthlyRuleSummary(
   const join = normalizeProfileDateKey(profileDates.ngayVaoLam);
   const contract = normalizeProfileDateKey(profileDates.ngayHopDong);
   const hasContract = Boolean(contract);
-  const soNgayCongChuan = countMonthlyStandardWorkDays(monthKeys);
+  const soNgayCongChuan = countEmployedStandardWorkDaysInMonth(monthKeys, join);
 
   const createEmptySummary = () => ({
     workDays: 0,
@@ -183,6 +203,9 @@ export function buildMonthlyRuleSummary(
   };
 
   const computeIncludedWorkDayCreditForLeave = ({ ch, main, coeffSum }) => {
+    /** BGC: có mặt, chưa có giờ vào — vẫn tính 1 ngày công; giờ bổ sung sau. */
+    if (main.leaveShort === "BGC") return 1;
+
     const workedH =
       Number.isFinite(main.workedHours) && main.workedHours > 0
         ? main.workedHours
@@ -262,6 +285,7 @@ export function buildMonthlyRuleSummary(
   for (const dk of monthKeys) {
     const ch = dayChunks.get(dk);
     if (!ch) continue;
+    if (!isPayrollMonthDayOnOrAfterJoin(dk, join)) continue;
 
     const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
     const phase = monthlyWorkPhaseForDateKey(dk, join, contract);
