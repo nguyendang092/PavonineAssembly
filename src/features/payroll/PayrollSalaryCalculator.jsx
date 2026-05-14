@@ -47,7 +47,7 @@ import {
   enumerateDateKeysInclusive,
   getTodayDateKeyLocal,
 } from "@/utils/dateKey";
-import { businessEmployeeCode } from "@/utils/employeeRosterRecord";
+import { businessEmployeeCode } from "@/utils/attendanceEmployeeRecord";
 import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
 import {
   getOvertimeHoursFromGioRa,

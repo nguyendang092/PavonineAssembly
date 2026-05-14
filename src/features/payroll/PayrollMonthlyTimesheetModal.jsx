@@ -16,16 +16,14 @@ import {
   PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import { writePayrollMonthlyTimesheetWorkbook } from "@/features/payroll/payrollMonthlyTimesheetExcelGrid";
+import { buildMonthlyRuleSummary } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
   enumerateDateKeysInclusive,
   getFirstDayOfMonthKey,
   getLastDayOfMonthKey,
   parseLocalDateKey,
 } from "@/utils/dateKey";
-import {
-  isDuocNghiBuExplicitlyNo,
-  payrollMonthMainRowDashMark,
-} from "@/features/attendance/attendanceDayMeta";
+import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import {
@@ -84,6 +82,7 @@ function representativeEmployee(dayChunks, id) {
         mvt: out.mvt || e.mvt,
         maBoPhan: out.maBoPhan || e.maBoPhan,
         ngayVaoLam: out.ngayVaoLam || e.ngayVaoLam,
+        ngayHopDong: out.ngayHopDong || e.ngayHopDong,
         stt: out.stt != null && String(out.stt).trim() !== "" ? out.stt : e.stt,
       };
     }
@@ -92,10 +91,12 @@ function representativeEmployee(dayChunks, id) {
 }
 
 /** Cột cố định trái: [px] — tổng ~564px trước cột ngày. */
-const STICKY_COL_WIDTHS = [36, 176, 92, 92, 30, 30];
+const STICKY_COL_WIDTHS = [36, 176, 30, 30];
 const MONTH_DAY_COL_WIDTH = 35;
 const MONTH_DETAIL_COL_WIDTH = 45;
 const MONTH_DETAIL_COLS_PER_BLOCK = 16;
+/** Độ rộng mỗi cột khối «THỜI GIAN LÀM VIỆC» trên bản in A3 (mm). */
+const A3_PRINT_DETAIL_COL_WIDTH_MM = 9;
 const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 /** Dưới ngưỡng này render đủ dòng; từ ngưỡng trở lên ảo hóa theo khối NV để tránh OOM. */
 const MONTHLY_TIMESHEET_VIRTUAL_THRESHOLD = 14;
@@ -138,6 +139,20 @@ function readStoredTimesheetZoomIdx() {
 /** Ô ngày trên lưới tháng — bấm mở form điểm danh (khi có quyền). */
 const MONTH_DAY_CELL_INTERACTIVE =
   "cursor-pointer hover:bg-indigo-100/75 dark:hover:bg-indigo-950/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500";
+
+/** Dòng chính ô ngày (loại phép / giờ công / gạch): một cỡ chữ, tránh lệch giữa các mã phép. */
+const MONTH_DAY_MAIN_CELL_CLASS =
+  "px-0.5 py-0.5 text-center align-middle text-[10px] leading-none font-bold text-slate-900 dark:text-slate-100 [&_span]:text-[10px] [&_span]:leading-none";
+
+const MONTH_DAY_MAIN_VALUE_CLASS =
+  "text-[10px] leading-none font-bold tabular-nums text-black dark:text-black";
+
+const MONTH_DAY_LEAVE_BADGE_CLASS =
+  "inline-block max-w-full whitespace-nowrap rounded border px-0.5 py-px text-[10px] leading-none font-bold";
+
+/** In A3 — cùng cỡ với ô ngày dòng chính (6.5pt). */
+const MONTH_DAY_PRINT_MAIN_FONT_STYLE =
+  "font-size:6.5pt;line-height:1;font-weight:700";
 
 /** Ô ngày: class + props a11y khi được phép sửa điểm danh. */
 function payrollMonthTimesheetDayCellA11y({
@@ -230,216 +245,9 @@ function detailGroupBodyTone(groupIndex) {
   return "bg-violet-50/60 dark:bg-violet-950/20";
 }
 
-function isProbationStatus(raw) {
-  return String(raw ?? "").trim() === "thu_viec";
-}
-
-function formatProfileDateKey(raw, displayLocale) {
-  const s = String(raw ?? "").trim();
-  if (!s) return "—";
-  const d = parseLocalDateKey(s.slice(0, 10));
-  if (!d) return s.slice(0, 10);
-  return d.toLocaleDateString(displayLocale, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
 function formatEnglishWeekday3(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
-}
-
-function leaveUnitsByCode(leaveShort, code) {
-  const t = String(leaveShort ?? "")
-    .trim()
-    .toUpperCase();
-  const c = String(code ?? "")
-    .trim()
-    .toUpperCase();
-  if (!t || !c) return 0;
-  if (t === c) return 1;
-  if (t === `1/2${c}` || t === `1/2 ${c}`) return 0.5;
-  return 0;
-}
-
-/** KL, KP, NV — không vào «Tổng ngày công bao gồm PN». */
-function leaveExcludedFromIncludedWorkDays(leaveShort) {
-  return (
-    leaveUnitsByCode(leaveShort, "KL") > 0 ||
-    leaveUnitsByCode(leaveShort, "KP") > 0 ||
-    leaveUnitsByCode(leaveShort, "NV") > 0
-  );
-}
-
-function countedLeaveUnitsForWorkDays(leaveShort) {
-  const codes = ["PN", "TN", "PT", "PC", "NB", "NL", "CT"];
-  let total = 0;
-  for (const code of codes) total += leaveUnitsByCode(leaveShort, code);
-  return total;
-}
-
-function sumPayrollMonthlyCoeffHours(coeffMap) {
-  let s = 0;
-  if (!coeffMap) return s;
-  for (const v of coeffMap.values()) {
-    if (Number.isFinite(v) && v > 0) s += v;
-  }
-  return s;
-}
-
-/** 1/2PN mặc định 0,5 ngày; đủ giờ làm thực tế thì được tính trọn 1 ngày công. */
-const HALF_PN_FULL_DAY_WORKED_HOURS = 4;
-
-function countSundaysInMonthKeys(monthKeys) {
-  let n = 0;
-  for (const dk of monthKeys) {
-    const pd = parseLocalDateKey(dk);
-    if (pd && pd.getDay() === 0) n += 1;
-  }
-  return n;
-}
-
-function buildMonthlyRuleSummary(dayChunks, monthKeys, id) {
-  const baseCalendarWorkDays =
-    monthKeys.length - countSundaysInMonthKeys(monthKeys);
-
-  const out = {
-    workDays: 0, // "Tổng ngày công bao gồm PN"
-    workHours: 0, // "Tổng giờ công" chỉ tính giờ thực tế
-    unpaidDays: 0,
-    pnDays: 0,
-    nbDays: 0,
-    klDays: 0,
-    kpDays: 0,
-    coeff03: 0,
-    coeff15: 0,
-    coeff20: 0,
-    coeff27: 0,
-    coeff30: 0,
-    coeff39: 0,
-    sats20: 0,
-    sats27: 0,
-    soNgayCong: baseCalendarWorkDays,
-  };
-
-  const addCoeffHoursToTotals = (coeffMap) => {
-    out.coeff03 += Number(coeffMap.get(0.3) || 0);
-    out.coeff15 += Number(coeffMap.get(1.5) || 0);
-    out.coeff20 += Number(coeffMap.get(2.0) || 0);
-    out.coeff27 += Number(coeffMap.get(2.7) || 0);
-    out.coeff30 += Number(coeffMap.get(3.0) || 0);
-    out.coeff39 += Number(coeffMap.get(3.9) || 0);
-  };
-
-  /**
-   * Có «NB» hiển thị trên ô lưới: tức là ngày nghỉ bù + NV chưa từ chối nhận NB
-   * (`duocNghiBu !== "NO"`). Khi `emp` null → mặc định coi như có NB.
-   */
-  const isNbVisibleForCompDay = (ch, emp) => {
-    if (!ch?.isCompensatoryDay) return false;
-    if (emp == null) return true;
-    return !isDuocNghiBuExplicitlyNo(emp.duocNghiBu);
-  };
-
-  const computeHolidayWorkCreditForDash = (ch, coeffSum, emp) => {
-    // HOLIDAY: không có giờ công vẫn tính đủ 1 ngày công.
-    if (ch.isHolidayDay) return 1;
-    // NB: có «NB» hiển thị hoặc có giờ công của ngày NB → 1 ngày công.
-    if (isNbVisibleForCompDay(ch, emp)) return 1;
-    return coeffSum > 0 ? 1 : 0;
-  };
-
-  const computeIncludedWorkDayCreditForLeave = ({ ch, main, coeffSum }) => {
-    const workedH =
-      Number.isFinite(main.workedHours) && main.workedHours > 0
-        ? main.workedHours
-        : 0;
-
-    const isHalfPnLeave = main.leaveShort === "1/2PN";
-    const dayWorked =
-      workedH > 0 &&
-      (!isHalfPnLeave || workedH >= HALF_PN_FULL_DAY_WORKED_HOURS)
-        ? 1
-        : 0;
-
-    let dayLeavePaid = 0;
-    if (!leaveExcludedFromIncludedWorkDays(main.leaveShort)) {
-      dayLeavePaid = countedLeaveUnitsForWorkDays(main.leaveShort);
-    }
-
-    let dayAdd = Math.max(dayWorked, dayLeavePaid);
-
-    // HOLIDAY: nếu không có giờ công thì vẫn tính ít nhất 1 ngày công,
-    // kể cả khi `loaiPhep` đang là phép (KL/KP/NV/...).
-    if (ch.isHolidayDay && coeffSum <= 0 && dayWorked === 0) {
-      dayAdd = Math.max(dayAdd, 1);
-    }
-
-    return dayAdd;
-  };
-
-  for (const dk of monthKeys) {
-    const ch = dayChunks.get(dk);
-    if (!ch) continue;
-
-    const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
-    // Nếu ngày đó có cờ HOLIDAY / nghỉ bù trong `_meta` nhưng không có dòng
-    // nhân viên, vẫn phải tính 1 ngày công (đồng bộ NB & NL).
-    if (!emp) {
-      if (ch.isHolidayDay || isNbVisibleForCompDay(ch, null)) out.workDays += 1;
-      continue;
-    }
-
-    const main = getPayrollMonthlyMainRowCell(emp, ch);
-    const coeffMap = getPayrollMonthlyCoeffHoursMap({
-      gioVao: emp.gioVao,
-      gioRa: emp.gioRa,
-      isOffDay: ch.isOffDay,
-      isHolidayDay: ch.isHolidayDay,
-      isCompensatoryDay: ch.isCompensatoryDay,
-      caLamViec: emp.caLamViec,
-      payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
-      payrollLateOtExcluded: emp.payrollLateOtExcluded,
-      loaiPhep: emp.loaiPhep,
-      includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
-    });
-    const coeffSum = sumPayrollMonthlyCoeffHours(coeffMap);
-    const addWorkedHours = (hours) => {
-      if (Number.isFinite(hours) && hours > 0) out.workHours += hours;
-    };
-
-    if (main.kind === "leave") {
-      const pnUnits = leaveUnitsByCode(main.leaveShort, "PN");
-      out.pnDays += pnUnits;
-      out.nbDays += leaveUnitsByCode(main.leaveShort, "NB");
-      out.klDays += leaveUnitsByCode(main.leaveShort, "KL");
-      out.kpDays += leaveUnitsByCode(main.leaveShort, "KP");
-      addWorkedHours(main.workedHours);
-
-      out.workDays += computeIncludedWorkDayCreditForLeave({
-        ch,
-        main,
-        coeffSum,
-      });
-    } else if (main.kind === "hours") {
-      addWorkedHours(main.hours);
-      addWorkedHours(coeffSum);
-      out.workDays += 1;
-    } else {
-      addWorkedHours(coeffSum);
-      out.workDays += computeHolidayWorkCreditForDash(ch, coeffSum, emp);
-    }
-
-    addCoeffHoursToTotals(coeffMap);
-  }
-
-  out.unpaidDays = out.klDays + out.kpDays;
-  // "Tổng ngày công bao gồm PN" không được vượt "Số ngày công".
-  out.workDays = Math.min(out.workDays, out.soNgayCong);
-  return out;
 }
 
 function matchesRowFilter(
@@ -466,9 +274,35 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+/** Tách nhãn cột chi tiết in A3 thành 2 dòng ngang (dòng 2 thường là hệ số / mã viết tắt). */
+function splitA3PrintDetailHeaderTwoLines(text) {
+  const s = String(text ?? "").trim();
+  if (!s) return ["", ""];
+  const coeffParen = s.match(/^(.+?)\s*(\(x[\d.]+\))\s*$/i);
+  if (coeffParen) return [coeffParen[1].trim(), coeffParen[2].trim()];
+  const genericParen = s.match(/^(.+?)\s*(\([^)]+\))\s*$/);
+  if (genericParen) return [genericParen[1].trim(), genericParen[2].trim()];
+  const slashBreak = s.match(/^(.+?\/)\s*(.+)$/);
+  if (slashBreak && slashBreak[2].length > 4) {
+    return [slashBreak[1].trim(), slashBreak[2].trim()];
+  }
+  const words = s.split(/\s+/);
+  if (words.length <= 1) return [s, ""];
+  const mid = Math.ceil(words.length / 2);
+  return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+}
+
+function a3PrintDetailHeadTwoLines(text) {
+  const [line1, line2] = splitA3PrintDetailHeaderTwoLines(text);
+  const l2 = line2
+    ? `<br/><span class="pct-print-detail-line2">${escapeHtml(line2)}</span>`
+    : "";
+  return `<div class="pct-print-detail-2line"><span class="pct-print-detail-line1">${escapeHtml(line1)}</span>${l2}</div>`;
+}
+
 /**
- * Cửa sổ in A3 ngang: chỉ cột cố định + ngày + khối «THỜI GIAN LÀM VIỆC»
- * (bỏ «THỜI GIAN THỬ VIỆC» / «THỜI GIAN HỢP ĐỒNG»).
+ * Cửa sổ in A3 ngang: STT, tên, BP, hệ số TC + ngày trong tháng + khối «THỜI GIAN LÀM VIỆC»
+ * (không in «Ngày vào làm» / «Ngày HĐ»; không in khối «THỜI GIAN THỬ VIỆC» / «THỜI GIAN HỢP ĐỒNG»).
  */
 function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
   monthKeys,
@@ -477,7 +311,6 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
   chunkByDate,
   summaryById,
   detailHeaders,
-  displayLocale,
   labels,
 }) {
   const fmt = (n) =>
@@ -529,18 +362,18 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
         const main = getPayrollMonthlyMainRowCell(emp, ch);
         let inner = " ";
         if (main.kind === "leave") {
-          inner = `<span style="font-weight:700;border:1px solid #334155;padding:1px 2px;border-radius:2px">${escapeHtml(main.leaveShort || "")}</span>`;
+          inner = `<span style="display:inline-block;white-space:nowrap;border:1px solid #334155;padding:1px 2px;border-radius:2px;${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(main.leaveShort || "")}</span>`;
           if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
-            inner += `<br/><span style="font-weight:700">${escapeHtml(formatCoeffHoursForDisplay(main.workedHours))}</span>`;
+            inner += `<br/><span style="${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(formatCoeffHoursForDisplay(main.workedHours))}</span>`;
           }
         } else if (main.kind === "hours") {
-          inner = `<span style="font-weight:700">${escapeHtml(formatCoeffHoursForDisplay(main.hours))}</span>`;
+          inner = `<span style="${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(formatCoeffHoursForDisplay(main.hours))}</span>`;
         } else {
           const dayMark = payrollMonthMainRowDashMark(ch, emp);
-          inner = `<span style="font-weight:700">${escapeHtml(String(dayMark))}</span>`;
+          inner = `<span style="${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(String(dayMark))}</span>`;
         }
         parts.push(
-          `<td style="background:${bg};${btm};text-align:center;vertical-align:middle;font-size:6.5pt">${inner}</td>`,
+          `<td style="background:${bg};${btm};text-align:center;vertical-align:middle;${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${inner}</td>`,
         );
         continue;
       }
@@ -567,20 +400,21 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
     }
   };
 
+  const rot = (inner) =>
+    `<div class="pct-print-rot-wrap"><span class="pct-print-vneg90">${inner}</span></div>`;
+
+  const vmode = (inner) => `<div class="pct-print-vmode">${inner}</div>`;
+
   const theadParts = [];
   theadParts.push("<tr>");
-  theadParts.push(`<th rowspan="3">${escapeHtml(labels.stt)}</th>`);
   theadParts.push(
-    `<th rowspan="3" class="pct-print-name">${escapeHtml(labels.name)}</th>`,
+    `<th rowspan="3" class="pct-print-rot-cell pct-print-rot-stt">${rot(escapeHtml(labels.stt))}</th>`,
   );
   theadParts.push(
-    `<th rowspan="3" class="pct-print-join">${escapeHtml(labels.join)}</th>`,
+    `<th rowspan="3" class="pct-print-rot-cell pct-print-rot-name">${vmode(escapeHtml(labels.name))}</th>`,
   );
   theadParts.push(
-    `<th rowspan="3" class="pct-print-contract">${escapeHtml(labels.contract)}</th>`,
-  );
-  theadParts.push(
-    `<th rowspan="3">${escapeHtml(labels.dept)}</th><th rowspan="3">${escapeHtml(labels.coeff)}</th>`,
+    `<th rowspan="3" class="pct-print-rot-cell pct-print-rot-dept">${vmode(escapeHtml(labels.dept))}</th><th rowspan="3">${escapeHtml(labels.coeff)}</th>`,
   );
   theadParts.push(
     `<th colspan="${monthKeys.length}" style="background:#e2e8f0">${escapeHtml(labels.daysBanner)}</th>`,
@@ -613,7 +447,7 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
   for (let i = 0; i < detailHeaders.length; i++) {
     const bl = i === 0 ? "border-left:2px solid #000" : "";
     theadParts.push(
-      `<th style="background:#f1f5f9;${bl};font-size:5.5pt">${escapeHtml(detailHeaders[i])}</th>`,
+      `<th class="pct-print-detail-head" style="background:#f1f5f9;${bl}">${a3PrintDetailHeadTwoLines(detailHeaders[i])}</th>`,
     );
   }
   theadParts.push("</tr>");
@@ -622,13 +456,13 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
   for (let empBlockIdx = 0; empBlockIdx < filteredIds.length; empBlockIdx++) {
     const id = filteredIds[empBlockIdx];
     const rep = repById.get(id);
-    const summary = summaryById.get(id);
+    const summaries = summaryById.get(id);
+    const summary = summaries?.total;
     if (!rep || !summary) continue;
     const sttDisp =
       rep.stt != null && String(rep.stt).trim() !== ""
         ? rep.stt
         : empBlockIdx + 1;
-    const joinStr = formatProfileDateKey(rep.ngayVaoLam, displayLocale);
     const tcByRow = [
       summary.coeff03,
       summary.coeff15,
@@ -663,20 +497,19 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
       const rowBg = empBlockIdx % 2 === 0 ? "#fff" : "#f8fafc";
       bodyParts.push(`<tr style="background:${rowBg}">`);
       if (si === 0) {
+        const nameInner =
+          `<span class="pct-print-name-text">${escapeHtml(rep.hoVaTen ?? "—")}</span>` +
+          (rep.mnv
+            ? `<br/><span class="pct-print-mnv">${escapeHtml(rep.mnv)}</span>`
+            : "");
         bodyParts.push(
-          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" style="text-align:center;font-weight:700;${btm}">${escapeHtml(String(sttDisp))}</td>`,
+          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" class="pct-print-rot-cell pct-print-rot-stt" style="font-weight:700;${btm}">${rot(escapeHtml(String(sttDisp)))}</td>`,
         );
         bodyParts.push(
-          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" class="pct-print-name" style="text-align:left;font-weight:700;${btm}">${escapeHtml(rep.hoVaTen ?? "—")}${rep.mnv ? `<br/><span class="pct-print-mnv">${escapeHtml(rep.mnv)}</span>` : ""}</td>`,
+          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" class="pct-print-rot-cell pct-print-rot-name" style="font-weight:700;${btm}">${vmode(nameInner)}</td>`,
         );
         bodyParts.push(
-          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" class="pct-print-join" style="text-align:center;${btm}">${escapeHtml(joinStr)}</td>`,
-        );
-        bodyParts.push(
-          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" class="pct-print-contract" style="text-align:center;${btm}">${escapeHtml(labels.contractDash)}</td>`,
-        );
-        bodyParts.push(
-          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" style="text-align:center;font-size:6pt;${btm}">${escapeHtml(rep.boPhan || "—")}</td>`,
+          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" class="pct-print-rot-cell pct-print-rot-dept" style="font-weight:700;${btm}">${vmode(escapeHtml(rep.boPhan || "—"))}</td>`,
         );
       }
       const coeffLabel =
@@ -690,12 +523,25 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
         const v = detailVals[idx];
         const bl = idx === 0 ? "border-left:2px solid #000" : "";
         bodyParts.push(
-          `<td style="text-align:center;font-weight:700;font-size:6.5pt;${bl};${btm}">${escapeHtml(String(v))}</td>`,
+          `<td class="pct-print-detail-col" style="text-align:center;font-weight:700;font-size:6.5pt;${bl};${btm}">${escapeHtml(String(v))}</td>`,
         );
       }
       bodyParts.push("</tr>");
     }
   }
+
+  const colgroupParts = ["<colgroup>"];
+  colgroupParts.push('<col style="width:6mm" />');
+  colgroupParts.push('<col style="width:14mm" />');
+  colgroupParts.push('<col style="width:8mm" />');
+  colgroupParts.push("<col />");
+  for (let i = 0; i < monthKeys.length; i++) colgroupParts.push("<col />");
+  for (let i = 0; i < MONTH_DETAIL_COLS_PER_BLOCK; i++) {
+    colgroupParts.push(
+      `<col style="width:${A3_PRINT_DETAIL_COL_WIDTH_MM}mm" />`,
+    );
+  }
+  colgroupParts.push("</colgroup>");
 
   return `<!DOCTYPE html>
 <html lang="vi">
@@ -727,30 +573,141 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
       table-layout: fixed; 
     }
     
-    /* Đồng bộ tất cả th và td theo chuẩn MNV */
+    /* Đồng bộ tất cả th và td */
     .print-ts th,
     .print-ts td { 
       border: 1px solid #1e293b; 
-      padding: 2px 3px;  /* đồng bộ padding */
+      padding: 2px 3px;
       vertical-align: middle;
-      font-family: Consolas, "Courier New", monospace;  /* đồng bộ font MNV */
-      font-size: 9pt;  /* đồng bộ kích thước */
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 9pt;
       font-weight: normal;
       text-align: center;
       word-break: break-word;
       line-height: 1.2;
     }
+
+    /* Cột cố định đầu bảng — gói nội dung, không tràn sang cột ngày */
+    .print-ts th.pct-print-rot-cell,
+    .print-ts td.pct-print-rot-cell {
+      box-sizing: border-box;
+      word-break: break-word;
+      overflow: hidden;
+      padding: 2px 1px;
+      vertical-align: middle;
+    }
+
+    .print-ts th.pct-print-rot-stt,
+    .print-ts td.pct-print-rot-stt {
+      width: 6mm;
+      max-width: 6mm;
+    }
+
+    .print-ts th.pct-print-rot-name,
+    .print-ts td.pct-print-rot-name {
+      width: 14mm;
+      max-width: 14mm;
+      font-family: Arial, Helvetica, "DejaVu Sans", sans-serif;
+    }
+
+    .print-ts th.pct-print-rot-dept,
+    .print-ts td.pct-print-rot-dept {
+      width: 10mm;
+      max-width: 10mm;
+      font-family: Arial, Helvetica, "DejaVu Sans", sans-serif;
+    }
+
+    /* Chữ dọc bằng writing-mode — luôn nằm trong bề ngang ô */
+    .print-ts .pct-print-vmode {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-size: 6.5pt;
+      font-weight: 700;
+      line-height: 1.15;
+      max-height: 68mm;
+      margin: 0 auto;
+      text-align: center;
+      overflow: hidden;
+      word-break: break-word;
+      font-family: Arial, Helvetica, "DejaVu Sans", sans-serif;
+    }
+
+    .print-ts th .pct-print-vmode {
+      font-size: 6pt;
+    }
+
+    /* STT: xoay -90° trong ô hẹp */
+    .print-ts .pct-print-rot-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+      min-height: 10mm;
+      box-sizing: border-box;
+    }
+
+    .print-ts .pct-print-vneg90 {
+      display: inline-block;
+      transform: rotate(0deg);
+      transform-origin: center center;
+      white-space: nowrap;
+      line-height: 1.05;
+    }
+
+    .print-ts .pct-print-name-text {
+      text-align: center;
+    }
+
+    .print-ts th .pct-print-name-text {
+      white-space: nowrap;
+    }
+
+    .print-ts td.pct-print-rot-name .pct-print-name-text {
+      white-space: normal;
+    }
+
+    .print-ts .pct-print-vmode .pct-print-mnv {
+      font-size: 0.78em;
+      font-weight: 600;
+      color: #1e40af;
+    }
+
+    /* Khối THỜI GIAN LÀM VIỆC — cột rộng hơn, tiêu đề 2 dòng ngang */
+    .print-ts th.pct-print-detail-head,
+    .print-ts td.pct-print-detail-col {
+      width: ${A3_PRINT_DETAIL_COL_WIDTH_MM}mm;
+      max-width: ${A3_PRINT_DETAIL_COL_WIDTH_MM}mm;
+      box-sizing: border-box;
+      padding: 2px 2px;
+      word-break: normal;
+    }
+
+    .print-ts th.pct-print-detail-head {
+      vertical-align: bottom;
+      padding: 3px 2px;
+    }
+
+    .print-ts th.pct-print-detail-head .pct-print-detail-2line {
+      display: block;
+      font-family: Arial, Helvetica, "DejaVu Sans", sans-serif;
+      font-size: 5.25pt;
+      font-weight: 700;
+      line-height: 1.12;
+      text-align: center;
+      white-space: normal;
+      word-break: keep-all;
+    }
+
+    .print-ts th.pct-print-detail-head .pct-print-detail-line2 {
+      font-size: 4.85pt;
+      font-weight: 700;
+    }
     
-    /* Header giữ font đậm nhưng vẫn dùng chung font monospace */
     .print-ts th { 
       font-weight: 700;
       background-color: #f1f5f9;
-    }
-    
-    /* Có thể thêm class đặc biệt nếu cần highlight MNV */
-    .print-ts .pct-print-mnv {
-      font-weight: 600;
-      color: #1e40af;
     }
     
     .hint { 
@@ -765,6 +722,7 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
   <h1>${escapeHtml(labels.docTitle)}</h1>
   <p class="hint">${escapeHtml(labels.printHint)}</p>
   <table class="print-ts">
+    ${colgroupParts.join("")}
     <thead>${theadParts.join("")}</thead>
     <tbody>${bodyParts.join("")}</tbody>
   </table>
@@ -1061,10 +1019,18 @@ export default function PayrollMonthlyTimesheetModal({
   const monthlySummaryById = useMemo(() => {
     const m = new Map();
     for (const id of sortedIds) {
-      m.set(id, buildMonthlyRuleSummary(chunkByDate, monthRange.keys, id));
+      m.set(
+        id,
+        buildMonthlyRuleSummary(
+          chunkByDate,
+          monthRange.keys,
+          id,
+          repById.get(id),
+        ),
+      );
     }
     return m;
-  }, [sortedIds, chunkByDate, monthRange.keys]);
+  }, [sortedIds, chunkByDate, monthRange.keys, repById]);
 
   const departmentOptions = useMemo(() => {
     const set = new Set();
@@ -1132,7 +1098,7 @@ export default function PayrollMonthlyTimesheetModal({
   });
 
   const timesheetTotalColCount =
-    6 +
+    4 +
     monthRange.keys.length +
     DETAIL_GROUP_KEYS.length * MONTH_DETAIL_COLS_PER_BLOCK;
 
@@ -1194,22 +1160,22 @@ export default function PayrollMonthlyTimesheetModal({
   const noTopBorder = "!border-t-0";
   const detailHeaders = useMemo(
     () => [
-      tlPage("monthlyRuleColSoNgayCong", "Số ngày công chuẩn"),
-      tlPage("monthlyRuleColWorkHours", "Tổng giờ công thực tế"),
-      tlPage("monthlyRuleColWorkDays", "Số ngày công thực tế"),
-      tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ không lương"),
+      tlPage("monthlyRuleColSoNgayCong", "Ngày công chuẩn"),
+      tlPage("monthlyRuleColWorkHours", "Tổng GC thực tế"),
+      tlPage("monthlyRuleColWorkDays", "Ngày công thực tế"),
+      tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ KL"),
       tlPage("monthlyRuleColPn", "Phép năm (PN)"),
       tlPage("monthlyRuleColNb", "Nghỉ bù (NB)"),
       tlPage("monthlyRuleColKl", "Nghỉ KL (KL)"),
       tlPage("monthlyRuleColKp", "Nghỉ KP (KP)"),
-      "Giờ làm (x0.3)",
-      "TC ngày thường (x1.5)",
-      "TC đêm/TC ngày nghỉ (x2.0)",
-      "TC đêm ngày nghỉ (x2.7)",
-      "TC ngày lễ (x3.0)",
+      "Giờ làm (X0.3)",
+      "TC ngày thường (X1.5)",
+      "TC ca đêm / ngày nghỉ (X2.0)",
+      "TC ca đêm / ngày lễ (X2.7)",
+      "TC ngày lễ (X3.0)",
       "TC đêm ngày lễ (x3.9)",
-      "Sat.S (x2.0)",
-      "Sat.S (x2.7)",
+      "Sat.S (X2.0)",
+      "Sat.S (X2.7)",
     ],
     [tlPage],
   );
@@ -1269,11 +1235,9 @@ export default function PayrollMonthlyTimesheetModal({
   const handlePrintA3WorkTimeOnly = useCallback(() => {
     if (!filteredIds.length || !monthRange.keys.length) return;
     const labels = {
-      docTitle: `${tlPage("monthlyTimesheetTitle", "Bảng giờ công")} — ${monthTitle}`,
+      docTitle: `${tlPage("monthlyTimesheetTitle", "PAVONINE - Bảng chấm công")} — ${monthTitle}`,
       stt: tlPage("monthlyTimesheetColStt", "STT"),
       name: tlPage("monthlyTimesheetColName", "Họ và tên"),
-      join: tlPage("monthlyTimesheetColJoinDate", "Ngày vào làm"),
-      contract: tlPage("monthlyTimesheetColContract", "Ngày HĐ"),
       dept: tlPage("monthlyTimesheetColDept", "BP"),
       coeff: tlPage("monthlyTimesheetColCoeff", "Hệ số TC"),
       daysBanner: tlPage("monthlyTimesheetDaysInMonth", "Ngày trong tháng"),
@@ -1281,11 +1245,6 @@ export default function PayrollMonthlyTimesheetModal({
       groupWorkday: tlPage("monthlyRuleGroupWorkday", "NGÀY LÀM VIỆC"),
       groupOt: tlPage("monthlyRuleGroupOt", "TĂNG CA (Hrs)"),
       groupSats: "SAT.S",
-      contractDash: tlPage("monthlyTimesheetContractDash", "—"),
-      generatedHint: tlPage(
-        "monthlyTimesheetPrintGenerated",
-        "Theo bộ lọc hiện tại trên lưới.",
-      ),
     };
     const html = buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
       monthKeys: monthRange.keys,
@@ -1294,7 +1253,6 @@ export default function PayrollMonthlyTimesheetModal({
       chunkByDate,
       summaryById: monthlySummaryById,
       detailHeaders,
-      displayLocale,
       labels,
     });
     const w = window.open("", "_blank");
@@ -1332,7 +1290,6 @@ export default function PayrollMonthlyTimesheetModal({
     chunkByDate,
     monthlySummaryById,
     detailHeaders,
-    displayLocale,
     monthTitle,
     tlPage,
     onAlert,
@@ -1525,7 +1482,7 @@ export default function PayrollMonthlyTimesheetModal({
                   >
                     <thead>
                       <tr className="bg-slate-100 dark:bg-slate-800">
-                        {[0, 1, 2, 3, 4, 5].map((ci) => (
+                        {[0, 1, 2, 3].map((ci) => (
                           <th
                             key={`h1-${ci}`}
                             rowSpan={3}
@@ -1538,13 +1495,13 @@ export default function PayrollMonthlyTimesheetModal({
                             }}
                             className={`${stickyThBase} text-center align-middle`}
                           >
-                            {ci === 4 ? (
+                            {ci === 2 ? (
                               <div className="flex h-[56px] items-center justify-center overflow-visible">
                                 <div className="flex -rotate-90 items-center whitespace-nowrap text-center leading-tight tracking-[0.12em]">
                                   {tlPage("monthlyTimesheetColDept", "BP")}
                                 </div>
                               </div>
-                            ) : ci === 5 ? (
+                            ) : ci === 3 ? (
                               <div className="flex h-[56px] items-center justify-center overflow-visible">
                                 <div className="flex -rotate-90 items-center whitespace-nowrap text-center font-bold leading-tight tracking-[0.12em]">
                                   {tlPage(
@@ -1555,15 +1512,8 @@ export default function PayrollMonthlyTimesheetModal({
                               </div>
                             ) : ci === 0 ? (
                               tlPage("monthlyTimesheetColStt", "STT")
-                            ) : ci === 1 ? (
-                              tlPage("monthlyTimesheetColName", "Họ và tên")
-                            ) : ci === 2 ? (
-                              tlPage(
-                                "monthlyTimesheetColJoinDate",
-                                "Ngày vào làm",
-                              )
                             ) : (
-                              tlPage("monthlyTimesheetColContract", "Ngày HĐ")
+                              tlPage("monthlyTimesheetColName", "Họ và tên")
                             )}
                           </th>
                         ))}
@@ -1734,15 +1684,11 @@ export default function PayrollMonthlyTimesheetModal({
                         const id = filteredIds[vi.index];
                         const empBlockIdx = vi.index;
                         const rep = repById.get(id);
-                        const summary = monthlySummaryById.get(id);
+                        const summaries = monthlySummaryById.get(id);
                         const sttDisp =
                           rep?.stt != null && String(rep.stt).trim() !== ""
                             ? rep.stt
                             : empBlockIdx + 1;
-                        const joinStr = formatProfileDateKey(
-                          rep?.ngayVaoLam,
-                          displayLocale,
-                        );
                         const fmt = (n) =>
                           Number.isFinite(n) &&
                           roundHoursForPayrollDisplay(n) !== 0
@@ -1796,24 +1742,6 @@ export default function PayrollMonthlyTimesheetModal({
                                 <td
                                   rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
                                   style={stickyColStyle(2)}
-                                  className={`${stickyTdBase} text-center tabular-nums ${strongBorderBottom}`}
-                                >
-                                  {joinStr}
-                                </td>
-                              ) : null}
-                              {si === 0 ? (
-                                <td
-                                  rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
-                                  style={stickyColStyle(3)}
-                                  className={`${stickyTdBase} text-center text-slate-900 dark:text-slate-100 ${strongBorderBottom}`}
-                                >
-                                  {tlPage("monthlyTimesheetContractDash", "—")}
-                                </td>
-                              ) : null}
-                              {si === 0 ? (
-                                <td
-                                  rowSpan={PAYROLL_MONTHLY_SUBROWS.length}
-                                  style={stickyColStyle(4)}
                                   className={`${stickyTdBase} text-center ${strongBorderBottom}`}
                                 >
                                   <div className="flex h-full items-center justify-center overflow-visible">
@@ -1833,7 +1761,7 @@ export default function PayrollMonthlyTimesheetModal({
                               ) : null}
                               <td
                                 style={{
-                                  ...stickyColStyle(5),
+                                  ...stickyColStyle(3),
                                   ...(isLastSub
                                     ? { borderBottom: "2px solid #000" }
                                     : null),
@@ -1928,16 +1856,20 @@ export default function PayrollMonthlyTimesheetModal({
                                   let inner;
                                   if (main.kind === "leave") {
                                     inner = (
-                                      <span className="inline-flex flex-col items-center gap-0.5">
+                                      <span className="inline-flex flex-col items-center gap-px leading-none">
                                         <span
-                                          className={`inline-flex max-w-full justify-center rounded border px-1 py-0.5 text-[10px] font-bold ${main.badgeClass}`}
+                                          className={`${MONTH_DAY_LEAVE_BADGE_CLASS} ${main.badgeClass}`}
                                           title={main.leaveRaw}
                                         >
                                           {main.leaveShort}
                                         </span>
                                         {Number.isFinite(main.workedHours) &&
                                         main.workedHours > 0 ? (
-                                          <span className="font-bold tabular-nums text-black dark:text-black">
+                                          <span
+                                            className={
+                                              MONTH_DAY_MAIN_VALUE_CLASS
+                                            }
+                                          >
                                             {formatCoeffHoursForDisplay(
                                               main.workedHours,
                                             )}
@@ -1947,7 +1879,9 @@ export default function PayrollMonthlyTimesheetModal({
                                     );
                                   } else if (main.kind === "hours") {
                                     inner = (
-                                      <span className="font-bold tabular-nums text-black dark:text-black">
+                                      <span
+                                        className={MONTH_DAY_MAIN_VALUE_CLASS}
+                                      >
                                         {formatCoeffHoursForDisplay(main.hours)}
                                       </span>
                                     );
@@ -1960,8 +1894,8 @@ export default function PayrollMonthlyTimesheetModal({
                                       <span
                                         className={
                                           dayMark !== " "
-                                            ? "font-bold text-black dark:text-black"
-                                            : "text-slate-300"
+                                            ? MONTH_DAY_MAIN_VALUE_CLASS
+                                            : "text-[10px] leading-none text-slate-300"
                                         }
                                       >
                                         {dayMark}
@@ -1977,7 +1911,7 @@ export default function PayrollMonthlyTimesheetModal({
                                           ? { borderBottom: "2px solid #000" }
                                           : null),
                                       }}
-                                      className={`${thinBodyBorder} px-0.5 py-0.5 text-center align-middle text-[10px] font-bold text-slate-900 dark:text-slate-100 ${baseBg} ${subrowEdgeClass} ${blockStartClass} ${dayCellInteractCls}`}
+                                      className={`${thinBodyBorder} ${MONTH_DAY_MAIN_CELL_CLASS} ${baseBg} ${subrowEdgeClass} ${blockStartClass} ${dayCellInteractCls}`}
                                       {...dayCellInteract}
                                     >
                                       {inner}
@@ -2031,17 +1965,6 @@ export default function PayrollMonthlyTimesheetModal({
                                 );
                               })}
                               {(() => {
-                                const isTrial = isProbationStatus(
-                                  rep?.trangThaiLamViec,
-                                );
-                                const tcByRow = [
-                                  summary.coeff03,
-                                  summary.coeff15,
-                                  summary.coeff20,
-                                  summary.coeff27,
-                                  summary.coeff30,
-                                  summary.coeff39,
-                                ];
                                 const coeffColBySubrow = {
                                   1: 0,
                                   2: 1,
@@ -2050,29 +1973,29 @@ export default function PayrollMonthlyTimesheetModal({
                                   5: 4,
                                   6: 5,
                                 };
-                                const valuesForStatus = (enabled) =>
+                                const valuesForBlock = (blockSummary) =>
                                   Array.from(
                                     { length: MONTH_DETAIL_COLS_PER_BLOCK },
                                     (_, idx) => {
-                                      if (!enabled) return " ";
+                                      const s = blockSummary || {};
                                       if (si === 0) {
-                                        if (idx === 0)
-                                          return fmt(summary.soNgayCong);
-                                        if (idx === 1)
-                                          return fmt(summary.workHours);
-                                        if (idx === 2)
-                                          return fmt(summary.workDays);
-                                        if (idx === 3)
-                                          return fmt(summary.unpaidDays);
-                                        if (idx === 4)
-                                          return fmt(summary.pnDays);
-                                        if (idx === 5)
-                                          return fmt(summary.nbDays);
-                                        if (idx === 6)
-                                          return fmt(summary.klDays);
-                                        if (idx === 7)
-                                          return fmt(summary.kpDays);
+                                        if (idx === 0) return fmt(s.soNgayCong);
+                                        if (idx === 1) return fmt(s.workHours);
+                                        if (idx === 2) return fmt(s.workDays);
+                                        if (idx === 3) return fmt(s.unpaidDays);
+                                        if (idx === 4) return fmt(s.pnDays);
+                                        if (idx === 5) return fmt(s.nbDays);
+                                        if (idx === 6) return fmt(s.klDays);
+                                        if (idx === 7) return fmt(s.kpDays);
                                       }
+                                      const tcByRow = [
+                                        s.coeff03,
+                                        s.coeff15,
+                                        s.coeff20,
+                                        s.coeff27,
+                                        s.coeff30,
+                                        s.coeff39,
+                                      ];
                                       const coeffIdx = coeffColBySubrow[si];
                                       if (
                                         coeffIdx != null &&
@@ -2084,9 +2007,9 @@ export default function PayrollMonthlyTimesheetModal({
                                     },
                                   );
                                 const detailValues = [
-                                  ...valuesForStatus(true),
-                                  ...valuesForStatus(isTrial),
-                                  ...valuesForStatus(!isTrial),
+                                  ...valuesForBlock(summaries?.total),
+                                  ...valuesForBlock(summaries?.trial),
+                                  ...valuesForBlock(summaries?.official),
                                 ];
                                 const oneRow = detailValues.map((v, idx) => {
                                   const group = Math.floor(

@@ -18,7 +18,6 @@ import {
   formatPayrollTableWorkingHoursCell,
 } from "./attendanceWorkingHours";
 import { getPayrollColWidthPercents } from "@/features/payroll/payrollColumnWidths";
-import { formatTrangThaiLamViecTableCell } from "./attendanceEmploymentStatus";
 
 const PAYROLL_EMPTY_CELL = "-";
 /** Điểm danh: ô trống / không nhập giờ — chỉnh sửa qua nút Sửa. */
@@ -999,7 +998,7 @@ export function AttendanceVirtualHeader({
             style={{ gridColumnStart: gcs("workStatus") }}
             className="hidden min-w-0 items-center justify-center py-px px-1 text-center uppercase text-[10px] font-extrabold tracking-wide text-white md:flex md:px-2 md:py-0.5 md:text-xs"
           >
-            {tl("workStatusColumn", "Trạng thái LV")}
+            {tl("contractDateColumn", "Ngày HĐ")}
           </div>
           <div
             role="columnheader"
@@ -1522,7 +1521,7 @@ export function AttendanceTableThead({
                 "hidden md:table-cell px-1 md:px-1.5 py-px md:py-0.5 text-[10px] md:text-xs font-extrabold text-white uppercase tracking-wide text-center",
               )}
             >
-              {tl("workStatusColumn", "Trạng thái LV")}
+              {tl("contractDateColumn", "Ngày HĐ")}
             </th>
             <th
               className={cellClsForAttendanceTable(
@@ -1948,13 +1947,10 @@ function AttendanceTableRow({
             role={isGrid ? "cell" : undefined}
             style={attendanceGridCellStyle(isGrid, gcs("workStatus"))}
             className={cellCls(
-              "hidden md:table-cell px-1 md:px-1.5 py-px text-center text-[11px] font-semibold leading-tight text-gray-800",
+              "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-semibold tabular-nums text-gray-700",
             )}
           >
-            {payrollDash(
-              formatTrangThaiLamViecTableCell(emp.trangThaiLamViec, tl),
-              isPayroll,
-            )}
+            {payrollDash(emp.ngayHopDong, isPayroll)}
           </Cell>
           <Cell
             role={isGrid ? "cell" : undefined}

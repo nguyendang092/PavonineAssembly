@@ -1,5 +1,5 @@
 import { mergeAttendanceDayRowsFromRaw } from "@/features/attendance/mergeAttendanceDayRows";
-import { businessEmployeeCode } from "@/utils/employeeRosterRecord";
+import { businessEmployeeCode } from "@/utils/attendanceEmployeeRecord";
 import {
   getEarlyOtPaperworkFromRaw,
   getIsCompensatoryDayFromRaw,
@@ -17,6 +17,7 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "hoVaTen",
   "boPhan",
   "ngayVaoLam",
+  "ngayHopDong",
   "trangThaiLamViec",
   "gioVao",
   "gioRa",

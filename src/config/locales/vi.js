@@ -873,7 +873,7 @@ const vi = {
     listSectionTitleResigned: "Hồ sơ đã chuyển trạng thái nghỉ việc",
     title: "Danh sách nhân viên",
     subtitle:
-      "Đây không phải kho dữ liệu riêng: tab «Theo ngày» và trang «Điểm danh» dùng chung Firebase attendance/{ngày} + employeeProfiles. Cùng một ngày thì cùng một danh sách — sửa ở đây hoặc ở Điểm danh đều thấy ngay ở bên kia.",
+      "Đây không phải kho dữ liệu riêng: tab «Theo ngày» và trang «Điểm danh» dùng chung Firebase attendance/{ngày}. Cùng một ngày thì cùng một danh sách — sửa ở đây hoặc ở Điểm danh đều thấy ngay ở bên kia.",
     syncWithAttendanceHint:
       "Cùng ngày với ô «Ngày danh sách» bên dưới = cùng dữ liệu với menu Điểm danh.",
     tabByDate: "Theo ngày",
@@ -1307,7 +1307,7 @@ const vi = {
     monthlyTimesheetButton: "Bảng giờ công",
     monthlyTimesheetButtonHint:
       "Xem lưới điểm danh theo từng ngày trong tháng của ngày đang chọn (cùng bộ lọc tìm / BP).",
-    monthlyTimesheetTitle: "Bảng giờ công",
+    monthlyTimesheetTitle: "PAVONINE - Bảng chấm công",
     monthlyTimesheetHint:
       "Mỗi nhân viên 7 dòng: dòng 1 giờ thường / phép; các dòng sau là giờ theo hệ số TC (0,3 … 3,9).",
     monthlyTimesheetCoeffLegendTitle:
@@ -1331,10 +1331,9 @@ const vi = {
     monthlyTimesheetZoomReset: "Mặc định",
     monthlyTimesheetZoomHint:
       "Thu nhỏ để xem tổng quan, phóng to để đọc rõ ô từng ngày.",
-    monthlyTimesheetPrintA3: "In A3 (TG làm việc)",
+    monthlyTimesheetPrintA3: "IN A3",
     monthlyTimesheetPrintBlocked:
       "Trình duyệt đã chặn cửa sổ mới — không thể mở bản in.",
-    monthlyTimesheetPrintGenerated: "Theo bộ lọc hiện tại trên lưới.",
     monthlyTimesheetLoading: "Đang tải dữ liệu điểm danh…",
     monthlyTimesheetEmpty: "Không có dữ liệu điểm danh nào trong tháng này.",
     monthlyTimesheetError: "Không tải được dữ liệu: {{error}}",

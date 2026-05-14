@@ -10,6 +10,10 @@ import {
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
+import {
+  buildMonthlyDetailFlatValues,
+  fmtPayrollMonthlySummaryCell,
+} from "@/features/payroll/payrollMonthlyRuleSummary";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
 const MONTH_DETAIL_COLS_PER_BLOCK = 16;
@@ -18,10 +22,6 @@ const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 function formatEnglishWeekday3(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
-}
-
-function isProbationStatus(raw) {
-  return String(raw ?? "").trim() === "thu_viec";
 }
 
 function formatProfileDateKey(raw, displayLocale) {
@@ -149,30 +149,16 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   }
   grid.push(r2);
 
-  const fmt = (n) =>
-    Number.isFinite(n) && roundHoursForPayrollDisplay(n) !== 0
-      ? formatCoeffHoursForDisplay(n)
-      : " ";
+  const fmt = fmtPayrollMonthlySummaryCell;
 
   filteredIds.forEach((id, empBlockIdx) => {
     const rep = repById.get(id);
-    const summary = summaryById.get(id);
+    const summaries = summaryById.get(id);
     const sttDisp =
       rep?.stt != null && String(rep.stt).trim() !== ""
         ? String(rep.stt)
         : String(empBlockIdx + 1);
     const joinStr = formatProfileDateKey(rep?.ngayVaoLam, displayLocale);
-    const isTrial = isProbationStatus(rep?.trangThaiLamViec);
-    const tcByRow = summary
-      ? [
-          summary.coeff03,
-          summary.coeff15,
-          summary.coeff20,
-          summary.coeff27,
-          summary.coeff30,
-          summary.coeff39,
-        ]
-      : [0, 0, 0, 0, 0, 0];
 
     PAYROLL_MONTHLY_SUBROWS.forEach((sr, si) => {
       const row = emptyRow();
@@ -183,7 +169,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
             ? `${rep?.hoVaTen ?? "—"}\n${rep.mnv}`
             : String(rep?.hoVaTen ?? "—");
         row[2] = joinStr;
-        row[3] = tlPage("monthlyTimesheetContractDash", "—");
+        row[3] = formatProfileDateKey(rep?.ngayHopDong, displayLocale);
         row[4] = rep?.boPhan ? String(rep.boPhan) : "—";
       }
       row[5] = sr.coeff == null ? "\u00a0" : Number(sr.coeff).toFixed(1);
@@ -247,31 +233,13 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
         6: 5,
       };
 
-      const valuesForStatus = (enabled) =>
-        Array.from({ length: MONTH_DETAIL_COLS_PER_BLOCK }, (_, idx) => {
-          if (!enabled) return " ";
-          if (!summary) return " ";
-          if (si === 0) {
-            if (idx === 0) return fmt(summary.soNgayCong);
-            if (idx === 1) return fmt(summary.workDays * 8);
-            if (idx === 2) return fmt(summary.workDays);
-            if (idx === 3) return fmt(summary.unpaidDays);
-            if (idx === 4) return fmt(summary.pnDays);
-            if (idx === 5) return fmt(summary.nbDays);
-            if (idx === 6) return fmt(summary.klDays);
-            if (idx === 7) return fmt(summary.kpDays);
-          }
-          const coeffIdx = coeffColBySubrow[si];
-          if (coeffIdx != null && idx === 8 + coeffIdx)
-            return fmt(tcByRow[coeffIdx]);
-          return " ";
-        });
-
-      const detailFlat = [
-        ...valuesForStatus(true),
-        ...valuesForStatus(isTrial),
-        ...valuesForStatus(!isTrial),
-      ];
+      const detailFlat = buildMonthlyDetailFlatValues({
+        si,
+        summaries,
+        coeffColBySubrow,
+        fmt,
+        colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
+      });
 
       detailFlat.forEach((v, i) => {
         row[6 + days + i] = v;

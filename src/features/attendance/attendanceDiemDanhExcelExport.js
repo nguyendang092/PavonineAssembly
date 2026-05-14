@@ -3,7 +3,6 @@ import {
   formatAttendanceTimeInColumnDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
-import { formatTrangThaiLamViecPlain } from "@/features/attendance/attendanceEmploymentStatus";
 
 /**
  * Bố cục sheet điểm danh (1 ngày) — dùng chung xuất Excel / mẫu upload để đồng bộ cột.
@@ -207,7 +206,7 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
     "Họ và tên",
     "Giới tính",
     "Ngày vào làm",
-    ...(omitWorkStatusColumn ? [] : ["Trạng thái"]),
+    ...(omitWorkStatusColumn ? [] : ["Ngày HĐ"]),
     "Mã BP",
     "Bộ phận",
     "Thời gian vào",
@@ -223,7 +222,7 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
     "Full name",
     "Gender",
     "Start date",
-    ...(omitWorkStatusColumn ? [] : ["Employment status"]),
+    ...(omitWorkStatusColumn ? [] : ["Contract date"]),
     "Code-Dept",
     "Department",
     "Time in",
@@ -269,7 +268,7 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
       emp.ngayVaoLam || "",
       ...(omitWorkStatusColumn
         ? []
-        : [formatTrangThaiLamViecPlain(emp.trangThaiLamViec) || ""]),
+        : [emp.ngayHopDong || ""]),
       emp.maBoPhan || "",
       emp.boPhan || "",
       formatAttendanceTimeInColumnDisplay(emp.gioVao),

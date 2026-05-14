@@ -17,7 +17,7 @@ import { parseLocalDateKey } from "@/utils/dateKey";
 import {
   normalizeDateForHtmlInput,
   canonicalAttendanceMnvForMatch,
-} from "@/utils/employeeRosterRecord";
+} from "@/utils/attendanceEmployeeRecord";
 import {
   getAttendanceComboFlags,
   normalizeTextValue,

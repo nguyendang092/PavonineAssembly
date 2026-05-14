@@ -876,7 +876,7 @@ const ko = {
     listSectionTitleResigned: "퇴사 처리된 인사 기록",
     title: "직원 명단",
     subtitle:
-      "별도 DB가 아닙니다. «일별» 탭과 «출석부» 페이지는 같은 Firebase 경로(attendance/날짜, employeeProfiles)를 씁니다. 같은 날짜면 같은 목록이며 한쪽에서 수정하면 다른 쪽에도 반영됩니다.",
+      "별도 DB가 아닙니다. «일별» 탭과 «출석부» 페이지는 같은 Firebase 경로(attendance/날짜)를 씁니다. 같은 날짜면 같은 목록이며 한쪽에서 수정하면 다른 쪽에도 반영됩니다.",
     syncWithAttendanceHint:
       "아래 «기준일»이 출석부에서 고른 날짜와 같으면 데이터가 동일합니다.",
     tabByDate: "일별",
@@ -1124,7 +1124,8 @@ const ko = {
     workShift: "근무조",
     attendance: "출근부",
     joinDate: "입사일",
-    workStatusColumn: "고용 상태",
+    contractDateColumn: "계약일",
+    workStatusColumn: "계약일",
     employmentStatusField: "재직 상태",
     employmentStatusPlaceholder: "— 선택 —",
     employmentStatusOfficial: "정규직",

@@ -1,5 +1,5 @@
 // AttendanceUploadHandler.js
-// Upload Excel: merge **chỉ** (1) `{attendanceRootPath}/{ngày}` đã có + (2) dòng Excel — không dùng employeeProfiles.
+// Upload Excel: merge (1) `{attendanceRootPath}/{ngày}` đã có + (2) dòng Excel.
 import * as XLSX from "@e965/xlsx";
 import { ref, set, get } from "firebase/database";
 import { getUploadErrorMessage } from "@/utils/uploadErrorMessage";
@@ -130,17 +130,28 @@ export const handleUploadExcel = async ({
     // Bỏ các dòng trước bảng dữ liệu (file xuất/mẫu có nhiều dòng đầu; legacy: 2 dòng header)
     const dataRows = rows.slice(dataRowStart);
 
-    /** Mẫu mới (sau cột «Ngày vào làm»): cột «Trạng thái LV». File cũ không có → bỏ qua. */
+    /** Mẫu mới (sau cột «Ngày vào làm»): cột «Ngày HĐ» (hoặc legacy «Trạng thái LV»). */
     const headerVnRow = rows[dataRowStart - 2];
     const headerNorm = Array.isArray(headerVnRow)
       ? headerVnRow.map((c) => normalizeHeaderCell(c))
       : [];
-    const hasTrangThaiCol =
+    const col6 = headerNorm[6] || "";
+    const hasContractDateCol =
       headerNorm.length > 6 &&
-      (headerNorm[6].includes("trạng thái") ||
-        headerNorm[6].includes("trang thai") ||
-        headerNorm[6].includes("employment status") ||
-        headerNorm[6].includes("work status"));
+      (col6.includes("hợp đồng") ||
+        col6.includes("hop dong") ||
+        col6.includes("ngày hđ") ||
+        col6.includes("ngay hd") ||
+        col6.includes("contract date") ||
+        col6.includes("contract"));
+    const hasTrangThaiCol =
+      !hasContractDateCol &&
+      headerNorm.length > 6 &&
+      (col6.includes("trạng thái") ||
+        col6.includes("trang thai") ||
+        col6.includes("employment status") ||
+        col6.includes("work status"));
+    const hasProfileExtraCol = hasContractDateCol || hasTrangThaiCol;
 
     // ✅ Hàm parse ngày CHUẨN - tránh lệch timezone
     const normalizeDate = (value) => {
@@ -241,8 +252,8 @@ export const handleUploadExcel = async ({
       const hoVaTen = row[i + 2];
       const gioiTinh = row[i + 3];
       const ngayVaoLamRaw = row[i + 4];
-      const maOffset = hasTrangThaiCol ? 6 : 5;
-      const trangThaiRaw = hasTrangThaiCol ? row[i + 5] : "";
+      const maOffset = hasProfileExtraCol ? 6 : 5;
+      const profileExtraRaw = hasProfileExtraCol ? row[i + 5] : "";
       const maBoPhan = row[i + maOffset];
       const boPhan = row[i + maOffset + 1];
       const gioVao = row[i + maOffset + 2];
@@ -284,7 +295,10 @@ export const handleUploadExcel = async ({
         : Object.keys(dataToUpload).length + 1;
 
       const trangThaiParsed = hasTrangThaiCol
-        ? parseTrangThaiLamViecFromExcel(trimCell(trangThaiRaw))
+        ? parseTrangThaiLamViecFromExcel(trimCell(profileExtraRaw))
+        : "";
+      const ngayHopDongParsed = hasContractDateCol
+        ? normalizeDate(profileExtraRaw)
         : "";
 
       dataToUpload[empKey] = {
@@ -295,6 +309,7 @@ export const handleUploadExcel = async ({
         hoVaTen: trimCell(hoVaTen),
         gioiTinh: trimCell(gioiTinh),
         ngayVaoLam: normalizeDate(ngayVaoLamRaw),
+        ...(ngayHopDongParsed ? { ngayHopDong: ngayHopDongParsed } : {}),
         ...(trangThaiParsed
           ? { trangThaiLamViec: trangThaiParsed }
           : {}),

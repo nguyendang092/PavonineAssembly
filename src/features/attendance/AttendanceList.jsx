@@ -220,11 +220,7 @@ function AttendanceList({
       "Mở danh sách ngày off và ngày lễ trong tháng; chỉnh sửa trong cửa sổ đầy đủ.",
     );
     const { off, holiday, compensatory } = monthOffAndHoliday;
-    if (
-      off.length === 0 &&
-      holiday.length === 0 &&
-      compensatory.length === 0
-    )
+    if (off.length === 0 && holiday.length === 0 && compensatory.length === 0)
       return hint;
     return `${hint}\n${tl(
       "dayOffToolbarTitleDates",
@@ -1127,7 +1123,8 @@ function AttendanceList({
     for (const emp of employees) {
       // Apply other filters except Department
       if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp)) continue;
-      if (!employeeMatchesLoaiPhepFilterSet(emp, deferredLoaiPhepFilterSet)) continue;
+      if (!employeeMatchesLoaiPhepFilterSet(emp, deferredLoaiPhepFilterSet))
+        continue;
       const deptLabel = String(emp.boPhan || "").trim();
       const deptKey = normalizeDepartment(deptLabel);
       if (!deptKey) continue;
@@ -1172,7 +1169,8 @@ function AttendanceList({
     for (const emp of employees) {
       // Apply other filters except Shift
       if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp)) continue;
-      if (!employeeMatchesLoaiPhepFilterSet(emp, deferredLoaiPhepFilterSet)) continue;
+      if (!employeeMatchesLoaiPhepFilterSet(emp, deferredLoaiPhepFilterSet))
+        continue;
       const empDeptKey = normalizeDepartment(emp.boPhan);
       if (selectedDeptKeys.size > 0 && !selectedDeptKeys.has(empDeptKey))
         continue;
@@ -3004,14 +3002,15 @@ function AttendanceList({
                                           ]);
                                         });
                                       } else {
-                                        const remove =
-                                          allLeaveTypeFilterValues;
+                                        const remove = allLeaveTypeFilterValues;
                                         startTransition(() => {
                                           setLoaiPhepFilter((prev) => {
                                             if (remove.length === 0)
                                               return prev;
                                             const rm = new Set(remove);
-                                            return prev.filter((x) => !rm.has(x));
+                                            return prev.filter(
+                                              (x) => !rm.has(x),
+                                            );
                                           });
                                         });
                                       }
@@ -3432,7 +3431,6 @@ function AttendanceList({
           onSaved={refreshMonthOffDays}
           attendanceRootPath={attendanceRootPath}
         />
-
 
         {showComboChartModal ? (
           <Suspense

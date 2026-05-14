@@ -63,7 +63,7 @@ export function canManageUserDepartmentMappings(user, userRole) {
 }
 
 /**
- * Xóa dòng điểm danh theo ngày hoặc xóa hồ sơ employeeProfiles:
+ * Xóa dòng điểm danh theo ngày:
  * chỉ Admin / HR (xem {@link isAdminAccess}), không cho vai trò manager bộ phận.
  */
 export function canDeleteEmployeeData(user, userRole) {

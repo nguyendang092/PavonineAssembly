@@ -1,5 +1,5 @@
 import { isAttendanceDayMetaKey } from "./attendanceDayMeta";
-import { sanitizeAttendanceDayNodeForUi } from "@/utils/employeeRosterRecord";
+import { sanitizeAttendanceDayNodeForUi } from "@/utils/attendanceEmployeeRecord";
 
 /**
  * Chỉ dùng trường điểm danh trên `attendance/{ngày}` — lọc bỏ trường hồ sơ / legacy gắn nhầm trên node.

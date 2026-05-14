@@ -3,11 +3,10 @@ import { useTranslation } from "react-i18next";
 import { db, ref, push, update, get } from "@/services/firebase";
 import {
   buildEmployeeAttendanceDayDocument,
-  employeeProfileStorageKeyFromMnv,
+  attendanceMnvStorageKey,
   formSliceForAttendanceDayDocument,
   mergeAttendanceDayNodeForPersist,
-  ROSTER_TRANG_THAI_VALUES,
-} from "@/utils/employeeRosterRecord";
+} from "@/utils/attendanceEmployeeRecord";
 import {
   canEditAttendanceForEmployee,
   canAddAttendanceForDepartment,
@@ -48,15 +47,7 @@ function applyLegacyIncludeTsNvAndCanonicalPhep(record) {
   };
 }
 
-const TRANG_THAI_OPTION_DEFAULTS = {
-  dang_lam: "Chính thức",
-  thu_viec: "Thử việc",
-  tam_nghi: "Tạm nghỉ",
-  thai_san: "Thai sản",
-  nghi_viec: "Nghỉ việc",
-};
-
-export const EMPTY_EMPLOYEE_FORM = {
+const EMPTY_EMPLOYEE_FORM = {
   id: "",
   stt: "",
   mnv: "",
@@ -64,7 +55,7 @@ export const EMPTY_EMPLOYEE_FORM = {
   hoVaTen: "",
   gioiTinh: "YES",
   ngayVaoLam: "",
-  trangThaiLamViec: "",
+  ngayHopDong: "",
   maBoPhan: "",
   boPhan: "",
   gioVao: "",
@@ -85,7 +76,7 @@ const employeeModalClearTimeButtonClass =
   "shrink-0 min-w-[6.5rem] rounded-lg border-2 border-slate-300 bg-slate-100 px-4 py-2 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 sm:text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
 
 /**
- * Modal thêm / cập nhật dòng điểm danh — chỉ ghi `attendance/{ngày}/{key}` (không employeeProfiles).
+ * Modal thêm / cập nhật dòng điểm danh — chỉ ghi `attendance/{ngày}/{key}`.
  * Dùng chung Điểm danh NV và màn tính lương — `update()` nên mọi màn `onValue` đồng bộ.
  */
 export default function AttendanceEmployeeFormModal({
@@ -259,19 +250,6 @@ export default function AttendanceEmployeeFormModal({
     }));
   }, []);
 
-  const handleTrangThaiLamViecSelect = useCallback((e) => {
-    const v = e.target.value;
-    setForm((prev) => ({
-      ...prev,
-      trangThaiLamViec:
-        v === ""
-          ? ""
-          : ROSTER_TRANG_THAI_VALUES.includes(v)
-            ? v
-            : String(v).trim(),
-    }));
-  }, []);
-
   const notify = (alert) => {
     onAlert?.(alert);
   };
@@ -287,7 +265,7 @@ export default function AttendanceEmployeeFormModal({
       return;
     }
 
-    const storageKey = employeeProfileStorageKeyFromMnv(form.mnv);
+    const storageKey = attendanceMnvStorageKey(form.mnv);
     if (!storageKey) {
       notify({
         show: true,
@@ -537,36 +515,16 @@ export default function AttendanceEmployeeFormModal({
           <div className="grid min-w-0 grid-cols-1 gap-2 sm:col-span-2 sm:grid-cols-2 sm:gap-4">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
-                {tl("employmentStatusField", "Trạng thái làm việc")}
+                {tl("contractDateColumn", "Ngày HĐ")}
               </label>
-              <select
-                name="trangThaiLamViec"
-                value={String(form.trangThaiLamViec ?? "").trim()}
-                onChange={handleTrangThaiLamViecSelect}
+              <input
+                type="date"
+                name="ngayHopDong"
+                value={form.ngayHopDong}
+                onChange={handleChange}
                 disabled={isRestrictedEdit}
-                className={employeeModalSelectFieldClass}
-              >
-                <option value="">
-                  {tl("employmentStatusPlaceholder", "— Chọn —")}
-                </option>
-                {(() => {
-                  const raw = String(form.trangThaiLamViec ?? "").trim();
-                  const isStd = ROSTER_TRANG_THAI_VALUES.includes(raw);
-                  return !isStd && raw ? (
-                    <option value={raw}>
-                      {raw} {tl("shiftCurrentValue", "(giá trị hiện tại)")}
-                    </option>
-                  ) : null;
-                })()}
-                {ROSTER_TRANG_THAI_VALUES.map((v) => (
-                  <option key={v} value={v}>
-                    {tl(
-                      `employmentStatusValue_${v}`,
-                      TRANG_THAI_OPTION_DEFAULTS[v] ?? v,
-                    )}
-                  </option>
-                ))}
-              </select>
+                className={`${employeeModalFieldClass} appearance-none`}
+              />
             </div>
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>

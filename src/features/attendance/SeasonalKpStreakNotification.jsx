@@ -6,7 +6,7 @@ import { getDateKeyBySubtractDays, parseLocalDateKey } from "@/utils/dateKey";
 import {
   sanitizeAttendanceDayNodeForUi,
   canonicalAttendanceMnvForMatch,
-} from "@/utils/employeeRosterRecord";
+} from "@/utils/attendanceEmployeeRecord";
 import { isAttendanceDayMetaKey } from "./attendanceDayMeta";
 import {
   applyLegacyGioVaoLeaveMigration,

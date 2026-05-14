@@ -17,7 +17,6 @@ import {
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
-import { formatTrangThaiLamViecPlain } from "@/features/attendance/attendanceEmploymentStatus";
 
 /** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 25 cột bảng. */
 const PAYROLL_EXCEL_COL_COUNT = 28;
@@ -190,7 +189,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     emp.hoVaTen ?? "",
     emp.gioiTinh ?? "",
     emp.ngayVaoLam ?? "",
-    formatTrangThaiLamViecPlain(emp.trangThaiLamViec),
+    emp.ngayHopDong ?? "",
     emp.maBoPhan ?? "",
     emp.boPhan ?? "",
     formatAttendanceTimeInColumnDisplay(emp.gioVao ?? ""),
@@ -314,7 +313,7 @@ function buildPayrollExcelFullHeaders(tlTable) {
     tlTable("fullName", "Họ và tên"),
     tlTable("gender", "Giới tính"),
     tlTable("joinDate", "Ngày vào làm"),
-    tlTable("workStatusColumn", "Trạng thái LV"),
+    tlTable("contractDateColumn", "Ngày HĐ"),
     tlTable("departmentCode", "Mã BP"),
     tlTable("department", "Bộ phận"),
     tlTable("timeIn", "Thời gian vào"),

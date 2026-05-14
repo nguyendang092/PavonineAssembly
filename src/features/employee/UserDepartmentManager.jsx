@@ -24,11 +24,11 @@ function UserDepartmentManager() {
   const [editing, setEditing] = useState(null);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
 
-  // Bộ phận: attendance (theo ngày) + employeeProfiles (hồ sơ tách tầng)
+  // Bộ phận: lấy từ attendance theo ngày
   useEffect(() => {
     const attendanceRef = ref(db, "attendance");
-    const profilesRef = ref(db, "employeeProfiles");
-    const collect = (attendanceRoot, profilesRoot) => {
+    const unsubscribe = onValue(attendanceRef, (snapshot) => {
+      const attendanceRoot = snapshot.val();
       const depts = new Set();
       if (attendanceRoot && typeof attendanceRoot === "object") {
         Object.values(attendanceRoot).forEach((dateData) => {
@@ -39,28 +39,9 @@ function UserDepartmentManager() {
           }
         });
       }
-      if (profilesRoot && typeof profilesRoot === "object") {
-        Object.values(profilesRoot).forEach((p) => {
-          if (p?.boPhan) depts.add(p.boPhan);
-        });
-      }
       setAvailableDepartments(Array.from(depts).sort());
-    };
-    let att = null;
-    let prof = null;
-    const flush = () => collect(att, prof);
-    const unsubA = onValue(attendanceRef, (snapshot) => {
-      att = snapshot.val();
-      flush();
     });
-    const unsubP = onValue(profilesRef, (snapshot) => {
-      prof = snapshot.val();
-      flush();
-    });
-    return () => {
-      unsubA();
-      unsubP();
-    };
+    return () => unsubscribe();
   }, []);
 
   // Load user-department mappings from Firebase
