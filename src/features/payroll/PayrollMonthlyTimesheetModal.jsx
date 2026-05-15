@@ -117,7 +117,7 @@ const MONTH_HEADER_ROW_TOPS_DEFAULT = {
 };
 
 /** Thu/phóng lưới: `zoom` trên khối bảng (ảnh hưởng cả sticky header / ảo hóa). */
-const TIMESHEET_ZOOM_LEVELS = [0.79, 0.85, 1, 1.15, 1.35];
+const TIMESHEET_ZOOM_LEVELS = [0.78, 0.85, 1, 1.15, 1.35];
 const TIMESHEET_ZOOM_STORAGE_KEY = "payrollMonthlyTimesheetZoomIdx";
 const TIMESHEET_ZOOM_DEFAULT_IDX = TIMESHEET_ZOOM_LEVELS.indexOf(1);
 
@@ -265,7 +265,7 @@ function monthTimesheetDayHeaderClass(pd, ch) {
   if (pd) {
     const dow = pd.getDay();
     if (dow === 0) return "bg-yellow-200 dark:bg-slate-700/55";
-    if (dow === 6) return "bg-slate-500 dark:bg-slate-600";
+    if (dow === 6) return "bg-slate-400 dark:bg-slate-600";
   }
   if (ch?.isHolidayDay) return "bg-teal-200 dark:bg-rose-900/40";
   if (ch?.isCompensatoryDay) return "bg-lime-200 dark:bg-teal-900/40";
@@ -278,7 +278,7 @@ function monthTimesheetDayBodyClass(pd, ch) {
   if (pd) {
     const dow = pd.getDay();
     if (dow === 0) return "bg-yellow-100 dark:bg-slate-800/55";
-    if (dow === 6) return "bg-slate-400 dark:bg-slate-700";
+    if (dow === 6) return "bg-slate-200 dark:bg-slate-700";
   }
   if (ch?.isHolidayDay) return "bg-teal-100 dark:bg-amber-950/25";
   if (ch?.isCompensatoryDay) return "bg-lime-100 dark:bg-teal-950/25";
