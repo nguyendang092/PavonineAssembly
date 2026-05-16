@@ -4,7 +4,10 @@ import {
   getPayrollMonthlyMainRowCell,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import { isDuocNghiBuExplicitlyNo } from "@/features/attendance/attendanceDayMeta";
-import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
+import {
+  isNightShiftCaLamViec,
+  roundHoursForPayrollDisplay,
+} from "@/features/attendance/attendanceWorkingHours";
 import { normalizeDateForHtmlInput } from "@/utils/attendanceEmployeeRecord";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
@@ -100,6 +103,17 @@ export function countMonthlyStandardWorkDays(monthKeys) {
   return countPhaseCalendarWorkDaysInMonth(monthKeys, "", "", null);
 }
 
+/**
+ * Thứ Bảy được đánh dấu «Ngày off» (không phải lễ / nghỉ bù) — khối SAT.S.
+ * @param {string} dateKey
+ * @param {{ isOffDay?: boolean, isHolidayDay?: boolean } | null | undefined} ch
+ */
+export function isPayrollSaturdayOffWorkDay(dateKey, ch) {
+  if (!ch?.isOffDay || ch.isHolidayDay) return false;
+  const pd = parseLocalDateKey(dateKey);
+  return Boolean(pd && pd.getDay() === 6);
+}
+
 function leaveUnitsByCode(leaveShort, code) {
   const t = String(leaveShort ?? "")
     .trim()
@@ -174,6 +188,8 @@ export function buildMonthlyRuleSummary(
     coeff39: 0,
     sats20: 0,
     sats27: 0,
+    /** Thứ Bảy OFF có giờ công — đếm ngày công riêng (hiển thị cột SAT.S). */
+    satsWorkDays: 0,
     soNgayCong: soNgayCongChuan,
   });
 
@@ -188,6 +204,17 @@ export function buildMonthlyRuleSummary(
     out.coeff27 += Number(coeffMap.get(2.7) || 0);
     out.coeff30 += Number(coeffMap.get(3.0) || 0);
     out.coeff39 += Number(coeffMap.get(3.9) || 0);
+  };
+
+  /**
+   * Thứ Bảy OFF: giờ vẫn vào TC off (×2.0) / TC ca đêm off (×2.7);
+   * cột SAT.S (×2.7): thêm bản sao giờ khi ca đêm S2.
+   */
+  const addSaturdaySatOverlay = (out, coeffMap, dateKey, ch, emp) => {
+    if (!isPayrollSaturdayOffWorkDay(dateKey, ch)) return;
+    if (!isNightShiftCaLamViec(emp?.caLamViec)) return;
+    const h27 = Number(coeffMap.get(2.7) || 0);
+    if (h27 > 0) out.sats27 += h27;
   };
 
   const isNbVisibleForCompDay = (ch, emp) => {
@@ -232,12 +259,13 @@ export function buildMonthlyRuleSummary(
     return dayAdd;
   };
 
-  const applyDayToSummary = (out, ch, emp) => {
+  const applyDayToSummary = (out, ch, emp, dateKey) => {
     if (!emp) {
       if (ch.isHolidayDay || isNbVisibleForCompDay(ch, null)) out.workDays += 1;
       return;
     }
 
+    const saturdayOff = isPayrollSaturdayOffWorkDay(dateKey, ch);
     const main = getPayrollMonthlyMainRowCell(emp, ch);
     const coeffMap = getPayrollMonthlyCoeffHoursMap({
       gioVao: emp.gioVao,
@@ -276,10 +304,16 @@ export function buildMonthlyRuleSummary(
       out.workDays += 1;
     } else {
       addWorkedHours(coeffSum);
-      out.workDays += computeHolidayWorkCreditForDash(ch, coeffSum, emp);
+      if (saturdayOff && coeffSum > 0) {
+        out.satsWorkDays += 1;
+        out.workDays += 1;
+      } else {
+        out.workDays += computeHolidayWorkCreditForDash(ch, coeffSum, emp);
+      }
     }
 
     addCoeffHoursToTotals(out, coeffMap);
+    addSaturdaySatOverlay(out, coeffMap, dateKey, ch, emp);
   };
 
   for (const dk of monthKeys) {
@@ -290,11 +324,11 @@ export function buildMonthlyRuleSummary(
     const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
     const phase = monthlyWorkPhaseForDateKey(dk, join, contract);
 
-    applyDayToSummary(total, ch, emp);
+    applyDayToSummary(total, ch, emp, dk);
     if (hasContract && phase === "trial") {
-      applyDayToSummary(trial, ch, emp);
+      applyDayToSummary(trial, ch, emp, dk);
     } else if (phase === "official") {
-      applyDayToSummary(official, ch, emp);
+      applyDayToSummary(official, ch, emp, dk);
     }
   }
 
@@ -338,6 +372,12 @@ function valuesForDetailBlock({
     if (coeffIdx != null && idx === 8 + coeffIdx) {
       return fmt(tcByRow[coeffIdx]);
     }
+    if (si === 0 && idx === 14) {
+      const n = summary.satsWorkDays;
+      return Number.isFinite(n) && n > 0 ? String(Math.round(n)) : " ";
+    }
+    if (si === 3 && idx === 14) return fmt(summary.sats20);
+    if (si === 4 && idx === 15) return fmt(summary.sats27);
     return " ";
   });
 }

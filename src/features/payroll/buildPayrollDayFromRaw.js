@@ -27,6 +27,7 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "includeThaiSanInWorkingHours",
   "includeTsNvInWorkingHours",
   "payrollEarlyOtPaperwork",
+  "payrollLateOtExcluded",
 ];
 
 function sortPayrollEmployeesStable(rows) {

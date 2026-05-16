@@ -288,11 +288,6 @@ export function canonicalAttendanceLoaiPhepValue(raw) {
   return matchAttendanceLoaiPhepOptionIncludingAliases(t)?.value ?? t;
 }
 
-/**
- * @deprecated Dùng `ATTENDANCE_LOAI_PHEP_OPTIONS`. Tên cũ gắn với thói quen nhập loại phép vào «Giờ vào».
- */
-export const ATTENDANCE_GIO_VAO_TYPE_OPTIONS = ATTENDANCE_LOAI_PHEP_OPTIONS;
-
 /** Gập dấu / khoảng trắng — dùng khớp nhập tay, Excel, NBSP */
 export function foldGioVaoCompare(s) {
   return String(s ?? "")

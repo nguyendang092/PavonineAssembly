@@ -534,6 +534,12 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
         if (coeffIdx != null && idx === 8 + coeffIdx) {
           return fmt(tcByRow[coeffIdx]);
         }
+        if (si === 0 && idx === 14) {
+          const n = summary.satsWorkDays;
+          return Number.isFinite(n) && n > 0 ? String(Math.round(n)) : " ";
+        }
+        if (si === 3 && idx === 14) return fmt(summary.sats20);
+        if (si === 4 && idx === 15) return fmt(summary.sats27);
         return " ";
       });
 
@@ -798,8 +804,6 @@ export default function PayrollMonthlyTimesheetModal({
   departmentFilter = "",
   /** Danh sách BP trên trang lương (`PayrollSalaryCalculator`) — đồng bộ ô «Tất cả bộ phận». */
   payrollDepartmentOptions,
-  /** Tập NV đang hiển thị ở bảng giờ công nhân viên (ngày đang chọn). */
-  currentEmployeeIds,
   /** Gọi khi đổi BP trong modal — giữ một state với `departmentFilter` trên trang lương. */
   onDepartmentFilterChange,
   normalizeDepartment = (v) =>
@@ -1103,17 +1107,10 @@ export default function PayrollMonthlyTimesheetModal({
 
   const effectiveDepartmentFilter = departmentFilter || "";
   const effectiveSearchTerm = localNameFilter || searchTerm || "";
-  const visibleEmployeeIdSet = useMemo(
-    () => new Set(Array.isArray(currentEmployeeIds) ? currentEmployeeIds : []),
-    [currentEmployeeIds],
-  );
 
   const filteredIds = useMemo(() => {
     return sortedIds
       .filter((id) => {
-        if (visibleEmployeeIdSet.size > 0 && !visibleEmployeeIdSet.has(id)) {
-          return false;
-        }
         const rep = repById.get(id);
         return (
           rep &&
@@ -1132,7 +1129,6 @@ export default function PayrollMonthlyTimesheetModal({
   }, [
     sortedIds,
     repById,
-    visibleEmployeeIdSet,
     effectiveSearchTerm,
     effectiveDepartmentFilter,
     normalizeDepartment,
@@ -1227,7 +1223,7 @@ export default function PayrollMonthlyTimesheetModal({
       "TC ca đêm ngày off (X2.7)",
       "TC ngày lễ (X3.0)",
       "TC đêm ngày lễ (x3.9)",
-      "Sat.S (X2.0)",
+      "Sat.S ngày công / (X2.0)",
       "Sat.S (X2.7)",
     ],
     [tlPage],
@@ -2069,6 +2065,16 @@ export default function PayrollMonthlyTimesheetModal({
                                       ) {
                                         return fmt(tcByRow[coeffIdx]);
                                       }
+                                      if (si === 0 && idx === 14) {
+                                        const n = s.satsWorkDays;
+                                        return Number.isFinite(n) && n > 0
+                                          ? String(Math.round(n))
+                                          : " ";
+                                      }
+                                      if (si === 3 && idx === 14)
+                                        return fmt(s.sats20);
+                                      if (si === 4 && idx === 15)
+                                        return fmt(s.sats27);
                                       return " ";
                                     },
                                   );

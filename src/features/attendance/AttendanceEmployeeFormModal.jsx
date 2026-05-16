@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { db, ref, push, update, get } from "@/services/firebase";
+import { db, ref, update, get } from "@/services/firebase";
 import {
   buildEmployeeAttendanceDayDocument,
   attendanceMnvStorageKey,
   formSliceForAttendanceDayDocument,
   mergeAttendanceDayNodeForPersist,
+  resolveAttendanceFormPersistTarget,
 } from "@/utils/attendanceEmployeeRecord";
 import {
   canEditAttendanceForEmployee,
@@ -349,20 +350,43 @@ export default function AttendanceEmployeeFormModal({
         const loaiPhepToSave = canonicalAttendanceLoaiPhep(
           String(form.loaiPhep ?? "").trim(),
         );
-        const newRef = push(ref(db, `${attendanceRootPath}/${selectedDate}`));
-        const newKey = newRef.key;
+        const firebaseKeyPreview = resolveAttendanceFormPersistTarget({
+          storageKey,
+        });
+        if (!firebaseKeyPreview) {
+          notify({
+            show: true,
+            type: "error",
+            message: t("attendanceList.error"),
+          });
+          return;
+        }
+        const { firebaseKey } = firebaseKeyPreview;
+        const daySnap = await get(
+          ref(db, `${attendanceRootPath}/${selectedDate}/${firebaseKey}`),
+        );
+        const existingRaw = daySnap.val() || {};
+        const addTarget = resolveAttendanceFormPersistTarget({
+          storageKey,
+          existingRaw,
+        });
         const dayDoc = buildEmployeeAttendanceDayDocument({
           form: formSliceForAttendanceDayDocument(form, {
             businessId: storageKey,
             loaiPhep: loaiPhepToSave,
           }),
-          existing: {},
+          existing: existingRaw,
         });
+        const path = `${attendanceRootPath}/${selectedDate}/${firebaseKey}`;
         await update(ref(db), {
-          [`${attendanceRootPath}/${selectedDate}/${newKey}`]: {
-            ...dayDoc,
-            id: newKey,
-          },
+          [path]:
+            addTarget?.mode === "add-merge"
+              ? mergeAttendanceDayNodeForPersist(
+                  existingRaw,
+                  dayDoc,
+                  firebaseKey,
+                )
+              : { ...dayDoc, id: firebaseKey },
         });
         onClose();
         notify({

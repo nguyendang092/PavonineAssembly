@@ -6,7 +6,7 @@ import {
   getAttendanceLeaveTypeColorClassNameForEmployee,
 } from "./attendanceGioVaoTypeOptions";
 import {
-  formatPayrollDayOvertimeHoursCell,
+  formatPayrollTableDayShiftOvertimeCell,
   formatPayrollTableHolidayDayWorkingCell,
   formatPayrollTableHolidayNightWorkingCell,
   formatPayrollTableNightShiftOffDayWorkingCell,
@@ -95,7 +95,7 @@ const ATTENDANCE_GRID_COL = {
   offDay: 14,
   holidayDay: 15,
   workingHours: 16,
-  overtimeHours: 17,
+  dayShiftOvertimeHours: 17,
   offDayOvertimeHours: 18,
   holidayDayWorkingHours: 19,
   payrollTotalGcDay: 20,
@@ -122,7 +122,7 @@ const ATTENDANCE_GRID_COL_COMPACT_WITH_ACTIONS = {
   offDay: 11,
   holidayDay: 12,
   workingHours: 13,
-  overtimeHours: 14,
+  dayShiftOvertimeHours: 14,
   offDayOvertimeHours: 15,
   holidayDayWorkingHours: 16,
   payrollTotalGcDay: 17,
@@ -148,7 +148,7 @@ const ATTENDANCE_GRID_COL_COMPACT_NO_ACTIONS = {
   offDay: 11,
   holidayDay: 12,
   workingHours: 13,
-  overtimeHours: 14,
+  dayShiftOvertimeHours: 14,
   offDayOvertimeHours: 15,
   holidayDayWorkingHours: 16,
   payrollTotalGcDay: 17,
@@ -173,7 +173,7 @@ const ATTENDANCE_GRID_COL_NARROW_WITH_ACTIONS = {
   offDay: 10,
   holidayDay: 11,
   workingHours: 12,
-  overtimeHours: 13,
+  dayShiftOvertimeHours: 13,
   offDayOvertimeHours: 14,
   holidayDayWorkingHours: 15,
   payrollTotalGcDay: 16,
@@ -198,7 +198,7 @@ const ATTENDANCE_GRID_COL_NARROW_NO_ACTIONS = {
   offDay: 10,
   holidayDay: 11,
   workingHours: 12,
-  overtimeHours: 13,
+  dayShiftOvertimeHours: 13,
   offDayOvertimeHours: 14,
   holidayDayWorkingHours: 15,
   payrollTotalGcDay: 16,
@@ -218,7 +218,7 @@ const ATTENDANCE_GRID_COL_MINIMAL_WITH_ACTIONS = {
   offDay: 6,
   holidayDay: 7,
   workingHours: 8,
-  overtimeHours: 9,
+  dayShiftOvertimeHours: 9,
   offDayOvertimeHours: 10,
   holidayDayWorkingHours: 11,
   payrollTotalGcDay: 12,
@@ -239,7 +239,7 @@ const ATTENDANCE_GRID_COL_MINIMAL_NO_ACTIONS = {
   offDay: 6,
   holidayDay: 7,
   workingHours: 8,
-  overtimeHours: 9,
+  dayShiftOvertimeHours: 9,
   offDayOvertimeHours: 10,
   holidayDayWorkingHours: 11,
   payrollTotalGcDay: 12,
@@ -415,7 +415,7 @@ export function getAttendanceGridColumnStart(
     }
     if (
       key === "workingHours" ||
-      key === "overtimeHours" ||
+      key === "dayShiftOvertimeHours" ||
       key === "offDayOvertimeHours" ||
       key === "holidayDayWorkingHours" ||
       key === "holidayNightWorkingHours" ||
@@ -796,16 +796,16 @@ export function AttendanceVirtualHeader({
             <div
               role="columnheader"
               style={{
-                gridColumnStart: gcs("overtimeHours"),
+                gridColumnStart: gcs("dayShiftOvertimeHours"),
                 background: "#fb923c",
               }}
               className="flex min-w-0 items-center justify-center py-px px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:px-2 md:py-0.5 md:text-xs"
               title={tl(
-                "overtimeHoursHint",
-                "Giờ ra sau 17:30: tính từ 17:00, cứ 30 phút = 0,5 giờ tăng ca.",
+                "dayShiftOvertimeHoursHint",
+                "Ca ngày: giờ ra sau 17:30 (từ 17:00, 30 phút = 0,5h). Vào ≤ 06:00 có thể +2h khi có giấy TC. Ca đêm: «-».",
               )}
             >
-              {tl("overtimeHours", "Giờ TC")}
+              {tl("dayShiftOvertimeHours", "TC ca ngày (×1.5)")}
             </div>
             <div
               role="columnheader"
@@ -875,7 +875,7 @@ export function AttendanceVirtualHeader({
                 "Ca đêm: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ TC.",
               )}
             >
-              {tl("nightShiftOvertimeHours", "TC ca đêm")}
+              {tl("nightShiftOvertimeHours", "TC ca đêm (×1.5)")}
             </div>
             <div
               role="columnheader"
@@ -1117,16 +1117,16 @@ export function AttendanceVirtualHeader({
           <div
             role="columnheader"
             style={{
-              gridColumnStart: gcs("overtimeHours"),
+              gridColumnStart: gcs("dayShiftOvertimeHours"),
               background: "#fb923c",
             }}
             className="hidden min-w-0 items-center justify-center py-px px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:flex md:px-2 md:py-0.5 md:text-xs"
             title={tl(
-              "overtimeHoursHint",
-              "Giờ ra sau 17:30: tính từ 17:00, cứ 30 phút = 0,5 giờ tăng ca.",
+              "dayShiftOvertimeHoursHint",
+              "Ca ngày: giờ ra sau 17:30. Ca đêm: «-» (xem TC ca đêm).",
             )}
           >
-            {tl("overtimeHours", "Giờ TC")}
+            {tl("dayShiftOvertimeHours", "TC ca ngày (×1.5)")}
           </div>
           <div
             role="columnheader"
@@ -1364,18 +1364,18 @@ export function AttendanceTableThead({
                 className="px-1 md:px-1.5 py-px md:py-0.5 text-[10px] md:text-xs font-extrabold uppercase tracking-wide text-center text-gray-900"
                 style={{ background: "#fb923c" }}
                 title={tl(
-                  "overtimeHoursHint",
-                  "Giờ ra sau 17:30: tính từ 17:00, cứ 30 phút = 0,5 giờ tăng ca.",
+                  "dayShiftOvertimeHoursHint",
+                  "Ca ngày: giờ ra sau 17:30. Ca đêm: «-» (xem TC ca đêm).",
                 )}
               >
-                {tl("overtimeHours", "Giờ TC")}
+                {tl("dayShiftOvertimeHours", "TC ca ngày (×1.5)")}
               </th>
               <th
                 className="px-1 md:px-1.5 py-px md:py-0.5 text-[9px] md:text-xs font-extrabold uppercase tracking-wide text-center leading-tight text-gray-900"
                 style={{ background: "#c4b5fd" }}
                 title={tl(
                   "payrollOffDayTcHint",
-                  "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô; cột Giờ TC là «-».",
+                  "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô; cột TC ca ngày là «-».",
                 )}
               >
                 {tl("offDayOvertimeHours", "TC off")}
@@ -1418,7 +1418,7 @@ export function AttendanceTableThead({
                   "Ca đêm: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ TC.",
                 )}
               >
-                {tl("nightShiftOvertimeHours", "TC ca đêm")}
+                {tl("nightShiftOvertimeHours", "TC ca đêm (×1.5)")}
               </th>
               <th
                 className="px-1 md:px-1.5 py-px md:py-0.5 text-[9px] md:text-xs font-extrabold uppercase tracking-wide text-center leading-tight text-gray-900"
@@ -1639,11 +1639,11 @@ export function AttendanceTableThead({
               )}
               style={{ background: "#fb923c" }}
               title={tl(
-                "overtimeHoursHint",
-                "Giờ ra sau 17:30: tính từ 17:00, cứ 30 phút = 0,5 giờ tăng ca.",
+                "dayShiftOvertimeHoursHint",
+                "Ca ngày: giờ ra sau 17:30. Ca đêm: «-» (xem TC ca đêm).",
               )}
             >
-              {tl("overtimeHours", "Giờ TC")}
+              {tl("dayShiftOvertimeHours", "TC ca ngày (×1.5)")}
             </th>
             <th
               className={cellClsForAttendanceTable(
@@ -1652,7 +1652,7 @@ export function AttendanceTableThead({
               style={{ background: "#c4b5fd" }}
               title={tl(
                 "payrollOffDayTcHint",
-                "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô; cột Giờ TC là «-».",
+                "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô; cột TC ca ngày là «-».",
               )}
             >
               {tl("offDayOvertimeHours", "TC off")}
@@ -1703,7 +1703,7 @@ export function AttendanceTableThead({
                 "Ca đêm: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ TC.",
               )}
             >
-              {tl("nightShiftOvertimeHours", "TC ca đêm")}
+              {tl("nightShiftOvertimeHours", "TC ca đêm (×1.5)")}
             </th>
             <th
               className={cellClsForAttendanceTable(
@@ -2255,17 +2255,20 @@ function AttendanceTableRow({
           </Cell>
           <Cell
             role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("overtimeHours"))}
+            style={attendanceGridCellStyle(
+              isGrid,
+              gcs("dayShiftOvertimeHours"),
+            )}
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-orange-50/90 dark:bg-orange-950/25",
             )}
             title={tl(
-              "overtimeHoursHint",
-              "Giờ ra sau 17:30: từ 17:00, cứ 30 phút = 0,5 giờ TC. Vào ≤ 06:00 (ca ngày): có thể cộng thêm 2h TC (06:00–08:00) khi xác nhận có giấy tăng ca trên màn lương.",
+              "dayShiftOvertimeHoursHint",
+              "Ca ngày: giờ ra sau 17:30. Ca đêm: «-» (xem TC ca đêm).",
             )}
           >
             <span className="font-bold tabular-nums text-orange-900 dark:text-orange-100">
-              {formatPayrollDayOvertimeHoursCell(
+              {formatPayrollTableDayShiftOvertimeCell(
                 emp.gioVao,
                 emp.gioRa,
                 isOffDay,

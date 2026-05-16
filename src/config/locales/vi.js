@@ -878,10 +878,12 @@ const vi = {
     timeOutClearHint: "Xóa thời gian ra (để trống)",
     workingHours: "Giờ công",
     workingHoursHint:
-      "Giờ vào–ra dạng HH:MM. Ca ngày: vào từ 06:00 đến trước 08:00 thì mốc tính là 08:00; vào trước 06:00 giữ giờ chấm thực. Giờ công = min(chênh lệch, 8h); ra sau 17:30 → cột Giờ TC.",
+      "Giờ vào–ra dạng HH:MM. Ca ngày: vào từ 06:00 đến trước 08:00 thì mốc tính là 08:00; vào trước 06:00 giữ giờ chấm thực. Giờ công = min(chênh lệch, 8h); ca đêm: xem cột GC/TC ca đêm.",
+    dayShiftOvertimeHours: "Giờ công tăng ca (×1.5)",
+    dayShiftOvertimeHoursHint:
+      "Ca ngày (không S2): giờ ra sau 17:30 — tính từ 17:00, 30 phút = 0,5 giờ. Vào ≤ 06:00 có thể +2h khi có giấy TC. Ca đêm: «-».",
     overtimeHours: "Giờ công tăng ca (x1.5)",
-    overtimeHoursHint:
-      "Giờ ra sau 17:30: tính tăng ca từ 17:00, cứ 30 phút = 0,5 giờ.",
+    overtimeHoursHint: "Đã thay bằng cột «TC ca ngày (×1.5)» trên bảng lương.",
     offDayOvertimeHours: "Giờ công ngày off (x2.0)",
     offDayOvertimeHoursHint:
       "Cột legacy: không còn dùng cho giờ làm ngày off (giờ đó nằm ở cột Giờ công). Luôn «-».",
@@ -891,12 +893,12 @@ const vi = {
     workShift: "Ca làm việc",
     holidayDayWorkingHours: "Giờ công ngày lễ (X3.0)",
     payrollOffDayTcHint:
-      "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô; cột Giờ TC là «-».",
+      "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô; cột TC ca ngày là «-».",
     payrollHolidayDayWorkingHoursHint:
       "Khi cột ngày lễ là HOLIDAY thì giờ công sẽ hiển thị ở cột giờ công ngày lễ.",
     payrollTotalGcDay: "Tổng GC",
     payrollTotalGcDayHint:
-      "Tổng khối ngày: Giờ công + Giờ TC; ngày off/lễ ca ngày ≈ một cột TC off/GC lễ đã gộp (cột Giờ TC «-»); không gồm cột ca đêm.",
+      "Tổng khối ngày: Giờ công + TC ca ngày; ngày off/lễ ca ngày ≈ TC off/GC lễ đã gộp (cột TC ca ngày «-»); không gồm ca đêm.",
     payrollTotalGcNight: "Tổng GC ca đêm",
     payrollTotalGcNightHint:
       "Tổng khối ca đêm: GC + TC; ngày off/lễ ca đêm gộp một số (cột TC ca đêm «-»).",
@@ -904,9 +906,9 @@ const vi = {
     nightShiftWorkingHours: "Giờ công ca đêm",
     nightShiftWorkingHoursHint:
       "Chỉ khi ca «Ca đêm»: thời lượng từ giờ vào đến mốc 05:00 (05:00 cùng ngày nếu vào trước 05:00, không thì 05:00 ngày hôm sau), tối đa 8 giờ.",
-    nightShiftOvertimeHours: "Giờ công tăng ca (ca đêm) (X1.5)",
+    nightShiftOvertimeHours: "Giờ công tăng ca ca đêm (×1.5)",
     nightShiftOvertimeHoursHint:
-      "Chỉ khi ca «Ca đêm»: phần làm sau mốc 05:00 — cứ 30 phút = 0,5 giờ tăng ca.",
+      "Ca đêm (S2): phần làm sau mốc 05:00 (ngày hôm sau) — 30 phút = 0,5 giờ. Ngày off/lễ: «-» (gộp ở GC ca đêm off/lễ).",
     nightShiftOffDayWorkingHours: "Giờ công ca đêm ngày OFF (X2.7)",
     nightShiftOffDayWorkingHoursHint:
       "Khi «Ngày off» và ca «Ca đêm»: GC + TC ca đêm gộp (cùng quy tắc mốc 05:00 như ngày thường); cột TC ca đêm «-». Ngày không off thì trống.",
@@ -1031,8 +1033,10 @@ const vi = {
     pageSubtitle: "Bảng giờ công nhân viên dựa trên dữ liệu chấm công.",
     table: {
       payrollWorkingHoursHint: "Giờ công sẽ được tính theo giờ vào và giờ ra.",
+      dayShiftOvertimeHoursHint:
+        "Ca ngày: giờ ra sau 17:30. Ca đêm (S2): «-» — xem TC ca đêm.",
       payrollOffDayTcHint:
-        "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô (tối đa 8h cho phần khung như điểm danh); cột Giờ TC là «-».",
+        "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô; cột TC ca ngày là «-».",
       payrollHolidayDayWorkingHoursHint:
         "Khi cột ngày lễ là HOLIDAY thì giờ công sẽ hiển thị ở cột giờ công ngày lễ.",
       nightShiftWorkingHoursHint:
@@ -1045,7 +1049,7 @@ const vi = {
         "Ngày lễ + ca đêm: GC + TC ca đêm gộp; cột TC ca đêm «-»; cột GC ca đêm «-».",
       payrollTotalGcDay: "Tổng giờ công",
       payrollTotalGcDayHint:
-        "Tổng khối ngày: Giờ công + Giờ TC; ngày off/lễ ca ngày ≈ một cột TC off/GC lễ đã gộp (cột Giờ TC «-»); không gồm cột ca đêm.",
+        "Tổng khối ngày: Giờ công + TC ca ngày; ngày off/lễ ca ngày ≈ TC off/GC lễ đã gộp; không gồm ca đêm.",
       payrollTotalGcNight: "Tổng giờ công ca đêm",
       payrollTotalGcNightHint:
         "Tổng khối ca đêm: GC + TC; ngày off/lễ ca đêm gộp một số (cột TC ca đêm «-»).",

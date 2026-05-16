@@ -6,6 +6,7 @@
  */
 import path from "path";
 import { fileURLToPath } from "url";
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -30,5 +31,9 @@ export default defineConfig({
     // và lỗi runtime "Cannot access before initialization" trên bản production.
     // AttendanceList + SeasonalStaff import tĩnh trong App (tránh lỗi fetch lazy trong dev).
     chunkSizeWarningLimit: 3200,
+  },
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.js"],
   },
 });

@@ -11,11 +11,13 @@ import {
 export const EMPLOYEE_DEPT_CATALOG_PATH = "employeeDepartments";
 
 /**
- * MNV trên node điểm danh (`businessId` / `mnv` đã lưu): trim + bỏ khoảng trắng nội bộ.
- * Trả chuỗi rỗng nếu không có mã — dùng validate trước khi lưu form điểm danh.
+ * Chuẩn MNV duy nhất: trim, bỏ mọi khoảng trắng; giữ chữ/số/ký tự mã (vd. PAVO123).
+ * Không gộp tiền tố, không ép hoa/thường, không ép kiểu số (giữ leading zero nếu có).
  */
 export function attendanceMnvStorageKey(mnvRaw) {
-  return normalizeMnvSuffix(mnvRaw);
+  return String(mnvRaw ?? "")
+    .trim()
+    .replace(/\s+/g, "");
 }
 
 export function normalizeEmployeeCode(value) {
@@ -24,20 +26,54 @@ export function normalizeEmployeeCode(value) {
     .replace(/\s+/g, " ");
 }
 
-/** MNV / mã hiển thị: trim và bỏ khoảng trắng nội bộ (không ép PAVO / in hoa). */
+/** Alias — dùng `attendanceMnvStorageKey`. */
 export function normalizeMnvSuffix(value) {
-  return String(value ?? "")
-    .trim()
-    .replace(/\s+/g, "");
+  return attendanceMnvStorageKey(value);
+}
+
+/**
+ * Khóa con Firebase RTDB: `emp_{mnv}` — đồng bộ upload / thêm NV theo mã.
+ * Ký tự không hợp lệ trong path (`. # $ [ ] /`) được thay bằng `_`.
+ */
+export function attendanceFirebaseKeyFromMnv(mnvNormalized) {
+  const m = attendanceMnvStorageKey(mnvNormalized);
+  if (!m) return "";
+  const safe = m.replace(/[.#$[\]/]/g, "_");
+  return `emp_${safe}`;
+}
+
+/**
+ * Firebase child key + chế độ ghi khi lưu form điểm danh (thêm / sửa).
+ * @returns {{ firebaseKey: string; recordId: string; mode: "edit" | "add-create" | "add-merge" } | null}
+ */
+export function resolveAttendanceFormPersistTarget({
+  editAttendanceKey,
+  storageKey,
+  existingRaw = {},
+}) {
+  if (editAttendanceKey) {
+    return {
+      firebaseKey: editAttendanceKey,
+      recordId: editAttendanceKey,
+      mode: "edit",
+    };
+  }
+  const firebaseKey = attendanceFirebaseKeyFromMnv(storageKey);
+  if (!firebaseKey) return null;
+  return {
+    firebaseKey,
+    recordId: firebaseKey,
+    mode: existingRaw?.mnv ? "add-merge" : "add-create",
+  };
 }
 
 /**
  * Excel: ưu tiên cột id, sau đó cột mnv — không gộp tiền tố.
  */
 export function resolveExcelBusinessId(idCell, mnvCell) {
-  const idRaw = String(idCell ?? "").trim();
-  const mnvRaw = String(mnvCell ?? "").trim();
-  return idRaw || mnvRaw || "";
+  const raw =
+    String(idCell ?? "").trim() || String(mnvCell ?? "").trim();
+  return attendanceMnvStorageKey(raw);
 }
 
 /** RTDB push ids look like -Ox0abcd123... */
@@ -46,16 +82,14 @@ export function isLikelyFirebasePushKey(v) {
   return /^-[A-Za-z0-9_-]{10,}$/.test(s);
 }
 
-/**
- * So khớp MNV giữa các nguồn: trim + bỏ khoảng trắng nội bộ (không tiền tố PAVO).
- */
+/** So khớp MNV giữa các nguồn — cùng quy tắc `attendanceMnvStorageKey`. */
 export function canonicalAttendanceMnvForMatch(raw) {
-  return normalizeMnvSuffix(raw);
+  return attendanceMnvStorageKey(raw);
 }
 
 /** MNV nếu có; không thì `id` bản ghi (bỏ qua push key Firebase). */
 export function businessEmployeeCode(emp) {
-  const m = normalizeMnvSuffix(String(emp?.mnv ?? ""));
+  const m = attendanceMnvStorageKey(String(emp?.mnv ?? ""));
   if (m) return m;
   const id = String(emp?.id ?? "").trim();
   if (id && !isLikelyFirebasePushKey(id)) return id;
@@ -258,7 +292,7 @@ export function pickAttendanceDayFields(raw) {
 export function normalizeAttendanceDayRowDisplay(emp) {
   if (!emp || typeof emp !== "object") return emp;
   const mnvDisplay =
-    normalizeMnvSuffix(emp.mnv) || String(emp.mnv ?? "").trim();
+    attendanceMnvStorageKey(emp.mnv) || String(emp.mnv ?? "").trim();
   const out = {
     ...emp,
     mnv: mnvDisplay || String(emp.mnv ?? "").trim(),
@@ -373,9 +407,8 @@ function attendanceDayNonWipingOptionalStringFromForm(form, key) {
  * attendance/{date}/{key}: stt + mnv + trường chấm công theo ngày.
  */
 export function buildEmployeeAttendanceDayDocument({ form, existing = {} }) {
-  const businessId = normalizeEmployeeCode(form.businessId ?? form.mnv ?? "");
   const mnvStored =
-    normalizeMnvSuffix(businessId) || businessId || undefined;
+    attendanceMnvStorageKey(form.businessId ?? form.mnv ?? "") || undefined;
   const sttNum =
     form.stt !== "" && form.stt != null && Number.isFinite(Number(form.stt))
       ? Number(form.stt)

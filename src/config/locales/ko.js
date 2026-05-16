@@ -878,9 +878,12 @@ const ko = {
     timeOutClearHint: "퇴근 시간 비우기",
     workingHours: "근무시간",
     workingHoursHint:
-      "HH:MM. 주간: 출근이 06:00~08:00 미만이면 기준 출근은 08:00; 06:00 미만은 실제 출근 시각 유지. 근무시간=min(차이, 8시간); 퇴근이 17:30 이후면 연장 열 참고.",
+      "HH:MM. 주간: 출근 06:00~08:00 미만이면 08:00 기준. 야간(S2)은 야간 GC/연장 열 참고.",
+    dayShiftOvertimeHours: "주간 연장 (×1.5)",
+    dayShiftOvertimeHoursHint:
+      "주간(비 S2): 퇴근 17:30 이후 — 17:00부터 30분당 0.5h. 야간: «-».",
     overtimeHours: "연장근무",
-    overtimeHoursHint: "퇴근이 17:30 이후: 17:00부터 30분당 0.5시간 연장.",
+    overtimeHoursHint: "급여 표에서는 «주간 연장 (×1.5)» 열 사용.",
     offDayOvertimeHours: "TC off",
     offDayOvertimeHoursHint:
       "레거시 열: 휴무일 근무 시간은 더 이상 여기에 두지 않습니다(근무시간 열로 이동). 항상 «-».",
@@ -902,9 +905,9 @@ const ko = {
     nightShiftWorkingHours: "야간 근무",
     nightShiftWorkingHoursHint:
       "«야간» 근무 시: 출근부터 05:00(당일 05:00 이전 출근이면 당일, 아니면 다음 날 05:00)까지, 최대 8시간.",
-    nightShiftOvertimeHours: "야간 연장",
+    nightShiftOvertimeHours: "야간 연장 (×1.5)",
     nightShiftOvertimeHoursHint:
-      "«야간» 근무 시: 05:00 이후 근무 — 30분당 0.5시간 연장.",
+      "야간(S2): 익일 05:00 이후 — 30분당 0.5h. 휴무/공휴: «-»(합산 열 참고).",
     nightShiftOffDayWorkingHours: "야간(휴무)",
     nightShiftOffDayWorkingHoursHint:
       "«휴무일»+야간: GC+야간 연장 합산(평일 야간 규칙). 야간 연장 열 «-». 휴무일 아니면 비움.",

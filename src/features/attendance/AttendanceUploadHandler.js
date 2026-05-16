@@ -4,53 +4,18 @@ import * as XLSX from "@e965/xlsx";
 import { ref, set, get } from "firebase/database";
 import { getUploadErrorMessage } from "@/utils/uploadErrorMessage";
 import {
-  hasAttendanceExcelCellValue,
-  mergeAttendanceExcelIntoExistingRecord,
+  mergeAttendanceExcelUploadIntoDaySnapshot,
   stripAttendanceExcelUploadInternalFields,
 } from "./attendanceExcelUploadMerge";
+import { findAttendanceExcelLayout } from "./attendanceExcelUploadLayout";
 import {
   canonicalAttendanceLoaiPhepValue,
   normalizeAttendanceDayRecord,
 } from "./attendanceGioVaoTypeOptions";
-
-function normalizeHeaderCell(value) {
-  return String(value ?? "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .toLowerCase();
-}
-
-/**
- * Tìm cặp 2 dòng tiêu đề (VN + EN) giống file xuất điểm danh / mẫu, hoặc sheet 2 dòng đầu (legacy).
- * @returns {{ dataRowStart: number; mnvCol: number }}
- */
-function findAttendanceExcelLayout(rows) {
-  if (!Array.isArray(rows) || rows.length < 3) {
-    return { dataRowStart: 2, mnvCol: 1 };
-  }
-
-  for (let i = 0; i <= rows.length - 2; i++) {
-    const rv = rows[i];
-    if (!Array.isArray(rv) || rv.length < 3) continue;
-    const c0 = normalizeHeaderCell(rv[0]);
-    const c1 = normalizeHeaderCell(rv[1]);
-    const c2 = normalizeHeaderCell(rv[2]);
-    if (c0 !== "stt" && c0 !== "số thứ tự" && c0 !== "no." && c0 !== "no")
-      continue;
-
-    if (c1 === "mnv" || c1 === "mã nhân viên" || c1 === "mã nv") {
-      return { dataRowStart: i + 2, mnvCol: 1 };
-    }
-    if (
-      (c1.includes("ngày") || c1 === "date") &&
-      (c2 === "mnv" || c2 === "mã nhân viên" || c2 === "mã nv")
-    ) {
-      return { dataRowStart: i + 2, mnvCol: 2 };
-    }
-  }
-
-  return { dataRowStart: 2, mnvCol: 1 };
-}
+import {
+  attendanceFirebaseKeyFromMnv,
+  attendanceMnvStorageKey,
+} from "@/utils/attendanceEmployeeRecord";
 
 function trimCell(value) {
   return value === undefined || value === null ? "" : String(value).trim();
@@ -221,15 +186,6 @@ export const handleUploadExcel = async ({
     const attendanceRef = ref(db, `${attendanceRootPath}/${selectedDate}`);
     const dataToUpload = {};
 
-    // Chuẩn hóa MNV để tránh lệch kiểu dữ liệu (number/string) gây trùng.
-    const normalizeMNV = (value) => {
-      if (value === undefined || value === null) return "";
-      const strValue = String(value).trim();
-      if (!strValue) return "";
-      const numericValue = Number(strValue);
-      return Number.isFinite(numericValue) ? String(numericValue) : strValue;
-    };
-
     dataRows.forEach((row, index) => {
       // Cột MNV tại mnvCol (1 hoặc 2 nếu có thêm cột «Ngày» như xuất khoảng ngày)
       const i = mnvCol;
@@ -258,22 +214,11 @@ export const handleUploadExcel = async ({
       const hasValue = row.some((cell) => String(cell || "").trim() !== "");
       if (!hasValue) return;
 
-      // Chỉ giữ các dòng có MNV là số
-      const mnvNum = Number(mnv);
-      if (!Number.isFinite(mnvNum) || mnvNum === 0) return;
+      const normalizedMNV = attendanceMnvStorageKey(mnv);
+      if (!normalizedMNV || normalizedMNV === "0") return;
 
-      const normalizedMNV = normalizeMNV(mnvNum);
-      if (!normalizedMNV) return;
-
-      // Trong cùng 1 file, nếu trùng MNV thì lấy dòng xuất hiện sau cùng.
-      const existingUploadKey = Object.keys(dataToUpload).find(
-        (k) => normalizeMNV(dataToUpload[k]?.mnv) === normalizedMNV,
-      );
-      if (existingUploadKey) {
-        delete dataToUpload[existingUploadKey];
-      }
-
-      const empKey = `emp_${index}`;
+      const empKey = attendanceFirebaseKeyFromMnv(normalizedMNV);
+      if (!empKey) return;
       /** `true` khi ô STT có số hợp lệ — merge: chỉ ghi STT nếu STT trên Firebase đang trống. */
       const excelHasStt =
         trimCell(stt) !== "" && Number.isFinite(Number(stt));
@@ -305,50 +250,10 @@ export const handleUploadExcel = async ({
       dataToUpload[empKey] = normalizeAttendanceDayRecord(dataToUpload[empKey]);
     });
 
-    // Upload to Firebase - Merge with existing data to prevent data loss
-    let uploadedCount = 0;
-    let duplicateCount = 0;
-
-    // Get existing data to merge and check for duplicates
     const snapshot = await get(attendanceRef);
     const existingData = snapshot.val() || {};
-    const existingKeyByMNV = {};
-    Object.entries(existingData).forEach(([key, emp]) => {
-      const normalizedMNV = normalizeMNV(emp?.mnv);
-      if (normalizedMNV && !existingKeyByMNV[normalizedMNV]) {
-        existingKeyByMNV[normalizedMNV] = key;
-      }
-    });
-
-    // Merge new data with existing data, avoiding duplicates
-    const mergedData = { ...existingData };
-
-    Object.entries(dataToUpload).forEach(([key, newEmp]) => {
-      const normalizedNewMNV = normalizeMNV(newEmp?.mnv);
-      const existingKey = existingKeyByMNV[normalizedNewMNV];
-      const isDuplicate = Boolean(existingKey);
-      if (isDuplicate) {
-        if (existingKey) {
-          const oldEmp = mergedData[existingKey] || {};
-          const mergedEmp = mergeAttendanceExcelIntoExistingRecord(
-            oldEmp,
-            newEmp,
-          );
-          mergedData[existingKey] = mergedEmp;
-        }
-        duplicateCount++;
-      } else {
-        let rec = normalizeAttendanceDayRecord(
-          stripAttendanceExcelUploadInternalFields({ ...newEmp }),
-        );
-        if (!hasAttendanceExcelCellValue(rec.gioiTinh)) rec.gioiTinh = "YES";
-        mergedData[key] = rec;
-        if (normalizedNewMNV) {
-          existingKeyByMNV[normalizedNewMNV] = key;
-        }
-        uploadedCount++;
-      }
-    });
+    const { mergedData, uploadedCount, duplicateCount } =
+      mergeAttendanceExcelUploadIntoDaySnapshot(existingData, dataToUpload);
 
     const payload = {};
     Object.entries(mergedData).forEach(([k, v]) => {

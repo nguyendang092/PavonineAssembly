@@ -790,7 +790,7 @@ export function getPayrollDayOvertimeHoursNumeric(
   includeThaiSanInWorkingHours = false,
 ) {
   if (isNightShiftCaLamViec(caLamViec)) {
-    return getOvertimeHoursFromGioRa(gioRa);
+    return 0;
   }
 
   const eveningRaw = useTapVuThaiSanDayShiftRules(
@@ -868,10 +868,10 @@ export function getPayrollDayShiftOffHolidayMergedHoursNumeric(
 }
 
 /**
- * Hiển thị ô Giờ TC (bảng lương — ca ngày có thể cộng TC sớm).
+ * Cột **TC ca ngày (×1.5)**: sau 17:30 + giấy TC sớm (ca ngày). Ca đêm S2: «-» (dùng cột TC ca đêm).
  * Ngày off/lễ (ca ngày): «-» — TC đã gộp vào TC off / GC ngày lễ.
  */
-export function formatPayrollDayOvertimeHoursCell(
+export function formatPayrollTableDayShiftOvertimeCell(
   gioVao,
   gioRa,
   isOffDay,
@@ -885,7 +885,7 @@ export function formatPayrollDayOvertimeHoursCell(
 ) {
   const strictOff = isOffDay || isCompensatoryDay;
   if (isNightShiftCaLamViec(caLamViec)) {
-    return formatOvertimeHoursLabel(gioRa);
+    return PAYROLL_CELL_DASH;
   }
   if (strictOff || isHolidayDay) {
     return PAYROLL_CELL_DASH;
@@ -983,9 +983,6 @@ function payrollTotalDayGcNumeric(
         includeThaiSanInWorkingHours,
       );
       tc = n == null ? 0 : n;
-    } else {
-      const o = getOvertimeHoursFromGioRa(gioRa);
-      tc = o == null ? 0 : o;
     }
   } else if (
     (isStrictOffDay || isHolidayDay) &&

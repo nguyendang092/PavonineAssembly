@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { parseLocalDateKey } from "@/utils/dateKey";
 import {
-  formatPayrollDayOvertimeHoursCell,
+  formatPayrollTableDayShiftOvertimeCell,
   formatPayrollTableHolidayDayWorkingCell,
   formatPayrollTableHolidayNightWorkingCell,
   formatPayrollTableNightShiftOffDayWorkingCell,
@@ -207,7 +207,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
     ),
-    formatPayrollDayOvertimeHoursCell(
+    formatPayrollTableDayShiftOvertimeCell(
       emp.gioVao,
       emp.gioRa,
       isOffDay,
@@ -323,12 +323,12 @@ function buildPayrollExcelFullHeaders(tlTable) {
     tlTable("offDayColumn", "Ngày off"),
     tlTable("holidayDayColumn", "Ngày lễ"),
     tlTable("workingHours", "Giờ công"),
-    tlTable("overtimeHours", "Giờ TC"),
+    tlTable("dayShiftOvertimeHours", "TC ca ngày (×1.5)"),
     tlTable("offDayOvertimeHours", "TC off"),
     tlTable("holidayDayWorkingHours", "GC ngày lễ"),
     tlTable("payrollTotalGcDay", "Tổng GC"),
     tlTable("nightShiftWorkingHours", "GC ca đêm"),
-    tlTable("nightShiftOvertimeHours", "TC ca đêm"),
+    tlTable("nightShiftOvertimeHours", "TC ca đêm (×1.5)"),
     tlTable("nightShiftOffDayWorkingHours", "GC ca đêm off"),
     tlTable("holidayNightWorkingHours", "GC ca đêm lễ"),
     tlTable("payrollTotalGcNight", "Tổng GC ca đêm"),

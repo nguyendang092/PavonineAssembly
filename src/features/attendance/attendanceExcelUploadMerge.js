@@ -7,6 +7,10 @@
  * - Firebase **đã có** dữ liệu → **không** ghi đè bởi Excel (giữ chỉnh tay / lần upload trước cùng ngày).
  */
 
+import {
+  attendanceFirebaseKeyFromMnv,
+  attendanceMnvStorageKey,
+} from "@/utils/attendanceEmployeeRecord";
 import { normalizeAttendanceDayRecord } from "./attendanceGioVaoTypeOptions";
 
 /**
@@ -59,4 +63,57 @@ export function mergeAttendanceExcelIntoExistingRecord(oldEmp, newEmp) {
   });
 
   return normalizeAttendanceDayRecord(mergedEmp);
+}
+
+/**
+ * Gộp `dataToUpload` (đã parse Excel, key `emp_{mnv}`) vào snapshot ngày hiện có.
+ * Trùng MNV → merge field; chuyển về `emp_{mnv}` và xóa key legacy nếu khác.
+ *
+ * @returns {{ mergedData: Record<string, object>; uploadedCount: number; duplicateCount: number }}
+ */
+export function mergeAttendanceExcelUploadIntoDaySnapshot(
+  existingData,
+  dataToUpload,
+) {
+  let uploadedCount = 0;
+  let duplicateCount = 0;
+  const existingKeyByMNV = {};
+  Object.entries(existingData || {}).forEach(([key, emp]) => {
+    const normalizedMNV = attendanceMnvStorageKey(emp?.mnv);
+    if (normalizedMNV && !existingKeyByMNV[normalizedMNV]) {
+      existingKeyByMNV[normalizedMNV] = key;
+    }
+  });
+
+  const mergedData = { ...(existingData || {}) };
+
+  Object.entries(dataToUpload || {}).forEach(([, newEmp]) => {
+    const normalizedNewMNV = attendanceMnvStorageKey(newEmp?.mnv);
+    const canonicalKey = attendanceFirebaseKeyFromMnv(normalizedNewMNV);
+    if (!canonicalKey) return;
+
+    const existingKey = existingKeyByMNV[normalizedNewMNV];
+    if (existingKey) {
+      const oldEmp = mergedData[existingKey] || {};
+      const mergedEmp = mergeAttendanceExcelIntoExistingRecord(oldEmp, newEmp);
+      mergedEmp.id = canonicalKey;
+      mergedData[canonicalKey] = mergedEmp;
+      if (existingKey !== canonicalKey) {
+        delete mergedData[existingKey];
+      }
+      existingKeyByMNV[normalizedNewMNV] = canonicalKey;
+      duplicateCount++;
+    } else {
+      let rec = normalizeAttendanceDayRecord(
+        stripAttendanceExcelUploadInternalFields({ ...newEmp }),
+      );
+      if (!hasAttendanceExcelCellValue(rec.gioiTinh)) rec.gioiTinh = "YES";
+      rec.id = canonicalKey;
+      mergedData[canonicalKey] = rec;
+      existingKeyByMNV[normalizedNewMNV] = canonicalKey;
+      uploadedCount++;
+    }
+  });
+
+  return { mergedData, uploadedCount, duplicateCount };
 }
