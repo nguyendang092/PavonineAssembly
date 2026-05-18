@@ -1,4 +1,4 @@
-function normalizeHeaderCell(value) {
+export function normalizeHeaderCell(value) {
   return String(value ?? "")
     .trim()
     .replace(/\s+/g, " ")

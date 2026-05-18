@@ -1,6 +1,6 @@
 /**
  * Cờ KPI thống kê combo (`getAttendanceComboFlags`) — modal Thống kê điểm danh, drill-down KPI,
- * và `classifyAttendanceRowForSalary` (ước lương đơn giản).
+ * (KPI / drill-down — không dùng cho bảng lương tháng).
  *
  * **Không dùng cho tính giờ công (GC/TC):** số giờ trên bảng điểm danh / lương tháng lấy từ
  * `attendanceWorkingHours.js` (`getAttendanceWorkingHoursHours`, `formatPayrollTableWorkingHoursCell`, …)

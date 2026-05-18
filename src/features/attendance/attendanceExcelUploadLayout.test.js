@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { findAttendanceExcelLayout } from "./attendanceExcelUploadLayout";
+import {
+  findAttendanceExcelLayout,
+  normalizeHeaderCell,
+} from "./attendanceExcelUploadLayout";
 
 describe("findAttendanceExcelLayout", () => {
   it("detects standard STT + MNV header", () => {
@@ -31,5 +34,12 @@ describe("findAttendanceExcelLayout", () => {
       dataRowStart: 2,
       mnvCol: 1,
     });
+  });
+});
+
+describe("normalizeHeaderCell", () => {
+  it("trims and lowercases for header matching", () => {
+    expect(normalizeHeaderCell("  Ngày HĐ  ")).toBe("ngày hđ");
+    expect(normalizeHeaderCell("Mã NV")).toBe("mã nv");
   });
 });

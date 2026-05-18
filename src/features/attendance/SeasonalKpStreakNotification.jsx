@@ -4,8 +4,8 @@ import NotificationBell from "@/components/ui/NotificationBell";
 import { db, ref, get } from "@/services/firebase";
 import { getDateKeyBySubtractDays, parseLocalDateKey } from "@/utils/dateKey";
 import {
+  attendanceMnvStorageKey,
   sanitizeAttendanceDayNodeForUi,
-  canonicalAttendanceMnvForMatch,
 } from "@/utils/attendanceEmployeeRecord";
 import { isAttendanceDayMetaKey } from "./attendanceDayMeta";
 import {
@@ -49,9 +49,9 @@ function leaveRawForStreakFromDayNode(node, id) {
  */
 function streakKeyForKpEmp(emp) {
   if (emp == null || typeof emp !== "object") return "__fb:unknown";
-  const m = canonicalAttendanceMnvForMatch(emp.mnv);
+  const m = attendanceMnvStorageKey(emp.mnv);
   if (m) return m.toLowerCase();
-  const bid = canonicalAttendanceMnvForMatch(emp.businessId);
+  const bid = attendanceMnvStorageKey(emp.businessId);
   if (bid) return `bid:${bid.toLowerCase()}`;
   const id = String(emp.id ?? "").trim();
   return id ? `__fb:${id}` : "__fb:unknown";
@@ -62,7 +62,7 @@ function attendanceMatchCodesFromEmp(emp) {
   const codes = new Set();
   if (emp == null || typeof emp !== "object") return codes;
   for (const raw of [emp.mnv, emp.mvt, emp.businessId]) {
-    const c = canonicalAttendanceMnvForMatch(raw);
+    const c = attendanceMnvStorageKey(raw);
     if (c) codes.add(c.toLowerCase());
   }
   return codes;

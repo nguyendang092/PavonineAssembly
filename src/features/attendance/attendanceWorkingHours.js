@@ -362,7 +362,7 @@ export function getAttendanceWorkingHoursHours(
  * @param {unknown} [includeThaiSanInWorkingHours]
  * @returns {string} Rỗng nếu không tính được.
  */
-export function formatAttendanceWorkingHoursLabel(
+function formatAttendanceWorkingHoursLabel(
   gioVao,
   gioRa,
   caLamViec,
@@ -904,17 +904,6 @@ export function formatPayrollTableDayShiftOvertimeCell(
   if (n == null) return PAYROLL_CELL_DASH;
   if (n === 0) return PAYROLL_CELL_DASH;
   return payrollHoursCellDisplay(String(n));
-}
-
-/**
- * @param {unknown} gioRa
- * @returns {string} «-» nếu không đọc được giờ ra hoặc 0 TC; số nếu có TC.
- */
-export function formatOvertimeHoursLabel(gioRa) {
-  const h = getOvertimeHoursFromGioRa(gioRa);
-  if (h == null) return PAYROLL_CELL_DASH;
-  if (h === 0) return PAYROLL_CELL_DASH;
-  return payrollHoursCellDisplay(String(h));
 }
 
 /**

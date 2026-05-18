@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   attendanceFirebaseKeyFromMnv,
   attendanceMnvStorageKey,
-  canonicalAttendanceMnvForMatch,
   resolveAttendanceFormPersistTarget,
-  resolveExcelBusinessId,
 } from "./attendanceEmployeeRecord";
 
 describe("attendanceMnvStorageKey", () => {
@@ -23,22 +21,11 @@ describe("attendanceMnvStorageKey", () => {
     expect(attendanceMnvStorageKey("")).toBe("");
     expect(attendanceMnvStorageKey(null)).toBe("");
   });
-
-  it("matches canonicalAttendanceMnvForMatch", () => {
-    expect(canonicalAttendanceMnvForMatch(" A B ")).toBe("AB");
-  });
 });
 
 describe("attendanceFirebaseKeyFromMnv", () => {
   it("builds emp_ key from normalized mnv", () => {
     expect(attendanceFirebaseKeyFromMnv("PAVO 1")).toBe("emp_PAVO1");
-  });
-});
-
-describe("resolveExcelBusinessId", () => {
-  it("prefers id cell then mnv, then normalizes", () => {
-    expect(resolveExcelBusinessId(" P 1 ", "ignored")).toBe("P1");
-    expect(resolveExcelBusinessId("", " MNV 2 ")).toBe("MNV2");
   });
 });
 

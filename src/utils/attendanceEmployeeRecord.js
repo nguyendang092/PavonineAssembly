@@ -1,14 +1,11 @@
 /**
  * attendance/{date}/{firebaseKey}: dữ liệu điểm danh theo ngày (stt, mnv, giờ vào/ra, ca, PN…).
  * Màn điểm danh: sanitizeAttendanceDayNodeForUi — chỉ trường node ngày.
- * Danh mục BP (tuỳ chọn): employeeDepartments/{key}.
  */
 import {
   canonicalAttendanceLoaiPhepValue,
   normalizeAttendanceDayRecord,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
-
-export const EMPLOYEE_DEPT_CATALOG_PATH = "employeeDepartments";
 
 /**
  * Chuẩn MNV duy nhất: trim, bỏ mọi khoảng trắng; giữ chữ/số/ký tự mã (vd. PAVO123).
@@ -18,17 +15,6 @@ export function attendanceMnvStorageKey(mnvRaw) {
   return String(mnvRaw ?? "")
     .trim()
     .replace(/\s+/g, "");
-}
-
-export function normalizeEmployeeCode(value) {
-  return String(value ?? "")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-/** Alias — dùng `attendanceMnvStorageKey`. */
-export function normalizeMnvSuffix(value) {
-  return attendanceMnvStorageKey(value);
 }
 
 /**
@@ -67,24 +53,10 @@ export function resolveAttendanceFormPersistTarget({
   };
 }
 
-/**
- * Excel: ưu tiên cột id, sau đó cột mnv — không gộp tiền tố.
- */
-export function resolveExcelBusinessId(idCell, mnvCell) {
-  const raw =
-    String(idCell ?? "").trim() || String(mnvCell ?? "").trim();
-  return attendanceMnvStorageKey(raw);
-}
-
 /** RTDB push ids look like -Ox0abcd123... */
-export function isLikelyFirebasePushKey(v) {
+function isLikelyFirebasePushKey(v) {
   const s = String(v ?? "");
   return /^-[A-Za-z0-9_-]{10,}$/.test(s);
-}
-
-/** So khớp MNV giữa các nguồn — cùng quy tắc `attendanceMnvStorageKey`. */
-export function canonicalAttendanceMnvForMatch(raw) {
-  return attendanceMnvStorageKey(raw);
 }
 
 /** MNV nếu có; không thì `id` bản ghi (bỏ qua push key Firebase). */
@@ -94,15 +66,6 @@ export function businessEmployeeCode(emp) {
   const id = String(emp?.id ?? "").trim();
   if (id && !isLikelyFirebasePushKey(id)) return id;
   return "";
-}
-
-export function slugifyDepartmentKey(name) {
-  const s = String(name ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_]/g, "");
-  return s || "dept";
 }
 
 /**
@@ -289,7 +252,7 @@ export function pickAttendanceDayFields(raw) {
 /**
  * Chuẩn hóa hiển thị một dòng điểm danh: chỉ từ trường node ngày (không dùng name/position/joinDate alias profile).
  */
-export function normalizeAttendanceDayRowDisplay(emp) {
+function normalizeAttendanceDayRowDisplay(emp) {
   if (!emp || typeof emp !== "object") return emp;
   const mnvDisplay =
     attendanceMnvStorageKey(emp.mnv) || String(emp.mnv ?? "").trim();

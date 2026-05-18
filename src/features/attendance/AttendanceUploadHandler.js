@@ -7,7 +7,10 @@ import {
   mergeAttendanceExcelUploadIntoDaySnapshot,
   stripAttendanceExcelUploadInternalFields,
 } from "./attendanceExcelUploadMerge";
-import { findAttendanceExcelLayout } from "./attendanceExcelUploadLayout";
+import {
+  findAttendanceExcelLayout,
+  normalizeHeaderCell,
+} from "./attendanceExcelUploadLayout";
 import {
   canonicalAttendanceLoaiPhepValue,
   normalizeAttendanceDayRecord,
