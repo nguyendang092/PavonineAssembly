@@ -1,18 +1,64 @@
 import { isAttendanceDayMetaKey } from "./attendanceDayMeta";
 import { normalizeAttendanceDayRecord } from "./attendanceGioVaoTypeOptions";
-import { sanitizeAttendanceDayNodeForUi } from "@/utils/attendanceEmployeeRecord";
+import {
+  ATTENDANCE_DAY_UI_ROW_KEYS,
+  sanitizeAttendanceDayNodeForUi,
+} from "@/utils/attendanceEmployeeRecord";
+
+/** Trường ảnh hưởng hiển thị bảng — dùng so sánh giữ chỗ reference khi Firebase đổi 1 NV. */
+const ROW_SNAPSHOT_KEYS = ["id", ...ATTENDANCE_DAY_UI_ROW_KEYS];
+
+export function attendanceDayRowSnapshotEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  for (const k of ROW_SNAPSHOT_KEYS) {
+    if (a[k] !== b[k]) return false;
+  }
+  return true;
+}
+
+/**
+ * Parse `attendance/{ngày}` và giữ object cũ cho NV không đổi (giúp React.memo trên hàng).
+ */
+export function reconcileAttendanceDayRowsFromRaw(prevRows, rawData) {
+  const prev = prevRows || [];
+  if (!rawData || typeof rawData !== "object") {
+    return prev.length === 0 ? prev : [];
+  }
+
+  const prevById = new Map();
+  for (const row of prev) {
+    if (row?.id != null) prevById.set(row.id, row);
+  }
+
+  const arr = [];
+  for (const [id, emp] of Object.entries(rawData)) {
+    if (isAttendanceDayMetaKey(id)) continue;
+    const next = normalizeAttendanceDayRecord(
+      sanitizeAttendanceDayNodeForUi(emp, id),
+    );
+    const prior = prevById.get(id);
+    arr.push(
+      prior && attendanceDayRowSnapshotEqual(prior, next) ? prior : next,
+    );
+  }
+
+  arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
+
+  if (
+    prev.length === arr.length &&
+    prev.every((row, index) => row === arr[index])
+  ) {
+    return prev;
+  }
+
+  return arr;
+}
 
 /**
  * Chỉ dùng trường điểm danh trên `attendance/{ngày}` — lọc bỏ trường hồ sơ / legacy gắn nhầm trên node.
  * Bỏ qua key meta ngày (`isAttendanceDayMetaKey`).
  */
 export function mergeAttendanceDayRowsFromRaw(rawData) {
-  if (!rawData || typeof rawData !== "object") return [];
-  const arr = Object.entries(rawData)
-    .filter(([id]) => !isAttendanceDayMetaKey(id))
-    .map(([id, emp]) =>
-      normalizeAttendanceDayRecord(sanitizeAttendanceDayNodeForUi(emp, id)),
-    );
-  arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
-  return arr;
+  return reconcileAttendanceDayRowsFromRaw([], rawData);
 }

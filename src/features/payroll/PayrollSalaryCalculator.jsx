@@ -11,7 +11,11 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUser } from "@/contexts/UserContext";
 import { canEditAttendanceForEmployee } from "@/config/authRoles";
 import { db, ref, onValue, get, update } from "@/services/firebase";
-import { parsePayrollDayFromAttendanceRaw } from "@/features/payroll/buildPayrollDayFromRaw";
+import {
+  parsePayrollDayFromAttendanceRaw,
+  reconcilePayrollEmployeesFromBase,
+  shallowStringRecordEqual,
+} from "@/features/payroll/buildPayrollDayFromRaw";
 import { payrollTableWrapperMinWidthClass } from "@/features/payroll/payrollTableLayout";
 import {
   readEarlyOtSessionSuppressed,
@@ -117,6 +121,12 @@ export default function PayrollSalaryCalculator() {
 
   const attendanceRawRef = useRef(undefined);
   const excelExportMenuRef = useRef(null);
+  const employeesRef = useRef([]);
+  const payrollEmployeesRef = useRef([]);
+
+  useEffect(() => {
+    employeesRef.current = employees;
+  }, [employees]);
 
   /** Nhãn bảng: ưu tiên `salaryCalc.table.*`, fallback `attendanceList.*`. */
   const tlTable = useCallback(
@@ -149,13 +159,41 @@ export default function PayrollSalaryCalculator() {
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
       attendanceRawRef.current = data;
-      const parsed = parsePayrollDayFromAttendanceRaw(data);
-      setIsOffDay(parsed.isOffDay);
-      setIsHolidayDay(parsed.isHolidayDay);
-      setIsCompensatoryDay(parsed.isCompensatoryDay);
-      setEmployees(parsed.baseEmployees);
-      setEarlyOtMap(parsed.earlyOtPaperworkById);
-      setLateOtExcludedMap(parsed.lateOtExcludedById || {});
+      const parsed = parsePayrollDayFromAttendanceRaw(
+        data,
+        employeesRef.current,
+        payrollEmployeesRef.current,
+      );
+      payrollEmployeesRef.current = parsed.payrollEmployees;
+      setIsOffDay((prev) =>
+        prev === parsed.isOffDay ? prev : parsed.isOffDay,
+      );
+      setIsHolidayDay((prev) =>
+        prev === parsed.isHolidayDay ? prev : parsed.isHolidayDay,
+      );
+      setIsCompensatoryDay((prev) =>
+        prev === parsed.isCompensatoryDay ? prev : parsed.isCompensatoryDay,
+      );
+      setEarlyOtMap((prev) =>
+        shallowStringRecordEqual(prev, parsed.earlyOtPaperworkById)
+          ? prev
+          : parsed.earlyOtPaperworkById,
+      );
+      setLateOtExcludedMap((prev) =>
+        shallowStringRecordEqual(prev, parsed.lateOtExcludedById)
+          ? prev
+          : parsed.lateOtExcludedById,
+      );
+      setEmployees((prevBase) => {
+        if (
+          parsed.baseEmployees === prevBase ||
+          (prevBase.length === parsed.baseEmployees.length &&
+            prevBase.every((row, i) => row === parsed.baseEmployees[i]))
+        ) {
+          return prevBase;
+        }
+        return parsed.baseEmployees;
+      });
     });
     return () => unsubscribe();
   }, [selectedDate]);
@@ -210,15 +248,16 @@ export default function PayrollSalaryCalculator() {
     [selectedDate],
   );
 
-  const employeesForPayroll = useMemo(
-    () =>
-      employees.map((e) => ({
-        ...e,
-        payrollEarlyOtPaperwork: earlyOtMap[e.id],
-        payrollLateOtExcluded: lateOtExcludedMap[e.id],
-      })),
-    [employees, earlyOtMap, lateOtExcludedMap],
-  );
+  const employeesForPayroll = useMemo(() => {
+    const next = reconcilePayrollEmployeesFromBase(
+      payrollEmployeesRef.current,
+      employees,
+      earlyOtMap,
+      lateOtExcludedMap,
+    );
+    payrollEmployeesRef.current = next;
+    return next;
+  }, [employees, earlyOtMap, lateOtExcludedMap]);
 
   /** Vào ≤ 06:00 (ca ngày) — vẫn hiện nút / modal khi ngày off (chỉ tắt tự mở popup). */
   const earlyOtEligibleEmployees = useMemo(

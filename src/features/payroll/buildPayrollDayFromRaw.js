@@ -1,4 +1,8 @@
-import { mergeAttendanceDayRowsFromRaw } from "@/features/attendance/mergeAttendanceDayRows";
+import {
+  attendanceDayRowSnapshotEqual,
+  mergeAttendanceDayRowsFromRaw,
+  reconcileAttendanceDayRowsFromRaw,
+} from "@/features/attendance/mergeAttendanceDayRows";
 import { businessEmployeeCode } from "@/utils/attendanceEmployeeRecord";
 import {
   getEarlyOtPaperworkFromRaw,
@@ -30,6 +34,59 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "payrollLateOtExcluded",
 ];
 
+function shallowStringRecordEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const ak = Object.keys(a);
+  if (ak.length !== Object.keys(b).length) return false;
+  for (const k of ak) {
+    if (a[k] !== b[k]) return false;
+  }
+  return true;
+}
+
+/** Giữ reference dòng payroll khi base + cờ TC sớm/muộn không đổi. */
+export function reconcilePayrollEmployeesFromBase(
+  prevRows,
+  baseEmployees,
+  earlyOtPaperworkById,
+  lateOtExcludedById,
+) {
+  const prevById = new Map();
+  for (const row of prevRows || []) {
+    if (row?.id != null) prevById.set(row.id, row);
+  }
+
+  const next = baseEmployees.map((e) => {
+    const payrollEarlyOtPaperwork = earlyOtPaperworkById[e.id];
+    const payrollLateOtExcluded = lateOtExcludedById[e.id];
+    const candidate = {
+      ...e,
+      payrollEarlyOtPaperwork,
+      payrollLateOtExcluded,
+    };
+    const prior = prevById.get(e.id);
+    if (
+      prior &&
+      attendanceDayRowSnapshotEqual(prior, candidate) &&
+      prior.payrollEarlyOtPaperwork === payrollEarlyOtPaperwork &&
+      prior.payrollLateOtExcluded === payrollLateOtExcluded
+    ) {
+      return prior;
+    }
+    return candidate;
+  });
+
+  const prev = prevRows || [];
+  if (
+    prev.length === next.length &&
+    prev.every((row, index) => row === next[index])
+  ) {
+    return prev;
+  }
+  return next;
+}
+
 function sortPayrollEmployeesStable(rows) {
   return [...rows].sort((a, b) => {
     const aStt = Number(a?.stt);
@@ -57,7 +114,11 @@ export function slimPayrollMonthEmployeeRecord(emp) {
  * - `baseEmployees`: merge + sanitize — dùng state / form / xuất Excel (kèm `earlyOtPaperworkById` trong ctx).
  * - `payrollEmployees`: mỗi dòng có `payrollEarlyOtPaperwork` như `employeesForPayroll` trên màn lương.
  */
-export function parsePayrollDayFromAttendanceRaw(raw) {
+export function parsePayrollDayFromAttendanceRaw(
+  raw,
+  prevBaseEmployees = [],
+  prevPayrollEmployees = [],
+) {
   if (raw == null || typeof raw !== "object") {
     return {
       baseEmployees: [],
@@ -76,13 +137,14 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
   const earlyOtPaperworkById = getEarlyOtPaperworkFromRaw(raw);
   const lateOtExcludedById = getLateOtPaperworkFromRaw(raw);
   const baseEmployees = sortPayrollEmployeesStable(
-    mergeAttendanceDayRowsFromRaw(raw),
+    reconcileAttendanceDayRowsFromRaw(prevBaseEmployees, raw),
   );
-  const payrollEmployees = baseEmployees.map((e) => ({
-    ...e,
-    payrollEarlyOtPaperwork: earlyOtPaperworkById[e.id],
-    payrollLateOtExcluded: lateOtExcludedById[e.id],
-  }));
+  const payrollEmployees = reconcilePayrollEmployeesFromBase(
+    prevPayrollEmployees,
+    baseEmployees,
+    earlyOtPaperworkById,
+    lateOtExcludedById,
+  );
   return {
     baseEmployees,
     payrollEmployees,
@@ -95,6 +157,9 @@ export function parsePayrollDayFromAttendanceRaw(raw) {
     lateOtExcludedById,
   };
 }
+
+/** Tránh setState map meta khi nội dung không đổi. */
+export { shallowStringRecordEqual };
 
 /**
  * Một ngày trong lưới tháng: dòng đã gắn `payrollEarlyOtPaperwork` + map theo id.

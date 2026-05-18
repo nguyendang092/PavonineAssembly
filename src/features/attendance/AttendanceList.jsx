@@ -91,7 +91,10 @@ import {
   employeeMatchesLoaiPhepFilterSet,
   isEmployeeQuickUnattended,
 } from "./attendanceListShared";
-import { mergeAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
+import {
+  mergeAttendanceDayRowsFromRaw,
+  reconcileAttendanceDayRowsFromRaw,
+} from "./mergeAttendanceDayRows";
 import AttendanceSearchActionsBar from "./AttendanceSearchActionsBar";
 import SeasonalKpStreakNotification from "./SeasonalKpStreakNotification";
 
@@ -353,6 +356,11 @@ function AttendanceList({
   }, [user?.uid, unattendedSuppressSessionCheckbox]);
 
   const attendanceRawRef = useRef(undefined);
+  const employeesRef = useRef([]);
+
+  useEffect(() => {
+    employeesRef.current = employees;
+  }, [employees]);
 
   useEffect(() => {
     attendanceRawRef.current = undefined;
@@ -361,10 +369,25 @@ function AttendanceList({
     const unsubscribe = onValue(empRef, (snapshot) => {
       const data = snapshot.val();
       attendanceRawRef.current = data;
-      setIsOffDay(getIsOffDayFromRaw(data));
-      setIsHolidayDay(getIsHolidayDayFromRaw(data));
-      setIsCompensatoryDay(getIsCompensatoryDayFromRaw(data));
-      setEmployees(sortEmployeesStableAsc(mergeAttendanceDayRowsFromRaw(data)));
+      const off = getIsOffDayFromRaw(data);
+      const hol = getIsHolidayDayFromRaw(data);
+      const comp = getIsCompensatoryDayFromRaw(data);
+      setIsOffDay((prev) => (prev === off ? prev : off));
+      setIsHolidayDay((prev) => (prev === hol ? prev : hol));
+      setIsCompensatoryDay((prev) => (prev === comp ? prev : comp));
+      setEmployees((prev) => {
+        const next = sortEmployeesStableAsc(
+          reconcileAttendanceDayRowsFromRaw(prev, data),
+        );
+        if (
+          next === prev ||
+          (prev.length === next.length &&
+            prev.every((row, i) => row === next[i]))
+        ) {
+          return prev;
+        }
+        return next;
+      });
     });
     return () => unsubscribe();
   }, [selectedDate, attendanceRootPath]);
@@ -1255,7 +1278,7 @@ function AttendanceList({
         });
         return;
       }
-      const emp = employees.find((e) => e.id === id);
+      const emp = employeesRef.current.find((e) => e.id === id);
       if (!emp || !canDeleteEmployeeData(user, userRole)) {
         setAlert({
           show: true,
@@ -1298,7 +1321,7 @@ function AttendanceList({
         });
       }
     },
-    [user, userRole, userDepartments, employees, selectedDate, t],
+    [user, userRole, userDepartments, selectedDate, t, attendanceRootPath],
   );
 
   const tableScrollParentRef = useRef(null);
