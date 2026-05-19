@@ -1,5 +1,5 @@
 /**
- * Xây ma trận ô cho xuất Excel bảng giờ công tháng — không đọc DOM (tương thích ảo hóa tbody).
+ * Ma trận xuất Excel bảng chấm công tháng — cùng layout cột với PayrollMonthlyTimesheetModal.
  */
 import ExcelJS from "exceljs";
 import {
@@ -15,26 +15,70 @@ import {
   fmtPayrollMonthlySummaryCell,
   isPayrollMonthDayOnOrAfterJoin,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
+import {
+  DETAIL_GROUP_KEYS,
+  MONTH_DETAIL_COLS_PER_BLOCK,
+  MONTHLY_TIMESHEET_STICKY_COL_COUNT,
+  PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL,
+  payrollMonthlyTimesheetLayoutOffsets,
+} from "@/features/payroll/payrollMonthlyTimesheetLayout";
+import {
+  buildPayrollMonthlyTimesheetExcelBorders,
+  resolvePayrollMonthlyTimesheetExcelCellFill,
+} from "@/features/payroll/payrollMonthlyTimesheetGridStyle";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
-const MONTH_DETAIL_COLS_PER_BLOCK = 16;
-const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
+const HEADER_ROW_COUNT = 3;
 
 function formatEnglishWeekday3(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
 }
 
-function formatProfileDateKey(raw, displayLocale) {
-  const s = String(raw ?? "").trim();
-  if (!s) return "—";
-  const d = parseLocalDateKey(s.slice(0, 10));
-  if (!d) return s.slice(0, 10);
-  return d.toLocaleDateString(displayLocale, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
+/** Giá trị ô ngày — cùng logic hiển thị lưới (main row / hệ số TC). */
+export function formatPayrollMonthlyTimesheetDayCellText({
+  emp,
+  ch,
+  dateKey,
+  sr,
+  joinDate,
+}) {
+  if (!isPayrollMonthDayOnOrAfterJoin(dateKey, joinDate)) return " ";
+  if (!ch) return " ";
+  if (!emp) {
+    return sr.coeff == null ? payrollMonthMainRowDashMark(ch, null) : "";
+  }
+  const coeffMap = getPayrollMonthlyCoeffHoursMap({
+    gioVao: emp.gioVao,
+    gioRa: emp.gioRa,
+    isOffDay: ch.isOffDay,
+    isHolidayDay: ch.isHolidayDay,
+    isCompensatoryDay: ch.isCompensatoryDay,
+    caLamViec: emp.caLamViec,
+    payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
+    payrollLateOtExcluded: emp.payrollLateOtExcluded,
+    loaiPhep: emp.loaiPhep,
+    includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
   });
+  if (sr.coeff == null) {
+    const main = getPayrollMonthlyMainRowCell(emp, ch);
+    if (main.kind === "leave") {
+      const leaveLabel = main.leaveShort || "";
+      if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
+        return `${leaveLabel}\n${formatCoeffHoursForDisplay(main.workedHours)}`;
+      }
+      return leaveLabel;
+    }
+    if (main.kind === "hours") {
+      return formatCoeffHoursForDisplay(main.hours);
+    }
+    return payrollMonthMainRowDashMark(ch, emp);
+  }
+  const h = coeffMap.get(sr.coeff);
+  const show =
+    h != null && Number.isFinite(h) && roundHoursForPayrollDisplay(h) !== 0;
+  return show ? formatCoeffHoursForDisplay(h) : " ";
 }
 
 export function buildPayrollMonthlyTimesheetExcelGrid({
@@ -47,8 +91,10 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   detailHeaders,
   displayLocale = "vi-VN",
 }) {
+  void displayLocale;
   const days = monthKeys.length;
-  const cols = 6 + days + DETAIL_GROUP_KEYS.length * MONTH_DETAIL_COLS_PER_BLOCK;
+  const layout = payrollMonthlyTimesheetLayoutOffsets(days);
+  const cols = layout.totalCols;
   const grid = [];
   const merges = [];
 
@@ -60,74 +106,52 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   };
 
   const emptyRow = () => Array(cols).fill(null);
+  const L = MONTHLY_TIMESHEET_STICKY_COL_COUNT;
 
   const r0 = emptyRow();
   r0[0] = tlPage("monthlyTimesheetColStt", "STT");
   r0[1] = tlPage("monthlyTimesheetColName", "Họ và tên");
-  r0[2] = tlPage("monthlyTimesheetColJoinDate", "Ngày vào làm");
-  r0[3] = tlPage("monthlyTimesheetColContract", "Ngày HĐ");
-  r0[4] = tlPage("monthlyTimesheetColDept", "BP");
-  r0[5] = tlPage("monthlyTimesheetColCoeff", "Hệ số TC");
+  r0[2] = tlPage("monthlyTimesheetColDept", "BP");
+  r0[3] = tlPage("monthlyTimesheetColCoeff", "Hệ số TC");
   const dayTitle = tlPage("monthlyTimesheetDaysInMonth", "Ngày trong tháng");
-  r0[6] = dayTitle;
-  for (let c = 7; c < 6 + days; c++) r0[c] = null;
-  r0[6 + days] = tlPage("monthlyRuleTotalTitle", "THỜI GIAN LÀM VIỆC");
-  for (let c = 6 + days + 1; c < 6 + days + MONTH_DETAIL_COLS_PER_BLOCK; c++)
+  r0[L] = dayTitle;
+  for (let c = L + 1; c < L + days; c++) r0[c] = null;
+  r0[layout.totalDetailStart] = tlPage(
+    "monthlyRuleTotalTitle",
+    "THỜI GIAN LÀM VIỆC",
+  );
+  for (let c = layout.totalDetailStart + 1; c < layout.trialDetailStart; c++)
     r0[c] = null;
-  r0[6 + days + MONTH_DETAIL_COLS_PER_BLOCK] = tlPage(
+  r0[layout.trialDetailStart] = tlPage(
     "monthlyRuleTrialTitle",
     "THỜI GIAN THỬ VIỆC",
   );
-  for (
-    let c = 6 + days + MONTH_DETAIL_COLS_PER_BLOCK + 1;
-    c < 6 + days + 2 * MONTH_DETAIL_COLS_PER_BLOCK;
-    c++
-  )
+  for (let c = layout.trialDetailStart + 1; c < layout.officialDetailStart; c++)
     r0[c] = null;
-  r0[6 + days + 2 * MONTH_DETAIL_COLS_PER_BLOCK] = tlPage(
+  r0[layout.officialDetailStart] = tlPage(
     "monthlyRuleOfficialTitle",
     "THỜI GIAN HỢP ĐỒNG",
   );
-  for (
-    let c = 6 + days + 2 * MONTH_DETAIL_COLS_PER_BLOCK + 1;
-    c < cols;
-    c++
-  )
-    r0[c] = null;
+  for (let c = layout.officialDetailStart + 1; c < cols; c++) r0[c] = null;
   grid.push(r0);
 
-  for (let i = 0; i < 6; i++) pushMerge(0, i, 2, i);
-  if (days >= 1) pushMerge(0, 6, 0, 6 + days - 1);
-  pushMerge(
-    0,
-    6 + days,
-    0,
-    6 + days + MONTH_DETAIL_COLS_PER_BLOCK - 1,
-  );
-  pushMerge(
-    0,
-    6 + days + MONTH_DETAIL_COLS_PER_BLOCK,
-    0,
-    6 + days + 2 * MONTH_DETAIL_COLS_PER_BLOCK - 1,
-  );
-  pushMerge(
-    0,
-    6 + days + 2 * MONTH_DETAIL_COLS_PER_BLOCK,
-    0,
-    6 + days + 3 * MONTH_DETAIL_COLS_PER_BLOCK - 1,
-  );
+  for (let i = 0; i < L; i++) pushMerge(0, i, 2, i);
+  if (days >= 1) pushMerge(0, L, 0, L + days - 1);
+  pushMerge(0, layout.totalDetailStart, 0, layout.trialDetailStart - 1);
+  pushMerge(0, layout.trialDetailStart, 0, layout.officialDetailStart - 1);
+  pushMerge(0, layout.officialDetailStart, 0, cols - 1);
 
   const r1 = emptyRow();
   monthKeys.forEach((dk, i) => {
     const pd = parseLocalDateKey(dk);
     const dom = pd ? pd.getDate() : "";
     const wd = formatEnglishWeekday3(pd);
-    r1[6 + i] =
+    r1[L + i] =
       `${String(dom).padStart(2, "0")}` + (wd ? ` ${wd}` : "");
-    pushMerge(1, 6 + i, 2, 6 + i);
+    pushMerge(1, L + i, 2, L + i);
   });
 
-  let col = 6 + days;
+  let col = layout.totalDetailStart;
   for (let gi = 0; gi < DETAIL_GROUP_KEYS.length; gi++) {
     r1[col] = tlPage("monthlyRuleGroupWorkday", "NGÀY LÀM VIỆC");
     pushMerge(1, col, 1, col + 7);
@@ -135,7 +159,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
     r1[col] = tlPage("monthlyRuleGroupOt", "TĂNG CA (Hrs)");
     pushMerge(1, col, 1, col + 5);
     col += 6;
-    r1[col] = "SAT.S";
+    r1[col] = PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL;
     pushMerge(1, col, 1, col + 1);
     col += 2;
   }
@@ -143,7 +167,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
 
   const r2 = emptyRow();
   for (let g = 0; g < DETAIL_GROUP_KEYS.length; g++) {
-    const base = 6 + days + g * MONTH_DETAIL_COLS_PER_BLOCK;
+    const base = layout.totalDetailStart + g * MONTH_DETAIL_COLS_PER_BLOCK;
     detailHeaders.forEach((h, idx) => {
       r2[base + idx] = h;
     });
@@ -151,6 +175,14 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   grid.push(r2);
 
   const fmt = fmtPayrollMonthlySummaryCell;
+  const coeffColBySubrow = {
+    1: 0,
+    2: 1,
+    3: 2,
+    4: 3,
+    5: 4,
+    6: 5,
+  };
 
   filteredIds.forEach((id, empBlockIdx) => {
     const rep = repById.get(id);
@@ -159,7 +191,6 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
       rep?.stt != null && String(rep.stt).trim() !== ""
         ? String(rep.stt)
         : String(empBlockIdx + 1);
-    const joinStr = formatProfileDateKey(rep?.ngayVaoLam, displayLocale);
 
     PAYROLL_MONTHLY_SUBROWS.forEach((sr, si) => {
       const row = emptyRow();
@@ -169,74 +200,26 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           rep?.mnv != null && String(rep.mnv).trim()
             ? `${rep?.hoVaTen ?? "—"}\n${rep.mnv}`
             : String(rep?.hoVaTen ?? "—");
-        row[2] = joinStr;
-        row[3] = formatProfileDateKey(rep?.ngayHopDong, displayLocale);
-        row[4] = rep?.boPhan ? String(rep.boPhan) : "—";
+        row[2] = rep?.boPhan ? String(rep.boPhan) : "—";
       }
-      row[5] = sr.coeff == null ? "\u00a0" : Number(sr.coeff).toFixed(1);
+      row[3] = sr.coeff == null ? "\u00a0" : Number(sr.coeff).toFixed(1);
 
       monthKeys.forEach((dk, di) => {
         const ch = chunkByDate.get(dk);
-        const cidx = 6 + di;
-        if (!isPayrollMonthDayOnOrAfterJoin(dk, rep?.ngayVaoLam)) {
-          row[cidx] = " ";
-          return;
-        }
+        const cidx = L + di;
         if (!ch) {
           row[cidx] = " ";
           return;
         }
         const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
-        if (!emp) {
-          row[cidx] =
-            sr.coeff == null ? payrollMonthMainRowDashMark(ch, null) : "";
-          return;
-        }
-        const coeffMap = getPayrollMonthlyCoeffHoursMap({
-          gioVao: emp.gioVao,
-          gioRa: emp.gioRa,
-          isOffDay: ch.isOffDay,
-          isHolidayDay: ch.isHolidayDay,
-          isCompensatoryDay: ch.isCompensatoryDay,
-          caLamViec: emp.caLamViec,
-          payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
-          payrollLateOtExcluded: emp.payrollLateOtExcluded,
-          loaiPhep: emp.loaiPhep,
-          includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
-          includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
+        row[cidx] = formatPayrollMonthlyTimesheetDayCellText({
+          emp,
+          ch,
+          dateKey: dk,
+          sr,
+          joinDate: rep?.ngayVaoLam,
         });
-        if (sr.coeff == null) {
-          const main = getPayrollMonthlyMainRowCell(emp, ch);
-          if (main.kind === "leave") {
-            const leaveLabel = main.leaveShort || "";
-            if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
-              row[cidx] = `${leaveLabel}\n${formatCoeffHoursForDisplay(main.workedHours)}`;
-            } else {
-              row[cidx] = leaveLabel;
-            }
-          }
-          else if (main.kind === "hours")
-            row[cidx] = formatCoeffHoursForDisplay(main.hours);
-          else
-            row[cidx] = payrollMonthMainRowDashMark(ch, emp);
-          return;
-        }
-        const h = coeffMap.get(sr.coeff);
-        const show =
-          h != null &&
-          Number.isFinite(h) &&
-          roundHoursForPayrollDisplay(h) !== 0;
-        row[cidx] = show ? formatCoeffHoursForDisplay(h) : " ";
       });
-
-      const coeffColBySubrow = {
-        1: 0,
-        2: 1,
-        3: 2,
-        4: 3,
-        5: 4,
-        6: 5,
-      };
 
       const detailFlat = buildMonthlyDetailFlatValues({
         si,
@@ -247,7 +230,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
       });
 
       detailFlat.forEach((v, i) => {
-        row[6 + days + i] = v;
+        row[layout.totalDetailStart + i] = v;
       });
 
       grid.push(row);
@@ -255,8 +238,14 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
 
     const startBody = grid.length - PAYROLL_MONTHLY_SUBROWS.length;
     if (startBody >= 3) {
-      for (let i = 0; i < 5; i++)
-        pushMerge(startBody, i, startBody + PAYROLL_MONTHLY_SUBROWS.length - 1, i);
+      for (let i = 0; i < L; i++) {
+        pushMerge(
+          startBody,
+          i,
+          startBody + PAYROLL_MONTHLY_SUBROWS.length - 1,
+          i,
+        );
+      }
     }
   });
 
@@ -266,10 +255,124 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
     }
   }
 
-  return { grid, merges };
+  return { grid, merges, layout };
 }
 
-/** Áp grid + merge + định dạng cơ bản giống export từ HTML (không đọc getComputedStyle). */
+export function applyPayrollMonthlyTimesheetExcelSheetStyles(
+  sheet,
+  {
+    layout,
+    monthKeys,
+    chunkByDate,
+    filteredIds,
+    repById,
+    maxCols,
+  },
+) {
+  const maxRow = sheet.rowCount;
+  const maxCol =
+    maxCols ??
+    Math.max(
+      sheet.columnCount || 0,
+      layout.totalCols,
+    );
+  const subrowCount = PAYROLL_MONTHLY_SUBROWS.length;
+  const L = MONTHLY_TIMESHEET_STICKY_COL_COUNT;
+  const daysEnd = L + monthKeys.length;
+
+  for (let r = 1; r <= maxRow; r += 1) {
+    let empBlockIdx = 0;
+    let subrowIndex = 0;
+    let empId = null;
+    if (r > HEADER_ROW_COUNT) {
+      const bodyIdx = r - HEADER_ROW_COUNT - 1;
+      empBlockIdx = Math.floor(bodyIdx / subrowCount);
+      subrowIndex = bodyIdx % subrowCount;
+      empId = filteredIds[empBlockIdx] ?? null;
+    }
+
+    if (r <= HEADER_ROW_COUNT) {
+      sheet.getRow(r).height = r === 1 ? 22 : 36;
+    } else {
+      sheet.getRow(r).height = 16;
+    }
+
+    for (let c = 1; c <= maxCol; c += 1) {
+      const cell = sheet.getCell(r, c);
+
+      let isLeaveCell = false;
+      let leaveRaw;
+      if (
+        empId &&
+        r > HEADER_ROW_COUNT &&
+        c > L &&
+        c <= daysEnd &&
+        PAYROLL_MONTHLY_SUBROWS[subrowIndex]?.coeff == null
+      ) {
+        const dk = monthKeys[c - L - 1];
+        const ch = chunkByDate.get(dk);
+        const rep = repById.get(empId);
+        if (ch && isPayrollMonthDayOnOrAfterJoin(dk, rep?.ngayVaoLam)) {
+          const emp = (ch.byMonthEmployeeKey || ch.byId).get(empId);
+          if (emp) {
+            const main = getPayrollMonthlyMainRowCell(emp, ch);
+            if (main.kind === "leave") {
+              isLeaveCell = true;
+              leaveRaw = main.leaveRaw;
+            }
+          }
+        }
+      }
+
+      const fillArgb = resolvePayrollMonthlyTimesheetExcelCellFill({
+        r,
+        c,
+        layout,
+        headerRowCount: HEADER_ROW_COUNT,
+        monthKeys,
+        chunkByDate,
+        empBlockIdx,
+        subrowIndex,
+        leaveRaw,
+        isLeaveCell,
+      });
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: fillArgb },
+      };
+
+      cell.border = buildPayrollMonthlyTimesheetExcelBorders({
+        row1Based: r,
+        col1Based: c,
+        maxRow,
+        maxCol,
+        layout,
+        headerRowCount: HEADER_ROW_COUNT,
+        subrowCount,
+        subrowIndex: r > HEADER_ROW_COUNT ? subrowIndex : null,
+        monthKeyCount: monthKeys.length,
+      });
+
+      const isHeader = r <= HEADER_ROW_COUNT;
+      const isNameCol = c === 2;
+      const isCoeffCol = c === L;
+      const isDayOrDetail = c > L;
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: isNameCol && !isHeader ? "left" : "center",
+        wrapText: true,
+      };
+      cell.font = {
+        name: isCoeffCol || (isDayOrDetail && !isHeader) ? "Consolas" : "Arial",
+        size: isHeader ? 10 : 9,
+        bold: isHeader || isCoeffCol || (isDayOrDetail && !isHeader),
+        color: { argb: "FF0F172A" },
+      };
+    }
+  }
+}
+
 export async function writePayrollMonthlyTimesheetWorkbook({
   tlPage,
   monthKeys,
@@ -280,7 +383,7 @@ export async function writePayrollMonthlyTimesheetWorkbook({
   detailHeaders,
   displayLocale,
 }) {
-  const { grid, merges } = buildPayrollMonthlyTimesheetExcelGrid({
+  const { grid, merges, layout } = buildPayrollMonthlyTimesheetExcelGrid({
     tlPage,
     monthKeys,
     chunkByDate,
@@ -292,7 +395,6 @@ export async function writePayrollMonthlyTimesheetWorkbook({
   });
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("MonthlyTimesheet");
-  const monthRange = { keys: monthKeys };
 
   grid.forEach((row) => {
     sheet.addRow(row.map((v) => (v == null ? "" : v)));
@@ -302,70 +404,22 @@ export async function writePayrollMonthlyTimesheetWorkbook({
     sheet.mergeCells(m.from.row, m.from.col, m.to.row, m.to.col);
   });
 
-  const maxCols = grid.reduce((m, r) => Math.max(m, r.length), 0);
-  const fixedCols = 6;
-  const daysCols = monthRange.keys.length;
-  const detailBlock = MONTH_DETAIL_COLS_PER_BLOCK;
-  const firstTotalCol = fixedCols + daysCols + 1;
-  const firstTrialCol = firstTotalCol + detailBlock;
-  const firstOfficialCol = firstTrialCol + detailBlock;
-
+  const maxCols = grid.reduce((m, row) => Math.max(m, row.length), 0);
   for (let c = 1; c <= maxCols; c += 1) {
-    sheet.getColumn(c).width = c <= 6 ? 16 : 6;
+    if (c === 1) sheet.getColumn(c).width = 6;
+    else if (c === 2) sheet.getColumn(c).width = 22;
+    else if (c <= MONTHLY_TIMESHEET_STICKY_COL_COUNT) sheet.getColumn(c).width = 12;
+    else sheet.getColumn(c).width = 6;
   }
 
-  const setSide = (cell, side, style, argb = "FF000000") => {
-    const cur = cell.border || {};
-    cell.border = {
-      ...cur,
-      [side]: { style, color: { argb } },
-    };
-  };
-
-  for (let r = 1; r <= sheet.rowCount; r += 1) {
-    for (let c = 1; c <= maxCols; c += 1) {
-      const cell = sheet.getCell(r, c);
-      cell.border = {
-        top: { style: "thin", color: { argb: "FFB8C1CC" } },
-        left: { style: "thin", color: { argb: "FFB8C1CC" } },
-        bottom: { style: "thin", color: { argb: "FFB8C1CC" } },
-        right: { style: "thin", color: { argb: "FFB8C1CC" } },
-      };
-      cell.alignment = {
-        vertical: "middle",
-        horizontal: c <= 2 ? "left" : "center",
-        wrapText: true,
-      };
-      cell.font = { size: r <= 3 ? 10 : 9, bold: r <= 3 };
-    }
-  }
-
-  for (let c = 1; c <= maxCols; c += 1) {
-    setSide(sheet.getCell(1, c), "top", "medium");
-    setSide(sheet.getCell(sheet.rowCount, c), "bottom", "medium");
-  }
-  for (let r = 1; r <= sheet.rowCount; r += 1) {
-    setSide(sheet.getCell(r, 1), "left", "medium");
-    setSide(sheet.getCell(r, maxCols), "right", "medium");
-  }
-
-  [firstTotalCol, firstTrialCol, firstOfficialCol].forEach((col) => {
-    if (col > maxCols) return;
-    for (let r = 1; r <= sheet.rowCount; r += 1) {
-      setSide(sheet.getCell(r, col), "left", "medium");
-    }
+  applyPayrollMonthlyTimesheetExcelSheetStyles(sheet, {
+    layout,
+    monthKeys,
+    chunkByDate,
+    filteredIds,
+    repById,
+    maxCols,
   });
 
-  const headerRows = 3;
-  const bodyRows = filteredIds.length * PAYROLL_MONTHLY_SUBROWS.length;
-  for (let i = 1; i <= filteredIds.length; i += 1) {
-    const row = headerRows + i * PAYROLL_MONTHLY_SUBROWS.length;
-    if (row > headerRows + bodyRows) continue;
-    for (let c = 1; c <= maxCols; c += 1) {
-      setSide(sheet.getCell(row, c), "bottom", "medium");
-    }
-  }
-
-  const buf = await workbook.xlsx.writeBuffer();
-  return buf;
+  return workbook.xlsx.writeBuffer();
 }

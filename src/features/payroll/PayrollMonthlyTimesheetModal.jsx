@@ -17,9 +17,22 @@ import {
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import { writePayrollMonthlyTimesheetWorkbook } from "@/features/payroll/payrollMonthlyTimesheetExcelGrid";
 import {
+  buildMonthlyDetailFlatValues,
   buildMonthlyRuleSummary,
   isPayrollMonthDayOnOrAfterJoin,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
+import {
+  buildPayrollMonthlyTimesheetDetailHeaders,
+  DETAIL_GROUP_KEYS,
+  MONTH_DETAIL_COLS_PER_BLOCK,
+  payrollMonthlyTimesheetTotalColCount,
+} from "@/features/payroll/payrollMonthlyTimesheetLayout";
+import {
+  payrollMonthlyTimesheetDayBodyBgClass,
+  payrollMonthlyTimesheetDayHeaderBgClass,
+  payrollMonthlyTimesheetDetailGroupBodyClass,
+  payrollMonthlyTimesheetDetailGroupHeaderClass,
+} from "@/features/payroll/payrollMonthlyTimesheetGridStyle";
 import {
   enumerateDateKeysInclusive,
   getFirstDayOfMonthKey,
@@ -104,10 +117,8 @@ function representativeEmployee(dayChunks, id) {
 const STICKY_COL_WIDTHS = [36, 176, 30, 30];
 const MONTH_DAY_COL_WIDTH = 35;
 const MONTH_DETAIL_COL_WIDTH = 45;
-const MONTH_DETAIL_COLS_PER_BLOCK = 16;
 /** Độ rộng mỗi cột khối «THỜI GIAN LÀM VIỆC» trên bản in A3 (mm). */
 const A3_PRINT_DETAIL_COL_WIDTH_MM = 9;
-const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 /** Dưới ngưỡng này render đủ dòng; từ ngưỡng trở lên ảo hóa theo khối NV để tránh OOM. */
 const MONTHLY_TIMESHEET_VIRTUAL_THRESHOLD = 14;
 const MONTH_HEADER_ROW_TOPS_DEFAULT = {
@@ -243,47 +254,9 @@ function monthHeaderStickyStyle(top, zIndex) {
   };
 }
 
-function detailGroupHeaderTone(groupKey) {
-  if (groupKey === "total") return "bg-slate-200 dark:bg-slate-700";
-  if (groupKey === "trial") return "bg-cyan-100 dark:bg-cyan-900";
-  return "bg-violet-100 dark:bg-violet-900";
-}
-
-function detailGroupBodyTone(groupIndex) {
-  if (groupIndex === 0) return "bg-slate-50 dark:bg-slate-900";
-  if (groupIndex === 1) return "bg-cyan-50/60 dark:bg-cyan-950/20";
-  return "bg-violet-50/60 dark:bg-violet-950/20";
-}
-
 function formatEnglishWeekday3(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
-}
-
-/** Thứ 7: xám đậm; Chủ nhật: xám nhạt hơn — lưới tháng (header ngày). */
-function monthTimesheetDayHeaderClass(pd, ch) {
-  if (pd) {
-    const dow = pd.getDay();
-    if (dow === 0) return "bg-yellow-200 dark:bg-slate-700/55";
-    if (dow === 6) return "bg-slate-400 dark:bg-slate-600";
-  }
-  if (ch?.isHolidayDay) return "bg-teal-200 dark:bg-rose-900/40";
-  if (ch?.isCompensatoryDay) return "bg-lime-200 dark:bg-teal-900/40";
-  if (ch?.isOffDay) return "bg-fuchsia-200 dark:bg-cyan-900/35";
-  return "bg-slate-100 dark:bg-slate-800";
-}
-
-/** Thứ 7: xám đậm; Chủ nhật: xám nhạt hơn — lưới tháng (ô ngày). */
-function monthTimesheetDayBodyClass(pd, ch) {
-  if (pd) {
-    const dow = pd.getDay();
-    if (dow === 0) return "bg-yellow-100 dark:bg-slate-800/55";
-    if (dow === 6) return "bg-slate-200 dark:bg-slate-700";
-  }
-  if (ch?.isHolidayDay) return "bg-teal-100 dark:bg-amber-950/25";
-  if (ch?.isCompensatoryDay) return "bg-lime-100 dark:bg-teal-950/25";
-  if (ch?.isOffDay) return "bg-fuchsia-100 dark:bg-sky-950/20";
-  return "";
 }
 
 /** Màu nền ô ngày — bản in A3. */
@@ -1146,10 +1119,9 @@ export default function PayrollMonthlyTimesheetModal({
     overscan: 2,
   });
 
-  const timesheetTotalColCount =
-    4 +
-    monthRange.keys.length +
-    DETAIL_GROUP_KEYS.length * MONTH_DETAIL_COLS_PER_BLOCK;
+  const timesheetTotalColCount = payrollMonthlyTimesheetTotalColCount(
+    monthRange.keys.length,
+  );
 
   const stickyColsTotalWidth = useMemo(
     () => STICKY_COL_WIDTHS.reduce((sum, w) => sum + w, 0),
@@ -1208,24 +1180,7 @@ export default function PayrollMonthlyTimesheetModal({
     "border !border-solid border-[1px] border-slate-300 dark:border-slate-700";
   const noTopBorder = "!border-t-0";
   const detailHeaders = useMemo(
-    () => [
-      tlPage("monthlyRuleColSoNgayCong", "Ngày công chuẩn"),
-      tlPage("monthlyRuleColWorkHours", "Tổng GC thực tế"),
-      tlPage("monthlyRuleColWorkDays", "Ngày công thực tế"),
-      tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ KL"),
-      tlPage("monthlyRuleColPn", "Phép năm (PN)"),
-      tlPage("monthlyRuleColNb", "Nghỉ bù (NB)"),
-      tlPage("monthlyRuleColKl", "Nghỉ KL (KL)"),
-      tlPage("monthlyRuleColKp", "Nghỉ KP (KP)"),
-      "Giờ làm (X0.3)",
-      "TC ngày thường / TC ca đêm (X1.5)",
-      "TC ngày off ca ngày (X2.0)",
-      "TC ca đêm ngày off (X2.7)",
-      "TC ngày lễ (X3.0)",
-      "TC đêm ngày lễ (x3.9)",
-      "Sat.S ngày công / (X2.0)",
-      "Sat.S (X2.7)",
-    ],
+    () => buildPayrollMonthlyTimesheetDetailHeaders(tlPage),
     [tlPage],
   );
 
@@ -1620,7 +1575,10 @@ export default function PayrollMonthlyTimesheetModal({
                           const pd = parseLocalDateKey(dk);
                           const dom = pd ? pd.getDate() : "";
                           const hol = chunkByDate.get(dk);
-                          const offCol = monthTimesheetDayHeaderClass(pd, hol);
+                          const offCol = payrollMonthlyTimesheetDayHeaderBgClass(
+                            pd,
+                            hol,
+                          );
                           return (
                             <th
                               key={dk}
@@ -1648,7 +1606,10 @@ export default function PayrollMonthlyTimesheetModal({
                           );
                         })}
                         {DETAIL_GROUP_KEYS.flatMap((groupKey) => {
-                          const groupBg = detailGroupHeaderTone(groupKey);
+                          const groupBg =
+                            payrollMonthlyTimesheetDetailGroupHeaderClass(
+                              groupKey,
+                            );
                           return [
                             <th
                               key={`${groupKey}-workday`}
@@ -1701,7 +1662,7 @@ export default function PayrollMonthlyTimesheetModal({
                                   80,
                                 ),
                               }}
-                              className={`${thinHeadBorder} ${noTopBorder} ${detailGroupHeaderTone(groupKey)} ${idx === 0 ? strongBorderLeft : ""} px-1 py-1 text-center text-[9px] font-bold text-slate-900 dark:text-slate-100`}
+                              className={`${thinHeadBorder} ${noTopBorder} ${payrollMonthlyTimesheetDetailGroupHeaderClass(groupKey)} ${idx === 0 ? strongBorderLeft : ""} px-1 py-1 text-center text-[9px] font-bold text-slate-900 dark:text-slate-100`}
                             >
                               {h}
                             </th>
@@ -1825,7 +1786,7 @@ export default function PayrollMonthlyTimesheetModal({
                               {monthRange.keys.map((dk) => {
                                 const ch = chunkByDate.get(dk);
                                 const pd = parseLocalDateKey(dk);
-                                const baseBg = monthTimesheetDayBodyClass(
+                                const baseBg = payrollMonthlyTimesheetDayBodyBgClass(
                                   pd,
                                   ch,
                                 );
@@ -2035,59 +1996,23 @@ export default function PayrollMonthlyTimesheetModal({
                                   5: 4,
                                   6: 5,
                                 };
-                                const valuesForBlock = (blockSummary) =>
-                                  Array.from(
-                                    { length: MONTH_DETAIL_COLS_PER_BLOCK },
-                                    (_, idx) => {
-                                      const s = blockSummary || {};
-                                      if (si === 0) {
-                                        if (idx === 0) return fmt(s.soNgayCong);
-                                        if (idx === 1) return fmt(s.workHours);
-                                        if (idx === 2) return fmt(s.workDays);
-                                        if (idx === 3) return fmt(s.unpaidDays);
-                                        if (idx === 4) return fmt(s.pnDays);
-                                        if (idx === 5) return fmt(s.nbDays);
-                                        if (idx === 6) return fmt(s.klDays);
-                                        if (idx === 7) return fmt(s.kpDays);
-                                      }
-                                      const tcByRow = [
-                                        s.coeff03,
-                                        s.coeff15,
-                                        s.coeff20,
-                                        s.coeff27,
-                                        s.coeff30,
-                                        s.coeff39,
-                                      ];
-                                      const coeffIdx = coeffColBySubrow[si];
-                                      if (
-                                        coeffIdx != null &&
-                                        idx === 8 + coeffIdx
-                                      ) {
-                                        return fmt(tcByRow[coeffIdx]);
-                                      }
-                                      if (si === 0 && idx === 14) {
-                                        const n = s.satsWorkDays;
-                                        return Number.isFinite(n) && n > 0
-                                          ? String(Math.round(n))
-                                          : " ";
-                                      }
-                                      if (si === 3 && idx === 14)
-                                        return fmt(s.sats20);
-                                      if (si === 4 && idx === 15)
-                                        return fmt(s.sats27);
-                                      return " ";
-                                    },
-                                  );
-                                const detailValues = [
-                                  ...valuesForBlock(summaries?.total),
-                                  ...valuesForBlock(summaries?.trial),
-                                  ...valuesForBlock(summaries?.official),
-                                ];
+                                const detailValues = buildMonthlyDetailFlatValues(
+                                  {
+                                    si,
+                                    summaries,
+                                    coeffColBySubrow,
+                                    fmt,
+                                    colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
+                                  },
+                                );
                                 const oneRow = detailValues.map((v, idx) => {
                                   const group = Math.floor(
                                     idx / MONTH_DETAIL_COLS_PER_BLOCK,
                                   );
-                                  const groupBg = detailGroupBodyTone(group);
+                                  const groupBg =
+                                    payrollMonthlyTimesheetDetailGroupBodyClass(
+                                      group,
+                                    );
                                   return (
                                     <td
                                       key={`detail-${id}-${sr.key}-${idx}`}
