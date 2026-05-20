@@ -560,7 +560,7 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
   colgroupParts.push('<col style="width:6mm" />');
   colgroupParts.push('<col style="width:14mm" />');
   colgroupParts.push('<col style="width:8mm" />');
-  colgroupParts.push("<col />");
+  colgroupParts.push('<col style="width:6mm;min-width:6mm" />');
   for (let i = 0; i < monthKeys.length; i++) colgroupParts.push("<col />");
   for (let i = 0; i < MONTH_DETAIL_COLS_PER_BLOCK; i++) {
     colgroupParts.push(

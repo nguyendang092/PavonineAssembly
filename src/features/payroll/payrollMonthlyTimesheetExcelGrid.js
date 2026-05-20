@@ -238,7 +238,8 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
 
     const startBody = grid.length - PAYROLL_MONTHLY_SUBROWS.length;
     if (startBody >= 3) {
-      for (let i = 0; i < L; i++) {
+      // Chỉ merge STT / họ tên / BP. Cột «Hệ số TC» (index L-1) mỗi dòng một giá trị — không merge.
+      for (let i = 0; i < L - 1; i++) {
         pushMerge(
           startBody,
           i,

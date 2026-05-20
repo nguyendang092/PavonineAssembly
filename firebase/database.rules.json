@@ -1,0 +1,192 @@
+{
+  "rules": {
+    "attendance": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$date": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "_meta": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        "$empKey": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+
+    "seasonalAttendance": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$date": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "_meta": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        "$empKey": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+
+    "userDepartments": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$mappingId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "internalAnnouncements": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$id": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "performanceData": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$year": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "bar": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+
+    "ng": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+
+    "mcDefectReport": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "byDate": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$date": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          "$recordKey": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          }
+        }
+      }
+    },
+
+    "areas": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$area": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "temperature_monitor": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$area": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$machine": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          "$month": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          }
+        }
+      }
+    },
+
+    "details": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$area": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "molds": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$moldId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "honorBoard": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$entryId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "downloads": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "stats": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$fileId": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+
+    "warehouseInventoryDashboard": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "latestSnapshot": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "logs": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$logId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "userPreferences": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$safeEmail": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "chartOrder_v1": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          "$kind": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          }
+        }
+      }
+    }
+  }
+}
