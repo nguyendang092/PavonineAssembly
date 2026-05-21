@@ -62,7 +62,7 @@ const WarehouseInventoryDashboard = lazyImport(
   () => import("@/features/dashboard/WarehouseInventoryDashboard"),
 );
 const MCDefectReportDashboard = lazyImport(
-  () => import("@/features/dashboard/MCDefectReportDashboard"),
+  () => import("@/features/dashboard/mcDefectReport"),
 );
 const Downloads = lazyImport(() => import("@/components/ui/Downloads"));
 const UserDepartmentManager = lazyImport(
