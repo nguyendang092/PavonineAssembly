@@ -11,7 +11,8 @@ Route: `/mc-defect-report` · Firebase: `mcDefectReport/byDate`
 | 5 thẻ KPI | `components/KpiCards.jsx` |
 | Biểu đồ cột top NV + đường theo ngày | `components/ChartsTopRow.jsx` |
 | Heatmap + donut theo loại lỗi | `components/ChartsHeatmapDonutRow.jsx` |
-| Form nhập, import Excel, bảng raw | `components/DataTables.jsx` → `MCDefectReportEntrySection` |
+| Form nhập, sửa/xóa dòng, import Excel, bảng raw | `components/DataTables.jsx` → `MCDefectReportEntrySection` |
+| Logic sửa (điền form, cập nhật Firebase) | `hooks/useMcDefectDashboard.js` → `handleEdit`, `handleSubmit` |
 | Bảng pivot tổng hợp | `components/DataTables.jsx` → `MCDefectReportPivotSection` |
 | State, Firebase, filter, CRUD, export PDF/ảnh | `hooks/useMcDefectDashboard.js` |
 | Gom dữ liệu (KPI, theo ngày, heatmap, donut…) | `lib/dataAggregations.js` |

@@ -46,6 +46,8 @@ export function useMcDefectDashboard() {
   const [currentRawPage, setCurrentRawPage] = useState(1);
   const [currentDetailPage, setCurrentDetailPage] = useState(1);
   const [form, setForm] = useState(INITIAL_MC_DEFECT_FORM);
+  /** { date, recordKey } khi đang sửa một dòng từ bảng raw */
+  const [editingRecord, setEditingRecord] = useState(null);
 
   useEffect(() => {
     const recordsRef = ref(db, MC_DEFECT_REPORT_PATH);
@@ -238,6 +240,36 @@ export function useMcDefectDashboard() {
     });
   };
 
+  const resetFormAfterSave = () => {
+    setEditingRecord(null);
+    setForm((prev) => ({
+      ...INITIAL_MC_DEFECT_FORM,
+      date: prev.date,
+      department: prev.department,
+      errorType: prev.errorType,
+    }));
+  };
+
+  const handleEdit = (row) => {
+    setForm({
+      date: row.date,
+      employee: row.employee,
+      department: row.department,
+      errorType: row.errorType,
+      errorCount: String(row.errorCount ?? ""),
+      note: row.note || "",
+    });
+    setEditingRecord({ date: row.date, recordKey: row.recordKey });
+    setMessageType("info");
+    setMessage("Đang chỉnh sửa — thay đổi form phía trên rồi bấm «Cập nhật».");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRecord(null);
+    setForm(INITIAL_MC_DEFECT_FORM);
+    setMessage("");
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const employee = normalizeText(form.employee);
@@ -252,6 +284,8 @@ export function useMcDefectDashboard() {
       !Number.isFinite(errorCount) ||
       errorCount < 0
     ) {
+      setMessageType("error");
+      setMessage("Vui lòng điền đủ ngày, nhân viên, bộ phận, loại lỗi và số lỗi hợp lệ.");
       return;
     }
     setSaving(true);
@@ -260,11 +294,8 @@ export function useMcDefectDashboard() {
       department,
       errorType,
     });
-    const targetRef = ref(
-      db,
-      `${MC_DEFECT_REPORT_PATH}/${form.date}/${recordKey}`,
-    );
-    set(targetRef, {
+    const newPath = `${MC_DEFECT_REPORT_PATH}/${form.date}/${recordKey}`;
+    const payload = {
       date: form.date,
       employee,
       department,
@@ -272,16 +303,22 @@ export function useMcDefectDashboard() {
       errorCount,
       note: normalizeText(form.note),
       updatedAt: Date.now(),
-    })
+    };
+    const isUpdate = Boolean(editingRecord);
+    const oldPath = isUpdate
+      ? `${MC_DEFECT_REPORT_PATH}/${editingRecord.date}/${editingRecord.recordKey}`
+      : null;
+    const pathChanged = isUpdate && oldPath !== newPath;
+
+    const savePromise = pathChanged
+      ? remove(ref(db, oldPath)).then(() => set(ref(db, newPath), payload))
+      : set(ref(db, newPath), payload);
+
+    savePromise
       .then(() => {
         setMessageType("success");
-        setMessage("Đã thêm dữ liệu thành công.");
-        setForm((prev) => ({
-          ...prev,
-          employee: "",
-          errorCount: "",
-          note: "",
-        }));
+        setMessage(isUpdate ? "Đã cập nhật bản ghi." : "Đã thêm dữ liệu thành công.");
+        resetFormAfterSave();
       })
       .catch(() => {
         setMessageType("error");
@@ -294,6 +331,13 @@ export function useMcDefectDashboard() {
     if (!date || !recordKey) return;
     remove(ref(db, `${MC_DEFECT_REPORT_PATH}/${date}/${recordKey}`))
       .then(() => {
+        if (
+          editingRecord?.date === date &&
+          editingRecord?.recordKey === recordKey
+        ) {
+          setEditingRecord(null);
+          setForm(INITIAL_MC_DEFECT_FORM);
+        }
         setMessageType("success");
         setMessage("Đã xóa bản ghi.");
       })
@@ -433,10 +477,13 @@ export function useMcDefectDashboard() {
     },
     form: {
       form,
+      editingRecord,
       handleChange,
       handleSubmit,
+      handleCancelEdit,
     },
     actions: {
+      handleEdit,
       handleDelete,
       handleImportExcel,
       handleDownloadTemplate,

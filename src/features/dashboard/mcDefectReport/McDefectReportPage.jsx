@@ -123,8 +123,10 @@ export default function McDefectReportPage() {
             <MCDefectReportEntrySection
               saving={saving}
               form={form.form}
+              editingRecord={form.editingRecord}
               handleChange={form.handleChange}
               handleSubmit={form.handleSubmit}
+              onCancelEdit={form.handleCancelEdit}
               onDownloadTemplate={actions.handleDownloadTemplate}
               onImportExcel={actions.handleImportExcel}
               rawRowsPaged={tables.rawRowsPaged}
@@ -140,6 +142,7 @@ export default function McDefectReportPage() {
                   Math.min(tables.totalRawPages, p + 1),
                 )
               }
+              onEdit={actions.handleEdit}
               onDelete={actions.handleDelete}
             />
             <MCDefectReportPivotSection
