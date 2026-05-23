@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -22,13 +22,83 @@ import {
   formatMcDefectEmployeeAxisLabel,
 } from "../lib/dataAggregations";
 
-export default function MCDefectReportTopChartsSection({
+function MCDefectReportTopChartsSection({
   byEmployeeData,
   topEmployeeYAxisWidth,
   byDateData,
   chartByDatePeriodLabel,
   dailyAverage,
 }) {
+  const employeeBarMargin = useMemo(
+    () => ({ top: 6, right: 8, left: 6, bottom: 3 }),
+    [],
+  );
+
+  const employeeAxisTick = useCallback(
+    ({ x, y, payload }) => (
+      <text
+        x={x - topEmployeeYAxisWidth + 4}
+        y={y}
+        dy={4}
+        textAnchor="start"
+        fill={MC_DEFECT_CHART_TEXT}
+        fontSize={10}
+        fontWeight={600}
+      >
+        {formatMcDefectEmployeeAxisLabel(payload.value)}
+      </text>
+    ),
+    [topEmployeeYAxisWidth],
+  );
+
+  const employeeTooltipFormatter = useCallback(
+    (value) => [`${value}`, "Số lỗi"],
+    [],
+  );
+  const employeeTooltipLabelFormatter = useCallback(
+    (label) => `Nhân viên: ${label}`,
+    [],
+  );
+
+  const dateTooltipLabelFormatter = useCallback(
+    (label) => `Ngày: ${String(label || "").trim()}`,
+    [],
+  );
+
+  const referenceLineLabel = useMemo(
+    () => ({
+      value: "Trung bình",
+      position: "insideTopRight",
+      fill: MC_DEFECT_CHART_TEXT,
+    }),
+    [],
+  );
+
+  const lineDotStyle = useMemo(
+    () => ({ r: 4, fill: MC_DEFECT_CHART_PRIMARY }),
+    [],
+  );
+
+  const lineLabelStyle = useMemo(
+    () => ({
+      position: "top",
+      fill: MC_DEFECT_CHART_TEXT,
+      fontSize: 16,
+      fontWeight: 700,
+    }),
+    [],
+  );
+
+  const axisTickStyle = useMemo(
+    () => ({ fontSize: 10, fill: MC_DEFECT_CHART_TEXT }),
+    [],
+  );
+
+  const tooltipCursor = useMemo(
+    () => ({ fill: "rgba(15, 23, 42, 0.06)" }),
+    [],
+  );
+
   return (
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
       <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/80 p-4 shadow-sm dark:border-slate-700 dark:from-slate-900 dark:to-slate-900 xl:col-span-5">
@@ -40,12 +110,12 @@ export default function MCDefectReportTopChartsSection({
             <BarChart
               data={byEmployeeData}
               layout="vertical"
-              margin={{ top: 6, right: 8, left: 6, bottom: 3 }}
+              margin={employeeBarMargin}
             >
               <XAxis
                 type="number"
                 allowDecimals={false}
-                tick={{ fontSize: 10, fill: MC_DEFECT_CHART_TEXT }}
+                tick={axisTickStyle}
               />
               <YAxis
                 type="category"
@@ -54,25 +124,13 @@ export default function MCDefectReportTopChartsSection({
                 interval={0}
                 axisLine={false}
                 tickLine={false}
-                tick={({ x, y, payload }) => (
-                  <text
-                    x={x - topEmployeeYAxisWidth + 4}
-                    y={y}
-                    dy={4}
-                    textAnchor="start"
-                    fill={MC_DEFECT_CHART_TEXT}
-                    fontSize={10}
-                    fontWeight={600}
-                  >
-                    {formatMcDefectEmployeeAxisLabel(payload.value)}
-                  </text>
-                )}
+                tick={employeeAxisTick}
               />
               <Tooltip
                 {...MC_DEFECT_CHART_TOOLTIP_PROPS}
-                cursor={{ fill: "rgba(15, 23, 42, 0.06)" }}
-                formatter={(value) => [`${value}`, "Số lỗi"]}
-                labelFormatter={(label) => `Nhân viên: ${label}`}
+                cursor={tooltipCursor}
+                formatter={employeeTooltipFormatter}
+                labelFormatter={employeeTooltipLabelFormatter}
               />
               <Bar
                 dataKey="errorCount"
@@ -113,40 +171,26 @@ export default function MCDefectReportTopChartsSection({
               <XAxis
                 dataKey="date"
                 tickFormatter={formatMcDefectChartDayMonth}
-                tick={{ fontSize: 10, fill: MC_DEFECT_CHART_TEXT }}
+                tick={axisTickStyle}
               />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 10, fill: MC_DEFECT_CHART_TEXT }}
-              />
+              <YAxis allowDecimals={false} tick={axisTickStyle} />
               <Tooltip
                 {...MC_DEFECT_CHART_TOOLTIP_PROPS}
-                labelFormatter={(label) =>
-                  `Ngày: ${String(label || "").trim()}`
-                }
+                labelFormatter={dateTooltipLabelFormatter}
               />
               <ReferenceLine
                 y={dailyAverage}
                 stroke="#16a34a"
                 strokeDasharray="4 4"
-                label={{
-                  value: "Trung bình",
-                  position: "insideTopRight",
-                  fill: MC_DEFECT_CHART_TEXT,
-                }}
+                label={referenceLineLabel}
               />
               <Line
                 type="monotone"
                 dataKey="errorCount"
                 stroke={MC_DEFECT_CHART_PRIMARY}
                 strokeWidth={2.5}
-                dot={{ r: 4, fill: MC_DEFECT_CHART_PRIMARY }}
-                label={{
-                  position: "top",
-                  fill: MC_DEFECT_CHART_TEXT,
-                  fontSize: 16,
-                  fontWeight: 700,
-                }}
+                dot={lineDotStyle}
+                label={lineLabelStyle}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -155,3 +199,5 @@ export default function MCDefectReportTopChartsSection({
     </section>
   );
 }
+
+export default memo(MCDefectReportTopChartsSection);

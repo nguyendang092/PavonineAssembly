@@ -1,9 +1,9 @@
-import React from "react";
+import React, { memo } from "react";
 
 const selectClass =
   "w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm dark:border-slate-600 dark:bg-slate-900";
 
-export default function MCDefectReportFiltersSidebar({
+function MCDefectReportFiltersSidebar({
   reportMonth,
   setReportMonth,
   reportDepartment,
@@ -103,3 +103,5 @@ export default function MCDefectReportFiltersSidebar({
     </aside>
   );
 }
+
+export default memo(MCDefectReportFiltersSidebar);

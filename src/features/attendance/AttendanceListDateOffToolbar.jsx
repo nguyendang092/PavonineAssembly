@@ -24,7 +24,7 @@ function AttendanceListDateOffToolbar({
   tl,
 }) {
   return (
-      <div className="grid min-w-0 flex-1 grid-cols-2 items-center gap-5 px-1 sm:flex sm:flex-nowrap sm:gap-1.5 sm:px-0 sm:overflow-x-auto sm:whitespace-nowrap">
+      <div className="grid min-w-0 flex-1 grid-cols-2 items-center gap-2 px-1 sm:flex sm:flex-nowrap sm:items-center sm:gap-1.5 sm:px-0 sm:overflow-x-auto sm:whitespace-nowrap">
         <input
           type="date"
           value={selectedDate}
@@ -42,7 +42,7 @@ function AttendanceListDateOffToolbar({
               aria-expanded={offHolidayDropdownOpen}
               aria-haspopup="menu"
               onClick={() => setOffHolidayDropdownOpen((open) => !open)}
-              className={`inline-flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-lg border-2 px-3 text-sm font-bold tracking-tight shadow-md transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-300/70 dark:focus-visible:ring-violet-600/50 sm:px-3 sm:max-w-[min(100vw-10rem,19rem)] ${
+              className={`inline-flex h-8 w-full min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-lg border-2 px-3 text-sm font-bold tracking-tight shadow-md transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-300/70 dark:focus-visible:ring-violet-600/50 sm:px-3 sm:max-w-[min(100vw-10rem,19rem)] ${
                 offHolidayDropdownOpen
                   ? "border-violet-500 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/35 ring-2 ring-violet-400/90 ring-offset-2 ring-offset-white dark:ring-offset-slate-950"
                   : "border-violet-400/90 bg-gradient-to-br from-white to-violet-50 text-violet-950 hover:border-violet-500 hover:shadow-lg hover:shadow-violet-500/20 dark:border-violet-500/70 dark:from-slate-900 dark:to-violet-950/80 dark:text-violet-50 dark:hover:border-violet-400 dark:hover:shadow-violet-900/40"

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { MC_DEFECT_FILTER_ALL } from "./lib/constants";
 import FiltersSidebar from "./components/FiltersSidebar";
 import KpiCards from "./components/KpiCards";
@@ -10,7 +10,7 @@ import {
 } from "./components/DataTables";
 import { useMcDefectDashboard } from "./hooks/useMcDefectDashboard";
 
-function MessageBanner({ message, messageType }) {
+const MessageBanner = memo(function MessageBanner({ message, messageType }) {
   if (!message) return null;
   const tone =
     messageType === "success"
@@ -23,7 +23,7 @@ function MessageBanner({ message, messageType }) {
       {message}
     </div>
   );
-}
+});
 
 /** Trang «Báo cáo hàng lỗi MC» — chỉ ghép layout; logic nằm trong hook + lib. */
 export default function McDefectReportPage() {
@@ -118,8 +118,19 @@ export default function McDefectReportPage() {
 
           <div className="min-w-0 flex-1 space-y-4">
             <KpiCards {...kpi} />
-            <ChartsTopRow {...charts} />
-            <ChartsHeatmapDonutRow {...charts} />
+            <ChartsTopRow
+              byEmployeeData={charts.byEmployeeData}
+              topEmployeeYAxisWidth={charts.topEmployeeYAxisWidth}
+              byDateData={charts.byDateData}
+              chartByDatePeriodLabel={charts.chartByDatePeriodLabel}
+              dailyAverage={charts.dailyAverage}
+            />
+            <ChartsHeatmapDonutRow
+              heatmapData={charts.heatmapData}
+              donutByErrorTypeData={charts.donutByErrorTypeData}
+              donutPlotHeightPx={charts.donutPlotHeightPx}
+              donutRadii={charts.donutRadii}
+            />
             <MCDefectReportEntrySection
               saving={saving}
               form={form.form}
@@ -134,14 +145,8 @@ export default function McDefectReportPage() {
               currentRawPage={tables.currentRawPage}
               totalRawPages={tables.totalRawPages}
               rowsPerPage={tables.rowsPerPage}
-              onPrevRawPage={() =>
-                tables.setCurrentRawPage((p) => Math.max(1, p - 1))
-              }
-              onNextRawPage={() =>
-                tables.setCurrentRawPage((p) =>
-                  Math.min(tables.totalRawPages, p + 1),
-                )
-              }
+              onPrevRawPage={tables.onPrevRawPage}
+              onNextRawPage={tables.onNextRawPage}
               onEdit={actions.handleEdit}
               onDelete={actions.handleDelete}
             />
@@ -151,14 +156,8 @@ export default function McDefectReportPage() {
               currentDetailPage={tables.currentDetailPage}
               totalDetailPages={tables.totalDetailPages}
               rowsPerPage={tables.rowsPerPage}
-              onPrevDetailPage={() =>
-                tables.setCurrentDetailPage((p) => Math.max(1, p - 1))
-              }
-              onNextDetailPage={() =>
-                tables.setCurrentDetailPage((p) =>
-                  Math.min(tables.totalDetailPages, p + 1),
-                )
-              }
+              onPrevDetailPage={tables.onPrevDetailPage}
+              onNextDetailPage={tables.onNextDetailPage}
             />
 
             <footer className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">

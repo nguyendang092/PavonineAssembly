@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { db, onValue, ref, remove, set } from "@/services/firebase";
@@ -227,18 +227,18 @@ export function useMcDefectDashboard() {
       setCurrentDetailPage(totalDetailPages);
   }, [currentDetailPage, totalDetailPages]);
 
-  const handleChange = (field, value) => {
+  const handleChange = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     resetMcDefectFilters({
       setReportMonth,
       setReportDepartment,
       setReportEmployee,
       setReportErrorType,
     });
-  };
+  }, []);
 
   const resetFormAfterSave = () => {
     setEditingRecord(null);
@@ -250,7 +250,7 @@ export function useMcDefectDashboard() {
     }));
   };
 
-  const handleEdit = (row) => {
+  const handleEdit = useCallback((row) => {
     setForm({
       date: row.date,
       employee: row.employee,
@@ -262,15 +262,15 @@ export function useMcDefectDashboard() {
     setEditingRecord({ date: row.date, recordKey: row.recordKey });
     setMessageType("info");
     setMessage("Đang chỉnh sửa — thay đổi form phía trên rồi bấm «Cập nhật».");
-  };
+  }, []);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setEditingRecord(null);
     setForm(INITIAL_MC_DEFECT_FORM);
     setMessage("");
-  };
+  }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = useCallback((e) => {
     e.preventDefault();
     const employee = normalizeText(form.employee);
     const department = normalizeText(form.department);
@@ -325,9 +325,9 @@ export function useMcDefectDashboard() {
         setMessage("Không lưu được dữ liệu lên Firebase.");
       })
       .finally(() => setSaving(false));
-  };
+  }, [form, editingRecord]);
 
-  const handleDelete = ({ date, recordKey }) => {
+  const handleDelete = useCallback(({ date, recordKey }) => {
     if (!date || !recordKey) return;
     remove(ref(db, `${MC_DEFECT_REPORT_PATH}/${date}/${recordKey}`))
       .then(() => {
@@ -345,9 +345,9 @@ export function useMcDefectDashboard() {
         setMessageType("error");
         setMessage("Không xóa được bản ghi.");
       });
-  };
+  }, [editingRecord]);
 
-  const handleImportExcel = async (file) => {
+  const handleImportExcel = useCallback(async (file) => {
     if (!file) return;
     try {
       setSaving(true);
@@ -363,13 +363,13 @@ export function useMcDefectDashboard() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [rows]);
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = useCallback(() => {
     downloadMcDefectExcelTemplate();
-  };
+  }, []);
 
-  const handleDownloadImage = async () => {
+  const handleDownloadImage = useCallback(async () => {
     if (!dashboardExportRef.current) return;
     try {
       const dataUrl = await toPng(dashboardExportRef.current, {
@@ -388,9 +388,9 @@ export function useMcDefectDashboard() {
       setMessageType("error");
       setMessage("Không thể xuất hình dashboard.");
     }
-  };
+  }, []);
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = useCallback(async () => {
     if (!dashboardExportRef.current) return;
     try {
       const dataUrl = await toPng(dashboardExportRef.current, {
@@ -418,7 +418,23 @@ export function useMcDefectDashboard() {
       setMessageType("error");
       setMessage("Không thể xuất PDF dashboard.");
     }
-  };
+  }, []);
+
+  const onPrevRawPage = useCallback(() => {
+    setCurrentRawPage((p) => Math.max(1, p - 1));
+  }, []);
+
+  const onNextRawPage = useCallback(() => {
+    setCurrentRawPage((p) => Math.min(totalRawPages, p + 1));
+  }, [totalRawPages]);
+
+  const onPrevDetailPage = useCallback(() => {
+    setCurrentDetailPage((p) => Math.max(1, p - 1));
+  }, []);
+
+  const onNextDetailPage = useCallback(() => {
+    setCurrentDetailPage((p) => Math.min(totalDetailPages, p + 1));
+  }, [totalDetailPages]);
 
   return {
     dashboardExportRef,
@@ -474,6 +490,10 @@ export function useMcDefectDashboard() {
       totalRawPages,
       totalDetailPages,
       rowsPerPage: MC_DEFECT_ROWS_PER_PAGE,
+      onPrevRawPage,
+      onNextRawPage,
+      onPrevDetailPage,
+      onNextDetailPage,
     },
     form: {
       form,

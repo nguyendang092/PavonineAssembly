@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 
 function AttendanceSearchActionsBar({
   searchTerm,
@@ -18,7 +18,7 @@ function AttendanceSearchActionsBar({
 
   return (
     <div
-      className={`grid w-full min-w-0 ${mobileGridClass} items-center gap-1 sm:flex sm:w-auto sm:shrink-0 sm:justify-end sm:overflow-x-auto sm:whitespace-nowrap`}
+      className={`grid w-full min-w-0 ${mobileGridClass} items-center gap-1 sm:flex sm:w-auto sm:shrink-0 sm:items-center sm:justify-end sm:gap-1.5 sm:overflow-x-auto sm:whitespace-nowrap`}
     >
       <input
         type="text"
@@ -32,4 +32,4 @@ function AttendanceSearchActionsBar({
   );
 }
 
-export default AttendanceSearchActionsBar;
+export default memo(AttendanceSearchActionsBar);

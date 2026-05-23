@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo, useCallback } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { MC_DEFECT_CHART_TOOLTIP_PROPS } from "../lib/constants";
 import { renderMcDefectErrorTypePieLabel } from "../lib/pieChartLabel";
@@ -8,12 +8,22 @@ import {
   mcDefectErrorTypeColor,
 } from "../lib/dataAggregations";
 
-export default function MCDefectReportHeatmapDonutSection({
+function MCDefectReportHeatmapDonutSection({
   heatmapData,
   donutByErrorTypeData,
   donutPlotHeightPx,
   donutRadii,
 }) {
+  const pieTooltipFormatter = useCallback((value, _name, item) => {
+    const pct = item?.payload?.percent ?? 0;
+    return [`${value} (${formatMcDefectPercent(pct)})`, "Số lỗi"];
+  }, []);
+
+  const pieTooltipLabelFormatter = useCallback(
+    (label) => `Loại lỗi: ${label}`,
+    [],
+  );
+
   return (
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:col-span-8">
@@ -95,14 +105,8 @@ export default function MCDefectReportHeatmapDonutSection({
                 </Pie>
                 <Tooltip
                   {...MC_DEFECT_CHART_TOOLTIP_PROPS}
-                  formatter={(value, _name, item) => {
-                    const pct = item?.payload?.percent ?? 0;
-                    return [
-                      `${value} (${formatMcDefectPercent(pct)})`,
-                      "Số lỗi",
-                    ];
-                  }}
-                  labelFormatter={(label) => `Loại lỗi: ${label}`}
+                  formatter={pieTooltipFormatter}
+                  labelFormatter={pieTooltipLabelFormatter}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -139,3 +143,5 @@ export default function MCDefectReportHeatmapDonutSection({
     </section>
   );
 }
+
+export default memo(MCDefectReportHeatmapDonutSection);

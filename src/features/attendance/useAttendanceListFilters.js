@@ -29,6 +29,7 @@ export function useAttendanceListFilters({
     [loaiPhepFilter],
   );
 
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const deferredLoaiPhepFilter = useDeferredValue(loaiPhepFilter);
   const deferredLoaiPhepFilterSet = useMemo(
     () => new Set(deferredLoaiPhepFilter),
@@ -43,7 +44,7 @@ export function useAttendanceListFilters({
         omitDepartmentFilters = false,
         omitSearch = false,
       } = opts;
-      const q = searchTerm.trim().toLowerCase();
+      const q = deferredSearchTerm.trim().toLowerCase();
       const selectedDeptKeys = new Set(
         departmentListFilter.map((dept) => normalizeDepartment(dept)),
       );
@@ -90,7 +91,7 @@ export function useAttendanceListFilters({
       });
     },
     [
-      searchTerm,
+      deferredSearchTerm,
       departmentFilter,
       departmentListFilter,
       deferredLoaiPhepFilterSet,

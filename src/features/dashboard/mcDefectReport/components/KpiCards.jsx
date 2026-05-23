@@ -1,6 +1,6 @@
-import React from "react";
+import React, { memo } from "react";
 
-export default function MCDefectReportKpiSection({
+function MCDefectReportKpiSection({
   totalErrorCount,
   employeeWithErrors,
   highestDay,
@@ -54,3 +54,5 @@ export default function MCDefectReportKpiSection({
     </section>
   );
 }
+
+export default memo(MCDefectReportKpiSection);

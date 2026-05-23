@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 
 /** Ô nhập — luôn có chữ tối / nền sáng (tránh chữ trắng trên nền trắng). */
 const MC_DEFECT_FORM_FIELD =
@@ -10,7 +10,7 @@ const MC_DEFECT_BTN_PRIMARY =
 const MC_DEFECT_BTN_SECONDARY =
   "box-border flex h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-slate-400 bg-slate-200 px-4 text-sm font-semibold text-slate-900 hover:bg-slate-300 disabled:opacity-60 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600";
 
-function PaginationBar({
+const PaginationBar = memo(function PaginationBar({
   shown,
   total,
   page,
@@ -42,9 +42,9 @@ function PaginationBar({
       </div>
     </div>
   );
-}
+});
 
-export function MCDefectReportEntrySection({
+export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySection({
   saving,
   form,
   editingRecord,
@@ -323,9 +323,9 @@ export function MCDefectReportEntrySection({
       </div>
     </section>
   );
-}
+});
 
-export function MCDefectReportPivotSection({
+export const MCDefectReportPivotSection = memo(function MCDefectReportPivotSection({
   detailRowsPaged,
   detailRows,
   currentDetailPage,
@@ -402,4 +402,4 @@ export function MCDefectReportPivotSection({
       />
     </section>
   );
-}
+});

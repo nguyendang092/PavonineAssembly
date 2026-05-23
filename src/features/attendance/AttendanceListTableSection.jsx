@@ -1,11 +1,11 @@
-import React, { memo, useRef } from "react";
+import React, { memo, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import AttendanceTableRow, {
   ATTENDANCE_VIRTUAL_THRESHOLD,
   AttendanceTableColgroup,
   AttendanceTableThead,
   AttendanceVirtualHeader,
-} from "./AttendanceTableRow";
+} from "./attendanceTableRow";
 import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
 
 /**
@@ -41,19 +41,34 @@ function AttendanceListTableSection({
     overscan: 10,
   });
 
-  const sharedRowProps = {
-    showRowModalActions,
-    user,
-    tl,
-    t,
-    onEdit,
-    onDelete,
-    canDeleteRow: canDeleteDayRecord,
-    columnPlan,
-    isOffDay,
-    isHolidayDay,
-    isCompensatoryDay,
-  };
+  const sharedRowProps = useMemo(
+    () => ({
+      showRowModalActions,
+      user,
+      tl,
+      t,
+      onEdit,
+      onDelete,
+      canDeleteRow: canDeleteDayRecord,
+      columnPlan,
+      isOffDay,
+      isHolidayDay,
+      isCompensatoryDay,
+    }),
+    [
+      showRowModalActions,
+      user,
+      tl,
+      t,
+      onEdit,
+      onDelete,
+      canDeleteDayRecord,
+      columnPlan,
+      isOffDay,
+      isHolidayDay,
+      isCompensatoryDay,
+    ],
+  );
 
   return (
     <TableShell columnPlan={columnPlan}>

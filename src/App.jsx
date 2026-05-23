@@ -59,7 +59,7 @@ const QRCodeGenerator = lazyImport(
   () => import("@/components/ui/QRCodeGenerator"),
 );
 const WarehouseInventoryDashboard = lazyImport(
-  () => import("@/features/dashboard/WarehouseInventoryDashboard"),
+  () => import("@/features/dashboard/warehouseInventory"),
 );
 const MCDefectReportDashboard = lazyImport(
   () => import("@/features/dashboard/mcDefectReport"),

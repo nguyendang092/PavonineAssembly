@@ -4,7 +4,7 @@ import {
   canDeleteEmployeeData,
   ROLES,
 } from "@/config/authRoles";
-import { getAttendanceGridTemplateColumns } from "./AttendanceTableRow";
+import { getAttendanceGridTemplateColumns } from "./attendanceTableRow";
 import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
 import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 

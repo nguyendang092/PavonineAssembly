@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { memo, useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
@@ -32,10 +32,11 @@ import { useAttendanceListI18n } from "./useAttendanceListI18n";
 import {
   AttendanceListToolbarBranchContext,
   AttendanceListContentBranchContext,
+  AttendanceListSearchBranchContext,
 } from "./attendanceListBranchContexts";
 
 
-function AttendanceList({
+const AttendanceList = memo(function AttendanceList({
   attendanceRootPath = "attendance",
   headerTitle,
   headerSubtitle,
@@ -357,8 +358,6 @@ function AttendanceList({
       deferredFilteredEmployees,
       buCongEmployees,
       handleExportBuCongExcel,
-      searchTerm,
-      setSearchTerm,
       t,
       filterMenuRef,
       filterDropdownAnchorRef,
@@ -433,8 +432,6 @@ function AttendanceList({
       deferredFilteredEmployees,
       buCongEmployees,
       handleExportBuCongExcel,
-      searchTerm,
-      setSearchTerm,
       t,
       filterMenuRef,
       filterDropdownAnchorRef,
@@ -485,6 +482,11 @@ function AttendanceList({
       handlePrintOvertimeList,
       handlePrintAttendanceList,
     ],
+  );
+
+  const searchBranchValue = useMemo(
+    () => ({ searchTerm, setSearchTerm }),
+    [searchTerm, setSearchTerm],
   );
 
   const contentBranchValue = useMemo(
@@ -655,19 +657,21 @@ function AttendanceList({
           tl={tl}
         />
 
-        <AttendanceListToolbarBranchContext.Provider
-          value={toolbarBranchValue}
-        >
-          <AttendanceListContentBranchContext.Provider
-            value={contentBranchValue}
+        <AttendanceListSearchBranchContext.Provider value={searchBranchValue}>
+          <AttendanceListToolbarBranchContext.Provider
+            value={toolbarBranchValue}
           >
-            <AttendanceListToolbarSection />
-            <AttendanceListContentSection />
-          </AttendanceListContentBranchContext.Provider>
-        </AttendanceListToolbarBranchContext.Provider>
+            <AttendanceListContentBranchContext.Provider
+              value={contentBranchValue}
+            >
+              <AttendanceListToolbarSection />
+              <AttendanceListContentSection />
+            </AttendanceListContentBranchContext.Provider>
+          </AttendanceListToolbarBranchContext.Provider>
+        </AttendanceListSearchBranchContext.Provider>
       </div>
     </>
   );
-}
+});
 
 export default AttendanceList;
