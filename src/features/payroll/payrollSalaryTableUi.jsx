@@ -7,7 +7,7 @@ import AttendanceTableRow, {
   AttendanceTableColgroup,
   AttendanceTableThead,
   AttendanceVirtualHeader,
-} from "@/features/attendance/AttendanceTableRow";
+} from "@/features/attendance/attendanceTableRow";
 
 const PAYROLL = { tableVariant: "payroll" };
 

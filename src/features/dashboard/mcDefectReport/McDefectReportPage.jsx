@@ -127,6 +127,7 @@ export default function McDefectReportPage() {
             />
             <ChartsHeatmapDonutRow
               heatmapData={charts.heatmapData}
+              heatmapTableHeightPx={charts.heatmapTableHeightPx}
               donutByErrorTypeData={charts.donutByErrorTypeData}
               donutPlotHeightPx={charts.donutPlotHeightPx}
               donutRadii={charts.donutRadii}

@@ -31,5 +31,3 @@ import AttendanceTableRow, {
   ATTENDANCE_VIRTUAL_THRESHOLD,
 } from "@/features/attendance/attendanceTableRow";
 ```
-
-File `AttendanceTableRow.jsx` (cùng thư mục `attendance/`) chỉ re-export.

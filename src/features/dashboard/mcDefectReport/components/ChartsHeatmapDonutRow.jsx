@@ -10,6 +10,7 @@ import {
 
 function MCDefectReportHeatmapDonutSection({
   heatmapData,
+  heatmapTableHeightPx,
   donutByErrorTypeData,
   donutPlotHeightPx,
   donutRadii,
@@ -30,17 +31,23 @@ function MCDefectReportHeatmapDonutSection({
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-black">
           Lỗi theo ngày
         </h3>
-        <div className="overflow-x-auto">
+        <div
+          className="overflow-auto pr-1"
+          style={{ maxHeight: heatmapTableHeightPx }}
+        >
           <table className="min-w-[720px] border-collapse text-xs">
             <thead>
               <tr>
-                <th className="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">
+                <th className="sticky left-0 top-0 z-20 border border-slate-200 bg-white px-2 py-1 text-left dark:border-slate-700 dark:bg-slate-900">
                   Nhân viên
+                </th>
+                <th className="sticky top-0 z-10 border border-slate-200 bg-white px-2 py-1 dark:border-slate-700 dark:bg-slate-900">
+                  Tổng
                 </th>
                 {heatmapData.days.map((d) => (
                   <th
                     key={d}
-                    className="border border-slate-200 px-2 py-1 dark:border-slate-700"
+                    className="sticky top-0 z-10 border border-slate-200 bg-white px-2 py-1 dark:border-slate-700 dark:bg-slate-900"
                   >
                     {d.slice(5)}
                   </th>
@@ -50,8 +57,11 @@ function MCDefectReportHeatmapDonutSection({
             <tbody>
               {heatmapData.employees.map((emp) => (
                 <tr key={emp}>
-                  <td className="border border-slate-200 px-2 py-1 font-semibold dark:border-slate-700">
+                  <td className="sticky left-0 z-10 border border-slate-200 bg-white px-2 py-1 font-semibold dark:border-slate-700 dark:bg-slate-900">
                     {emp}
+                  </td>
+                  <td className="border border-slate-200 bg-slate-50 px-2 py-1 text-center font-black text-black dark:border-slate-700 dark:bg-slate-800">
+                    {Number(heatmapData.employeeTotals?.get(emp) || 0)}
                   </td>
                   {heatmapData.days.map((d) => {
                     const val = Number(

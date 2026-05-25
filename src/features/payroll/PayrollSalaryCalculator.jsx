@@ -24,7 +24,7 @@ import {
 import {
   ATTENDANCE_VIRTUAL_THRESHOLD,
   getAttendanceGridTemplateColumns,
-} from "@/features/attendance/AttendanceTableRow";
+} from "@/features/attendance/attendanceTableRow";
 import PayrollSalaryTableRow, {
   PayrollSalaryTableColgroup,
   PayrollSalaryTableThead,

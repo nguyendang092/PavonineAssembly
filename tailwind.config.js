@@ -7,6 +7,7 @@ module.exports = {
       animation: {
         fadeIn: "fadeIn 0.3s ease-out",
         slideDown: "slideDown 0.3s ease-out",
+        slideUp: "slideUp 0.3s ease-out",
       },
       keyframes: {
         fadeIn: {
@@ -16,6 +17,10 @@ module.exports = {
         slideDown: {
           "0%": { opacity: 0, transform: "translateY(-8px)" },
           "100%": { opacity: 1, transform: "translateY(0)" },
+        },
+        slideUp: {
+          "0%": { opacity: 0, transform: "translateY(30px) scale(0.95)" },
+          "100%": { opacity: 1, transform: "translateY(0) scale(1)" },
         },
       },
     },

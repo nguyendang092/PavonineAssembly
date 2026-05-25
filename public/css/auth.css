@@ -15,7 +15,7 @@
     justify-content: center;
     align-items: center;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    z-index: 9999;
+    z-index: var(--z-auth, 9999);
     box-sizing: border-box;
     /* Tránh 100vh trên mobile (thanh địa chỉ) làm tràn + thanh scroll ngoài ý muốn */
     min-height: 0;
@@ -88,7 +88,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10050;
+    z-index: var(--z-auth-modal, 10050);
     padding: 1rem;
     box-sizing: border-box;
     animation: auth-reset-fadeIn 0.2s ease-out;
@@ -610,7 +610,7 @@ body.signin-open .attendance-filter-menu {
         overflow: hidden;
         -webkit-overflow-scrolling: touch;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        z-index: 9999;
+        z-index: var(--z-auth, 9999);
         min-height: 0;
         height: 100vh;
         height: 100dvh;

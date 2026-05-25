@@ -1,4 +1,8 @@
-/** @deprecated Dùng `@/features/attendance/attendanceTableRow` (tránh trùng tên file trên Windows). */
+/**
+ * Compatibility entry for stale Vite/browser module graphs.
+ *
+ * New code should import from `@/features/attendance/attendanceTableRow`.
+ */
 export {
   default,
   ATTENDANCE_VIRTUAL_THRESHOLD,
@@ -10,3 +14,4 @@ export {
   AttendanceVirtualHeader,
   AttendanceTableThead,
 } from "./attendanceTableRow/index.js";
+

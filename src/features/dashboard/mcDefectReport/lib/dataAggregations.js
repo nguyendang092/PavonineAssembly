@@ -108,10 +108,14 @@ export function buildByDateData(filteredRows) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+function normalizeMcDefectEmployeeName(value) {
+  return String(value ?? "").trim() || "Unknown";
+}
+
 export function buildByEmployeeData(filteredRows, limit = 10) {
   const employeeMap = new Map();
   filteredRows.forEach((row) => {
-    const key = (row.employee || "").trim() || "Unknown";
+    const key = normalizeMcDefectEmployeeName(row.employee);
     employeeMap.set(
       key,
       Number(employeeMap.get(key) || 0) + Number(row.errorCount || 0),
@@ -142,15 +146,29 @@ export function buildDonutByErrorTypeData(filteredRows) {
   }));
 }
 
-export function buildHeatmapData(filteredRows, byEmployeeData, byDateData) {
-  const employees = byEmployeeData.slice(0, 8).map((x) => x.employee);
-  const days = byDateData.map((x) => x.date).slice(-10);
+export function buildHeatmapData(filteredRows, _byEmployeeData, byDateData) {
+  const employeeMap = new Map();
+  filteredRows.forEach((row) => {
+    const employee = normalizeMcDefectEmployeeName(row.employee);
+    employeeMap.set(
+      employee,
+      Number(employeeMap.get(employee) || 0) + Number(row.errorCount || 0),
+    );
+  });
+  const employees = [...employeeMap.entries()]
+    .sort(
+      (a, b) =>
+        Number(b[1] || 0) - Number(a[1] || 0) || a[0].localeCompare(b[0]),
+    )
+    .map(([employee]) => employee);
+  const days = byDateData.map((x) => x.date);
   const map = new Map();
   filteredRows.forEach((row) => {
-    const key = `${row.employee}__${row.date}`;
+    const employee = normalizeMcDefectEmployeeName(row.employee);
+    const key = `${employee}__${row.date}`;
     map.set(key, Number(map.get(key) || 0) + Number(row.errorCount || 0));
   });
-  return { employees, days, map };
+  return { employees, days, map, employeeTotals: employeeMap };
 }
 
 export function buildDetailRows(filteredRows) {
@@ -237,7 +255,7 @@ export function estimateMcDefectEmployeeAxisWidth(names) {
 }
 
 export function estimateMcDefectHeatmapTableHeightPx(employeeRowCount) {
-  const rows = Math.max(1, employeeRowCount);
+  const rows = Math.min(8, Math.max(1, employeeRowCount));
   return 28 + rows * 27;
 }
 

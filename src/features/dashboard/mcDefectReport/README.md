@@ -45,4 +45,4 @@ mcDefectReport/
 
 - **Đường trung bình** (line chart): `dailyAverage` = tổng lỗi các ngày có trong `byDateData` ÷ số ngày có dữ liệu (xem `buildByDateData` trong `dataAggregations.js`).
 - **Donut**: phân bổ theo **loại lỗi**, không theo bộ phận.
-- Import từ `@/features/dashboard/mcDefectReport` hoặc file cũ `MCDefectReportDashboard.jsx` (re-export).
+- Import từ `@/features/dashboard/mcDefectReport`.

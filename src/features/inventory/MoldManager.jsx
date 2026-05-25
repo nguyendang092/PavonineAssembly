@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/contexts/UserContext";
 
@@ -20,21 +27,271 @@ const fromSafeKey = (key, columns) => {
   return map[key] || key;
 };
 
+const MOLD_COLUMNS = [
+  "No",
+  "Subsidiary",
+  "Model",
+  "Production Name",
+  "Mold Code",
+  "Asset No.",
+  "Mold Size (W*D*H)",
+  "Tooling Weight",
+  "Date",
+  "Location",
+  "Type",
+  "Pavonine Model",
+  "Shot Counter",
+  "Molds per Product",
+  "NamePlate",
+  "Process",
+  "PM Image",
+];
+
+const MOLD_COLUMN_WIDTH_CLASSES = {
+  No: "w-[64px]",
+  Subsidiary: "w-[110px]",
+  Model: "w-[110px]",
+  "Production Name": "w-[170px]",
+  "Mold Code": "w-[140px]",
+  "Asset No.": "w-[120px]",
+  "Mold Size (W*D*H)": "w-[130px]",
+  "Tooling Weight": "w-[110px]",
+  Date: "w-[110px]",
+  Location: "w-[95px]",
+  Type: "w-[95px]",
+  "Pavonine Model": "w-[130px]",
+  "Shot Counter": "w-[110px]",
+  "Molds per Product": "w-[110px]",
+  NamePlate: "w-[120px]",
+  Process: "w-[120px]",
+  "PM Image": "w-[96px]",
+};
+
+const MOLD_IMAGE_COLUMNS = new Set(["NamePlate", "PM Image", "Process"]);
+
+const MOLD_COLUMN_TRANSLATION_KEYS = {
+  No: "no",
+  Subsidiary: "subsidiary",
+  Model: "model",
+  "Production Name": "productionName",
+  "Mold Code": "moldCode",
+  "Asset No.": "assetNo",
+  "Mold Size (W*D*H)": "moldSize",
+  "Tooling Weight": "toolingWeight",
+  Date: "date",
+  "Date Received": "dateReceived",
+  "Date Released": "dateReleased",
+  Location: "location",
+  Type: "type",
+  "Pavonine Model": "pavonineModel",
+  "Shot Counter": "shotCounter",
+  "Molds per Product": "moldsPerProduct",
+  Warehouse: "warehouse",
+  Vendor: "vendor",
+  NamePlate: "namePlate",
+  Notes: "notes",
+  "PM Image": "pmImage",
+  Process: "process",
+};
+
+const getImagePath = (cellValue) => {
+  if (!cellValue || !cellValue.trim()) {
+    return null;
+  }
+  if (cellValue.startsWith("/")) {
+    return cellValue;
+  }
+  return `/picture/molds/${cellValue}`;
+};
+
+const formatNumber = (value) => {
+  if (!value) return "";
+  const num = parseInt(value, 10);
+  if (isNaN(num)) return value;
+  return num.toLocaleString("en-US");
+};
+
+const getMoldFilterOptions = (molds, columnName) =>
+  Array.from(
+    new Set(
+      molds
+        .map((m) => m[columnName])
+        .filter((v) => v !== undefined && v !== ""),
+    ),
+  ).sort();
+
+function HighlightedMoldCellText({ value, col, searchTerm }) {
+  const text = `${value ?? ""}`;
+  let displayText = text;
+  if (
+    col === "Shot Counter" ||
+    (col.startsWith("Prev ") && col.includes("Shots"))
+  ) {
+    displayText = formatNumber(text) || text;
+  }
+
+  const q = searchTerm.trim();
+  if (!q) return displayText;
+  const lower = displayText.toLowerCase();
+  const qLower = q.toLowerCase();
+  const parts = [];
+  let start = 0;
+  let idx = lower.indexOf(qLower, start);
+  let key = 0;
+  while (idx !== -1) {
+    if (idx > start) parts.push(displayText.slice(start, idx));
+    parts.push(
+      <span key={`hl-${key++}`} className="bg-yellow-200 rounded px-0.5">
+        {displayText.slice(idx, idx + q.length)}
+      </span>,
+    );
+    start = idx + q.length;
+    idx = lower.indexOf(qLower, start);
+  }
+  if (start < displayText.length) parts.push(displayText.slice(start));
+  return <>{parts}</>;
+}
+
+const MoldTableCell = memo(function MoldTableCell({
+  mold,
+  col,
+  colWidthClass,
+  translatedLabel,
+  searchTerm,
+  hasImageError,
+  onImageZoom,
+  onImageError,
+  onViewPmDetail,
+  viewDetailLabel,
+}) {
+  if (col === "PM Image") {
+    return (
+      <td
+        className={`border border-gray-200 px-2 py-1 text-xs text-center align-middle whitespace-nowrap ${colWidthClass}`}
+      >
+        <button
+          onClick={() => onViewPmDetail(mold)}
+          type="button"
+          title={viewDetailLabel}
+          aria-label={viewDetailLabel}
+          className="mx-auto flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 hover:shadow-md"
+        >
+          <span aria-hidden="true">🔍</span>
+        </button>
+      </td>
+    );
+  }
+
+  const isImage = col === "NamePlate" || col === "Process";
+  const cellValue = mold[col];
+  const imagePath = isImage ? getImagePath(cellValue) : null;
+
+  return (
+    <td
+      className={`border border-gray-200 px-2 py-1 text-xs text-center align-middle ${colWidthClass}`}
+    >
+      {isImage && imagePath && !hasImageError ? (
+        <img
+          src={imagePath}
+          alt={translatedLabel}
+          loading="lazy"
+          className="max-h-16 max-w-full object-contain mx-auto rounded cursor-pointer hover:opacity-80 transition"
+          onClick={() =>
+            onImageZoom({
+              show: true,
+              src: imagePath,
+              alt: translatedLabel,
+            })
+          }
+          onError={() => onImageError(`${mold.id}-${col}`)}
+        />
+      ) : isImage && hasImageError ? (
+        <span className="text-gray-400 text-xs italic">Image not found</span>
+      ) : (
+        <HighlightedMoldCellText
+          value={cellValue}
+          col={col}
+          searchTerm={searchTerm}
+        />
+      )}
+    </td>
+  );
+});
+
+const MoldTableRow = memo(function MoldTableRow({
+  mold,
+  rowIndex,
+  columns,
+  columnWidthClasses,
+  translatedColumns,
+  searchTerm,
+  failedImages,
+  user,
+  labels,
+  onImageZoom,
+  onImageError,
+  onViewDetail,
+  onViewPmDetail,
+  onEdit,
+  onRequestDelete,
+}) {
+  return (
+    <tr className={rowIndex % 2 === 0 ? "bg-white" : "bg-blue-100"}>
+      {columns.map((col) => (
+        <MoldTableCell
+          key={col}
+          mold={mold}
+          col={col}
+          colWidthClass={columnWidthClasses[col] || "w-[120px]"}
+          translatedLabel={translatedColumns[col] || col}
+          searchTerm={searchTerm}
+          hasImageError={failedImages.has(`${mold.id}-${col}`)}
+          onImageZoom={onImageZoom}
+          onImageError={onImageError}
+          onViewPmDetail={onViewPmDetail}
+          viewDetailLabel={labels.viewDetail}
+        />
+      ))}
+      <td className="border border-gray-200 px-2 py-1 text-center align-middle whitespace-nowrap">
+        {user && (
+          <div className="flex items-center justify-center gap-1.5">
+            <button
+              onClick={() => onViewDetail(mold)}
+              type="button"
+              title={labels.viewDetail}
+              aria-label={labels.viewDetail}
+              className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 hover:shadow-md"
+            >
+              <span aria-hidden="true">🔍</span>
+            </button>
+            <button
+              onClick={() => onEdit(mold.id)}
+              type="button"
+              title={labels.edit}
+              aria-label={labels.edit}
+              className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-blue-600 hover:shadow-md"
+            >
+              <span aria-hidden="true">✏️</span>
+            </button>
+            <button
+              onClick={() => onRequestDelete(mold.id)}
+              type="button"
+              title={labels.delete}
+              aria-label={labels.delete}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-red-500 text-sm leading-none text-white shadow-sm transition-all duration-200 hover:bg-red-600 hover:shadow-md"
+            >
+              <span aria-hidden="true">🗑️</span>
+            </button>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+});
+
 function MoldManager() {
   const { t } = useTranslation();
   const { user } = useUser();
-
-  // Helper function để tạo đường dẫn hình ảnh từ thư mục local
-  // Chỉ hỗ trợ local path: /picture/molds/
-  const getImagePath = (cellValue, moldId, columnType) => {
-    if (!cellValue || !cellValue.trim()) {
-      return null;
-    }
-    if (cellValue.startsWith("/")) {
-      return cellValue;
-    }
-    return `/picture/molds/${cellValue}`;
-  };
 
   // Tính tháng trước để hiển thị trong tên cột
   const getPrevMonthLabel = () => {
@@ -53,37 +310,12 @@ function MoldManager() {
 
   // Map tên cột sang key i18n
   const getColumnTranslationKey = (col) => {
-    const map = {
-      No: "no",
-      Subsidiary: "subsidiary",
-      Model: "model",
-      "Production Name": "productionName",
-      "Mold Code": "moldCode",
-      "Asset No.": "assetNo",
-      "Mold Size (W*D*H)": "moldSize",
-      "Tooling Weight": "toolingWeight",
-      Date: "date",
-      "Date Received": "dateReceived",
-      "Date Released": "dateReleased",
-      Location: "location",
-      Type: "type",
-      "Pavonine Model": "pavonineModel",
-      "Shot Counter": "shotCounter",
-      "Molds per Product": "moldsPerProduct",
-      Warehouse: "warehouse",
-      Vendor: "vendor",
-      NamePlate: "namePlate",
-      Notes: "notes",
-      "PM Image": "pmImage",
-      Process: "process",
-    };
-
     // Kiểm tra nếu là cột Prev Shots (động)
     if (col.startsWith("Prev ") && col.includes("Shots")) {
       return "prevShots";
     }
 
-    return map[col] || col;
+    return MOLD_COLUMN_TRANSLATION_KEYS[col] || col;
   };
 
   // Hàm lấy tên cột đã dịch
@@ -113,53 +345,22 @@ function MoldManager() {
   };
 
   // Các cột hiển thị (giữ nguyên key tiếng Anh để xử lý dữ liệu)
-  const columns = [
-    "No",
-    "Subsidiary",
-    "Model",
-    "Production Name",
-    "Mold Code",
-    "Asset No.",
-    "Mold Size (W*D*H)",
-    "Tooling Weight",
-    "Date",
-    "Location",
-    "Type",
-    "Pavonine Model",
-    "Shot Counter",
-    "Molds per Product",
-    "NamePlate",
-    "Process",
-    "PM Image",
-  ];
-  const columnWidthClasses = {
-    No: "w-[64px]",
-    Subsidiary: "w-[110px]",
-    Model: "w-[110px]",
-    "Production Name": "w-[170px]",
-    "Mold Code": "w-[140px]",
-    "Asset No.": "w-[120px]",
-    "Mold Size (W*D*H)": "w-[130px]",
-    "Tooling Weight": "w-[110px]",
-    Date: "w-[110px]",
-    Location: "w-[95px]",
-    Type: "w-[95px]",
-    "Pavonine Model": "w-[130px]",
-    "Shot Counter": "w-[110px]",
-    "Molds per Product": "w-[110px]",
-    NamePlate: "w-[120px]",
-    Process: "w-[120px]",
-    "PM Image": "w-[96px]",
-  };
+  const columns = MOLD_COLUMNS;
+  const columnWidthClasses = MOLD_COLUMN_WIDTH_CLASSES;
 
   // Object mẫu cho form
-  const emptyForm = columns.reduce((acc, col) => {
-    acc[col] = "";
-    return acc;
-  }, {});
+  const emptyForm = useMemo(
+    () =>
+      columns.reduce((acc, col) => {
+        acc[col] = "";
+        return acc;
+      }, {}),
+    [columns],
+  );
 
   // Filters & search
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [subsidiaryFilter, setSubsidiaryFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
@@ -193,6 +394,33 @@ function MoldManager() {
     mold: null,
   });
 
+  const translatedColumns = useMemo(() => {
+    const labels = {};
+    columns.forEach((col) => {
+      labels[col] = getTranslatedColumn(col);
+    });
+    return labels;
+  }, [columns, t]);
+
+  const tableActionLabels = useMemo(
+    () => ({
+      viewDetail: t("moldManager.viewDetail"),
+      edit: t("moldManager.edit"),
+      delete: t("moldManager.delete"),
+    }),
+    [t],
+  );
+
+  const filterOptions = useMemo(
+    () => ({
+      subsidiary: getMoldFilterOptions(molds, "Subsidiary"),
+      type: getMoldFilterOptions(molds, "Type"),
+      location: getMoldFilterOptions(molds, "Location"),
+      vendor: getMoldFilterOptions(molds, "Vendor"),
+    }),
+    [molds],
+  );
+
   // Dynamic filter dropdown configs
   const filterConfigs = useMemo(
     () => [
@@ -201,28 +429,14 @@ function MoldManager() {
         labelKey: "moldManager.columns.subsidiary",
         value: subsidiaryFilter,
         setValue: setSubsidiaryFilter,
-        getOptions: () =>
-          Array.from(
-            new Set(
-              molds
-                .map((m) => m["Subsidiary"])
-                .filter((v) => v !== undefined && v !== ""),
-            ),
-          ).sort(),
+        options: filterOptions.subsidiary,
       },
       {
         key: "type",
         labelKey: "moldManager.columns.type",
         value: typeFilter,
         setValue: setTypeFilter,
-        getOptions: () =>
-          Array.from(
-            new Set(
-              molds
-                .map((m) => m["Type"])
-                .filter((v) => v !== undefined && v !== ""),
-            ),
-          ).sort(),
+        options: filterOptions.type,
       },
       {
         key: "location",
@@ -230,31 +444,23 @@ function MoldManager() {
 
         value: locationFilter,
         setValue: setLocationFilter,
-        getOptions: () =>
-          Array.from(
-            new Set(
-              molds
-                .map((m) => m["Location"])
-                .filter((v) => v !== undefined && v !== ""),
-            ),
-          ).sort(),
+        options: filterOptions.location,
       },
       {
         key: "vendor",
         labelKey: "moldManager.columns.vendor",
         value: vendorFilter,
         setValue: setVendorFilter,
-        getOptions: () =>
-          Array.from(
-            new Set(
-              molds
-                .map((m) => m["Vendor"])
-                .filter((v) => v !== undefined && v !== ""),
-            ),
-          ).sort(),
+        options: filterOptions.vendor,
       },
     ],
-    [molds, subsidiaryFilter, typeFilter, locationFilter, vendorFilter],
+    [
+      subsidiaryFilter,
+      typeFilter,
+      locationFilter,
+      vendorFilter,
+      filterOptions,
+    ],
   );
 
   // Handle file upload for images
@@ -462,7 +668,7 @@ function MoldManager() {
   };
 
   // Bật modal edit
-  const handleEdit = (id) => {
+  const handleEdit = useCallback((id) => {
     // Kiểm tra đăng nhập
     if (!user) {
       setAlert({
@@ -479,7 +685,7 @@ function MoldManager() {
     setForm({ ...emptyForm, ...mold });
     setEditing(id);
     setShowModal(true);
-  };
+  }, [emptyForm, molds, t, user]);
 
   // Xóa mold và đánh lại No
   const handleDelete = async (id) => {
@@ -520,7 +726,7 @@ function MoldManager() {
     }
   };
 
-  const handleAddNew = () => {
+  const handleAddNew = useCallback(() => {
     // Kiểm tra đăng nhập
     if (!user) {
       setAlert({
@@ -536,19 +742,32 @@ function MoldManager() {
     setForm({ ...emptyForm });
     setEditing(null);
     setShowModal(true);
-  };
+  }, [emptyForm, t, user]);
 
   // Open detail modal
-  const handleViewDetail = (mold) => {
+  const handleViewDetail = useCallback((mold) => {
     setDetailModal({ show: true, mold });
-  };
-  const closeDetailModal = () => setDetailModal({ show: false, mold: null });
+  }, []);
+  const closeDetailModal = useCallback(
+    () => setDetailModal({ show: false, mold: null }),
+    [],
+  );
   // PM detail modal handler
-  const handleViewPmDetail = (mold) => {
+  const handleViewPmDetail = useCallback((mold) => {
     setPmDetailModal({ show: true, mold });
-  };
-  const closePmDetailModal = () =>
-    setPmDetailModal({ show: false, mold: null });
+  }, []);
+  const closePmDetailModal = useCallback(
+    () => setPmDetailModal({ show: false, mold: null }),
+    [],
+  );
+
+  const handleImageError = useCallback((imageKey) => {
+    setFailedImages((prev) => new Set(prev).add(imageKey));
+  }, []);
+
+  const handleRequestDelete = useCallback((id) => {
+    setConfirmDelete({ show: true, id });
+  }, []);
 
   const hasOpenPopup =
     showModal ||
@@ -575,7 +794,7 @@ function MoldManager() {
 
   // Filtered molds by search term and dropdown filters
   const filteredMolds = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
+    const q = deferredSearchTerm.trim().toLowerCase();
     return molds.filter((m) => {
       // Dropdown filters
       if (subsidiaryFilter && m["Subsidiary"] !== subsidiaryFilter)
@@ -588,55 +807,13 @@ function MoldManager() {
       return columns.some((col) => `${m[col] ?? ""}`.toLowerCase().includes(q));
     });
   }, [
-    searchTerm,
+    deferredSearchTerm,
     molds,
     subsidiaryFilter,
     typeFilter,
     locationFilter,
     vendorFilter,
   ]);
-
-  // Format number with comma separator
-  const formatNumber = (value) => {
-    if (!value) return "";
-    const num = parseInt(value, 10);
-    if (isNaN(num)) return value;
-    return num.toLocaleString("en-US");
-  };
-
-  // Highlight matched text in table cells
-  const highlightText = (value, col) => {
-    const text = `${value ?? ""}`;
-    // Format numbers for Shot Counter and Prev Shots columns
-    let displayText = text;
-    if (
-      col === "Shot Counter" ||
-      (col.startsWith("Prev ") && col.includes("Shots"))
-    ) {
-      displayText = formatNumber(text) || text;
-    }
-
-    const q = searchTerm.trim();
-    if (!q) return displayText;
-    const lower = displayText.toLowerCase();
-    const qLower = q.toLowerCase();
-    const parts = [];
-    let start = 0;
-    let idx = lower.indexOf(qLower, start);
-    let key = 0;
-    while (idx !== -1) {
-      if (idx > start) parts.push(displayText.slice(start, idx));
-      parts.push(
-        <span key={`hl-${key++}`} className="bg-yellow-200 rounded px-0.5">
-          {displayText.slice(idx, idx + q.length)}
-        </span>,
-      );
-      start = idx + q.length;
-      idx = lower.indexOf(qLower, start);
-    }
-    if (start < displayText.length) parts.push(displayText.slice(start));
-    return <>{parts}</>;
-  };
 
   // Export current filtered table to Excel with translated headers
   const handleExportExcel = () => {
@@ -703,7 +880,7 @@ function MoldManager() {
                 className="border rounded-md h-8 px-2 text-xs bg-white"
               >
                 <option value="">{t(filter.labelKey)}</option>
-                {filter.getOptions().map((opt) => (
+                {filter.options.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
                   </option>
@@ -754,10 +931,7 @@ function MoldManager() {
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-2"
               >
                 {columns.map((col) => {
-                  const isImage =
-                    col === "NamePlate" ||
-                    col === "PM Image" ||
-                    col.startsWith("Process");
+                  const isImage = MOLD_IMAGE_COLUMNS.has(col);
                   return (
                     <div key={col} className="flex flex-col text-xs">
                       <div className="mb-1 flex items-center justify-between gap-1">
@@ -882,7 +1056,7 @@ function MoldManager() {
                     key={col}
                     className={`border border-gray-200 px-2 py-2 text-center text-blue-900 text-xs font-bold uppercase tracking-wide bg-blue-100 ${columnWidthClasses[col] || "w-[120px]"}`}
                   >
-                    {getTranslatedColumn(col)}
+                    {translatedColumns[col] || col}
                   </th>
                 ))}
                 <th className="w-[124px] border border-gray-200 px-2 py-2 text-center text-blue-900 text-xs font-bold uppercase tracking-wide bg-blue-100 whitespace-nowrap">
@@ -892,115 +1066,24 @@ function MoldManager() {
             </thead>
             <tbody>
               {filteredMolds.map((m, idx) => (
-                <tr
+                <MoldTableRow
                   key={m.id}
-                  className={idx % 2 === 0 ? "bg-white" : "bg-blue-100"}
-                >
-                  {columns.map((col) => {
-                    const colWidthClass = columnWidthClasses[col] || "w-[120px]";
-                    // Xử lý đặc biệt cho cột PM Image - chỉ hiển thị nút
-                    if (col === "PM Image") {
-                      return (
-                        <td
-                          key={col}
-                          className={`border border-gray-200 px-2 py-1 text-xs text-center align-middle whitespace-nowrap ${colWidthClass}`}
-                        >
-                          <button
-                            onClick={() => handleViewPmDetail(m)}
-                            type="button"
-                            title={t("moldManager.viewDetail")}
-                            aria-label={t("moldManager.viewDetail")}
-                            className="mx-auto flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 hover:shadow-md"
-                          >
-                            <span aria-hidden="true">🔍</span>
-                          </button>
-                        </td>
-                      );
-                    }
-
-                    const isImage = col === "NamePlate" || col === "Process";
-                    const cellValue = m[col];
-                    // Tạo đường dẫn hình ảnh tự động dựa trên MoldID
-                    const moldId = m["Mold Code"] || m.id;
-                    const imagePath = isImage
-                      ? getImagePath(cellValue, moldId, col)
-                      : null;
-
-                    // Kiểm tra xem hình ảnh này đã fail chưa
-                    const imageKey = `${m.id}-${col}`;
-                    const hasImageError = failedImages.has(imageKey);
-
-                    return (
-                      <td
-                        key={col}
-                        className={`border border-gray-200 px-2 py-1 text-xs text-center align-middle ${colWidthClass}`}
-                      >
-                        {isImage && imagePath && !hasImageError ? (
-                          <img
-                            src={imagePath}
-                            alt={getTranslatedColumn(col)}
-                            loading="lazy"
-                            className="max-h-16 max-w-full object-contain mx-auto rounded cursor-pointer hover:opacity-80 transition"
-                            onClick={() =>
-                              setImageZoom({
-                                show: true,
-                                src: imagePath,
-                                alt: getTranslatedColumn(col),
-                              })
-                            }
-                            onError={(e) => {
-                              // Thêm vào set failed images để không render lại
-                              setFailedImages((prev) =>
-                                new Set(prev).add(imageKey),
-                              );
-                            }}
-                          />
-                        ) : isImage && hasImageError ? (
-                          <span className="text-gray-400 text-xs italic">
-                            Image not found
-                          </span>
-                        ) : (
-                          highlightText(cellValue, col)
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td className="border border-gray-200 px-2 py-1 text-center align-middle whitespace-nowrap">
-                    {user && (
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={() => handleViewDetail(m)}
-                          type="button"
-                          title={t("moldManager.viewDetail")}
-                          aria-label={t("moldManager.viewDetail")}
-                          className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 hover:shadow-md"
-                        >
-                          <span aria-hidden="true">🔍</span>
-                        </button>
-                        <button
-                          onClick={() => handleEdit(m.id)}
-                          type="button"
-                          title={t("moldManager.edit")}
-                          aria-label={t("moldManager.edit")}
-                          className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500 text-sm text-white shadow-sm transition-all duration-200 hover:bg-blue-600 hover:shadow-md"
-                        >
-                          <span aria-hidden="true">✏️</span>
-                        </button>
-                        <button
-                          onClick={() =>
-                            setConfirmDelete({ show: true, id: m.id })
-                          }
-                          type="button"
-                          title={t("moldManager.delete")}
-                          aria-label={t("moldManager.delete")}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-red-500 text-sm leading-none text-white shadow-sm transition-all duration-200 hover:bg-red-600 hover:shadow-md"
-                        >
-                          <span aria-hidden="true">🗑️</span>
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
+                  mold={m}
+                  rowIndex={idx}
+                  columns={columns}
+                  columnWidthClasses={columnWidthClasses}
+                  translatedColumns={translatedColumns}
+                  searchTerm={deferredSearchTerm}
+                  failedImages={failedImages}
+                  user={user}
+                  labels={tableActionLabels}
+                  onImageZoom={setImageZoom}
+                  onImageError={handleImageError}
+                  onViewDetail={handleViewDetail}
+                  onViewPmDetail={handleViewPmDetail}
+                  onEdit={handleEdit}
+                  onRequestDelete={handleRequestDelete}
+                />
               ))}
             </tbody>
           </table>
@@ -1066,10 +1149,7 @@ function MoldManager() {
                   .filter((c) => c !== "No")
                   .map((col) => {
                     const value = detailModal.mold[col];
-                    const isImage =
-                      col === "NamePlate" ||
-                      col === "PM Image" ||
-                      col === "Process";
+                    const isImage = MOLD_IMAGE_COLUMNS.has(col);
                     return (
                       <div
                         key={col}

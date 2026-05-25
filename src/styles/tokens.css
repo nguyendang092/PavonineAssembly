@@ -1,9 +1,7 @@
-html, body, #root {
-  height: 100%;
-  margin: 0;
-}
-
 :root {
+  /* App shell */
+  --app-page-bg: #f8fafc;
+
   /* Unified z-index scale */
   --z-content: 1;
   --z-scroll-actions: 80;
@@ -12,6 +10,18 @@ html, body, #root {
   --z-navbar-drawer: 980;
   --z-modal-backdrop: 1200;
   --z-modal-content: 1210;
+  --z-auth: 9999;
+  --z-auth-modal: 10050;
+  --z-notification-overlay: 2147483646;
+  --z-notification-popup: 2147483647;
   --z-toast: 1300;
   --z-loading: 1400;
 }
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+

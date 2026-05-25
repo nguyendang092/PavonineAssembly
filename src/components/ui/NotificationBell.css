@@ -23,7 +23,7 @@
   position: fixed;
   top: 182px;
   right: 104px;
-  z-index: 2147483647;
+  z-index: var(--z-notification-popup, 2147483647);
   width: 44px;
   height: 44px;
   border-radius: 999px;
@@ -101,7 +101,7 @@
   inset: 0;
   background: rgba(2, 6, 23, 0.48);
   backdrop-filter: blur(2px);
-  z-index: 2147483646;
+  z-index: var(--z-notification-overlay, 2147483646);
 }
 
 .noti-bell-popup {
@@ -116,7 +116,7 @@
   border-radius: 20px;
   border: 1px solid #bfdbfe;
   box-shadow: 0 20px 46px rgba(15, 76, 129, 0.22);
-  z-index: 2147483647;
+  z-index: var(--z-notification-popup, 2147483647);
   animation: noti-popup-fade 0.22s ease;
 }
 

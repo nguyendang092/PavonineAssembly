@@ -11,7 +11,6 @@ Route: `/stock-variance` · Firebase snapshot: `warehouseInventoryDashboard/late
 | Đọc / parse file Excel, KPI thống kê | `lib/parse.js` |
 | Gom bảng tháng × mã | `lib/buildStructuredRows.js` |
 | Lọc, sắp xếp, tổng KPI bảng | `lib/filterStructuredRows.js` |
-| Snapshot tháng (localStorage) | `lib/monthSnapshots.js` |
 | Màu chart, path Firebase, page size | `lib/constants.js` |
 | Đăng ký Chart.js | `registerChartJs.js` |
 | Header upload / empty / lỗi | `components/PageHeader.jsx` |
@@ -33,7 +32,6 @@ warehouseInventory/
     parse.js
     buildStructuredRows.js
     filterStructuredRows.js
-    monthSnapshots.js
     constants.js
     chartBarGradient.js
   components/
@@ -46,5 +44,4 @@ warehouseInventory/
 
 ## Ghi chú
 
-- File cũ `WarehouseInventoryDashboard.jsx` (dashboard/) chỉ re-export.
-- `warehouseInventoryDashboardParse.js` re-export `lib/parse.js` để import cũ không gãy.
+- Import route từ `@/features/dashboard/warehouseInventory`.

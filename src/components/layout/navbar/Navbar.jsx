@@ -1,12 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { getAuth, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import SignIn from "@/auth/SignIn";
-import ChangePasswordModal from "@/components/modals/ChangePasswordModal";
 import { useTranslation } from "react-i18next";
 import { menuConfig } from "@/config/menuConfig";
 import { isAdminAccess } from "@/config/authRoles";
 import { useTheme } from "@/contexts/ThemeContext";
+import { lazyImport } from "@/utils/lazyImport";
 import NavbarDesktop from "./NavbarDesktop";
 import NavbarMobileDrawer from "./NavbarMobileDrawer";
 import NavbarTools from "./NavbarTools";
@@ -21,6 +27,11 @@ const LANGUAGE_OPTIONS = {
   vi: "Tiếng Việt",
   ko: "한국어",
 };
+
+const SignIn = lazyImport(() => import("@/auth/SignIn"));
+const ChangePasswordModal = lazyImport(
+  () => import("@/components/modals/ChangePasswordModal"),
+);
 
 export default function Navbar({ user, setUser, userRole }) {
   const { theme, toggleTheme } = useTheme();
@@ -137,15 +148,17 @@ export default function Navbar({ user, setUser, userRole }) {
 
   return (
     <>
-      {signInOpen ? (
-        <SignIn
-          onSignIn={handleSignInSuccess}
-          onClose={() => setSignInOpen(false)}
-        />
-      ) : null}
-      {changePwOpen ? (
-        <ChangePasswordModal onClose={() => setChangePwOpen(false)} />
-      ) : null}
+      <Suspense fallback={null}>
+        {signInOpen ? (
+          <SignIn
+            onSignIn={handleSignInSuccess}
+            onClose={() => setSignInOpen(false)}
+          />
+        ) : null}
+        {changePwOpen ? (
+          <ChangePasswordModal onClose={() => setChangePwOpen(false)} />
+        ) : null}
+      </Suspense>
 
       <NavbarMobileDrawer
         open={mobileMenuOpen}

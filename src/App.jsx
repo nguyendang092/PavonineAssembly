@@ -25,13 +25,14 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import "@/styles/App.css";
 import LoadingBlock from "@/components/ui/LoadingBlock";
-import NotFoundPage from "@/components/ui/NotFoundPage";
 import { lazyImport } from "@/utils/lazyImport";
-/** File rất lớn — lazy() hay gây "Failed to fetch" trong dev (timeout/HMR); import tĩnh để tải cùng graph App. */
-import AttendanceList from "@/features/attendance/AttendanceList";
-import SeasonalStaffAttendance from "@/features/attendance/SeasonalStaffAttendance";
+const AttendanceList = lazyImport(
+  () => import("@/features/attendance/AttendanceList"),
+);
+const SeasonalStaffAttendance = lazyImport(
+  () => import("@/features/attendance/SeasonalStaffAttendance"),
+);
 const PayrollSalaryCalculator = lazyImport(
   () => import("@/features/payroll/PayrollSalaryCalculator"),
 );
@@ -78,6 +79,7 @@ const InternalAnnouncementsLogin = lazyImport(
   () => import("@/features/employee/InternalAnnouncementsLogin"),
 );
 const LoginRoute = lazyImport(() => import("@/auth/LoginRoute"));
+const NotFoundPage = lazyImport(() => import("@/components/ui/NotFoundPage"));
 
 const AUTH_PATHS = new Set(["/login", "/email/login"]);
 const NAVBAR_SCROLLED_CLASS =
