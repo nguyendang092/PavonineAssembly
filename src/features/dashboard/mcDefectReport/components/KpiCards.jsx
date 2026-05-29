@@ -1,4 +1,5 @@
 import React, { memo } from "react";
+import { useTranslation } from "react-i18next";
 
 function MCDefectReportKpiSection({
   totalErrorCount,
@@ -7,28 +8,38 @@ function MCDefectReportKpiSection({
   topEmployee,
   improvementRate,
 }) {
+  const { t } = useTranslation();
+  const tl = (key, defaultValue, opts) =>
+    t(`mcDefectReport.${key}`, { defaultValue, ...opts });
+
   return (
     <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <p className="text-xs font-semibold text-slate-500">Tổng lỗi trong tháng</p>
+        <p className="text-xs font-semibold text-slate-500">
+          {tl("kpiTotalErrors", "Tổng lỗi trong tháng")}
+        </p>
         <p className="mt-1 text-3xl font-black text-rose-600">{totalErrorCount}</p>
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <p className="text-xs font-semibold text-slate-500">Số nhân viên có lỗi</p>
+        <p className="text-xs font-semibold text-slate-500">
+          {tl("kpiEmployeesWithErrors", "Số nhân viên có lỗi")}
+        </p>
         <p className="mt-1 text-3xl font-black text-slate-900 dark:text-slate-100">
           {employeeWithErrors}
         </p>
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <p className="text-xs font-semibold text-slate-500">
-          Ngày phát sinh lỗi nhiều nhất
+          {tl("kpiHighestDay", "Ngày phát sinh lỗi nhiều nhất")}
         </p>
         <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
           {highestDay}
         </p>
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <p className="text-xs font-semibold text-slate-500">Nhân viên lỗi cao nhất</p>
+        <p className="text-xs font-semibold text-slate-500">
+          {tl("kpiTopEmployee", "Nhân viên lỗi cao nhất")}
+        </p>
         <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
           {topEmployee}
         </p>
@@ -41,7 +52,7 @@ function MCDefectReportKpiSection({
         }`}
       >
         <p className="text-xs font-semibold text-slate-500">
-          Tỷ lệ cải thiện so với tháng trước
+          {tl("kpiImprovementRate", "Tỷ lệ cải thiện so với tháng trước")}
         </p>
         <p
           className={`mt-1 text-3xl font-black ${

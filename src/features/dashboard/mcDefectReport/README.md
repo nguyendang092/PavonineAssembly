@@ -1,6 +1,6 @@
 # Báo cáo hàng lỗi MC (`mcDefectReport`)
 
-Route: `/mc-defect-report` · Firebase: `mcDefectReport/byDate`
+Route: `/mc-defect-report` · Firebase: `mcDefectReport/byDate`, `mcDefectReport/a3ManualEmployees`
 
 ## Muốn sửa gì → mở file nào
 
@@ -15,6 +15,10 @@ Route: `/mc-defect-report` · Firebase: `mcDefectReport/byDate`
 | Logic sửa (điền form, cập nhật Firebase) | `hooks/useMcDefectDashboard.js` → `handleEdit`, `handleSubmit` |
 | Bảng pivot tổng hợp | `components/DataTables.jsx` → `MCDefectReportPivotSection` |
 | State, Firebase, filter, CRUD, export PDF/ảnh | `hooks/useMcDefectDashboard.js` |
+| Gom dữ liệu A3 (merge, upsert, tổng lỗi) | `lib/a3AnnouncementUtils.js` |
+| Nhân viên A3 thủ công (đồng bộ Firebase) | `hooks/useMcDefectA3ManualEmployees.js`, `lib/a3ManualEmployeesFirebase.js` |
+| Popup danh sách nhân viên A3 | `components/A3ManualEmployeeListModal.jsx` |
+| Biểu đồ A3 thông báo lỗi tháng | `components/EmployeeMonthlyAnnouncement.jsx` |
 | Gom dữ liệu (KPI, theo ngày, heatmap, donut…) | `lib/dataAggregations.js` |
 | Import / export template Excel | `lib/excelImport.js` |
 | Màu chart, path Firebase, form mặc định | `lib/constants.js` |

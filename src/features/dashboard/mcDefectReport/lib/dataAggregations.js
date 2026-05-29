@@ -210,14 +210,29 @@ export function formatMcDefectPercent(percent) {
   return `${n.toFixed(1)}%`;
 }
 
-export function formatMcDefectChartPeriodLabel(reportMonth, dateRows) {
+export function formatMcDefectChartPeriodLabel(reportMonth, dateRows, locale = "vi") {
+  const isKo = String(locale || "").startsWith("ko");
   if (reportMonth && reportMonth !== MC_DEFECT_FILTER_ALL) {
     const [yy, mm] = String(reportMonth).split("-");
     if (yy && mm) {
+      if (isKo) return `${yy}년 · ${Number(mm)}월`;
       return `Năm ${yy} · Tháng ${Number(mm)}/${yy}`;
     }
-    if (yy) return `Năm ${yy}`;
+    if (yy) return isKo ? `${yy}년` : `Năm ${yy}`;
   }
+  const monthKeys = [
+    ...new Set(
+      (dateRows || [])
+        .map((d) => toMonthKey(d.date))
+        .filter((key) => /^\d{4}-\d{2}$/.test(key)),
+    ),
+  ].sort();
+  if (monthKeys.length === 1) {
+    const [yy, mm] = monthKeys[0].split("-");
+    if (isKo) return `${yy}년 · ${Number(mm)}월`;
+    return `Năm ${yy} · Tháng ${Number(mm)}/${yy}`;
+  }
+
   const years = [
     ...new Set(
       (dateRows || [])
@@ -226,18 +241,98 @@ export function formatMcDefectChartPeriodLabel(reportMonth, dateRows) {
     ),
   ].sort();
   if (!years.length) return "";
-  if (years.length === 1) return `Năm ${years[0]}`;
-  return `Năm ${years[0]} – ${years[years.length - 1]}`;
+  if (years.length === 1) return isKo ? `${years[0]}년` : `Năm ${years[0]}`;
+  return isKo
+    ? `${years[0]}년 – ${years[years.length - 1]}년`
+    : `Năm ${years[0]} – ${years[years.length - 1]}`;
 }
 
-export function formatMcDefectChartDayMonth(dateKey) {
-  const s = String(dateKey || "").trim();
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return `${iso[3]}/${iso[2]}`;
-  const slash = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-]\d{2,4}/);
-  if (slash) {
-    return `${String(slash[1]).padStart(2, "0")}/${String(slash[2]).padStart(2, "0")}`;
+export function parseMcDefectIsoDate(dateKey) {
+  const match = String(dateKey || "")
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  return { year: match[1], month: match[2], day: match[3] };
+}
+
+/** Nhãn tháng ngắn trên trục (T5, 5월). */
+export function formatMcDefectChartMonthTick(month, locale = "vi") {
+  const mm = Number(month);
+  if (!mm) return "";
+  if (String(locale || "").startsWith("ko")) return `${mm}월`;
+  return `T${mm}`;
+}
+
+/** Chỉ số ngày trên trục (1, 2, … 31). */
+export function formatMcDefectChartDayTick(dateKey) {
+  const parsed = parseMcDefectIsoDate(dateKey);
+  if (parsed) return String(Number(parsed.day));
+  return String(dateKey || "").trim();
+}
+
+export function shouldShowMcDefectMonthOnAxis(dateKey, previousDateKey) {
+  if (!dateKey) return false;
+  if (!previousDateKey) return true;
+  return toMonthKey(dateKey) !== toMonthKey(previousDateKey);
+}
+
+/** Ngày đầy đủ cho tooltip (dd/mm/yyyy). */
+/** Header bảng heatmap: nhóm theo tháng + cột chỉ hiển thị ngày. */
+export function buildMcDefectHeatmapColumnHeader(days, locale = "vi") {
+  const sortedDays = [...(days || [])].filter(Boolean).sort();
+  const monthGroups = [];
+
+  sortedDays.forEach((dateKey) => {
+    const monthKey = toMonthKey(dateKey);
+    let group = monthGroups[monthGroups.length - 1];
+    if (!group || group.monthKey !== monthKey) {
+      group = {
+        monthKey,
+        label: formatMcDefectHeatmapMonthHeader(monthKey, locale),
+        dayColumns: [],
+      };
+      monthGroups.push(group);
+    }
+    group.dayColumns.push({
+      dateKey,
+      dayLabel: formatMcDefectChartDayTick(dateKey),
+      fullLabel: formatMcDefectChartFullDate(dateKey, locale),
+    });
+  });
+
+  return {
+    monthGroups,
+    spansMultipleMonths: monthGroups.length > 1,
+  };
+}
+
+export function formatMcDefectHeatmapMonthHeader(monthKey, locale = "vi") {
+  const [yy, mm] = String(monthKey || "").split("-");
+  if (!yy || !mm) return "";
+  if (String(locale || "").startsWith("ko")) {
+    return `${yy}년 ${Number(mm)}월`;
   }
+  return `Tháng ${Number(mm)}/${yy}`;
+}
+
+export function formatMcDefectChartFullDate(dateKey, locale = "vi") {
+  const parsed = parseMcDefectIsoDate(dateKey);
+  if (!parsed) return String(dateKey || "").trim();
+  const day = String(Number(parsed.day)).padStart(2, "0");
+  const month = String(Number(parsed.month)).padStart(2, "0");
+  if (String(locale || "").startsWith("ko")) {
+    return `${parsed.year}년 ${month}월 ${day}일`;
+  }
+  return `${day}/${month}/${parsed.year}`;
+}
+
+/** @deprecated Dùng formatMcDefectChartDayTick + formatMcDefectChartMonthTick */
+export function formatMcDefectChartDayMonth(dateKey) {
+  const parsed = parseMcDefectIsoDate(dateKey);
+  if (parsed) {
+    return `${String(Number(parsed.day)).padStart(2, "0")}/${parsed.month}`;
+  }
+  const s = String(dateKey || "").trim();
   return s.length > 5 ? s.slice(5).replace(/-/g, "/") : s;
 }
 

@@ -1,4 +1,5 @@
 import React, { memo } from "react";
+import { useTranslation } from "react-i18next";
 
 /** Ô nhập — luôn có chữ tối / nền sáng (tránh chữ trắng trên nền trắng). */
 const MC_DEFECT_FORM_FIELD =
@@ -18,9 +19,13 @@ const PaginationBar = memo(function PaginationBar({
   onPrev,
   onNext,
 }) {
+  const { t } = useTranslation();
+  const tl = (key, defaultValue, opts) =>
+    t(`mcDefectReport.${key}`, { defaultValue, ...opts });
+
   return (
     <div className="mt-3 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-      <span>{`Hiển thị ${shown} / ${total} dòng`}</span>
+      <span>{tl("paginationShown", "Hiển thị {{shown}} / {{total}} dòng", { shown, total })}</span>
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -28,16 +33,16 @@ const PaginationBar = memo(function PaginationBar({
           onClick={onPrev}
           className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
         >
-          Trước
+          {tl("prev", "Trước")}
         </button>
-        <span>{`Trang ${page}/${totalPages}`}</span>
+        <span>{tl("pageOf", "Trang {{page}}/{{totalPages}}", { page, totalPages })}</span>
         <button
           type="button"
           disabled={page >= totalPages}
           onClick={onNext}
           className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
         >
-          Sau
+          {tl("next", "Sau")}
         </button>
       </div>
     </div>
@@ -64,16 +69,20 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
   onDelete,
 }) {
   const isEditing = Boolean(editingRecord);
+  const { t } = useTranslation();
+  const tl = (key, defaultValue, opts) =>
+    t(`mcDefectReport.${key}`, { defaultValue, ...opts });
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
       <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-800 dark:text-slate-100">
-        Nhập liệu + Import Excel (3-6 cột)
+        {tl("entryTitle", "Nhập liệu + Import Excel (3-6 cột)")}
       </h3>
       <div className="space-y-5">
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-3 dark:border-slate-600 dark:bg-slate-800/40">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              Tải template Excel để import dữ liệu.
+              {tl("templateHint", "Tải template Excel để import dữ liệu.")}
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -81,10 +90,10 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
                 onClick={onDownloadTemplate}
                 className="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
               >
-                Tải template
+                {tl("downloadTemplate", "Tải template")}
               </button>
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
-                {saving ? "Đang xử lý..." : "Import Excel"}
+                {saving ? tl("processing", "Đang xử lý...") : tl("importExcel", "Import Excel")}
                 <input
                   type="file"
                   accept=".xlsx,.xls"
@@ -102,8 +111,10 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
         </div>
         {isEditing ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-            Đang sửa bản ghi — chỉnh các ô bên dưới rồi bấm «Cập nhật». Đổi ngày / NV / BP / loại lỗi sẽ
-            thay bản ghi cũ bằng bản ghi mới (không nhân đôi).
+            {tl(
+              "editingHint",
+              "Đang sửa bản ghi — chỉnh các ô bên dưới rồi bấm «Cập nhật». Đổi ngày / NV / BP / loại lỗi sẽ thay bản ghi cũ bằng bản ghi mới (không nhân đôi).",
+            )}
           </p>
         ) : null}
         <form
@@ -116,7 +127,7 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
         >
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-              Ngày
+              {tl("date", "Ngày")}
             </span>
             <input
               type="date"
@@ -127,19 +138,19 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-              Nhân viên
+              {tl("employee", "Nhân viên")}
             </span>
             <input
               type="text"
               value={form.employee}
               onChange={(e) => handleChange("employee", e.target.value)}
-              placeholder="Nhập tên nhân viên"
+              placeholder={tl("employeePlaceholder", "Nhập tên nhân viên")}
               className={MC_DEFECT_FORM_FIELD}
             />
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-              Bộ phận
+              {tl("department", "Bộ phận")}
             </span>
             <input
               type="text"
@@ -150,7 +161,7 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-              Loại lỗi
+              {tl("errorType", "Loại lỗi")}
             </span>
             <input
               type="text"
@@ -161,7 +172,7 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-              Số lỗi
+              {tl("errorCount", "Số lỗi")}
             </span>
             <input
               type="number"
@@ -177,7 +188,7 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
               className="text-xs font-semibold text-slate-600 opacity-0 dark:text-slate-300"
               aria-hidden
             >
-              Thao tác
+              {tl("actions", "Thao tác")}
             </span>
             <div className="flex h-10 items-stretch gap-2">
               <button
@@ -186,10 +197,10 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
                 disabled={saving}
               >
                 {saving
-                  ? "Đang lưu..."
+                  ? tl("saving", "Đang lưu...")
                   : isEditing
-                    ? "Cập nhật"
-                    : "Thêm bản ghi"}
+                    ? tl("updateRecord", "Cập nhật")
+                    : tl("addRecord", "Thêm bản ghi")}
               </button>
               {isEditing ? (
                 <button
@@ -198,20 +209,23 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
                   disabled={saving}
                   className={MC_DEFECT_BTN_SECONDARY}
                 >
-                  Hủy sửa
+                  {tl("cancelEdit", "Hủy sửa")}
                 </button>
               ) : null}
             </div>
           </div>
           <label className="md:col-span-6">
             <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
-              Ghi chú
+              {tl("note", "Ghi chú")}
             </span>
             <input
               type="text"
               value={form.note}
               onChange={(e) => handleChange("note", e.target.value)}
-              placeholder="Ghi chú xử lý / hành động khắc phục"
+              placeholder={tl(
+                "notePlaceholder",
+                "Ghi chú xử lý / hành động khắc phục",
+              )}
               className={MC_DEFECT_FORM_FIELD}
             />
           </label>
@@ -221,28 +235,28 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
             <thead className="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100">
               <tr>
                 <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                  STT
+                  {tl("index", "STT")}
                 </th>
                 <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                  Ngày
+                  {tl("date", "Ngày")}
                 </th>
                 <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                  Nhân viên
+                  {tl("employee", "Nhân viên")}
                 </th>
                 <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                  Bộ phận
+                  {tl("department", "Bộ phận")}
                 </th>
                 <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                  Loại lỗi
+                  {tl("errorType", "Loại lỗi")}
                 </th>
                 <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                  Số lỗi
+                  {tl("errorCount", "Số lỗi")}
                 </th>
                 <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
                   Note
                 </th>
                 <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                  Hành động
+                  {tl("actions", "Hành động")}
                 </th>
               </tr>
             </thead>
@@ -289,7 +303,7 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
                         disabled={saving}
                         className="rounded bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-800 hover:bg-sky-200 disabled:opacity-50 dark:bg-sky-950/50 dark:text-sky-200"
                       >
-                        Sửa
+                        {tl("edit", "Sửa")}
                       </button>
                       <button
                         type="button"
@@ -302,7 +316,7 @@ export const MCDefectReportEntrySection = memo(function MCDefectReportEntrySecti
                         disabled={saving}
                         className="rounded bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-200 disabled:opacity-50"
                       >
-                        Xóa
+                        {tl("delete", "Xóa")}
                       </button>
                     </div>
                   </td>
@@ -334,32 +348,36 @@ export const MCDefectReportPivotSection = memo(function MCDefectReportPivotSecti
   onPrevDetailPage,
   onNextDetailPage,
 }) {
+  const { t } = useTranslation();
+  const tl = (key, defaultValue, opts) =>
+    t(`mcDefectReport.${key}`, { defaultValue, ...opts });
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
       <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-800 dark:text-slate-100">
-        Bảng chi tiết tổng hợp (Pivot)
+        {tl("pivotTitle", "Bảng chi tiết tổng hợp (Pivot)")}
       </h3>
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm text-slate-900 dark:text-slate-100">
           <thead className="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100">
             <tr>
               <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                STT
+                {tl("index", "STT")}
               </th>
               <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                Nhân viên
+                {tl("employee", "Nhân viên")}
               </th>
               <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                Bộ phận
+                {tl("department", "Bộ phận")}
               </th>
               <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                Tổng lỗi
+                {tl("totalErrors", "Tổng lỗi")}
               </th>
               <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                Ngày lỗi gần nhất
+                {tl("latestErrorDate", "Ngày lỗi gần nhất")}
               </th>
               <th className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-100">
-                Ghi chú
+                {tl("note", "Ghi chú")}
               </th>
             </tr>
           </thead>

@@ -1,8 +1,11 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { MC_DEFECT_CHART_TOOLTIP_PROPS } from "../lib/constants";
 import { renderMcDefectErrorTypePieLabel } from "../lib/pieChartLabel";
 import {
+  buildMcDefectHeatmapColumnHeader,
+  formatMcDefectChartFullDate,
   formatMcDefectPercent,
   heatColor,
   mcDefectErrorTypeColor,
@@ -15,52 +18,104 @@ function MCDefectReportHeatmapDonutSection({
   donutPlotHeightPx,
   donutRadii,
 }) {
+  const { t, i18n } = useTranslation();
+  const displayLocale = i18n.language;
+  const tl = useCallback(
+    (key, defaultValue, opts) =>
+      t(`mcDefectReport.${key}`, { defaultValue, ...opts }),
+    [t],
+  );
+
+  const heatmapColumns = useMemo(
+    () => buildMcDefectHeatmapColumnHeader(heatmapData.days, displayLocale),
+    [displayLocale, heatmapData.days],
+  );
+
   const pieTooltipFormatter = useCallback((value, _name, item) => {
     const pct = item?.payload?.percent ?? 0;
-    return [`${value} (${formatMcDefectPercent(pct)})`, "Số lỗi"];
-  }, []);
+    return [
+      `${value} (${formatMcDefectPercent(pct)})`,
+      tl("errorCount", "Số lỗi"),
+    ];
+  }, [tl]);
 
   const pieTooltipLabelFormatter = useCallback(
-    (label) => `Loại lỗi: ${label}`,
-    [],
+    (label) => tl("errorTypeTooltip", "Loại lỗi: {{label}}", { label }),
+    [tl],
   );
 
   return (
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:col-span-8">
+      <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:col-span-8">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-black">
-          Lỗi theo ngày
+          {tl("heatmapTitle", "Lỗi theo ngày")}
         </h3>
         <div
-          className="overflow-auto pr-1"
+          className="mc-defect-heatmap-scroll w-full overflow-x-auto"
           style={{ maxHeight: heatmapTableHeightPx }}
         >
-          <table className="min-w-[720px] border-collapse text-xs">
+          <table className="mc-defect-heatmap-table text-xs">
             <thead>
-              <tr>
-                <th className="sticky left-0 top-0 z-20 border border-slate-200 bg-white px-2 py-1 text-left dark:border-slate-700 dark:bg-slate-900">
-                  Nhân viên
-                </th>
-                <th className="sticky top-0 z-10 border border-slate-200 bg-white px-2 py-1 dark:border-slate-700 dark:bg-slate-900">
-                  Tổng
-                </th>
-                {heatmapData.days.map((d) => (
+              {heatmapColumns.monthGroups.length ? (
+                <tr>
                   <th
-                    key={d}
-                    className="sticky top-0 z-10 border border-slate-200 bg-white px-2 py-1 dark:border-slate-700 dark:bg-slate-900"
+                    rowSpan={2}
+                    className="mc-defect-heatmap-sticky-col mc-defect-heatmap-th-employee mc-defect-heatmap-th-row1"
                   >
-                    {d.slice(5)}
+                    {tl("employee", "Nhân viên")}
                   </th>
-                ))}
+                  <th
+                    rowSpan={2}
+                    className="mc-defect-heatmap-th-total mc-defect-heatmap-th-row1"
+                  >
+                    {tl("total", "Tổng")}
+                  </th>
+                  {heatmapColumns.monthGroups.map((group) => (
+                    <th
+                      key={group.monthKey}
+                      colSpan={group.dayColumns.length}
+                      className="mc-defect-heatmap-th-month mc-defect-heatmap-th-row1 text-center"
+                    >
+                      {group.label}
+                    </th>
+                  ))}
+                </tr>
+              ) : null}
+              <tr>
+                {!heatmapColumns.monthGroups.length ? (
+                  <>
+                    <th className="mc-defect-heatmap-sticky-col mc-defect-heatmap-th-employee mc-defect-heatmap-th-row1">
+                      {tl("employee", "Nhân viên")}
+                    </th>
+                    <th className="mc-defect-heatmap-th-total mc-defect-heatmap-th-row1">
+                      {tl("total", "Tổng")}
+                    </th>
+                  </>
+                ) : null}
+                {heatmapColumns.monthGroups.flatMap((group) =>
+                  group.dayColumns.map((col) => (
+                    <th
+                      key={col.dateKey}
+                      title={col.fullLabel}
+                      className={`mc-defect-heatmap-th-day ${
+                        heatmapColumns.monthGroups.length
+                          ? "mc-defect-heatmap-th-row2"
+                          : "mc-defect-heatmap-th-row1"
+                      }`}
+                    >
+                      {col.dayLabel}
+                    </th>
+                  )),
+                )}
               </tr>
             </thead>
             <tbody>
               {heatmapData.employees.map((emp) => (
                 <tr key={emp}>
-                  <td className="sticky left-0 z-10 border border-slate-200 bg-white px-2 py-1 font-semibold dark:border-slate-700 dark:bg-slate-900">
+                  <td className="mc-defect-heatmap-sticky-col font-semibold">
                     {emp}
                   </td>
-                  <td className="border border-slate-200 bg-slate-50 px-2 py-1 text-center font-black text-black dark:border-slate-700 dark:bg-slate-800">
+                  <td className="mc-defect-heatmap-td-total">
                     {Number(heatmapData.employeeTotals?.get(emp) || 0)}
                   </td>
                   {heatmapData.days.map((d) => {
@@ -70,8 +125,13 @@ function MCDefectReportHeatmapDonutSection({
                     return (
                       <td
                         key={`${emp}-${d}`}
-                        className="border border-slate-200 px-2 py-1 text-center font-bold dark:border-slate-700"
+                        className="mc-defect-heatmap-td-value"
                         style={{ backgroundColor: heatColor(val) }}
+                        title={
+                          val
+                            ? `${emp} · ${formatMcDefectChartFullDate(d, displayLocale)}: ${val}`
+                            : undefined
+                        }
                       >
                         {val || ""}
                       </td>
@@ -85,7 +145,7 @@ function MCDefectReportHeatmapDonutSection({
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:col-span-4">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-black">
-          Phân bổ lỗi theo loại lỗi
+          {tl("errorTypeDistribution", "Phân bổ lỗi theo loại lỗi")}
         </h3>
         <div
           className="flex flex-col gap-3 sm:flex-row sm:items-stretch"

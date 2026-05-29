@@ -25,7 +25,9 @@ File đầy đủ: `firebase/database.rules.json` — mọi nhánh `.read` / `.w
 ├── performanceData/{year}/       # Biểu đồ cải tiến
 ├── bar/{workplace}/{week}/{rework}/{day}/{shift}/  # Sản lượng tổng
 ├── ng/{workplace}/{week}/{rework}/{day}/{model}/Day/  # NG chi tiết
-├── mcDefectReport/byDate/{date}/{recordKey}/
+├── mcDefectReport/
+│   ├── byDate/{date}/{recordKey}/
+│   └── a3ManualEmployees/{month}/{department}/{employeeKey}/
 ├── areas/{area}/                 # Danh sách máy (TemperatureMonitor)
 ├── temperature_monitor/{area}/{machine}/{yyyy-MM}/
 ├── details/{area}/               # Chi tiết sản lượng (DetailedModal)

@@ -1,4 +1,6 @@
 export const MC_DEFECT_REPORT_PATH = "mcDefectReport/byDate";
+/** Nhân viên thêm thủ công cho biểu đồ A3 — theo tháng và bộ phận. */
+export const MC_DEFECT_A3_MANUAL_PATH = "mcDefectReport/a3ManualEmployees";
 export const DEFAULT_DEPARTMENT = "Chưa phân loại";
 export const DEFAULT_ERROR_TYPE = "Chưa phân loại";
 export const MC_DEFECT_ROWS_PER_PAGE = 10;

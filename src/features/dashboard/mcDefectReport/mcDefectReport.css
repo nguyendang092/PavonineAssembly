@@ -1,0 +1,375 @@
+.mc-defect-a3-scroll {
+  max-height: min(72vh, 760px);
+  overflow: auto;
+}
+
+/* Bảng «Lỗi theo ngày» — viền mỏng (0.5px), màu vừa đủ nhìn */
+.mc-defect-heatmap-scroll {
+  --mc-defect-heatmap-month-row-height: 27px;
+  width: 100%;
+  border: 1px solid #64748b;
+  border-radius: 0.375rem;
+  overflow: auto;
+  background: #fff;
+}
+
+.dark .mc-defect-heatmap-scroll {
+  border-color: #64748b;
+  background: rgb(15 23 42);
+}
+
+.mc-defect-heatmap-table {
+  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.mc-defect-heatmap-table th,
+.mc-defect-heatmap-table td {
+  border: 0.5px solid #000;
+  padding: 0.35rem 0.5rem;
+}
+
+.dark .mc-defect-heatmap-table th,
+.dark .mc-defect-heatmap-table td {
+  border-color: #000;
+}
+
+.mc-defect-heatmap-table thead th {
+  position: sticky;
+  z-index: 12;
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.dark .mc-defect-heatmap-table thead th {
+  background: rgb(30 41 59);
+}
+
+.mc-defect-heatmap-table thead .mc-defect-heatmap-th-row1 {
+  top: 0;
+}
+
+.mc-defect-heatmap-table thead .mc-defect-heatmap-th-row2 {
+  top: var(--mc-defect-heatmap-month-row-height);
+}
+
+.mc-defect-heatmap-table .mc-defect-heatmap-th-month {
+  background: #e2e8f0;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dark .mc-defect-heatmap-table .mc-defect-heatmap-th-month {
+  background: rgb(51 65 85);
+}
+
+.mc-defect-heatmap-table .mc-defect-heatmap-th-employee {
+  text-align: left;
+  font-weight: 700;
+}
+
+.mc-defect-heatmap-table .mc-defect-heatmap-th-total,
+.mc-defect-heatmap-table .mc-defect-heatmap-td-total {
+  text-align: center;
+  font-weight: 800;
+}
+
+.mc-defect-heatmap-table .mc-defect-heatmap-th-day,
+.mc-defect-heatmap-table .mc-defect-heatmap-td-value {
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-defect-heatmap-table .mc-defect-heatmap-td-total {
+  background: #f1f5f9;
+}
+
+.dark .mc-defect-heatmap-table .mc-defect-heatmap-td-total {
+  background: rgb(30 41 59);
+}
+
+.mc-defect-heatmap-table th:first-child,
+.mc-defect-heatmap-table td:first-child {
+  width: 10rem;
+  min-width: 8rem;
+  max-width: 14rem;
+}
+
+.mc-defect-heatmap-table th:nth-child(2),
+.mc-defect-heatmap-table td:nth-child(2) {
+  width: 3.25rem;
+  min-width: 3rem;
+}
+
+.mc-defect-heatmap-table .mc-defect-heatmap-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: #fff;
+}
+
+.dark .mc-defect-heatmap-table .mc-defect-heatmap-sticky-col {
+  background: rgb(15 23 42);
+}
+
+.mc-defect-heatmap-table thead .mc-defect-heatmap-sticky-col {
+  z-index: 22;
+  background: #f8fafc;
+}
+
+.mc-defect-heatmap-table thead .mc-defect-heatmap-sticky-col.mc-defect-heatmap-th-row1 {
+  z-index: 32;
+}
+
+.dark .mc-defect-heatmap-table thead .mc-defect-heatmap-sticky-col {
+  background: rgb(30 41 59);
+}
+
+.mc-defect-heatmap-table thead .mc-defect-heatmap-th-total.mc-defect-heatmap-th-row1 {
+  z-index: 24;
+}
+
+/* Popup danh sách nhân viên A3 */
+.mc-defect-a3-manual-modal-backdrop {
+  animation: mc-defect-a3-modal-fade-in 0.18s ease-out;
+}
+
+.mc-defect-a3-manual-modal-panel {
+  animation: mc-defect-a3-modal-slide-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow:
+    0 24px 48px -12px rgb(15 23 42 / 0.18),
+    0 0 0 1px rgb(148 163 184 / 0.12);
+}
+
+.dark .mc-defect-a3-manual-modal-panel {
+  box-shadow:
+    0 24px 48px -12px rgb(0 0 0 / 0.45),
+    0 0 0 1px rgb(71 85 105 / 0.55);
+}
+
+.mc-defect-a3-manual-modal-header {
+  background: linear-gradient(
+    135deg,
+    rgb(240 249 255 / 0.95) 0%,
+    rgb(255 255 255 / 1) 55%,
+    rgb(248 250 252 / 1) 100%
+  );
+}
+
+.dark .mc-defect-a3-manual-modal-header {
+  background: linear-gradient(
+    135deg,
+    rgb(12 74 110 / 0.35) 0%,
+    rgb(15 23 42 / 1) 55%,
+    rgb(2 6 23 / 1) 100%
+  );
+}
+
+.mc-defect-a3-manual-modal-badge {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  box-shadow: 0 1px 2px rgb(2 132 199 / 0.25);
+}
+
+.mc-defect-a3-manual-modal-list {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.55) transparent;
+}
+
+.mc-defect-a3-manual-modal-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mc-defect-a3-manual-modal-list::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 0.45);
+  border-radius: 999px;
+}
+
+.mc-defect-a3-manual-modal-row {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.mc-defect-a3-manual-modal-row:hover {
+  border-color: rgb(186 230 253 / 0.9);
+  box-shadow: 0 1px 3px rgb(14 165 233 / 0.08);
+}
+
+.dark .mc-defect-a3-manual-modal-row:hover {
+  border-color: rgb(14 165 233 / 0.35);
+  box-shadow: 0 1px 3px rgb(14 165 233 / 0.12);
+}
+
+.mc-defect-a3-manual-modal-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.mc-defect-a3-manual-modal-input::-webkit-outer-spin-button,
+.mc-defect-a3-manual-modal-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.mc-defect-a3-manual-modal-input:focus {
+  box-shadow: 0 0 0 3px rgb(14 165 233 / 0.18);
+}
+
+.mc-defect-a3-manual-modal-remove {
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.mc-defect-a3-manual-modal-remove:hover:not(:disabled) {
+  transform: scale(1.04);
+}
+
+@keyframes mc-defect-a3-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mc-defect-a3-modal-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mc-defect-a3-chart-print-heading {
+  display: none;
+}
+
+.mc-defect-print-root {
+  display: none;
+}
+
+.mc-defect-print-root .mc-defect-a3-chart-print-heading {
+  display: block !important;
+  margin-bottom: 8mm !important;
+  text-align: center !important;
+}
+
+.mc-defect-print-root .mc-defect-a3-chart-print-heading h2 {
+  margin: 0 !important;
+  color: #0f172a !important;
+  font-size: 20pt !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+.mc-defect-print-root .mc-defect-a3-chart-print-heading p {
+  margin: 3mm 0 0 !important;
+  color: #334155 !important;
+  font-size: 11pt !important;
+  font-weight: 700 !important;
+}
+
+@media print {
+  @page {
+    size: A3 landscape;
+    margin: 12mm;
+  }
+
+  html,
+  body.mc-defect-printing {
+    margin: 0 !important;
+    background: #fff !important;
+  }
+
+  body.mc-defect-printing > *:not(.mc-defect-print-root) {
+    display: none !important;
+  }
+
+  body.mc-defect-printing .mc-defect-print-root {
+    display: block !important;
+    box-sizing: border-box !important;
+    min-height: 100vh !important;
+    padding: 10mm 0 6mm !important;
+    width: 100% !important;
+  }
+
+  .mc-defect-a3-no-print {
+    display: none !important;
+  }
+
+  body.mc-defect-printing .mc-defect-a3-chart-print {
+    position: static !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 4mm 7mm 5mm !important;
+    break-before: auto;
+    page-break-before: auto;
+    background: #fff !important;
+    border: 1px solid #0f172a !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: #0f172a !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body.mc-defect-printing .mc-defect-a3-chart-print-heading {
+    display: block !important;
+    break-after: avoid !important;
+    margin: 0 0 5mm !important;
+    padding-top: 0 !important;
+    text-align: center !important;
+  }
+
+  body.mc-defect-printing .mc-defect-a3-chart-print-heading h2 {
+    margin: 0 !important;
+    color: #0f172a !important;
+    font-size: 20pt !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.06em !important;
+    line-height: 1.2 !important;
+    text-transform: uppercase !important;
+  }
+
+  body.mc-defect-printing .mc-defect-a3-chart-print-heading p {
+    margin: 3mm 0 0 !important;
+    color: #334155 !important;
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+    line-height: 1.35 !important;
+  }
+
+  body.mc-defect-printing .mc-defect-a3-chart-print-body {
+    height: calc(100vh - 48mm) !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  body.mc-defect-printing .mc-defect-a3-chart-print-body .recharts-wrapper,
+  body.mc-defect-printing .mc-defect-a3-chart-print-body .recharts-surface {
+    max-width: 100% !important;
+  }
+
+  body.mc-defect-printing .mc-defect-a3-scroll {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+

@@ -450,6 +450,20 @@ export default function AttendanceEmployeeFormModal({
           onSubmit={handleSubmit}
           className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2"
         >
+          <div className="sm:col-span-2">
+            <label className={employeeModalLabelClass}>
+              {tl("fullName", "Họ và tên")}
+            </label>
+            <input
+              type="text"
+              name="hoVaTen"
+              value={form.hoVaTen}
+              onChange={handleChange}
+              required
+              disabled={isRestrictedEdit}
+              className={employeeModalFieldClass}
+            />
+          </div>
           <div className="sm:col-span-2 grid min-w-0 grid-cols-3 gap-2 sm:gap-4">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
@@ -491,20 +505,6 @@ export default function AttendanceEmployeeFormModal({
                 className={employeeModalFieldClass}
               />
             </div>
-          </div>
-          <div className="sm:col-span-2">
-            <label className={employeeModalLabelClass}>
-              {tl("fullName", "Họ và tên")}
-            </label>
-            <input
-              type="text"
-              name="hoVaTen"
-              value={form.hoVaTen}
-              onChange={handleChange}
-              required
-              disabled={isRestrictedEdit}
-              className={employeeModalFieldClass}
-            />
           </div>
           <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:gap-4">
             <div className="min-w-0">

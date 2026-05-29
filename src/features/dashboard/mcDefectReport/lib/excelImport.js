@@ -86,19 +86,25 @@ export function parseMcDefectExcelRows(records) {
     .filter(Boolean);
 }
 
-export async function importMcDefectExcelFile(file, existingRows) {
+export async function importMcDefectExcelFile(file, existingRows, tl) {
+  const text = (key, defaultValue, opts) =>
+    typeof tl === "function" ? tl(key, defaultValue, opts) : defaultValue;
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheetName = workbook.SheetNames?.[0];
-  if (!sheetName) throw new Error("Không có sheet dữ liệu");
+  if (!sheetName) throw new Error(text("excelNoSheet", "Không có sheet dữ liệu"));
   const sheet = workbook.Sheets[sheetName];
   const records = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-  if (!records.length) throw new Error("File Excel không có dữ liệu");
+  if (!records.length)
+    throw new Error(text("excelNoData", "File Excel không có dữ liệu"));
 
   const parsedRows = parseMcDefectExcelRows(records);
   if (!parsedRows.length) {
     throw new Error(
-      "Không có dòng hợp lệ. Cần tối thiểu: Date, Employee, Error Count.",
+      text(
+        "excelNoValidRows",
+        "Không có dòng hợp lệ. Cần tối thiểu: Date, Employee, Error Count.",
+      ),
     );
   }
 
@@ -132,17 +138,26 @@ export async function importMcDefectExcelFile(file, existingRows) {
   return dedupedRows.length;
 }
 
-export function downloadMcDefectExcelTemplate() {
+export function downloadMcDefectExcelTemplate(tl) {
+  const text = (key, defaultValue, opts) =>
+    typeof tl === "function" ? tl(key, defaultValue, opts) : defaultValue;
   const headers = [
-    "Date",
-    "Employee",
-    "Department",
-    "Error Type",
-    "Error Count",
-    "Note",
+    text("date", "Date"),
+    text("employee", "Employee"),
+    text("department", "Department"),
+    text("errorType", "Error Type"),
+    text("errorCount", "Error Count"),
+    text("note", "Note"),
   ];
   const sampleRows = [
-    ["2026-05-07", "NGUYEN VAN A", "Lắp ráp", "Visual", 2, "Lỗi ngoại quan"],
+    [
+      "2026-05-07",
+      "NGUYEN VAN A",
+      text("sampleDepartment", "Lắp ráp"),
+      "Visual",
+      2,
+      text("sampleNote", "Lỗi ngoại quan"),
+    ],
     ["2026-05-07", "TRAN THI B", "QC", "Dimension", 1, ""],
   ];
   const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);

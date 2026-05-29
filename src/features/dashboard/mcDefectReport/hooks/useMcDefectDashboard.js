@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { db, onValue, ref, remove, set } from "@/services/firebase";
@@ -29,9 +30,16 @@ import {
   parseMcDefectReportSnapshot,
   resetMcDefectFilters,
 } from "../lib/dataAggregations";
+import { useMcDefectA3ManualEmployees } from "./useMcDefectA3ManualEmployees";
 
 /** State, Firebase, derived data, CRUD — dùng trong McDefectReportPage. */
 export function useMcDefectDashboard() {
+  const { t, i18n } = useTranslation();
+  const tl = useCallback(
+    (key, defaultValue, opts) =>
+      t(`mcDefectReport.${key}`, { defaultValue, ...opts }),
+    [t],
+  );
   const dashboardExportRef = useRef(null);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +57,27 @@ export function useMcDefectDashboard() {
   /** { date, recordKey } khi đang sửa một dòng từ bảng raw */
   const [editingRecord, setEditingRecord] = useState(null);
 
+  const notifyA3ManualLoadError = useCallback(() => {
+    setMessageType("error");
+    setMessage(
+      tl("loadFirebaseError", "Không tải được dữ liệu từ Firebase."),
+    );
+  }, [tl]);
+
+  const notifyA3ManualSaveError = useCallback(() => {
+    setMessageType("error");
+    setMessage(tl("saveError", "Không lưu được dữ liệu lên Firebase."));
+  }, [tl]);
+
+  const a3Manual = useMcDefectA3ManualEmployees(
+    reportMonth,
+    reportDepartment,
+    {
+      onLoadError: notifyA3ManualLoadError,
+      onSaveError: notifyA3ManualSaveError,
+    },
+  );
+
   useEffect(() => {
     const recordsRef = ref(db, MC_DEFECT_REPORT_PATH);
     const unsubscribe = onValue(
@@ -60,11 +89,11 @@ export function useMcDefectDashboard() {
       () => {
         setLoading(false);
         setMessageType("error");
-        setMessage("Không tải được dữ liệu từ Firebase.");
+        setMessage(tl("loadFirebaseError", "Không tải được dữ liệu từ Firebase."));
       },
     );
     return () => unsubscribe();
-  }, []);
+  }, [tl]);
 
   const monthOptions = useMemo(() => buildMonthOptions(rows), [rows]);
 
@@ -122,6 +151,43 @@ export function useMcDefectDashboard() {
     () => buildByEmployeeData(filteredRows),
     [filteredRows],
   );
+  const employeeAnnouncementSourceRows = useMemo(
+    () =>
+      filterMcDefectRows(rows, {
+        reportMonth,
+        reportDepartment,
+        reportEmployee: MC_DEFECT_FILTER_ALL,
+        reportErrorType,
+      }),
+    [rows, reportMonth, reportDepartment, reportErrorType],
+  );
+  const employeeAnnouncementRows = useMemo(
+    () =>
+      buildByEmployeeData(
+        employeeAnnouncementSourceRows,
+        Number.POSITIVE_INFINITY,
+      ),
+    [employeeAnnouncementSourceRows],
+  );
+  const announcementEmployeePickerOptions = useMemo(() => {
+    const scopedRows = filterMcDefectRows(rows, {
+      reportMonth,
+      reportDepartment,
+      reportEmployee: MC_DEFECT_FILTER_ALL,
+      reportErrorType: MC_DEFECT_FILTER_ALL,
+    });
+    return [...new Set(scopedRows.map((row) => row.employee).filter(Boolean))].sort(
+      (a, b) => a.localeCompare(b),
+    );
+  }, [rows, reportMonth, reportDepartment]);
+  const employeeAnnouncementPeriodLabel = useMemo(() => {
+    const announcementByDateData = buildByDateData(employeeAnnouncementSourceRows);
+    return formatMcDefectChartPeriodLabel(
+      reportMonth,
+      announcementByDateData,
+      i18n.language,
+    );
+  }, [employeeAnnouncementSourceRows, reportMonth, i18n.language]);
   const donutByErrorTypeData = useMemo(
     () => buildDonutByErrorTypeData(filteredRows),
     [filteredRows],
@@ -138,13 +204,19 @@ export function useMcDefectDashboard() {
   const highestDay = useMemo(() => {
     if (!byDateData.length) return "-";
     const top = [...byDateData].sort((a, b) => b.errorCount - a.errorCount)[0];
-    return `${top.date} (${top.errorCount})`;
-  }, [byDateData]);
+    return tl("dateWithCount", "{{date}} ({{count}})", {
+      date: top.date,
+      count: top.errorCount,
+    });
+  }, [byDateData, tl]);
 
   const topEmployee = useMemo(() => {
     if (!byEmployeeData.length) return "-";
-    return `${byEmployeeData[0].employee} (${byEmployeeData[0].errorCount})`;
-  }, [byEmployeeData]);
+    return tl("employeeWithCount", "{{employee}} ({{count}})", {
+      employee: byEmployeeData[0].employee,
+      count: byEmployeeData[0].errorCount,
+    });
+  }, [byEmployeeData, tl]);
 
   const topEmployeeYAxisWidth = useMemo(
     () =>
@@ -153,8 +225,8 @@ export function useMcDefectDashboard() {
   );
 
   const chartByDatePeriodLabel = useMemo(
-    () => formatMcDefectChartPeriodLabel(reportMonth, byDateData),
-    [reportMonth, byDateData],
+    () => formatMcDefectChartPeriodLabel(reportMonth, byDateData, i18n.language),
+    [reportMonth, byDateData, i18n.language],
   );
 
   const previousMonthRows = useMemo(
@@ -261,8 +333,8 @@ export function useMcDefectDashboard() {
     });
     setEditingRecord({ date: row.date, recordKey: row.recordKey });
     setMessageType("info");
-    setMessage("Đang chỉnh sửa — thay đổi form phía trên rồi bấm «Cập nhật».");
-  }, []);
+    setMessage(tl("editModeMessage", "Đang chỉnh sửa — thay đổi form phía trên rồi bấm «Cập nhật»."));
+  }, [tl]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingRecord(null);
@@ -285,7 +357,7 @@ export function useMcDefectDashboard() {
       errorCount < 0
     ) {
       setMessageType("error");
-      setMessage("Vui lòng điền đủ ngày, nhân viên, bộ phận, loại lỗi và số lỗi hợp lệ.");
+      setMessage(tl("validationError", "Vui lòng điền đủ ngày, nhân viên, bộ phận, loại lỗi và số lỗi hợp lệ."));
       return;
     }
     setSaving(true);
@@ -317,15 +389,19 @@ export function useMcDefectDashboard() {
     savePromise
       .then(() => {
         setMessageType("success");
-        setMessage(isUpdate ? "Đã cập nhật bản ghi." : "Đã thêm dữ liệu thành công.");
+        setMessage(
+          isUpdate
+            ? tl("recordUpdated", "Đã cập nhật bản ghi.")
+            : tl("recordAdded", "Đã thêm dữ liệu thành công."),
+        );
         resetFormAfterSave();
       })
       .catch(() => {
         setMessageType("error");
-        setMessage("Không lưu được dữ liệu lên Firebase.");
+        setMessage(tl("saveError", "Không lưu được dữ liệu lên Firebase."));
       })
       .finally(() => setSaving(false));
-  }, [form, editingRecord]);
+  }, [form, editingRecord, tl]);
 
   const handleDelete = useCallback(({ date, recordKey }) => {
     if (!date || !recordKey) return;
@@ -339,35 +415,39 @@ export function useMcDefectDashboard() {
           setForm(INITIAL_MC_DEFECT_FORM);
         }
         setMessageType("success");
-        setMessage("Đã xóa bản ghi.");
+        setMessage(tl("recordDeleted", "Đã xóa bản ghi."));
       })
       .catch(() => {
         setMessageType("error");
-        setMessage("Không xóa được bản ghi.");
+        setMessage(tl("deleteError", "Không xóa được bản ghi."));
       });
-  }, [editingRecord]);
+  }, [editingRecord, tl]);
 
   const handleImportExcel = useCallback(async (file) => {
     if (!file) return;
     try {
       setSaving(true);
       setMessage("");
-      const count = await importMcDefectExcelFile(file, rows);
+      const count = await importMcDefectExcelFile(file, rows, tl);
       setMessageType("success");
       setMessage(
-        `Đã import ${count} dòng (trùng khóa sẽ tự động ghi đè, không nhân bản).`,
+        tl("importSuccess", "Đã import {{count}} dòng (trùng khóa sẽ tự động ghi đè, không nhân bản).", { count }),
       );
     } catch (error) {
       setMessageType("error");
-      setMessage(`Import thất bại: ${error?.message || "Lỗi không xác định"}`);
+      setMessage(
+        tl("importFailed", "Import thất bại: {{message}}", {
+          message: error?.message || tl("unknownError", "Lỗi không xác định"),
+        }),
+      );
     } finally {
       setSaving(false);
     }
-  }, [rows]);
+  }, [rows, tl]);
 
   const handleDownloadTemplate = useCallback(() => {
-    downloadMcDefectExcelTemplate();
-  }, []);
+    downloadMcDefectExcelTemplate(tl);
+  }, [tl]);
 
   const handleDownloadImage = useCallback(async () => {
     if (!dashboardExportRef.current) return;
@@ -383,12 +463,12 @@ export function useMcDefectDashboard() {
         .slice(0, 10)}.png`;
       a.click();
       setMessageType("success");
-      setMessage("Đã tải hình dashboard.");
+      setMessage(tl("imageDownloaded", "Đã tải hình dashboard."));
     } catch {
       setMessageType("error");
-      setMessage("Không thể xuất hình dashboard.");
+      setMessage(tl("imageExportError", "Không thể xuất hình dashboard."));
     }
-  }, []);
+  }, [tl]);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!dashboardExportRef.current) return;
@@ -413,12 +493,12 @@ export function useMcDefectDashboard() {
         `Dashboard_Loi_Nhan_Su_${new Date().toISOString().slice(0, 10)}.pdf`,
       );
       setMessageType("success");
-      setMessage("Đã xuất PDF dashboard.");
+      setMessage(tl("pdfExported", "Đã xuất PDF dashboard."));
     } catch {
       setMessageType("error");
-      setMessage("Không thể xuất PDF dashboard.");
+      setMessage(tl("pdfExportError", "Không thể xuất PDF dashboard."));
     }
-  }, []);
+  }, [tl]);
 
   const onPrevRawPage = useCallback(() => {
     setCurrentRawPage((p) => Math.max(1, p - 1));
@@ -477,7 +557,11 @@ export function useMcDefectDashboard() {
       heatmapTableHeightPx,
       donutPlotHeightPx,
       donutRadii,
+      employeeAnnouncementRows,
+      employeeAnnouncementPeriodLabel,
+      announcementEmployeePickerOptions,
     },
+    a3Manual,
     tables: {
       filteredRows,
       detailRows,

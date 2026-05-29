@@ -85,6 +85,18 @@
             ".write": "auth != null"
           }
         }
+      },
+      "a3ManualEmployees": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$month": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          "$department": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          }
+        }
       }
     },
 

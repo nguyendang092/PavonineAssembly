@@ -1,14 +1,17 @@
 import React, { memo } from "react";
+import { useTranslation } from "react-i18next";
 import { MC_DEFECT_FILTER_ALL } from "./lib/constants";
 import FiltersSidebar from "./components/FiltersSidebar";
 import KpiCards from "./components/KpiCards";
 import ChartsTopRow from "./components/ChartsTopRow";
 import ChartsHeatmapDonutRow from "./components/ChartsHeatmapDonutRow";
+import EmployeeMonthlyAnnouncement from "./components/EmployeeMonthlyAnnouncement";
 import {
   MCDefectReportEntrySection,
   MCDefectReportPivotSection,
 } from "./components/DataTables";
 import { useMcDefectDashboard } from "./hooks/useMcDefectDashboard";
+import "./mcDefectReport.css";
 
 const MessageBanner = memo(function MessageBanner({ message, messageType }) {
   if (!message) return null;
@@ -27,6 +30,10 @@ const MessageBanner = memo(function MessageBanner({ message, messageType }) {
 
 /** Trang «Báo cáo hàng lỗi MC» — chỉ ghép layout; logic nằm trong hook + lib. */
 export default function McDefectReportPage() {
+  const { t, i18n } = useTranslation();
+  const tl = (key, defaultValue, opts) =>
+    t(`mcDefectReport.${key}`, { defaultValue, ...opts });
+  const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
   const {
     dashboardExportRef,
     loading,
@@ -38,6 +45,7 @@ export default function McDefectReportPage() {
     filters,
     kpi,
     charts,
+    a3Manual,
     tables,
     form,
     actions,
@@ -50,49 +58,57 @@ export default function McDefectReportPage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">
-                Sản xuất / MC
+                {tl("badge", "Sản xuất / MC")}
               </p>
               <h1 className="text-2xl font-black tracking-wide text-slate-900 dark:text-slate-100">
-                BÁO CÁO HÀNG LỖI BỘ PHẬN MC
+                {tl("pageTitle", "BÁO CÁO HÀNG LỖI BỘ PHẬN MC")}
               </h1>
             </div>
             <div className="grid grid-cols-1 gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800">
-                <p className="text-[10px] uppercase text-slate-500">Report Month</p>
+                <p className="text-[10px] uppercase text-slate-500">
+                  {tl("reportMonth", "Report Month")}
+                </p>
                 <p>
                   {filters.reportMonth === MC_DEFECT_FILTER_ALL
-                    ? "All"
+                    ? tl("all", "All")
                     : filters.reportMonth}
                 </p>
               </div>
               <div className="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800">
-                <p className="text-[10px] uppercase text-slate-500">Last Updated</p>
-                <p>{new Date().toLocaleString("ko-KR")}</p>
+                <p className="text-[10px] uppercase text-slate-500">
+                  {tl("lastUpdated", "Last Updated")}
+                </p>
+                <p>{new Date().toLocaleString(displayLocale)}</p>
               </div>
               <div className="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800">
-                <p className="text-[10px] uppercase text-slate-500">Department</p>
+                <p className="text-[10px] uppercase text-slate-500">
+                  {tl("department", "Department")}
+                </p>
                 <p>
                   {filters.reportDepartment === MC_DEFECT_FILTER_ALL
-                    ? "All"
+                    ? tl("all", "All")
                     : filters.reportDepartment}
                 </p>
               </div>
               <div className="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800">
-                <p className="text-[10px] uppercase text-slate-500">Xuất báo cáo</p>
+                <p className="text-[10px] uppercase text-slate-500">
+                  {tl("exportReport", "Xuất báo cáo")}
+                </p>
                 <div className="mt-1 grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={actions.handleDownloadImage}
                     className="w-full rounded bg-sky-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-sky-700"
                   >
-                    Tải hình
+                    {tl("downloadImage", "Tải hình")}
                   </button>
                   <button
                     type="button"
                     onClick={actions.handleDownloadPdf}
                     className="w-full rounded bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700"
                   >
-                    Xuất PDF
+                    {tl("exportPdf", "Xuất PDF")}
                   </button>
                 </div>
               </div>
@@ -102,7 +118,7 @@ export default function McDefectReportPage() {
 
         {loading ? (
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-            Đang tải dữ liệu từ Firebase...
+            {tl("loadingFirebase", "Đang tải dữ liệu từ Firebase...")}
           </div>
         ) : null}
 
@@ -131,6 +147,18 @@ export default function McDefectReportPage() {
               donutByErrorTypeData={charts.donutByErrorTypeData}
               donutPlotHeightPx={charts.donutPlotHeightPx}
               donutRadii={charts.donutRadii}
+            />
+            <EmployeeMonthlyAnnouncement
+              employeeRows={charts.employeeAnnouncementRows}
+              reportMonth={filters.reportMonth}
+              reportPeriodLabel={
+                charts.employeeAnnouncementPeriodLabel || filters.reportMonth
+              }
+              reportDepartment={filters.reportDepartment}
+              employeePickerOptions={charts.announcementEmployeePickerOptions}
+              manualEmployees={a3Manual.manualEmployees}
+              setManualEmployees={a3Manual.setManualEmployees}
+              a3ManualSaving={a3Manual.saving}
             />
             <MCDefectReportEntrySection
               saving={saving}
@@ -164,14 +192,17 @@ export default function McDefectReportPage() {
             <footer className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p>
-                  Người tạo báo cáo:{" "}
+                  {tl("reportOwner", "Người tạo báo cáo:")}{" "}
                   <input
                     value={reportOwner}
                     onChange={(e) => setReportOwner(e.target.value)}
                     className="rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
                   />
                 </p>
-                <p>Cập nhật lúc: {new Date().toLocaleString("vi-VN")}</p>
+                <p>
+                  {tl("updatedAt", "Cập nhật lúc:")}{" "}
+                  {new Date().toLocaleString(displayLocale)}
+                </p>
               </div>
             </footer>
           </div>
