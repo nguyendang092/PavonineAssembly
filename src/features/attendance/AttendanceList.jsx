@@ -1,4 +1,12 @@
-import React, { memo, useState, useMemo, useCallback, useEffect } from "react";
+import React, {
+  memo,
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+  startTransition,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
@@ -65,6 +73,7 @@ const AttendanceList = memo(function AttendanceList({
   const [compareEmployeesOpen, setCompareEmployeesOpen] = useState(false);
   const [compareEmployeesBusy, setCompareEmployeesBusy] = useState(false);
   const [compareEmployeesResult, setCompareEmployeesResult] = useState(null);
+  const compareDayRowsCacheRef = useRef(new Map());
   const [compareCriteria, setCompareCriteria] = useState({
     compareDate: todayKey,
     previousDate: "",
@@ -379,6 +388,7 @@ const AttendanceList = memo(function AttendanceList({
   }, [selectedDate, previousDateOf]);
 
   const handleCompareEmployeesByDepartment = useCallback(async (criteria = {}) => {
+    if (compareEmployeesBusy) return;
     const currentDate = String(
       criteria.compareDate || compareCriteria.compareDate || selectedDate || "",
     ).trim();
@@ -450,12 +460,24 @@ const AttendanceList = memo(function AttendanceList({
 
     setCompareEmployeesBusy(true);
     try {
-      const [previousSnap, currentSnap] = await Promise.all([
-        get(ref(db, `${attendanceRootPath}/${previousDate}`)),
-        get(ref(db, `${attendanceRootPath}/${currentDate}`)),
+      const loadRowsByDate = async (dateKey) => {
+        const key = `${attendanceRootPath}:${dateKey}`;
+        const cached = compareDayRowsCacheRef.current.get(key);
+        if (cached) return cached;
+        const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
+        const rows = reconcileAttendanceDayRowsFromRaw([], snap.val());
+        compareDayRowsCacheRef.current.set(key, rows);
+        if (compareDayRowsCacheRef.current.size > 12) {
+          const oldestKey = compareDayRowsCacheRef.current.keys().next().value;
+          if (oldestKey) compareDayRowsCacheRef.current.delete(oldestKey);
+        }
+        return rows;
+      };
+
+      const [previousRows, currentRows] = await Promise.all([
+        loadRowsByDate(previousDate),
+        loadRowsByDate(currentDate),
       ]);
-      const previousRows = reconcileAttendanceDayRowsFromRaw([], previousSnap.val());
-      const currentRows = reconcileAttendanceDayRowsFromRaw([], currentSnap.val());
 
       const prevByDept = buildDeptEmployeeMap(previousRows);
       const currByDept = buildDeptEmployeeMap(currentRows);
@@ -503,13 +525,15 @@ const AttendanceList = memo(function AttendanceList({
         ? rows.filter((x) => x.department === departmentFilter)
         : rows;
 
-      setCompareEmployeesResult({
-        previousDate,
-        currentDate,
-        rows: filteredRows,
-        departments: allDepts,
+      startTransition(() => {
+        setCompareEmployeesResult({
+          previousDate,
+          currentDate,
+          rows: filteredRows,
+          departments: allDepts,
+        });
+        setCompareEmployeesOpen(true);
       });
-      setCompareEmployeesOpen(true);
     } catch (error) {
       setAlert({
         show: true,
@@ -524,6 +548,7 @@ const AttendanceList = memo(function AttendanceList({
   }, [
     selectedDate,
     compareCriteria,
+    compareEmployeesBusy,
     previousDateOf,
     attendanceRootPath,
     comboProductionDeptOrder,

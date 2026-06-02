@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 function AttendanceCompareEmployeesModal({
@@ -13,17 +13,25 @@ function AttendanceCompareEmployeesModal({
 }) {
   if (!isOpen) return null;
 
-  const rows = result?.rows || [];
-  const totals = rows.reduce(
-    (acc, row) => {
-      acc.previous += Number(row.previousCount || 0);
-      acc.current += Number(row.currentCount || 0);
-      acc.same += Number(row.sameCount || 0);
-      acc.previousOnly += row.previousOnly?.length || 0;
-      acc.currentOnly += row.currentOnly?.length || 0;
-      return acc;
-    },
-    { previous: 0, current: 0, same: 0, previousOnly: 0, currentOnly: 0 },
+  const rows = useMemo(() => result?.rows || [], [result?.rows]);
+  const departments = useMemo(
+    () => result?.departments || [],
+    [result?.departments],
+  );
+  const totals = useMemo(
+    () =>
+      rows.reduce(
+        (acc, row) => {
+          acc.previous += Number(row.previousCount || 0);
+          acc.current += Number(row.currentCount || 0);
+          acc.same += Number(row.sameCount || 0);
+          acc.previousOnly += row.previousOnly?.length || 0;
+          acc.currentOnly += row.currentOnly?.length || 0;
+          return acc;
+        },
+        { previous: 0, current: 0, same: 0, previousOnly: 0, currentOnly: 0 },
+      ),
+    [rows],
   );
 
   return createPortal(
@@ -124,7 +132,7 @@ function AttendanceCompareEmployeesModal({
                     <option value="">
                       {tl("compareEmployeesAllDepartments", "Tất cả bộ phận")}
                     </option>
-                    {(result?.departments || []).map((d) => (
+                    {departments.map((d) => (
                       <option key={d} value={d}>
                         {d}
                       </option>
