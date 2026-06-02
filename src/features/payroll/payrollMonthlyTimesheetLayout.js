@@ -6,8 +6,18 @@ export const MONTHLY_TIMESHEET_STICKY_COL_COUNT = 4;
 export const MONTH_DETAIL_COLS_PER_BLOCK = 16;
 export const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 
-/** Nhãn nhóm SAT.S trên hàng header 2 (giống lưới). */
+/** Nhãn nhóm SAT.S — lưới / in A3. */
 export const PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL = "SAT.S";
+
+/** `si` dòng con → chỉ số cột TC (0..5) trong khối 16 cột chi tiết. */
+export const MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW = {
+  1: 0,
+  2: 1,
+  3: 2,
+  4: 3,
+  5: 4,
+  6: 5,
+};
 
 export function payrollMonthlyTimesheetTotalColCount(monthKeyCount) {
   return (
@@ -17,7 +27,7 @@ export function payrollMonthlyTimesheetTotalColCount(monthKeyCount) {
   );
 }
 
-/** Chỉ số cột 0-based cho merge / ghi ô. */
+/** Chỉ số cột 0-based cho lưới / Excel. */
 export function payrollMonthlyTimesheetLayoutOffsets(monthKeyCount) {
   const days = monthKeyCount;
   const leading = MONTHLY_TIMESHEET_STICKY_COL_COUNT;

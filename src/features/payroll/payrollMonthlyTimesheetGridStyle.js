@@ -12,7 +12,6 @@ import {
 export const PTS_COLORS = {
   black: "FF000000",
   stickyHeaderBg: "FFF1F5F9",
-  bannerBg: "FFE2E8F0",
   stickyBodyEven: "FFFFFFFF",
   stickyBodyOdd: "FFF8FAFC",
   headBorder: "FF94A3B8",
@@ -34,6 +33,8 @@ export const PTS_COLORS = {
   detailTotalBody: "FFF8FAFC",
   detailTrialBody: "FFECFEFF",
   detailOfficialBody: "FFF5F3FF",
+  /** Dòng đầu / NV (hệ số TC trống — giờ thường + phép) — xuất Excel. */
+  mainSubrowHighlightBg: "FFFED7AA",
 };
 
 export function hexToExcelArgb(hex) {
@@ -139,6 +140,7 @@ export function buildPayrollMonthlyTimesheetExcelBorders({
   subrowCount,
   subrowIndex,
   monthKeyCount,
+  empBlockIdx = 0,
 }) {
   const isHeader = r <= headerRowCount;
   const thinColor = isHeader ? PTS_COLORS.headBorder : PTS_COLORS.bodyBorder;
@@ -150,7 +152,6 @@ export function buildPayrollMonthlyTimesheetExcelBorders({
   const daysEnd = L + monthKeyCount;
   const isSticky = c <= L;
   const stickyIdx = c - 1;
-  const isDayCol = c > L && c <= daysEnd;
   const isDetailCol = c > daysEnd;
 
   const detailGroupStarts = [
@@ -160,12 +161,15 @@ export function buildPayrollMonthlyTimesheetExcelBorders({
   ];
   const isDetailGroupStart = detailGroupStarts.includes(c);
   const col0InBlock =
-    isDetailCol && (c - 1 - layout.totalDetailStart) % MONTH_DETAIL_COLS_PER_BLOCK === 0;
+    isDetailCol &&
+    (c - 1 - layout.totalDetailStart) % MONTH_DETAIL_COLS_PER_BLOCK === 0;
 
   const isLastSubrow =
     r > headerRowCount &&
     subrowIndex != null &&
     subrowIndex === subrowCount - 1;
+  const isMainSubrow =
+    r > headerRowCount && subrowIndex === 0;
 
   const border = {
     top: thin(),
@@ -186,10 +190,7 @@ export function buildPayrollMonthlyTimesheetExcelBorders({
 
   if (isDetailGroupStart || col0InBlock) border.left = strong();
   if (isLastSubrow) border.bottom = strong();
-
-  if ((r === 2 || r === 3) && (isDayCol || isDetailCol)) {
-    border.top = { style: undefined };
-  }
+  if (isMainSubrow && empBlockIdx > 0) border.top = strong();
 
   return border;
 }
@@ -211,9 +212,6 @@ export function resolvePayrollMonthlyTimesheetExcelCellFill({
 
   if (r <= headerRowCount) {
     if (c <= L) return PTS_COLORS.stickyHeaderBg;
-    if (r === 1 && c > L && c <= daysEnd) return PTS_COLORS.bannerBg;
-    if (r === 1 && c > daysEnd) return PTS_COLORS.bannerBg;
-    if (r === 1) return PTS_COLORS.stickyHeaderBg;
 
     if (c > L && c <= daysEnd) {
       const dk = monthKeys[c - L - 1];
@@ -223,7 +221,6 @@ export function resolvePayrollMonthlyTimesheetExcelCellFill({
     }
 
     if (c > daysEnd) {
-      if (r === 1) return PTS_COLORS.bannerBg;
       const rel = c - 1 - layout.totalDetailStart;
       const block = Math.floor(rel / MONTH_DETAIL_COLS_PER_BLOCK);
       return getPayrollMonthlyTimesheetDetailGroupHeaderBg(
@@ -231,6 +228,16 @@ export function resolvePayrollMonthlyTimesheetExcelCellFill({
       );
     }
     return PTS_COLORS.stickyHeaderBg;
+  }
+
+  const isMainSubrow = subrowIndex === 0;
+  if (isMainSubrow) {
+    if (isLeaveCell && c > L && c <= daysEnd) {
+      return hexToExcelArgb(
+        getAttendanceLeaveTypeEmphasisPrintCellBg(leaveRaw),
+      );
+    }
+    return PTS_COLORS.mainSubrowHighlightBg;
   }
 
   const stripe = getPayrollMonthlyTimesheetEmployeeStripeBg(empBlockIdx);

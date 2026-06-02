@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildMonthlyDetailFlatValues,
   buildMonthlyRuleSummary,
+  fmtPayrollMonthlySummaryCell,
   isPayrollSaturdayOffWorkDay,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
+import { MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW } from "@/features/payroll/payrollMonthlyTimesheetLayout";
 
 /** 2026-01-10 là thứ Bảy. */
 const SAT_OFF_KEY = "2026-01-10";
@@ -116,5 +119,208 @@ describe("buildMonthlyRuleSummary — SAT.S thứ Bảy OFF", () => {
     expect(total.coeff20).toBeGreaterThan(0);
     expect(total.sats27).toBe(0);
     expect(total.satsWorkDays).toBe(1);
+  });
+});
+
+describe("buildMonthlyDetailFlatValues", () => {
+  it("dòng đầu (si=0) hiển thị tổng giờ TC theo hệ số ở cả 3 khối", () => {
+    const summaries = {
+      total: {
+        soNgayCong: 26,
+        workHours: 0,
+        workDays: 0,
+        unpaidDays: 0,
+        pnDays: 0,
+        nbDays: 0,
+        klDays: 0,
+        kpDays: 0,
+        coeff03: 0,
+        coeff15: 6,
+        coeff20: 16,
+        coeff27: 0,
+        coeff30: 8,
+        coeff39: 0,
+        satsWorkDays: 0,
+        sats20: 0,
+        sats27: 0,
+      },
+      trial: {
+        soNgayCong: 0,
+        workHours: 0,
+        workDays: 0,
+        unpaidDays: 0,
+        pnDays: 0,
+        nbDays: 0,
+        klDays: 0,
+        kpDays: 0,
+        coeff03: 0,
+        coeff15: 2,
+        coeff20: 0,
+        coeff27: 0,
+        coeff30: 0,
+        coeff39: 0,
+        satsWorkDays: 0,
+        sats20: 0,
+        sats27: 0,
+      },
+      official: {
+        soNgayCong: 26,
+        workHours: 0,
+        workDays: 0,
+        unpaidDays: 0,
+        pnDays: 0,
+        nbDays: 0,
+        klDays: 0,
+        kpDays: 0,
+        coeff03: 0,
+        coeff15: 4,
+        coeff20: 16,
+        coeff27: 0,
+        coeff30: 8,
+        coeff39: 0,
+        satsWorkDays: 0,
+        sats20: 0,
+        sats27: 0,
+      },
+    };
+
+    const flat = buildMonthlyDetailFlatValues({
+      si: 0,
+      summaries,
+      coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+      fmt: fmtPayrollMonthlySummaryCell,
+      colsPerBlock: 16,
+    });
+
+    expect(flat[9]).toBe("6");
+    expect(flat[16 + 9]).toBe("2");
+    expect(flat[32 + 9]).toBe("4");
+  });
+
+  it("dòng 1.5 (si=2) mirror cùng summary.coeff15 — không phải tổng riêng", () => {
+    const summaries = {
+      total: {
+        soNgayCong: 26,
+        workHours: 0,
+        workDays: 0,
+        unpaidDays: 0,
+        pnDays: 0,
+        nbDays: 0,
+        klDays: 0,
+        kpDays: 0,
+        coeff03: 0,
+        coeff15: 6,
+        coeff20: 0,
+        coeff27: 0,
+        coeff30: 0,
+        coeff39: 0,
+        satsWorkDays: 0,
+        sats20: 0,
+        sats27: 0,
+      },
+      trial: {
+        soNgayCong: 0,
+        workHours: 0,
+        workDays: 0,
+        unpaidDays: 0,
+        pnDays: 0,
+        nbDays: 0,
+        klDays: 0,
+        kpDays: 0,
+        coeff03: 0,
+        coeff15: 0,
+        coeff20: 0,
+        coeff27: 0,
+        coeff30: 0,
+        coeff39: 0,
+        satsWorkDays: 0,
+        sats20: 0,
+        sats27: 0,
+      },
+      official: {
+        soNgayCong: 0,
+        workHours: 0,
+        workDays: 0,
+        unpaidDays: 0,
+        pnDays: 0,
+        nbDays: 0,
+        klDays: 0,
+        kpDays: 0,
+        coeff03: 0,
+        coeff15: 0,
+        coeff20: 0,
+        coeff27: 0,
+        coeff30: 0,
+        coeff39: 0,
+        satsWorkDays: 0,
+        sats20: 0,
+        sats27: 0,
+      },
+    };
+
+    const mainRow = buildMonthlyDetailFlatValues({
+      si: 0,
+      summaries,
+      coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+      fmt: fmtPayrollMonthlySummaryCell,
+      colsPerBlock: 16,
+    });
+    const row15 = buildMonthlyDetailFlatValues({
+      si: 2,
+      summaries,
+      coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+      fmt: fmtPayrollMonthlySummaryCell,
+      colsPerBlock: 16,
+    });
+
+    expect(mainRow[9]).toBe("6");
+    expect(row15[9]).toBe("6");
+  });
+
+  it("buildMonthlyRuleSummary: coeff* cộng theo ngày; mọi dòng con mirror cùng ô tổng", () => {
+    const empId = "e-sat";
+    const dayEmp = {
+      id: empId,
+      gioVao: "07:30",
+      gioRa: "17:30",
+      caLamViec: "S1",
+    };
+    const dayChunks = new Map([
+      [
+        SAT_OFF_KEY,
+        makeChunk({
+          isOffDay: true,
+          employees: [dayEmp],
+        }),
+      ],
+    ]);
+    const { total } = buildMonthlyRuleSummary(
+      dayChunks,
+      [SAT_OFF_KEY],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+
+    expect(total.coeff20).toBeGreaterThan(0);
+    const summaries = { total, trial: total, official: total };
+    const flatMain = buildMonthlyDetailFlatValues({
+      si: 0,
+      summaries,
+      coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+      fmt: fmtPayrollMonthlySummaryCell,
+      colsPerBlock: 16,
+    });
+    for (let si = 1; si <= 6; si += 1) {
+      const coeffIdx = MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW[si];
+      if (coeffIdx == null) continue;
+      const flatSub = buildMonthlyDetailFlatValues({
+        si,
+        summaries,
+        coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+        fmt: fmtPayrollMonthlySummaryCell,
+        colsPerBlock: 16,
+      });
+      expect(flatSub[8 + coeffIdx]).toBe(flatMain[8 + coeffIdx]);
+    }
   });
 });

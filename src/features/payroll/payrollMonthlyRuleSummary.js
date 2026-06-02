@@ -342,6 +342,11 @@ export function buildMonthlyRuleSummary(
   return { total, trial, official };
 }
 
+/**
+ * 16 cột một khối THỜI GIAN *.
+ * - `si === 0`: ngày công + tổng TC (cột 8–13) từ `summary.coeff**` (một nguồn `buildMonthlyRuleSummary`).
+ * - `si > 0`: mirror một ô TC tương ứng — cùng giá trị tổng, không tính lại.
+ */
 function valuesForDetailBlock({
   si,
   summary,
@@ -367,6 +372,7 @@ function valuesForDetailBlock({
       if (idx === 5) return fmt(summary.nbDays);
       if (idx === 6) return fmt(summary.klDays);
       if (idx === 7) return fmt(summary.kpDays);
+      if (idx >= 8 && idx <= 13) return fmt(tcByRow[idx - 8]);
     }
     const coeffIdx = coeffColBySubrow[si];
     if (coeffIdx != null && idx === 8 + coeffIdx) {

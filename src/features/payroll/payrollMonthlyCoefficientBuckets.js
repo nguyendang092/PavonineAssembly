@@ -53,7 +53,9 @@ export function getPayrollMonthlyCoefficientLines(p) {
   } = p;
   const strictOffDay = isOffDay || isCompensatoryDay;
   const legacyIncludeTsNvInWorkingHours =
-    String(p?.includeTsNvInWorkingHours ?? "").trim().toUpperCase() === "YES";
+    String(p?.includeTsNvInWorkingHours ?? "")
+      .trim()
+      .toUpperCase() === "YES";
   const includeTapVuInWorkingHours =
     String(p?.includeTapVuInWorkingHours ?? "")
       .trim()
@@ -136,7 +138,9 @@ export function getPayrollMonthlyCoefficientLines(p) {
       if (Number.isFinite(reg) && reg > 0) {
         lines.push({ coeff: 0.3, hours: reg, key: "nr03" });
       }
-      const otH = getNightShiftPayrollOvertimeHoursFromOtMinutes(parts.otMinutes);
+      const otH = getNightShiftPayrollOvertimeHoursFromOtMinutes(
+        parts.otMinutes,
+      );
       if (Number.isFinite(otH) && otH > 0) {
         /** Đồng bộ cột «TC ca đêm (X1.5)» trên bảng giờ công nhân viên. */
         lines.push({ coeff: 1.5, hours: otH, key: "nt15" });
@@ -156,8 +160,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
   ) {
     early = PAYROLL_EARLY_PAPERWORK_OT_HOURS;
   }
-  const ev =
-    payrollLateOtExcluded === true ? 0 : evening == null ? 0 : evening;
+  const ev = payrollLateOtExcluded === true ? 0 : evening == null ? 0 : evening;
   const sum15 = roundHoursToTenths(ev + early);
   if (sum15 > 0) {
     lines.push({ coeff: 1.5, hours: sum15, key: "d15" });
@@ -210,7 +213,9 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
   const day = normalizeAttendanceDayRecord(emp);
   const leaveRaw = getAttendanceLeaveTypeRaw(day);
   const legacyIncludeTsNvInWorkingHours =
-    String(emp.includeTsNvInWorkingHours ?? "").trim().toUpperCase() === "YES";
+    String(emp.includeTsNvInWorkingHours ?? "")
+      .trim()
+      .toUpperCase() === "YES";
   const includeTapVuInWorkingHours =
     String(emp.includeTapVuInWorkingHours ?? "")
       .trim()

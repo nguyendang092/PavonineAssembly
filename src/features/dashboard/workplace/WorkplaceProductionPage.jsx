@@ -197,7 +197,7 @@ export default function WorkplaceProductionPage() {
     ],
   );
 
-  return (
+                          return (
     <WorkplaceProductionShell
       sidebarProps={sidebarProps}
       mainPanelProps={mainPanelProps}
