@@ -30,8 +30,8 @@ export function useAttendanceFilterDropdownPlacement(open, anchorRef) {
           : Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
       const top = r.bottom + 6;
       const maxAvail = Math.max(120, window.innerHeight - top - 12);
-      const height = Math.min(ATTENDANCE_FILTER_DROPDOWN_HEIGHT_PX, maxAvail);
-      setPlacement({ top, left, width: w, height });
+      const maxHeight = Math.min(ATTENDANCE_FILTER_DROPDOWN_HEIGHT_PX, maxAvail);
+      setPlacement({ top, left, width: w, maxHeight });
     };
     return attachPlacementListeners(update);
   }, [open, anchorRef]);

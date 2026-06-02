@@ -29,6 +29,8 @@ function AttendanceListTableSection({
   t,
 }) {
   const tableScrollParentRef = useRef(null);
+  // Đồng bộ với `h-9` ở AttendanceTableRowBody để không bị đổi chiều cao khi
+  // danh sách chuyển giữa virtual và non-virtual (sau khi lọc).
   const rowEstimatePx = 36;
   const shouldVirtualize =
     forceVirtualizedRows ||

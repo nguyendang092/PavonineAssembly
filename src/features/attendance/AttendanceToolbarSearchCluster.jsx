@@ -32,6 +32,12 @@ function AttendanceToolbarSearchCluster() {
     setFilterOpen,
     loaiPhepFilter,
     setLoaiPhepFilter,
+    joinDateYearFilter,
+    setJoinDateYearFilter,
+    joinDateMonthFilter,
+    setJoinDateMonthFilter,
+    joinDateYearOptions,
+    joinDateMonthOptions,
     departmentListFilter,
     setDepartmentListFilter,
     isQuickNoCheckInActive,
@@ -112,6 +118,12 @@ function AttendanceToolbarSearchCluster() {
         setFilterOpen={setFilterOpen}
         loaiPhepFilter={loaiPhepFilter}
         setLoaiPhepFilter={setLoaiPhepFilter}
+        joinDateYearFilter={joinDateYearFilter}
+        setJoinDateYearFilter={setJoinDateYearFilter}
+        joinDateMonthFilter={joinDateMonthFilter}
+        setJoinDateMonthFilter={setJoinDateMonthFilter}
+        joinDateYearOptions={joinDateYearOptions}
+        joinDateMonthOptions={joinDateMonthOptions}
         departmentListFilter={departmentListFilter}
         setDepartmentListFilter={setDepartmentListFilter}
         isQuickNoCheckInActive={isQuickNoCheckInActive}

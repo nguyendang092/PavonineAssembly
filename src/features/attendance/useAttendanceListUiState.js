@@ -12,6 +12,8 @@ export function useAttendanceListUiState(user) {
   const [filterDepartmentSearch, setFilterDepartmentSearch] = useState("");
   const [departmentListFilter, setDepartmentListFilter] = useState([]);
   const [loaiPhepFilter, setLoaiPhepFilter] = useState([]);
+  const [joinDateYearFilter, setJoinDateYearFilter] = useState("");
+  const [joinDateMonthFilter, setJoinDateMonthFilter] = useState("");
   const [showOnlyUnattendedFilter, setShowOnlyUnattendedFilter] =
     useState(false);
   const [expandedSections, setExpandedSections] = useState({});
@@ -80,6 +82,10 @@ export function useAttendanceListUiState(user) {
     setDepartmentListFilter,
     loaiPhepFilter,
     setLoaiPhepFilter,
+    joinDateYearFilter,
+    setJoinDateYearFilter,
+    joinDateMonthFilter,
+    setJoinDateMonthFilter,
     showOnlyUnattendedFilter,
     setShowOnlyUnattendedFilter,
     expandedSections,

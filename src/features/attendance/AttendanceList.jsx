@@ -64,6 +64,10 @@ const AttendanceList = memo(function AttendanceList({
     setDepartmentListFilter,
     loaiPhepFilter,
     setLoaiPhepFilter,
+    joinDateYearFilter,
+    setJoinDateYearFilter,
+    joinDateMonthFilter,
+    setJoinDateMonthFilter,
     showOnlyUnattendedFilter,
     setShowOnlyUnattendedFilter,
     expandedSections,
@@ -178,6 +182,8 @@ const AttendanceList = memo(function AttendanceList({
     departmentFilter: "",
     departmentListFilter,
     loaiPhepFilter,
+    joinDateYearFilter,
+    joinDateMonthFilter,
     showOnlyUnattendedFilter,
   });
 
@@ -202,6 +208,30 @@ const AttendanceList = memo(function AttendanceList({
     showOnlyUnattendedFilter,
     normalizeDepartment,
   });
+
+  const joinDateYearOptions = useMemo(() => {
+    const s = new Set();
+    for (const emp of employees) {
+      const raw = String(emp.ngayVaoLam || "").trim();
+      if (raw.length < 4) continue;
+      const y = raw.slice(0, 4);
+      if (/^\d{4}$/.test(y)) s.add(y);
+    }
+    return Array.from(s).sort((a, b) => Number(b) - Number(a));
+  }, [employees]);
+
+  const joinDateMonthOptions = useMemo(() => {
+    const s = new Set();
+    for (const emp of employees) {
+      const raw = String(emp.ngayVaoLam || "").trim();
+      if (raw.length < 7) continue;
+      const y = raw.slice(0, 4);
+      if (joinDateYearFilter && y !== joinDateYearFilter) continue;
+      const m = raw.slice(5, 7);
+      if (/^\d{2}$/.test(m)) s.add(m);
+    }
+    return Array.from(s).sort((a, b) => Number(a) - Number(b));
+  }, [employees, joinDateYearFilter]);
 
   const {
     comboProductionDeptCatalog,
@@ -369,6 +399,12 @@ const AttendanceList = memo(function AttendanceList({
       setFilterOpen,
       loaiPhepFilter,
       setLoaiPhepFilter,
+      joinDateYearFilter,
+      setJoinDateYearFilter,
+      joinDateMonthFilter,
+      setJoinDateMonthFilter,
+      joinDateYearOptions,
+      joinDateMonthOptions,
       departmentListFilter,
       setDepartmentListFilter,
       isQuickNoCheckInActive,
@@ -443,6 +479,12 @@ const AttendanceList = memo(function AttendanceList({
       setFilterOpen,
       loaiPhepFilter,
       setLoaiPhepFilter,
+      joinDateYearFilter,
+      setJoinDateYearFilter,
+      joinDateMonthFilter,
+      setJoinDateMonthFilter,
+      joinDateYearOptions,
+      joinDateMonthOptions,
       departmentListFilter,
       setDepartmentListFilter,
       isQuickNoCheckInActive,

@@ -15,6 +15,8 @@ export function useAttendanceListFilters({
   departmentFilter,
   departmentListFilter,
   loaiPhepFilter,
+  joinDateYearFilter,
+  joinDateMonthFilter,
   showOnlyUnattendedFilter,
 }) {
   const normalizeDepartment = useCallback((value) => {
@@ -36,6 +38,9 @@ export function useAttendanceListFilters({
     [deferredLoaiPhepFilter],
   );
 
+  const deferredJoinDateYearFilter = useDeferredValue(joinDateYearFilter);
+  const deferredJoinDateMonthFilter = useDeferredValue(joinDateMonthFilter);
+
   const filterAttendanceListRows = useCallback(
     (list, opts = {}) => {
       const {
@@ -48,9 +53,20 @@ export function useAttendanceListFilters({
       const selectedDeptKeys = new Set(
         departmentListFilter.map((dept) => normalizeDepartment(dept)),
       );
+
+      const joinYear = String(deferredJoinDateYearFilter || "").trim();
+      // Chỉ áp dụng tháng khi đã chọn năm.
+      const joinMonth = joinYear
+        ? String(deferredJoinDateMonthFilter || "").trim()
+        : "";
       return list.filter((emp) => {
         const empDeptKey = normalizeDepartment(emp.boPhan);
         const departmentFilterKey = normalizeDepartment(departmentFilter);
+
+        const joinRaw = String(emp.ngayVaoLam || "").trim();
+        const joinYearOfEmp = joinRaw.length >= 4 ? joinRaw.slice(0, 4) : "";
+        const joinMonthOfEmp =
+          joinRaw.length >= 7 ? joinRaw.slice(5, 7) : "";
 
         if (
           !omitDepartmentFilters &&
@@ -76,6 +92,9 @@ export function useAttendanceListFilters({
           !employeeMatchesLoaiPhepFilterSet(emp, deferredLoaiPhepFilterSet)
         )
           return false;
+
+        if (joinYear && joinYearOfEmp !== joinYear) return false;
+        if (joinMonth && joinMonthOfEmp !== joinMonth) return false;
         if (omitSearch || !q) return true;
         const qn = q;
         return (
@@ -95,6 +114,8 @@ export function useAttendanceListFilters({
       departmentFilter,
       departmentListFilter,
       deferredLoaiPhepFilterSet,
+      deferredJoinDateYearFilter,
+      deferredJoinDateMonthFilter,
       showOnlyUnattendedFilter,
       normalizeDepartment,
     ],

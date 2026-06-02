@@ -74,7 +74,7 @@ function AttendanceTableRow({
     const base = isGrid
       ? cellClsForGrid(true, s, isMinimal)
       : cellClsForAttendanceTable(s);
-    return `${base} h-6 leading-none`;
+    return `${base} h-9 leading-none`;
   };
 
   const gcs = (key) =>
@@ -108,7 +108,7 @@ function AttendanceTableRow({
         width: "100%",
         boxSizing: "border-box",
         height: `${virtualRow.size}px`,
-        minHeight: "24px",
+        minHeight: "36px",
         transform: `translateY(${virtualRow.start}px)`,
         alignItems: "center",
       }
@@ -120,7 +120,7 @@ function AttendanceTableRow({
       data-index={virtualRow != null ? idx : undefined}
       style={rowStyle}
       role={isGrid ? "row" : undefined}
-      className={`h-6 transition-colors hover:bg-blue-200 border-b border-slate-100 dark:border-slate-700/40 ${
+      className={`h-9 transition-colors hover:bg-blue-200 border-b border-slate-100 dark:border-slate-700/40 ${
         idx % 2 === 0
           ? "bg-blue-100 dark:bg-slate-800"
           : "bg-white dark:bg-slate-900"
