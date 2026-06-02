@@ -50,6 +50,8 @@ export default function AttendanceComboChartModal({
   setComboStatDetailKey,
   comboStatLabelByKey,
   comboStatEmployeesByKey,
+  compareEmployeesBusy = false,
+  onCompareEmployees,
 }) {
   const detailTableCaptureRef = React.useRef(null);
 
@@ -289,6 +291,19 @@ export default function AttendanceComboChartModal({
                 className="col-span-1 flex h-8 min-w-0 w-full items-center justify-center overflow-hidden whitespace-nowrap rounded-lg border border-emerald-600/85 px-1 py-1 text-[8px] font-bold uppercase tracking-tight text-emerald-950 shadow-sm transition hover:bg-emerald-500/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/55 sm:col-span-1 sm:w-auto sm:px-3 sm:text-xs sm:tracking-wide dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
               >
                 {tl("comboProductionDeptPickerButton", "STT")}
+              </button>
+            ) : null}
+            {comboDashboardGroup === "production" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void onCompareEmployees?.();
+                }}
+                disabled={compareEmployeesBusy}
+                className="col-span-2 flex h-8 min-w-0 w-full items-center justify-center overflow-hidden whitespace-nowrap rounded-lg border border-indigo-300 bg-indigo-600 px-1 py-1 text-[8px] font-bold uppercase tracking-tight text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-1 sm:w-auto sm:px-3 sm:text-xs sm:tracking-wide dark:border-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+              >
+                {compareEmployeesBusy ? "⏳ " : "🧩 "}
+                {tl("compareEmployeesButton", "So sánh")}
               </button>
             ) : null}
           </div>

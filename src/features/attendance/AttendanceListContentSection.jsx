@@ -51,6 +51,8 @@ function AttendanceListContentSection() {
     setComboStatDetailKey,
     comboStatLabelByKey,
     comboStatEmployeesByKey,
+    compareEmployeesBusy,
+    handleCompareEmployeesByDepartment,
     columnPlan,
     forceVirtualizedRows,
     deferredFilteredEmployees,
@@ -140,6 +142,8 @@ function AttendanceListContentSection() {
             setComboStatDetailKey={setComboStatDetailKey}
             comboStatLabelByKey={comboStatLabelByKey}
             comboStatEmployeesByKey={comboStatEmployeesByKey}
+            compareEmployeesBusy={compareEmployeesBusy}
+            onCompareEmployees={handleCompareEmployeesByDepartment}
           />
         </Suspense>
       ) : null}
