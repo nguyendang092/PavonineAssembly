@@ -43,6 +43,7 @@ export function useAttendanceComboChart({
   tl,
 }) {
   const comboProductionDeptCatalog = useMemo(() => {
+    if (!showComboChartModal) return [];
     const byMk = new Map();
     for (const emp of deferredFilteredEmployees) {
       const label = normalizeTextValue(emp.boPhan);
@@ -57,9 +58,10 @@ export function useAttendanceComboChart({
     return Array.from(byMk.values()).sort((a, b) =>
       a.label.localeCompare(b.label, "vi", { sensitivity: "base" }),
     );
-  }, [deferredFilteredEmployees, normalizeDepartment]);
+  }, [deferredFilteredEmployees, normalizeDepartment, showComboChartModal]);
 
   const deferredFilteredForComboStats = useMemo(() => {
+    if (!showComboChartModal) return [];
     if (comboDashboardGroup !== "production") return deferredFilteredEmployees;
     const catalogKeys = new Set(
       comboProductionDeptCatalog.map((c) => c.matchKey),
@@ -87,6 +89,7 @@ export function useAttendanceComboChart({
     comboProductionDeptOrder,
     comboProductionDeptCatalog,
     normalizeDepartment,
+    showComboChartModal,
   ]);
 
   const effectiveProductionDeptOrderForSort = useMemo(
@@ -133,6 +136,7 @@ export function useAttendanceComboChart({
   );
 
   const comboChartData = useMemo(() => {
+    if (!showComboChartModal) return [];
     const map = new Map();
     const emptyMetrics = () =>
       Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, 0]));
@@ -156,9 +160,10 @@ export function useAttendanceComboChart({
     });
 
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [deferredFilteredForComboStats, normalizeDepartment, tl]);
+  }, [deferredFilteredForComboStats, normalizeDepartment, tl, showComboChartModal]);
 
   const comboChartDataOrdered = useMemo(() => {
+    if (!showComboChartModal) return [];
     if (comboDashboardGroup !== "production") {
       return applyOrderToAttendanceRows(comboChartData, comboChartDeptOrder);
     }
@@ -173,9 +178,15 @@ export function useAttendanceComboChart({
     comboDashboardGroup,
     effectiveProductionDeptOrderForSort,
     normalizeDepartment,
+    showComboChartModal,
   ]);
 
   const comboDashboardStats = useMemo(() => {
+    if (!showComboChartModal) {
+      const zero = () =>
+        Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, 0]));
+      return { total: 0, ...zero() };
+    }
     const zero = () =>
       Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, 0]));
     const stats = comboChartData.reduce(
@@ -189,7 +200,7 @@ export function useAttendanceComboChart({
       { total: 0, ...zero() },
     );
     return stats;
-  }, [comboChartData]);
+  }, [comboChartData, showComboChartModal]);
 
   const comboChartRowsVisible = useMemo(
     () => comboChartDataOrdered.slice(0, comboChartCardsVisibleCount),
@@ -197,6 +208,12 @@ export function useAttendanceComboChart({
   );
 
   const comboStatEmployeesByKey = useMemo(() => {
+    if (!showComboChartModal) {
+      return {
+        total: [],
+        ...Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, []])),
+      };
+    }
     const list = deferredFilteredForComboStats;
     const buckets = {
       total: [...list],
@@ -209,7 +226,7 @@ export function useAttendanceComboChart({
       }
     }
     return buckets;
-  }, [deferredFilteredForComboStats]);
+  }, [deferredFilteredForComboStats, showComboChartModal]);
 
   const comboStatLabelByKey = useMemo(() => {
     const fromKeys = Object.fromEntries(
@@ -255,7 +272,7 @@ export function useAttendanceComboChart({
   ]);
 
   useLayoutEffect(() => {
-    if (!comboChartBodyReady) return;
+    if (!showComboChartModal || !comboChartBodyReady) return;
     const total = comboChartDataOrdered.length;
     if (total === 0) {
       setComboChartCardsVisibleCount(0);
@@ -281,6 +298,7 @@ export function useAttendanceComboChart({
       cancelled = true;
     };
   }, [
+    showComboChartModal,
     comboChartBodyReady,
     comboChartDataOrdered,
     setComboChartCardsVisibleCount,

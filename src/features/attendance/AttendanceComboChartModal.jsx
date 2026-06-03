@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo, useCallback } from "react";
 import ExcelJS from "exceljs";
 import { toPng } from "html-to-image";
 import {
@@ -27,7 +27,7 @@ import {
 } from "./attendanceGioVaoTypeOptions";
 import "../dashboard/dashboard.css";
 
-export default function AttendanceComboChartModal({
+function AttendanceComboChartModal({
   open,
   onClose,
   comboDashboardGroup,
@@ -74,6 +74,10 @@ export default function AttendanceComboChartModal({
   const [productionDeptPickerDraft, setProductionDeptPickerDraft] =
     React.useState([]);
   const [showDetailTiles, setShowDetailTiles] = React.useState(false);
+
+  const handleCompareEmployeesClick = useCallback(() => {
+    void onCompareEmployees?.();
+  }, [onCompareEmployees]);
 
   const productionDeptLabelForPicker = React.useCallback(
     (mk) =>
@@ -296,9 +300,7 @@ export default function AttendanceComboChartModal({
             {comboDashboardGroup === "production" ? (
               <button
                 type="button"
-                onClick={() => {
-                  void onCompareEmployees?.();
-                }}
+                onClick={handleCompareEmployeesClick}
                 disabled={compareEmployeesBusy}
                 className="col-span-2 flex h-8 min-w-0 w-full items-center justify-center overflow-hidden whitespace-nowrap rounded-lg border border-indigo-300 bg-indigo-600 px-1 py-1 text-[8px] font-bold uppercase tracking-tight text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-1 sm:w-auto sm:px-3 sm:text-xs sm:tracking-wide dark:border-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600"
               >
@@ -844,3 +846,5 @@ export default function AttendanceComboChartModal({
     </div>
   );
 }
+
+export default memo(AttendanceComboChartModal);

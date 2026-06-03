@@ -49,11 +49,6 @@ export function employeeMatchesLoaiPhepFilterSet(emp, selectedSet) {
   return false;
 }
 
-export function employeeMatchesLoaiPhepFilter(emp, selectedValues) {
-  if (!selectedValues || selectedValues.length === 0) return true;
-  return employeeMatchesLoaiPhepFilterSet(emp, new Set(selectedValues));
-}
-
 /** Ngày chọn trên ô date / URL `?date=` — đồng bộ với Firebase path `attendance/YYYY-MM-DD`. */
 export const ISO_DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 

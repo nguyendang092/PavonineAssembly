@@ -7,20 +7,24 @@ import AttendanceListActionPrintMenus from "./AttendanceListActionPrintMenus";
 import {
   useAttendanceListSearchBranch,
   useAttendanceListToolbarBranch,
+  useAttendanceListFilteredDataBranch,
 } from "./attendanceListBranchContexts";
 
 /**
- * Cụm ô tìm + nút — subscribe search context riêng để gõ không đổi toolbar context.
+ * Cụm ô tìm + nút — subscribe search + filtered-data context để gõ không re-render filter menus.
  */
 function AttendanceToolbarSearchCluster() {
   const { searchTerm, setSearchTerm } = useAttendanceListSearchBranch();
   const {
-    tl,
-    t,
-    attendanceRootPath,
+    filteredEmployees,
     deferredFilteredEmployees,
     buCongEmployees,
     handleExportBuCongExcel,
+  } = useAttendanceListFilteredDataBranch();
+  const {
+    tl,
+    t,
+    attendanceRootPath,
     navbarMobileMenuOpen,
     filterMenuRef,
     filterDropdownAnchorRef,
@@ -52,7 +56,6 @@ function AttendanceToolbarSearchCluster() {
     departments,
     allLeaveTypesSelectAllChecked,
     allLeaveTypeFilterValues,
-    filteredEmployees,
     setAlert,
     user,
     userRole,

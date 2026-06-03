@@ -1,19 +1,9 @@
-import React, {
-  memo,
-  useState,
-  useMemo,
-  useCallback,
-  useEffect,
-  useRef,
-  startTransition,
-} from "react";
+import React, { memo, useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
-import { db, get, ref } from "@/services/firebase";
 import AlertMessage from "@/components/ui/AlertMessage";
 import AttendanceExportRangeModal from "./AttendanceExportRangeModal";
-import AttendanceCompareEmployeesModal from "./AttendanceCompareEmployeesModal";
 import { useAttendanceDayFirebase } from "./useAttendanceDayFirebase";
 import { useAttendanceListFilters } from "./useAttendanceListFilters";
 import {
@@ -26,6 +16,7 @@ import { useAttendanceListMutations } from "./useAttendanceListMutations";
 import AttendanceListHeader from "./AttendanceListHeader";
 import AttendanceUnattendedModal from "./AttendanceUnattendedModal";
 import AttendanceListToolbarSection from "./AttendanceListToolbarSection";
+import AttendanceListToolbarSearchCluster from "./AttendanceToolbarSearchCluster";
 import AttendanceListContentSection from "./AttendanceListContentSection";
 import {
   useAttendanceListUiState,
@@ -39,19 +30,19 @@ import { useAttendanceListDerivedLists } from "./useAttendanceListDerivedLists";
 import { useAttendanceListHandlers } from "./useAttendanceListHandlers";
 import { useAttendanceListSetup } from "./useAttendanceListSetup";
 import { useAttendanceListI18n } from "./useAttendanceListI18n";
-import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
-import {
-  attendanceProductionDeptMatchKey,
-  COMBO_STATS_PRODUCTION_DEPT_DEFAULT_ORDER,
-  COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS,
-  mergeComboProductionDeptPickerKeys,
-} from "./attendanceComboChartConfig";
+import { useAttendanceCompareEmployees } from "./useAttendanceCompareEmployees";
 import {
   AttendanceListToolbarBranchContext,
   AttendanceListContentBranchContext,
   AttendanceListSearchBranchContext,
+  AttendanceListFilteredDataBranchContext,
+  AttendanceListTableBranchContext,
+  AttendanceListComboBranchContext,
 } from "./attendanceListBranchContexts";
 
+const AttendanceCompareEmployeesModal = lazy(
+  () => import("./AttendanceCompareEmployeesModal"),
+);
 
 const AttendanceList = memo(function AttendanceList({
   attendanceRootPath = "attendance",
@@ -70,16 +61,6 @@ const AttendanceList = memo(function AttendanceList({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [offDaysModalOpen, setOffDaysModalOpen] = useState(false);
-  const [compareEmployeesOpen, setCompareEmployeesOpen] = useState(false);
-  const [compareEmployeesBusy, setCompareEmployeesBusy] = useState(false);
-  const [compareEmployeesResult, setCompareEmployeesResult] = useState(null);
-  const compareDayRowsCacheRef = useRef(new Map());
-  const [compareCriteria, setCompareCriteria] = useState({
-    compareDate: todayKey,
-    previousDate: "",
-    department: "",
-  });
-
   const { t, i18n } = useTranslation();
   const { user, userDepartments, userRole } = useUser();
   const ui = useAttendanceListUiState(user);
@@ -369,199 +350,24 @@ const AttendanceList = memo(function AttendanceList({
     setShowExportRangeModal(false);
   }, [setShowExportRangeModal]);
 
-  const previousDateOf = useCallback((dateKey) => {
-    const d = new Date(`${String(dateKey || "").trim()}T12:00:00`);
-    if (Number.isNaN(d.getTime())) return "";
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().slice(0, 10);
-  }, []);
-
-  useEffect(() => {
-    setCompareCriteria((prev) => {
-      const compareDate = String(selectedDate || "").trim();
-      return {
-        ...prev,
-        compareDate,
-        previousDate: previousDateOf(compareDate),
-      };
-    });
-  }, [selectedDate, previousDateOf]);
-
-  const handleCompareEmployeesByDepartment = useCallback(async (criteria = {}) => {
-    if (compareEmployeesBusy) return;
-    const currentDate = String(
-      criteria.compareDate || compareCriteria.compareDate || selectedDate || "",
-    ).trim();
-    const previousDate = String(
-      criteria.previousDate ||
-        compareCriteria.previousDate ||
-        previousDateOf(currentDate),
-    ).trim();
-    const departmentFilter = String(
-      criteria.department ?? compareCriteria.department ?? "",
-    ).trim();
-
-    if (!currentDate) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: tl(
-          "compareEmployeesFillDate",
-          "Vui lòng chọn ngày để so sánh.",
-        ),
-      });
-      return;
-    }
-
-    const currentDateObj = new Date(`${currentDate}T12:00:00`);
-    const previousDateObj = new Date(`${previousDate}T12:00:00`);
-    if (
-      Number.isNaN(currentDateObj.getTime()) ||
-      Number.isNaN(previousDateObj.getTime())
-    ) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: tl("compareEmployeesInvalidDate", "Ngày chọn không hợp lệ."),
-      });
-      return;
-    }
-
-    const allowedProductionMatchKeys = new Set(
-      COMBO_STATS_PRODUCTION_DEPT_DEFAULT_ORDER,
-    );
-    const orderedProductionMatchKeys = (
-      comboProductionDeptOrder.length > 0
-        ? comboProductionDeptOrder
-        : mergeComboProductionDeptPickerKeys(comboProductionDeptCatalog)
-    ).filter((mk) => allowedProductionMatchKeys.has(mk));
-    const buildDeptEmployeeMap = (rows) => {
-      const out = new Map();
-      for (const emp of rows || []) {
-        const matchKey = attendanceProductionDeptMatchKey(
-          normalizeDepartment,
-          emp?.boPhan,
-        );
-        if (!matchKey || !allowedProductionMatchKeys.has(matchKey)) continue;
-        const dept =
-          COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS[matchKey] ||
-          String(emp?.boPhan || "").trim() ||
-          "—";
-        const mnv = String(emp?.mnv || "").trim();
-        const mvt = String(emp?.mvt || "").trim();
-        const name = String(emp?.hoVaTen || "").trim() || "Không tên";
-        const key = mnv || mvt || name;
-        const label = mnv ? `${name} (${mnv})` : name;
-        if (!out.has(dept)) out.set(dept, new Map());
-        out.get(dept).set(key, label);
-      }
-      return out;
-    };
-
-    setCompareEmployeesBusy(true);
-    try {
-      const loadRowsByDate = async (dateKey) => {
-        const key = `${attendanceRootPath}:${dateKey}`;
-        const cached = compareDayRowsCacheRef.current.get(key);
-        if (cached) return cached;
-        const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-        const rows = reconcileAttendanceDayRowsFromRaw([], snap.val());
-        compareDayRowsCacheRef.current.set(key, rows);
-        if (compareDayRowsCacheRef.current.size > 12) {
-          const oldestKey = compareDayRowsCacheRef.current.keys().next().value;
-          if (oldestKey) compareDayRowsCacheRef.current.delete(oldestKey);
-        }
-        return rows;
-      };
-
-      const [previousRows, currentRows] = await Promise.all([
-        loadRowsByDate(previousDate),
-        loadRowsByDate(currentDate),
-      ]);
-
-      const prevByDept = buildDeptEmployeeMap(previousRows);
-      const currByDept = buildDeptEmployeeMap(currentRows);
-      const productionDeptLabels = orderedProductionMatchKeys.map(
-        (matchKey) =>
-          COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS[matchKey] || matchKey,
-      );
-      const allDepts = Array.from(
-        new Set([
-          ...productionDeptLabels,
-          ...prevByDept.keys(),
-          ...currByDept.keys(),
-        ]),
-      );
-
-      const rows = allDepts.map((department) => {
-        const prevEmpMap = prevByDept.get(department) || new Map();
-        const currEmpMap = currByDept.get(department) || new Map();
-        const previousOnly = [];
-        const currentOnly = [];
-        let sameCount = 0;
-
-        for (const [k, label] of prevEmpMap.entries()) {
-          if (currEmpMap.has(k)) sameCount += 1;
-          else previousOnly.push(label);
-        }
-        for (const [k, label] of currEmpMap.entries()) {
-          if (!prevEmpMap.has(k)) currentOnly.push(label);
-        }
-
-        previousOnly.sort((a, b) => a.localeCompare(b, "vi"));
-        currentOnly.sort((a, b) => a.localeCompare(b, "vi"));
-
-        return {
-          department,
-          previousCount: prevEmpMap.size,
-          currentCount: currEmpMap.size,
-          sameCount,
-          previousOnly,
-          currentOnly,
-        };
-      });
-
-      const filteredRows = departmentFilter
-        ? rows.filter((x) => x.department === departmentFilter)
-        : rows;
-
-      startTransition(() => {
-        setCompareEmployeesResult({
-          previousDate,
-          currentDate,
-          rows: filteredRows,
-          departments: allDepts,
-        });
-        setCompareEmployeesOpen(true);
-      });
-    } catch (error) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: tl("compareEmployeesError", "Không thể so sánh nhân viên: {{error}}", {
-          error: error?.message || "unknown",
-        }),
-      });
-    } finally {
-      setCompareEmployeesBusy(false);
-    }
-  }, [
-    selectedDate,
-    compareCriteria,
+  const {
+    compareEmployeesOpen,
     compareEmployeesBusy,
-    previousDateOf,
+    compareEmployeesResult,
+    compareCriteria,
+    setCompareCriteria,
+    closeCompareEmployees,
+    handleCompareEmployeesByDepartment,
+    handleOpenCompareEmployees,
+  } = useAttendanceCompareEmployees({
     attendanceRootPath,
+    selectedDate,
+    normalizeDepartment,
     comboProductionDeptOrder,
     comboProductionDeptCatalog,
-    normalizeDepartment,
     setAlert,
     tl,
-  ]);
-
-  const handleOpenCompareEmployees = useCallback(async () => {
-    setCompareEmployeesOpen(true);
-    await handleCompareEmployeesByDepartment(compareCriteria);
-  }, [handleCompareEmployeesByDepartment, compareCriteria]);
+  });
 
   const filterDropdownPlacement = useAttendanceFilterDropdownPlacement(
     filterMenuDropdownOpen,
@@ -605,9 +411,6 @@ const AttendanceList = memo(function AttendanceList({
       setOffDaysModalOpen,
       tl,
       attendanceRootPath,
-      deferredFilteredEmployees,
-      buCongEmployees,
-      handleExportBuCongExcel,
       t,
       filterMenuRef,
       filterDropdownAnchorRef,
@@ -639,7 +442,6 @@ const AttendanceList = memo(function AttendanceList({
       departments,
       allLeaveTypesSelectAllChecked,
       allLeaveTypeFilterValues,
-      filteredEmployees,
       setAlert,
       actionDropdownOpen,
       setActionDropdownOpen,
@@ -657,8 +459,6 @@ const AttendanceList = memo(function AttendanceList({
       handleUploadExcelWrapper,
       handleDownloadAttendanceExcelTemplate,
       setShowExportRangeModal,
-      compareEmployeesBusy,
-      handleCompareEmployeesByDepartment: handleOpenCompareEmployees,
       showRowModalActions,
       setEmployeeModalRecord,
       setShowEmployeeModal,
@@ -687,9 +487,6 @@ const AttendanceList = memo(function AttendanceList({
       setOffDaysModalOpen,
       tl,
       attendanceRootPath,
-      deferredFilteredEmployees,
-      buCongEmployees,
-      handleExportBuCongExcel,
       t,
       filterMenuRef,
       filterDropdownAnchorRef,
@@ -721,7 +518,6 @@ const AttendanceList = memo(function AttendanceList({
       departments,
       allLeaveTypesSelectAllChecked,
       allLeaveTypeFilterValues,
-      filteredEmployees,
       setAlert,
       actionDropdownOpen,
       setActionDropdownOpen,
@@ -738,8 +534,6 @@ const AttendanceList = memo(function AttendanceList({
       isUploadingExcel,
       handleUploadExcelWrapper,
       handleDownloadAttendanceExcelTemplate,
-      compareEmployeesBusy,
-      handleOpenCompareEmployees,
       setShowExportRangeModal,
       showRowModalActions,
       setEmployeeModalRecord,
@@ -753,6 +547,21 @@ const AttendanceList = memo(function AttendanceList({
   const searchBranchValue = useMemo(
     () => ({ searchTerm, setSearchTerm }),
     [searchTerm, setSearchTerm],
+  );
+
+  const filteredDataBranchValue = useMemo(
+    () => ({
+      filteredEmployees,
+      deferredFilteredEmployees,
+      buCongEmployees,
+      handleExportBuCongExcel,
+    }),
+    [
+      filteredEmployees,
+      deferredFilteredEmployees,
+      buCongEmployees,
+      handleExportBuCongExcel,
+    ],
   );
 
   const contentBranchValue = useMemo(
@@ -779,33 +588,6 @@ const AttendanceList = memo(function AttendanceList({
       setShowComboChartModal,
       comboDashboardGroup,
       setComboDashboardGroup,
-      comboProductionDeptCatalog,
-      comboProductionDeptOrder,
-      persistComboProductionDeptOrder,
-      getComboProductionDeptChartRank,
-      comboDashboardStats,
-      comboChartData,
-      comboChartBodyReady,
-      comboChartRowsVisible,
-      comboChartCardsVisibleCount,
-      comboChartDataOrdered,
-      comboStatDetailKey,
-      setComboStatDetailKey,
-      comboStatLabelByKey,
-      comboStatEmployeesByKey,
-      compareEmployeesBusy,
-      handleCompareEmployeesByDepartment,
-      columnPlan,
-      forceVirtualizedRows,
-      deferredFilteredEmployees,
-      attendanceGridTemplateColumns,
-      showRowModalActions,
-      canDeleteDayRecord,
-      canEditEmployee,
-      handleEdit,
-      handleDelete,
-      isOffDay,
-      isHolidayDay,
       displayLocale,
     }),
     [
@@ -831,6 +613,49 @@ const AttendanceList = memo(function AttendanceList({
       setShowComboChartModal,
       comboDashboardGroup,
       setComboDashboardGroup,
+      displayLocale,
+    ],
+  );
+
+  const tableBranchValue = useMemo(
+    () => ({
+      columnPlan,
+      forceVirtualizedRows,
+      deferredFilteredEmployees,
+      attendanceGridTemplateColumns,
+      showRowModalActions,
+      canDeleteDayRecord,
+      canEditEmployee,
+      handleEdit,
+      handleDelete,
+      isOffDay,
+      isHolidayDay,
+      selectedDate,
+      displayLocale,
+      tl,
+    }),
+    [
+      columnPlan,
+      forceVirtualizedRows,
+      deferredFilteredEmployees,
+      attendanceGridTemplateColumns,
+      showRowModalActions,
+      canDeleteDayRecord,
+      canEditEmployee,
+      handleEdit,
+      handleDelete,
+      isOffDay,
+      isHolidayDay,
+      selectedDate,
+      displayLocale,
+      tl,
+    ],
+  );
+
+  const comboBranchValue = useMemo(
+    () => ({
+      selectedDate,
+      setSelectedDate,
       comboProductionDeptCatalog,
       comboProductionDeptOrder,
       persistComboProductionDeptOrder,
@@ -846,19 +671,35 @@ const AttendanceList = memo(function AttendanceList({
       comboStatLabelByKey,
       comboStatEmployeesByKey,
       compareEmployeesBusy,
-      handleCompareEmployeesByDepartment,
-      columnPlan,
-      forceVirtualizedRows,
-      deferredFilteredEmployees,
-      attendanceGridTemplateColumns,
-      showRowModalActions,
-      canDeleteDayRecord,
-      canEditEmployee,
-      handleEdit,
-      handleDelete,
-      isOffDay,
-      isHolidayDay,
-      displayLocale,
+      handleOpenCompareEmployees,
+      comboDashboardGroup,
+      setComboDashboardGroup,
+      tl,
+      t,
+    }),
+    [
+      selectedDate,
+      setSelectedDate,
+      comboProductionDeptCatalog,
+      comboProductionDeptOrder,
+      persistComboProductionDeptOrder,
+      getComboProductionDeptChartRank,
+      comboDashboardStats,
+      comboChartData,
+      comboChartBodyReady,
+      comboChartRowsVisible,
+      comboChartCardsVisibleCount,
+      comboChartDataOrdered,
+      comboStatDetailKey,
+      setComboStatDetailKey,
+      comboStatLabelByKey,
+      comboStatEmployeesByKey,
+      compareEmployeesBusy,
+      handleOpenCompareEmployees,
+      comboDashboardGroup,
+      setComboDashboardGroup,
+      tl,
+      t,
     ],
   );
 
@@ -915,16 +756,31 @@ const AttendanceList = memo(function AttendanceList({
           t={t}
         />
 
-    <AttendanceCompareEmployeesModal
-      isOpen={compareEmployeesOpen}
-      onClose={() => setCompareEmployeesOpen(false)}
-      compareBusy={compareEmployeesBusy}
-      result={compareEmployeesResult}
-      criteria={compareCriteria}
-      onChangeCriteria={setCompareCriteria}
-      onCompare={handleCompareEmployeesByDepartment}
-      tl={tl}
-    />
+    {compareEmployeesOpen ? (
+      <Suspense
+        fallback={
+          <div
+            className="fixed inset-0 z-[1210] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm"
+            aria-busy="true"
+          >
+            <p className="rounded-lg bg-slate-900/80 px-4 py-2 text-sm text-white">
+              {tl("compareEmployeesLoading", "Đang so sánh dữ liệu...")}
+            </p>
+          </div>
+        }
+      >
+        <AttendanceCompareEmployeesModal
+          isOpen
+          onClose={closeCompareEmployees}
+          compareBusy={compareEmployeesBusy}
+          result={compareEmployeesResult}
+          criteria={compareCriteria}
+          onChangeCriteria={setCompareCriteria}
+          onCompare={handleCompareEmployeesByDepartment}
+          tl={tl}
+        />
+      </Suspense>
+    ) : null}
 
         <AttendanceExportRangeModal
           isOpen={showExportRangeModal}
@@ -942,11 +798,28 @@ const AttendanceList = memo(function AttendanceList({
           <AttendanceListToolbarBranchContext.Provider
             value={toolbarBranchValue}
           >
+            <div className="mb-2 flex flex-col gap-2 sm:mb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+              <AttendanceListToolbarSection />
+              <AttendanceListFilteredDataBranchContext.Provider
+                value={filteredDataBranchValue}
+              >
+                <div className="min-w-0 sm:flex sm:shrink-0 sm:items-center sm:justify-end">
+                  <AttendanceListToolbarSearchCluster />
+                </div>
+              </AttendanceListFilteredDataBranchContext.Provider>
+            </div>
             <AttendanceListContentBranchContext.Provider
               value={contentBranchValue}
             >
-              <AttendanceListToolbarSection />
-              <AttendanceListContentSection />
+              <AttendanceListTableBranchContext.Provider
+                value={tableBranchValue}
+              >
+                <AttendanceListComboBranchContext.Provider
+                  value={comboBranchValue}
+                >
+                  <AttendanceListContentSection />
+                </AttendanceListComboBranchContext.Provider>
+              </AttendanceListTableBranchContext.Provider>
             </AttendanceListContentBranchContext.Provider>
           </AttendanceListToolbarBranchContext.Provider>
         </AttendanceListSearchBranchContext.Provider>

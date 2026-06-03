@@ -1,4 +1,4 @@
-import React, { memo, startTransition } from "react";
+import React, { memo, startTransition, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ATTENDANCE_LOAI_PHEP_OPTIONS } from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_LEAVE_FILTER_NONE } from "./attendanceListShared";
@@ -45,6 +45,31 @@ function AttendanceListFilterMenus({
     Boolean(joinDateYearFilter) ||
     Boolean(joinDateMonthFilter);
   const hasAnyFilters = hasAdvancedFilters || isQuickNoCheckInActive;
+
+  const clearAllFilters = useCallback(() => {
+    setLoaiPhepFilter([]);
+    setDepartmentListFilter([]);
+    setJoinDateYearFilter("");
+    setJoinDateMonthFilter("");
+    setShowOnlyUnattendedFilter(false);
+    setSearchTerm("");
+  }, [
+    setLoaiPhepFilter,
+    setDepartmentListFilter,
+    setJoinDateYearFilter,
+    setJoinDateMonthFilter,
+    setShowOnlyUnattendedFilter,
+    setSearchTerm,
+  ]);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setFilterOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [filterOpen, setFilterOpen]);
 
   return (
     <>
@@ -156,13 +181,8 @@ function AttendanceListFilterMenus({
                       !hasAnyFilters
                   }
                   onClick={() => {
-                      if (!hasAnyFilters) return;
-                    setLoaiPhepFilter([]);
-                    setDepartmentListFilter([]);
-                    setJoinDateYearFilter("");
-                    setJoinDateMonthFilter("");
-                    setShowOnlyUnattendedFilter(false);
-                    setSearchTerm("");
+                    if (!hasAnyFilters) return;
+                    clearAllFilters();
                     setFilterMenuDropdownOpen(false);
                   }}
                   className="w-full shrink-0 border-t px-4 py-3 text-left flex items-center gap-3 transition disabled:cursor-not-allowed disabled:opacity-45 text-gray-700 hover:bg-red-50 enabled:hover:text-red-800"
@@ -191,8 +211,12 @@ function AttendanceListFilterMenus({
               role="dialog"
               aria-modal="true"
               aria-labelledby="attendance-advanced-filter-title"
+              onClick={() => setFilterOpen(false)}
             >
-              <div className="flex h-[min(620px,85vh)] w-full max-w-md min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl animate-slideUp dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/40">
+              <div
+                className="flex h-[min(620px,85vh)] w-full max-w-md min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl animate-slideUp dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/40"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {/* Header */}
                 <div className="shrink-0 border-b border-blue-100/80 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 px-4 py-2.5 relative overflow-hidden">
                   <div className="absolute inset-0 bg-white opacity-10"></div>
@@ -218,6 +242,7 @@ function AttendanceListFilterMenus({
                   {/* Department Filter Section */}
                   <div className="mb-3">
                     <button
+                      type="button"
                       onClick={() => {
                         setExpandedSections((prev) => ({
                           ...prev,
@@ -245,7 +270,7 @@ function AttendanceListFilterMenus({
                           placeholder={t("attendanceList.searchDepartment")}
                           className="w-full border-b border-orange-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                         />
-                        <div className="max-h-84 overflow-y-auto">
+                        <div className="max-h-80 overflow-y-auto">
                           {departments.length === 0 ? (
                             <div className="px-3 py-2 text-sm text-gray-500 italic">
                               {tl("noData", "Không có dữ liệu")}
@@ -282,7 +307,7 @@ function AttendanceListFilterMenus({
                                   }}
                                   className="mr-2 w-4 h-4 cursor-pointer"
                                 />
-                                ✓ Chọn tất cả
+                                ✓ {tl("selectAll", "Chọn tất cả")}
                               </label>
                               {departments
                                 .filter((dept) =>
@@ -532,12 +557,9 @@ function AttendanceListFilterMenus({
                 {/* Footer — luôn một hàng (tránh sm:flex + w-full làm nút chồng dọc) */}
                 <div className="shrink-0 flex flex-row flex-nowrap items-stretch gap-2 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 p-3 sm:gap-3 sm:p-5">
                   <button
+                    type="button"
                     onClick={() => {
-                      setLoaiPhepFilter([]);
-                      setDepartmentListFilter([]);
-                      setJoinDateYearFilter("");
-                      setJoinDateMonthFilter("");
-                      setShowOnlyUnattendedFilter(false);
+                      clearAllFilters();
                       setExpandedSections({});
                     }}
                     className="min-w-0 flex-1 px-1.5 py-2 text-center text-[11px] font-semibold leading-tight text-gray-700 shadow-sm transition-all duration-200 hover:shadow sm:px-3 sm:py-2.5 sm:text-sm rounded-lg border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600"
@@ -545,20 +567,18 @@ function AttendanceListFilterMenus({
                     🗑️ {tl("clearAll", "Xóa tất cả")}
                   </button>
                   <button
-                    onClick={() => {
-                      setFilterOpen(false);
-                    }}
+                    type="button"
+                    onClick={() => setFilterOpen(false)}
                     className="min-w-0 flex-1 px-1.5 py-2 text-center text-[11px] font-semibold leading-tight text-white shadow-md transition-all duration-200 hover:shadow-lg sm:px-3 sm:py-2.5 sm:text-sm rounded-lg bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700"
                   >
                     ✖️ {t("attendanceList.cancel", { defaultValue: "Hủy" })}
                   </button>
                   <button
-                    onClick={() => {
-                      setFilterOpen(false);
-                    }}
+                    type="button"
+                    onClick={() => setFilterOpen(false)}
                     className="min-w-0 flex-1 px-1.5 py-2 text-center text-[11px] font-semibold leading-tight text-white shadow-md transition-all duration-200 hover:shadow-lg sm:px-3 sm:py-2.5 sm:text-sm rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
                   >
-                    ✓ {tl("apply", "Áp dụng")}
+                    ✓ {tl("close", "Đóng")}
                   </button>
                 </div>
               </div>

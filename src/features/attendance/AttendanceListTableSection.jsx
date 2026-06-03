@@ -29,19 +29,10 @@ function AttendanceListTableSection({
   t,
 }) {
   const tableScrollParentRef = useRef(null);
-  // Đồng bộ với `h-9` ở AttendanceTableRowBody để không bị đổi chiều cao khi
-  // danh sách chuyển giữa virtual và non-virtual (sau khi lọc).
   const rowEstimatePx = 36;
   const shouldVirtualize =
     forceVirtualizedRows ||
     deferredFilteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
-
-  const rowVirtualizer = useVirtualizer({
-    count: deferredFilteredEmployees.length,
-    getScrollElement: () => tableScrollParentRef.current,
-    estimateSize: () => rowEstimatePx,
-    overscan: 10,
-  });
 
   const sharedRowProps = useMemo(
     () => ({
@@ -75,61 +66,29 @@ function AttendanceListTableSection({
   return (
     <TableShell columnPlan={columnPlan}>
       {shouldVirtualize ? (
-        <div
-          ref={tableScrollParentRef}
-          className={`max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto ${
-            columnPlan === "minimal"
-              ? "overflow-x-hidden"
-              : "overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
-          }`}
-        >
-          <VirtualGrid
-            columnPlan={columnPlan}
-            attendanceGridTemplateColumns={attendanceGridTemplateColumns}
-            showRowModalActions={showRowModalActions}
-            canDeleteDayRecord={canDeleteDayRecord}
-            tl={tl}
-            rowVirtualizer={rowVirtualizer}
-            deferredFilteredEmployees={deferredFilteredEmployees}
-            sharedRowProps={sharedRowProps}
-            canEditEmployee={canEditEmployee}
-          />
-        </div>
+        <VirtualizedTableBody
+          tableScrollParentRef={tableScrollParentRef}
+          columnPlan={columnPlan}
+          attendanceGridTemplateColumns={attendanceGridTemplateColumns}
+          showRowModalActions={showRowModalActions}
+          canDeleteDayRecord={canDeleteDayRecord}
+          tl={tl}
+          deferredFilteredEmployees={deferredFilteredEmployees}
+          sharedRowProps={sharedRowProps}
+          canEditEmployee={canEditEmployee}
+          rowEstimatePx={rowEstimatePx}
+        />
       ) : (
-        <div
-          ref={tableScrollParentRef}
-          className={`min-w-0 w-full max-w-full ${
-            columnPlan === "minimal" ? "overflow-x-hidden" : "overflow-x-auto"
-          }`}
-        >
-          <table
-            className={`w-full table-fixed border-collapse max-w-none ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
-          >
-            <AttendanceTableColgroup
-              showRowModalActions={showRowModalActions}
-              columnPlan={columnPlan}
-            />
-            <AttendanceTableThead
-              tl={tl}
-              showRowModalActions={showRowModalActions}
-              stickyHeader={true}
-              canDeleteRow={canDeleteDayRecord}
-              columnPlan={columnPlan}
-            />
-            <tbody>
-              {deferredFilteredEmployees.map((emp, idx) => (
-                <AttendanceTableRow
-                  key={emp.id}
-                  emp={emp}
-                  idx={idx}
-                  virtualRow={undefined}
-                  canEdit={canEditEmployee(emp)}
-                  {...sharedRowProps}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <StaticTableBody
+          tableScrollParentRef={tableScrollParentRef}
+          columnPlan={columnPlan}
+          showRowModalActions={showRowModalActions}
+          canDeleteDayRecord={canDeleteDayRecord}
+          tl={tl}
+          deferredFilteredEmployees={deferredFilteredEmployees}
+          sharedRowProps={sharedRowProps}
+          canEditEmployee={canEditEmployee}
+        />
       )}
     </TableShell>
   );
@@ -147,7 +106,98 @@ function TableShell({ columnPlan, children }) {
   );
 }
 
-function VirtualGrid({
+function VirtualizedTableBody({
+  tableScrollParentRef,
+  columnPlan,
+  attendanceGridTemplateColumns,
+  showRowModalActions,
+  canDeleteDayRecord,
+  tl,
+  deferredFilteredEmployees,
+  sharedRowProps,
+  canEditEmployee,
+  rowEstimatePx,
+}) {
+  const rowVirtualizer = useVirtualizer({
+    count: deferredFilteredEmployees.length,
+    getScrollElement: () => tableScrollParentRef.current,
+    estimateSize: () => rowEstimatePx,
+    overscan: 10,
+  });
+
+  return (
+    <div
+      ref={tableScrollParentRef}
+      className={`max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto ${
+        columnPlan === "minimal"
+          ? "overflow-x-hidden"
+          : "overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
+      }`}
+    >
+      <VirtualGrid
+        columnPlan={columnPlan}
+        attendanceGridTemplateColumns={attendanceGridTemplateColumns}
+        showRowModalActions={showRowModalActions}
+        canDeleteDayRecord={canDeleteDayRecord}
+        tl={tl}
+        rowVirtualizer={rowVirtualizer}
+        deferredFilteredEmployees={deferredFilteredEmployees}
+        sharedRowProps={sharedRowProps}
+        canEditEmployee={canEditEmployee}
+      />
+    </div>
+  );
+}
+
+function StaticTableBody({
+  tableScrollParentRef,
+  columnPlan,
+  showRowModalActions,
+  canDeleteDayRecord,
+  tl,
+  deferredFilteredEmployees,
+  sharedRowProps,
+  canEditEmployee,
+}) {
+  return (
+    <div
+      ref={tableScrollParentRef}
+      className={`min-w-0 w-full max-w-full ${
+        columnPlan === "minimal" ? "overflow-x-hidden" : "overflow-x-auto"
+      }`}
+    >
+      <table
+        className={`w-full table-fixed border-collapse max-w-none ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
+      >
+        <AttendanceTableColgroup
+          showRowModalActions={showRowModalActions}
+          columnPlan={columnPlan}
+        />
+        <AttendanceTableThead
+          tl={tl}
+          showRowModalActions={showRowModalActions}
+          stickyHeader={true}
+          canDeleteRow={canDeleteDayRecord}
+          columnPlan={columnPlan}
+        />
+        <tbody>
+          {deferredFilteredEmployees.map((emp, idx) => (
+            <AttendanceTableRow
+              key={emp.id}
+              emp={emp}
+              idx={idx}
+              virtualRow={undefined}
+              canEdit={canEditEmployee(emp)}
+              {...sharedRowProps}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const VirtualGrid = memo(function VirtualGrid({
   columnPlan,
   attendanceGridTemplateColumns,
   showRowModalActions,
@@ -197,6 +247,6 @@ function VirtualGrid({
       </div>
     </div>
   );
-}
+});
 
 export default memo(AttendanceListTableSection);
