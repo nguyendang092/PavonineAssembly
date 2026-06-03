@@ -7,10 +7,14 @@ import {
 
 function AttendanceListSummary({
   deferredFilteredEmployees,
+  employeesCount = 0,
   displayLocale,
   selectedDate,
   tl,
 }) {
+  const shown = deferredFilteredEmployees.length;
+  const loaded = Number(employeesCount) || 0;
+  const filteredOut = loaded > 0 && shown < loaded;
   const leaveTypeCounts = useMemo(() => {
     const timeCounts = {};
     deferredFilteredEmployees.forEach((emp) => {
@@ -42,9 +46,16 @@ function AttendanceListSummary({
             <span className="flex items-center gap-1 text-sm font-bold text-gray-700">
               <span className="text-blue-600 text-lg">📊</span>
               {tl("totalEmployees", "Tổng số nhân viên")}:
-              <span className="ml-1 text-lg text-blue-700">
-                {deferredFilteredEmployees.length}
-              </span>
+              <span className="ml-1 text-lg text-blue-700">{shown}</span>
+              {filteredOut ? (
+                <span className="ml-1 text-xs font-semibold text-amber-700">
+                  {tl(
+                    "attendanceFilteredOfLoaded",
+                    "/ {{loaded}} trên ngày (đang lọc)",
+                    { loaded },
+                  )}
+                </span>
+              ) : null}
             </span>
             <span className="flex items-center gap-1 text-sm font-bold text-gray-700 border-l border-blue-200 pl-4">
               <span className="text-indigo-500 text-base">🏷️</span>

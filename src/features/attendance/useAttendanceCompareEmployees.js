@@ -195,7 +195,6 @@ export function useAttendanceCompareEmployees({
   );
 
   const handleOpenCompareEmployees = useCallback(async () => {
-    setCompareEmployeesOpen(true);
     await handleCompareEmployeesByDepartment(compareCriteria);
   }, [handleCompareEmployeesByDepartment, compareCriteria]);
 

@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { ATTENDANCE_LOAI_PHEP_OPTIONS } from "./attendanceGioVaoTypeOptions";
 import {
   employeeMatchesLoaiPhepFilterSet,
@@ -31,15 +31,10 @@ export function useAttendanceListFilters({
     [loaiPhepFilter],
   );
 
-  const deferredSearchTerm = useDeferredValue(searchTerm);
-  const deferredLoaiPhepFilter = useDeferredValue(loaiPhepFilter);
   const deferredLoaiPhepFilterSet = useMemo(
-    () => new Set(deferredLoaiPhepFilter),
-    [deferredLoaiPhepFilter],
+    () => new Set(loaiPhepFilter),
+    [loaiPhepFilter],
   );
-
-  const deferredJoinDateYearFilter = useDeferredValue(joinDateYearFilter);
-  const deferredJoinDateMonthFilter = useDeferredValue(joinDateMonthFilter);
 
   const filterAttendanceListRows = useCallback(
     (list, opts = {}) => {
@@ -49,15 +44,15 @@ export function useAttendanceListFilters({
         omitDepartmentFilters = false,
         omitSearch = false,
       } = opts;
-      const q = deferredSearchTerm.trim().toLowerCase();
+      const q = searchTerm.trim().toLowerCase();
       const selectedDeptKeys = new Set(
         departmentListFilter.map((dept) => normalizeDepartment(dept)),
       );
 
-      const joinYear = String(deferredJoinDateYearFilter || "").trim();
+      const joinYear = String(joinDateYearFilter || "").trim();
       // Chỉ áp dụng tháng khi đã chọn năm.
       const joinMonth = joinYear
-        ? String(deferredJoinDateMonthFilter || "").trim()
+        ? String(joinDateMonthFilter || "").trim()
         : "";
       return list.filter((emp) => {
         const empDeptKey = normalizeDepartment(emp.boPhan);
@@ -110,12 +105,12 @@ export function useAttendanceListFilters({
       });
     },
     [
-      deferredSearchTerm,
+      searchTerm,
       departmentFilter,
       departmentListFilter,
       deferredLoaiPhepFilterSet,
-      deferredJoinDateYearFilter,
-      deferredJoinDateMonthFilter,
+      joinDateYearFilter,
+      joinDateMonthFilter,
       showOnlyUnattendedFilter,
       normalizeDepartment,
     ],
@@ -126,7 +121,8 @@ export function useAttendanceListFilters({
     [employees, filterAttendanceListRows],
   );
 
-  const deferredFilteredEmployees = useDeferredValue(filteredEmployees);
+  // Không defer cả danh sách — dễ kẹt [] khi DevTools/resize (bảng trống dù Firebase đã có dữ liệu).
+  const deferredFilteredEmployees = filteredEmployees;
 
   const allLeaveTypeFilterValues = useMemo(
     () => ATTENDANCE_LOAI_PHEP_OPTIONS.map((o) => o.value),

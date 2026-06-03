@@ -1,4 +1,4 @@
-import React, { memo, useState, useMemo, useCallback, lazy, Suspense } from "react";
+import React, { memo, useState, useMemo, useCallback, useEffect, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
@@ -31,18 +31,14 @@ import { useAttendanceListHandlers } from "./useAttendanceListHandlers";
 import { useAttendanceListSetup } from "./useAttendanceListSetup";
 import { useAttendanceListI18n } from "./useAttendanceListI18n";
 import { useAttendanceCompareEmployees } from "./useAttendanceCompareEmployees";
+import AttendanceCompareEmployeesModal from "./AttendanceCompareEmployeesModal";
 import {
   AttendanceListToolbarBranchContext,
   AttendanceListContentBranchContext,
   AttendanceListSearchBranchContext,
   AttendanceListFilteredDataBranchContext,
-  AttendanceListTableBranchContext,
   AttendanceListComboBranchContext,
 } from "./attendanceListBranchContexts";
-
-const AttendanceCompareEmployeesModal = lazy(
-  () => import("./AttendanceCompareEmployeesModal"),
-);
 
 const AttendanceList = memo(function AttendanceList({
   attendanceRootPath = "attendance",
@@ -589,6 +585,15 @@ const AttendanceList = memo(function AttendanceList({
       comboDashboardGroup,
       setComboDashboardGroup,
       displayLocale,
+      columnPlan,
+      deferredFilteredEmployees,
+      showRowModalActions,
+      canDeleteDayRecord,
+      canEditEmployee,
+      handleEdit,
+      handleDelete,
+      isOffDay,
+      isHolidayDay,
     }),
     [
       showEmployeeModal,
@@ -614,15 +619,8 @@ const AttendanceList = memo(function AttendanceList({
       comboDashboardGroup,
       setComboDashboardGroup,
       displayLocale,
-    ],
-  );
-
-  const tableBranchValue = useMemo(
-    () => ({
       columnPlan,
-      forceVirtualizedRows,
       deferredFilteredEmployees,
-      attendanceGridTemplateColumns,
       showRowModalActions,
       canDeleteDayRecord,
       canEditEmployee,
@@ -630,25 +628,6 @@ const AttendanceList = memo(function AttendanceList({
       handleDelete,
       isOffDay,
       isHolidayDay,
-      selectedDate,
-      displayLocale,
-      tl,
-    }),
-    [
-      columnPlan,
-      forceVirtualizedRows,
-      deferredFilteredEmployees,
-      attendanceGridTemplateColumns,
-      showRowModalActions,
-      canDeleteDayRecord,
-      canEditEmployee,
-      handleEdit,
-      handleDelete,
-      isOffDay,
-      isHolidayDay,
-      selectedDate,
-      displayLocale,
-      tl,
     ],
   );
 
@@ -702,6 +681,15 @@ const AttendanceList = memo(function AttendanceList({
       t,
     ],
   );
+
+  useEffect(() => {
+    if (!compareEmployeesOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") closeCompareEmployees();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [compareEmployeesOpen, closeCompareEmployees]);
 
   useAttendanceListToolbarEffects({
     location,
@@ -757,29 +745,16 @@ const AttendanceList = memo(function AttendanceList({
         />
 
     {compareEmployeesOpen ? (
-      <Suspense
-        fallback={
-          <div
-            className="fixed inset-0 z-[1210] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm"
-            aria-busy="true"
-          >
-            <p className="rounded-lg bg-slate-900/80 px-4 py-2 text-sm text-white">
-              {tl("compareEmployeesLoading", "Đang so sánh dữ liệu...")}
-            </p>
-          </div>
-        }
-      >
-        <AttendanceCompareEmployeesModal
-          isOpen
-          onClose={closeCompareEmployees}
-          compareBusy={compareEmployeesBusy}
-          result={compareEmployeesResult}
-          criteria={compareCriteria}
-          onChangeCriteria={setCompareCriteria}
-          onCompare={handleCompareEmployeesByDepartment}
-          tl={tl}
-        />
-      </Suspense>
+      <AttendanceCompareEmployeesModal
+        isOpen
+        onClose={closeCompareEmployees}
+        compareBusy={compareEmployeesBusy}
+        result={compareEmployeesResult}
+        criteria={compareCriteria}
+        onChangeCriteria={setCompareCriteria}
+        onCompare={handleCompareEmployeesByDepartment}
+        tl={tl}
+      />
     ) : null}
 
         <AttendanceExportRangeModal
@@ -811,15 +786,11 @@ const AttendanceList = memo(function AttendanceList({
             <AttendanceListContentBranchContext.Provider
               value={contentBranchValue}
             >
-              <AttendanceListTableBranchContext.Provider
-                value={tableBranchValue}
+              <AttendanceListComboBranchContext.Provider
+                value={comboBranchValue}
               >
-                <AttendanceListComboBranchContext.Provider
-                  value={comboBranchValue}
-                >
-                  <AttendanceListContentSection />
-                </AttendanceListComboBranchContext.Provider>
-              </AttendanceListTableBranchContext.Provider>
+                <AttendanceListContentSection />
+              </AttendanceListComboBranchContext.Provider>
             </AttendanceListContentBranchContext.Provider>
           </AttendanceListToolbarBranchContext.Provider>
         </AttendanceListSearchBranchContext.Provider>

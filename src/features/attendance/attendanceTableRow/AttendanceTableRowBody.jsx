@@ -117,7 +117,7 @@ function AttendanceTableRow({
   return (
     <Row
       ref={measureElementRef}
-      data-index={virtualRow != null ? idx : undefined}
+      data-index={virtualRow != null ? virtualRow.index : undefined}
       style={rowStyle}
       role={isGrid ? "row" : undefined}
       className={`h-9 transition-colors hover:bg-blue-200 border-b border-slate-100 dark:border-slate-700/40 ${
