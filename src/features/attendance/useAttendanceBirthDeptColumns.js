@@ -1,8 +1,5 @@
 import { useSyncExternalStore } from "react";
 
-/** Khớp Tailwind `xl` — từ 1280px đầy đủ cột (có mã BP). */
-export const ATTENDANCE_TABLE_XL_MIN = "(min-width: 1280px)";
-
 const BP_HIDE_DEPT = 870;
 const BP_MINIMAL = 820;
 
@@ -13,7 +10,7 @@ const BP_MINIMAL = 820;
  * - narrow: 820–869 — thêm ẩn bộ phận.
  * - minimal: &lt;820 — chỉ MNV, họ tên, giờ vào, ca, (hành động).
  */
-export function getAttendanceColumnPlanFromWidth(width) {
+function getAttendanceColumnPlanFromWidth(width) {
   if (width < BP_MINIMAL) return "minimal";
   if (width < BP_HIDE_DEPT) return "narrow";
   if (width < 1280) return "compact";
@@ -35,9 +32,4 @@ export function useAttendanceColumnPlan() {
     () => getAttendanceColumnPlanFromWidth(getWidthSnapshot()),
     () => getAttendanceColumnPlanFromWidth(1280),
   );
-}
-
-/** Chỉ true khi viewport ≥ xl (tương thích code cũ dùng tên hook này). */
-export function useAttendanceBirthDeptColumns() {
-  return useAttendanceColumnPlan() === "full";
 }

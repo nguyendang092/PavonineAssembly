@@ -9,6 +9,7 @@ import {
   useAttendanceListToolbarBranch,
   useAttendanceListFilteredDataBranch,
 } from "./attendanceListBranchContexts";
+import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 
 /**
  * Cụm ô tìm + nút — subscribe search + filtered-data context để gõ không re-render filter menus.
@@ -92,7 +93,7 @@ function AttendanceToolbarSearchCluster() {
       layout="three"
       showSearchOnDesktop
     >
-      {attendanceRootPath === "seasonalAttendance" ? (
+      {isSeasonalAttendanceRoot(attendanceRootPath) ? (
         <SeasonalKpStreakNotification
           filteredEmployees={deferredFilteredEmployees}
           selectedDate={selectedDate}

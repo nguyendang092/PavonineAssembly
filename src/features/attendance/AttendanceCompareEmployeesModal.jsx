@@ -1,5 +1,6 @@
 import React, { memo, useMemo, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 const INPUT_CLS =
   "mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-400/35 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
@@ -145,7 +146,7 @@ function AttendanceCompareEmployeesModal({
               ) : null}
 
               {compareBusy ? (
-                <CompareStatePanel>
+                <CompareStatePanel loading>
                   {tl("compareEmployeesLoading", "Đang so sánh dữ liệu...")}
                 </CompareStatePanel>
               ) : rows.length === 0 ? (
@@ -252,15 +253,19 @@ const CompareSidebar = memo(function CompareSidebar({
 const CompareStatePanel = memo(function CompareStatePanel({
   children,
   dashed = false,
+  loading = false,
 }) {
   return (
     <div
-      className={`rounded-2xl py-12 text-center text-sm font-medium text-slate-600 shadow-sm dark:text-slate-300 ${
-        dashed
-          ? "border border-dashed border-slate-300 bg-slate-50/85 dark:border-slate-600 dark:bg-slate-800/50"
-          : "border border-slate-200/80 bg-white/70 dark:border-slate-700/80 dark:bg-slate-800/40"
+      className={`rounded-2xl py-12 text-center text-sm font-medium text-slate-600 dark:text-slate-300 ${
+        loading
+          ? "flex flex-col items-center justify-center gap-3"
+          : dashed
+            ? "border border-dashed border-slate-300/70 bg-slate-50/60 dark:border-slate-600/70 dark:bg-slate-800/35"
+            : ""
       }`}
     >
+      {loading ? <LoadingSpinner size="sm" /> : null}
       {children}
     </div>
   );
@@ -347,14 +352,27 @@ const EmployeeDiffPanel = memo(function EmployeeDiffPanel({
           className={`max-h-44 overflow-auto rounded-lg border bg-white/70 p-2.5 pr-2 dark:bg-slate-900/40 ${cls.list}`}
         >
           <ul className="space-y-2">
-            {employees.map((emp, idx) => (
-              <li
-                key={`${emp}-${idx}`}
-                className={`rounded-lg bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-sm ring-1 dark:bg-slate-900 dark:text-slate-200 ${cls.item}`}
-              >
-                {emp}
-              </li>
-            ))}
+            {employees.map((emp, idx) => {
+              const entry =
+                emp && typeof emp === "object"
+                  ? emp
+                  : { stt: null, label: String(emp ?? "") };
+              const sttText =
+                entry.stt === null || entry.stt === undefined || entry.stt === ""
+                  ? "—"
+                  : String(entry.stt);
+              return (
+                <li
+                  key={`${entry.label}-${sttText}-${idx}`}
+                  className={`flex items-start gap-2 rounded-lg bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-sm ring-1 dark:bg-slate-900 dark:text-slate-200 ${cls.item}`}
+                >
+                  <span className="w-8 shrink-0 text-right tabular-nums font-bold text-slate-500 dark:text-slate-400">
+                    {sttText}
+                  </span>
+                  <span className="min-w-0 flex-1">{entry.label}</span>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

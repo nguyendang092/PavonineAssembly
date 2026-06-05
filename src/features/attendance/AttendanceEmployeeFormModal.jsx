@@ -13,12 +13,19 @@ import {
   canAddAttendanceForDepartment,
   isAdminAccess,
 } from "@/config/authRoles";
-import { ATTENDANCE_LOAI_PHEP_OPTIONS } from "./attendanceGioVaoTypeOptions";
+import {
+  ATTENDANCE_LOAI_PHEP_OPTIONS,
+  isAttendanceGioVaoClockTime,
+  isAttendanceHalfAnnualLeave,
+} from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import {
   normalizeDuocNghiBuForForm,
   isDuocNghiBuExplicitlyNo,
+  isBoPhanChuaDung,
+  normalizeBoPhanChuaDungForForm,
 } from "@/features/attendance/attendanceDayMeta";
+import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 import {
   normalizeTimeForHtmlInput,
   canonicalAttendanceLoaiPhep,
@@ -42,9 +49,23 @@ function applyLegacyIncludeTsNvAndCanonicalPhep(record) {
       merged.includeThaiSanInWorkingHours = "YES";
     }
   }
+  let gioVao = String(merged.gioVao ?? "").trim();
+  let gioRa = String(merged.gioRa ?? "").trim();
+  const loaiPhepCanon = canonicalAttendanceLoaiPhep(merged.loaiPhep);
+  const isHalfPn = isAttendanceHalfAnnualLeave(loaiPhepCanon);
+  let loaiPhep = loaiPhepCanon;
+  if (isAttendanceGioVaoClockTime(gioVao) && !isHalfPn) {
+    loaiPhep = "";
+  }
+  if (loaiPhep && !isHalfPn) {
+    gioVao = "";
+    gioRa = "";
+  }
   return {
     ...merged,
-    loaiPhep: canonicalAttendanceLoaiPhep(merged.loaiPhep),
+    gioVao,
+    gioRa,
+    loaiPhep,
   };
 }
 
@@ -64,6 +85,8 @@ const EMPTY_EMPLOYEE_FORM = {
   gioRa: "",
   caLamViec: "",
   duocNghiBu: "",
+  /** Firebase: `attendance/{ngày}/{key}/boPhanChuaDung` — `"YES"` = sai bộ phận. */
+  boPhanChuaDung: "",
   includeTapVuInWorkingHours: "",
   includeThaiSanInWorkingHours: "",
 };
@@ -143,6 +166,12 @@ export default function AttendanceEmployeeFormModal({
         dayIsCompensatory,
         merged.duocNghiBu,
       );
+      merged.boPhanChuaDung = normalizeBoPhanChuaDungForForm(
+        merged.boPhanChuaDung,
+      );
+      if (isSeasonalAttendanceRoot(attendanceRootPath)) {
+        merged.stt = merged.sttThoiVu ?? "";
+      }
       setForm(merged);
       setEditAttendanceKey(initialRecord.id);
     } else if (initialRecord && typeof initialRecord === "object") {
@@ -155,6 +184,12 @@ export default function AttendanceEmployeeFormModal({
         dayIsCompensatory,
         merged.duocNghiBu,
       );
+      merged.boPhanChuaDung = normalizeBoPhanChuaDungForForm(
+        merged.boPhanChuaDung,
+      );
+      if (isSeasonalAttendanceRoot(attendanceRootPath)) {
+        merged.stt = merged.sttThoiVu ?? "";
+      }
       setForm(merged);
       setEditAttendanceKey(null);
     } else {
@@ -239,15 +274,40 @@ export default function AttendanceEmployeeFormModal({
     setForm((prev) => ({ ...prev, [name]: value }));
   }, []);
 
+  const hasClockInTime = useMemo(
+    () => isAttendanceGioVaoClockTime(form.gioVao),
+    [form.gioVao],
+  );
+
+  /** Có giờ vào → khóa loại phép (1/2PN vẫn giữ trên form nếu chọn trước). */
+  const loaiPhepDisabled = hasClockInTime;
+
+  /** Có loại phép (trừ 1/2PN) → khóa giờ vào & giờ ra. */
+  const clockTimesDisabled = useMemo(() => {
+    const lp = String(form.loaiPhep ?? "").trim();
+    return Boolean(lp) && !isAttendanceHalfAnnualLeave(lp);
+  }, [form.loaiPhep]);
+
   const handleGioVaoTimeInput = useCallback((e) => {
-    setForm((prev) => ({ ...prev, gioVao: e.target.value || "" }));
+    const gioVao = e.target.value || "";
+    setForm((prev) => ({
+      ...prev,
+      gioVao,
+      ...(gioVao && !isAttendanceHalfAnnualLeave(prev.loaiPhep)
+        ? { loaiPhep: "" }
+        : {}),
+    }));
   }, []);
 
   const handleLoaiPhepSelect = useCallback((e) => {
     const v = e.target.value;
+    const loaiPhep = v === "" ? "" : canonicalAttendanceLoaiPhep(v);
     setForm((prev) => ({
       ...prev,
-      loaiPhep: v === "" ? "" : canonicalAttendanceLoaiPhep(v),
+      loaiPhep,
+      ...(loaiPhep && !isAttendanceHalfAnnualLeave(loaiPhep)
+        ? { gioVao: "", gioRa: "" }
+        : {}),
     }));
   }, []);
 
@@ -307,6 +367,8 @@ export default function AttendanceEmployeeFormModal({
         const sliceOverrides = {
           businessId: storageKey,
           loaiPhep: loaiPhepToSave,
+          boPhanChuaDung: normalizeBoPhanChuaDungForForm(form.boPhanChuaDung),
+          ...(isSeasonalAttendance ? { sttThoiVu: form.stt } : {}),
         };
         if (!allowFullEdit) {
           sliceOverrides.caLamViec = form.caLamViec;
@@ -315,6 +377,7 @@ export default function AttendanceEmployeeFormModal({
         const dayDoc = buildEmployeeAttendanceDayDocument({
           form: formSliceForAttendanceDayDocument(form, sliceOverrides),
           existing: existingRaw,
+          isSeasonal: isSeasonalAttendance,
         });
         await update(ref(db), {
           [`${attendanceRootPath}/${selectedDate}/${editAttendanceKey}`]:
@@ -374,8 +437,11 @@ export default function AttendanceEmployeeFormModal({
           form: formSliceForAttendanceDayDocument(form, {
             businessId: storageKey,
             loaiPhep: loaiPhepToSave,
+            boPhanChuaDung: normalizeBoPhanChuaDungForForm(form.boPhanChuaDung),
+            ...(isSeasonalAttendance ? { sttThoiVu: form.stt } : {}),
           }),
           existing: existingRaw,
+          isSeasonal: isSeasonalAttendance,
         });
         const path = `${attendanceRootPath}/${selectedDate}/${firebaseKey}`;
         await update(ref(db), {
@@ -409,6 +475,7 @@ export default function AttendanceEmployeeFormModal({
 
   if (!open) return null;
 
+  const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
   const isEditMode = Boolean(editAttendanceKey);
   /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP chỉ sửa loại phép + ca làm việc. */
   const isRestrictedEdit = isEditMode && !isAdminAccess(user, userRole);
@@ -419,10 +486,10 @@ export default function AttendanceEmployeeFormModal({
       style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
     >
       <div
-        className={`relative mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-purple-50 via-white to-indigo-100 px-4 py-4 shadow-2xl animate-fadeIn sm:px-5 sm:py-5 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950 dark:border-blue-800 ${
+        className={`relative mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-2xl border bg-white px-4 py-4 shadow-xl animate-fadeIn sm:px-5 sm:py-5 dark:bg-slate-900 ${
           isEditMode
-            ? "ring-2 ring-fuchsia-400/50 shadow-fuchsia-500/10 dark:ring-fuchsia-500/35"
-            : "ring-1 ring-blue-200/80 dark:ring-blue-900/60"
+            ? "border-fuchsia-300/80 dark:border-fuchsia-700/70"
+            : "border-slate-200/90 dark:border-slate-700/80"
         }`}
       >
         <button
@@ -611,14 +678,19 @@ export default function AttendanceEmployeeFormModal({
                   type="time"
                   value={normalizeTimeForHtmlInput(form.gioVao) || ""}
                   onChange={handleGioVaoTimeInput}
-                  disabled={isRestrictedEdit}
-                  className={`${employeeModalFieldClass} min-w-0 flex-1`}
+                  disabled={isRestrictedEdit || clockTimesDisabled}
+                  className={`${employeeModalFieldClass} min-w-0 flex-1${
+                    clockTimesDisabled ? " cursor-not-allowed opacity-60" : ""
+                  }`}
+                  aria-disabled={isRestrictedEdit || clockTimesDisabled}
                 />
                 <button
                   type="button"
                   onClick={() => setForm((prev) => ({ ...prev, gioVao: "" }))}
                   disabled={
-                    isRestrictedEdit || !String(form.gioVao ?? "").trim()
+                    isRestrictedEdit ||
+                    clockTimesDisabled ||
+                    !String(form.gioVao ?? "").trim()
                   }
                   className={employeeModalClearTimeButtonClass}
                   title={tl("timeInClearHint", "Xóa giờ vào (để trống)")}
@@ -626,6 +698,14 @@ export default function AttendanceEmployeeFormModal({
                   {tl("clearTimeIn", "Xóa giờ vào")}
                 </button>
               </div>
+              {clockTimesDisabled ? (
+                <p className="mt-1 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+                  {tl(
+                    "timeInDisabledWhenLeaveType",
+                    "Đã chọn loại phép — xóa loại phép để nhập giờ vào/ra (trừ 1/2PN).",
+                  )}
+                </p>
+              ) : null}
             </div>
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
@@ -642,14 +722,19 @@ export default function AttendanceEmployeeFormModal({
                       gioRa: e.target.value || "",
                     }))
                   }
-                  disabled={isRestrictedEdit}
-                  className={`${employeeModalFieldClass} min-w-0 flex-1`}
+                  disabled={isRestrictedEdit || clockTimesDisabled}
+                  className={`${employeeModalFieldClass} min-w-0 flex-1${
+                    clockTimesDisabled ? " cursor-not-allowed opacity-60" : ""
+                  }`}
+                  aria-disabled={isRestrictedEdit || clockTimesDisabled}
                 />
                 <button
                   type="button"
                   onClick={() => setForm((prev) => ({ ...prev, gioRa: "" }))}
                   disabled={
-                    isRestrictedEdit || !String(form.gioRa ?? "").trim()
+                    isRestrictedEdit ||
+                    clockTimesDisabled ||
+                    !String(form.gioRa ?? "").trim()
                   }
                   className={employeeModalClearTimeButtonClass}
                   title={tl("timeOutClearHint", "Xóa thời gian ra (để trống)")}
@@ -666,7 +751,11 @@ export default function AttendanceEmployeeFormModal({
             <select
               value={String(form.loaiPhep ?? "").trim()}
               onChange={handleLoaiPhepSelect}
-              className={employeeModalSelectFieldClass}
+              disabled={loaiPhepDisabled}
+              className={`${employeeModalSelectFieldClass}${
+                loaiPhepDisabled ? " cursor-not-allowed opacity-60" : ""
+              }`}
+              aria-disabled={loaiPhepDisabled}
             >
               <option value="">
                 {tl("leaveTypePlaceholder", "— Không chọn —")}
@@ -687,10 +776,17 @@ export default function AttendanceEmployeeFormModal({
               ))}
             </select>
             <p className="mt-1.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
-              {tl("loaiPhepModalHint", "Chọn loại phép (PN, PO, TS …)")}
+              {loaiPhepDisabled
+                ? tl(
+                    "loaiPhepDisabledWhenTimeIn",
+                    isAttendanceHalfAnnualLeave(form.loaiPhep)
+                      ? "Đã có giờ vào — xóa giờ vào để đổi loại phép (1/2PN đang giữ)."
+                      : "Đã có giờ vào — xóa giờ vào để chọn loại phép.",
+                  )
+                : tl("loaiPhepModalHint", "Chọn loại phép (PN, PO, TS …)")}
             </p>
           </div>
-          <div className="sm:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("workShift", "Ca làm việc")}
@@ -729,6 +825,36 @@ export default function AttendanceEmployeeFormModal({
               </p>
             </div>
             <div className="min-w-0">
+              <label
+                htmlFor="departmentCheckConfirmed"
+                className={employeeModalLabelClass}
+              >
+                {tl("departmentCheckTitle", "Kiểm tra bộ phận")}
+              </label>
+              <select
+                id="departmentCheckConfirmed"
+                name="boPhanChuaDung"
+                value={isBoPhanChuaDung(form.boPhanChuaDung) ? "NO" : "YES"}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    boPhanChuaDung:
+                      e.target.value === "NO" ? "YES" : "",
+                  }))
+                }
+                className={employeeModalSelectFieldClass}
+              >
+                <option value="YES">{tl("departmentCheckYes", "ĐÚNG")}</option>
+                <option value="NO">{tl("departmentCheckNo", "SAI")}</option>
+              </select>
+              <p
+                className="mt-1.5 text-[11px] leading-snug text-blue-700/90 invisible select-none sm:block"
+                aria-hidden="true"
+              >
+                &nbsp;
+              </p>
+            </div>
+            <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("compensatoryLeaveField", "Nghỉ bù")}
               </label>
@@ -753,6 +879,12 @@ export default function AttendanceEmployeeFormModal({
                 <option value="NO">{tl("compensatoryLeaveNo", "Không")}</option>
                 <option value="YES">{tl("compensatoryLeaveYes", "Có")}</option>
               </select>
+              <p
+                className="mt-1.5 text-[11px] leading-snug text-blue-700/90 invisible select-none sm:block"
+                aria-hidden="true"
+              >
+                &nbsp;
+              </p>
             </div>
           </div>
           <button

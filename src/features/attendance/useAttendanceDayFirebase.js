@@ -5,8 +5,8 @@ import {
   getIsHolidayDayFromRaw,
   getIsCompensatoryDayFromRaw,
 } from "./attendanceDayMeta";
+import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 import { mergeAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
-import { sortEmployeesStableAsc } from "./attendanceListSort";
 
 /**
  * Đồng bộ `attendanceRootPath/{selectedDate}` — tách listener khỏi AttendanceList.
@@ -47,8 +47,8 @@ export function useAttendanceDayFirebase(attendanceRootPath, selectedDate) {
       setIsCompensatoryDay(comp);
 
       // Merge full snapshot mỗi lần — tránh kẹt danh sách cũ/rỗng sau tối ưu reconcile.
-      const next = sortEmployeesStableAsc(mergeAttendanceDayRowsFromRaw(data));
-      setEmployees(next);
+      const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
+      setEmployees(mergeAttendanceDayRowsFromRaw(data, { seasonal }));
     });
 
     return () => {
@@ -58,9 +58,7 @@ export function useAttendanceDayFirebase(attendanceRootPath, selectedDate) {
 
   return {
     employees,
-    setEmployees,
     employeesRef,
-    attendanceRawRef,
     isOffDay,
     isHolidayDay,
     isCompensatoryDay,

@@ -217,7 +217,13 @@ export default function AttendanceOffDaysModal({
             })}
           </button>
         ) : null}
-        <div className="mb-3 min-h-[3rem] rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-800/80">
+        <div
+          className={`mb-3 min-h-[3rem] rounded-lg p-2 ${
+            listLoading
+              ? "flex items-center justify-center"
+              : "border border-slate-200/80 bg-slate-50/80 dark:border-slate-700/80 dark:bg-slate-800/60"
+          }`}
+        >
           {listLoading ? (
             <p className="text-center text-xs text-slate-500 dark:text-slate-400">
               {tl(

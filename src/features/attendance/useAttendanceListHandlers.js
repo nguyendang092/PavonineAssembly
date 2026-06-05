@@ -220,6 +220,7 @@ export function useAttendanceListHandlers({
       filteredEmployees,
       selectedDate,
       displayLocale,
+      attendanceRootPath,
     });
     if (!result.ok) {
       setAlert({
@@ -236,7 +237,14 @@ export function useAttendanceListHandlers({
         count: filteredEmployees.length,
       }),
     });
-  }, [filteredEmployees, selectedDate, displayLocale, t, setAlert]);
+  }, [
+    filteredEmployees,
+    selectedDate,
+    displayLocale,
+    attendanceRootPath,
+    t,
+    setAlert,
+  ]);
 
   const handlePrintAttendanceList = useCallback(() => {
     if (filteredEmployees.length === 0) {
@@ -251,6 +259,7 @@ export function useAttendanceListHandlers({
       filteredEmployees,
       selectedDate,
       displayLocale,
+      attendanceRootPath,
     });
     if (!result.ok) {
       setAlert({
@@ -267,7 +276,14 @@ export function useAttendanceListHandlers({
         count: filteredEmployees.length,
       }),
     });
-  }, [filteredEmployees, selectedDate, displayLocale, t, setAlert]);
+  }, [
+    filteredEmployees,
+    selectedDate,
+    displayLocale,
+    attendanceRootPath,
+    t,
+    setAlert,
+  ]);
 
   const handleExportBuCongExcel = useCallback(async () => {
     try {

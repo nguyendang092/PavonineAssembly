@@ -17,6 +17,8 @@ import {
   formatPayrollTableWorkingHoursCell,
 } from "../attendanceWorkingHours";
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
+import { isBoPhanChuaDung } from "../attendanceDayMeta";
+import { resolveAttendanceDisplayStt } from "../attendanceSeasonalStt";
 import { PAYROLL_EMPTY_CELL, ATTENDANCE_EMPTY_CELL } from "./constants";
 import { payrollDash } from "./payrollDash";
 import { getAttendanceGridColumnStart, attendanceGridCellStyle, cellClsForAttendanceTable } from "./gridLayout";
@@ -42,6 +44,7 @@ function AttendanceTableRow({
   isHolidayDay = false,
   isCompensatoryDay = false,
   tableVariant = "attendance",
+  isSeasonalAttendance = false,
 }) {
   const isPayroll = tableVariant === "payroll";
   const payrollOffLike = isOffDay || isHolidayDay || isCompensatoryDay;
@@ -76,6 +79,18 @@ function AttendanceTableRow({
       : cellClsForAttendanceTable(s);
     return `${base} h-9 leading-none`;
   };
+
+  const showDeptWrongFlag = !isPayroll && isBoPhanChuaDung(emp.boPhanChuaDung);
+  const deptWrongFlagHint = tl("boPhanChuaDungFlag", "Bộ phận chưa đúng");
+  const deptWrongFlagEl = showDeptWrongFlag ? (
+    <span
+      className="pointer-events-none absolute right-0.5 top-1/2 z-[1] inline-block shrink-0 -translate-y-1/2 text-xs leading-none text-red-600"
+      aria-hidden="true"
+    >
+      🚩
+    </span>
+  ) : null;
+  const deptLabel = String(payrollDash(emp.boPhan, isPayroll) ?? "").trim();
 
   const gcs = (key) =>
     getAttendanceGridColumnStart(
@@ -134,7 +149,7 @@ function AttendanceTableRow({
             "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center font-bold text-gray-700",
           )}
         >
-          {emp.stt || idx + 1}
+          {resolveAttendanceDisplayStt(emp, idx + 1, isSeasonalAttendance)}
         </Cell>
       ) : null}
       <Cell
@@ -228,10 +243,16 @@ function AttendanceTableRow({
           role={isGrid ? "cell" : undefined}
           style={attendanceGridCellStyle(isGrid, gcs("dept"))}
           className={cellCls(
-            "hidden md:table-cell px-1.5 md:px-2 py-px text-sm text-center font-semibold text-gray-700",
+            `relative hidden md:table-cell min-w-0 overflow-hidden px-1.5 md:px-2 py-px text-sm text-center font-semibold text-gray-700${showDeptWrongFlag ? " pr-4" : ""}`,
           )}
+          title={
+            showDeptWrongFlag
+              ? `${deptLabel} — ${deptWrongFlagHint}`
+              : deptLabel || undefined
+          }
         >
-          {payrollDash(emp.boPhan, isPayroll)}
+          <span className="block min-w-0 truncate">{deptLabel}</span>
+          {deptWrongFlagEl}
         </Cell>
       ) : null}
       <Cell

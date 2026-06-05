@@ -3,15 +3,6 @@ import {
   matchAttendanceLoaiPhepOptionIncludingAliases,
 } from "./attendanceGioVaoTypeOptions";
 
-/** Giá trị đặc biệt cho select modal: nhập giờ HH:MM */
-export const GIO_VAO_MODAL_TIME_SENTINEL = "__modal_time__";
-/** Giá trị đặc biệt: dữ liệu cũ / tự do không khớp danh sách */
-export const GIO_VAO_MODAL_OTHER_SENTINEL = "__modal_other__";
-
-export function looksLikeGioVaoTime(s) {
-  return /^\d{1,2}:\d{2}(:\d{2})?$/.test(String(s ?? "").trim());
-}
-
 /** Chuẩn hóa cho input type="time" (HH:MM) */
 export function normalizeTimeForHtmlInput(s) {
   const t = String(s ?? "").trim();
@@ -35,13 +26,4 @@ export function findGioVaoTypeOptionMatch(raw) {
 /** Chuẩn hóa giá trị lưu + hiển thị `<select>` Loại phép (alias → `value` đầy đủ). */
 export function canonicalAttendanceLoaiPhep(raw) {
   return canonicalAttendanceLoaiPhepValue(raw);
-}
-
-export function getGioVaoModalSelectValue(formGioVao) {
-  const raw = String(formGioVao ?? "").trim();
-  if (!raw) return "";
-  if (looksLikeGioVaoTime(raw)) return GIO_VAO_MODAL_TIME_SENTINEL;
-  const opt = findGioVaoTypeOptionMatch(raw);
-  if (opt) return opt.value;
-  return GIO_VAO_MODAL_OTHER_SENTINEL;
 }

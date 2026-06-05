@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import NotificationBell from "@/components/ui/NotificationBell";
 import { db, ref, get } from "@/services/firebase";
@@ -17,6 +17,7 @@ import {
   isAttendanceLeaveTypeKhongPhep,
 } from "./attendanceGioVaoTypeOptions";
 import { ISO_DATE_KEY_RE } from "./attendanceListShared";
+import { buildCompareSttRankMap } from "./attendanceCompareEmployeesLogic";
 
 const MAX_KP_STREAK_LOOKBACK_DAYS = 90;
 
@@ -117,13 +118,24 @@ function findDayNodeOnRawForEmp(raw, empToday) {
   return null;
 }
 
-function sortStreakRowsStableAsc(rows) {
+function sortStreakRowsStableAsc(rows, sttRankByKey) {
   return [...rows].sort((a, b) => {
-    const aStt = Number(a?.emp?.stt);
-    const bStt = Number(b?.emp?.stt);
-    const aSttNorm = Number.isFinite(aStt) ? aStt : Number.POSITIVE_INFINITY;
-    const bSttNorm = Number.isFinite(bStt) ? bStt : Number.POSITIVE_INFINITY;
-    return aSttNorm - bSttNorm;
+    const keyA = streakKeyForKpEmp(a?.emp);
+    const keyB = streakKeyForKpEmp(b?.emp);
+    const sttA = sttRankByKey?.get(keyA);
+    const sttB = sttRankByKey?.get(keyB);
+    const numA = typeof sttA === "number" ? sttA : Number(sttA);
+    const numB = typeof sttB === "number" ? sttB : Number(sttB);
+    const aValid = Number.isFinite(numA);
+    const bValid = Number.isFinite(numB);
+    if (aValid && bValid && numA !== numB) return numA - numB;
+    if (aValid && !bValid) return -1;
+    if (!aValid && bValid) return 1;
+    return String(a?.emp?.hoVaTen ?? "").localeCompare(
+      String(b?.emp?.hoVaTen ?? ""),
+      "vi",
+      { sensitivity: "base" },
+    );
   });
 }
 
@@ -195,7 +207,8 @@ async function computeKhongPhepStreakRows({
     const streakDays = streak.get(sk) ?? 1;
     if (streakDays >= 2) out.push({ emp, streakDays });
   }
-  return sortStreakRowsStableAsc(out);
+  const sttRankByKey = buildCompareSttRankMap(filteredEmployees, true);
+  return sortStreakRowsStableAsc(out, sttRankByKey);
 }
 
 /**
@@ -217,6 +230,10 @@ export default function SeasonalKpStreakNotification({
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const requestGen = useRef(0);
+  const sttRankByKey = useMemo(
+    () => buildCompareSttRankMap(filteredEmployees, true),
+    [filteredEmployees],
+  );
 
   useEffect(() => {
     const gen = ++requestGen.current;
@@ -339,7 +356,7 @@ export default function SeasonalKpStreakNotification({
                       {streakDays}
                     </td>
                     <td style={{ textAlign: "center", padding: 8 }}>
-                      {idx + 1}
+                      {sttRankByKey.get(streakKeyForKpEmp(emp)) ?? idx + 1}
                     </td>
                     <td style={{ textAlign: "center", padding: 8 }}>
                       {emp.mnv}

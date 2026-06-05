@@ -19,6 +19,7 @@ import {
   attendanceFirebaseKeyFromMnv,
   attendanceMnvStorageKey,
 } from "@/utils/attendanceEmployeeRecord";
+import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 
 function trimCell(value) {
   return value === undefined || value === null ? "" : String(value).trim();
@@ -256,7 +257,9 @@ export const handleUploadExcel = async ({
     const snapshot = await get(attendanceRef);
     const existingData = snapshot.val() || {};
     const { mergedData, uploadedCount, duplicateCount } =
-      mergeAttendanceExcelUploadIntoDaySnapshot(existingData, dataToUpload);
+      mergeAttendanceExcelUploadIntoDaySnapshot(existingData, dataToUpload, {
+        seasonal: isSeasonalAttendanceRoot(attendanceRootPath),
+      });
 
     const payload = {};
     Object.entries(mergedData).forEach(([k, v]) => {

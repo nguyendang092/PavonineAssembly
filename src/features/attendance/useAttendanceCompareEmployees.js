@@ -4,11 +4,16 @@ import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 import {
   previousDateOf,
   resolveOrderedProductionMatchKeys,
+  buildCompareSttRankMap,
   buildProductionDeptEmployeeMap,
+  buildSeasonalDeptEmployeeMap,
   mergeCompareDepartmentList,
+  mergeCompareDepartmentListSeasonal,
   computeCompareRows,
   buildCompareEmployeesResult,
 } from "./attendanceCompareEmployeesLogic";
+import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { sortEmployeesStableAsc } from "./attendanceListSort";
 
 const COMPARE_DAY_CACHE_MAX = 12;
 
@@ -36,6 +41,11 @@ export function useAttendanceCompareEmployees({
   useEffect(() => {
     compareBusyRef.current = compareEmployeesBusy;
   }, [compareEmployeesBusy]);
+
+  useEffect(() => {
+    compareDayRowsCacheRef.current.clear();
+    setCompareEmployeesResult(null);
+  }, [attendanceRootPath]);
 
   useEffect(() => {
     setCompareCriteria((prev) => {
@@ -94,27 +104,6 @@ export function useAttendanceCompareEmployees({
         return;
       }
 
-      const cachedResult = compareEmployeesResult;
-      if (
-        cachedResult?.allRows &&
-        cachedResult.previousDate === previousDate &&
-        cachedResult.currentDate === currentDate
-      ) {
-        startTransition(() => {
-          setCompareEmployeesResult(
-            buildCompareEmployeesResult({
-              previousDate,
-              currentDate,
-              allRows: cachedResult.allRows,
-              departments: cachedResult.departments,
-              departmentFilter,
-            }),
-          );
-          setCompareEmployeesOpen(true);
-        });
-        return;
-      }
-
       setCompareEmployeesBusy(true);
       try {
         const loadRowsByDate = async (dateKey) => {
@@ -122,7 +111,11 @@ export function useAttendanceCompareEmployees({
           const cached = compareDayRowsCacheRef.current.get(key);
           if (cached) return cached;
           const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-          const rows = reconcileAttendanceDayRowsFromRaw([], snap.val());
+          const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
+          const rows = sortEmployeesStableAsc(
+            reconcileAttendanceDayRowsFromRaw([], snap.val(), { seasonal }),
+            { seasonal },
+          );
           compareDayRowsCacheRef.current.set(key, rows);
           if (compareDayRowsCacheRef.current.size > COMPARE_DAY_CACHE_MAX) {
             const oldestKey = compareDayRowsCacheRef.current.keys().next().value;
@@ -136,23 +129,56 @@ export function useAttendanceCompareEmployees({
           loadRowsByDate(currentDate),
         ]);
 
-        const orderedProductionMatchKeys = resolveOrderedProductionMatchKeys(
-          comboProductionDeptOrder,
-          comboProductionDeptCatalog,
-        );
-        const prevByDept = buildProductionDeptEmployeeMap(
+        const isSeasonalAttendance =
+          isSeasonalAttendanceRoot(attendanceRootPath);
+
+        let prevByDept;
+        let currByDept;
+        let allDepts;
+
+        const prevSttRank = buildCompareSttRankMap(
           previousRows,
-          normalizeDepartment,
+          isSeasonalAttendance,
         );
-        const currByDept = buildProductionDeptEmployeeMap(
+        const currSttRank = buildCompareSttRankMap(
           currentRows,
-          normalizeDepartment,
+          isSeasonalAttendance,
         );
-        const allDepts = mergeCompareDepartmentList(
-          orderedProductionMatchKeys,
-          prevByDept,
-          currByDept,
-        );
+
+        if (isSeasonalAttendance) {
+          prevByDept = buildSeasonalDeptEmployeeMap(
+            previousRows,
+            normalizeDepartment,
+            prevSttRank,
+          );
+          currByDept = buildSeasonalDeptEmployeeMap(
+            currentRows,
+            normalizeDepartment,
+            currSttRank,
+          );
+          allDepts = mergeCompareDepartmentListSeasonal(prevByDept, currByDept);
+        } else {
+          const orderedProductionMatchKeys = resolveOrderedProductionMatchKeys(
+            comboProductionDeptOrder,
+            comboProductionDeptCatalog,
+          );
+          prevByDept = buildProductionDeptEmployeeMap(
+            previousRows,
+            normalizeDepartment,
+            prevSttRank,
+          );
+          currByDept = buildProductionDeptEmployeeMap(
+            currentRows,
+            normalizeDepartment,
+            currSttRank,
+          );
+          allDepts = mergeCompareDepartmentList(
+            orderedProductionMatchKeys,
+            prevByDept,
+            currByDept,
+          );
+        }
+
         const allRows = computeCompareRows(allDepts, prevByDept, currByDept);
 
         startTransition(() => {
@@ -184,7 +210,6 @@ export function useAttendanceCompareEmployees({
     [
       selectedDate,
       compareCriteria,
-      compareEmployeesResult,
       attendanceRootPath,
       comboProductionDeptOrder,
       comboProductionDeptCatalog,

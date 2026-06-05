@@ -4,6 +4,11 @@
  * Khi thêm loại mới: cập nhật mảng này + comboStatKey + getAttendanceComboFlags (attendanceComboStats.js).
  */
 
+/** `gioVao` là giờ chấm công (HH:MM) — khi đó không chọn `loaiPhep` trên form. */
+export function isAttendanceGioVaoClockTime(value) {
+  return /^\d{1,2}:\d{2}(:\d{2})?$/.test(String(value ?? "").trim());
+}
+
 export const ATTENDANCE_LOAI_PHEP_OPTIONS = [
   /** Bù giờ công / BGC — `comboStatKey` dùng xuyên suốt thống kê & lương. */
   { value: "Bù giờ công", shortLabel: "BGC", comboStatKey: "buGioCong" },
@@ -286,6 +291,13 @@ export function canonicalAttendanceLoaiPhepValue(raw) {
   const t = String(raw ?? "").trim();
   if (!t) return "";
   return matchAttendanceLoaiPhepOptionIncludingAliases(t)?.value ?? t;
+}
+
+/** `loaiPhep` là 1/2 phép năm — được phép có đồng thời giờ vào. */
+export function isAttendanceHalfAnnualLeave(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return false;
+  return canonicalAttendanceLoaiPhepValue(t) === "1/2 Phép năm";
 }
 
 /** Gập dấu / khoảng trắng — dùng khớp nhập tay, Excel, NBSP */

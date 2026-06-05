@@ -1,4 +1,4 @@
-import React, { memo, useState, useMemo, useCallback, useEffect, lazy, Suspense } from "react";
+import React, { memo, useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
@@ -47,7 +47,6 @@ const AttendanceList = memo(function AttendanceList({
   counterpartLinkTo = "/seasonal-staff-attendance",
   counterpartLinkLabelKey = "seasonalActiveEmployeesTitleShort",
   counterpartLinkLabelDefault = "Điểm danh nhân viên thời vụ",
-  forceVirtualizedRows = false,
 }) {
   const todayKey = new Date().toISOString().slice(0, 10);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
@@ -182,12 +181,12 @@ const AttendanceList = memo(function AttendanceList({
   } = useAttendanceListFilters({
     employees,
     searchTerm,
-    departmentFilter: "",
     departmentListFilter,
     loaiPhepFilter,
     joinDateYearFilter,
     joinDateMonthFilter,
     showOnlyUnattendedFilter,
+    attendanceRootPath,
   });
 
   const unattendedEmployees = useAttendanceUnattendedPopupEffects({
@@ -304,7 +303,6 @@ const AttendanceList = memo(function AttendanceList({
     showRowModalActions,
     canDeleteDayRecord,
     columnPlan,
-    attendanceGridTemplateColumns,
   } = useAttendanceListSetup({
     user,
     userRole,

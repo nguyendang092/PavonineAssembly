@@ -1,4 +1,5 @@
 import { isAttendanceDayMetaKey } from "./attendanceDayMeta";
+import { sortEmployeesStableAsc } from "./attendanceListSort";
 import { normalizeAttendanceDayRecord } from "./attendanceGioVaoTypeOptions";
 import {
   ATTENDANCE_DAY_UI_ROW_KEYS,
@@ -20,7 +21,12 @@ export function attendanceDayRowSnapshotEqual(a, b) {
 /**
  * Parse `attendance/{ngày}` và giữ object cũ cho NV không đổi (giúp React.memo trên hàng).
  */
-export function reconcileAttendanceDayRowsFromRaw(prevRows, rawData) {
+export function reconcileAttendanceDayRowsFromRaw(
+  prevRows,
+  rawData,
+  options = {},
+) {
+  const seasonal = options.seasonal === true;
   const prev = prevRows || [];
   if (!rawData || typeof rawData !== "object") {
     return prev.length === 0 ? prev : [];
@@ -43,7 +49,9 @@ export function reconcileAttendanceDayRowsFromRaw(prevRows, rawData) {
     );
   }
 
-  arr.sort((a, b) => (a.stt || 0) - (b.stt || 0));
+  const sorted = sortEmployeesStableAsc(arr, { seasonal });
+  arr.length = 0;
+  arr.push(...sorted);
 
   if (
     prev.length === arr.length &&
@@ -59,6 +67,6 @@ export function reconcileAttendanceDayRowsFromRaw(prevRows, rawData) {
  * Chỉ dùng trường điểm danh trên `attendance/{ngày}` — lọc bỏ trường hồ sơ / legacy gắn nhầm trên node.
  * Bỏ qua key meta ngày (`isAttendanceDayMetaKey`).
  */
-export function mergeAttendanceDayRowsFromRaw(rawData) {
-  return reconcileAttendanceDayRowsFromRaw([], rawData);
+export function mergeAttendanceDayRowsFromRaw(rawData, options = {}) {
+  return reconcileAttendanceDayRowsFromRaw([], rawData, options);
 }

@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect } from "react";
 import {
   canEditAttendanceForEmployee,
   canDeleteEmployeeData,
   ROLES,
 } from "@/config/authRoles";
-import { getAttendanceGridTemplateColumns } from "./attendanceTableRow";
 import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
 import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 
@@ -57,11 +56,6 @@ export function useAttendanceListSetup({
 
   const columnPlan = useAttendanceColumnPlan();
 
-  const attendanceGridTemplateColumns = useMemo(
-    () => getAttendanceGridTemplateColumns(showRowModalActions, columnPlan),
-    [showRowModalActions, columnPlan],
-  );
-
   useEffect(() => {
     const editId = searchParams.get("edit");
     if (!editId || !user) return;
@@ -86,6 +80,5 @@ export function useAttendanceListSetup({
     showRowModalActions,
     canDeleteDayRecord,
     columnPlan,
-    attendanceGridTemplateColumns,
   };
 }

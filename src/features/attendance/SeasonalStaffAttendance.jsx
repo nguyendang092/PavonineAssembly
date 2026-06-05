@@ -5,7 +5,6 @@ export default function SeasonalStaffAttendance() {
   return (
     <AttendanceList
       attendanceRootPath="seasonalAttendance"
-      forceVirtualizedRows
       headerTitle="DANH SÁCH NHÂN VIÊN THỜI VỤ HIỆN DIỆN"
       headerSubtitle="List of Active Seasonal Employees"
       counterpartLinkTo="/attendance-list"

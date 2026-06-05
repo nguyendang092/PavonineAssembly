@@ -106,6 +106,21 @@ export function isDuocNghiBuExplicitlyNo(storedValue) {
 }
 
 /**
+ * Kiểm tra bộ phận — lưu trên Firebase RTDB:
+ * `attendance/{YYYY-MM-DD}/{firebaseKey}/boPhanChuaDung` (hoặc `seasonalAttendance/...`).
+ * `"YES"` = sai bộ phận; không có key / rỗng = đúng.
+ */
+export function isBoPhanChuaDung(storedValue) {
+  const v = String(storedValue ?? "").trim().toUpperCase();
+  return v === "YES" || v === "TRUE" || v === "1";
+}
+
+/** Form điểm danh: chuẩn `boPhanChuaDung` đọc từ Firebase → `""` | `"YES"`. */
+export function normalizeBoPhanChuaDungForForm(storedRaw) {
+  return isBoPhanChuaDung(storedRaw) ? "YES" : "";
+}
+
+/**
  * Form điểm danh: đồng bộ `duocNghiBu` với cờ ngày nghỉ bù lịch.
  * @returns {"" | "NO" | "YES"}
  */
@@ -128,15 +143,6 @@ export function payrollMonthMainRowDashMark(ch, emp) {
     return isDuocNghiBuExplicitlyNo(emp?.duocNghiBu) ? " " : "NB";
   }
   return " ";
-}
-
-/** Off, lễ hoặc nghỉ bù — cùng khối «ngày không làm BT» (giờ công / TC). */
-export function getIsPayrollOffLikeDayFromRaw(rawData) {
-  return (
-    getIsOffDayFromRaw(rawData) ||
-    getIsHolidayDayFromRaw(rawData) ||
-    getIsCompensatoryDayFromRaw(rawData)
-  );
 }
 
 /**

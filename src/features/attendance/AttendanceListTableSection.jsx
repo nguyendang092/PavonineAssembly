@@ -1,9 +1,10 @@
-import React, { memo, useMemo, useRef } from "react";
+import React, { memo, useMemo } from "react";
 import AttendanceTableRow, {
   AttendanceTableColgroup,
   AttendanceTableThead,
 } from "./attendanceTableRow";
 import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
+import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 
 /**
  * Bảng điểm danh — render đủ hàng (không virtual) để tránh chỉ thấy ~10–15 dòng sau tối ưu.
@@ -11,7 +12,6 @@ import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
 function AttendanceListTableSection({
   columnPlan,
   deferredFilteredEmployees,
-  attendanceGridTemplateColumns,
   showRowModalActions,
   canDeleteDayRecord,
   tl,
@@ -24,8 +24,9 @@ function AttendanceListTableSection({
   isCompensatoryDay,
   t,
   selectedDate,
+  attendanceRootPath = "attendance",
 }) {
-  const tableScrollParentRef = useRef(null);
+  const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
 
   const sharedRowProps = useMemo(
     () => ({
@@ -40,6 +41,7 @@ function AttendanceListTableSection({
       isOffDay,
       isHolidayDay,
       isCompensatoryDay,
+      isSeasonalAttendance,
     }),
     [
       showRowModalActions,
@@ -53,6 +55,7 @@ function AttendanceListTableSection({
       isOffDay,
       isHolidayDay,
       isCompensatoryDay,
+      isSeasonalAttendance,
     ],
   );
 
@@ -64,7 +67,6 @@ function AttendanceListTableSection({
       }`}
     >
       <div
-        ref={tableScrollParentRef}
         className={`max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto ${
           columnPlan === "minimal"
             ? "overflow-x-hidden"
@@ -91,7 +93,6 @@ function AttendanceListTableSection({
                 key={emp.id ?? emp.mnv ?? `row-${idx}`}
                 emp={emp}
                 idx={idx}
-                virtualRow={undefined}
                 canEdit={canEditEmployee(emp)}
                 {...sharedRowProps}
               />

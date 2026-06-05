@@ -9,9 +9,6 @@ export const AttendanceListContentBranchContext = createContext(null);
 /** Danh sách đã lọc — tách khỏi toolbar để gõ tìm kiếm không re-render filter menus. */
 export const AttendanceListFilteredDataBranchContext = createContext(null);
 
-/** Bảng + tóm tắt — tách khỏi combo/compare để busy so sánh không re-render bảng. */
-export const AttendanceListTableBranchContext = createContext(null);
-
 /** Modal thống kê combo + so sánh nhân viên. */
 export const AttendanceListComboBranchContext = createContext(null);
 
@@ -53,16 +50,6 @@ export function useAttendanceListFilteredDataBranch() {
   if (v == null) {
     throw new Error(
       "useAttendanceListFilteredDataBranch must be used under AttendanceListFilteredDataBranchContext.Provider",
-    );
-  }
-  return v;
-}
-
-export function useAttendanceListTableBranch() {
-  const v = useContext(AttendanceListTableBranchContext);
-  if (v == null) {
-    throw new Error(
-      "useAttendanceListTableBranch must be used under AttendanceListTableBranchContext.Provider",
     );
   }
   return v;

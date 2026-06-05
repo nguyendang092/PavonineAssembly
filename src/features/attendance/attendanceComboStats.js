@@ -20,8 +20,6 @@ import {
 } from "./attendanceGioVaoTypeOptions";
 import { isNightShiftCaLamViec } from "./attendanceWorkingHours";
 
-export { textMatchesFuneralLeave } from "./attendanceGioVaoTypeOptions";
-
 export const normalizeTextValue = (value) => String(value ?? "").trim();
 
 const CO_DI_LAM_FOLD_SHORT = foldGioVaoCompare("Có");

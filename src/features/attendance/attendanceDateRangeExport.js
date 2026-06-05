@@ -4,6 +4,11 @@ import {
   formatAttendanceTimeInColumnDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
 } from "./attendanceGioVaoTypeOptions";
+import { sortEmployeesStableAsc } from "./attendanceListSort";
+import {
+  isSeasonalAttendanceRoot,
+  resolveAttendanceDisplayStt,
+} from "./attendanceSeasonalStt";
 const MAX_DAYS = 366;
 
 /**
@@ -78,15 +83,22 @@ export async function executeAttendanceDateRangeExport({
   /** Cùng `attendanceRootPath` với màn hình (chính thức / thời vụ) */
   attendanceRootPath = "attendance",
 }) {
+  const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
   const allRows = [];
   for (const dateKey of keys) {
     const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-    const merged = applyAttendanceMerge(snap.val());
-    const filtered = filterAttendanceListRows(merged);
-    let stt = 1;
-    for (const emp of filtered) {
-      allRows.push({ dateKey, stt: stt++, emp });
-    }
+    const merged = applyAttendanceMerge(snap.val(), { seasonal });
+    const filtered = sortEmployeesStableAsc(
+      filterAttendanceListRows(merged),
+      { seasonal },
+    );
+    filtered.forEach((emp, idx) => {
+      allRows.push({
+        dateKey,
+        stt: resolveAttendanceDisplayStt(emp, idx + 1, seasonal) ?? idx + 1,
+        emp,
+      });
+    });
   }
   if (allRows.length === 0) {
     return {

@@ -27,6 +27,7 @@ export function propsAreEqual(prev, next) {
     prev.isOffDay === next.isOffDay &&
     prev.isHolidayDay === next.isHolidayDay &&
     prev.isCompensatoryDay === next.isCompensatoryDay &&
-    prev.tableVariant === next.tableVariant
+    prev.tableVariant === next.tableVariant &&
+    prev.isSeasonalAttendance === next.isSeasonalAttendance
   );
 }

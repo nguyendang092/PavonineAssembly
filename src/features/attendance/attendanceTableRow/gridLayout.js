@@ -1,4 +1,3 @@
-import React from "react";
 import { getPayrollColWidthPercents } from "@/features/payroll/payrollColumnWidths";
 import {
   ATTENDANCE_GRID_COL,

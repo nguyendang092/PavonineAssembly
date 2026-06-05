@@ -6,8 +6,18 @@ import {
   formatAttendanceTimeInColumnDisplay,
   getAttendanceLeaveTypePrintStyleAttrForEmployee,
 } from "./attendanceGioVaoTypeOptions";
+import {
+  isSeasonalAttendanceRoot,
+  resolveAttendanceDisplayStt,
+} from "./attendanceSeasonalStt";
 
-export function openAttendanceOvertimePrintWindow({ filteredEmployees, selectedDate, displayLocale }) {
+export function openAttendanceOvertimePrintWindow({
+  filteredEmployees,
+  selectedDate,
+  displayLocale,
+  attendanceRootPath = "attendance",
+}) {
+  const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
 
     if (filteredEmployees.length === 0) { return { ok: false, reason: "empty" }; }
 
@@ -270,7 +280,7 @@ export function openAttendanceOvertimePrintWindow({ filteredEmployees, selectedD
     filteredEmployees.forEach((emp, idx) => {
       htmlContent += `
       <tr>
-        <td>${idx + 1}</td>
+        <td>${resolveAttendanceDisplayStt(emp, idx + 1, seasonal) ?? idx + 1}</td>
         <td>${emp.mnv || ""}</td>
         <td class="name-col">${emp.hoVaTen || ""}</td>
         <td>${emp.ngayVaoLam || ""}</td>
@@ -301,7 +311,13 @@ export function openAttendanceOvertimePrintWindow({ filteredEmployees, selectedD
     return { ok: true };
 }
 
-export function openAttendanceListPrintWindow({ filteredEmployees, selectedDate, displayLocale }) {
+export function openAttendanceListPrintWindow({
+  filteredEmployees,
+  selectedDate,
+  displayLocale,
+  attendanceRootPath = "attendance",
+}) {
+  const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
 
     if (filteredEmployees.length === 0) { return { ok: false, reason: "empty" }; }
 
@@ -543,7 +559,7 @@ export function openAttendanceListPrintWindow({ filteredEmployees, selectedDate,
       const gioiTinh = emp.gioiTinh || "";
       html += `
         <tr>
-          <td>${emp.stt || idx + 1}</td>
+          <td>${resolveAttendanceDisplayStt(emp, idx + 1, seasonal) ?? idx + 1}</td>
           <td>${emp.mnv || ""}</td>
           <td>${emp.mvt || ""}</td>
           <td class="name">${emp.hoVaTen || ""}</td>

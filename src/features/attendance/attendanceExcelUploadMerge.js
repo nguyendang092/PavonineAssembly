@@ -36,7 +36,13 @@ export function stripAttendanceExcelUploadInternalFields(record) {
  * Merge một dòng Excel vào bản ghi đã có (cùng MNV).
  * `newEmp` có thể chứa `_excelHasStt`: chỉ ghi STT khi Excel có STT hợp lệ và STT trên Firebase trống.
  */
-export function mergeAttendanceExcelIntoExistingRecord(oldEmp, newEmp) {
+export function mergeAttendanceExcelIntoExistingRecord(
+  oldEmp,
+  newEmp,
+  options = {},
+) {
+  const seasonal = options.seasonal === true;
+  const sttTargetField = seasonal ? "sttThoiVu" : "stt";
   const mergedEmp = { ...oldEmp };
 
   Object.keys(newEmp).forEach((field) => {
@@ -45,10 +51,10 @@ export function mergeAttendanceExcelIntoExistingRecord(oldEmp, newEmp) {
 
     if (field === "stt") {
       if (
-        !hasAttendanceExcelCellValue(mergedEmp.stt) &&
+        !hasAttendanceExcelCellValue(mergedEmp[sttTargetField]) &&
         newEmp._excelHasStt
       ) {
-        mergedEmp.stt = newEmp.stt;
+        mergedEmp[sttTargetField] = newEmp.stt;
       }
       return;
     }
@@ -74,7 +80,9 @@ export function mergeAttendanceExcelIntoExistingRecord(oldEmp, newEmp) {
 export function mergeAttendanceExcelUploadIntoDaySnapshot(
   existingData,
   dataToUpload,
+  options = {},
 ) {
+  const seasonal = options.seasonal === true;
   let uploadedCount = 0;
   let duplicateCount = 0;
   const existingKeyByMNV = {};
@@ -95,7 +103,11 @@ export function mergeAttendanceExcelUploadIntoDaySnapshot(
     const existingKey = existingKeyByMNV[normalizedNewMNV];
     if (existingKey) {
       const oldEmp = mergedData[existingKey] || {};
-      const mergedEmp = mergeAttendanceExcelIntoExistingRecord(oldEmp, newEmp);
+      const mergedEmp = mergeAttendanceExcelIntoExistingRecord(
+        oldEmp,
+        newEmp,
+        { seasonal },
+      );
       mergedEmp.id = canonicalKey;
       mergedData[canonicalKey] = mergedEmp;
       if (existingKey !== canonicalKey) {
@@ -107,6 +119,10 @@ export function mergeAttendanceExcelUploadIntoDaySnapshot(
       let rec = normalizeAttendanceDayRecord(
         stripAttendanceExcelUploadInternalFields({ ...newEmp }),
       );
+      if (seasonal && hasAttendanceExcelCellValue(rec.stt)) {
+        rec.sttThoiVu = rec.stt;
+        delete rec.stt;
+      }
       if (!hasAttendanceExcelCellValue(rec.gioiTinh)) rec.gioiTinh = "YES";
       rec.id = canonicalKey;
       mergedData[canonicalKey] = rec;

@@ -1,4 +1,5 @@
 import React, { memo, lazy, Suspense, useCallback } from "react";
+import LoadingBlock from "@/components/ui/LoadingBlock";
 import AttendanceEmployeeFormModal from "./AttendanceEmployeeFormModal";
 import AttendanceOffDaysModal from "./AttendanceOffDaysModal";
 import AttendanceListTableSection from "./AttendanceListTableSection";
@@ -42,7 +43,6 @@ function AttendanceListContentSection() {
     displayLocale,
     columnPlan,
     deferredFilteredEmployees,
-    attendanceGridTemplateColumns,
     showRowModalActions,
     canDeleteDayRecord,
     canEditEmployee,
@@ -114,12 +114,19 @@ function AttendanceListContentSection() {
         <Suspense
           fallback={
             <div
-              className="fixed inset-0 flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm sm:p-4"
+              className="fixed inset-0 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px]"
               style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+              aria-busy="true"
+              aria-live="polite"
             >
-              <p className="rounded-lg bg-slate-900/80 px-4 py-2 text-sm text-white">
-                {tl("comboChartLoading", "Đang tải biểu đồ theo bộ phận…")}
-              </p>
+              <LoadingBlock
+                message={tl(
+                  "comboChartLoading",
+                  "Đang tải biểu đồ theo bộ phận…",
+                )}
+                textClassName="text-sm font-medium text-slate-100"
+                className="py-0"
+              />
             </div>
           }
         >
@@ -167,6 +174,7 @@ function AttendanceListContentSection() {
         isCompensatoryDay={isCompensatoryDay}
         t={t}
         selectedDate={selectedDate}
+        attendanceRootPath={attendanceRootPath}
       />
 
       <AttendanceListSummary
