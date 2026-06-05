@@ -203,6 +203,21 @@ const AttendanceList = memo(function AttendanceList({
     prevShowUnattendedPopupRef,
   });
 
+  const handleOpenUnattendedPopup = useCallback(() => {
+    if (unattendedEmployees.length === 0) {
+      setAlert({
+        show: true,
+        type: "info",
+        message: tl(
+          "unattendedEmpty",
+          "Không có nhân viên nào chưa điểm danh trong ngày này.",
+        ),
+      });
+      return;
+    }
+    setShowUnattendedPopup(true);
+  }, [unattendedEmployees.length, setAlert, setShowUnattendedPopup, tl]);
+
   const { departments, buCongEmployees } = useAttendanceListDerivedLists({
     employees,
     deferredFilteredEmployees,
@@ -426,6 +441,7 @@ const AttendanceList = memo(function AttendanceList({
       setDepartmentListFilter,
       isQuickNoCheckInActive,
       handleQuickNoCheckInFilter,
+      handleOpenUnattendedPopup,
       setShowOnlyUnattendedFilter,
       setComboDashboardGroup,
       setShowComboChartModal,
@@ -502,6 +518,7 @@ const AttendanceList = memo(function AttendanceList({
       setDepartmentListFilter,
       isQuickNoCheckInActive,
       handleQuickNoCheckInFilter,
+      handleOpenUnattendedPopup,
       setShowOnlyUnattendedFilter,
       setComboDashboardGroup,
       setShowComboChartModal,

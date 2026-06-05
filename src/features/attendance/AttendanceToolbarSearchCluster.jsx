@@ -47,6 +47,7 @@ function AttendanceToolbarSearchCluster() {
     setDepartmentListFilter,
     isQuickNoCheckInActive,
     handleQuickNoCheckInFilter,
+    handleOpenUnattendedPopup,
     setShowOnlyUnattendedFilter,
     setComboDashboardGroup,
     setShowComboChartModal,
@@ -132,6 +133,7 @@ function AttendanceToolbarSearchCluster() {
         setDepartmentListFilter={setDepartmentListFilter}
         isQuickNoCheckInActive={isQuickNoCheckInActive}
         handleQuickNoCheckInFilter={handleQuickNoCheckInFilter}
+        handleOpenUnattendedPopup={handleOpenUnattendedPopup}
         setShowOnlyUnattendedFilter={setShowOnlyUnattendedFilter}
         setSearchTerm={setSearchTerm}
         setComboDashboardGroup={setComboDashboardGroup}

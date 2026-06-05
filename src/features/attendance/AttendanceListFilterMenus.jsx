@@ -27,6 +27,7 @@ function AttendanceListFilterMenus({
   setDepartmentListFilter,
   isQuickNoCheckInActive,
   handleQuickNoCheckInFilter,
+  handleOpenUnattendedPopup,
   setShowOnlyUnattendedFilter,
   setSearchTerm,
   setComboDashboardGroup,
@@ -131,7 +132,7 @@ function AttendanceListFilterMenus({
                     setFilterMenuDropdownOpen(false);
                   }}
                   className={`w-full shrink-0 text-left px-4 py-3 hover:bg-blue-50 border-b flex items-center gap-3 transition ${
-                      hasAdvancedFilters
+                    hasAdvancedFilters
                       ? "bg-blue-50 text-blue-700 font-semibold"
                       : "text-gray-700"
                   }`}
@@ -174,12 +175,32 @@ function AttendanceListFilterMenus({
                   </div>
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpenUnattendedPopup();
+                    setFilterMenuDropdownOpen(false);
+                  }}
+                  className="w-full shrink-0 border-b px-4 py-3 text-left flex items-center gap-3 text-gray-700 transition hover:bg-amber-50"
+                >
+                  <span className="text-lg">📋</span>
+                  <div className="flex-1">
+                    <div className="font-semibold">
+                      {tl("openUnattendedPopup", "Danh sách chưa điểm danh")}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {tl(
+                        "openUnattendedPopupHint",
+                        "Hiện lại hộp thông báo đã đóng.",
+                      )}
+                    </div>
+                  </div>
+                </button>
+
                 {/* Clear Filter — luôn hiển thị để chiều cao menu không nhảy */}
                 <button
                   type="button"
-                  disabled={
-                      !hasAnyFilters
-                  }
+                  disabled={!hasAnyFilters}
                   onClick={() => {
                     if (!hasAnyFilters) return;
                     clearAllFilters();
