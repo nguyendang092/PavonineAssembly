@@ -42,11 +42,19 @@ export const WorkplaceProductionSidebar = memo(function WorkplaceProductionSideb
         {sidebarOpen ? "✕" : "☰"}
       </button>
 
-      {/* Sidebar */}
+      {sidebarOpen ? (
+        <button
+          type="button"
+          className="dashboard-no-print fixed inset-x-0 bottom-0 top-[var(--app-navbar-height)] z-40 bg-slate-900/40 backdrop-blur-sm transition-opacity dark:bg-black/50"
+          aria-label={t("workplaceChart.toggleSidebar")}
+          onClick={() => setSidebarOpen(false)}
+        />
+      ) : null}
+
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        className="!space-y-0"
+        className="!z-50 !space-y-0 !border-r !border-white/10 !bg-black/70 !backdrop-blur-md"
       >
         <div className="space-y-4">
           <div className="text-center">

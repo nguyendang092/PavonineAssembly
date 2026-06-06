@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, startTransition } from "react";
 import { db, ref, onValue } from "@/services/firebase";
 import {
   getIsOffDayFromRaw,
@@ -6,7 +6,7 @@ import {
   getIsCompensatoryDayFromRaw,
 } from "./attendanceDayMeta";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
-import { mergeAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
+import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 
 /**
  * Đồng bộ `attendanceRootPath/{selectedDate}` — tách listener khỏi AttendanceList.
@@ -34,21 +34,21 @@ export function useAttendanceDayFirebase(attendanceRootPath, selectedDate) {
     setIsCompensatoryDay(false);
 
     const empRef = ref(db, `${attendanceRootPath}/${selectedDate}`);
+    const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
     const unsubscribe = onValue(empRef, (snapshot) => {
       if (generation !== listenGenerationRef.current) return;
 
       const data = snapshot.val();
       attendanceRawRef.current = data;
-      const off = getIsOffDayFromRaw(data);
-      const hol = getIsHolidayDayFromRaw(data);
-      const comp = getIsCompensatoryDayFromRaw(data);
-      setIsOffDay(off);
-      setIsHolidayDay(hol);
-      setIsCompensatoryDay(comp);
 
-      // Merge full snapshot mỗi lần — tránh kẹt danh sách cũ/rỗng sau tối ưu reconcile.
-      const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
-      setEmployees(mergeAttendanceDayRowsFromRaw(data, { seasonal }));
+      startTransition(() => {
+        setIsOffDay(getIsOffDayFromRaw(data));
+        setIsHolidayDay(getIsHolidayDayFromRaw(data));
+        setIsCompensatoryDay(getIsCompensatoryDayFromRaw(data));
+        setEmployees((prev) =>
+          reconcileAttendanceDayRowsFromRaw(prev, data, { seasonal }),
+        );
+      });
     });
 
     return () => {

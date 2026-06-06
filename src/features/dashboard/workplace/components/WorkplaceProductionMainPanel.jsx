@@ -10,7 +10,6 @@ import WorkplaceAreaChartCard from "./WorkplaceAreaChartCard";
 
 export const WorkplaceProductionMainPanel = memo(function WorkplaceProductionMainPanel({
   t,
-  sidebarOpen,
   weekMeta,
   dashboardStats,
   chartData,
@@ -24,11 +23,7 @@ export const WorkplaceProductionMainPanel = memo(function WorkplaceProductionMai
 }) {
   return (
     <>
-      <div
-        className={`dashboard-print-fill flex flex-1 flex-col min-h-0 px-3 sm:px-5 pb-3 transition-all duration-300 ${
-          sidebarOpen ? "ml-72" : "ml-0"
-        }`}
-      >
+      <div className="dashboard-print-fill flex min-h-0 flex-1 flex-col px-3 pb-3 sm:px-5">
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="dashboard-chart-panel dashboard-report-surface flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
             <div className="shrink-0 border-b border-slate-300/80 bg-gradient-to-b from-slate-200/95 to-slate-100 px-4 pt-4 pb-3 dark:border-slate-800 dark:from-slate-950 dark:to-slate-950">
@@ -143,7 +138,7 @@ export const WorkplaceProductionMainPanel = memo(function WorkplaceProductionMai
             </div>
 
             {chartData?.areas?.length ? (
-              <div className="min-h-[200px] flex-1 overflow-y-auto bg-slate-200/35 p-3 dark:bg-black/35 sm:p-5">
+              <div className="min-h-0 flex-1 overflow-y-auto bg-slate-200/35 p-3 dark:bg-black/35 sm:p-5">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {chartAreasOrdered.map((area) => {
                     const combo = areaComboDataByArea[area];
@@ -168,7 +163,7 @@ export const WorkplaceProductionMainPanel = memo(function WorkplaceProductionMai
                 </div>
               </div>
             ) : (
-              <div className="flex flex-1 items-center justify-center bg-slate-200/35 px-4 py-10 dark:bg-black/35">
+              <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-200/35 px-4 py-10 dark:bg-black/35">
                 <p className="max-w-sm text-center text-sm text-slate-600 dark:text-slate-400">
                   {t("workplaceChart.pleaseSelectExcel")}
                 </p>

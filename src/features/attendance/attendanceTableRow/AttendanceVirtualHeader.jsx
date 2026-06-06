@@ -1,5 +1,4 @@
 import React, { memo } from "react";
-import { cellClsForGrid } from "./cellClassNames";
 import { getAttendanceGridColumnStart } from "./gridLayout";
 
 function AttendanceVirtualHeader({

@@ -12,8 +12,8 @@ function AttendanceListHeader({
   tl,
 }) {
   return (
-    <div className="mb-1.5 md:mb-2">
-      <div className="rounded-lg border-t-4 border-blue-600 bg-white px-2 py-1 shadow-md md:px-3 md:py-1.5 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+    <div className="shrink-0">
+      <div className="w-full border-t-4 border-blue-600 bg-white px-2 py-1 shadow-sm sm:px-3 sm:py-1.5 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
         <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-2">
           <div className="min-w-0 text-left">
             <h1 className="text-balance text-sm font-bold uppercase leading-snug tracking-wide text-[#1e293b] md:text-base dark:text-slate-100">

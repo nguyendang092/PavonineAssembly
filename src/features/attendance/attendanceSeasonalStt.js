@@ -1,11 +1,41 @@
+import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
+
 /**
  * STT riêng điểm danh thời vụ — Firebase `seasonalAttendance/{ngày}/{key}/sttThoiVu`.
  * Không dùng `stt` (chính thức) để tránh lệch khi dữ liệu bị trộn.
  */
-export const SEASONAL_ATTENDANCE_ROOT = "seasonalAttendance";
+const SEASONAL_ATTENDANCE_ROOT = "seasonalAttendance";
 
 export function isSeasonalAttendanceRoot(attendanceRootPath) {
   return attendanceRootPath === SEASONAL_ATTENDANCE_ROOT;
+}
+
+function hasSeasonalSttFieldValue(raw) {
+  if (raw === "" || raw == null || raw === undefined) return false;
+  const s = String(raw).trim();
+  return s !== "";
+}
+
+/**
+ * Chuẩn hóa dòng thời vụ khi đọc UI / so sánh:
+ * - Chỉ dùng `sttThoiVu` (copy từ `stt` legacy nếu còn sót sau upload cũ).
+ * - Xóa `stt` chính thức khỏi object hiển thị.
+ */
+export function normalizeSeasonalAttendanceRowForUi(emp) {
+  if (!emp || typeof emp !== "object") return emp;
+  const out = { ...emp };
+  if (
+    !hasSeasonalSttFieldValue(out.sttThoiVu) &&
+    hasSeasonalSttFieldValue(out.stt)
+  ) {
+    out.sttThoiVu = out.stt;
+  }
+  delete out.stt;
+  const gioiTinhNorm = normalizeAttendanceGioiTinhValue(out.gioiTinh);
+  if (gioiTinhNorm) {
+    out.gioiTinh = gioiTinhNorm;
+  }
+  return out;
 }
 
 function getAttendanceSttRawForContext(emp, seasonal) {

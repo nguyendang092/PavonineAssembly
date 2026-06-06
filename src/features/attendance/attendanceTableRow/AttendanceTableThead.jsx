@@ -1,9 +1,5 @@
 import React, { memo } from "react";
-import { cellClsForGrid } from "./cellClassNames";
-import {
-  getAttendanceGridColumnStart,
-  cellClsForAttendanceTable,
-} from "./gridLayout";
+import { cellClsForAttendanceTable } from "./gridLayout";
 
 function AttendanceTableThead({
   tl,

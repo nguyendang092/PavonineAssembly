@@ -1,4 +1,4 @@
-import React, { memo, useState, useMemo, useCallback, useEffect } from "react";
+import { memo, useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
@@ -18,6 +18,7 @@ import AttendanceUnattendedModal from "./AttendanceUnattendedModal";
 import AttendanceListToolbarSection from "./AttendanceListToolbarSection";
 import AttendanceListToolbarSearchCluster from "./AttendanceToolbarSearchCluster";
 import AttendanceListContentSection from "./AttendanceListContentSection";
+import "./attendanceToolbarFocus.css";
 import {
   useAttendanceListUiState,
   useAttendanceUnattendedPopupEffects,
@@ -172,7 +173,7 @@ const AttendanceList = memo(function AttendanceList({
 
   const {
     normalizeDepartment,
-    deferredLoaiPhepFilterSet,
+    loaiPhepFilterSet,
     filterAttendanceListRows,
     filteredEmployees,
     deferredFilteredEmployees,
@@ -221,7 +222,7 @@ const AttendanceList = memo(function AttendanceList({
   const { departments, buCongEmployees } = useAttendanceListDerivedLists({
     employees,
     deferredFilteredEmployees,
-    deferredLoaiPhepFilterSet,
+    loaiPhepFilterSet,
     showOnlyUnattendedFilter,
     normalizeDepartment,
   });
@@ -371,6 +372,7 @@ const AttendanceList = memo(function AttendanceList({
   } = useAttendanceCompareEmployees({
     attendanceRootPath,
     selectedDate,
+    employees,
     normalizeDepartment,
     comboProductionDeptOrder,
     comboProductionDeptCatalog,
@@ -731,8 +733,7 @@ const AttendanceList = memo(function AttendanceList({
 
   return (
     <>
-      {/* Main Content */}
-      <div className="p-2 md:p-4 transition-all duration-300">
+      <div className="attendance-list-viewport w-full max-w-none">
         <AttendanceListHeader
           headerTitle={headerTitle}
           headerSubtitle={headerSubtitle}
@@ -788,7 +789,7 @@ const AttendanceList = memo(function AttendanceList({
           <AttendanceListToolbarBranchContext.Provider
             value={toolbarBranchValue}
           >
-            <div className="mb-2 flex flex-col gap-2 sm:mb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+            <div className="attendance-toolbar-controls mb-2 flex shrink-0 flex-col gap-2 border-b border-slate-200/90 bg-white px-2 py-2 sm:mb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-3 dark:border-slate-700/90 dark:bg-slate-900">
               <AttendanceListToolbarSection />
               <AttendanceListFilteredDataBranchContext.Provider
                 value={filteredDataBranchValue}
@@ -798,15 +799,20 @@ const AttendanceList = memo(function AttendanceList({
                 </div>
               </AttendanceListFilteredDataBranchContext.Provider>
             </div>
-            <AttendanceListContentBranchContext.Provider
-              value={contentBranchValue}
+            <div
+              id="attendance-list-scroll-region"
+              className="attendance-list-scroll-region"
             >
-              <AttendanceListComboBranchContext.Provider
-                value={comboBranchValue}
+              <AttendanceListContentBranchContext.Provider
+                value={contentBranchValue}
               >
-                <AttendanceListContentSection />
-              </AttendanceListComboBranchContext.Provider>
-            </AttendanceListContentBranchContext.Provider>
+                <AttendanceListComboBranchContext.Provider
+                  value={comboBranchValue}
+                >
+                  <AttendanceListContentSection />
+                </AttendanceListComboBranchContext.Provider>
+              </AttendanceListContentBranchContext.Provider>
+            </div>
           </AttendanceListToolbarBranchContext.Provider>
         </AttendanceListSearchBranchContext.Provider>
       </div>

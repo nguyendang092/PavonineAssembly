@@ -11,7 +11,7 @@ import {
 export function useAttendanceListDerivedLists({
   employees,
   deferredFilteredEmployees,
-  deferredLoaiPhepFilterSet,
+  loaiPhepFilterSet,
   showOnlyUnattendedFilter,
   normalizeDepartment,
 }) {
@@ -19,7 +19,7 @@ export function useAttendanceListDerivedLists({
     const deptMap = new Map();
     for (const emp of employees) {
       if (showOnlyUnattendedFilter && !isEmployeeQuickUnattended(emp)) continue;
-      if (!employeeMatchesLoaiPhepFilterSet(emp, deferredLoaiPhepFilterSet))
+      if (!employeeMatchesLoaiPhepFilterSet(emp, loaiPhepFilterSet))
         continue;
       const deptLabel = String(emp.boPhan || "").trim();
       const deptKey = normalizeDepartment(deptLabel);
@@ -31,7 +31,7 @@ export function useAttendanceListDerivedLists({
     return Array.from(deptMap.values());
   }, [
     employees,
-    deferredLoaiPhepFilterSet,
+    loaiPhepFilterSet,
     showOnlyUnattendedFilter,
     normalizeDepartment,
   ]);

@@ -59,7 +59,7 @@ function AttendanceListActionPrintMenus({
               createPortal(
                 <div
                   ref={actionDropdownPanelRef}
-                  className="fixed max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-emerald-200 bg-white shadow-2xl dark:border-emerald-800 dark:bg-slate-900 sm:w-64"
+                  className="attendance-toolbar-controls fixed max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-emerald-200 bg-white shadow-2xl dark:border-emerald-800 dark:bg-slate-900 sm:w-64"
                   style={{
                     zIndex: "var(--z-modal-backdrop, 1200)",
                     top: actionDropdownPlacement.top,
@@ -252,7 +252,7 @@ function AttendanceListActionPrintMenus({
             createPortal(
               <div
                 ref={printDropdownPanelRef}
-                className="fixed max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-blue-200 bg-white shadow-2xl dark:border-blue-800 dark:bg-slate-900 sm:w-64"
+                className="attendance-toolbar-controls fixed max-w-[calc(100vw-2rem)] animate-fadeIn overflow-hidden rounded-lg border-2 border-blue-200 bg-white shadow-2xl dark:border-blue-800 dark:bg-slate-900 sm:w-64"
                 style={{
                   zIndex: "var(--z-modal-backdrop, 1200)",
                   top: printDropdownPlacement.top,

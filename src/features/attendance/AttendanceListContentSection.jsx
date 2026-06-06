@@ -153,6 +153,7 @@ function AttendanceListContentSection() {
             setComboStatDetailKey={setComboStatDetailKey}
             comboStatLabelByKey={comboStatLabelByKey}
             comboStatEmployeesByKey={comboStatEmployeesByKey}
+            attendanceRootPath={attendanceRootPath}
             compareEmployeesBusy={compareEmployeesBusy}
             onCompareEmployees={handleOpenCompareEmployees}
           />
@@ -173,7 +174,6 @@ function AttendanceListContentSection() {
         isHolidayDay={isHolidayDay}
         isCompensatoryDay={isCompensatoryDay}
         t={t}
-        selectedDate={selectedDate}
         attendanceRootPath={attendanceRootPath}
       />
 

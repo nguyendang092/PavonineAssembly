@@ -23,10 +23,18 @@ function AttendanceListTableSection({
   isHolidayDay,
   isCompensatoryDay,
   t,
-  selectedDate,
   attendanceRootPath = "attendance",
 }) {
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
+
+  const canEditByEmpId = useMemo(() => {
+    const map = new Map();
+    for (const emp of deferredFilteredEmployees) {
+      const id = emp?.id ?? emp?.mnv;
+      if (id != null) map.set(id, canEditEmployee(emp));
+    }
+    return map;
+  }, [deferredFilteredEmployees, canEditEmployee]);
 
   const sharedRowProps = useMemo(
     () => ({
@@ -61,45 +69,41 @@ function AttendanceListTableSection({
 
   return (
     <div
-      key={selectedDate || "no-date"}
-      className={`min-w-0 w-full max-w-full bg-white rounded-lg shadow-lg ${
-        columnPlan === "minimal" ? "overflow-x-hidden" : "overflow-x-auto"
+      className={`min-w-0 w-full max-w-none bg-white ${
+        columnPlan === "minimal"
+          ? "overflow-x-hidden"
+          : "overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
       }`}
     >
-      <div
-        className={`max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto ${
-          columnPlan === "minimal"
-            ? "overflow-x-hidden"
-            : "overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
-        }`}
+      <table
+        className={`w-full max-w-none table-fixed border-collapse ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
       >
-        <table
-          className={`w-full table-fixed border-collapse max-w-none ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
-        >
-          <AttendanceTableColgroup
-            showRowModalActions={showRowModalActions}
-            columnPlan={columnPlan}
-          />
-          <AttendanceTableThead
-            tl={tl}
-            showRowModalActions={showRowModalActions}
-            stickyHeader={true}
-            canDeleteRow={canDeleteDayRecord}
-            columnPlan={columnPlan}
-          />
-          <tbody>
-            {deferredFilteredEmployees.map((emp, idx) => (
+        <AttendanceTableColgroup
+          showRowModalActions={showRowModalActions}
+          columnPlan={columnPlan}
+        />
+        <AttendanceTableThead
+          tl={tl}
+          showRowModalActions={showRowModalActions}
+          stickyHeader={true}
+          canDeleteRow={canDeleteDayRecord}
+          columnPlan={columnPlan}
+        />
+        <tbody>
+          {deferredFilteredEmployees.map((emp, idx) => {
+            const rowKey = emp.id ?? emp.mnv ?? `row-${idx}`;
+            return (
               <AttendanceTableRow
-                key={emp.id ?? emp.mnv ?? `row-${idx}`}
+                key={rowKey}
                 emp={emp}
                 idx={idx}
-                canEdit={canEditEmployee(emp)}
+                canEdit={canEditByEmpId.get(rowKey) ?? false}
                 {...sharedRowProps}
               />
-            ))}
-          </tbody>
-        </table>
-      </div>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

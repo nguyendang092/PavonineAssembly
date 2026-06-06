@@ -379,7 +379,8 @@ export function useWorkplaceProductionDashboard() {
             type: "bar",
             label: t("workplaceChart.comboBarLabel"),
             data: normals,
-            backgroundColor: "rgba(14, 165, 233, 0.78)",
+            order: 1,
+            backgroundColor: "rgba(14, 165, 233, 0.82)",
             borderColor: "rgb(2, 132, 199)",
             borderWidth: 0,
             borderRadius: 3,
@@ -391,16 +392,17 @@ export function useWorkplaceProductionDashboard() {
             type: "line",
             label: t("workplaceChart.comboLineLabel"),
             data: ngs,
+            order: 2,
             borderColor: "rgb(225, 29, 72)",
-            backgroundColor: "rgba(225, 29, 72, 0.04)",
+            backgroundColor: "rgba(225, 29, 72, 0.06)",
             tension: 0.35,
-            pointRadius: 2,
-            pointHoverRadius: 4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
             pointBackgroundColor: "rgb(225, 29, 72)",
             pointBorderColor: "#fff",
-            pointBorderWidth: 1,
+            pointBorderWidth: 2,
             yAxisID: "y1",
-            borderWidth: 2,
+            borderWidth: 3,
             fill: false,
           },
         ],
@@ -416,7 +418,7 @@ export function useWorkplaceProductionDashboard() {
       animation: { duration: 420, easing: "easeOutCubic" },
       interaction: { mode: "index", intersect: false },
       layout: {
-        padding: { top: 2, right: 4, bottom: 0, left: 2 },
+        padding: { top: 16, right: 4, bottom: 0, left: 2 },
       },
       plugins: {
         legend: {
@@ -447,16 +449,31 @@ export function useWorkplaceProductionDashboard() {
             },
           },
         },
-        datalabels: { display: false },
+        workplaceComboLineOnTop: true,
+        datalabels: {
+          display: (ctx) => {
+            const v = Number(ctx.dataset.data[ctx.dataIndex]);
+            return Number.isFinite(v) && v > 0;
+          },
+          anchor: (ctx) => (ctx.dataset.type === "line" ? "center" : "end"),
+          align: (ctx) => (ctx.dataset.type === "line" ? "top" : "end"),
+          offset: (ctx) => (ctx.dataset.type === "line" ? 5 : 2),
+          clamp: true,
+          color: (ctx) =>
+            ctx.dataset.type === "line"
+              ? "rgb(225, 29, 72)"
+              : "rgb(2, 132, 199)",
+          font: { size: 9, weight: "700" },
+          formatter: (value) => {
+            const n = Number(value);
+            return Number.isFinite(n) && n > 0 ? n.toLocaleString() : "";
+          },
+        },
       },
       scales: {
         x: {
           border: { display: false },
-          grid: {
-            display: true,
-            color: "rgba(148, 163, 184, 0.18)",
-            drawTicks: false,
-          },
+          grid: { display: false, drawTicks: false },
           ticks: {
             maxRotation: 0,
             minRotation: 0,
@@ -472,10 +489,7 @@ export function useWorkplaceProductionDashboard() {
           position: "left",
           title: { display: false },
           border: { display: false },
-          grid: {
-            color: "rgba(148, 163, 184, 0.22)",
-            lineWidth: 1,
-          },
+          grid: { display: false },
           ticks: {
             font: { size: 9, weight: "500" },
             color: "#64748b",
@@ -489,7 +503,7 @@ export function useWorkplaceProductionDashboard() {
           position: "right",
           title: { display: false },
           border: { display: false },
-          grid: { drawOnChartArea: false },
+          grid: { display: false, drawOnChartArea: false },
           ticks: {
             font: { size: 9, weight: "500" },
             color: "#94a3b8",

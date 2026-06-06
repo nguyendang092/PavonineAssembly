@@ -19,6 +19,10 @@ import {
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
 import { isBoPhanChuaDung } from "../attendanceDayMeta";
 import { resolveAttendanceDisplayStt } from "../attendanceSeasonalStt";
+import {
+  formatAttendanceGenderDisplay,
+  isAttendanceFemaleGioiTinh,
+} from "../attendanceGender";
 import { PAYROLL_EMPTY_CELL, ATTENDANCE_EMPTY_CELL } from "./constants";
 import { payrollDash } from "./payrollDash";
 import { getAttendanceGridColumnStart, attendanceGridCellStyle, cellClsForAttendanceTable } from "./gridLayout";
@@ -196,13 +200,20 @@ function AttendanceTableRow({
             </span>
           ) : (
             <span
-              className={`inline-flex items-center justify-center px-1 py-px text-[10px] font-bold leading-none rounded-full ${
-                emp.gioiTinh === "YES"
+              className={`inline-flex items-center justify-center px-1.5 py-px text-[10px] font-bold leading-none rounded-full ${
+                (isSeasonalAttendance
+                  ? isAttendanceFemaleGioiTinh(emp.gioiTinh)
+                  : emp.gioiTinh === "YES")
                   ? "bg-pink-100 text-pink-700"
                   : "bg-blue-100 text-blue-700"
               }`}
             >
-              {payrollDash(emp.gioiTinh, isPayroll)}
+              {isSeasonalAttendance
+                ? formatAttendanceGenderDisplay(emp.gioiTinh, {
+                    female: tl("femaleLabel", "Nữ"),
+                    male: tl("maleLabel", "Nam"),
+                  })
+                : payrollDash(emp.gioiTinh, isPayroll)}
             </span>
           )}
         </Cell>

@@ -3,6 +3,7 @@ import {
   COMBO_STATS_PRODUCTION_DEPT_DEFAULT_ORDER,
   COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS,
   mergeComboProductionDeptPickerKeys,
+  resolveComboChartDepartmentLabel,
 } from "./attendanceComboChartConfig";
 import { sortEmployeesStableAsc } from "./attendanceListSort";
 import { resolveAttendanceDisplayStt } from "./attendanceSeasonalStt";
@@ -67,7 +68,7 @@ function appendEmployeeToDeptBucket(
   bucketMap.get(deptLabel).set(key, { stt, label });
 }
 
-export function sortCompareEmployeeEntries(entries) {
+function sortCompareEmployeeEntries(entries) {
   entries.sort((a, b) => {
     const labelA = typeof a === "string" ? a : a?.label || "";
     const labelB = typeof b === "string" ? b : b?.label || "";
@@ -85,7 +86,10 @@ export function sortCompareEmployeeEntries(entries) {
   return entries;
 }
 
-export function buildProductionDeptEmployeeMap(
+/**
+ * Điểm danh chính thức: chỉ BP sản xuất đã cấu hình (không gộp HR / BP ngoài SX).
+ */
+export function buildOfficialCompareDeptEmployeeMap(
   rows,
   normalizeDepartment,
   sttRankByKey,
@@ -108,46 +112,31 @@ export function buildProductionDeptEmployeeMap(
 }
 
 /**
- * Điểm danh thời vụ: gộp theo `boPhan` thực tế trên Firebase — không map sang nhãn BP sản xuất.
+ * Thời vụ: gộp NV theo nhãn bộ phận — cùng `resolveComboChartDepartmentLabel` với biểu đồ.
  */
-export function buildSeasonalDeptEmployeeMap(
+export function buildCompareChartAlignedDeptEmployeeMap(
   rows,
   normalizeDepartment,
   sttRankByKey,
-  seasonal = true,
+  seasonal = false,
+  unknownDepartmentLabel = "Chưa phân bộ phận",
 ) {
-  const labelByKey = new Map();
   const out = new Map();
-
   for (const emp of rows || []) {
-    const boPhanRaw = String(emp?.boPhan ?? "").trim();
-    const deptKey = normalizeDepartment(boPhanRaw);
-    if (!deptKey) continue;
-
-    if (!labelByKey.has(deptKey)) {
-      labelByKey.set(deptKey, boPhanRaw || "—");
-    } else if (boPhanRaw && labelByKey.get(deptKey) === "—") {
-      labelByKey.set(deptKey, boPhanRaw);
-    }
-
-    appendEmployeeToDeptBucket(
-      out,
-      labelByKey.get(deptKey),
-      emp,
-      sttRankByKey,
-      seasonal,
+    const dept = resolveComboChartDepartmentLabel(
+      normalizeDepartment,
+      emp?.boPhan,
+      unknownDepartmentLabel,
     );
+    appendEmployeeToDeptBucket(out, dept, emp, sttRankByKey, seasonal);
   }
   return out;
 }
 
-export function mergeCompareDepartmentListSeasonal(prevByDept, currByDept) {
-  return Array.from(
-    new Set([...prevByDept.keys(), ...currByDept.keys()]),
-  ).sort((a, b) => a.localeCompare(b, "vi", { sensitivity: "base" }));
-}
-
-export function mergeCompareDepartmentList(
+/**
+ * Chính thức: thứ tự BP theo cấu hình picker (kể cả BP chưa có NV trong ngày so sánh).
+ */
+export function mergeCompareDepartmentListOfficial(
   orderedProductionMatchKeys,
   prevByDept,
   currByDept,
@@ -163,6 +152,45 @@ export function mergeCompareDepartmentList(
       ...currByDept.keys(),
     ]),
   );
+}
+
+/**
+ * Thời vụ: thứ tự bộ phận — khớp `applyProductionStatsRowOrder` trên biểu đồ combo.
+ */
+export function mergeCompareDepartmentListChartAligned(
+  orderedProductionMatchKeys,
+  prevByDept,
+  currByDept,
+  normalizeDepartment,
+) {
+  const allDepts = Array.from(
+    new Set([...prevByDept.keys(), ...currByDept.keys()]),
+  );
+  if (!orderedProductionMatchKeys?.length) {
+    return [...allDepts].sort((a, b) =>
+      a.localeCompare(b, "vi", { sensitivity: "base" }),
+    );
+  }
+  const seen = new Set();
+  const out = [];
+  for (const mk of orderedProductionMatchKeys) {
+    const preferredLabel =
+      COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS[mk] || mk;
+    for (const dept of allDepts) {
+      if (seen.has(dept)) continue;
+      const deptMk = attendanceProductionDeptMatchKey(
+        normalizeDepartment,
+        dept,
+      );
+      if (deptMk === mk || dept === preferredLabel) {
+        out.push(dept);
+        seen.add(dept);
+      }
+    }
+  }
+  const rest = allDepts.filter((d) => !seen.has(d));
+  rest.sort((a, b) => a.localeCompare(b, "vi", { sensitivity: "base" }));
+  return [...out, ...rest];
 }
 
 export function computeCompareRows(allDepts, prevByDept, currByDept) {
@@ -195,7 +223,7 @@ export function computeCompareRows(allDepts, prevByDept, currByDept) {
   });
 }
 
-export function filterCompareRowsByDepartment(rows, departmentFilter) {
+function filterCompareRowsByDepartment(rows, departmentFilter) {
   if (!departmentFilter) return rows;
   return rows.filter((x) => x.department === departmentFilter);
 }

@@ -17,7 +17,7 @@ const WorkplaceProductionShell = memo(function WorkplaceProductionShell({
   modalArea,
 }) {
   return (
-    <div className="flex flex-col lg:flex-row h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60">
+    <div className="workplace-production-viewport relative flex flex-col overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60">
       <WorkplaceProductionSidebar {...sidebarProps} />
       <WorkplaceProductionMainPanel {...mainPanelProps} />
       <WorkplaceProductionDataTableModal {...dataTableModalProps} />
@@ -138,7 +138,6 @@ export default function WorkplaceProductionPage() {
   const mainPanelProps = useMemo(
     () => ({
       t,
-      sidebarOpen,
       weekMeta,
       dashboardStats,
       chartData,
@@ -152,7 +151,6 @@ export default function WorkplaceProductionPage() {
     }),
     [
       t,
-      sidebarOpen,
       weekMeta,
       dashboardStats,
       chartData,

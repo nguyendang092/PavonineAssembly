@@ -114,7 +114,7 @@ function AttendanceListFilterMenus({
           createPortal(
             <div
               ref={filterMenuPanelRef}
-              className="fixed flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
+              className="attendance-toolbar-controls fixed flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
               style={{
                 zIndex: "var(--z-modal-backdrop, 1200)",
                 top: filterDropdownPlacement.top,
@@ -289,7 +289,7 @@ function AttendanceListFilterMenus({
                             setFilterDepartmentSearch(e.target.value)
                           }
                           placeholder={t("attendanceList.searchDepartment")}
-                          className="w-full border-b border-orange-200 h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          className="w-full border-b border-orange-200 h-8 px-3 text-sm outline-none"
                         />
                         <div className="max-h-80 overflow-y-auto">
                           {departments.length === 0 ? (
@@ -530,7 +530,7 @@ function AttendanceListFilterMenus({
                                   setJoinDateMonthFilter("");
                                 }
                               }}
-                              className="w-full h-9 rounded-md border border-indigo-300 bg-white px-2 text-sm font-semibold text-indigo-900 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                              className="w-full h-9 rounded-md border border-indigo-300 bg-white px-2 text-sm font-semibold text-indigo-900 shadow-sm outline-none transition"
                             >
                               <option value="">
                                 {tl("joinDateAllYears", "Tất cả")}
@@ -553,7 +553,7 @@ function AttendanceListFilterMenus({
                                 setJoinDateMonthFilter(e.target.value)
                               }
                               disabled={!joinDateYearFilter}
-                              className={`w-full h-9 rounded-md border border-sky-300 bg-white px-2 text-sm font-semibold text-sky-900 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
+                              className={`w-full h-9 rounded-md border border-sky-300 bg-white px-2 text-sm font-semibold text-sky-900 shadow-sm outline-none transition ${
                                 !joinDateYearFilter
                                   ? "cursor-not-allowed opacity-55 bg-slate-100 text-slate-500 border-slate-300"
                                   : ""

@@ -15,24 +15,18 @@ function AttendanceListSummary({
   const shown = deferredFilteredEmployees.length;
   const loaded = Number(employeesCount) || 0;
   const filteredOut = loaded > 0 && shown < loaded;
-  const leaveTypeCounts = useMemo(() => {
+  const { leaveTypeCounts, shiftCounts } = useMemo(() => {
     const timeCounts = {};
-    deferredFilteredEmployees.forEach((emp) => {
+    const counts = {};
+    for (const emp of deferredFilteredEmployees) {
       const time = formatAttendanceGioVaoDisplay(getAttendanceLeaveTypeRaw(emp));
       if (time && !/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) {
         timeCounts[time] = (timeCounts[time] || 0) + 1;
       }
-    });
-    return timeCounts;
-  }, [deferredFilteredEmployees]);
-
-  const shiftCounts = useMemo(() => {
-    const counts = {};
-    deferredFilteredEmployees.forEach((emp) => {
       const shift = emp.caLamViec;
       if (shift) counts[shift] = (counts[shift] || 0) + 1;
-    });
-    return counts;
+    }
+    return { leaveTypeCounts: timeCounts, shiftCounts: counts };
   }, [deferredFilteredEmployees]);
 
   const leaveEntries = Object.entries(leaveTypeCounts);
@@ -110,7 +104,7 @@ function AttendanceListSummary({
 
 function SummaryRoot({ children }) {
   return (
-    <div className="mt-2 rounded-lg border-l-4 border-blue-600 bg-white p-4 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+    <div className="w-full max-w-none border-l-4 border-blue-600 border-t border-slate-200/90 bg-white p-3 sm:p-4 dark:border-slate-700/90 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
       {children}
     </div>
   );

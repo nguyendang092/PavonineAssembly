@@ -1,14 +1,21 @@
-import { useState, useCallback, useEffect, useRef, startTransition } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  startTransition,
+} from "react";
 import { db, get, ref } from "@/services/firebase";
 import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 import {
   previousDateOf,
   resolveOrderedProductionMatchKeys,
   buildCompareSttRankMap,
-  buildProductionDeptEmployeeMap,
-  buildSeasonalDeptEmployeeMap,
-  mergeCompareDepartmentList,
-  mergeCompareDepartmentListSeasonal,
+  buildOfficialCompareDeptEmployeeMap,
+  buildCompareChartAlignedDeptEmployeeMap,
+  mergeCompareDepartmentListOfficial,
+  mergeCompareDepartmentListChartAligned,
   computeCompareRows,
   buildCompareEmployeesResult,
 } from "./attendanceCompareEmployeesLogic";
@@ -20,6 +27,7 @@ const COMPARE_DAY_CACHE_MAX = 12;
 export function useAttendanceCompareEmployees({
   attendanceRootPath,
   selectedDate,
+  employees = [],
   normalizeDepartment,
   comboProductionDeptOrder,
   comboProductionDeptCatalog,
@@ -42,10 +50,30 @@ export function useAttendanceCompareEmployees({
     compareBusyRef.current = compareEmployeesBusy;
   }, [compareEmployeesBusy]);
 
+  const employeesSttRevision = useMemo(() => {
+    const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
+    return employees
+      .map((emp) => {
+        const stt = seasonal ? emp?.sttThoiVu : emp?.stt;
+        return `${emp?.id ?? ""}:${stt ?? ""}`;
+      })
+      .join("|");
+  }, [employees, attendanceRootPath]);
+
+  const productionDeptOrderRevision = useMemo(
+    () => comboProductionDeptOrder.join("|"),
+    [comboProductionDeptOrder],
+  );
+
   useEffect(() => {
     compareDayRowsCacheRef.current.clear();
     setCompareEmployeesResult(null);
-  }, [attendanceRootPath]);
+  }, [
+    attendanceRootPath,
+    selectedDate,
+    employeesSttRevision,
+    productionDeptOrderRevision,
+  ]);
 
   useEffect(() => {
     setCompareCriteria((prev) => {
@@ -105,16 +133,19 @@ export function useAttendanceCompareEmployees({
       }
 
       setCompareEmployeesBusy(true);
+      const isSeasonalAttendance =
+        isSeasonalAttendanceRoot(attendanceRootPath);
       try {
         const loadRowsByDate = async (dateKey) => {
           const key = `${attendanceRootPath}:${dateKey}`;
           const cached = compareDayRowsCacheRef.current.get(key);
           if (cached) return cached;
           const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-          const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
           const rows = sortEmployeesStableAsc(
-            reconcileAttendanceDayRowsFromRaw([], snap.val(), { seasonal }),
-            { seasonal },
+            reconcileAttendanceDayRowsFromRaw([], snap.val(), {
+              seasonal: isSeasonalAttendance,
+            }),
+            { seasonal: isSeasonalAttendance },
           );
           compareDayRowsCacheRef.current.set(key, rows);
           if (compareDayRowsCacheRef.current.size > COMPARE_DAY_CACHE_MAX) {
@@ -129,13 +160,6 @@ export function useAttendanceCompareEmployees({
           loadRowsByDate(currentDate),
         ]);
 
-        const isSeasonalAttendance =
-          isSeasonalAttendanceRoot(attendanceRootPath);
-
-        let prevByDept;
-        let currByDept;
-        let allDepts;
-
         const prevSttRank = buildCompareSttRankMap(
           previousRows,
           isSeasonalAttendance,
@@ -145,34 +169,53 @@ export function useAttendanceCompareEmployees({
           isSeasonalAttendance,
         );
 
+        const orderedProductionMatchKeys = resolveOrderedProductionMatchKeys(
+          comboProductionDeptOrder,
+          comboProductionDeptCatalog,
+        );
+        let prevByDept;
+        let currByDept;
+        let allDepts;
+
         if (isSeasonalAttendance) {
-          prevByDept = buildSeasonalDeptEmployeeMap(
+          const unknownDeptLabel = tl(
+            "unknownDepartment",
+            "Chưa phân bộ phận",
+          );
+          prevByDept = buildCompareChartAlignedDeptEmployeeMap(
             previousRows,
             normalizeDepartment,
             prevSttRank,
+            true,
+            unknownDeptLabel,
           );
-          currByDept = buildSeasonalDeptEmployeeMap(
+          currByDept = buildCompareChartAlignedDeptEmployeeMap(
             currentRows,
             normalizeDepartment,
             currSttRank,
+            true,
+            unknownDeptLabel,
           );
-          allDepts = mergeCompareDepartmentListSeasonal(prevByDept, currByDept);
+          allDepts = mergeCompareDepartmentListChartAligned(
+            orderedProductionMatchKeys,
+            prevByDept,
+            currByDept,
+            normalizeDepartment,
+          );
         } else {
-          const orderedProductionMatchKeys = resolveOrderedProductionMatchKeys(
-            comboProductionDeptOrder,
-            comboProductionDeptCatalog,
-          );
-          prevByDept = buildProductionDeptEmployeeMap(
+          prevByDept = buildOfficialCompareDeptEmployeeMap(
             previousRows,
             normalizeDepartment,
             prevSttRank,
+            false,
           );
-          currByDept = buildProductionDeptEmployeeMap(
+          currByDept = buildOfficialCompareDeptEmployeeMap(
             currentRows,
             normalizeDepartment,
             currSttRank,
+            false,
           );
-          allDepts = mergeCompareDepartmentList(
+          allDepts = mergeCompareDepartmentListOfficial(
             orderedProductionMatchKeys,
             prevByDept,
             currByDept,

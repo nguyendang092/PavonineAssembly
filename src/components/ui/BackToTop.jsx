@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FaArrowCircleUp } from "react-icons/fa";
-import { scrollAppToTop } from "@/utils/appScroll";
+import { getAppScrollContainer, scrollAppToTop } from "@/utils/appScroll";
 
 export default function BackToTop({
   threshold = 100,
@@ -20,11 +20,11 @@ export default function BackToTop({
       return; // Skip attaching scroll listener
     }
     const onScroll = () => {
-      const el = scrollContainerRef?.current;
+      const el = getAppScrollContainer(scrollContainerRef);
       if (el) setVisible(el.scrollTop > threshold);
       else setVisible(window.scrollY > threshold);
     };
-    const el = scrollContainerRef?.current;
+    const el = getAppScrollContainer(scrollContainerRef);
     const target = el ?? window;
     target.addEventListener("scroll", onScroll, { passive: true });
     onScroll();

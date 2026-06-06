@@ -1,0 +1,56 @@
+/**
+ * Layout + focus toolbar điểm danh (chính thức + thời vụ).
+ * Một scroll trong #attendance-list-scroll-region; focus inset tránh vệt dọc khi overflow-x.
+ */
+#app-main-scroll:has(.attendance-list-viewport) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.attendance-list-viewport {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.attendance-list-scroll-region {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.attendance-toolbar-controls :is(button, input, select, textarea) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.attendance-toolbar-controls :is(button, input, select, textarea):focus {
+  outline: none;
+}
+
+.attendance-toolbar-controls
+  :is(input:not([type="file"]), select, textarea):focus-visible {
+  border-color: rgb(96 165 250);
+  box-shadow: inset 0 0 0 2px rgb(147 197 253 / 0.8);
+}
+
+.attendance-toolbar-controls button:focus-visible {
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.7);
+}
+
+.dark
+  .attendance-toolbar-controls
+  :is(input:not([type="file"]), select, textarea):focus-visible {
+  border-color: rgb(59 130 246);
+  box-shadow: inset 0 0 0 2px rgb(37 99 235 / 0.5);
+}
+
+.dark .attendance-toolbar-controls button:focus-visible {
+  box-shadow: inset 0 0 0 2px rgb(203 213 225 / 0.45);
+}

@@ -50,12 +50,11 @@ export function mergeAttendanceExcelIntoExistingRecord(
     if (field.startsWith("_excel")) return;
 
     if (field === "stt") {
-      if (
-        !hasAttendanceExcelCellValue(mergedEmp[sttTargetField]) &&
-        newEmp._excelHasStt
-      ) {
+      if (!newEmp._excelHasStt) return;
+      if (!hasAttendanceExcelCellValue(mergedEmp[sttTargetField])) {
         mergedEmp[sttTargetField] = newEmp.stt;
       }
+      if (seasonal) delete mergedEmp.stt;
       return;
     }
 
@@ -130,6 +129,19 @@ export function mergeAttendanceExcelUploadIntoDaySnapshot(
       uploadedCount++;
     }
   });
+
+  if (seasonal) {
+    for (const [key, rec] of Object.entries(mergedData)) {
+      if (!rec || typeof rec !== "object") continue;
+      if (
+        !hasAttendanceExcelCellValue(rec.sttThoiVu) &&
+        hasAttendanceExcelCellValue(rec.stt)
+      ) {
+        rec.sttThoiVu = rec.stt;
+      }
+      delete rec.stt;
+    }
+  }
 
   return { mergedData, uploadedCount, duplicateCount };
 }

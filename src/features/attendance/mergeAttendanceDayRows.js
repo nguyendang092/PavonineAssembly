@@ -1,5 +1,6 @@
 import { isAttendanceDayMetaKey } from "./attendanceDayMeta";
 import { sortEmployeesStableAsc } from "./attendanceListSort";
+import { normalizeSeasonalAttendanceRowForUi } from "./attendanceSeasonalStt";
 import { normalizeAttendanceDayRecord } from "./attendanceGioVaoTypeOptions";
 import {
   ATTENDANCE_DAY_UI_ROW_KEYS,
@@ -40,9 +41,12 @@ export function reconcileAttendanceDayRowsFromRaw(
   const arr = [];
   for (const [id, emp] of Object.entries(rawData)) {
     if (isAttendanceDayMetaKey(id)) continue;
-    const next = normalizeAttendanceDayRecord(
+    let next = normalizeAttendanceDayRecord(
       sanitizeAttendanceDayNodeForUi(emp, id),
     );
+    if (seasonal) {
+      next = normalizeSeasonalAttendanceRowForUi(next);
+    }
     const prior = prevById.get(id);
     arr.push(
       prior && attendanceDayRowSnapshotEqual(prior, next) ? prior : next,

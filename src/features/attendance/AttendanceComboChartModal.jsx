@@ -25,6 +25,10 @@ import {
   getAttendanceComboBarFillForMetricKey,
   formatAttendanceLeaveTypeColumnForEmployee,
 } from "./attendanceGioVaoTypeOptions";
+import {
+  isSeasonalAttendanceRoot,
+  resolveAttendanceDisplayStt,
+} from "./attendanceSeasonalStt";
 import "../dashboard/dashboard.css";
 
 function AttendanceComboChartModal({
@@ -50,9 +54,11 @@ function AttendanceComboChartModal({
   setComboStatDetailKey,
   comboStatLabelByKey,
   comboStatEmployeesByKey,
+  attendanceRootPath = "attendance",
   compareEmployeesBusy = false,
   onCompareEmployees,
 }) {
+  const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
   const detailTableCaptureRef = React.useRef(null);
 
   /** Cùng một tập key cho ô KPI và cột Bar — tránh SX: KPI chi tiết nhưng chart chỉ 3 chỉ số chung. */
@@ -188,7 +194,8 @@ function AttendanceComboChartModal({
       };
       detailEmployees.forEach((emp, idx) => {
         ws.addRow([
-          idx + 1,
+          resolveAttendanceDisplayStt(emp, idx + 1, isSeasonalAttendance) ??
+            idx + 1,
           emp.mnv ?? "",
           emp.hoVaTen ?? "",
           emp.boPhan ?? "",
@@ -652,7 +659,11 @@ function AttendanceComboChartModal({
                               className="odd:bg-white even:bg-sky-50/90 transition-colors hover:bg-amber-50/80 dark:odd:bg-slate-900 dark:even:bg-slate-800/90 dark:hover:bg-slate-700/80"
                             >
                               <td className="bg-sky-100/50 px-1 py-2 text-center text-sm font-bold tabular-nums text-sky-800 sm:px-2 sm:py-3 sm:text-base dark:bg-sky-950/50 dark:text-sky-200">
-                                {idx + 1}
+                                {resolveAttendanceDisplayStt(
+                                  emp,
+                                  idx + 1,
+                                  isSeasonalAttendance,
+                                ) ?? idx + 1}
                               </td>
                               <td className="px-1.5 py-2 sm:px-3 sm:py-3">
                                 <span className="inline-block rounded-md bg-indigo-100 px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums text-indigo-900 sm:px-2 sm:text-sm dark:bg-indigo-950/80 dark:text-indigo-200">

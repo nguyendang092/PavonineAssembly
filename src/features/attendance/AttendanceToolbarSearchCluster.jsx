@@ -91,8 +91,6 @@ function AttendanceToolbarSearchCluster() {
       searchTerm={searchTerm}
       onSearchChange={setSearchTerm}
       searchPlaceholder={t("attendanceList.searchPlaceholder")}
-      layout="three"
-      showSearchOnDesktop
     >
       {isSeasonalAttendanceRoot(attendanceRootPath) ? (
         <SeasonalKpStreakNotification

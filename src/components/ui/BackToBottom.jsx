@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FaArrowCircleDown } from "react-icons/fa";
-import { scrollAppToBottom } from "@/utils/appScroll";
+import { getAppScrollContainer, scrollAppToBottom } from "@/utils/appScroll";
 
 export default function BackToBottom({
   threshold = 100,
@@ -20,7 +20,7 @@ export default function BackToBottom({
       return;
     }
     const onScroll = () => {
-      const el = scrollContainerRef?.current;
+      const el = getAppScrollContainer(scrollContainerRef);
       if (el) {
         const max = Math.max(0, el.scrollHeight - el.clientHeight);
         setVisible(el.scrollTop < max - threshold);
@@ -35,7 +35,7 @@ export default function BackToBottom({
         setVisible(window.scrollY < docMax - threshold);
       }
     };
-    const el = scrollContainerRef?.current;
+    const el = getAppScrollContainer(scrollContainerRef);
     const target = el ?? window;
     target.addEventListener("scroll", onScroll, { passive: true });
     onScroll();

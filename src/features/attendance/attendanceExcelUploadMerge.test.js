@@ -27,6 +27,35 @@ describe("mergeAttendanceExcelIntoExistingRecord", () => {
     );
     expect(merged.stt).toBe(5);
   });
+
+  it("seasonal: keeps existing sttThoiVu when Firebase already has STT", () => {
+    const merged = mergeAttendanceExcelIntoExistingRecord(
+      { mnv: "123", sttThoiVu: 99, stt: 55 },
+      { stt: 5, _excelHasStt: true },
+      { seasonal: true },
+    );
+    expect(merged.sttThoiVu).toBe(99);
+    expect(merged.stt).toBeUndefined();
+  });
+
+  it("seasonal: writes sttThoiVu when Firebase STT empty and Excel has STT", () => {
+    const merged = mergeAttendanceExcelIntoExistingRecord(
+      { mnv: "123" },
+      { stt: 5, _excelHasStt: true },
+      { seasonal: true },
+    );
+    expect(merged.sttThoiVu).toBe(5);
+    expect(merged.stt).toBeUndefined();
+  });
+
+  it("official: keeps existing STT when Firebase already has STT", () => {
+    const merged = mergeAttendanceExcelIntoExistingRecord(
+      { mnv: "123", stt: 99 },
+      { stt: 5, _excelHasStt: true },
+      { seasonal: false },
+    );
+    expect(merged.stt).toBe(99);
+  });
 });
 
 describe("mergeAttendanceExcelUploadIntoDaySnapshot", () => {

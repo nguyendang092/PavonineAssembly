@@ -20,6 +20,7 @@ import {
   attendanceMnvStorageKey,
 } from "@/utils/attendanceEmployeeRecord";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
 
 function trimCell(value) {
   return value === undefined || value === null ? "" : String(value).trim();
@@ -188,6 +189,7 @@ export const handleUploadExcel = async ({
 
     // Prepare data for Firebase — cùng nhánh với trang đang mở (chính thức / thời vụ)
     const attendanceRef = ref(db, `${attendanceRootPath}/${selectedDate}`);
+    const seasonalUpload = isSeasonalAttendanceRoot(attendanceRootPath);
     const dataToUpload = {};
 
     dataRows.forEach((row, index) => {
@@ -240,7 +242,10 @@ export const handleUploadExcel = async ({
         mnv: normalizedMNV,
         mvt: trimCell(mvt),
         hoVaTen: trimCell(hoVaTen),
-        gioiTinh: trimCell(gioiTinh),
+        gioiTinh: seasonalUpload
+          ? normalizeAttendanceGioiTinhValue(trimCell(gioiTinh)) ||
+            trimCell(gioiTinh)
+          : trimCell(gioiTinh),
         ngayVaoLam: normalizeDate(ngayVaoLamRaw),
         ...(ngayHopDongParsed ? { ngayHopDong: ngayHopDongParsed } : {}),
         maBoPhan: trimCell(maBoPhan),

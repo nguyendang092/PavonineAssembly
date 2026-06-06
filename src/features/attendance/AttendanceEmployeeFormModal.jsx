@@ -26,6 +26,7 @@ import {
   normalizeBoPhanChuaDungForForm,
 } from "@/features/attendance/attendanceDayMeta";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
 import {
   normalizeTimeForHtmlInput,
   canonicalAttendanceLoaiPhep,
@@ -171,6 +172,10 @@ export default function AttendanceEmployeeFormModal({
       );
       if (isSeasonalAttendanceRoot(attendanceRootPath)) {
         merged.stt = merged.sttThoiVu ?? "";
+        merged.gioiTinh =
+          normalizeAttendanceGioiTinhValue(merged.gioiTinh) ||
+          merged.gioiTinh ||
+          "YES";
       }
       setForm(merged);
       setEditAttendanceKey(initialRecord.id);
@@ -189,6 +194,10 @@ export default function AttendanceEmployeeFormModal({
       );
       if (isSeasonalAttendanceRoot(attendanceRootPath)) {
         merged.stt = merged.sttThoiVu ?? "";
+        merged.gioiTinh =
+          normalizeAttendanceGioiTinhValue(merged.gioiTinh) ||
+          merged.gioiTinh ||
+          "YES";
       }
       setForm(merged);
       setEditAttendanceKey(null);
@@ -585,8 +594,16 @@ export default function AttendanceEmployeeFormModal({
                 disabled={isRestrictedEdit}
                 className={employeeModalSelectFieldClass}
               >
-                <option value="YES">{t("attendanceList.female")}</option>
-                <option value="NO">{t("attendanceList.male")}</option>
+                <option value="YES">
+                  {isSeasonalAttendance
+                    ? tl("femaleLabel", "Nữ")
+                    : t("attendanceList.female")}
+                </option>
+                <option value="NO">
+                  {isSeasonalAttendance
+                    ? tl("maleLabel", "Nam")
+                    : t("attendanceList.male")}
+                </option>
               </select>
             </div>
             <div className="min-w-0">
