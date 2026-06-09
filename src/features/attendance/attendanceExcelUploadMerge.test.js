@@ -117,6 +117,52 @@ describe("mergeAttendanceExcelUploadIntoDaySnapshot", () => {
     expect(mergedData.emp_12.hoVaTen).toBe("X");
   });
 
+  it("clears loaiPhep when second upload adds gioVao clock time", () => {
+    const existing = {
+      emp_123: {
+        id: "emp_123",
+        mnv: "123",
+        hoVaTen: "Nguyễn A",
+        loaiPhep: "Phép năm",
+        gioVao: "",
+      },
+    };
+    const upload = {
+      emp_123: {
+        id: "emp_123",
+        mnv: "123",
+        gioVao: "07:30",
+        loaiPhep: "",
+        gioiTinh: "YES",
+      },
+    };
+    const { mergedData } = mergeAttendanceExcelUploadIntoDaySnapshot(
+      existing,
+      upload,
+    );
+    expect(mergedData.emp_123.gioVao).toBe("07:30");
+    expect(mergedData.emp_123.loaiPhep).toBe("");
+  });
+
+  it("keeps 1/2PN when upload adds gioVao clock time", () => {
+    const merged = mergeAttendanceExcelIntoExistingRecord(
+      { mnv: "123", loaiPhep: "1/2 Phép năm", gioVao: "" },
+      { mnv: "123", gioVao: "07:30", loaiPhep: "" },
+    );
+    expect(merged.gioVao).toBe("07:30");
+    expect(merged.loaiPhep).toBe("1/2 Phép năm");
+  });
+
+  it("clears gioVao when upload adds loaiPhep while Firebase had clock time", () => {
+    const merged = mergeAttendanceExcelIntoExistingRecord(
+      { mnv: "123", gioVao: "08:00", gioRa: "17:00", loaiPhep: "" },
+      { mnv: "123", loaiPhep: "Phép năm", gioVao: "" },
+    );
+    expect(merged.loaiPhep).toBe("Phép năm");
+    expect(merged.gioVao).toBe("");
+    expect(merged.gioRa).toBe("");
+  });
+
   it("strips _excel internal fields from payload", () => {
     const { mergedData } = mergeAttendanceExcelUploadIntoDaySnapshot(
       {},

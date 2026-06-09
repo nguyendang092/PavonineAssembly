@@ -18,6 +18,7 @@ import {
   textMatchesAttendanceBuGioCongAlias,
   textMatchesFuneralLeave,
 } from "./attendanceGioVaoTypeOptions";
+import { isBoPhanChuaDung } from "./attendanceDayMeta";
 import { isNightShiftCaLamViec } from "./attendanceWorkingHours";
 
 export const normalizeTextValue = (value) => String(value ?? "").trim();
@@ -198,5 +199,7 @@ export function getAttendanceComboFlags(emp) {
     recuperationLeave,
     resignedLeave:
       isResignedLeave || typeHitKeys.has("resignedLeave"),
+    /** Kiểm tra bộ phận — `boPhanChuaDung` = YES trên Firebase */
+    wrongDepartment: isBoPhanChuaDung(emp.boPhanChuaDung),
   };
 }

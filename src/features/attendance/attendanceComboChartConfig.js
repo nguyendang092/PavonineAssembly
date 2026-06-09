@@ -24,6 +24,7 @@ export const COMBO_CHART_METRIC_KEYS = [
   "unpaidLeave",
   "sickLeave",
   "resignedLeave",
+  "wrongDepartment",
 ];
 
 /** Nhãn mặc định (tl key = cùng tên field). */
@@ -45,6 +46,7 @@ export const COMBO_STAT_LABEL_DEFAULTS = {
   unpaidLeave: "Không lương",
   sickLeave: "Phép ốm",
   resignedLeave: "Nghỉ việc",
+  wrongDepartment: "Sai bộ phận",
 };
 
 /**
@@ -52,6 +54,7 @@ export const COMBO_STAT_LABEL_DEFAULTS = {
  * Sản xuất: tổng nhân viên + chấm công (rộng), giờ vào lệch / # HH:MM.
  */
 export const COMBO_DASHBOARD_TILE_KEYS_HR = [
+  "wrongDepartment",
   "buGioCong",
   "late",
   "nightShift",
@@ -72,6 +75,7 @@ export const COMBO_DASHBOARD_TILE_KEYS_PRODUCTION = [
   "checkedIn",
   "nonStandardTimeIn",
   "timeInHashHHMM",
+  "wrongDepartment",
 ];
 
 /** Nhóm Sản xuất (thống kê): chấm công + chi tiết từng loại phép / chỉ số như HR. */
@@ -226,6 +230,7 @@ export function applyProductionStatsRowOrder(
 
 /** Ô KPI: chỉ hiện khi đếm > 0 — màu số dùng `getAttendanceLeaveTypeColorClassNameForComboStatKey`. */
 export const COMBO_DASHBOARD_TILES = [
+  { key: "wrongDepartment", tlKey: "wrongDepartment" },
   { key: "checkedIn", tlKey: "checkedIn" },
   { key: "buGioCong", tlKey: "buGioCong" },
   { key: "nonStandardTimeIn", tlKey: "nonStandardTimeIn" },

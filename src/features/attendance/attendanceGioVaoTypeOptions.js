@@ -493,10 +493,33 @@ export function applyLegacyGioVaoLeaveMigration(emp) {
 }
 
 /**
+ * Đồng bộ `gioVao` (giờ HH:MM) và `loaiPhep` — cùng quy tắc form sửa điểm danh.
+ * Tránh lệch sau upload lần 2: lần 1 chỉ loại phép, lần 2 thêm giờ vào.
+ */
+export function reconcileAttendanceGioVaoLoaiPhep(emp) {
+  if (emp == null || typeof emp !== "object") return emp;
+  const gioVao = String(emp.gioVao ?? "").trim();
+  const loaiPhep = String(emp.loaiPhep ?? "").trim();
+
+  if (isAttendanceGioVaoClockTime(gioVao)) {
+    if (loaiPhep && !isAttendanceHalfAnnualLeave(loaiPhep)) {
+      return { ...emp, loaiPhep: "" };
+    }
+    return emp;
+  }
+
+  if (loaiPhep && !isAttendanceHalfAnnualLeave(loaiPhep)) {
+    return { ...emp, gioVao: "", gioRa: "" };
+  }
+
+  return emp;
+}
+
+/**
  * Chuẩn hóa node điểm danh/ngày: alias → `value` chuẩn (`loaiPhep`);
  * gỡ text loại phép khỏi `gioVao`; ghi chú → `loaiPhep` khi trống.
  */
-export function normalizeAttendanceDayRecord(emp) {
+export function normalizeAttendanceDayRecord(emp, options = {}) {
   if (emp == null || typeof emp !== "object") return emp;
   let next = applyLegacyGioVaoLeaveMigration(emp);
   if (!String(next.loaiPhep ?? "").trim()) {
@@ -514,6 +537,9 @@ export function normalizeAttendanceDayRecord(emp) {
     if (canon !== String(next.loaiPhep ?? "").trim()) {
       next = { ...next, loaiPhep: canon };
     }
+  }
+  if (options.reconcileGioVaoLoaiPhep !== false) {
+    next = reconcileAttendanceGioVaoLoaiPhep(next);
   }
   return next;
 }
@@ -733,6 +759,8 @@ export function getAttendanceLeaveTypeColorClassNameForComboStatKey(metricKey) {
       return "text-orange-600 dark:text-orange-400";
     case "nightShift":
       return "text-indigo-600 dark:text-indigo-400";
+    case "wrongDepartment":
+      return "text-rose-600 dark:text-rose-400";
     default:
       return "text-slate-600 dark:text-slate-400";
   }
@@ -755,6 +783,8 @@ export function getAttendanceLeaveTypeBadgeClassNameForComboStatKey(metricKey) {
       return "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800";
     case "nightShift":
       return "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800";
+    case "wrongDepartment":
+      return "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800";
     default:
       return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600";
   }
@@ -782,6 +812,8 @@ export function getAttendanceComboBarFillForMetricKey(metricKey) {
       return "#f97316";
     case "nightShift":
       return "#6366f1";
+    case "wrongDepartment":
+      return "#e11d48";
     default:
       return "#94a3b8";
   }
