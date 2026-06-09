@@ -1,29 +1,10 @@
 /**
- * Layout + focus toolbar điểm danh (chính thức + thời vụ).
- * Một scroll trong #attendance-list-scroll-region; focus inset tránh vệt dọc khi overflow-x.
+ * Focus toolbar điểm danh — inset tránh vệt dọc khi overflow-x.
  */
-#app-main-scroll:has(.attendance-list-viewport) {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
 
 .attendance-list-viewport {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
   width: 100%;
   max-width: none;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.attendance-list-scroll-region {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .attendance-toolbar-controls :is(button, input, select, textarea) {

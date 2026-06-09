@@ -799,20 +799,15 @@ const AttendanceList = memo(function AttendanceList({
                 </div>
               </AttendanceListFilteredDataBranchContext.Provider>
             </div>
-            <div
-              id="attendance-list-scroll-region"
-              className="attendance-list-scroll-region"
+            <AttendanceListContentBranchContext.Provider
+              value={contentBranchValue}
             >
-              <AttendanceListContentBranchContext.Provider
-                value={contentBranchValue}
+              <AttendanceListComboBranchContext.Provider
+                value={comboBranchValue}
               >
-                <AttendanceListComboBranchContext.Provider
-                  value={comboBranchValue}
-                >
-                  <AttendanceListContentSection />
-                </AttendanceListComboBranchContext.Provider>
-              </AttendanceListContentBranchContext.Provider>
-            </div>
+                <AttendanceListContentSection />
+              </AttendanceListComboBranchContext.Provider>
+            </AttendanceListContentBranchContext.Provider>
           </AttendanceListToolbarBranchContext.Provider>
         </AttendanceListSearchBranchContext.Provider>
       </div>

@@ -6,7 +6,6 @@
  */
 
 const APP_MAIN_SCROLL_ID = "app-main-scroll";
-const ATTENDANCE_LIST_SCROLL_ID = "attendance-list-scroll-region";
 
 /** Thời gian một lần cuộn (ms) — tăng để chậm hơn */
 const SCROLL_ANIMATION_DURATION_MS = 2000;
@@ -25,8 +24,6 @@ function easeOutCubic(t) {
 }
 
 function resolveMainScrollEl(scrollContainerRef) {
-  const attendanceScroll = document.getElementById(ATTENDANCE_LIST_SCROLL_ID);
-  if (attendanceScroll?.isConnected) return attendanceScroll;
   const fromRef = scrollContainerRef?.current;
   if (fromRef && fromRef.isConnected) return fromRef;
   return document.getElementById(APP_MAIN_SCROLL_ID);
@@ -55,7 +52,7 @@ function runScrollAnimation(durationMs, onFrame, onComplete) {
   requestAnimationFrame(frame);
 }
 
-/** Vùng scroll đang dùng (điểm danh → `#attendance-list-scroll-region`, còn lại → main). */
+/** Vùng scroll chính (`#app-main-scroll`). */
 export function getAppScrollContainer(scrollContainerRef) {
   return resolveMainScrollEl(scrollContainerRef);
 }

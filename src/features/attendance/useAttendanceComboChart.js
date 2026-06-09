@@ -313,22 +313,16 @@ export function useAttendanceComboChart({
     const html = document.documentElement;
     const body = document.body;
     const mainScroll = document.getElementById("app-main-scroll");
-    const attendanceScroll = document.getElementById(
-      "attendance-list-scroll-region",
-    );
     const prevHtmlOverflow = html.style.overflow;
     const prevBodyOverflow = body.style.overflow;
     const prevMainOverflow = mainScroll?.style.overflow ?? "";
-    const prevAttendanceOverflow = attendanceScroll?.style.overflow ?? "";
     html.style.overflow = "hidden";
     body.style.overflow = "hidden";
     if (mainScroll) mainScroll.style.overflow = "hidden";
-    if (attendanceScroll) attendanceScroll.style.overflow = "hidden";
     return () => {
       html.style.overflow = prevHtmlOverflow;
       body.style.overflow = prevBodyOverflow;
       if (mainScroll) mainScroll.style.overflow = prevMainOverflow;
-      if (attendanceScroll) attendanceScroll.style.overflow = prevAttendanceOverflow;
     };
   }, [showComboChartModal]);
 
