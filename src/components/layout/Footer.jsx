@@ -71,8 +71,8 @@ const Footer = () => {
               <ul className="mt-3 space-y-2 text-sm font-bold text-slate-800 uppercase dark:text-stone-50">
                 <li>• Phụ cấp</li>
                 <ul className="mt-3 ml-4 space-y-2 text-xs font-medium text-slate-700 uppercase dark:text-stone-50">
-                  <li>• Phụ cấp chuyên cần: 600,000</li>
-                  <li>• Phụ cấp xăng xe: 300,000</li>
+                  <li>• Phụ cấp chuyên cần: 1,200,000</li>
+                  <li>• Phụ cấp xăng xe: 500,000</li>
                   <li>• Phụ cấp nhà ở: 250,000</li>
                   <li>• Thuở̛ng thâm niên: 100,000/năm</li>
                   <li>• Mừng sinh nhật 300,000</li>
