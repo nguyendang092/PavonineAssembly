@@ -288,9 +288,6 @@ export default function AttendanceEmployeeFormModal({
     [form.gioVao],
   );
 
-  /** Có giờ vào → khóa loại phép (1/2PN vẫn giữ trên form nếu chọn trước). */
-  const loaiPhepDisabled = hasClockInTime;
-
   /** Có loại phép (trừ 1/2PN) → khóa giờ vào & giờ ra. */
   const clockTimesDisabled = useMemo(() => {
     const lp = String(form.loaiPhep ?? "").trim();
@@ -768,11 +765,7 @@ export default function AttendanceEmployeeFormModal({
             <select
               value={String(form.loaiPhep ?? "").trim()}
               onChange={handleLoaiPhepSelect}
-              disabled={loaiPhepDisabled}
-              className={`${employeeModalSelectFieldClass}${
-                loaiPhepDisabled ? " cursor-not-allowed opacity-60" : ""
-              }`}
-              aria-disabled={loaiPhepDisabled}
+              className={employeeModalSelectFieldClass}
             >
               <option value="">
                 {tl("leaveTypePlaceholder", "— Không chọn —")}
@@ -793,12 +786,11 @@ export default function AttendanceEmployeeFormModal({
               ))}
             </select>
             <p className="mt-1.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
-              {loaiPhepDisabled
+              {hasClockInTime &&
+              !isAttendanceHalfAnnualLeave(form.loaiPhep)
                 ? tl(
-                    "loaiPhepDisabledWhenTimeIn",
-                    isAttendanceHalfAnnualLeave(form.loaiPhep)
-                      ? "Đã có giờ vào — xóa giờ vào để đổi loại phép (1/2PN đang giữ)."
-                      : "Đã có giờ vào — xóa giờ vào để chọn loại phép.",
+                    "loaiPhepClearsTimeInOnSelect",
+                    "Đã có giờ vào — chọn loại phép (trừ 1/2PN) sẽ xóa giờ vào/ra khi lưu.",
                   )
                 : tl("loaiPhepModalHint", "Chọn loại phép (PN, PO, TS …)")}
             </p>

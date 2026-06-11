@@ -406,19 +406,29 @@ export function buildEmployeeAttendanceDayDocument({
     hoVaTen: attendanceDayOptionalStringFromForm(form, "hoVaTen"),
     boPhan: attendanceDayOptionalStringFromForm(form, "boPhan"),
     gioVao: (() => {
+      if (!Object.prototype.hasOwnProperty.call(form, "loaiPhep")) {
+        return attendanceDayOptionalStringFromForm(form, "gioVao");
+      }
       const s = attendanceDayOptionalStringFromForm(form, "loaiPhep");
       const canon = s ? canonicalAttendanceLoaiPhepValue(s) : undefined;
       if (canon && !isAttendanceHalfAnnualLeave(canon)) return "";
       return attendanceDayOptionalStringFromForm(form, "gioVao");
     })(),
     loaiPhep: (() => {
-      const gv = attendanceDayOptionalStringFromForm(form, "gioVao");
+      if (!Object.prototype.hasOwnProperty.call(form, "loaiPhep")) {
+        return undefined;
+      }
       const s = attendanceDayOptionalStringFromForm(form, "loaiPhep");
-      const canon = s ? canonicalAttendanceLoaiPhepValue(s) : undefined;
+      if (!s) return "";
+      const canon = canonicalAttendanceLoaiPhepValue(s);
+      if (canon && !isAttendanceHalfAnnualLeave(canon)) {
+        return canon;
+      }
+      const gv = attendanceDayOptionalStringFromForm(form, "gioVao");
       if (gv && isAttendanceGioVaoClockTime(gv)) {
         return canon && isAttendanceHalfAnnualLeave(canon) ? canon : undefined;
       }
-      return canon;
+      return canon || "";
     })(),
     gioRa: (() => {
       const s = attendanceDayOptionalStringFromForm(form, "loaiPhep");

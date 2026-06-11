@@ -248,7 +248,8 @@ function MCDefectReportTopChartsSection({
               <XAxis
                 dataKey="date"
                 height={spansMultipleMonths ? 48 : 32}
-                interval="preserveStartEnd"
+                interval={0}
+                minTickGap={0}
                 tick={dateAxisTick}
               />
               <YAxis allowDecimals={false} tick={axisTickStyle} />

@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   attendanceFirebaseKeyFromMnv,
   attendanceMnvStorageKey,
+  buildEmployeeAttendanceDayDocument,
+  formSliceForAttendanceDayDocument,
+  mergeAttendanceDayNodeForPersist,
   resolveAttendanceFormPersistTarget,
 } from "./attendanceEmployeeRecord";
 
@@ -73,5 +76,56 @@ describe("resolveAttendanceFormPersistTarget", () => {
     expect(
       resolveAttendanceFormPersistTarget({ storageKey: "   " }),
     ).toBeNull();
+  });
+});
+
+function simulateFormSave({ existingRaw, form, isSeasonal = true, recordId = "emp_1" }) {
+  const dayDoc = buildEmployeeAttendanceDayDocument({
+    form: formSliceForAttendanceDayDocument(form, {
+      businessId: form.mnv,
+      loaiPhep: form.loaiPhep ?? "",
+      ...(isSeasonal ? { sttThoiVu: form.stt } : {}),
+    }),
+    existing: existingRaw,
+    isSeasonal,
+  });
+  return mergeAttendanceDayNodeForPersist(existingRaw, dayDoc, recordId);
+}
+
+describe("buildEmployeeAttendanceDayDocument loaiPhep (form save)", () => {
+  const baseForm = {
+    mnv: "1",
+    stt: "5",
+    hoVaTen: "Test",
+    boPhan: "A",
+    gioVao: "",
+    gioRa: "",
+    loaiPhep: "Phép năm",
+    caLamViec: "S1",
+  };
+
+  it("persists new loaiPhep when Firebase still has gioVao clock on form", () => {
+    const saved = simulateFormSave({
+      existingRaw: { mnv: "1", gioVao: "08:00", loaiPhep: "" },
+      form: { ...baseForm, gioVao: "08:00", loaiPhep: "Phép năm" },
+    });
+    expect(saved.loaiPhep).toBe("Phép năm");
+    expect(saved.gioVao).toBe("");
+  });
+
+  it("changes loaiPhep KP → PO on seasonal row", () => {
+    const saved = simulateFormSave({
+      existingRaw: { mnv: "1", loaiPhep: "Không phép", gioVao: "" },
+      form: { ...baseForm, loaiPhep: "Phép ốm" },
+    });
+    expect(saved.loaiPhep).toBe("Phép ốm");
+  });
+
+  it("clears loaiPhep when user selects empty option", () => {
+    const saved = simulateFormSave({
+      existingRaw: { mnv: "1", loaiPhep: "Phép năm", gioVao: "" },
+      form: { ...baseForm, loaiPhep: "" },
+    });
+    expect(saved.loaiPhep).toBe("");
   });
 });
