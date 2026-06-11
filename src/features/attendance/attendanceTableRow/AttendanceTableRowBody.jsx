@@ -16,6 +16,7 @@ import {
   formatPayrollTableTotalNightGcCell,
   formatPayrollTableWorkingHoursCell,
 } from "../attendanceWorkingHours";
+import { employeeRegimeWorkingHoursFlags } from "../employeeRegime";
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
 import { isBoPhanChuaDung } from "../attendanceDayMeta";
 import { resolveAttendanceDisplayStt } from "../attendanceSeasonalStt";
@@ -53,18 +54,12 @@ function AttendanceTableRow({
   const isPayroll = tableVariant === "payroll";
   const payrollOffLike = isOffDay || isHolidayDay || isCompensatoryDay;
   const strictOffDay = isOffDay || isCompensatoryDay;
-  const legacyIncludeTsNvInWorkingHours =
-    String(emp.includeTsNvInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES";
-  const includeTapVuInWorkingHours =
-    String(emp.includeTapVuInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
-  const includeThaiSanInWorkingHours =
-    String(emp.includeThaiSanInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
+  const {
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
+  } = employeeRegimeWorkingHoursFlags(emp);
   const isMinimal = columnPlan === "minimal";
   /** Bảng lương: cỡ nhỏ hơn ô MNV; `payroll-tight-time` + payrollTableCompact.css */
   const payrollTimeShiftFont = isPayroll
@@ -542,6 +537,8 @@ function AttendanceTableRow({
                 emp.loaiPhep,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                includeTaiXeInWorkingHours,
+                includeTaiXeTongInWorkingHours,
               )}
             </span>
           </Cell>
@@ -570,6 +567,8 @@ function AttendanceTableRow({
                 emp.payrollLateOtExcluded,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                includeTaiXeInWorkingHours,
+                includeTaiXeTongInWorkingHours,
                 isCompensatoryDay,
               )}
             </span>
@@ -596,6 +595,8 @@ function AttendanceTableRow({
                 emp.payrollLateOtExcluded,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                includeTaiXeInWorkingHours,
+                includeTaiXeTongInWorkingHours,
               )}
             </span>
           </Cell>
@@ -624,6 +625,8 @@ function AttendanceTableRow({
                 emp.payrollLateOtExcluded,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                includeTaiXeInWorkingHours,
+                includeTaiXeTongInWorkingHours,
               )}
             </span>
           </Cell>
@@ -650,6 +653,8 @@ function AttendanceTableRow({
                 emp.payrollLateOtExcluded,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                includeTaiXeInWorkingHours,
+                includeTaiXeTongInWorkingHours,
               )}
             </span>
           </Cell>
@@ -676,6 +681,8 @@ function AttendanceTableRow({
                 emp.loaiPhep,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                includeTaiXeInWorkingHours,
+                includeTaiXeTongInWorkingHours,
               )}
             </span>
           </Cell>
@@ -702,6 +709,8 @@ function AttendanceTableRow({
                 emp.loaiPhep,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                includeTaiXeInWorkingHours,
+                includeTaiXeTongInWorkingHours,
               )}
             </span>
           </Cell>
@@ -728,6 +737,8 @@ function AttendanceTableRow({
                 emp.loaiPhep,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                includeTaiXeInWorkingHours,
+                includeTaiXeTongInWorkingHours,
               )}
             </span>
           </Cell>
@@ -754,6 +765,8 @@ function AttendanceTableRow({
                 emp.loaiPhep,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                includeTaiXeInWorkingHours,
+                includeTaiXeTongInWorkingHours,
               )}
             </span>
           </Cell>
@@ -777,6 +790,8 @@ function AttendanceTableRow({
                 emp.loaiPhep,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
+                includeTaiXeInWorkingHours,
+                includeTaiXeTongInWorkingHours,
               )}
             </span>
           </Cell>

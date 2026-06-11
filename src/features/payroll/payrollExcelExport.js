@@ -17,6 +17,7 @@ import {
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
 
 /** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 25 cột bảng. */
 const PAYROLL_EXCEL_COL_COUNT = 28;
@@ -170,16 +171,12 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
         Boolean(isHolidayDay) ||
         Boolean(isCompensatoryDay);
   const strictOff = Boolean(isOffDay) || Boolean(isCompensatoryDay);
-  const legacyIncludeTsNvInWorkingHours =
-    String(emp.includeTsNvInWorkingHours ?? "").trim().toUpperCase() === "YES";
-  const includeTapVuInWorkingHours =
-    String(emp.includeTapVuInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
-  const includeThaiSanInWorkingHours =
-    String(emp.includeThaiSanInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
+  const {
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
+  } = employeeRegimeWorkingHoursFlags(emp);
   const stt =
     emp.stt != null && String(emp.stt).trim() !== "" ? emp.stt : idx + 1;
   return [
@@ -206,6 +203,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.loaiPhep,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     ),
     formatPayrollTableDayShiftOvertimeCell(
       emp.gioVao,
@@ -217,6 +216,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       lateOtExcludedById[emp.id],
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
       isCompensatoryDay,
     ),
     formatPayrollTableOffDayTcCell(
@@ -229,6 +230,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       lateOtExcludedById[emp.id],
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     ),
     formatPayrollTableHolidayDayWorkingCell(
       emp.gioVao,
@@ -240,6 +243,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       lateOtExcludedById[emp.id],
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     ),
     formatPayrollTableTotalDayGcCell(
       emp.gioVao,
@@ -252,6 +257,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       lateOtExcludedById[emp.id],
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     ),
     formatPayrollTableNightShiftWorkingCell(
       emp.gioVao,
@@ -261,6 +268,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.loaiPhep,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     ),
     formatPayrollTableNightShiftOvertimeCell(
       emp.gioVao,
@@ -270,6 +279,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.loaiPhep,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     ),
     formatPayrollTableNightShiftOffDayWorkingCell(
       emp.gioVao,
@@ -279,6 +290,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.loaiPhep,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     ),
     formatPayrollTableHolidayNightWorkingCell(
       emp.gioVao,
@@ -288,6 +301,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.loaiPhep,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     ),
     formatPayrollTableTotalNightGcCell(
       emp.gioVao,
@@ -297,6 +312,8 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       emp.loaiPhep,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     ),
   ];
 }

@@ -5,7 +5,10 @@ import {
   getNightShiftPayrollOvertimeHours,
   getNightShiftPayrollRegularHoursAndOtMinutes,
   getOvertimeHoursFromGioRa,
+  getAttendanceWorkingHoursHours,
   getPayrollDayOvertimeHoursNumeric,
+  getTaiXeOvertimeHoursFromGioRa,
+  isEarlyArrivalFor0600PaperworkOvertime,
   isNightShiftCaLamViec,
 } from "@/features/attendance/attendanceWorkingHours";
 
@@ -136,5 +139,68 @@ describe("hiển thị cột TC", () => {
         false,
       ),
     ).toBe("1");
+  });
+});
+
+describe("chế độ Tài xế / Tài xế tổng", () => {
+  it("GC: 07:00–19:00, chấm sớm coi từ 07:00", () => {
+    expect(
+      getAttendanceWorkingHoursHours(
+        "06:30",
+        "19:00",
+        "S1",
+        false,
+        false,
+        true,
+        false,
+      ),
+    ).toBe(8);
+    expect(
+      getAttendanceWorkingHoursHours(
+        "07:00",
+        "16:00",
+        "S1",
+        false,
+        false,
+        false,
+        true,
+      ),
+    ).toBe(8);
+  });
+
+  it("TC: sau 19:30, block 30 phút từ 19:00", () => {
+    expect(getTaiXeOvertimeHoursFromGioRa("19:30")).toBe(0);
+    expect(getTaiXeOvertimeHoursFromGioRa("20:00")).toBe(1);
+    expect(getTaiXeOvertimeHoursFromGioRa("21:00")).toBe(2);
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "07:00",
+        "21:00",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+      ),
+    ).toBe(2);
+  });
+});
+
+describe("isEarlyArrivalFor0600PaperworkOvertime", () => {
+  it("ca ngày: vào ≤ 06:40 đủ điều kiện giấy TC sớm", () => {
+    expect(isEarlyArrivalFor0600PaperworkOvertime("06:40", "S1")).toBe(true);
+    expect(isEarlyArrivalFor0600PaperworkOvertime("06:00", "S1")).toBe(true);
+  });
+
+  it("ca ngày: vào sau 06:40 không đủ điều kiện", () => {
+    expect(isEarlyArrivalFor0600PaperworkOvertime("06:41", "S1")).toBe(false);
+  });
+
+  it("ca đêm S2 không áp dụng", () => {
+    expect(isEarlyArrivalFor0600PaperworkOvertime("06:00", "S2")).toBe(false);
   });
 });

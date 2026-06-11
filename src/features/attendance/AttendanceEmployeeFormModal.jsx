@@ -32,6 +32,11 @@ import {
   canonicalAttendanceLoaiPhep,
   findGioVaoTypeOptionMatch,
 } from "./attendanceGioVaoModalHelpers";
+import {
+  EMPLOYEE_REGIME,
+  employeeRegimeFlagsFromSelectValue,
+  getEmployeeRegimeSelectValue,
+} from "./employeeRegime";
 
 /**
  * Map legacy `includeTsNvInWorkingHours` + chuẩn hóa `loaiPhep` khi mở form từ snapshot.
@@ -90,6 +95,8 @@ const EMPTY_EMPLOYEE_FORM = {
   boPhanChuaDung: "",
   includeTapVuInWorkingHours: "",
   includeThaiSanInWorkingHours: "",
+  includeTaiXeInWorkingHours: "",
+  includeTaiXeTongInWorkingHours: "",
 };
 
 const employeeModalFieldClass =
@@ -208,35 +215,13 @@ export default function AttendanceEmployeeFormModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initialRecord chỉ đọc khi formInitKey đổi; không deps object để tránh reset khi parent tạo {...emp} mới cùng id
   }, [open, formInitKey]);
 
-  const employeeRegimeSelectValue = (() => {
-    const tapOn =
-      String(form.includeTapVuInWorkingHours ?? "")
-        .trim()
-        .toUpperCase() === "YES";
-    const thaiOn =
-      String(form.includeThaiSanInWorkingHours ?? "")
-        .trim()
-        .toUpperCase() === "YES";
-    if (tapOn && thaiOn) return "";
-    if (tapOn) return "TAPVU";
-    if (thaiOn) return "THAISAN";
-    return "";
-  })();
-
-  const employeeRegimeBothOn =
-    String(form.includeTapVuInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" &&
-    String(form.includeThaiSanInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES";
+  const employeeRegimeSelectValue = getEmployeeRegimeSelectValue(form);
 
   const handleEmployeeRegimeChange = useCallback((e) => {
-    const v = e.target.value;
+    const flags = employeeRegimeFlagsFromSelectValue(e.target.value);
     setForm((prev) => ({
       ...prev,
-      includeTapVuInWorkingHours: v === "TAPVU" ? "YES" : "",
-      includeThaiSanInWorkingHours: v === "THAISAN" ? "YES" : "",
+      ...flags,
     }));
   }, []);
 
@@ -644,11 +629,17 @@ export default function AttendanceEmployeeFormModal({
                 <option value="">
                   {tl("employeeRegimePlaceholder", "— Chọn —")}
                 </option>
-                <option value="TAPVU">
+                <option value={EMPLOYEE_REGIME.TAPVU}>
                   {tl("employeeRegimeTapVu", "Tạp vụ")}
                 </option>
-                <option value="THAISAN">
+                <option value={EMPLOYEE_REGIME.THAISAN}>
                   {tl("employeeRegimeThaiSan", "Thai sản")}
+                </option>
+                <option value={EMPLOYEE_REGIME.TAIXE}>
+                  {tl("employeeRegimeTaiXe", "Tài xế")}
+                </option>
+                <option value={EMPLOYEE_REGIME.TAIXETONG}>
+                  {tl("employeeRegimeTaiXeTong", "Tài xế tổng")}
                 </option>
               </select>
             </div>

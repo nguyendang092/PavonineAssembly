@@ -1000,7 +1000,7 @@ const vi = {
       "Giờ vào–ra dạng HH:MM. Ca ngày: vào từ 06:00 đến trước 08:00 thì mốc tính là 08:00; vào trước 06:00 giữ giờ chấm thực. Giờ công = min(chênh lệch, 8h); ca đêm: xem cột GC/TC ca đêm.",
     dayShiftOvertimeHours: "Giờ công tăng ca (×1.5)",
     dayShiftOvertimeHoursHint:
-      "Ca ngày (không S2): giờ ra sau 17:30 — tính từ 17:00, 30 phút = 0,5 giờ. Vào ≤ 06:00 có thể +2h khi có giấy TC. Ca đêm: «-».",
+      "Ca ngày (không S2): giờ ra sau 17:30 — tính từ 17:00, 30 phút = 0,5 giờ. Vào ≤ 06:40 có thể +2h khi có giấy TC. Ca đêm: «-».",
     overtimeHours: "Giờ công tăng ca (x1.5)",
     overtimeHoursHint: "Đã thay bằng cột «TC ca ngày (×1.5)» trên bảng lương.",
     offDayOvertimeHours: "Giờ công ngày off (x2.0)",

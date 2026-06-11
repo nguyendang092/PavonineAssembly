@@ -189,6 +189,8 @@ const ATTENDANCE_EXTRA_KEYS = [
   "caLamViec",
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
+  "includeTaiXeInWorkingHours",
+  "includeTaiXeTongInWorkingHours",
   "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
   "mvt",
   "maBoPhan",
@@ -212,6 +214,8 @@ export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
   "boPhanChuaDung",
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
+  "includeTaiXeInWorkingHours",
+  "includeTaiXeTongInWorkingHours",
   "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
   "mvt",
   "maBoPhan",
@@ -239,6 +243,8 @@ export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
   "boPhanChuaDung",
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
+  "includeTaiXeInWorkingHours",
+  "includeTaiXeTongInWorkingHours",
   "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
   "chamCong",
   "phepNam",
@@ -454,6 +460,14 @@ export function buildEmployeeAttendanceDayDocument({
     includeThaiSanInWorkingHours: attendanceDayOptionalStringFromForm(
       form,
       "includeThaiSanInWorkingHours",
+    ),
+    includeTaiXeInWorkingHours: attendanceDayOptionalStringFromForm(
+      form,
+      "includeTaiXeInWorkingHours",
+    ),
+    includeTaiXeTongInWorkingHours: attendanceDayOptionalStringFromForm(
+      form,
+      "includeTaiXeTongInWorkingHours",
     ),
     includeTsNvInWorkingHours: attendanceDayOptionalStringFromForm(
       form,

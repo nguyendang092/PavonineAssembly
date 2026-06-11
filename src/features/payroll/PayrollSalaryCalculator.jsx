@@ -259,7 +259,7 @@ export default function PayrollSalaryCalculator() {
     return next;
   }, [employees, earlyOtMap, lateOtExcludedMap]);
 
-  /** Vào ≤ 06:00 (ca ngày) — vẫn hiện nút / modal khi ngày off (chỉ tắt tự mở popup). */
+  /** Vào ≤ 06:40 (ca ngày) — vẫn hiện nút / modal khi ngày off (chỉ tắt tự mở popup). */
   const earlyOtEligibleEmployees = useMemo(
     () =>
       sortEmployeesAscForPopup(
@@ -544,14 +544,20 @@ export default function PayrollSalaryCalculator() {
     const dateStr = new Date(selectedDate).toLocaleDateString(displayLocale);
     const base = tlPage("exportSheetTitle", "Bảng giờ công nhân viên");
     let suffix = "";
-    if (isHolidayDay)
-      suffix = ` (${tlPage("exportHolidaySuffix", "Ngày lễ")})`;
+    if (isHolidayDay) suffix = ` (${tlPage("exportHolidaySuffix", "Ngày lễ")})`;
     else if (isCompensatoryDay)
       suffix = ` (${tlPage("exportCompensatorySuffix", "Nghỉ bù")})`;
     else if (isOffDay)
       suffix = ` (${tlPage("exportOffDaySuffix", "Ngày off")})`;
     return `${base} — ${dateStr}${suffix}`;
-  }, [selectedDate, isOffDay, isHolidayDay, isCompensatoryDay, displayLocale, tlPage]);
+  }, [
+    selectedDate,
+    isOffDay,
+    isHolidayDay,
+    isCompensatoryDay,
+    displayLocale,
+    tlPage,
+  ]);
 
   const handleExportPayrollExcelRange = useCallback(
     async (rangeFrom, rangeTo) => {
@@ -792,7 +798,7 @@ export default function PayrollSalaryCalculator() {
                 className="h-8 shrink-0 rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-3 text-xs font-bold text-white shadow-md shadow-sky-600/25 transition hover:from-sky-400 hover:to-blue-500 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:hover:from-sky-500 dark:hover:to-blue-600"
                 title={tlPage(
                   "earlyOtPaperworkHint",
-                  "Xác nhận có giấy tăng ca khung 06:00–08:00 cho nhân viên vào ≤ 06:00 (ca ngày).",
+                  "Xác nhận có giấy tăng ca khung 06:00–08:00 cho nhân viên vào ≤ 06:40 (ca ngày).",
                 )}
               >
                 {tlPage("earlyOtPaperworkButton", "Xác nhận tăng ca")}
@@ -1058,7 +1064,7 @@ export default function PayrollSalaryCalculator() {
         title={tlPage("earlyOtModalTitle", "Xác nhận đăng ký tăng ca")}
         description={tlPage(
           "earlyOtModalDescription",
-          "Nhân viên có thời gian vào <= 06:00 sẽ phải có giấy đăng ký tăng ca để xác nhận là có tăng ca hay không.",
+          "Nhân viên có thời gian vào <= 06:40 sẽ phải có giấy đăng ký tăng ca để xác nhận là có tăng ca hay không.",
         )}
         saveLabel={tlPage("earlyOtModalSave", "Lưu")}
         skipAllLabel={tlPage(
@@ -1092,10 +1098,7 @@ export default function PayrollSalaryCalculator() {
           "Mặc định nhân viên có giờ ra sau 17:30 (ca ngày) vẫn được tính tăng ca. Hãy tick những người KHÔNG tính tăng ca.",
         )}
         saveLabel={tlPage("lateOtModalSave", "Lưu")}
-        skipAllLabel={tlPage(
-          "lateOtModalSkipAll",
-          "Tất cả đều có tăng ca",
-        )}
+        skipAllLabel={tlPage("lateOtModalSkipAll", "Tất cả đều có tăng ca")}
         timeLabel={tlPage("timeOutShortLabel", "Ra")}
         timeField="gioRa"
         suppressSessionLabel={tlPage(

@@ -6,6 +6,7 @@ import {
   getOvertimeHoursFromGioRa,
   getPayrollDayShiftOffHolidayMergedHoursNumeric,
   getPayrollHalfDayLeaveWorkedHours,
+  getTaiXeOvertimeHoursFromGioRa,
   getTapVuThaiSanOvertimeHoursFromGioRa,
   isEarlyArrivalFor0600PaperworkOvertime,
   isNightShiftCaLamViec,
@@ -21,6 +22,11 @@ import {
   isAttendanceBuGioCongType,
   normalizeAttendanceDayRecord,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
+
+function resolvePayrollMonthlyRegimeFlags(p) {
+  return employeeRegimeWorkingHoursFlags(p);
+}
 /** Đồng bộ với `EARLY_PAPERWORK_OT_HOURS` trong attendanceWorkingHours.js */
 const PAYROLL_EARLY_PAPERWORK_OT_HOURS = 2;
 
@@ -52,18 +58,12 @@ export function getPayrollMonthlyCoefficientLines(p) {
     payrollLateOtExcluded,
   } = p;
   const strictOffDay = isOffDay || isCompensatoryDay;
-  const legacyIncludeTsNvInWorkingHours =
-    String(p?.includeTsNvInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES";
-  const includeTapVuInWorkingHours =
-    String(p?.includeTapVuInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
-  const includeThaiSanInWorkingHours =
-    String(p?.includeThaiSanInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
+  const {
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
+  } = resolvePayrollMonthlyRegimeFlags(p);
   const night = isNightShiftCaLamViec(caLamViec);
   const lines = [];
 
@@ -90,6 +90,8 @@ export function getPayrollMonthlyCoefficientLines(p) {
       payrollLateOtExcluded,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     );
     if (m != null && m > 0) {
       lines.push({ coeff: 3.0, hours: m, key: "dh30" });
@@ -120,6 +122,8 @@ export function getPayrollMonthlyCoefficientLines(p) {
       payrollLateOtExcluded,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     );
     if (m != null && m > 0) {
       lines.push({ coeff: 2.0, hours: m, key: "off20" });
@@ -150,9 +154,11 @@ export function getPayrollMonthlyCoefficientLines(p) {
   }
 
   const evening =
-    includeTapVuInWorkingHours || includeThaiSanInWorkingHours
-      ? getTapVuThaiSanOvertimeHoursFromGioRa(gioRa)
-      : getOvertimeHoursFromGioRa(gioRa);
+    includeTaiXeInWorkingHours || includeTaiXeTongInWorkingHours
+      ? getTaiXeOvertimeHoursFromGioRa(gioRa)
+      : includeTapVuInWorkingHours || includeThaiSanInWorkingHours
+        ? getTapVuThaiSanOvertimeHoursFromGioRa(gioRa)
+        : getOvertimeHoursFromGioRa(gioRa);
   let early = 0;
   if (
     payrollEarlyOtPaperwork === true &&
@@ -212,18 +218,12 @@ export const PAYROLL_MONTHLY_SUBROWS = [
 export function getPayrollMonthlyMainRowCell(emp, ch) {
   const day = normalizeAttendanceDayRecord(emp);
   const leaveRaw = getAttendanceLeaveTypeRaw(day);
-  const legacyIncludeTsNvInWorkingHours =
-    String(emp.includeTsNvInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES";
-  const includeTapVuInWorkingHours =
-    String(emp.includeTapVuInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
-  const includeThaiSanInWorkingHours =
-    String(emp.includeThaiSanInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
+  const {
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
+  } = employeeRegimeWorkingHoursFlags(emp);
 
   if (
     isAttendanceActualLeaveType(leaveRaw, {
@@ -244,6 +244,8 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
             emp.caLamViec,
             includeTapVuInWorkingHours,
             includeThaiSanInWorkingHours,
+            includeTaiXeInWorkingHours,
+            includeTaiXeTongInWorkingHours,
           ) ??
           (() => {
             const h = getAttendanceWorkingHoursHours(
@@ -252,6 +254,8 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
               emp.caLamViec,
               includeTapVuInWorkingHours,
               includeThaiSanInWorkingHours,
+              includeTaiXeInWorkingHours,
+              includeTaiXeTongInWorkingHours,
             );
             return h != null && h > 0 ? h : undefined;
           })();
@@ -276,6 +280,8 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
       emp.caLamViec,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
     );
     if (h != null && h > 0) return { kind: "hours", hours: h };
     return {
@@ -300,6 +306,8 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     emp.caLamViec,
     includeTapVuInWorkingHours,
     includeThaiSanInWorkingHours,
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
   );
   if (h == null || h <= 0) return { kind: "dash" };
   return { kind: "hours", hours: h };
@@ -307,18 +315,10 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
 
 /** Map hệ số → giờ (một ô / dòng). */
 export function getPayrollMonthlyCoeffHoursMap(p) {
-  const legacyIncludeTsNvInWorkingHours =
-    String(p?.includeTsNvInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES";
-  const includeTapVuInWorkingHours =
-    String(p?.includeTapVuInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
-  const includeThaiSanInWorkingHours =
-    String(p?.includeThaiSanInWorkingHours ?? "")
-      .trim()
-      .toUpperCase() === "YES" || legacyIncludeTsNvInWorkingHours;
+  const {
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+  } = resolvePayrollMonthlyRegimeFlags(p);
   if (
     isAttendanceActualLeaveType(p?.loaiPhep, {
       includeTapVuInWorkingHours,

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 /**
- * Xác nhận có giấy tăng ca khung 06:00–08:00 (vào ≤ 06:00, ca ngày).
+ * Xác nhận có giấy tăng ca khung 06:00–08:00 (vào ≤ 06:40, ca ngày).
  * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: (opts?: { suppressSession?: boolean }) => void, onSave: (updates: Record<string, boolean>, opts?: { suppressSession?: boolean }) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, suppressSessionLabel?: string, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
  */
 export default function PayrollEarlyOvertimePaperworkModal({

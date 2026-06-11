@@ -65,6 +65,8 @@ export function formatPayrollMonthlyTimesheetDayCellText({
     loaiPhep: emp.loaiPhep,
     includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
     includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
+    includeTaiXeInWorkingHours: emp.includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours: emp.includeTaiXeTongInWorkingHours,
   });
   if (sr.coeff == null) {
     const main = getPayrollMonthlyMainRowCell(emp, ch);
@@ -108,8 +110,9 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   const header = emptyRow();
   header[0] = tlPage("monthlyTimesheetColStt", "STT");
   header[1] = tlPage("monthlyTimesheetColName", "Họ và tên");
-  header[2] = tlPage("monthlyTimesheetColDept", "BP");
-  header[3] = tlPage("monthlyTimesheetColCoeff", "Hệ số TC");
+  header[2] = tlPage("monthlyTimesheetColMnv", "MNV");
+  header[3] = tlPage("monthlyTimesheetColDept", "BP");
+  header[4] = tlPage("monthlyTimesheetColCoeff", "Hệ số TC");
 
   monthKeys.forEach((dk, i) => {
     const pd = parseLocalDateKey(dk);
@@ -135,18 +138,18 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
       rep?.stt != null && String(rep.stt).trim() !== ""
         ? String(rep.stt)
         : String(empBlockIdx + 1);
-    const nameDisp =
-      rep?.mnv != null && String(rep.mnv).trim()
-        ? `${rep?.hoVaTen ?? "—"}\n${rep.mnv}`
-        : String(rep?.hoVaTen ?? "—");
+    const nameDisp = String(rep?.hoVaTen ?? "—");
+    const mnvDisp =
+      rep?.mnv != null && String(rep.mnv).trim() ? String(rep.mnv) : "—";
     const deptDisp = rep?.boPhan ? String(rep.boPhan) : "—";
 
     PAYROLL_MONTHLY_SUBROWS.forEach((sr, si) => {
       const row = emptyRow();
       row[0] = sttDisp;
       row[1] = nameDisp;
-      row[2] = deptDisp;
-      row[3] = sr.coeff == null ? "\u00a0" : Number(sr.coeff).toFixed(1);
+      row[2] = mnvDisp;
+      row[3] = deptDisp;
+      row[4] = sr.coeff == null ? "\u00a0" : Number(sr.coeff).toFixed(1);
 
       monthKeys.forEach((dk, di) => {
         const ch = chunkByDate.get(dk);
@@ -279,6 +282,7 @@ export function applyPayrollMonthlyTimesheetExcelSheetStyles(
 
       const isHeader = r <= HEADER_ROW_COUNT;
       const isNameCol = c === 2;
+      const isMnvCol = c === 3;
       const isCoeffCol = c === L;
       const isDayOrDetail = c > L;
       cell.alignment = {
@@ -287,7 +291,10 @@ export function applyPayrollMonthlyTimesheetExcelSheetStyles(
         wrapText: true,
       };
       cell.font = {
-        name: isCoeffCol || (isDayOrDetail && !isHeader) ? "Consolas" : "Arial",
+        name:
+          isMnvCol || isCoeffCol || (isDayOrDetail && !isHeader)
+            ? "Consolas"
+            : "Arial",
         size: isHeader ? 10 : 9,
         bold: isHeader || isCoeffCol || (isDayOrDetail && !isHeader),
         color: { argb: "FF0F172A" },
@@ -326,7 +333,8 @@ export async function writePayrollMonthlyTimesheetWorkbook({
   const maxCols = grid.reduce((m, row) => Math.max(m, row.length), 0);
   for (let c = 1; c <= maxCols; c += 1) {
     if (c === 1) sheet.getColumn(c).width = 6;
-    else if (c === 2) sheet.getColumn(c).width = 26;
+    else if (c === 2) sheet.getColumn(c).width = 22;
+    else if (c === 3) sheet.getColumn(c).width = 12;
     else if (c <= MONTHLY_TIMESHEET_STICKY_COL_COUNT)
       sheet.getColumn(c).width = 12;
     else sheet.getColumn(c).width = 6;

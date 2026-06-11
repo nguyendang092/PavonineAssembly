@@ -279,6 +279,8 @@ export function buildMonthlyRuleSummary(
       loaiPhep: emp.loaiPhep,
       includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
+      includeTaiXeInWorkingHours: emp.includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours: emp.includeTaiXeTongInWorkingHours,
     });
     const coeffSum = sumPayrollMonthlyCoeffHours(coeffMap);
     const addWorkedHours = (hours) => {

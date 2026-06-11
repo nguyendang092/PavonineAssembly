@@ -29,6 +29,8 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "duocNghiBu",
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
+  "includeTaiXeInWorkingHours",
+  "includeTaiXeTongInWorkingHours",
   "includeTsNvInWorkingHours",
   "payrollEarlyOtPaperwork",
   "payrollLateOtExcluded",

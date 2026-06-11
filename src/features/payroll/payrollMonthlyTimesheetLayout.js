@@ -2,7 +2,8 @@
  * Cấu trúc cột lưới / xuất Excel bảng chấm công tháng — một nguồn, khớp PayrollMonthlyTimesheetModal.
  */
 
-export const MONTHLY_TIMESHEET_STICKY_COL_COUNT = 4;
+/** STT + Họ tên + MNV + BP + Hệ số TC */
+export const MONTHLY_TIMESHEET_STICKY_COL_COUNT = 5;
 export const MONTH_DETAIL_COLS_PER_BLOCK = 16;
 export const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 
