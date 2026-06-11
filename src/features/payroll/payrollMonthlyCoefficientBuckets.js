@@ -3,12 +3,12 @@ import {
   getNightShiftPayrollOffHolidayMergedHoursNumeric,
   getNightShiftPayrollOvertimeHoursFromOtMinutes,
   getNightShiftPayrollRegularHoursAndOtMinutes,
+  getEarlyPaperworkOvertimeHours,
   getOvertimeHoursFromGioRa,
   getPayrollDayShiftOffHolidayMergedHoursNumeric,
   getPayrollHalfDayLeaveWorkedHours,
   getTaiXeOvertimeHoursFromGioRa,
   getTapVuThaiSanOvertimeHoursFromGioRa,
-  isEarlyArrivalFor0600PaperworkOvertime,
   isNightShiftCaLamViec,
   roundHoursForPayrollDisplay,
   roundHoursToTenths,
@@ -27,9 +27,6 @@ import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeR
 function resolvePayrollMonthlyRegimeFlags(p) {
   return employeeRegimeWorkingHoursFlags(p);
 }
-/** Đồng bộ với `EARLY_PAPERWORK_OT_HOURS` trong attendanceWorkingHours.js */
-const PAYROLL_EARLY_PAPERWORK_OT_HOURS = 2;
-
 /**
  * Phân giờ hiển thị theo hệ số lương (bảng chấm công tháng).
  * Không gồm giờ công thường ca ngày (hệ số 0) — chỉ các khối tăng ca / ca đêm / off / lễ đã tách theo quy ước.
@@ -159,13 +156,11 @@ export function getPayrollMonthlyCoefficientLines(p) {
       : includeTapVuInWorkingHours || includeThaiSanInWorkingHours
         ? getTapVuThaiSanOvertimeHoursFromGioRa(gioRa)
         : getOvertimeHoursFromGioRa(gioRa);
-  let early = 0;
-  if (
-    payrollEarlyOtPaperwork === true &&
-    isEarlyArrivalFor0600PaperworkOvertime(gioVao, caLamViec)
-  ) {
-    early = PAYROLL_EARLY_PAPERWORK_OT_HOURS;
-  }
+  const early = getEarlyPaperworkOvertimeHours(
+    gioVao,
+    payrollEarlyOtPaperwork,
+    caLamViec,
+  );
   const ev = payrollLateOtExcluded === true ? 0 : evening == null ? 0 : evening;
   const sum15 = roundHoursToTenths(ev + early);
   if (sum15 > 0) {

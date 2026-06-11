@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 /**
- * Xác nhận có giấy tăng ca khung 06:00–08:00 (vào ≤ 06:40, ca ngày).
- * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: (opts?: { suppressSession?: boolean }) => void, onSave: (updates: Record<string, boolean>, opts?: { suppressSession?: boolean }) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, suppressSessionLabel?: string, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
+ * Xác nhận có giấy tăng ca sớm 06:00–07:40 (block 30 phút; vào ≤ 06:40, ca ngày).
+ * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: (opts?: { suppressSession?: boolean }) => void, onSave: (updates: Record<string, boolean>, opts?: { suppressSession?: boolean }) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, showSessionSuppress?: boolean, suppressSessionLabel?: string, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
  */
 export default function PayrollEarlyOvertimePaperworkModal({
   open,
@@ -16,6 +16,7 @@ export default function PayrollEarlyOvertimePaperworkModal({
   skipAllLabel,
   closeLabel = "Đóng",
   saving = false,
+  showSessionSuppress = true,
   suppressSessionLabel = "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
   timeLabel = "Vào",
   timeField = "gioVao",
@@ -241,19 +242,23 @@ export default function PayrollEarlyOvertimePaperworkModal({
             ) : null}
           </ul>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950">
-          <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5 text-left sm:items-center">
-            <input
-              type="checkbox"
-              disabled={saving}
-              checked={suppressSessionChecked}
-              onChange={() => setSuppressSessionChecked((v) => !v)}
-              className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded border-sky-300 text-sky-600 focus:ring-2 focus:ring-sky-300/70 focus:ring-offset-1 disabled:opacity-50 sm:mt-0 dark:border-sky-600 dark:text-sky-500 dark:focus:ring-sky-800/60"
-            />
-            <span className="min-w-0 flex-1 text-[11px] font-medium leading-snug text-slate-700 dark:text-slate-300">
-              {suppressSessionLabel}
-            </span>
-          </label>
+        <div
+          className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950 ${showSessionSuppress ? "justify-between" : "justify-end"}`}
+        >
+          {showSessionSuppress ? (
+            <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5 text-left sm:items-center">
+              <input
+                type="checkbox"
+                disabled={saving}
+                checked={suppressSessionChecked}
+                onChange={() => setSuppressSessionChecked((v) => !v)}
+                className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded border-sky-300 text-sky-600 focus:ring-2 focus:ring-sky-300/70 focus:ring-offset-1 disabled:opacity-50 sm:mt-0 dark:border-sky-600 dark:text-sky-500 dark:focus:ring-sky-800/60"
+              />
+              <span className="min-w-0 flex-1 text-[11px] font-medium leading-snug text-slate-700 dark:text-slate-300">
+                {suppressSessionLabel}
+              </span>
+            </label>
+          ) : null}
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             <button
               type="button"

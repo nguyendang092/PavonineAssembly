@@ -18,10 +18,6 @@ import {
 } from "@/features/payroll/buildPayrollDayFromRaw";
 import { payrollTableWrapperMinWidthClass } from "@/features/payroll/payrollTableLayout";
 import {
-  readEarlyOtSessionSuppressed,
-  writeEarlyOtSessionSuppressed,
-} from "@/features/payroll/payrollEarlyOtSession";
-import {
   ATTENDANCE_VIRTUAL_THRESHOLD,
   getAttendanceGridTemplateColumns,
 } from "@/features/attendance/attendanceTableRow";
@@ -104,11 +100,7 @@ export default function PayrollSalaryCalculator() {
   const [earlyOtMap, setEarlyOtMap] = useState({});
   const [lateOtExcludedMap, setLateOtExcludedMap] = useState({});
   const [earlyOtModalOpen, setEarlyOtModalOpen] = useState(false);
-  const [earlyOtSuppressed, setEarlyOtSuppressed] = useState(false);
-  /** Tự động mở popup: không bật lại khi user đã chọn «không hiển thị trong phiên» (sessionStorage). */
-  const [earlyOtSessionSuppressed, setEarlyOtSessionSuppressed] =
-    useState(false);
-  /** `"pending"` — chỉ NV chưa chọn; `"all"` — tất cả NV đủ điều kiện (sửa lại). */
+  /** `"pending"` — chỉ NV chưa chọn; `"all"` — tất cả NV đủ điều kiện (mở từ nút toolbar). */
   const [earlyOtModalMode, setEarlyOtModalMode] = useState("pending");
   const [earlyOtSaving, setEarlyOtSaving] = useState(false);
   const [lateOtModalOpen, setLateOtModalOpen] = useState(false);
@@ -199,16 +191,11 @@ export default function PayrollSalaryCalculator() {
   }, [selectedDate]);
 
   useEffect(() => {
-    setEarlyOtSuppressed(false);
     setEarlyOtModalMode("pending");
     setEarlyOtModalOpen(false);
     setLateOtModalMode("pending");
     setLateOtModalOpen(false);
   }, [selectedDate]);
-
-  useEffect(() => {
-    setEarlyOtSessionSuppressed(readEarlyOtSessionSuppressed(user?.uid));
-  }, [user?.uid]);
 
   const mergeEarlyOt = useCallback(
     async (updates) => {
@@ -259,7 +246,7 @@ export default function PayrollSalaryCalculator() {
     return next;
   }, [employees, earlyOtMap, lateOtExcludedMap]);
 
-  /** Vào ≤ 06:40 (ca ngày) — vẫn hiện nút / modal khi ngày off (chỉ tắt tự mở popup). */
+  /** Vào ≤ 06:40 (ca ngày) — hiện nút «Xác nhận tăng ca» (mở popup thủ công). */
   const earlyOtEligibleEmployees = useMemo(
     () =>
       sortEmployeesAscForPopup(
@@ -319,47 +306,13 @@ export default function PayrollSalaryCalculator() {
     [earlyOtModalMode, earlyOtMap],
   );
 
-  useEffect(() => {
-    if (earlyOtModalMode === "all") return;
-    if (earlyOtSuppressed || earlyOtSessionSuppressed) {
-      if (earlyOtModalOpen) setEarlyOtModalOpen(false);
-      return;
-    }
-    if (isOffDay || isHolidayDay || isCompensatoryDay) {
-      if (earlyOtModalOpen && earlyOtModalMode === "pending") {
-        setEarlyOtModalOpen(false);
-      }
-      return;
-    }
-    if (pendingEarlyOtEmployees.length > 0) {
-      setEarlyOtModalMode("pending");
-      setEarlyOtModalOpen(true);
-    } else if (earlyOtModalOpen) {
-      setEarlyOtModalOpen(false);
-    }
-  }, [
-    isOffDay,
-    isHolidayDay,
-    isCompensatoryDay,
-    earlyOtSuppressed,
-    earlyOtSessionSuppressed,
-    pendingEarlyOtEmployees,
-    earlyOtModalOpen,
-    earlyOtModalMode,
-  ]);
-
   const handleEarlyOtSave = useCallback(
-    async (updates, { suppressSession } = {}) => {
+    async (updates) => {
       setEarlyOtSaving(true);
       try {
         await mergeEarlyOt(updates);
         setEarlyOtModalOpen(false);
         setEarlyOtModalMode("pending");
-        setEarlyOtSuppressed(false);
-        if (suppressSession) {
-          setEarlyOtSessionSuppressed(true);
-          writeEarlyOtSessionSuppressed(user?.uid, true);
-        }
       } catch (err) {
         setAlert({
           show: true,
@@ -374,22 +327,13 @@ export default function PayrollSalaryCalculator() {
         setEarlyOtSaving(false);
       }
     },
-    [mergeEarlyOt, tlPage, user?.uid],
+    [mergeEarlyOt, tlPage],
   );
 
-  /** Đóng / click nền: luôn `suppressed` — tránh effect mở lại ngay (đặc biệt sau khi đóng từ chế độ «tất cả»). */
-  const handleEarlyOtDismiss = useCallback(
-    ({ suppressSession } = {}) => {
-      setEarlyOtModalOpen(false);
-      setEarlyOtSuppressed(true);
-      setEarlyOtModalMode("pending");
-      if (suppressSession) {
-        setEarlyOtSessionSuppressed(true);
-        writeEarlyOtSessionSuppressed(user?.uid, true);
-      }
-    },
-    [user?.uid],
-  );
+  const handleEarlyOtDismiss = useCallback(() => {
+    setEarlyOtModalOpen(false);
+    setEarlyOtModalMode("pending");
+  }, []);
 
   const handleLateOtSave = useCallback(
     async (updates) => {
@@ -791,14 +735,13 @@ export default function PayrollSalaryCalculator() {
               <button
                 type="button"
                 onClick={() => {
-                  setEarlyOtSuppressed(false);
                   setEarlyOtModalMode("all");
                   setEarlyOtModalOpen(true);
                 }}
                 className="h-8 shrink-0 rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-3 text-xs font-bold text-white shadow-md shadow-sky-600/25 transition hover:from-sky-400 hover:to-blue-500 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:hover:from-sky-500 dark:hover:to-blue-600"
                 title={tlPage(
                   "earlyOtPaperworkHint",
-                  "Xác nhận có giấy tăng ca khung 06:00–08:00 cho nhân viên vào ≤ 06:40 (ca ngày).",
+                  "Xác nhận giấy tăng ca sớm (06:00–07:40, block 30 phút) cho nhân viên vào ≤ 06:40 (ca ngày).",
                 )}
               >
                 {tlPage("earlyOtPaperworkButton", "Xác nhận tăng ca")}
@@ -1064,17 +1007,14 @@ export default function PayrollSalaryCalculator() {
         title={tlPage("earlyOtModalTitle", "Xác nhận đăng ký tăng ca")}
         description={tlPage(
           "earlyOtModalDescription",
-          "Nhân viên có thời gian vào <= 06:40 sẽ phải có giấy đăng ký tăng ca để xác nhận là có tăng ca hay không.",
+          "Nhân viên vào ≤ 06:40 (ca ngày): xác nhận có giấy tăng ca sớm. Có giấy → TC khung 06:00–07:40 (30 phút = 0,5h).",
         )}
         saveLabel={tlPage("earlyOtModalSave", "Lưu")}
         skipAllLabel={tlPage(
           "earlyOtModalSkipAll",
           "Tất cả không có giấy tăng ca",
         )}
-        suppressSessionLabel={tlPage(
-          "earlyOtModalDontShowSession",
-          "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
-        )}
+        showSessionSuppress={false}
         searchPlaceholder={tlPage(
           "paperworkModalSearchPlaceholder",
           "Lọc theo tên / MNV / bộ phận",

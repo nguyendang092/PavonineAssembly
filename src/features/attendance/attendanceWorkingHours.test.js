@@ -6,6 +6,7 @@ import {
   getNightShiftPayrollRegularHoursAndOtMinutes,
   getOvertimeHoursFromGioRa,
   getAttendanceWorkingHoursHours,
+  getEarlyPaperworkOvertimeHours,
   getPayrollDayOvertimeHoursNumeric,
   getTaiXeOvertimeHoursFromGioRa,
   isEarlyArrivalFor0600PaperworkOvertime,
@@ -187,6 +188,36 @@ describe("chế độ Tài xế / Tài xế tổng", () => {
         false,
       ),
     ).toBe(2);
+  });
+});
+
+describe("getEarlyPaperworkOvertimeHours", () => {
+  it("có giấy: 06:00–07:40 → tối đa 1,5h (3 block)", () => {
+    expect(getEarlyPaperworkOvertimeHours("06:00", true, "S1")).toBe(1.5);
+    expect(getEarlyPaperworkOvertimeHours("05:30", true, "S1")).toBe(1.5);
+  });
+
+  it("có giấy: vào 06:40 → 1h (2 block đến 07:40)", () => {
+    expect(getEarlyPaperworkOvertimeHours("06:40", true, "S1")).toBe(1);
+  });
+
+  it("không giấy hoặc vào sau 06:40 → 0", () => {
+    expect(getEarlyPaperworkOvertimeHours("06:00", false, "S1")).toBe(0);
+    expect(getEarlyPaperworkOvertimeHours("06:41", true, "S1")).toBe(0);
+  });
+
+  it("cộng vào TC ngày khi có giấy và giờ ra", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "06:00",
+        "18:00",
+        false,
+        "S1",
+        true,
+        false,
+        false,
+      ),
+    ).toBe(2.5);
   });
 });
 

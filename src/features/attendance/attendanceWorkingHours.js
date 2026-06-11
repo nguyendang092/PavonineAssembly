@@ -865,10 +865,11 @@ const OT_PAY_START_MIN = 17 * 60;
 /** Chỉ có tăng ca khi giờ ra sau > 17:30 (phút). */
 const OT_ELIGIBLE_AFTER_MIN = 17 * 60 + 30;
 
-/** Bảng lương: vào ≤ 06:40 (ca ngày) + có giấy tăng ca → cộng khung 06:00–08:00 vào cột Giờ TC (hệ số lương ×1.5 áp ngoài cột). */
+/** Bảng lương: vào ≤ 06:40 (ca ngày) + có giấy → TC sớm khung 06:00–07:40 (block 30 phút). */
 const EARLY_PAPERWORK_CUTOFF_MIN = 6 * 60 + 40;
-/** Giờ công tăng ca quy đổi vào cột Giờ TC (2h). */
-const EARLY_PAPERWORK_OT_HOURS = 2;
+/** Khung tính TC sớm (có giấy): từ 06:00 đến 07:40. */
+const EARLY_PAPERWORK_OT_WINDOW_START_MIN = 6 * 60;
+const EARLY_PAPERWORK_OT_WINDOW_END_MIN = 7 * 60 + 40;
 
 /**
  * Giờ tăng ca: từ 17:00 đến giờ ra, cứ 30 phút = 0.5h (làm tròn xuống theo block 30 phút).
@@ -887,7 +888,7 @@ export function getOvertimeHoursFromGioRa(gioRa) {
 }
 
 /**
- * Ca ngày, giờ vào ≤ 06:40 — đủ điều kiện hỏi «có giấy tăng ca 06:00–08:00» (bảng lương).
+ * Ca ngày, giờ vào ≤ 06:40 — đủ điều kiện hỏi «có giấy tăng ca sớm» (bảng lương).
  * Không áp dụng ca đêm (cột TC riêng).
  */
 export function isEarlyArrivalFor0600PaperworkOvertime(gioVao, caLamViec) {
@@ -898,8 +899,31 @@ export function isEarlyArrivalFor0600PaperworkOvertime(gioVao, caLamViec) {
 }
 
 /**
- * Giờ TC khối ngày (cột «Giờ TC»): tăng ca sau 17:30 + (tùy chọn) 2h khi có giấy và vào ≤ 06:40.
- * Ca ngày: **bắt buộc có giờ ra hợp lệ** mới tính TC (kể cả phần giấy sớm) — tránh có 2h TC khi chưa chấm giờ ra.
+ * TC sớm (có giấy, vào ≤ 06:40): từ max(giờ vào, 06:00) đến **07:40**, block 30 phút = 0,5h.
+ * @param {unknown} gioVao
+ * @param {boolean | undefined} earlyOtPaperwork
+ * @param {unknown} caLamViec
+ * @returns {number}
+ */
+export function getEarlyPaperworkOvertimeHours(
+  gioVao,
+  earlyOtPaperwork,
+  caLamViec,
+) {
+  if (earlyOtPaperwork !== true) return 0;
+  if (!isEarlyArrivalFor0600PaperworkOvertime(gioVao, caLamViec)) return 0;
+  const a = parseHHMMToMinutes(gioVao);
+  if (a == null) return 0;
+  const start = Math.max(a, EARLY_PAPERWORK_OT_WINDOW_START_MIN);
+  if (start >= EARLY_PAPERWORK_OT_WINDOW_END_MIN) return 0;
+  const minutes = EARLY_PAPERWORK_OT_WINDOW_END_MIN - start;
+  const blocks = Math.floor(minutes / 30);
+  return blocks * 0.5;
+}
+
+/**
+ * Giờ TC khối ngày (cột «Giờ TC»): tăng ca sau 17:30 + (tùy chọn) TC sớm khi có giấy và vào ≤ 06:40.
+ * Ca ngày: **bắt buộc có giờ ra hợp lệ** mới tính TC (kể cả phần giấy sớm) — tránh có TC khi chưa chấm giờ ra.
  * @param {boolean | undefined} earlyOtPaperwork — `true` nếu user xác nhận có giấy.
  * @param {boolean | undefined} lateOtExcluded — `true` nếu user xác nhận KHONG tinh tang ca sau 17:30.
  * @param {unknown} [includeTapVuInWorkingHours]
@@ -935,13 +959,11 @@ export function getPayrollDayOvertimeHoursNumeric(
     return null;
   }
   const evening = lateOtExcluded === true ? 0 : eveningRaw;
-  let early = 0;
-  if (
-    earlyOtPaperwork === true &&
-    isEarlyArrivalFor0600PaperworkOvertime(gioVao, caLamViec)
-  ) {
-    early = EARLY_PAPERWORK_OT_HOURS;
-  }
+  const early = getEarlyPaperworkOvertimeHours(
+    gioVao,
+    earlyOtPaperwork,
+    caLamViec,
+  );
 
   return roundHoursToTenths(evening + early);
 }
