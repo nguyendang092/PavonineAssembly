@@ -48,7 +48,7 @@ export const PERMISSION_CATALOG = Object.freeze([
     id: PERMISSION_IDS.PAYROLL_MONTH_GRID_DAY_CELL,
     labelVi: "Lưới tháng (bảng lương) — bấm ô ngày mở form điểm danh",
     quyTac:
-      "Chỉ Admin/HR được chỉnh qua ô lưới; trong phạm vi đó vẫn áp dụng đúng bộ phận như canEditAttendance / canAddAttendance.",
+      "Admin/HR: bấm ô ngày để sửa (trong phạm vi canEditAttendance / canAddAttendance). Manager bộ phận: bấm ô có dữ liệu để xem (canViewPayrollMonthTimesheetGridCell).",
     routes: ["/attendance-salary"],
     modules: ["features/payroll/PayrollMonthlyTimesheetModal.jsx"],
     authRolesHelpers: [
@@ -180,6 +180,35 @@ export function debugPrintPermissionCatalog() {
  * Ô ngày trên lưới tháng (modal bảng lương): mở form điểm danh.
  * @see PERMISSION_IDS.PAYROLL_MONTH_GRID_DAY_CELL
  */
+function payrollMonthTimesheetGridPermEmployee(rep, rowDayEmp) {
+  return {
+    ...rep,
+    ...rowDayEmp,
+    boPhan: rowDayEmp.boPhan || rep.boPhan,
+  };
+}
+
+/**
+ * Ô ngày trên lưới tháng: manager bộ phận xem chi tiết điểm danh (không sửa).
+ * @see PERMISSION_IDS.PAYROLL_MONTH_GRID_DAY_CELL
+ */
+export function canViewPayrollMonthTimesheetGridCell({
+  loading,
+  user,
+  rep,
+  rowDayEmp,
+  userRole,
+  userDepartments,
+}) {
+  if (loading || !user || !rep || !rowDayEmp) return false;
+  return canEditAttendanceForEmployee({
+    user,
+    userRole,
+    userDepartments,
+    employee: payrollMonthTimesheetGridPermEmployee(rep, rowDayEmp),
+  });
+}
+
 export function canEditPayrollMonthTimesheetGridCell({
   loading,
   user,
@@ -195,11 +224,7 @@ export function canEditPayrollMonthTimesheetGridCell({
       user,
       userRole,
       userDepartments,
-      employee: {
-        ...rep,
-        ...rowDayEmp,
-        boPhan: rowDayEmp.boPhan || rep.boPhan,
-      },
+      employee: payrollMonthTimesheetGridPermEmployee(rep, rowDayEmp),
     });
   }
   return canAddAttendanceForDepartment({

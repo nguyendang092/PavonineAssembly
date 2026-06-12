@@ -5,7 +5,7 @@
 export const ATTENDANCE_DAY_META_KEY = "_meta";
 
 /**
- * Bảng lương: map `employeeId` (key Firebase của dòng `attendance/{ngày}/{id}`) → có giấy TC sớm 06:00–07:40 (vào ≤ 06:40).
+ * Bảng lương: map `employeeId` (key Firebase của dòng `attendance/{ngày}/{id}`) → có giấy TC sớm 05:40–07:40 (vào ≤ 06:40).
  * Lưu tại `attendance/{ngày}/_meta.earlyOtPaperwork`.
  */
 export const ATTENDANCE_DAY_META_EARLY_OT_KEY = "earlyOtPaperwork";
@@ -13,7 +13,7 @@ export const ATTENDANCE_DAY_META_EARLY_OT_KEY = "earlyOtPaperwork";
 export const ATTENDANCE_DAY_META_LATE_OT_KEY = "lateOtPaperwork";
 
 /** @param {unknown} raw */
-export function normalizeEarlyOtPaperworkMap(raw) {
+function normalizeBooleanRecordMap(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   const out = {};
   for (const [k, v] of Object.entries(raw)) {
@@ -25,15 +25,13 @@ export function normalizeEarlyOtPaperworkMap(raw) {
 }
 
 /** @param {unknown} raw */
+export function normalizeEarlyOtPaperworkMap(raw) {
+  return normalizeBooleanRecordMap(raw);
+}
+
+/** @param {unknown} raw */
 export function normalizeLateOtPaperworkMap(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
-  const out = {};
-  for (const [k, v] of Object.entries(raw)) {
-    if (typeof v === "boolean") out[k] = v;
-    else if (v === 1 || v === "1" || v === "true") out[k] = true;
-    else if (v === 0 || v === "0" || v === "false") out[k] = false;
-  }
-  return out;
+  return normalizeBooleanRecordMap(raw);
 }
 
 /**

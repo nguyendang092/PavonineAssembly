@@ -1116,6 +1116,10 @@ const vi = {
     exportImageFail: "Không thể xuất hình. Vui lòng thử lại.",
     exportExcelFail: "Không thể xuất Excel. Vui lòng thử lại.",
     updateEmployee: "Cập nhật nhân viên",
+    viewEmployeeAttendance: "Xem điểm danh",
+    attendanceDateLabel: "Ngày điểm danh",
+    viewOnlyAttendanceHint:
+      "Chế độ chỉ xem — không thể chỉnh sửa hoặc lưu.",
     addEmployee: "Thêm nhân viên mới",
     employeeRegimeField: "Chế độ nhân viên",
     employeeRegimePlaceholder: "— Chọn —",
@@ -1299,6 +1303,10 @@ const vi = {
     monthlyTimesheetExportExcel: "Xuất Excel",
     monthlyTimesheetExportError: "Xuất Excel thất bại: {{error}}",
     monthlyTimesheetDayCellEditHint: "Bấm để sửa điểm danh ngày này.",
+    monthlyTimesheetDayCellViewHint:
+      "Bấm để xem thông tin điểm danh ngày này.",
+    monthlyTimesheetNoViewPermission:
+      "Bạn không có quyền xem điểm danh nhân viên này.",
     monthlyTimesheetLoginToEdit: "Đăng nhập để chỉnh sửa điểm danh.",
     monthlyTimesheetAdminHrOnlyEdit:
       "Chỉ Admin / HR được sửa điểm danh từ lưới tháng.",
@@ -1350,7 +1358,7 @@ const vi = {
     exportRangeExcelSuccess: "✅ Đã xuất Excel (nhiều ngày).",
     earlyOtPaperworkButton: "Xác nhận tăng ca",
     earlyOtPaperworkHint:
-      "Xác nhận giấy tăng ca sớm (06:00–07:40, block 30 phút) cho nhân viên vào ≤ 06:40 (ca ngày).",
+      "Xác nhận giấy tăng ca sớm (05:40–07:40, block 30 phút, tối đa 2h) cho nhân viên vào ≤ 06:40 (ca ngày).",
     lateOtPaperworkButton: "Không TC >17:30",
     lateOtPaperworkHint:
       "Đánh dấu những nhân viên ra sau 17:30 nhưng KHÔNG tính tăng ca.",
@@ -1358,9 +1366,12 @@ const vi = {
       "Không lưu được giấy tăng ca lên Firebase. Kiểm tra kết nối hoặc quyền ghi.",
     lateOtSaveError:
       "Không lưu được giấy tăng ca (sau 17:30). Kiểm tra kết nối hoặc quyền ghi.",
+    otPaperworkViewOnlyHint:
+      "Chỉ Admin / HR được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
+    otPaperworkSaveForbidden: "Chỉ Admin / HR được xác nhận tăng ca.",
     earlyOtModalTitle: "Xác nhận đăng ký tăng ca",
     earlyOtModalDescription:
-      "Nhân viên vào ≤ 06:40 (ca ngày): xác nhận có giấy tăng ca sớm. Có giấy → TC khung 06:00–07:40 (30 phút = 0,5h).",
+      "Nhân viên vào ≤ 06:40 (ca ngày): xác nhận có giấy tăng ca sớm. Có giấy → TC khung 05:40–07:40 (30 phút = 0,5h; 05:40–06:40 = 1h, tối đa 2h).",
     earlyOtModalSave: "Lưu",
     earlyOtModalSkipAll: "Tất cả không có giấy tăng ca",
     lateOtModalTitle: "Xác nhận không tăng ca sau 17:30",

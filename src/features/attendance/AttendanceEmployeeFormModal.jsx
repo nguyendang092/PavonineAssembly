@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { parseLocalDateKey } from "@/utils/dateKey";
 import { useTranslation } from "react-i18next";
 import { db, ref, update, get } from "@/services/firebase";
 import {
@@ -127,13 +128,28 @@ export default function AttendanceEmployeeFormModal({
   attendanceRootPath = "attendance",
   /** Ngày đang sửa có cờ nghỉ bù trong OFF/Lễ/Nghỉ bù — mặc định «Có»; không cờ thì khóa «Không». */
   dayIsCompensatory = false,
+  /** Chỉ xem — không cho sửa / lưu (vd. manager xem từ lưới tháng bảng lương). */
+  readOnly = false,
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const tl = useCallback(
     (key, defaultValue, options = {}) =>
       t(`attendanceList.${key}`, { defaultValue, ...options }),
     [t],
   );
+
+  const formattedAttendanceDate = useMemo(() => {
+    if (!selectedDate || !/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) return "";
+    const d = parseLocalDateKey(selectedDate);
+    if (!d) return selectedDate;
+    const locale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
+    return d.toLocaleDateString(locale, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }, [selectedDate, i18n.language]);
 
   const [form, setForm] = useState(() => ({ ...EMPTY_EMPLOYEE_FORM }));
   /** Khóa `attendance/{date}/{id}` khi sửa — giữ cố định khi form thay đổi */
@@ -309,6 +325,7 @@ export default function AttendanceEmployeeFormModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (readOnly) return;
     if (!user) {
       notify({
         show: true,
@@ -469,8 +486,11 @@ export default function AttendanceEmployeeFormModal({
 
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
   const isEditMode = Boolean(editAttendanceKey);
+  const isViewOnly = Boolean(readOnly);
   /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP chỉ sửa loại phép + ca làm việc. */
-  const isRestrictedEdit = isEditMode && !isAdminAccess(user, userRole);
+  const isRestrictedEdit =
+    isEditMode && !isAdminAccess(user, userRole) && !isViewOnly;
+  const fieldsLocked = isViewOnly || isRestrictedEdit;
 
   return (
     <div
@@ -492,19 +512,41 @@ export default function AttendanceEmployeeFormModal({
         >
           ×
         </button>
-        <h2 className="mb-4 border-b-2 border-blue-200/80 bg-gradient-to-r from-blue-700 via-purple-600 to-indigo-600 bg-clip-text pb-3 text-center text-xl font-extrabold tracking-wide text-transparent drop-shadow-sm dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 sm:text-2xl">
-          {isEditMode
-            ? tl("updateEmployee", "Cập nhật nhân viên")
-            : tl("addEmployee", "Thêm nhân viên mới")}
+        <h2 className="mb-2 border-b-2 border-blue-200/80 bg-gradient-to-r from-blue-700 via-purple-600 to-indigo-600 bg-clip-text pb-3 text-center text-xl font-extrabold tracking-wide text-transparent drop-shadow-sm dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 sm:text-2xl">
+          {isViewOnly
+            ? tl("viewEmployeeAttendance", "Xem điểm danh")
+            : isEditMode
+              ? tl("updateEmployee", "Cập nhật nhân viên")
+              : tl("addEmployee", "Thêm nhân viên mới")}
         </h2>
-        {isRestrictedEdit && (
+        {formattedAttendanceDate ? (
+          <p
+            className="mb-4 rounded-xl border border-indigo-200/80 bg-indigo-50/90 px-3 py-2 text-center dark:border-indigo-800/60 dark:bg-indigo-950/40"
+            aria-label={tl("attendanceDateLabel", "Ngày điểm danh")}
+          >
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+              {tl("attendanceDateLabel", "Ngày điểm danh")}
+            </span>
+            <span className="mt-0.5 block text-sm font-extrabold tabular-nums text-slate-900 dark:text-slate-100">
+              {formattedAttendanceDate}
+            </span>
+          </p>
+        ) : null}
+        {isViewOnly ? (
+          <p className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-center text-xs font-semibold text-sky-900 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-100">
+            {tl(
+              "viewOnlyAttendanceHint",
+              "Chế độ chỉ xem — không thể chỉnh sửa hoặc lưu.",
+            )}
+          </p>
+        ) : isRestrictedEdit ? (
           <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
             {tl(
               "restrictedEditManagerHint",
               "Bạn chỉ có thể sửa Loại phép, Ca làm việc và Nghỉ bù.",
             )}
           </p>
-        )}
+        ) : null}
         <form
           onSubmit={handleSubmit}
           className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2"
@@ -519,7 +561,7 @@ export default function AttendanceEmployeeFormModal({
               value={form.hoVaTen}
               onChange={handleChange}
               required
-              disabled={isRestrictedEdit}
+              disabled={fieldsLocked}
               className={employeeModalFieldClass}
             />
           </div>
@@ -533,7 +575,7 @@ export default function AttendanceEmployeeFormModal({
                 name="stt"
                 value={form.stt}
                 onChange={handleChange}
-                disabled={isRestrictedEdit}
+                disabled={fieldsLocked}
                 className={employeeModalFieldClass}
               />
             </div>
@@ -547,7 +589,7 @@ export default function AttendanceEmployeeFormModal({
                 value={form.mnv}
                 onChange={handleChange}
                 required
-                disabled={isRestrictedEdit}
+                disabled={fieldsLocked}
                 className={employeeModalFieldClass}
               />
             </div>
@@ -560,7 +602,7 @@ export default function AttendanceEmployeeFormModal({
                 name="mvt"
                 value={form.mvt}
                 onChange={handleChange}
-                disabled={isRestrictedEdit}
+                disabled={fieldsLocked}
                 className={employeeModalFieldClass}
               />
             </div>
@@ -572,7 +614,7 @@ export default function AttendanceEmployeeFormModal({
                 name="gioiTinh"
                 value={form.gioiTinh}
                 onChange={handleChange}
-                disabled={isRestrictedEdit}
+                disabled={fieldsLocked}
                 className={employeeModalSelectFieldClass}
               >
                 <option value="YES">
@@ -598,7 +640,7 @@ export default function AttendanceEmployeeFormModal({
                 name="ngayVaoLam"
                 value={form.ngayVaoLam}
                 onChange={handleChange}
-                disabled={isRestrictedEdit}
+                disabled={fieldsLocked}
                 className={`${employeeModalFieldClass} appearance-none`}
               />
             </div>
@@ -611,7 +653,7 @@ export default function AttendanceEmployeeFormModal({
                 name="ngayHopDong"
                 value={form.ngayHopDong}
                 onChange={handleChange}
-                disabled={isRestrictedEdit}
+                disabled={fieldsLocked}
                 className={`${employeeModalFieldClass} appearance-none`}
               />
             </div>
@@ -625,7 +667,7 @@ export default function AttendanceEmployeeFormModal({
                 value={employeeRegimeSelectValue}
                 onChange={handleEmployeeRegimeChange}
                 className={employeeModalSelectFieldClass}
-                disabled={isRestrictedEdit}
+                disabled={fieldsLocked}
               >
                 <option value="">
                   {tl("employeeRegimePlaceholder", "— Chọn —")}
@@ -653,7 +695,7 @@ export default function AttendanceEmployeeFormModal({
                 name="maBoPhan"
                 value={form.maBoPhan}
                 onChange={handleChange}
-                disabled={isRestrictedEdit}
+                disabled={fieldsLocked}
                 className={employeeModalFieldClass}
               />
             </div>
@@ -667,7 +709,7 @@ export default function AttendanceEmployeeFormModal({
                 value={form.boPhan}
                 onChange={handleChange}
                 required
-                disabled={isRestrictedEdit}
+                disabled={fieldsLocked}
                 className={employeeModalFieldClass}
               />
             </div>
@@ -682,17 +724,17 @@ export default function AttendanceEmployeeFormModal({
                   type="time"
                   value={normalizeTimeForHtmlInput(form.gioVao) || ""}
                   onChange={handleGioVaoTimeInput}
-                  disabled={isRestrictedEdit || clockTimesDisabled}
+                  disabled={fieldsLocked || clockTimesDisabled}
                   className={`${employeeModalFieldClass} min-w-0 flex-1${
                     clockTimesDisabled ? " cursor-not-allowed opacity-60" : ""
                   }`}
-                  aria-disabled={isRestrictedEdit || clockTimesDisabled}
+                  aria-disabled={fieldsLocked || clockTimesDisabled}
                 />
                 <button
                   type="button"
                   onClick={() => setForm((prev) => ({ ...prev, gioVao: "" }))}
                   disabled={
-                    isRestrictedEdit ||
+                    fieldsLocked ||
                     clockTimesDisabled ||
                     !String(form.gioVao ?? "").trim()
                   }
@@ -726,17 +768,17 @@ export default function AttendanceEmployeeFormModal({
                       gioRa: e.target.value || "",
                     }))
                   }
-                  disabled={isRestrictedEdit || clockTimesDisabled}
+                  disabled={fieldsLocked || clockTimesDisabled}
                   className={`${employeeModalFieldClass} min-w-0 flex-1${
                     clockTimesDisabled ? " cursor-not-allowed opacity-60" : ""
                   }`}
-                  aria-disabled={isRestrictedEdit || clockTimesDisabled}
+                  aria-disabled={fieldsLocked || clockTimesDisabled}
                 />
                 <button
                   type="button"
                   onClick={() => setForm((prev) => ({ ...prev, gioRa: "" }))}
                   disabled={
-                    isRestrictedEdit ||
+                    fieldsLocked ||
                     clockTimesDisabled ||
                     !String(form.gioRa ?? "").trim()
                   }
@@ -760,7 +802,7 @@ export default function AttendanceEmployeeFormModal({
                   : String(form.tangCaTrua)
               }
               onChange={handleChange}
-              disabled={isRestrictedEdit}
+              disabled={fieldsLocked}
               className={employeeModalSelectFieldClass}
             >
               <option value="">
@@ -779,6 +821,7 @@ export default function AttendanceEmployeeFormModal({
             <select
               value={String(form.loaiPhep ?? "").trim()}
               onChange={handleLoaiPhepSelect}
+              disabled={isViewOnly}
               className={employeeModalSelectFieldClass}
             >
               <option value="">
@@ -823,6 +866,7 @@ export default function AttendanceEmployeeFormModal({
                     caLamViec: e.target.value,
                   }))
                 }
+                disabled={isViewOnly}
                 className={employeeModalSelectFieldClass}
               >
                 <option value="">{tl("chooseShift", "Chọn ca")}</option>
@@ -865,6 +909,7 @@ export default function AttendanceEmployeeFormModal({
                       e.target.value === "NO" ? "YES" : "",
                   }))
                 }
+                disabled={isViewOnly}
                 className={employeeModalSelectFieldClass}
               >
                 <option value="YES">{tl("departmentCheckYes", "ĐÚNG")}</option>
@@ -890,7 +935,7 @@ export default function AttendanceEmployeeFormModal({
                       ? "NO"
                       : "YES"
                 }
-                disabled={!dayIsCompensatory}
+                disabled={!dayIsCompensatory || isViewOnly}
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
@@ -910,14 +955,16 @@ export default function AttendanceEmployeeFormModal({
               </p>
             </div>
           </div>
-          <button
-            type="submit"
-            className="sm:col-span-2 mt-0 w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2.5 text-sm font-extrabold tracking-wide text-white shadow-lg transition hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 active:scale-95 sm:text-base dark:focus:ring-offset-slate-900"
-          >
-            {isEditMode
-              ? t("attendanceList.btnUpdate")
-              : t("attendanceList.btnAdd")}
-          </button>
+          {!isViewOnly ? (
+            <button
+              type="submit"
+              className="sm:col-span-2 mt-0 w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2.5 text-sm font-extrabold tracking-wide text-white shadow-lg transition hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 active:scale-95 sm:text-base dark:focus:ring-offset-slate-900"
+            >
+              {isEditMode
+                ? t("attendanceList.btnUpdate")
+                : t("attendanceList.btnAdd")}
+            </button>
+          ) : null}
         </form>
       </div>
     </div>

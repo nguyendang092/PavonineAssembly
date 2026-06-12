@@ -4,7 +4,7 @@ import {
   getPayrollMonthlyMainRowCell,
   PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
-import { payrollOtDayParamsFromEmp } from "@/features/payroll/payrollOtDayParams";
+import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
 import {
   PAYROLL_EMP,
   pickPayrollEmployeeProfileDates,
@@ -286,7 +286,7 @@ export function buildMonthlyRuleSummary(
     const saturdayOff = isPayrollSaturdayOffWorkDay(dateKey, ch);
     const main = getPayrollMonthlyMainRowCell(emp, ch);
     const coeffMap = getPayrollMonthlyCoeffHoursMap(
-      payrollOtDayParamsFromEmp(emp, ch),
+      payrollOtDayParamsFromMonthChunkEmp(emp, ch),
     );
     const coeffSum = sumPayrollMonthlyCoeffHours(coeffMap);
     const addWorkedHours = (hours) => {

@@ -9,7 +9,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUser } from "@/contexts/UserContext";
-import { canEditAttendanceForEmployee } from "@/config/authRoles";
+import {
+  canEditAttendanceForEmployee,
+  isAdminAccess,
+} from "@/config/authRoles";
 import { db, ref, onValue, get, update } from "@/services/firebase";
 import {
   parsePayrollDayFromAttendanceRaw,
@@ -78,6 +81,7 @@ export default function PayrollSalaryCalculator() {
   const { t, i18n } = useTranslation();
   const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
   const { user, userRole, userDepartments } = useUser();
+  const canConfirmOtPaperwork = isAdminAccess(user, userRole);
 
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
@@ -197,42 +201,43 @@ export default function PayrollSalaryCalculator() {
     setLateOtModalOpen(false);
   }, [selectedDate]);
 
-  const mergeEarlyOt = useCallback(
-    async (updates) => {
+  const mergeOtPaperworkMeta = useCallback(
+    async (metaFieldKey, normalizeMap, updates) => {
       const metaRef = ref(
         db,
         `attendance/${selectedDate}/${ATTENDANCE_DAY_META_KEY}`,
       );
       const snap = await get(metaRef);
       const metaVal = snap.val();
-      const cur = normalizeEarlyOtPaperworkMap(
+      const cur = normalizeMap(
         metaVal && typeof metaVal === "object"
-          ? metaVal[ATTENDANCE_DAY_META_EARLY_OT_KEY]
+          ? metaVal[metaFieldKey]
           : undefined,
       );
       const next = { ...cur, ...updates };
-      await update(metaRef, { [ATTENDANCE_DAY_META_EARLY_OT_KEY]: next });
+      await update(metaRef, { [metaFieldKey]: next });
     },
     [selectedDate],
   );
 
+  const mergeEarlyOt = useCallback(
+    (updates) =>
+      mergeOtPaperworkMeta(
+        ATTENDANCE_DAY_META_EARLY_OT_KEY,
+        normalizeEarlyOtPaperworkMap,
+        updates,
+      ),
+    [mergeOtPaperworkMeta],
+  );
+
   const mergeLateOt = useCallback(
-    async (updates) => {
-      const metaRef = ref(
-        db,
-        `attendance/${selectedDate}/${ATTENDANCE_DAY_META_KEY}`,
-      );
-      const snap = await get(metaRef);
-      const metaVal = snap.val();
-      const cur = normalizeLateOtPaperworkMap(
-        metaVal && typeof metaVal === "object"
-          ? metaVal[ATTENDANCE_DAY_META_LATE_OT_KEY]
-          : undefined,
-      );
-      const next = { ...cur, ...updates };
-      await update(metaRef, { [ATTENDANCE_DAY_META_LATE_OT_KEY]: next });
-    },
-    [selectedDate],
+    (updates) =>
+      mergeOtPaperworkMeta(
+        ATTENDANCE_DAY_META_LATE_OT_KEY,
+        normalizeLateOtPaperworkMap,
+        updates,
+      ),
+    [mergeOtPaperworkMeta],
   );
 
   const employeesForPayroll = useMemo(() => {
@@ -308,6 +313,17 @@ export default function PayrollSalaryCalculator() {
 
   const handleEarlyOtSave = useCallback(
     async (updates) => {
+      if (!canConfirmOtPaperwork) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "otPaperworkSaveForbidden",
+            "Chỉ Admin / HR được xác nhận tăng ca.",
+          ),
+        });
+        return;
+      }
       setEarlyOtSaving(true);
       try {
         await mergeEarlyOt(updates);
@@ -327,7 +343,7 @@ export default function PayrollSalaryCalculator() {
         setEarlyOtSaving(false);
       }
     },
-    [mergeEarlyOt, tlPage],
+    [canConfirmOtPaperwork, mergeEarlyOt, tlPage],
   );
 
   const handleEarlyOtDismiss = useCallback(() => {
@@ -337,6 +353,17 @@ export default function PayrollSalaryCalculator() {
 
   const handleLateOtSave = useCallback(
     async (updates) => {
+      if (!canConfirmOtPaperwork) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "otPaperworkSaveForbidden",
+            "Chỉ Admin / HR được xác nhận tăng ca.",
+          ),
+        });
+        return;
+      }
       setLateOtSaving(true);
       try {
         await mergeLateOt(updates);
@@ -356,7 +383,7 @@ export default function PayrollSalaryCalculator() {
         setLateOtSaving(false);
       }
     },
-    [mergeLateOt, tlPage],
+    [canConfirmOtPaperwork, mergeLateOt, tlPage],
   );
 
   const handleLateOtDismiss = useCallback(() => {
@@ -741,7 +768,7 @@ export default function PayrollSalaryCalculator() {
                 className="h-8 shrink-0 rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-3 text-xs font-bold text-white shadow-md shadow-sky-600/25 transition hover:from-sky-400 hover:to-blue-500 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:hover:from-sky-500 dark:hover:to-blue-600"
                 title={tlPage(
                   "earlyOtPaperworkHint",
-                  "Xác nhận giấy tăng ca sớm (06:00–07:40, block 30 phút) cho nhân viên vào ≤ 06:40 (ca ngày).",
+                  "Xác nhận giấy tăng ca sớm (05:40–07:40, block 30 phút, tối đa 2h) cho nhân viên vào ≤ 06:40 (ca ngày).",
                 )}
               >
                 {tlPage("earlyOtPaperworkButton", "Xác nhận tăng ca")}
@@ -1007,7 +1034,7 @@ export default function PayrollSalaryCalculator() {
         title={tlPage("earlyOtModalTitle", "Xác nhận đăng ký tăng ca")}
         description={tlPage(
           "earlyOtModalDescription",
-          "Nhân viên vào ≤ 06:40 (ca ngày): xác nhận có giấy tăng ca sớm. Có giấy → TC khung 06:00–07:40 (30 phút = 0,5h).",
+          "Nhân viên vào ≤ 06:40 (ca ngày): xác nhận có giấy tăng ca sớm. Có giấy → TC khung 05:40–07:40 (30 phút = 0,5h; 05:40–06:40 = 1h, tối đa 2h).",
         )}
         saveLabel={tlPage("earlyOtModalSave", "Lưu")}
         skipAllLabel={tlPage(
@@ -1021,6 +1048,11 @@ export default function PayrollSalaryCalculator() {
         departmentPlaceholder={tlPage(
           "paperworkModalDepartmentPlaceholder",
           "Tất cả bộ phận",
+        )}
+        readOnly={!canConfirmOtPaperwork}
+        viewOnlyHint={tlPage(
+          "otPaperworkViewOnlyHint",
+          "Chỉ Admin / HR được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
         )}
       />
 
@@ -1047,6 +1079,11 @@ export default function PayrollSalaryCalculator() {
         departmentPlaceholder={tlPage(
           "paperworkModalDepartmentPlaceholder",
           "Tất cả bộ phận",
+        )}
+        readOnly={!canConfirmOtPaperwork}
+        viewOnlyHint={tlPage(
+          "otPaperworkViewOnlyHint",
+          "Chỉ Admin / HR được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
         )}
       />
     </>

@@ -33,7 +33,7 @@ export const workforcePayrollSharedVi = {
   payrollWorkingHoursHint: workingHoursHintVi,
   dayShiftOvertimeHours: "Giờ công tăng ca (×1.5)",
   dayShiftOvertimeHoursHint:
-    "Ca ngày (không S2): giờ ra sau 17:30 — tính từ 17:00, 30 phút = 0,5 giờ. Vào ≤ 06:40 có giấy TC → khung 06:00–07:40 (30 phút = 0,5h). Ca đêm: «-».",
+    "Ca ngày (không S2): giờ ra sau 17:30 — tính từ 17:00, 30 phút = 0,5 giờ. Vào ≤ 06:40 có giấy TC → khung 05:40–07:40 (30 phút = 0,5h; tối đa 2h). Ca đêm: «-».",
   overtimeHours: "Giờ công tăng ca (x1.5)",
   overtimeHoursHint: "Đã thay bằng cột «TC ca ngày (×1.5)» trên bảng lương.",
   offDayOvertimeHours: "Giờ công ngày off (x2.0)",
@@ -81,7 +81,7 @@ export const workforcePayrollSharedKo = {
   payrollWorkingHoursHint: workingHoursHintKo,
   dayShiftOvertimeHours: "주간 연장 (×1.5)",
   dayShiftOvertimeHoursHint:
-    "주간(비 S2): 퇴근 17:30 이후 — 17:00부터 30분당 0.5h. 야간: «-».",
+    "주간(비 S2): 퇴근 17:30 이후 — 17:00부터 30분당 0.5h. 06:40 이전 출근+서류 → 05:40–07:40 (30분=0.5h, 최대 2h). 야간: «-».",
   overtimeHours: "연장근무",
   overtimeHoursHint: "급여 표에서는 «주간 연장 (×1.5)» 열 사용.",
   offDayOvertimeHours: "휴무일 연장 (×2.0)",

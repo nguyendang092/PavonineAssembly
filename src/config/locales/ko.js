@@ -1127,6 +1127,9 @@ const ko = {
     exportImageFail: "이미지 내보내기에 실패했습니다. 다시 시도해 주세요.",
     exportExcelFail: "Excel 내보내기에 실패했습니다. 다시 시도해 주세요.",
     updateEmployee: "직원 정보 수정",
+    viewEmployeeAttendance: "출근 정보 보기",
+    attendanceDateLabel: "출근일",
+    viewOnlyAttendanceHint: "보기 전용 — 수정·저장할 수 없습니다.",
     addEmployee: "신규 직원 추가",
     employeeRegimeField: "직원 유형",
     employeeRegimePlaceholder: "— 선택 —",
@@ -1305,6 +1308,10 @@ const ko = {
     monthlyTimesheetExportExcel: "Excel보내기",
     monthlyTimesheetExportError: "Excel보내기 실패: {{error}}",
     monthlyTimesheetDayCellEditHint: "클릭하여 해당 일 출근을 수정합니다.",
+    monthlyTimesheetDayCellViewHint:
+      "클릭하여 해당 일 출근 정보를 볼 수 있습니다.",
+    monthlyTimesheetNoViewPermission:
+      "이 직원의 출근 정보를 볼 권한이 없습니다.",
     monthlyTimesheetLoginToEdit: "출근을 수정하려면 로그인하세요.",
     monthlyTimesheetAdminHrOnlyEdit:
       "월간 출근표 수정은 Admin/HR만 가능합니다.",
@@ -1353,7 +1360,7 @@ const ko = {
     exportRangeExcelSuccess: "✅ Excel보내기 완료 (여러 날).",
     earlyOtPaperworkButton: "연장근무 확인",
     earlyOtPaperworkHint:
-      "06:40 이전 출근(주간): 조기 연장근무 서류 확인 (06:00–07:40, 30분=0.5h).",
+      "06:40 이전 출근(주간): 조기 연장근무 서류 확인 (05:40–07:40, 30분=0.5h, 최대 2h).",
     lateOtPaperworkButton: "17:30 이후 연장 제외",
     lateOtPaperworkHint:
       "17:30 이후 퇴근하지만 연장근무로 계산하지 않는 직원을 표시합니다.",
@@ -1361,9 +1368,12 @@ const ko = {
       "연장근무 서류를 Firebase에 저장하지 못했습니다. 연결·권한을 확인하세요.",
     lateOtSaveError:
       "17:30 이후 연장 제외 정보를 저장하지 못했습니다. 연결·권한을 확인하세요.",
+    otPaperworkViewOnlyHint:
+      "Admin / HR만 선택·저장할 수 있습니다. 목록과 현재 상태만 볼 수 있습니다.",
+    otPaperworkSaveForbidden: "Admin / HR만 연장근무를 확인할 수 있습니다.",
     earlyOtModalTitle: "조기 연장근무 확인",
     earlyOtModalDescription:
-      "06:40 이전 출근(주간): 조기 연장근무 서류 여부를 확인합니다. 서류 있음 → 06:00–07:40 구간 연장 (30분=0.5h).",
+      "06:40 이전 출근(주간): 조기 연장근무 서류 여부를 확인합니다. 서류 있음 → 05:40–07:40 연장 (30분=0.5h, 05:40–06:40=1h, 최대 2h).",
     earlyOtModalSave: "저장",
     earlyOtModalSkipAll: "모두 서류 없음",
     lateOtModalTitle: "17:30 이후 연장 제외 확인",

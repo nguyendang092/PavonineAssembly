@@ -45,3 +45,22 @@ export function payrollOtDayParamsFromEmpWithMaps(
     dayCtx,
   );
 }
+
+/**
+ * Lưới tháng / tổng hợp tháng: dòng slim + cờ TC từ `_meta` trên chunk ngày.
+ * @param {object} emp
+ * @param {{
+ *   isOffDay?: boolean,
+ *   isHolidayDay?: boolean,
+ *   isCompensatoryDay?: boolean,
+ *   earlyOtPaperworkById?: Record<string, boolean>,
+ *   lateOtExcludedById?: Record<string, boolean>,
+ * } | null | undefined} monthDayChunk
+ */
+export function payrollOtDayParamsFromMonthChunkEmp(emp, monthDayChunk) {
+  if (!monthDayChunk) return payrollOtDayParamsFromEmp(emp, {});
+  return payrollOtDayParamsFromEmpWithMaps(emp, monthDayChunk, {
+    earlyOtPaperworkById: monthDayChunk.earlyOtPaperworkById,
+    lateOtExcludedById: monthDayChunk.lateOtExcludedById,
+  });
+}

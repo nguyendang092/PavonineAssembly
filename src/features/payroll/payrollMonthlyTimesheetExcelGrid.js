@@ -10,7 +10,7 @@ import {
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
-import { payrollOtDayParamsFromEmp } from "@/features/payroll/payrollOtDayParams";
+import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
 import {
   buildMonthlyDetailMatrixForEmployee,
   isPayrollMonthDayOnOrAfterJoin,
@@ -54,7 +54,7 @@ export function formatPayrollMonthlyTimesheetDayCellText({
     return sr.coeff == null ? payrollMonthMainRowDashMark(ch, null) : "";
   }
   const coeffMap = getPayrollMonthlyCoeffHoursMap(
-    payrollOtDayParamsFromEmp(emp, ch),
+    payrollOtDayParamsFromMonthChunkEmp(emp, ch),
   );
   if (sr.coeff == null) {
     const main = getPayrollMonthlyMainRowCell(emp, ch);

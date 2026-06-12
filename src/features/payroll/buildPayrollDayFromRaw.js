@@ -116,6 +116,81 @@ export function slimPayrollMonthEmployeeRecord(emp) {
   return o;
 }
 
+/** Hồ sơ NV ổn định trên lưới tháng — không gộp giờ vào/ra / phép từ ngày khác. */
+const PAYROLL_MONTH_REP_PROFILE_KEYS = [
+  PAYROLL_EMP.STT,
+  PAYROLL_EMP.MNV,
+  PAYROLL_EMP.MVT,
+  PAYROLL_EMP.EMPLOYEE_NAME,
+  PAYROLL_EMP.GENDER,
+  PAYROLL_EMP.DEPT_CODE,
+  PAYROLL_EMP.DEPARTMENT,
+  PAYROLL_EMP.JOIN_DATE,
+  PAYROLL_EMP.CONTRACT_DATE,
+];
+
+const PAYROLL_MONTH_EMPTY_DAY_ATTENDANCE = {
+  [PAYROLL_EMP.TIME_IN]: "",
+  [PAYROLL_EMP.LEAVE_TYPE]: "",
+  [PAYROLL_EMP.TIME_OUT]: "",
+  [PAYROLL_EMP.LUNCH_OT_HOURS]: "",
+  [PAYROLL_EMP.SHIFT]: "",
+  [PAYROLL_EMP.COMP_LEAVE_ALLOWED]: "",
+  boPhanChuaDung: "",
+  includeTapVuInWorkingHours: "",
+  includeThaiSanInWorkingHours: "",
+  includeTaiXeInWorkingHours: "",
+  includeTaiXeTongInWorkingHours: "",
+  includeTsNvInWorkingHours: "",
+};
+
+/** Chỉ trường hồ sơ — dùng khi thêm điểm danh ngày mới từ lưới tháng. */
+export function pickPayrollMonthRepProfileFields(rep) {
+  if (!rep || typeof rep !== "object") return {};
+  const o = {};
+  for (const k of PAYROLL_MONTH_REP_PROFILE_KEYS) {
+    const v = rep[k];
+    if (v != null && String(v).trim() !== "") o[k] = v;
+  }
+  if (rep.monthEmployeeKey) o.monthEmployeeKey = rep.monthEmployeeKey;
+  return o;
+}
+
+/**
+ * Bản ghi mở form điểm danh khi bấm ô ngày — khớp dữ liệu ngày đang bấm (không lẫn ngày khác trong tháng).
+ * @param {{ baseEmployees?: object[], earlyOtPaperworkById?: Record<string, boolean>, lateOtExcludedById?: Record<string, boolean> }} chunk
+ * @param {string} rowId — `monthEmployeeKey` hoặc Firebase id
+ * @param {object | null | undefined} rep — hồ sơ gộp cả tháng (chỉ dùng trường profile)
+ * @param {object | null | undefined} dayEmp — dòng slim của ngày (null = thêm mới)
+ */
+export function buildPayrollMonthDayCellFormRecord({
+  chunk,
+  rowId,
+  rep,
+  dayEmp,
+}) {
+  const profile = pickPayrollMonthRepProfileFields(rep);
+  if (!dayEmp?.id) {
+    return {
+      ...PAYROLL_MONTH_EMPTY_DAY_ATTENDANCE,
+      ...profile,
+      id: "",
+    };
+  }
+  const attendanceKey = dayEmp.id;
+  const baseEmp =
+    chunk?.baseEmployees?.find((e) => e.id === attendanceKey) ?? dayEmp;
+  return {
+    ...profile,
+    ...baseEmp,
+    id: attendanceKey,
+    monthEmployeeKey: dayEmp.monthEmployeeKey || rowId,
+    payrollEarlyOtPaperwork:
+      chunk?.earlyOtPaperworkById?.[attendanceKey],
+    payrollLateOtExcluded: chunk?.lateOtExcludedById?.[attendanceKey],
+  };
+}
+
 /**
  * Chuẩn hóa node `attendance/{ngày}` giống bảng lương (`PayrollSalaryCalculator` + `AttendanceTableRow` payroll).
  *
@@ -174,6 +249,7 @@ export { shallowStringRecordEqual };
  * @returns {null | {
  *   dateKey: string,
  *   employees: object[],
+ *   baseEmployees: object[],
  *   byId: Map<string, object>,
  *   byMonthEmployeeKey: Map<string, object>,
  *   isOffDay: boolean,
@@ -198,6 +274,7 @@ export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
   return {
     dateKey,
     employees: slimEmployees,
+    baseEmployees: parsed.baseEmployees,
     byId: new Map(slimEmployees.map((e) => [e.id, e])),
     byMonthEmployeeKey: new Map(
       slimEmployees.map((e) => [e.monthEmployeeKey || e.id, e]),

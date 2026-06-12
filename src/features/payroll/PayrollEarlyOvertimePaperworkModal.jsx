@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 /**
- * Xác nhận có giấy tăng ca sớm 06:00–07:40 (block 30 phút; vào ≤ 06:40, ca ngày).
- * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: () => void, onSave: (updates: Record<string, boolean>) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
+ * Xác nhận có giấy tăng ca sớm 05:40–07:40 (block 30 phút; vào ≤ 06:40, ca ngày).
+ * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: () => void, onSave: (updates: Record<string, boolean>) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, readOnly?: boolean, viewOnlyHint?: string, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
  */
 export default function PayrollEarlyOvertimePaperworkModal({
   open,
@@ -16,6 +16,8 @@ export default function PayrollEarlyOvertimePaperworkModal({
   skipAllLabel,
   closeLabel = "Đóng",
   saving = false,
+  readOnly = false,
+  viewOnlyHint = "",
   timeLabel = "Vào",
   timeField = "gioVao",
   searchPlaceholder = "Lọc theo tên / MNV / bộ phận",
@@ -82,6 +84,7 @@ export default function PayrollEarlyOvertimePaperworkModal({
   if (!open) return null;
 
   const toggle = (id) => {
+    if (readOnly) return;
     setChecks((c) => ({ ...c, [id]: !c[id] }));
   };
 
@@ -183,10 +186,12 @@ export default function PayrollEarlyOvertimePaperworkModal({
                   className="w-1 shrink-0 rounded-l-full bg-gradient-to-b from-sky-300/85 to-blue-200/70 dark:from-sky-600/60 dark:to-blue-900/50"
                   aria-hidden
                 />
-                <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5 px-2 py-2.5 sm:items-center">
+                <label
+                  className={`flex min-w-0 flex-1 items-start gap-2.5 px-2 py-2.5 sm:items-center${readOnly ? "" : " cursor-pointer"}`}
+                >
                   <input
                     type="checkbox"
-                    disabled={saving}
+                    disabled={saving || readOnly}
                     checked={!!checks[emp.id]}
                     onChange={() => toggle(emp.id)}
                     className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded border-sky-300 text-sky-600 focus:ring-2 focus:ring-sky-300/70 focus:ring-offset-1 disabled:opacity-50 dark:border-sky-600 dark:text-sky-500 dark:focus:ring-sky-800/60"
@@ -235,17 +240,24 @@ export default function PayrollEarlyOvertimePaperworkModal({
           </ul>
         </div>
         <div
-          className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950"
+          className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950"
         >
+          {readOnly && viewOnlyHint ? (
+            <p className="min-w-0 text-[11px] leading-snug text-sky-900/75 dark:text-sky-200/80">
+              {viewOnlyHint}
+            </p>
+          ) : null}
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={handleSkipAllNo}
-              className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-100 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
-            >
-              {skipAllLabel}
-            </button>
+            {!readOnly ? (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleSkipAllNo}
+                className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-100 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
+              >
+                {skipAllLabel}
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={saving}
@@ -254,14 +266,16 @@ export default function PayrollEarlyOvertimePaperworkModal({
             >
               {closeLabel}
             </button>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={handleSave}
-              className="rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-sky-600/30 transition hover:from-sky-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:shadow-sky-950/40 dark:hover:from-sky-500 dark:hover:to-blue-600"
-            >
-              {saving ? "…" : saveLabel}
-            </button>
+            {!readOnly ? (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleSave}
+                className="rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-sky-600/30 transition hover:from-sky-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:shadow-sky-950/40 dark:hover:from-sky-500 dark:hover:to-blue-600"
+              >
+                {saving ? "…" : saveLabel}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
