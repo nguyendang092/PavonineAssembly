@@ -5,6 +5,12 @@
 /** STT + Họ tên + MNV + BP + Hệ số TC */
 export const MONTHLY_TIMESHEET_STICKY_COL_COUNT = 5;
 export const MONTH_DETAIL_COLS_PER_BLOCK = 17;
+/** Cột 0–8 trong mỗi khối chi tiết — «NGÀY LÀM VIỆC». */
+export const MONTH_DETAIL_WORKDAY_COL_COUNT = 9;
+/** Cột 9–14 — «TĂNG CA (Hrs)». */
+export const MONTH_DETAIL_OT_COL_COUNT = 6;
+/** Cột 15–16 — SAT.S. */
+export const MONTH_DETAIL_SATS_COL_COUNT = 2;
 export const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 
 /** Nhãn nhóm SAT.S — lưới / in A3. */
@@ -55,13 +61,16 @@ export function buildPayrollMonthlyTimesheetDetailHeaders(tlPage) {
     tlPage("monthlyRuleColNb", "Nghỉ bù (NB)"),
     tlPage("monthlyRuleColKl", "Nghỉ KL (KL)"),
     tlPage("monthlyRuleColKp", "Nghỉ KP (KP)"),
-    "Giờ làm (X0.3)",
-    "TC ngày thường / TC ca đêm (X1.5)",
-    "TC ngày off ca ngày (X2.0)",
-    "TC ca đêm ngày off (X2.7)",
-    "TC ngày lễ (X3.0)",
-    "TC đêm ngày lễ (x3.9)",
-    "Sat.S ngày công / (X2.0)",
-    "Sat.S (X2.7)",
+    tlPage("monthlyRuleColCoeff03", "Giờ làm (×0.3)"),
+    tlPage(
+      "monthlyRuleColCoeff15",
+      "TC ngày thường / TC ca đêm (×1.5)",
+    ),
+    tlPage("monthlyRuleColCoeff20", "TC ngày off ca ngày (×2.0)"),
+    tlPage("monthlyRuleColCoeff27", "TC ca đêm ngày off (×2.7)"),
+    tlPage("monthlyRuleColCoeff30", "TC ngày lễ (×3.0)"),
+    tlPage("monthlyRuleColCoeff39", "TC đêm ngày lễ (×3.9)"),
+    tlPage("monthlyRuleColSatsWorkDays", "Sat.S ngày công / (×2.0)"),
+    tlPage("monthlyRuleColSats27", "Sat.S (×2.7)"),
   ];
 }

@@ -11,39 +11,39 @@ function coeffHours(lines, coeff) {
 describe("getPayrollMonthlyCoefficientLines", () => {
   it("tangCaTrua — hiển thị hệ số ×1.5 (gộp TC chiều)", () => {
     const lines = getPayrollMonthlyCoefficientLines({
-      gioVao: "08:00",
-      gioRa: "18:00",
+      timeIn: "08:00",
+      timeOut: "18:00",
       isOffDay: false,
       isHolidayDay: false,
-      caLamViec: "S1",
+      shiftCode: "S1",
       payrollEarlyOtPaperwork: false,
       payrollLateOtExcluded: false,
-      tangCaTrua: 1,
+      lunchOtHours: 1,
     });
     expect(coeffHours(lines, 1.5)).toBe(2);
   });
 
   it("tangCaTrua chỉ — vẫn ×1.5 khi không có TC chiều", () => {
     const lines = getPayrollMonthlyCoefficientLines({
-      gioVao: "08:00",
-      gioRa: "17:00",
+      timeIn: "08:00",
+      timeOut: "17:00",
       isOffDay: false,
       isHolidayDay: false,
-      caLamViec: "S1",
+      shiftCode: "S1",
       payrollEarlyOtPaperwork: false,
       payrollLateOtExcluded: false,
-      tangCaTrua: 1.5,
+      lunchOtHours: 1.5,
     });
     expect(coeffHours(lines, 1.5)).toBe(1.5);
   });
 
   it("ca ngày thường — TC ×1.5 sau 17:30", () => {
     const lines = getPayrollMonthlyCoefficientLines({
-      gioVao: "08:00",
-      gioRa: "18:00",
+      timeIn: "08:00",
+      timeOut: "18:00",
       isOffDay: false,
       isHolidayDay: false,
-      caLamViec: "S1",
+      shiftCode: "S1",
       payrollEarlyOtPaperwork: false,
       payrollLateOtExcluded: false,
     });
@@ -53,11 +53,11 @@ describe("getPayrollMonthlyCoefficientLines", () => {
 
   it("ca đêm thường — ×0.3 + TC ×1.5 (không ×2.0)", () => {
     const lines = getPayrollMonthlyCoefficientLines({
-      gioVao: "22:00",
-      gioRa: "06:00",
+      timeIn: "22:00",
+      timeOut: "06:00",
       isOffDay: false,
       isHolidayDay: false,
-      caLamViec: "S2",
+      shiftCode: "S2",
       payrollEarlyOtPaperwork: false,
       payrollLateOtExcluded: false,
     });
@@ -69,11 +69,11 @@ describe("getPayrollMonthlyCoefficientLines", () => {
 
   it("ngày OFF ca ngày — ×2.0 gộp", () => {
     const lines = getPayrollMonthlyCoefficientLines({
-      gioVao: "08:00",
-      gioRa: "17:00",
+      timeIn: "08:00",
+      timeOut: "17:00",
       isOffDay: true,
       isHolidayDay: false,
-      caLamViec: "S1",
+      shiftCode: "S1",
       payrollEarlyOtPaperwork: false,
       payrollLateOtExcluded: false,
     });
@@ -83,11 +83,11 @@ describe("getPayrollMonthlyCoefficientLines", () => {
 
   it("ngày OFF ca đêm — ×2.7 gộp", () => {
     const lines = getPayrollMonthlyCoefficientLines({
-      gioVao: "22:00",
-      gioRa: "06:00",
+      timeIn: "22:00",
+      timeOut: "06:00",
       isOffDay: true,
       isHolidayDay: false,
-      caLamViec: "S2",
+      shiftCode: "S2",
       payrollEarlyOtPaperwork: false,
       payrollLateOtExcluded: false,
     });
@@ -99,11 +99,11 @@ describe("getPayrollMonthlyCoefficientLines", () => {
 describe("getPayrollMonthlyCoeffHoursMap", () => {
   it("map hệ số → giờ (một giá trị / coeff)", () => {
     const m = getPayrollMonthlyCoeffHoursMap({
-      gioVao: "22:00",
-      gioRa: "06:00",
+      timeIn: "22:00",
+      timeOut: "06:00",
       isOffDay: false,
       isHolidayDay: false,
-      caLamViec: "S2",
+      shiftCode: "S2",
       payrollEarlyOtPaperwork: false,
       payrollLateOtExcluded: false,
     });

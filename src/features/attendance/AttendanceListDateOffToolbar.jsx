@@ -66,7 +66,7 @@ function AttendanceListDateOffToolbar({
               </span>
               {isHolidayDay ? (
                 <span className="shrink-0 rounded-md border border-amber-300/80 bg-amber-500 px-2 py-0.5 text-[10px] font-extrabold uppercase leading-none tracking-wide text-white shadow-sm dark:border-amber-400/60">
-                  Lễ
+                  {tl("dayKindHolidayBadge", "Lễ")}
                 </span>
               ) : isCompensatoryDay ? (
                 <span className="shrink-0 rounded-md border border-teal-300/80 bg-teal-600 px-2 py-0.5 text-[10px] font-extrabold uppercase leading-none tracking-wide text-white shadow-sm dark:border-teal-400/60">

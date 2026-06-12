@@ -20,6 +20,8 @@ import {
   normalizeAttendanceDayRecord,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
+import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
+
 function resolvePayrollMonthlyRegimeFlags(p) {
   return employeeRegimeWorkingHoursFlags(p);
 }
@@ -29,27 +31,29 @@ function resolvePayrollMonthlyRegimeFlags(p) {
  * Không gồm giờ công thường ca ngày (hệ số 0) — chỉ các khối tăng ca / ca đêm / off / lễ đã tách theo quy ước.
  *
  * @param {{
- *   gioVao: unknown,
- *   gioRa: unknown,
+ *   timeIn: unknown,
+ *   timeOut: unknown,
  *   isOffDay: boolean,
  *   isHolidayDay: boolean,
  *   isCompensatoryDay?: boolean,
- *   caLamViec: unknown,
+ *   shiftCode: unknown,
  *   payrollEarlyOtPaperwork: boolean | undefined,
  *   payrollLateOtExcluded: boolean | undefined,
+ *   lunchOtHours?: unknown,
  * }} p
  * @returns {{ coeff: number; hours: number; key: string }[]}
  */
 export function getPayrollMonthlyCoefficientLines(p) {
   const {
-    gioVao,
-    gioRa,
+    timeIn,
+    timeOut,
     isOffDay,
     isHolidayDay,
     isCompensatoryDay = false,
-    caLamViec,
+    shiftCode,
     payrollEarlyOtPaperwork,
     payrollLateOtExcluded,
+    lunchOtHours,
   } = p;
   const strictOffDay = isOffDay || isCompensatoryDay;
   const {
@@ -58,15 +62,15 @@ export function getPayrollMonthlyCoefficientLines(p) {
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
   } = resolvePayrollMonthlyRegimeFlags(p);
-  const night = isNightShiftCaLamViec(caLamViec);
+  const night = isNightShiftCaLamViec(shiftCode);
   const lines = [];
 
   if (isHolidayDay) {
     if (night) {
       const m = getNightShiftPayrollOffHolidayMergedHoursNumeric(
-        gioVao,
-        gioRa,
-        caLamViec,
+        timeIn,
+        timeOut,
+        shiftCode,
       );
       if (m != null && m > 0) {
         lines.push({ coeff: 3.9, hours: m, key: "nh39" });
@@ -74,11 +78,11 @@ export function getPayrollMonthlyCoefficientLines(p) {
       return lines;
     }
     const m = getPayrollDayShiftOffHolidayMergedHoursNumeric(
-      gioVao,
-      gioRa,
+      timeIn,
+      timeOut,
       false,
       true,
-      caLamViec,
+      shiftCode,
       payrollEarlyOtPaperwork,
       undefined,
       payrollLateOtExcluded,
@@ -96,9 +100,9 @@ export function getPayrollMonthlyCoefficientLines(p) {
   if (strictOffDay) {
     if (night) {
       const m = getNightShiftPayrollOffHolidayMergedHoursNumeric(
-        gioVao,
-        gioRa,
-        caLamViec,
+        timeIn,
+        timeOut,
+        shiftCode,
       );
       if (m != null && m > 0) {
         lines.push({ coeff: 2.7, hours: m, key: "no27" });
@@ -106,11 +110,11 @@ export function getPayrollMonthlyCoefficientLines(p) {
       return lines;
     }
     const m = getPayrollDayShiftOffHolidayMergedHoursNumeric(
-      gioVao,
-      gioRa,
+      timeIn,
+      timeOut,
       true,
       false,
-      caLamViec,
+      shiftCode,
       payrollEarlyOtPaperwork,
       undefined,
       payrollLateOtExcluded,
@@ -127,9 +131,9 @@ export function getPayrollMonthlyCoefficientLines(p) {
 
   if (night) {
     const parts = getNightShiftPayrollRegularHoursAndOtMinutes(
-      gioVao,
-      gioRa,
-      caLamViec,
+      timeIn,
+      timeOut,
+      shiftCode,
     );
     if (parts != null) {
       const reg = Number(parts.regularHours);
@@ -147,12 +151,12 @@ export function getPayrollMonthlyCoefficientLines(p) {
     return lines;
   }
 
-  /** Đồng bộ cột «TC ca ngày (×1.5)» — chiều + TC sớm (giấy) + TC trưa (`tangCaTrua`). */
+  /** Đồng bộ cột «TC ca ngày (×1.5)» — chiều + TC sớm (giấy) + TC trưa. */
   const sum15 = getPayrollDayOvertimeHoursNumeric(
-    gioVao,
-    gioRa,
+    timeIn,
+    timeOut,
     strictOffDay,
-    caLamViec,
+    shiftCode,
     payrollEarlyOtPaperwork,
     isHolidayDay,
     payrollLateOtExcluded,
@@ -160,7 +164,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     includeThaiSanInWorkingHours,
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
-    p.tangCaTrua,
+    lunchOtHours,
   );
   if (sum15 != null && sum15 > 0) {
     lines.push({ coeff: 1.5, hours: sum15, key: "d15" });
@@ -229,13 +233,13 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     let workedHours;
     // 1/2PN: vẫn có thể đi làm nửa ngày; hiển thị thêm số giờ thực tế trong cùng ô.
     if (leaveShort === "1/2PN") {
-      const night = isNightShiftCaLamViec(emp.caLamViec);
+      const night = isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT]);
       if (!night && !ch.isOffDay && !ch.isHolidayDay && !ch.isCompensatoryDay) {
         workedHours =
           getPayrollHalfDayLeaveWorkedHours(
-            emp.gioVao,
-            emp.gioRa,
-            emp.caLamViec,
+            emp[PAYROLL_EMP.TIME_IN],
+            emp[PAYROLL_EMP.TIME_OUT],
+            emp[PAYROLL_EMP.SHIFT],
             includeTapVuInWorkingHours,
             includeThaiSanInWorkingHours,
             includeTaiXeInWorkingHours,
@@ -243,9 +247,9 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
           ) ??
           (() => {
             const h = getAttendanceWorkingHoursHours(
-              emp.gioVao,
-              emp.gioRa,
-              emp.caLamViec,
+              emp[PAYROLL_EMP.TIME_IN],
+              emp[PAYROLL_EMP.TIME_OUT],
+              emp[PAYROLL_EMP.SHIFT],
               includeTapVuInWorkingHours,
               includeThaiSanInWorkingHours,
               includeTaiXeInWorkingHours,
@@ -264,14 +268,14 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     };
   }
   if (isAttendanceBuGioCongType(leaveRaw)) {
-    const night = isNightShiftCaLamViec(emp.caLamViec);
+    const night = isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT]);
     if (night || ch.isOffDay || ch.isHolidayDay || ch.isCompensatoryDay) {
       return { kind: "dash" };
     }
     const h = getAttendanceWorkingHoursHours(
-      emp.gioVao,
-      emp.gioRa,
-      emp.caLamViec,
+      emp[PAYROLL_EMP.TIME_IN],
+      emp[PAYROLL_EMP.TIME_OUT],
+      emp[PAYROLL_EMP.SHIFT],
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
       includeTaiXeInWorkingHours,
@@ -285,7 +289,7 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
       badgeClass: getAttendanceLeaveTypeBadgeClassName(leaveRaw),
     };
   }
-  const night = isNightShiftCaLamViec(emp.caLamViec);
+  const night = isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT]);
   /**
    * Ngày nghỉ bù (NB) đồng bộ cơ chế với ngày lễ (NL): dòng chính luôn `dash`
    * → dashMark hiển thị «NB» dù có hay không có giờ công; giờ công tính sang
@@ -295,9 +299,9 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     return { kind: "dash" };
   }
   const h = getAttendanceWorkingHoursHours(
-    emp.gioVao,
-    emp.gioRa,
-    emp.caLamViec,
+    emp[PAYROLL_EMP.TIME_IN],
+    emp[PAYROLL_EMP.TIME_OUT],
+    emp[PAYROLL_EMP.SHIFT],
     includeTapVuInWorkingHours,
     includeThaiSanInWorkingHours,
     includeTaiXeInWorkingHours,
@@ -314,7 +318,7 @@ export function getPayrollMonthlyCoeffHoursMap(p) {
     includeThaiSanInWorkingHours,
   } = resolvePayrollMonthlyRegimeFlags(p);
   if (
-    isAttendanceActualLeaveType(p?.loaiPhep, {
+    isAttendanceActualLeaveType(p?.leaveType, {
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
     })

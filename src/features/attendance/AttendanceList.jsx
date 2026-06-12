@@ -142,7 +142,7 @@ const AttendanceList = memo(function AttendanceList({
   );
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { tl, displayLocale } = useAttendanceListI18n(t, i18n);
+  const { tl, tlComboStat, displayLocale } = useAttendanceListI18n(t, i18n);
 
   useAttendanceChartOrderHydration(
     userEmailKey,
@@ -277,6 +277,7 @@ const AttendanceList = memo(function AttendanceList({
     setComboStatDetailKey,
     normalizeDepartment,
     tl,
+    tlComboStat,
   });
 
   const {

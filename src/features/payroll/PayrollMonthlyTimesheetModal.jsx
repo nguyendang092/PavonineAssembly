@@ -16,6 +16,7 @@ import {
   getPayrollMonthlyMainRowCell,
   PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
+import { pickPayrollEmployeeJoinDate } from "@/features/payroll/payrollEmployeeFields";
 import { payrollOtDayParamsFromEmp } from "@/features/payroll/payrollOtDayParams";
 import { writePayrollMonthlyTimesheetWorkbook } from "@/features/payroll/payrollMonthlyTimesheetExcelGrid";
 import {
@@ -27,6 +28,9 @@ import {
   buildPayrollMonthlyTimesheetDetailHeaders,
   DETAIL_GROUP_KEYS,
   MONTH_DETAIL_COLS_PER_BLOCK,
+  MONTH_DETAIL_OT_COL_COUNT,
+  MONTH_DETAIL_SATS_COL_COUNT,
+  MONTH_DETAIL_WORKDAY_COL_COUNT,
   PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL,
   payrollMonthlyTimesheetTotalColCount,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
@@ -429,13 +433,13 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
   }
   const gBg = "background:#e2e8f0";
   theadParts.push(
-    `<th colspan="8" style="${gBg};border-left:2px solid #000">${escapeHtml(labels.groupWorkday)}</th>`,
+    `<th colspan="${MONTH_DETAIL_WORKDAY_COL_COUNT}" style="${gBg};border-left:2px solid #000">${escapeHtml(labels.groupWorkday)}</th>`,
+    );
+  theadParts.push(
+    `<th colspan="${MONTH_DETAIL_OT_COL_COUNT}" style="${gBg}">${escapeHtml(labels.groupOt)}</th>`,
   );
   theadParts.push(
-    `<th colspan="6" style="${gBg}">${escapeHtml(labels.groupOt)}</th>`,
-  );
-  theadParts.push(
-    `<th colspan="2" style="${gBg}">${escapeHtml(labels.groupSats)}</th>`,
+    `<th colspan="${MONTH_DETAIL_SATS_COL_COUNT}" style="${gBg}">${escapeHtml(labels.groupSats)}</th>`,
   );
   theadParts.push("</tr><tr>");
   for (let i = 0; i < detailHeaders.length; i++) {
@@ -714,7 +718,7 @@ function buildPayrollMonthEmployeeDayCells({ monthDayMeta, rep, rowId }) {
   return monthDayMeta.map(({ dateKey, chunk, bodyBg }) => {
     const beforeJoin = !isPayrollMonthDayOnOrAfterJoin(
       dateKey,
-      rep?.ngayVaoLam,
+      pickPayrollEmployeeJoinDate(rep),
     );
     if (beforeJoin || !chunk) {
       return {
@@ -1952,7 +1956,7 @@ export default function PayrollMonthlyTimesheetModal({
                           return [
                             <th
                               key={`${groupKey}-workday`}
-                              colSpan={8}
+                              colSpan={MONTH_DETAIL_WORKDAY_COL_COUNT}
                               style={monthHeaderStickyStyle(
                                 headerRowTops.row2,
                                 85,
@@ -1966,7 +1970,7 @@ export default function PayrollMonthlyTimesheetModal({
                             </th>,
                             <th
                               key={`${groupKey}-ot`}
-                              colSpan={6}
+                              colSpan={MONTH_DETAIL_OT_COL_COUNT}
                               style={monthHeaderStickyStyle(
                                 headerRowTops.row2,
                                 85,
@@ -1977,7 +1981,7 @@ export default function PayrollMonthlyTimesheetModal({
                             </th>,
                             <th
                               key={`${groupKey}-sats`}
-                              colSpan={2}
+                              colSpan={MONTH_DETAIL_SATS_COL_COUNT}
                               style={monthHeaderStickyStyle(
                                 headerRowTops.row2,
                                 85,

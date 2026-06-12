@@ -12,12 +12,12 @@ import {
   Tooltip,
 } from "recharts";
 import {
+  COMBO_CHART_METRIC_KEYS,
   COMBO_DASHBOARD_TILES,
   COMBO_DASHBOARD_TILE_KEYS_PRODUCTION,
   COMBO_DASHBOARD_TILE_KEYS_PRODUCTION_DETAIL,
   COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS,
   mergeComboProductionDeptPickerKeys,
-  COMBO_STAT_LABEL_DEFAULTS,
 } from "./attendanceComboChartConfig";
 import {
   getAttendanceLeaveTypeBadgeClassNameForComboStatKey,
@@ -351,10 +351,7 @@ function AttendanceComboChartModal({
               ).map((tile) => {
                 const v = comboDashboardStats[tile.key];
                 if (!v || v <= 0) return null;
-                const label = tl(
-                  tile.tlKey,
-                  COMBO_STAT_LABEL_DEFAULTS[tile.key],
-                );
+                const label = comboStatLabelByKey[tile.key] ?? tile.key;
                 const baseBtn =
                   "min-w-[118px] shrink-0 rounded-lg border border-slate-300/80 bg-slate-50/90 px-1.5 py-1.5 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[100px] sm:max-w-[156px] sm:flex-1 sm:basis-[108px] dark:border-slate-700/90 dark:bg-slate-900/95";
                 return (
@@ -451,9 +448,7 @@ function AttendanceComboChartModal({
                         const lab =
                           k === "nonStandardTimeIn"
                             ? tl("nonStandardTimeInShort", "≠ HH:MM")
-                            : k === "resignedLeave"
-                              ? tl("resigned", COMBO_STAT_LABEL_DEFAULTS[k])
-                              : tl(k, COMBO_STAT_LABEL_DEFAULTS[k]);
+                            : (comboStatLabelByKey[k] ?? k);
                         return (
                           <span
                             key={k}
@@ -494,20 +489,11 @@ function AttendanceComboChartModal({
                                   value,
                                   tl("totalEmployees", "Tổng số nhân viên"),
                                 ];
-                              if (
-                                Object.prototype.hasOwnProperty.call(
-                                  COMBO_STAT_LABEL_DEFAULTS,
-                                  name,
-                                )
-                              ) {
-                                const label =
-                                  name === "resignedLeave"
-                                    ? tl(
-                                        "resigned",
-                                        COMBO_STAT_LABEL_DEFAULTS[name],
-                                      )
-                                    : tl(name, COMBO_STAT_LABEL_DEFAULTS[name]);
-                                return [value, label];
+                              if (COMBO_CHART_METRIC_KEYS.includes(name)) {
+                                return [
+                                  value,
+                                  comboStatLabelByKey[name] ?? name,
+                                ];
                               }
                               return [value, name];
                             }}

@@ -27,27 +27,10 @@ export const COMBO_CHART_METRIC_KEYS = [
   "wrongDepartment",
 ];
 
-/** Nhãn mặc định (tl key = cùng tên field). */
-export const COMBO_STAT_LABEL_DEFAULTS = {
-  checkedIn: "Chấm công",
-  buGioCong: "Bù giờ công",
-  nonStandardTimeIn: "Giờ vào ≠ HH:MM",
-  timeInHashHHMM: "Giờ vào # HH:MM",
-  late: "Vào trễ",
-  annualLeave: "Phép năm",
-  halfAnnualLeave: "1/2 phép năm",
-  nightShift: "Ca đêm",
-  laborAccident: "Tai nạn",
-  maternity: "Thai sản",
-  weddingLeave: "Phép cưới",
-  funeralLeave: "Phép tang",
-  recuperationLeave: "Dưỡng sức",
-  noPermit: "Không phép",
-  unpaidLeave: "Không lương",
-  sickLeave: "Phép ốm",
-  resignedLeave: "Nghỉ việc",
-  wrongDepartment: "Sai bộ phận",
-};
+/** i18n: `attendanceList.comboStat.<metricKey>` — xem `useAttendanceListI18n.tlComboStat`. */
+export function comboStatI18nKey(metricKey) {
+  return `comboStat.${metricKey}`;
+}
 
 /**
  * Nhân sự: BGC, vào trễ, ca đêm + các loại phép & trạng thái nghỉ.
@@ -230,24 +213,24 @@ export function applyProductionStatsRowOrder(
 
 /** Ô KPI: chỉ hiện khi đếm > 0 — màu số dùng `getAttendanceLeaveTypeColorClassNameForComboStatKey`. */
 export const COMBO_DASHBOARD_TILES = [
-  { key: "wrongDepartment", tlKey: "wrongDepartment" },
-  { key: "checkedIn", tlKey: "checkedIn" },
-  { key: "buGioCong", tlKey: "buGioCong" },
-  { key: "nonStandardTimeIn", tlKey: "nonStandardTimeIn" },
-  { key: "timeInHashHHMM", tlKey: "timeInHashHHMM" },
-  { key: "late", tlKey: "late" },
-  { key: "annualLeave", tlKey: "annualLeave" },
-  { key: "halfAnnualLeave", tlKey: "halfAnnualLeave" },
-  { key: "nightShift", tlKey: "nightShift" },
-  { key: "laborAccident", tlKey: "laborAccident" },
-  { key: "maternity", tlKey: "maternity" },
-  { key: "weddingLeave", tlKey: "weddingLeave" },
-  { key: "funeralLeave", tlKey: "funeralLeave" },
-  { key: "recuperationLeave", tlKey: "recuperationLeave" },
-  { key: "noPermit", tlKey: "noPermit" },
-  { key: "unpaidLeave", tlKey: "unpaidLeave" },
-  { key: "sickLeave", tlKey: "sickLeave" },
-  { key: "resignedLeave", tlKey: "resigned" },
+  { key: "wrongDepartment" },
+  { key: "checkedIn" },
+  { key: "buGioCong" },
+  { key: "nonStandardTimeIn" },
+  { key: "timeInHashHHMM" },
+  { key: "late" },
+  { key: "annualLeave" },
+  { key: "halfAnnualLeave" },
+  { key: "nightShift" },
+  { key: "laborAccident" },
+  { key: "maternity" },
+  { key: "weddingLeave" },
+  { key: "funeralLeave" },
+  { key: "recuperationLeave" },
+  { key: "noPermit" },
+  { key: "unpaidLeave" },
+  { key: "sickLeave" },
+  { key: "resignedLeave" },
 ];
 
 /** Tooltip + Bar: thứ tự vẽ (trái → phải) — fill từ `getAttendanceComboBarFillForMetricKey`. */

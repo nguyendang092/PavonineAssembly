@@ -16,7 +16,6 @@ import {
 } from "./attendanceComboStats";
 import {
   COMBO_CHART_METRIC_KEYS,
-  COMBO_STAT_LABEL_DEFAULTS,
   attendanceProductionDeptMatchKey,
   applyProductionStatsRowOrder,
   resolveComboChartDepartmentLabel,
@@ -41,6 +40,7 @@ export function useAttendanceComboChart({
   setComboStatDetailKey,
   normalizeDepartment,
   tl,
+  tlComboStat,
 }) {
   const comboProductionDeptCatalog = useMemo(() => {
     if (!showComboChartModal) return [];
@@ -234,16 +234,13 @@ export function useAttendanceComboChart({
 
   const comboStatLabelByKey = useMemo(() => {
     const fromKeys = Object.fromEntries(
-      COMBO_CHART_METRIC_KEYS.map((k) => [
-        k,
-        tl(k, COMBO_STAT_LABEL_DEFAULTS[k]),
-      ]),
+      COMBO_CHART_METRIC_KEYS.map((k) => [k, tlComboStat(k)]),
     );
     return {
       total: tl("totalEmployees", "Tổng số nhân viên"),
       ...fromKeys,
     };
-  }, [tl]);
+  }, [tl, tlComboStat]);
 
   useEffect(() => {
     if (!showComboChartModal) {

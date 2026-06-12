@@ -1,26 +1,27 @@
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
+import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 
 /**
  * Tham số ngày cho tính TC / hệ số lương — một nguồn từ dòng NV + ngữ cảnh ngày.
- * Chỉ gom dữ liệu (không thay đổi công thức); logic tính giờ nằm trong `attendanceWorkingHours.js`.
- * Dùng cho bảng giờ công ngày, bảng tháng, xuất Excel.
+ * Khóa trả về tiếng Anh (nội bộ); đọc từ bản ghi RTDB qua `PAYROLL_EMP`.
+ * Logic tính giờ nằm trong `attendanceWorkingHours.js`.
  *
- * @param {object} emp — dòng điểm danh / payroll (có `payrollEarlyOtPaperwork`, `tangCaTrua`…)
+ * @param {object} emp — dòng điểm danh / payroll
  * @param {{ isOffDay?: boolean, isHolidayDay?: boolean, isCompensatoryDay?: boolean }} dayCtx
  */
 export function payrollOtDayParamsFromEmp(emp, dayCtx) {
   const flags = employeeRegimeWorkingHoursFlags(emp);
   return {
-    gioVao: emp.gioVao,
-    gioRa: emp.gioRa,
+    timeIn: emp[PAYROLL_EMP.TIME_IN],
+    timeOut: emp[PAYROLL_EMP.TIME_OUT],
     isOffDay: dayCtx.isOffDay ?? false,
     isHolidayDay: dayCtx.isHolidayDay ?? false,
     isCompensatoryDay: dayCtx.isCompensatoryDay ?? false,
-    caLamViec: emp.caLamViec,
-    loaiPhep: emp.loaiPhep,
+    shiftCode: emp[PAYROLL_EMP.SHIFT],
+    leaveType: emp[PAYROLL_EMP.LEAVE_TYPE],
     payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
     payrollLateOtExcluded: emp.payrollLateOtExcluded,
-    tangCaTrua: emp.tangCaTrua,
+    lunchOtHours: emp[PAYROLL_EMP.LUNCH_OT_HOURS],
     ...flags,
   };
 }

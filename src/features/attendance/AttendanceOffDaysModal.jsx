@@ -254,7 +254,7 @@ export default function AttendanceOffDaysModal({
                       ? tl("dayKindHolidayBadge", "Lễ")
                       : kind === "compensatory"
                         ? tl("dayKindCompensatoryBadge", "NB")
-                        : "OFF"}
+                        : tl("dayKindOffBadge", "OFF")}
                   </span>
                   <button
                     type="button"

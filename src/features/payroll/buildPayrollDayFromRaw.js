@@ -12,25 +12,27 @@ import {
   getIsOffDayFromRaw,
 } from "@/features/attendance/attendanceDayMeta";
 
+import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
+
 /**
  * Chỉ giữ trường cần cho bảng giờ công tháng — giảm heap khi ghép ~31 ngày.
  * Đồng bộ với `ATTENDANCE_DAY_UI_ROW_KEYS` + cờ payroll OT trên row.
  */
 const PAYROLL_MONTH_SLIM_KEYS = [
-  "stt",
-  "mnv",
-  "mvt",
-  "maBoPhan",
-  "hoVaTen",
-  "boPhan",
-  "ngayVaoLam",
-  "ngayHopDong",
-  "gioVao",
-  "gioRa",
-  "tangCaTrua",
-  "caLamViec",
-  "loaiPhep",
-  "duocNghiBu",
+  PAYROLL_EMP.STT,
+  PAYROLL_EMP.MNV,
+  PAYROLL_EMP.MVT,
+  PAYROLL_EMP.DEPT_CODE,
+  PAYROLL_EMP.EMPLOYEE_NAME,
+  PAYROLL_EMP.DEPARTMENT,
+  PAYROLL_EMP.JOIN_DATE,
+  PAYROLL_EMP.CONTRACT_DATE,
+  PAYROLL_EMP.TIME_IN,
+  PAYROLL_EMP.TIME_OUT,
+  PAYROLL_EMP.LUNCH_OT_HOURS,
+  PAYROLL_EMP.SHIFT,
+  PAYROLL_EMP.LEAVE_TYPE,
+  PAYROLL_EMP.COMP_LEAVE_ALLOWED,
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTaiXeInWorkingHours",

@@ -23,10 +23,10 @@ export function formatPayrollTableDayShiftOvertimeCellFromEmp(
 ) {
   const p = resolveOtDayParams(emp, dayCtx, maps);
   return formatPayrollTableDayShiftOvertimeCell(
-    p.gioVao,
-    p.gioRa,
+    p.timeIn,
+    p.timeOut,
     p.isOffDay,
-    p.caLamViec,
+    p.shiftCode,
     p.payrollEarlyOtPaperwork,
     p.isHolidayDay,
     p.payrollLateOtExcluded,
@@ -35,7 +35,7 @@ export function formatPayrollTableDayShiftOvertimeCellFromEmp(
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
     p.isCompensatoryDay,
-    p.tangCaTrua,
+    p.lunchOtHours,
   );
 }
 
@@ -44,12 +44,12 @@ export function formatPayrollTableOffDayTcCellFromEmp(emp, dayCtx, maps) {
   const p = resolveOtDayParams(emp, dayCtx, maps);
   const strictOff = p.isOffDay || p.isCompensatoryDay;
   return formatPayrollTableOffDayTcCell(
-    p.gioVao,
-    p.gioRa,
+    p.timeIn,
+    p.timeOut,
     strictOff,
-    p.caLamViec,
+    p.shiftCode,
     p.payrollEarlyOtPaperwork,
-    p.loaiPhep,
+    p.leaveType,
     p.payrollLateOtExcluded,
     p.includeTapVuInWorkingHours,
     p.includeThaiSanInWorkingHours,
@@ -66,12 +66,12 @@ export function formatPayrollTableHolidayDayWorkingCellFromEmp(
 ) {
   const p = resolveOtDayParams(emp, dayCtx, maps);
   return formatPayrollTableHolidayDayWorkingCell(
-    p.gioVao,
-    p.gioRa,
+    p.timeIn,
+    p.timeOut,
     p.isHolidayDay,
-    p.caLamViec,
+    p.shiftCode,
     p.payrollEarlyOtPaperwork,
-    p.loaiPhep,
+    p.leaveType,
     p.payrollLateOtExcluded,
     p.includeTapVuInWorkingHours,
     p.includeThaiSanInWorkingHours,
@@ -85,18 +85,18 @@ export function formatPayrollTableTotalDayGcCellFromEmp(emp, dayCtx, maps) {
   const p = resolveOtDayParams(emp, dayCtx, maps);
   const strictOff = p.isOffDay || p.isCompensatoryDay;
   return formatPayrollTableTotalDayGcCell(
-    p.gioVao,
-    p.gioRa,
+    p.timeIn,
+    p.timeOut,
     strictOff,
     p.isHolidayDay,
-    p.caLamViec,
+    p.shiftCode,
     p.payrollEarlyOtPaperwork,
-    p.loaiPhep,
+    p.leaveType,
     p.payrollLateOtExcluded,
     p.includeTapVuInWorkingHours,
     p.includeThaiSanInWorkingHours,
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
-    p.tangCaTrua,
+    p.lunchOtHours,
   );
 }

@@ -127,7 +127,7 @@ describe("buildMonthlyDetailFlatValues", () => {
   it("dòng đầu (si=0) hiển thị tổng giờ TC theo hệ số ở cả 3 khối", () => {
     const summaries = {
       total: {
-        soNgayCong: 26,
+        standardWorkDays: 26,
         workHours: 0,
         workDays: 0,
         unpaidDays: 0,
@@ -146,7 +146,7 @@ describe("buildMonthlyDetailFlatValues", () => {
         sats27: 0,
       },
       trial: {
-        soNgayCong: 0,
+        standardWorkDays: 0,
         workHours: 0,
         workDays: 0,
         unpaidDays: 0,
@@ -165,7 +165,7 @@ describe("buildMonthlyDetailFlatValues", () => {
         sats27: 0,
       },
       official: {
-        soNgayCong: 26,
+        standardWorkDays: 26,
         workHours: 0,
         workDays: 0,
         unpaidDays: 0,
@@ -201,7 +201,7 @@ describe("buildMonthlyDetailFlatValues", () => {
   it("dòng 1.5 (si=2) mirror cùng summary.coeff15 — không phải tổng riêng", () => {
     const summaries = {
       total: {
-        soNgayCong: 26,
+        standardWorkDays: 26,
         workHours: 0,
         workDays: 0,
         unpaidDays: 0,
@@ -220,7 +220,7 @@ describe("buildMonthlyDetailFlatValues", () => {
         sats27: 0,
       },
       trial: {
-        soNgayCong: 0,
+        standardWorkDays: 0,
         workHours: 0,
         workDays: 0,
         unpaidDays: 0,
@@ -239,7 +239,7 @@ describe("buildMonthlyDetailFlatValues", () => {
         sats27: 0,
       },
       official: {
-        soNgayCong: 0,
+        standardWorkDays: 0,
         workHours: 0,
         workDays: 0,
         unpaidDays: 0,

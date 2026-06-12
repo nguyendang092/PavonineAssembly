@@ -25,6 +25,7 @@ import {
   buildPayrollMonthlyTimesheetExcelBorders,
   resolvePayrollMonthlyTimesheetExcelCellFill,
 } from "@/features/payroll/payrollMonthlyTimesheetGridStyle";
+import { pickPayrollEmployeeJoinDate } from "@/features/payroll/payrollEmployeeFields";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
 /** Một hàng tiêu đề (không gộp ô) — đủ nhãn cột, tránh lặp 3 hàng header. */
@@ -148,7 +149,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           ch,
           dateKey: dk,
           sr,
-          joinDate: rep?.ngayVaoLam,
+          joinDate: pickPayrollEmployeeJoinDate(rep),
         });
       });
 
@@ -215,7 +216,7 @@ export function applyPayrollMonthlyTimesheetExcelSheetStyles(
         const dk = monthKeys[c - L - 1];
         const ch = chunkByDate.get(dk);
         const rep = repById.get(empId);
-        if (ch && isPayrollMonthDayOnOrAfterJoin(dk, rep?.ngayVaoLam)) {
+        if (ch && isPayrollMonthDayOnOrAfterJoin(dk, pickPayrollEmployeeJoinDate(rep))) {
           const emp = (ch.byMonthEmployeeKey || ch.byId).get(empId);
           if (emp) {
             const main = getPayrollMonthlyMainRowCell(emp, ch);
