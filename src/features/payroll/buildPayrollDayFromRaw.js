@@ -12,7 +12,10 @@ import {
   getIsOffDayFromRaw,
 } from "@/features/attendance/attendanceDayMeta";
 
-/** Chỉ giữ trường cần cho bảng giờ công tháng — giảm heap khi ghép ~31 ngày. */
+/**
+ * Chỉ giữ trường cần cho bảng giờ công tháng — giảm heap khi ghép ~31 ngày.
+ * Đồng bộ với `ATTENDANCE_DAY_UI_ROW_KEYS` + cờ payroll OT trên row.
+ */
 const PAYROLL_MONTH_SLIM_KEYS = [
   "stt",
   "mnv",
@@ -24,6 +27,7 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "ngayHopDong",
   "gioVao",
   "gioRa",
+  "tangCaTrua",
   "caLamViec",
   "loaiPhep",
   "duocNghiBu",

@@ -7,6 +7,7 @@ import {
   getOvertimeHoursFromGioRa,
   getAttendanceWorkingHoursHours,
   getEarlyPaperworkOvertimeHours,
+  getNightShiftTotalWindowHours22To05,
   getPayrollDayOvertimeHoursNumeric,
   getTaiXeOvertimeHoursFromGioRa,
   isEarlyArrivalFor0600PaperworkOvertime,
@@ -76,6 +77,41 @@ describe("getPayrollDayOvertimeHoursNumeric", () => {
       ),
     ).toBe(0);
   });
+
+  it("tangCaTrua cộng vào TC ca ngày", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "08:00",
+        "17:30",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        1,
+      ),
+    ).toBe(1);
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "08:00",
+        "18:00",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        0.5,
+      ),
+    ).toBe(1.5);
+  });
 });
 
 describe("ca đêm S2 — GC / TC sau 05:00", () => {
@@ -96,6 +132,12 @@ describe("ca đêm S2 — GC / TC sau 05:00", () => {
 
   it("TC ca đêm = 1h (60 phút sau 05:00)", () => {
     expect(getNightShiftPayrollOvertimeHours(gioVao, gioRa, ca)).toBe(1);
+  });
+
+  it("tổng thời gian ca đêm 22:00–05:00 (bảng tháng)", () => {
+    expect(getNightShiftTotalWindowHours22To05("22:00", "06:00", ca)).toBe(7);
+    expect(getNightShiftTotalWindowHours22To05("23:00", "05:00", ca)).toBe(6);
+    expect(getNightShiftTotalWindowHours22To05("08:00", "17:00", "S1")).toBe(0);
   });
 });
 

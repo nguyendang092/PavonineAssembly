@@ -2,9 +2,16 @@ import {
   formatCoeffHoursForDisplay,
   getPayrollMonthlyCoeffHoursMap,
   getPayrollMonthlyMainRowCell,
+  PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
+import { payrollOtDayParamsFromEmp } from "@/features/payroll/payrollOtDayParams";
+import {
+  MONTH_DETAIL_COLS_PER_BLOCK,
+  MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+} from "@/features/payroll/payrollMonthlyTimesheetLayout";
 import { isDuocNghiBuExplicitlyNo } from "@/features/attendance/attendanceDayMeta";
 import {
+  getNightShiftTotalWindowHours22To05,
   isNightShiftCaLamViec,
   roundHoursForPayrollDisplay,
 } from "@/features/attendance/attendanceWorkingHours";
@@ -190,6 +197,8 @@ export function buildMonthlyRuleSummary(
     sats27: 0,
     /** Thứ Bảy OFF có giờ công — đếm ngày công riêng (hiển thị cột SAT.S). */
     satsWorkDays: 0,
+    /** Ca S2: giờ trong khung 22:00–05:00 (tối đa 8h / ngày). */
+    nightShiftWindowHours: 0,
     soNgayCong: soNgayCongChuan,
   });
 
@@ -267,21 +276,9 @@ export function buildMonthlyRuleSummary(
 
     const saturdayOff = isPayrollSaturdayOffWorkDay(dateKey, ch);
     const main = getPayrollMonthlyMainRowCell(emp, ch);
-    const coeffMap = getPayrollMonthlyCoeffHoursMap({
-      gioVao: emp.gioVao,
-      gioRa: emp.gioRa,
-      isOffDay: ch.isOffDay,
-      isHolidayDay: ch.isHolidayDay,
-      isCompensatoryDay: ch.isCompensatoryDay,
-      caLamViec: emp.caLamViec,
-      payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
-      payrollLateOtExcluded: emp.payrollLateOtExcluded,
-      loaiPhep: emp.loaiPhep,
-      includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
-      includeTaiXeInWorkingHours: emp.includeTaiXeInWorkingHours,
-      includeTaiXeTongInWorkingHours: emp.includeTaiXeTongInWorkingHours,
-    });
+    const coeffMap = getPayrollMonthlyCoeffHoursMap(
+      payrollOtDayParamsFromEmp(emp, ch),
+    );
     const coeffSum = sumPayrollMonthlyCoeffHours(coeffMap);
     const addWorkedHours = (hours) => {
       if (Number.isFinite(hours) && hours > 0) out.workHours += hours;
@@ -316,6 +313,15 @@ export function buildMonthlyRuleSummary(
 
     addCoeffHoursToTotals(out, coeffMap);
     addSaturdaySatOverlay(out, coeffMap, dateKey, ch, emp);
+
+    const nightH = getNightShiftTotalWindowHours22To05(
+      emp.gioVao,
+      emp.gioRa,
+      emp.caLamViec,
+    );
+    if (Number.isFinite(nightH) && nightH > 0) {
+      out.nightShiftWindowHours += nightH;
+    }
   };
 
   for (const dk of monthKeys) {
@@ -344,9 +350,17 @@ export function buildMonthlyRuleSummary(
   return { total, trial, official };
 }
 
+/** Chỉ số cột trong khối chi tiết (`MONTH_DETAIL_COLS_PER_BLOCK`). */
+const DETAIL_COL_SO_NGAY_CONG = 0;
+const DETAIL_COL_WORK_HOURS = 1;
+const DETAIL_COL_WORK_DAYS = 2;
+const DETAIL_COL_NIGHT_SHIFT_HOURS = 3;
+const DETAIL_COL_TC_START = 9;
+const DETAIL_COL_SATS_WORK_DAYS = 15;
+
 /**
- * 16 cột một khối THỜI GIAN *.
- * - `si === 0`: ngày công + tổng TC (cột 8–13) từ `summary.coeff**` (một nguồn `buildMonthlyRuleSummary`).
+ * 17 cột một khối THỜI GIAN *.
+ * - `si === 0`: ngày công + tổng TC (cột 9–14) từ `summary.coeff**` (một nguồn `buildMonthlyRuleSummary`).
  * - `si > 0`: mirror một ô TC tương ứng — cùng giá trị tổng, không tính lại.
  */
 function valuesForDetailBlock({
@@ -366,26 +380,35 @@ function valuesForDetailBlock({
   ];
   return Array.from({ length: colsPerBlock }, (_, idx) => {
     if (si === 0) {
-      if (idx === 0) return fmt(summary.soNgayCong);
-      if (idx === 1) return fmt(summary.workHours);
-      if (idx === 2) return fmt(summary.workDays);
-      if (idx === 3) return fmt(summary.unpaidDays);
-      if (idx === 4) return fmt(summary.pnDays);
-      if (idx === 5) return fmt(summary.nbDays);
-      if (idx === 6) return fmt(summary.klDays);
-      if (idx === 7) return fmt(summary.kpDays);
-      if (idx >= 8 && idx <= 13) return fmt(tcByRow[idx - 8]);
+      if (idx === DETAIL_COL_SO_NGAY_CONG) return fmt(summary.soNgayCong);
+      if (idx === DETAIL_COL_WORK_HOURS) return fmt(summary.workHours);
+      if (idx === DETAIL_COL_WORK_DAYS) return fmt(summary.workDays);
+      if (idx === DETAIL_COL_NIGHT_SHIFT_HOURS) {
+        return fmt(summary.nightShiftWindowHours);
+      }
+      if (idx === 4) return fmt(summary.unpaidDays);
+      if (idx === 5) return fmt(summary.pnDays);
+      if (idx === 6) return fmt(summary.nbDays);
+      if (idx === 7) return fmt(summary.klDays);
+      if (idx === 8) return fmt(summary.kpDays);
+      if (idx >= DETAIL_COL_TC_START && idx <= DETAIL_COL_TC_START + 5) {
+        return fmt(tcByRow[idx - DETAIL_COL_TC_START]);
+      }
     }
     const coeffIdx = coeffColBySubrow[si];
-    if (coeffIdx != null && idx === 8 + coeffIdx) {
+    if (coeffIdx != null && idx === DETAIL_COL_TC_START + coeffIdx) {
       return fmt(tcByRow[coeffIdx]);
     }
-    if (si === 0 && idx === 14) {
+    if (si === 0 && idx === DETAIL_COL_SATS_WORK_DAYS) {
       const n = summary.satsWorkDays;
       return Number.isFinite(n) && n > 0 ? String(Math.round(n)) : " ";
     }
-    if (si === 3 && idx === 14) return fmt(summary.sats20);
-    if (si === 4 && idx === 15) return fmt(summary.sats27);
+    if (si === 3 && idx === DETAIL_COL_SATS_WORK_DAYS) {
+      return fmt(summary.sats20);
+    }
+    if (si === 4 && idx === DETAIL_COL_SATS_WORK_DAYS + 1) {
+      return fmt(summary.sats27);
+    }
     return " ";
   });
 }
@@ -397,9 +420,9 @@ function valuesForDetailBlock({
 export function buildMonthlyDetailFlatValues({
   si,
   summaries,
-  coeffColBySubrow,
-  fmt,
-  colsPerBlock,
+  coeffColBySubrow = MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+  fmt = fmtPayrollMonthlySummaryCell,
+  colsPerBlock = MONTH_DETAIL_COLS_PER_BLOCK,
 }) {
   const total = summaries?.total ?? summaries ?? {};
   const trial = summaries?.trial ?? {};
@@ -410,4 +433,24 @@ export function buildMonthlyDetailFlatValues({
     ...valuesForDetailBlock({ ...blockArgs, summary: trial }),
     ...valuesForDetailBlock({ ...blockArgs, summary: official }),
   ];
+}
+
+/** Ma trận ô chi tiết theo dòng hệ số TC — một lần gọi cho cả NV (lưới / Excel / in). */
+export function buildMonthlyDetailMatrixForEmployee(
+  summaries,
+  options = {},
+) {
+  const coeffColBySubrow =
+    options.coeffColBySubrow ?? MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW;
+  const fmt = options.fmt ?? fmtPayrollMonthlySummaryCell;
+  const colsPerBlock = options.colsPerBlock ?? MONTH_DETAIL_COLS_PER_BLOCK;
+  return PAYROLL_MONTHLY_SUBROWS.map((_, si) =>
+    buildMonthlyDetailFlatValues({
+      si,
+      summaries,
+      coeffColBySubrow,
+      fmt,
+      colsPerBlock,
+    }),
+  );
 }

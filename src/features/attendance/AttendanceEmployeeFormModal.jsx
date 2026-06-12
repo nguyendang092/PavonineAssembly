@@ -89,6 +89,7 @@ const EMPTY_EMPLOYEE_FORM = {
   gioVao: "",
   loaiPhep: "",
   gioRa: "",
+  tangCaTrua: "",
   caLamViec: "",
   duocNghiBu: "",
   /** Firebase: `attendance/{ngày}/{key}/boPhanChuaDung` — `"YES"` = sai bộ phận. */
@@ -522,7 +523,7 @@ export default function AttendanceEmployeeFormModal({
               className={employeeModalFieldClass}
             />
           </div>
-          <div className="sm:col-span-2 grid min-w-0 grid-cols-3 gap-2 sm:gap-4">
+          <div className="sm:col-span-2 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-4">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("stt", "STT")}
@@ -563,8 +564,6 @@ export default function AttendanceEmployeeFormModal({
                 className={employeeModalFieldClass}
               />
             </div>
-          </div>
-          <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:gap-4">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("gender", "Giới tính")}
@@ -588,6 +587,8 @@ export default function AttendanceEmployeeFormModal({
                 </option>
               </select>
             </div>
+          </div>
+          <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:gap-4">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("joinDate", "Ngày vào làm")}
@@ -601,8 +602,6 @@ export default function AttendanceEmployeeFormModal({
                 className={`${employeeModalFieldClass} appearance-none`}
               />
             </div>
-          </div>
-          <div className="grid min-w-0 grid-cols-1 gap-2 sm:col-span-2 sm:grid-cols-2 sm:gap-4">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("contractDateColumn", "Ngày HĐ")}
@@ -616,6 +615,8 @@ export default function AttendanceEmployeeFormModal({
                 className={`${employeeModalFieldClass} appearance-none`}
               />
             </div>
+          </div>
+          <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:grid-cols-3 sm:gap-4">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("employeeRegimeField", "Chế độ nhân viên")}
@@ -643,8 +644,6 @@ export default function AttendanceEmployeeFormModal({
                 </option>
               </select>
             </div>
-          </div>
-          <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:gap-4">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("departmentCode", "Mã BP")}
@@ -748,6 +747,30 @@ export default function AttendanceEmployeeFormModal({
                 </button>
               </div>
             </div>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={employeeModalLabelClass}>
+              {tl("lunchOvertimeHours", "Thời gian tăng ca trưa")}
+            </label>
+            <select
+              name="tangCaTrua"
+              value={
+                form.tangCaTrua === "" || form.tangCaTrua == null
+                  ? ""
+                  : String(form.tangCaTrua)
+              }
+              onChange={handleChange}
+              disabled={isRestrictedEdit}
+              className={employeeModalSelectFieldClass}
+            >
+              <option value="">
+                {tl("lunchOvertimePlaceholder", "— Không chọn —")}
+              </option>
+              <option value="0.5">0.5</option>
+              <option value="1">1</option>
+              <option value="1.5">1.5</option>
+              <option value="2">2</option>
+            </select>
           </div>
           <div className="sm:col-span-2">
             <label className={employeeModalLabelClass}>

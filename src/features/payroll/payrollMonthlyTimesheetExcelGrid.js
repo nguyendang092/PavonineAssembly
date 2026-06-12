@@ -10,15 +10,14 @@ import {
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
+import { payrollOtDayParamsFromEmp } from "@/features/payroll/payrollOtDayParams";
 import {
-  buildMonthlyDetailFlatValues,
-  fmtPayrollMonthlySummaryCell,
+  buildMonthlyDetailMatrixForEmployee,
   isPayrollMonthDayOnOrAfterJoin,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
   DETAIL_GROUP_KEYS,
   MONTH_DETAIL_COLS_PER_BLOCK,
-  MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
   MONTHLY_TIMESHEET_STICKY_COL_COUNT,
   payrollMonthlyTimesheetLayoutOffsets,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
@@ -53,21 +52,9 @@ export function formatPayrollMonthlyTimesheetDayCellText({
   if (!emp) {
     return sr.coeff == null ? payrollMonthMainRowDashMark(ch, null) : "";
   }
-  const coeffMap = getPayrollMonthlyCoeffHoursMap({
-    gioVao: emp.gioVao,
-    gioRa: emp.gioRa,
-    isOffDay: ch.isOffDay,
-    isHolidayDay: ch.isHolidayDay,
-    isCompensatoryDay: ch.isCompensatoryDay,
-    caLamViec: emp.caLamViec,
-    payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
-    payrollLateOtExcluded: emp.payrollLateOtExcluded,
-    loaiPhep: emp.loaiPhep,
-    includeTapVuInWorkingHours: emp.includeTapVuInWorkingHours,
-    includeThaiSanInWorkingHours: emp.includeThaiSanInWorkingHours,
-    includeTaiXeInWorkingHours: emp.includeTaiXeInWorkingHours,
-    includeTaiXeTongInWorkingHours: emp.includeTaiXeTongInWorkingHours,
-  });
+  const coeffMap = getPayrollMonthlyCoeffHoursMap(
+    payrollOtDayParamsFromEmp(emp, ch),
+  );
   if (sr.coeff == null) {
     const main = getPayrollMonthlyMainRowCell(emp, ch);
     if (main.kind === "leave") {
@@ -96,9 +83,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   repById,
   summaryById,
   detailHeaders,
-  displayLocale = "vi-VN",
 }) {
-  void displayLocale;
   const days = monthKeys.length;
   const layout = payrollMonthlyTimesheetLayoutOffsets(days);
   const cols = layout.totalCols;
@@ -129,11 +114,10 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   }
   grid.push(header);
 
-  const fmt = fmtPayrollMonthlySummaryCell;
-
   filteredIds.forEach((id, empBlockIdx) => {
     const rep = repById.get(id);
     const summaries = summaryById.get(id);
+    const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries);
     const sttDisp =
       rep?.stt != null && String(rep.stt).trim() !== ""
         ? String(rep.stt)
@@ -168,13 +152,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
         });
       });
 
-      const detailFlat = buildMonthlyDetailFlatValues({
-        si,
-        summaries,
-        coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
-        fmt,
-        colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
-      });
+      const detailFlat = detailMatrix[si];
 
       detailFlat.forEach((v, i) => {
         row[layout.totalDetailStart + i] = v;
@@ -311,7 +289,6 @@ export async function writePayrollMonthlyTimesheetWorkbook({
   repById,
   summaryById,
   detailHeaders,
-  displayLocale,
 }) {
   const { grid, layout } = buildPayrollMonthlyTimesheetExcelGrid({
     tlPage,
@@ -321,7 +298,6 @@ export async function writePayrollMonthlyTimesheetWorkbook({
     repById,
     summaryById,
     detailHeaders,
-    displayLocale,
   });
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("MonthlyTimesheet");

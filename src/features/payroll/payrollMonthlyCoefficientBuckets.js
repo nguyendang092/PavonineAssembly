@@ -3,12 +3,9 @@ import {
   getNightShiftPayrollOffHolidayMergedHoursNumeric,
   getNightShiftPayrollOvertimeHoursFromOtMinutes,
   getNightShiftPayrollRegularHoursAndOtMinutes,
-  getEarlyPaperworkOvertimeHours,
-  getOvertimeHoursFromGioRa,
+  getPayrollDayOvertimeHoursNumeric,
   getPayrollDayShiftOffHolidayMergedHoursNumeric,
   getPayrollHalfDayLeaveWorkedHours,
-  getTaiXeOvertimeHoursFromGioRa,
-  getTapVuThaiSanOvertimeHoursFromGioRa,
   isNightShiftCaLamViec,
   roundHoursForPayrollDisplay,
   roundHoursToTenths,
@@ -23,10 +20,10 @@ import {
   normalizeAttendanceDayRecord,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
-
 function resolvePayrollMonthlyRegimeFlags(p) {
   return employeeRegimeWorkingHoursFlags(p);
 }
+
 /**
  * Phân giờ hiển thị theo hệ số lương (bảng chấm công tháng).
  * Không gồm giờ công thường ca ngày (hệ số 0) — chỉ các khối tăng ca / ca đêm / off / lễ đã tách theo quy ước.
@@ -150,20 +147,22 @@ export function getPayrollMonthlyCoefficientLines(p) {
     return lines;
   }
 
-  const evening =
-    includeTaiXeInWorkingHours || includeTaiXeTongInWorkingHours
-      ? getTaiXeOvertimeHoursFromGioRa(gioRa)
-      : includeTapVuInWorkingHours || includeThaiSanInWorkingHours
-        ? getTapVuThaiSanOvertimeHoursFromGioRa(gioRa)
-        : getOvertimeHoursFromGioRa(gioRa);
-  const early = getEarlyPaperworkOvertimeHours(
+  /** Đồng bộ cột «TC ca ngày (×1.5)» — chiều + TC sớm (giấy) + TC trưa (`tangCaTrua`). */
+  const sum15 = getPayrollDayOvertimeHoursNumeric(
     gioVao,
-    payrollEarlyOtPaperwork,
+    gioRa,
+    strictOffDay,
     caLamViec,
+    payrollEarlyOtPaperwork,
+    isHolidayDay,
+    payrollLateOtExcluded,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
+    p.tangCaTrua,
   );
-  const ev = payrollLateOtExcluded === true ? 0 : evening == null ? 0 : evening;
-  const sum15 = roundHoursToTenths(ev + early);
-  if (sum15 > 0) {
+  if (sum15 != null && sum15 > 0) {
     lines.push({ coeff: 1.5, hours: sum15, key: "d15" });
   }
   return lines;

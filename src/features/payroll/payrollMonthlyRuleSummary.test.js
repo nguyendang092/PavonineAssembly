@@ -91,6 +91,7 @@ describe("buildMonthlyRuleSummary — SAT.S thứ Bảy OFF", () => {
     expect(total.sats27).toBe(total.coeff27);
     expect(total.satsWorkDays).toBe(1);
     expect(total.workDays).toBe(1);
+    expect(total.nightShiftWindowHours).toBe(7);
   });
 
   it("ca ngày OFF thứ Bảy: coeff20 có giờ; sats27 = 0", () => {
@@ -189,12 +190,12 @@ describe("buildMonthlyDetailFlatValues", () => {
       summaries,
       coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
       fmt: fmtPayrollMonthlySummaryCell,
-      colsPerBlock: 16,
+      colsPerBlock: 17,
     });
 
-    expect(flat[9]).toBe("6");
-    expect(flat[16 + 9]).toBe("2");
-    expect(flat[32 + 9]).toBe("4");
+    expect(flat[10]).toBe("6");
+    expect(flat[17 + 10]).toBe("2");
+    expect(flat[34 + 10]).toBe("4");
   });
 
   it("dòng 1.5 (si=2) mirror cùng summary.coeff15 — không phải tổng riêng", () => {
@@ -263,18 +264,18 @@ describe("buildMonthlyDetailFlatValues", () => {
       summaries,
       coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
       fmt: fmtPayrollMonthlySummaryCell,
-      colsPerBlock: 16,
+      colsPerBlock: 17,
     });
     const row15 = buildMonthlyDetailFlatValues({
       si: 2,
       summaries,
       coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
       fmt: fmtPayrollMonthlySummaryCell,
-      colsPerBlock: 16,
+      colsPerBlock: 17,
     });
 
-    expect(mainRow[9]).toBe("6");
-    expect(row15[9]).toBe("6");
+    expect(mainRow[10]).toBe("6");
+    expect(row15[10]).toBe("6");
   });
 
   it("buildMonthlyRuleSummary: coeff* cộng theo ngày; mọi dòng con mirror cùng ô tổng", () => {
@@ -308,7 +309,7 @@ describe("buildMonthlyDetailFlatValues", () => {
       summaries,
       coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
       fmt: fmtPayrollMonthlySummaryCell,
-      colsPerBlock: 16,
+      colsPerBlock: 17,
     });
     for (let si = 1; si <= 6; si += 1) {
       const coeffIdx = MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW[si];
@@ -318,9 +319,9 @@ describe("buildMonthlyDetailFlatValues", () => {
         summaries,
         coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
         fmt: fmtPayrollMonthlySummaryCell,
-        colsPerBlock: 16,
+        colsPerBlock: 17,
       });
-      expect(flatSub[8 + coeffIdx]).toBe(flatMain[8 + coeffIdx]);
+      expect(flatSub[9 + coeffIdx]).toBe(flatMain[9 + coeffIdx]);
     }
   });
 });

@@ -1014,7 +1014,6 @@ export default function PayrollSalaryCalculator() {
           "earlyOtModalSkipAll",
           "Tất cả không có giấy tăng ca",
         )}
-        showSessionSuppress={false}
         searchPlaceholder={tlPage(
           "paperworkModalSearchPlaceholder",
           "Lọc theo tên / MNV / bộ phận",
@@ -1041,10 +1040,6 @@ export default function PayrollSalaryCalculator() {
         skipAllLabel={tlPage("lateOtModalSkipAll", "Tất cả đều có tăng ca")}
         timeLabel={tlPage("timeOutShortLabel", "Ra")}
         timeField="gioRa"
-        suppressSessionLabel={tlPage(
-          "lateOtModalDontShowSession",
-          "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
-        )}
         searchPlaceholder={tlPage(
           "paperworkModalSearchPlaceholder",
           "Lọc theo tên / MNV / bộ phận",

@@ -5,17 +5,19 @@ import {
   getAttendanceLeaveTypeColorClassNameForEmployee,
 } from "../attendanceGioVaoTypeOptions";
 import {
-  formatPayrollTableDayShiftOvertimeCell,
-  formatPayrollTableHolidayDayWorkingCell,
   formatPayrollTableHolidayNightWorkingCell,
   formatPayrollTableNightShiftOffDayWorkingCell,
   formatPayrollTableNightShiftOvertimeCell,
   formatPayrollTableNightShiftWorkingCell,
-  formatPayrollTableOffDayTcCell,
-  formatPayrollTableTotalDayGcCell,
   formatPayrollTableTotalNightGcCell,
   formatPayrollTableWorkingHoursCell,
 } from "../attendanceWorkingHours";
+import {
+  formatPayrollTableDayShiftOvertimeCellFromEmp,
+  formatPayrollTableHolidayDayWorkingCellFromEmp,
+  formatPayrollTableOffDayTcCellFromEmp,
+  formatPayrollTableTotalDayGcCellFromEmp,
+} from "@/features/payroll/payrollTableOtCells";
 import { employeeRegimeWorkingHoursFlags } from "../employeeRegime";
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
 import { isBoPhanChuaDung } from "../attendanceDayMeta";
@@ -54,6 +56,7 @@ function AttendanceTableRow({
   const isPayroll = tableVariant === "payroll";
   const payrollOffLike = isOffDay || isHolidayDay || isCompensatoryDay;
   const strictOffDay = isOffDay || isCompensatoryDay;
+  const payrollDayCtx = { isOffDay, isHolidayDay, isCompensatoryDay };
   const {
     includeTapVuInWorkingHours,
     includeThaiSanInWorkingHours,
@@ -557,20 +560,7 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-orange-900 dark:text-orange-100">
-              {formatPayrollTableDayShiftOvertimeCell(
-                emp.gioVao,
-                emp.gioRa,
-                isOffDay,
-                emp.caLamViec,
-                emp.payrollEarlyOtPaperwork,
-                isHolidayDay,
-                emp.payrollLateOtExcluded,
-                includeTapVuInWorkingHours,
-                includeThaiSanInWorkingHours,
-                includeTaiXeInWorkingHours,
-                includeTaiXeTongInWorkingHours,
-                isCompensatoryDay,
-              )}
+              {formatPayrollTableDayShiftOvertimeCellFromEmp(emp, payrollDayCtx)}
             </span>
           </Cell>
           <Cell
@@ -585,19 +575,7 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-violet-900 dark:text-violet-100">
-              {formatPayrollTableOffDayTcCell(
-                emp.gioVao,
-                emp.gioRa,
-                strictOffDay,
-                emp.caLamViec,
-                emp.payrollEarlyOtPaperwork,
-                emp.loaiPhep,
-                emp.payrollLateOtExcluded,
-                includeTapVuInWorkingHours,
-                includeThaiSanInWorkingHours,
-                includeTaiXeInWorkingHours,
-                includeTaiXeTongInWorkingHours,
-              )}
+              {formatPayrollTableOffDayTcCellFromEmp(emp, payrollDayCtx)}
             </span>
           </Cell>
           <Cell
@@ -615,18 +593,9 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-green-950 dark:text-green-100">
-              {formatPayrollTableHolidayDayWorkingCell(
-                emp.gioVao,
-                emp.gioRa,
-                isHolidayDay,
-                emp.caLamViec,
-                emp.payrollEarlyOtPaperwork,
-                emp.loaiPhep,
-                emp.payrollLateOtExcluded,
-                includeTapVuInWorkingHours,
-                includeThaiSanInWorkingHours,
-                includeTaiXeInWorkingHours,
-                includeTaiXeTongInWorkingHours,
+              {formatPayrollTableHolidayDayWorkingCellFromEmp(
+                emp,
+                payrollDayCtx,
               )}
             </span>
           </Cell>
@@ -642,20 +611,7 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-sky-950 dark:text-sky-100">
-              {formatPayrollTableTotalDayGcCell(
-                emp.gioVao,
-                emp.gioRa,
-                strictOffDay,
-                isHolidayDay,
-                emp.caLamViec,
-                emp.payrollEarlyOtPaperwork,
-                emp.loaiPhep,
-                emp.payrollLateOtExcluded,
-                includeTapVuInWorkingHours,
-                includeThaiSanInWorkingHours,
-                includeTaiXeInWorkingHours,
-                includeTaiXeTongInWorkingHours,
-              )}
+              {formatPayrollTableTotalDayGcCellFromEmp(emp, payrollDayCtx)}
             </span>
           </Cell>
           <Cell

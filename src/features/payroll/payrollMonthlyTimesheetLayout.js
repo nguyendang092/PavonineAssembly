@@ -4,13 +4,13 @@
 
 /** STT + Họ tên + MNV + BP + Hệ số TC */
 export const MONTHLY_TIMESHEET_STICKY_COL_COUNT = 5;
-export const MONTH_DETAIL_COLS_PER_BLOCK = 16;
+export const MONTH_DETAIL_COLS_PER_BLOCK = 17;
 export const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 
 /** Nhãn nhóm SAT.S — lưới / in A3. */
 export const PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL = "SAT.S";
 
-/** `si` dòng con → chỉ số cột TC (0..5) trong khối 16 cột chi tiết. */
+/** `si` dòng con → chỉ số cột TC (0..5) trong khối chi tiết (sau cột «Tổng thời gian ca đêm»). */
 export const MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW = {
   1: 0,
   2: 1,
@@ -43,12 +43,13 @@ export function payrollMonthlyTimesheetLayoutOffsets(monthKeyCount) {
   };
 }
 
-/** 16 cột chi tiết × 3 khối — dùng chung lưới và Excel. */
+/** 17 cột chi tiết × 3 khối — dùng chung lưới và Excel. */
 export function buildPayrollMonthlyTimesheetDetailHeaders(tlPage) {
   return [
     tlPage("monthlyRuleColSoNgayCong", "Ngày công chuẩn"),
     tlPage("monthlyRuleColWorkHours", "Tổng GC thực tế"),
     tlPage("monthlyRuleColWorkDays", "Ngày công thực tế"),
+    tlPage("monthlyRuleColNightShiftTotalHours", "Tổng GC ca đêm"),
     tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ KL"),
     tlPage("monthlyRuleColPn", "Phép năm (PN)"),
     tlPage("monthlyRuleColNb", "Nghỉ bù (NB)"),

@@ -186,6 +186,7 @@ const ATTENDANCE_EXTRA_KEYS = [
   "gioVao",
   "loaiPhep",
   "gioRa",
+  "tangCaTrua",
   "caLamViec",
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
@@ -209,6 +210,7 @@ export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
   "gioVao",
   "loaiPhep",
   "gioRa",
+  "tangCaTrua",
   "caLamViec",
   "duocNghiBu",
   "boPhanChuaDung",
@@ -238,6 +240,7 @@ export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
   "gioVao",
   "loaiPhep",
   "gioRa",
+  "tangCaTrua",
   "caLamViec",
   "duocNghiBu",
   "boPhanChuaDung",
@@ -473,6 +476,17 @@ export function buildEmployeeAttendanceDayDocument({
       form,
       "includeTsNvInWorkingHours",
     ),
+    tangCaTrua: (() => {
+      if (!Object.prototype.hasOwnProperty.call(form, "tangCaTrua")) {
+        return undefined;
+      }
+      const s = String(form.tangCaTrua ?? "").trim();
+      if (!s) return null;
+      const n = Number(s);
+      const allowed = [0.5, 1, 1.5, 2];
+      if (!Number.isFinite(n) || !allowed.includes(n)) return undefined;
+      return n;
+    })(),
     mvt: attendanceDayNonWipingOptionalStringFromForm(form, "mvt"),
     maBoPhan: attendanceDayNonWipingOptionalStringFromForm(form, "maBoPhan"),
     gioiTinh: Object.prototype.hasOwnProperty.call(form, "gioiTinh")

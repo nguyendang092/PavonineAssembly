@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 /**
  * Xác nhận có giấy tăng ca sớm 06:00–07:40 (block 30 phút; vào ≤ 06:40, ca ngày).
- * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: (opts?: { suppressSession?: boolean }) => void, onSave: (updates: Record<string, boolean>, opts?: { suppressSession?: boolean }) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, showSessionSuppress?: boolean, suppressSessionLabel?: string, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
+ * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: () => void, onSave: (updates: Record<string, boolean>) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
  */
 export default function PayrollEarlyOvertimePaperworkModal({
   open,
@@ -16,15 +16,12 @@ export default function PayrollEarlyOvertimePaperworkModal({
   skipAllLabel,
   closeLabel = "Đóng",
   saving = false,
-  showSessionSuppress = true,
-  suppressSessionLabel = "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
   timeLabel = "Vào",
   timeField = "gioVao",
   searchPlaceholder = "Lọc theo tên / MNV / bộ phận",
   departmentPlaceholder = "Tất cả bộ phận",
 }) {
   const [checks, setChecks] = useState({});
-  const [suppressSessionChecked, setSuppressSessionChecked] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
 
@@ -35,7 +32,6 @@ export default function PayrollEarlyOvertimePaperworkModal({
       next[emp.id] = initialChecked(emp.id);
     }
     setChecks(next);
-    setSuppressSessionChecked(false);
     setSearchTerm("");
     setDepartmentFilter("");
   }, [open, rows, initialChecked]);
@@ -95,9 +91,7 @@ export default function PayrollEarlyOvertimePaperworkModal({
     for (const emp of rows) {
       updates[emp.id] = !!checks[emp.id];
     }
-    await Promise.resolve(
-      onSave(updates, { suppressSession: suppressSessionChecked }),
-    );
+    await Promise.resolve(onSave(updates));
   };
 
   const handleSkipAllNo = async () => {
@@ -106,13 +100,11 @@ export default function PayrollEarlyOvertimePaperworkModal({
     for (const emp of rows) {
       updates[emp.id] = false;
     }
-    await Promise.resolve(
-      onSave(updates, { suppressSession: suppressSessionChecked }),
-    );
+    await Promise.resolve(onSave(updates));
   };
 
   const handleDismiss = () => {
-    onDismiss({ suppressSession: suppressSessionChecked });
+    onDismiss();
   };
 
   return (
@@ -243,22 +235,8 @@ export default function PayrollEarlyOvertimePaperworkModal({
           </ul>
         </div>
         <div
-          className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950 ${showSessionSuppress ? "justify-between" : "justify-end"}`}
+          className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950"
         >
-          {showSessionSuppress ? (
-            <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5 text-left sm:items-center">
-              <input
-                type="checkbox"
-                disabled={saving}
-                checked={suppressSessionChecked}
-                onChange={() => setSuppressSessionChecked((v) => !v)}
-                className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded border-sky-300 text-sky-600 focus:ring-2 focus:ring-sky-300/70 focus:ring-offset-1 disabled:opacity-50 sm:mt-0 dark:border-sky-600 dark:text-sky-500 dark:focus:ring-sky-800/60"
-              />
-              <span className="min-w-0 flex-1 text-[11px] font-medium leading-snug text-slate-700 dark:text-slate-300">
-                {suppressSessionLabel}
-              </span>
-            </label>
-          ) : null}
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             <button
               type="button"

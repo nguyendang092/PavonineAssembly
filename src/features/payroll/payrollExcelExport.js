@@ -1,18 +1,20 @@
 import ExcelJS from "exceljs";
 import { parseLocalDateKey } from "@/utils/dateKey";
 import {
-  formatPayrollTableDayShiftOvertimeCell,
-  formatPayrollTableHolidayDayWorkingCell,
   formatPayrollTableHolidayNightWorkingCell,
   formatPayrollTableNightShiftOffDayWorkingCell,
   formatPayrollTableNightShiftOvertimeCell,
   formatPayrollTableNightShiftWorkingCell,
-  formatPayrollTableOffDayTcCell,
-  formatPayrollTableTotalDayGcCell,
   formatPayrollTableTotalNightGcCell,
   formatPayrollTableWorkingHoursCell,
   roundHoursToTenths,
 } from "@/features/attendance/attendanceWorkingHours";
+import {
+  formatPayrollTableDayShiftOvertimeCellFromEmp,
+  formatPayrollTableHolidayDayWorkingCellFromEmp,
+  formatPayrollTableOffDayTcCellFromEmp,
+  formatPayrollTableTotalDayGcCellFromEmp,
+} from "@/features/payroll/payrollTableOtCells";
 import {
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
@@ -171,6 +173,12 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
         Boolean(isHolidayDay) ||
         Boolean(isCompensatoryDay);
   const strictOff = Boolean(isOffDay) || Boolean(isCompensatoryDay);
+  const payrollDayCtx = {
+    isOffDay,
+    isHolidayDay,
+    isCompensatoryDay,
+  };
+  const otMaps = { earlyOtPaperworkById, lateOtExcludedById };
   const {
     includeTapVuInWorkingHours,
     includeThaiSanInWorkingHours,
@@ -206,60 +214,10 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       includeTaiXeInWorkingHours,
       includeTaiXeTongInWorkingHours,
     ),
-    formatPayrollTableDayShiftOvertimeCell(
-      emp.gioVao,
-      emp.gioRa,
-      isOffDay,
-      emp.caLamViec,
-      earlyOtPaperworkById[emp.id],
-      isHolidayDay,
-      lateOtExcludedById[emp.id],
-      includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours,
-      includeTaiXeInWorkingHours,
-      includeTaiXeTongInWorkingHours,
-      isCompensatoryDay,
-    ),
-    formatPayrollTableOffDayTcCell(
-      emp.gioVao,
-      emp.gioRa,
-      strictOff,
-      emp.caLamViec,
-      earlyOtPaperworkById[emp.id],
-      emp.loaiPhep,
-      lateOtExcludedById[emp.id],
-      includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours,
-      includeTaiXeInWorkingHours,
-      includeTaiXeTongInWorkingHours,
-    ),
-    formatPayrollTableHolidayDayWorkingCell(
-      emp.gioVao,
-      emp.gioRa,
-      isHolidayDay,
-      emp.caLamViec,
-      earlyOtPaperworkById[emp.id],
-      emp.loaiPhep,
-      lateOtExcludedById[emp.id],
-      includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours,
-      includeTaiXeInWorkingHours,
-      includeTaiXeTongInWorkingHours,
-    ),
-    formatPayrollTableTotalDayGcCell(
-      emp.gioVao,
-      emp.gioRa,
-      strictOff,
-      isHolidayDay,
-      emp.caLamViec,
-      earlyOtPaperworkById[emp.id],
-      emp.loaiPhep,
-      lateOtExcludedById[emp.id],
-      includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours,
-      includeTaiXeInWorkingHours,
-      includeTaiXeTongInWorkingHours,
-    ),
+    formatPayrollTableDayShiftOvertimeCellFromEmp(emp, payrollDayCtx, otMaps),
+    formatPayrollTableOffDayTcCellFromEmp(emp, payrollDayCtx, otMaps),
+    formatPayrollTableHolidayDayWorkingCellFromEmp(emp, payrollDayCtx, otMaps),
+    formatPayrollTableTotalDayGcCellFromEmp(emp, payrollDayCtx, otMaps),
     formatPayrollTableNightShiftWorkingCell(
       emp.gioVao,
       emp.gioRa,

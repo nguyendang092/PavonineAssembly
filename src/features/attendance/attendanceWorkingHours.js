@@ -165,6 +165,10 @@ const MINUTES_PER_DAY = 24 * 60;
 /** Mốc tách giờ công ca đêm / TC ca đêm (05:00). */
 const NIGHT_SHIFT_PAYROLL_CUTOFF_MIN = 5 * 60;
 
+/** Khung «Tổng thời gian ca đêm» bảng chấm công tháng: 22:00 → 05:00 (ngày hôm sau). */
+const NIGHT_SHIFT_MONTHLY_WINDOW_START_MIN = 22 * 60;
+const NIGHT_SHIFT_MONTHLY_WINDOW_END_MIN = 5 * 60;
+
 /** Phút trên trục tuyến tính: 05:00 đầu tiên **sau** `gioVao` (phút từ 0:00 ngày của dòng). */
 function getNightShiftPayrollCutoffEndMinutes(gioVaoMinutes) {
   const a = gioVaoMinutes;
@@ -201,6 +205,31 @@ export function getNightShiftPayrollRegularHoursAndOtMinutes(
   if (T1 > C) otMinutes = T1 - C;
 
   return { regularHours, otMinutes };
+}
+
+/**
+ * Tổng thời gian ca đêm (bảng tháng): ca **S2**, giao [giờ vào, giờ ra] với khung **22:00–05:00**, tối đa **8h**.
+ * @returns {number} 0 nếu không phải ca đêm hoặc không có giao với khung.
+ */
+export function getNightShiftTotalWindowHours22To05(gioVao, gioRa, caLamViec) {
+  if (!isNightShiftCaLamViec(caLamViec)) return 0;
+  const a = parseHHMMToMinutes(gioVao);
+  const b = parseHHMMToMinutes(gioRa);
+  if (a == null || b == null) return 0;
+
+  const T0 = a;
+  const T1 = b <= a ? MINUTES_PER_DAY + b : b;
+  if (T1 <= T0) return 0;
+
+  const winStart = NIGHT_SHIFT_MONTHLY_WINDOW_START_MIN;
+  const winEnd = MINUTES_PER_DAY + NIGHT_SHIFT_MONTHLY_WINDOW_END_MIN;
+  const start = Math.max(T0, winStart);
+  const end = Math.min(T1, winEnd);
+  const minutes = Math.max(0, end - start);
+  if (minutes <= 0) return 0;
+
+  const hours = roundHoursToTenths(minutes / 60);
+  return Math.min(MAX_REGULAR_WORKING_HOURS, hours);
 }
 
 /** TC ca đêm: sau mốc 05:00, floor(phút / 30) × 0.5 — giống block 30 phút. */
@@ -921,6 +950,16 @@ export function getEarlyPaperworkOvertimeHours(
   return blocks * 0.5;
 }
 
+/** Giờ TC trưa — chọn thủ công trên form điểm danh (`tangCaTrua`). */
+export const TANG_CA_TRUA_HOUR_OPTIONS = Object.freeze([0.5, 1, 1.5, 2]);
+
+export function parseTangCaTruaHours(value) {
+  if (value === null || value === undefined || value === "") return 0;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return TANG_CA_TRUA_HOUR_OPTIONS.includes(n) ? n : 0;
+}
+
 /**
  * Giờ TC khối ngày (cột «Giờ TC»): tăng ca sau 17:30 + (tùy chọn) TC sớm khi có giấy và vào ≤ 06:40.
  * Ca ngày: **bắt buộc có giờ ra hợp lệ** mới tính TC (kể cả phần giấy sớm) — tránh có TC khi chưa chấm giờ ra.
@@ -928,6 +967,7 @@ export function getEarlyPaperworkOvertimeHours(
  * @param {boolean | undefined} lateOtExcluded — `true` nếu user xác nhận KHONG tinh tang ca sau 17:30.
  * @param {unknown} [includeTapVuInWorkingHours]
  * @param {unknown} [includeThaiSanInWorkingHours]
+ * @param {unknown} [tangCaTruaHours] — giờ TC trưa (0.5 / 1 / 1.5 / 2).
  * @returns {number | null} null nếu không đọc được giờ ra (ca ngày / ca đêm).
  */
 export function getPayrollDayOvertimeHoursNumeric(
@@ -942,6 +982,7 @@ export function getPayrollDayOvertimeHoursNumeric(
   includeThaiSanInWorkingHours = false,
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
+  tangCaTruaHours = undefined,
 ) {
   if (isNightShiftCaLamViec(caLamViec)) {
     return 0;
@@ -964,8 +1005,9 @@ export function getPayrollDayOvertimeHoursNumeric(
     earlyOtPaperwork,
     caLamViec,
   );
+  const lunch = parseTangCaTruaHours(tangCaTruaHours);
 
-  return roundHoursToTenths(evening + early);
+  return roundHoursToTenths(evening + early + lunch);
 }
 
 /**
@@ -1043,6 +1085,7 @@ export function formatPayrollTableDayShiftOvertimeCell(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   isCompensatoryDay = false,
+  tangCaTruaHours = undefined,
 ) {
   const strictOff = isOffDay || isCompensatoryDay;
   if (isNightShiftCaLamViec(caLamViec)) {
@@ -1063,6 +1106,7 @@ export function formatPayrollTableDayShiftOvertimeCell(
     includeThaiSanInWorkingHours,
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
+    tangCaTruaHours,
   );
   if (n == null) return PAYROLL_CELL_DASH;
   if (n === 0) return PAYROLL_CELL_DASH;
@@ -1087,6 +1131,7 @@ function payrollTotalDayGcNumeric(
   includeThaiSanInWorkingHours = false,
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
+  tangCaTruaHours = undefined,
 ) {
   if (
     hasPayrollLeaveType(
@@ -1141,6 +1186,7 @@ function payrollTotalDayGcNumeric(
         includeThaiSanInWorkingHours,
         includeTaiXeInWorkingHours,
         includeTaiXeTongInWorkingHours,
+        tangCaTruaHours,
       );
       tc = n == null ? 0 : n;
     }
@@ -1180,6 +1226,7 @@ export function formatPayrollTableTotalDayGcCell(
   includeThaiSanInWorkingHours = false,
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
+  tangCaTruaHours = undefined,
 ) {
   const sum = payrollTotalDayGcNumeric(
     gioVao,
@@ -1194,6 +1241,7 @@ export function formatPayrollTableTotalDayGcCell(
     includeThaiSanInWorkingHours,
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
+    tangCaTruaHours,
   );
   if (sum === 0) return PAYROLL_CELL_DASH;
   return payrollHoursCellDisplay(String(sum));
