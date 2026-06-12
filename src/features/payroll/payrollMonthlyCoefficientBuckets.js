@@ -311,20 +311,12 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
   return { kind: "hours", hours: h };
 }
 
-/** Map hệ số → giờ (một ô / dòng). */
+/**
+ * Map hệ số → giờ (một ô / dòng).
+ * Đồng bộ cột «TC ca ngày (×1.5)» bảng ngày — không chặn theo loại phép;
+ * ngày phép đủ ngày thì `getPayrollDayOvertimeHoursNumeric` tự trả 0/null.
+ */
 export function getPayrollMonthlyCoeffHoursMap(p) {
-  const {
-    includeTapVuInWorkingHours,
-    includeThaiSanInWorkingHours,
-  } = resolvePayrollMonthlyRegimeFlags(p);
-  if (
-    isAttendanceActualLeaveType(p?.leaveType, {
-      includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours,
-    })
-  )
-    return new Map();
-
   const m = new Map();
   for (const ln of sortPayrollMonthlyCoefficientLines(
     getPayrollMonthlyCoefficientLines(p),

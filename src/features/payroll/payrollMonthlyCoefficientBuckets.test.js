@@ -110,4 +110,32 @@ describe("getPayrollMonthlyCoeffHoursMap", () => {
     expect(m.get(0.3)).toBe(7);
     expect(m.get(1.5)).toBe(1);
   });
+
+  it("có loại phép PN + giờ ra muộn — vẫn ×1.5 (đồng bộ bảng ngày)", () => {
+    const m = getPayrollMonthlyCoeffHoursMap({
+      timeIn: "08:00",
+      timeOut: "18:00",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      leaveType: "PN",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+    });
+    expect(m.get(1.5)).toBe(1);
+  });
+
+  it("tangCaTrua — ×1.5 gộp vào map", () => {
+    const m = getPayrollMonthlyCoeffHoursMap({
+      timeIn: "08:00",
+      timeOut: "17:00",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      lunchOtHours: 1.5,
+    });
+    expect(m.get(1.5)).toBe(1.5);
+  });
 });
