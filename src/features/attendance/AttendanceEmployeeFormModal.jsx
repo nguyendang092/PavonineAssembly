@@ -487,7 +487,7 @@ export default function AttendanceEmployeeFormModal({
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
   const isEditMode = Boolean(editAttendanceKey);
   const isViewOnly = Boolean(readOnly);
-  /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP chỉ sửa loại phép + ca làm việc. */
+  /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP: loại phép, ca, nghỉ bù, chế độ NV. */
   const isRestrictedEdit =
     isEditMode && !isAdminAccess(user, userRole) && !isViewOnly;
   const fieldsLocked = isViewOnly || isRestrictedEdit;
@@ -543,7 +543,7 @@ export default function AttendanceEmployeeFormModal({
           <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
             {tl(
               "restrictedEditManagerHint",
-              "Bạn chỉ có thể sửa Loại phép, Ca làm việc và Nghỉ bù.",
+              "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù và Chế độ nhân viên.",
             )}
           </p>
         ) : null}
@@ -667,7 +667,7 @@ export default function AttendanceEmployeeFormModal({
                 value={employeeRegimeSelectValue}
                 onChange={handleEmployeeRegimeChange}
                 className={employeeModalSelectFieldClass}
-                disabled={fieldsLocked}
+                disabled={isViewOnly}
               >
                 <option value="">
                   {tl("employeeRegimePlaceholder", "— Chọn —")}

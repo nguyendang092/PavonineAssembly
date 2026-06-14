@@ -1120,6 +1120,8 @@ const vi = {
     attendanceDateLabel: "Ngày điểm danh",
     viewOnlyAttendanceHint:
       "Chế độ chỉ xem — không thể chỉnh sửa hoặc lưu.",
+    restrictedEditManagerHint:
+      "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù và Chế độ nhân viên.",
     addEmployee: "Thêm nhân viên mới",
     employeeRegimeField: "Chế độ nhân viên",
     employeeRegimePlaceholder: "— Chọn —",

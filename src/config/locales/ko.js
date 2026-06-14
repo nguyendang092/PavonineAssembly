@@ -1130,6 +1130,8 @@ const ko = {
     viewEmployeeAttendance: "출근 정보 보기",
     attendanceDateLabel: "출근일",
     viewOnlyAttendanceHint: "보기 전용 — 수정·저장할 수 없습니다.",
+    restrictedEditManagerHint:
+      "휴가 유형, 근무조, 보상휴무, 직원 유형만 수정할 수 있습니다.",
     addEmployee: "신규 직원 추가",
     employeeRegimeField: "직원 유형",
     employeeRegimePlaceholder: "— 선택 —",

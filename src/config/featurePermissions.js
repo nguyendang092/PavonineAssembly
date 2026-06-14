@@ -48,11 +48,10 @@ export const PERMISSION_CATALOG = Object.freeze([
     id: PERMISSION_IDS.PAYROLL_MONTH_GRID_DAY_CELL,
     labelVi: "Lưới tháng (bảng lương) — bấm ô ngày mở form điểm danh",
     quyTac:
-      "Admin/HR: bấm ô ngày để sửa (trong phạm vi canEditAttendance / canAddAttendance). Manager bộ phận: bấm ô có dữ liệu để xem (canViewPayrollMonthTimesheetGridCell).",
+      "Admin/HR và manager bộ phận: bấm ô ngày để sửa (canEditAttendance / canAddAttendance). Manager: sửa hạn chế qua form (loại phép, ca, nghỉ bù, chế độ NV).",
     routes: ["/attendance-salary"],
     modules: ["features/payroll/PayrollMonthlyTimesheetModal.jsx"],
     authRolesHelpers: [
-      "isAdminAccess",
       "canEditAttendanceForEmployee",
       "canAddAttendanceForDepartment",
     ],
@@ -189,8 +188,8 @@ function payrollMonthTimesheetGridPermEmployee(rep, rowDayEmp) {
 }
 
 /**
- * Ô ngày trên lưới tháng: manager bộ phận xem chi tiết điểm danh (không sửa).
- * @see PERMISSION_IDS.PAYROLL_MONTH_GRID_DAY_CELL
+ * Ô ngày trên lưới tháng: manager bộ phận xem chi tiết (không sửa) — khi không có quyền sửa nhưng có dữ liệu.
+ * Sau khi manager được sửa qua {@link canEditPayrollMonthTimesheetGridCell}, hàm này trùng điều kiện «có dữ liệu».
  */
 export function canViewPayrollMonthTimesheetGridCell({
   loading,
@@ -218,7 +217,6 @@ export function canEditPayrollMonthTimesheetGridCell({
   userDepartments,
 }) {
   if (loading || !user || !rep) return false;
-  if (!isAdminAccess(user, userRole)) return false;
   if (rowDayEmp) {
     return canEditAttendanceForEmployee({
       user,
