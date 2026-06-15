@@ -59,11 +59,7 @@ import {
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
-import { canAddAttendanceForDepartment } from "@/config/authRoles";
-import {
-  canEditPayrollMonthTimesheetGridCell,
-  canViewPayrollMonthTimesheetGridCell,
-} from "@/config/featurePermissions";
+import { canEditPayrollMonthTimesheetGridCell } from "@/config/featurePermissions";
 
 function parseSortableStt(raw) {
   const n = Number(raw);
@@ -184,31 +180,25 @@ const MONTH_DAY_LEAVE_BADGE_BASE_CLASS =
 const MONTH_DAY_PRINT_MAIN_FONT_STYLE =
   "font-size:6.5pt;line-height:1;font-weight:700";
 
-/** Ô ngày: class + props a11y khi được phép sửa hoặc xem điểm danh. */
+/** Ô ngày: class + props a11y khi được phép mở form điểm danh. */
 function payrollMonthTimesheetDayCellA11y({
-  canEdit,
-  canView,
+  canOpen,
   dateKey,
   rowId,
   openDayCellEditor,
   tlPage,
 }) {
-  if (!canEdit && !canView) return { className: "", props: {} };
+  if (!canOpen) return { className: "", props: {} };
   const activate = () => openDayCellEditor(dateKey, rowId);
   return {
     className: MONTH_DAY_CELL_INTERACTIVE,
     props: {
       role: "button",
       tabIndex: 0,
-      title: canEdit
-        ? tlPage(
-            "monthlyTimesheetDayCellEditHint",
-            "Bấm để sửa điểm danh ngày này.",
-          )
-        : tlPage(
-            "monthlyTimesheetDayCellViewHint",
-            "Bấm để xem thông tin điểm danh ngày này.",
-          ),
+      title: tlPage(
+        "monthlyTimesheetDayCellEditHint",
+        "Bấm để sửa điểm danh ngày này.",
+      ),
       onClick: (e) => {
         e.preventDefault();
         activate();
@@ -802,15 +792,7 @@ const PayrollMonthlyTimesheetDayCell = memo(
       );
     }
 
-    const canEditThisDayCell = canEditPayrollMonthTimesheetGridCell({
-      loading,
-      user,
-      rep,
-      rowDayEmp: dayCell.emp,
-      userRole,
-      userDepartments,
-    });
-    const canViewThisDayCell = canViewPayrollMonthTimesheetGridCell({
+    const canOpenThisDayCell = canEditPayrollMonthTimesheetGridCell({
       loading,
       user,
       rep,
@@ -820,8 +802,7 @@ const PayrollMonthlyTimesheetDayCell = memo(
     });
     const { className: dayCellInteractCls, props: dayCellInteract } =
       payrollMonthTimesheetDayCellA11y({
-        canEdit: canEditThisDayCell,
-        canView: canViewThisDayCell,
+        canOpen: canOpenThisDayCell,
         dateKey: dayCell.dateKey,
         rowId,
         openDayCellEditor,
@@ -1137,7 +1118,6 @@ export default function PayrollMonthlyTimesheetModal({
   const tableBodyScrollRef = useRef(null);
   const loadSeqRef = useRef(0);
   const [dayCellFormOpen, setDayCellFormOpen] = useState(false);
-  const [dayCellFormReadOnly, setDayCellFormReadOnly] = useState(false);
   const [dayCellFormDate, setDayCellFormDate] = useState("");
   const [dayCellFormInitial, setDayCellFormInitial] = useState(null);
   const [dayCellFormEmployees, setDayCellFormEmployees] = useState([]);
@@ -1267,7 +1247,6 @@ export default function PayrollMonthlyTimesheetModal({
   useEffect(() => {
     if (open) return;
     setDayCellFormOpen(false);
-    setDayCellFormReadOnly(false);
     setDayCellFormDate("");
     setDayCellFormInitial(null);
     setDayCellFormEmployees([]);
@@ -1289,6 +1268,16 @@ export default function PayrollMonthlyTimesheetModal({
   const chunkByDate = useMemo(
     () => new Map(dayChunks.map((c) => [c.dateKey, c])),
     [dayChunks],
+  );
+
+  const openDayCellForm = useCallback(
+    (dateKey, dayEmps, formInitial) => {
+      setDayCellFormEmployees(dayEmps);
+      setDayCellFormDate(dateKey);
+      setDayCellFormInitial(formInitial);
+      setDayCellFormOpen(true);
+    },
+    [],
   );
 
   const openDayCellEditor = useCallback(
@@ -1330,70 +1319,36 @@ export default function PayrollMonthlyTimesheetModal({
         userRole,
         userDepartments,
       });
-      const canViewCell = canViewPayrollMonthTimesheetGridCell({
-        loading: false,
-        user,
-        rep,
-        rowDayEmp: dayEmp,
-        userRole,
-        userDepartments,
-      });
 
-      if (!canEditCell && !canViewCell) {
+      if (!canEditCell) {
         onAlert?.({
           show: true,
           type: "error",
-          message: tlPage(
-            "monthlyTimesheetNoViewPermission",
-            "Bạn không có quyền xem điểm danh nhân viên này.",
-          ),
+          message: dayEmp
+            ? tlPage(
+                "monthlyTimesheetNoEditPermission",
+                "Bạn không có quyền sửa nhân viên này.",
+              )
+            : tlPage(
+                "monthlyTimesheetNoAddPermission",
+                "Bạn không có quyền thêm điểm danh cho bộ phận này.",
+              ),
         });
         return;
       }
 
-      if (canEditCell) {
-        if (dayEmp) {
-          setDayCellFormEmployees(dayEmps);
-          setDayCellFormDate(dateKey);
-          setDayCellFormInitial(formInitial);
-          setDayCellFormReadOnly(false);
-          setDayCellFormOpen(true);
-          return;
-        }
-        if (
-          !canAddAttendanceForDepartment({
-            user,
-            userRole,
-            userDepartments,
-            boPhan: rep.boPhan,
-          })
-        ) {
-          onAlert?.({
-            show: true,
-            type: "error",
-            message: tlPage(
-              "monthlyTimesheetNoAddPermission",
-              "Bạn không có quyền thêm điểm danh cho bộ phận này.",
-            ),
-          });
-          return;
-        }
-        setDayCellFormEmployees(dayEmps);
-        setDayCellFormDate(dateKey);
-        setDayCellFormInitial(formInitial);
-        setDayCellFormReadOnly(false);
-        setDayCellFormOpen(true);
-        return;
-      }
-
-      if (!dayEmp) return;
-      setDayCellFormEmployees(dayEmps);
-      setDayCellFormDate(dateKey);
-      setDayCellFormInitial(formInitial);
-      setDayCellFormReadOnly(true);
-      setDayCellFormOpen(true);
+      openDayCellForm(dateKey, dayEmps, formInitial);
     },
-    [user, chunkByDate, repById, userRole, userDepartments, onAlert, tlPage],
+    [
+      user,
+      chunkByDate,
+      repById,
+      userRole,
+      userDepartments,
+      onAlert,
+      tlPage,
+      openDayCellForm,
+    ],
   );
 
   const monthlySummaryById = useMemo(() => {
@@ -2140,10 +2095,8 @@ export default function PayrollMonthlyTimesheetModal({
         open={dayCellFormOpen}
         onClose={() => {
           setDayCellFormOpen(false);
-          setDayCellFormReadOnly(false);
           setDayCellFormInitial(null);
         }}
-        readOnly={dayCellFormReadOnly}
         initialRecord={dayCellFormInitial}
         selectedDate={dayCellFormDate}
         employees={

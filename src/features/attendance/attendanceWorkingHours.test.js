@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatPayrollTableDayShiftOvertimeCell,
   formatPayrollTableNightShiftOvertimeCell,
+  formatPayrollTableTotalDayGcCell,
   getNightShiftPayrollOvertimeHours,
   getNightShiftPayrollRegularHoursAndOtMinutes,
   getOvertimeHoursFromGioRa,
@@ -264,6 +265,23 @@ describe("getEarlyPaperworkOvertimeHours", () => {
         false,
       ),
     ).toBe(2.5);
+  });
+});
+
+describe("formatPayrollTableTotalDayGcCell", () => {
+  it("1/2PN ngày thường: Tổng GC = giờ công nửa ngày + giờ TC", () => {
+    expect(
+      formatPayrollTableTotalDayGcCell(
+        "07:30",
+        "18:00",
+        false,
+        false,
+        "S1",
+        false,
+        "1/2PN",
+        false,
+      ),
+    ).toBe("5");
   });
 });
 

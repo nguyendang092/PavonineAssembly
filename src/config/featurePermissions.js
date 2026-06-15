@@ -175,10 +175,6 @@ export function debugPrintPermissionCatalog() {
   );
 }
 
-/**
- * Ô ngày trên lưới tháng (modal bảng lương): mở form điểm danh.
- * @see PERMISSION_IDS.PAYROLL_MONTH_GRID_DAY_CELL
- */
 function payrollMonthTimesheetGridPermEmployee(rep, rowDayEmp) {
   return {
     ...rep,
@@ -188,26 +184,10 @@ function payrollMonthTimesheetGridPermEmployee(rep, rowDayEmp) {
 }
 
 /**
- * Ô ngày trên lưới tháng: manager bộ phận xem chi tiết (không sửa) — khi không có quyền sửa nhưng có dữ liệu.
- * Sau khi manager được sửa qua {@link canEditPayrollMonthTimesheetGridCell}, hàm này trùng điều kiện «có dữ liệu».
+ * Ô ngày trên lưới tháng (modal bảng lương): mở / sửa form điểm danh.
+ * Admin/HR và manager bộ phận — cùng quy tắc {@link canEditAttendanceForEmployee} / {@link canAddAttendanceForDepartment}.
+ * @see PERMISSION_IDS.PAYROLL_MONTH_GRID_DAY_CELL
  */
-export function canViewPayrollMonthTimesheetGridCell({
-  loading,
-  user,
-  rep,
-  rowDayEmp,
-  userRole,
-  userDepartments,
-}) {
-  if (loading || !user || !rep || !rowDayEmp) return false;
-  return canEditAttendanceForEmployee({
-    user,
-    userRole,
-    userDepartments,
-    employee: payrollMonthTimesheetGridPermEmployee(rep, rowDayEmp),
-  });
-}
-
 export function canEditPayrollMonthTimesheetGridCell({
   loading,
   user,

@@ -1141,16 +1141,35 @@ function payrollTotalDayGcNumeric(
     )
   ) {
     if (isHalfPnLeaveType(leaveTypeRaw) && !isStrictOffDay && !isHolidayDay) {
-      const h = getPayrollHalfDayLeaveWorkedHours(
-        gioVao,
-        gioRa,
-        caLamViec,
-        includeTapVuInWorkingHours,
-        includeThaiSanInWorkingHours,
-        includeTaiXeInWorkingHours,
-        includeTaiXeTongInWorkingHours,
-      );
-      return roundHoursForPayrollDisplay(h == null ? 0 : h);
+      if (!isNightShiftCaLamViec(caLamViec)) {
+        const h = getPayrollHalfDayLeaveWorkedHours(
+          gioVao,
+          gioRa,
+          caLamViec,
+          includeTapVuInWorkingHours,
+          includeThaiSanInWorkingHours,
+          includeTaiXeInWorkingHours,
+          includeTaiXeTongInWorkingHours,
+        );
+        const gc = h == null ? 0 : h;
+        const n = getPayrollDayOvertimeHoursNumeric(
+          gioVao,
+          gioRa,
+          false,
+          caLamViec,
+          earlyOtPaperwork,
+          false,
+          lateOtExcluded,
+          includeTapVuInWorkingHours,
+          includeThaiSanInWorkingHours,
+          includeTaiXeInWorkingHours,
+          includeTaiXeTongInWorkingHours,
+          tangCaTruaHours,
+        );
+        const tc = n == null ? 0 : n;
+        return roundHoursForPayrollDisplay(roundHoursToTenths(gc + tc));
+      }
+      return 0;
     }
     return 0;
   }
