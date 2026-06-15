@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getPayrollMonthlyCoefficientLines,
   getPayrollMonthlyCoeffHoursMap,
+  getPayrollMonthlyMainRowCell,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 
 function coeffHours(lines, coeff) {
@@ -49,6 +50,35 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     });
     expect(coeffHours(lines, 1.5)).toBe(1);
     expect(coeffHours(lines, 2.0)).toBe(0);
+  });
+
+  it("1/2PN + ra 18:00 — TC ×1.5 như ngày thường", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "07:30",
+      timeOut: "18:00",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      leaveType: "1/2 Phép năm",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+    });
+    expect(coeffHours(lines, 1.5)).toBe(1);
+  });
+
+  it("getPayrollMonthlyMainRowCell: 1/2PN — badge + workedHours", () => {
+    const main = getPayrollMonthlyMainRowCell(
+      {
+        gioVao: "07:30",
+        gioRa: "12:00",
+        caLamViec: "S1",
+        loaiPhep: "1/2 Phép năm",
+      },
+      { isOffDay: false, isHolidayDay: false, isCompensatoryDay: false },
+    );
+    expect(main.kind).toBe("leave");
+    expect(main.leaveShort).toBe("1/2PN");
+    expect(main.workedHours).toBe(4);
   });
 
   it("ca đêm thường — ×0.3 + TC ×1.5 (không ×2.0)", () => {

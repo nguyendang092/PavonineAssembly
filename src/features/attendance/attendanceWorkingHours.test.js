@@ -3,6 +3,8 @@ import {
   formatPayrollTableDayShiftOvertimeCell,
   formatPayrollTableNightShiftOvertimeCell,
   formatPayrollTableTotalDayGcCell,
+  formatPayrollTableWorkingHoursCell,
+  getPayrollHalfDayLeaveWorkedHours,
   getNightShiftPayrollOvertimeHours,
   getNightShiftPayrollRegularHoursAndOtMinutes,
   getOvertimeHoursFromGioRa,
@@ -268,6 +270,73 @@ describe("getEarlyPaperworkOvertimeHours", () => {
   });
 });
 
+describe("1/2PN — giờ công", () => {
+  it("getPayrollHalfDayLeaveWorkedHours: buổi sáng 07:30 → 4h", () => {
+    expect(getPayrollHalfDayLeaveWorkedHours("07:30", "12:00", "S1")).toBe(4);
+  });
+
+  it("getPayrollHalfDayLeaveWorkedHours: buổi chiều 13:00 → 4h", () => {
+    expect(getPayrollHalfDayLeaveWorkedHours("13:00", "17:00", "S1")).toBe(4);
+  });
+
+  it("cột Giờ công: 1/2PN hiển thị giờ (không «-» như PN cả ngày)", () => {
+    expect(
+      formatPayrollTableWorkingHoursCell(
+        "07:30",
+        "12:00",
+        false,
+        "S1",
+        "1/2PN",
+      ),
+    ).toBe("4");
+    expect(
+      formatPayrollTableWorkingHoursCell(
+        "08:00",
+        "17:00",
+        false,
+        "S1",
+        "Phép năm",
+      ),
+    ).toBe("-");
+  });
+
+  it("cột Giờ công: chuỗi DB «1/2 Phép năm»", () => {
+    expect(
+      formatPayrollTableWorkingHoursCell(
+        "07:30",
+        "12:00",
+        false,
+        "S1",
+        "1/2 Phép năm",
+      ),
+    ).toBe("4");
+  });
+
+  it("Tổng GC: giờ công + TC tách rõ (4 + 1)", () => {
+    expect(
+      formatPayrollTableWorkingHoursCell(
+        "07:30",
+        "18:00",
+        false,
+        "S1",
+        "1/2PN",
+      ),
+    ).toBe("4");
+    expect(
+      formatPayrollTableTotalDayGcCell(
+        "07:30",
+        "18:00",
+        false,
+        false,
+        "S1",
+        false,
+        "1/2PN",
+        false,
+      ),
+    ).toBe("5");
+  });
+});
+
 describe("formatPayrollTableTotalDayGcCell", () => {
   it("1/2PN ngày thường: Tổng GC = giờ công nửa ngày + giờ TC", () => {
     expect(
@@ -280,6 +349,52 @@ describe("formatPayrollTableTotalDayGcCell", () => {
         false,
         "1/2PN",
         false,
+      ),
+    ).toBe("5");
+  });
+
+  it("1/2 Phép năm (chuẩn DB) + TC chiều — cộng như ngày thường", () => {
+    expect(
+      formatPayrollTableTotalDayGcCell(
+        "07:30",
+        "18:00",
+        false,
+        false,
+        "S1",
+        false,
+        "1/2 Phép năm",
+        false,
+      ),
+    ).toBe("5");
+    expect(
+      formatPayrollTableDayShiftOvertimeCell(
+        "07:30",
+        "18:00",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+      ),
+    ).toBe("1");
+  });
+
+  it("1/2PN + tangCaTrua — TC cộng vào Tổng GC", () => {
+    expect(
+      formatPayrollTableTotalDayGcCell(
+        "07:30",
+        "17:00",
+        false,
+        false,
+        "S1",
+        false,
+        "1/2PN",
+        false,
+        false,
+        false,
+        false,
+        false,
+        1,
       ),
     ).toBe("5");
   });

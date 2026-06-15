@@ -300,6 +300,10 @@ export function buildMonthlyRuleSummary(
       out.klDays += leaveUnitsByCode(main.leaveShort, "KL");
       out.kpDays += leaveUnitsByCode(main.leaveShort, "KP");
       addWorkedHours(main.workedHours);
+      // 1/2PN: giờ TC (×1.5…) cộng vào Tổng GC — đồng bộ bảng ngày.
+      if (main.leaveShort === "1/2PN") {
+        addWorkedHours(coeffSum);
+      }
 
       out.workDays += computeIncludedWorkDayCreditForLeave({
         ch,

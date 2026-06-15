@@ -325,3 +325,40 @@ describe("buildMonthlyDetailFlatValues", () => {
     }
   });
 });
+
+describe("buildMonthlyRuleSummary — 1/2PN + TC", () => {
+  const empId = "e-half";
+  const weekdayKey = "2026-01-13"; // thứ Ba
+
+  it("Tổng GC thực tế = giờ nửa ngày + TC ×1.5", () => {
+    const halfPnEmp = {
+      id: empId,
+      gioVao: "07:30",
+      gioRa: "18:00",
+      caLamViec: "S1",
+      loaiPhep: "1/2 Phép năm",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+    };
+    const dayChunks = new Map([
+      [
+        weekdayKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          employees: [halfPnEmp],
+        }),
+      ],
+    ]);
+    const { total } = buildMonthlyRuleSummary(
+      dayChunks,
+      [weekdayKey],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+
+    expect(total.workHours).toBe(5);
+    expect(total.coeff15).toBe(1);
+    expect(total.pnDays).toBe(0.5);
+  });
+});
