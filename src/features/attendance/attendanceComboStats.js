@@ -5,7 +5,7 @@
  * **Không dùng cho tính giờ công (GC/TC):** số giờ trên bảng điểm danh / lương tháng lấy từ
  * `attendanceWorkingHours.js` (`getAttendanceWorkingHoursHours`, `formatPayrollTableWorkingHoursCell`, …)
  * và `payrollMonthlyCoefficientBuckets.js` (`getPayrollMonthlyMainRowCell`, `getPayrollMonthlyCoeffHoursMap`),
- * dựa trên `gioVao` / `gioRa` / `loaiPhep` + `isAttendanceActualLeaveType` — **không** import cờ ở đây.
+ * dựa trên `timeIn` / `timeOut` / `leaveType` (RTDB: gioVao/gioRa/loaiPhep) + `isAttendanceActualLeaveType` — **không** import cờ ở đây.
  *
  * Chỉnh logic KPI (vd. tránh đếm trùng PN + «Chấm công») **không** đổi công thức giờ công trừ khi
  * đồng thời sửa các module trên.
@@ -20,6 +20,10 @@ import {
 } from "./attendanceGioVaoTypeOptions";
 import { isBoPhanChuaDung } from "./attendanceDayMeta";
 import { isNightShiftCaLamViec } from "./attendanceWorkingHours";
+import {
+  ATTENDANCE_EMP,
+  pickAttendanceEmployeeDayFields,
+} from "./attendanceEmployeeFields";
 
 export const normalizeTextValue = (value) => String(value ?? "").trim();
 
@@ -54,14 +58,15 @@ export function gioVaoTextLooksLikeMaternity(raw) {
 
 /** Cùng logic với thống kê combo chart — dùng cho bảng chi tiết khi bấm KPI */
 export function getAttendanceComboFlags(emp) {
-  const gioVaoRaw = normalizeTextValue(emp.gioVao);
+  const day = pickAttendanceEmployeeDayFields(emp);
+  const timeInRaw = normalizeTextValue(day.timeIn);
   const leaveTypeRaw = normalizeTextValue(getAttendanceLeaveTypeRaw(emp));
-  const isTimeFormat = /^\d{1,2}:\d{2}(:\d{2})?$/.test(gioVaoRaw);
-  const textSignalRaw = leaveTypeRaw || (isTimeFormat ? "" : gioVaoRaw);
+  const isTimeFormat = /^\d{1,2}:\d{2}(:\d{2})?$/.test(timeInRaw);
+  const textSignalRaw = leaveTypeRaw || (isTimeFormat ? "" : timeInRaw);
   const nonStandardTimeIn =
-    gioVaoRaw !== "" && !GIO_VAO_HHMM_STRICT.test(gioVaoRaw);
+    timeInRaw !== "" && !GIO_VAO_HHMM_STRICT.test(timeInRaw);
   // Trường hợp cần theo dõi riêng: không có giờ vào HH:MM nhưng có loại phép.
-  const timeInHashHHMM = gioVaoRaw === "" && leaveTypeRaw !== "";
+  const timeInHashHHMM = timeInRaw === "" && leaveTypeRaw !== "";
   const gioVaoNormalized = normalizeTextValue(textSignalRaw)
     .replace(/\u00a0/g, " ")
     .toUpperCase();
@@ -76,7 +81,7 @@ export function getAttendanceComboFlags(emp) {
     codes.some((code) => gioVaoTokens.includes(code));
   const hasText = (...texts) => texts.some((txt) => gioVaoLatin.includes(txt));
   /** Ca đêm chỉ theo cột «Ca làm việc» — đồng bộ `isNightShiftCaLamViec` (lương / giờ công). */
-  const isNightShiftRow = isNightShiftCaLamViec(emp.caLamViec);
+  const isNightShiftRow = isNightShiftCaLamViec(day.shiftCode);
   const isLate = hasLeaveCode("VT") || hasText("VAO TRE");
   /** Tách khỏi PN cả ngày — thống kê Dashboard có ô riêng 1/2PN */
   const halfAnnualHeuristic =
@@ -90,8 +95,8 @@ export function getAttendanceComboFlags(emp) {
    */
   const buGioCongMatch =
     textMatchesBuGioCong(textSignalRaw) ||
-    textMatchesBuGioCong(emp.chamCong) ||
-    textMatchesBuGioCong(emp.phepNam);
+    textMatchesBuGioCong(emp[ATTENDANCE_EMP.CHAM_CONG]) ||
+    textMatchesBuGioCong(emp[ATTENDANCE_EMP.PHEP_NAM]);
   const isAnnualLeave =
     !halfAnnualHeuristic &&
     (hasLeaveCode("PN") || hasText("PHEP NAM"));
@@ -106,16 +111,16 @@ export function getAttendanceComboFlags(emp) {
   /** Phép tang: giờ vào + chấm công / PN (ghi chú) — đồng bộ với dropdown & Excel */
   const isFuneralLeave =
     textMatchesFuneralLeave(textSignalRaw) ||
-    textMatchesFuneralLeave(emp.chamCong) ||
-    textMatchesFuneralLeave(emp.phepNam);
+    textMatchesFuneralLeave(emp[ATTENDANCE_EMP.CHAM_CONG]) ||
+    textMatchesFuneralLeave(emp[ATTENDANCE_EMP.PHEP_NAM]);
   const isResignedLeave = hasLeaveCode("NV") || hasText("NGHI VIEC");
 
   /** Khớp từng loại trong ATTENDANCE_LOAI_PHEP_OPTIONS (cột loại phép / trạng thái) + ghi chú liên quan */
   const scanRaws = [
     textSignalRaw,
-    gioVaoRaw,
-    normalizeTextValue(emp.chamCong),
-    normalizeTextValue(emp.phepNam),
+    timeInRaw,
+    normalizeTextValue(emp[ATTENDANCE_EMP.CHAM_CONG]),
+    normalizeTextValue(emp[ATTENDANCE_EMP.PHEP_NAM]),
   ].filter(Boolean);
   const typeHitKeys = new Set();
   for (const raw of scanRaws) {

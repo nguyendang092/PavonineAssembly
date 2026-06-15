@@ -1,0 +1,325 @@
+/* Popup lưới giờ vào / ra — một hệ viền: ngoài 2px, trong 1px (border-collapse, không đè) */
+.pm-tio-table {
+  table-layout: fixed;
+  border-collapse: collapse;
+  border-spacing: 0;
+  border: 2px solid #0f172a;
+}
+
+.pm-tio-table-wrap {
+  vertical-align: top;
+}
+
+.dark .pm-tio-table {
+  border-color: #64748b;
+}
+
+.pm-tio-table th,
+.pm-tio-table td {
+  box-sizing: border-box;
+  background-clip: padding-box;
+}
+
+.pm-tio-table th.pm-tio-cell,
+.pm-tio-table td.pm-tio-cell {
+  border: 1px solid #cbd5e1;
+  overflow: hidden;
+}
+
+.pm-tio-table th.pm-tio-sticky-cell,
+.pm-tio-table td.pm-tio-sticky-cell {
+  overflow: hidden;
+}
+
+.dark .pm-tio-table th.pm-tio-cell,
+.dark .pm-tio-table td.pm-tio-cell {
+  border-color: #475569;
+}
+
+.pm-tio-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  border-radius: 0.625rem;
+  border: 1px solid rgb(153 246 228 / 0.85);
+  background: linear-gradient(
+    135deg,
+    rgb(240 253 250) 0%,
+    rgb(255 255 255) 48%,
+    rgb(236 254 255) 100%
+  );
+  padding: 0.625rem 0.75rem;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+}
+
+.dark .pm-tio-toolbar {
+  border-color: rgb(51 65 85);
+  background: linear-gradient(
+    135deg,
+    rgb(15 23 42) 0%,
+    rgb(30 41 59) 55%,
+    rgb(15 23 42) 100%
+  );
+}
+
+.pm-tio-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pm-tio-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+}
+
+.pm-tio-legend-chip--note {
+  border-color: rgb(226 232 240);
+  background: rgb(255 255 255);
+  color: rgb(71 85 105);
+}
+
+.pm-tio-legend-chip--in {
+  border-color: rgb(167 243 208);
+  background: rgb(236 253 245);
+  color: rgb(6 95 70);
+}
+
+.pm-tio-legend-chip--out {
+  border-color: rgb(253 230 138);
+  background: rgb(255 251 235);
+  color: rgb(146 64 14);
+}
+
+.dark .pm-tio-legend-chip--note {
+  border-color: rgb(71 85 105);
+  background: rgb(30 41 59);
+  color: rgb(203 213 225);
+}
+
+.dark .pm-tio-legend-chip--in {
+  border-color: rgb(6 95 70);
+  background: rgb(6 78 59 / 0.35);
+  color: rgb(167 243 208);
+}
+
+.dark .pm-tio-legend-chip--out {
+  border-color: rgb(180 83 9 / 0.55);
+  background: rgb(120 53 15 / 0.35);
+  color: rgb(253 230 138);
+}
+
+.pm-tio-legend-arrow {
+  color: rgb(148 163 184);
+  font-weight: 600;
+}
+
+.pm-tio-legend-sample {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.pm-tio-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.pm-tio-filter-input {
+  height: 2rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(203 213 225);
+  background: rgb(255 255 255);
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(15 23 42);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.pm-tio-filter-input:focus {
+  border-color: rgb(45 212 191);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(45 212 191 / 0.25);
+}
+
+.pm-tio-filter-input--search {
+  width: 13.75rem;
+  max-width: 100%;
+}
+
+.dark .pm-tio-filter-input {
+  border-color: rgb(71 85 105);
+  background: rgb(15 23 42);
+  color: rgb(248 250 252);
+}
+
+.pm-tio-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(20 184 166 / 0.55) rgb(241 245 249);
+}
+
+.pm-tio-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.pm-tio-scroll::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: rgb(20 184 166 / 0.45);
+}
+
+.pm-tio-scroll::-webkit-scrollbar-track {
+  background: rgb(241 245 249);
+}
+
+.dark .pm-tio-scroll {
+  scrollbar-color: rgb(45 212 191 / 0.4) rgb(30 41 59);
+}
+
+.dark .pm-tio-scroll::-webkit-scrollbar-track {
+  background: rgb(30 41 59);
+}
+
+.pm-tio-day-cell {
+  min-height: 2.65rem;
+  vertical-align: middle;
+  overflow: hidden;
+  transition: background-color 0.12s ease;
+}
+
+.pm-tio-time-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 6px;
+  align-items: center;
+  justify-items: stretch;
+  width: 100%;
+  padding: 3px 4px;
+}
+
+.pm-tio-time-label {
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+
+.pm-tio-time-label--in {
+  color: rgb(5 150 105);
+}
+
+.pm-tio-time-label--out {
+  color: rgb(217 119 6);
+}
+
+.dark .pm-tio-time-label--in {
+  color: rgb(52 211 153);
+}
+
+.dark .pm-tio-time-label--out {
+  color: rgb(251 191 36);
+}
+
+.pm-tio-time-value {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: rgb(15 23 42);
+}
+
+.pm-tio-time-value--filled {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+  color: rgb(15 23 42) !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark .pm-tio-time-value--filled {
+  color: rgb(248 250 252) !important;
+}
+
+.dark .pm-tio-time-value {
+  color: rgb(248 250 252);
+}
+
+.pm-tio-time-value--empty {
+  color: rgb(148 163 184) !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  opacity: 0.85;
+}
+
+.pm-tio-header-day {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.pm-tio-header-wd {
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.05;
+  opacity: 0.85;
+}
+
+.pm-tio-header-wd--sun {
+  color: rgb(220 38 38);
+}
+
+.pm-tio-leave-cell {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.pm-tio-leave-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 2.65rem;
+  padding: 2px;
+}
+
+.pm-tio-leave-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: calc(100% - 4px);
+  box-sizing: border-box;
+  margin: 0 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-radius: 0.375rem;
+  border-width: 1px;
+  padding: 2px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+}

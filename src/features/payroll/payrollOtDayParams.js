@@ -19,8 +19,8 @@ export function payrollOtDayParamsFromEmp(emp, dayCtx) {
     isCompensatoryDay: dayCtx.isCompensatoryDay ?? false,
     shiftCode: emp[PAYROLL_EMP.SHIFT],
     leaveType: emp[PAYROLL_EMP.LEAVE_TYPE],
-    payrollEarlyOtPaperwork: emp.payrollEarlyOtPaperwork,
-    payrollLateOtExcluded: emp.payrollLateOtExcluded,
+    payrollEarlyOtPaperwork: emp[PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK],
+    payrollLateOtExcluded: emp[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED],
     lunchOtHours: emp[PAYROLL_EMP.LUNCH_OT_HOURS],
     ...flags,
   };
@@ -38,9 +38,11 @@ export function payrollOtDayParamsFromEmpWithMaps(
     {
       ...emp,
       payrollEarlyOtPaperwork:
-        emp.payrollEarlyOtPaperwork ?? earlyOtPaperworkById[emp.id],
+        emp[PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK] ??
+        earlyOtPaperworkById[emp.id],
       payrollLateOtExcluded:
-        emp.payrollLateOtExcluded ?? lateOtExcludedById[emp.id],
+        emp[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED] ??
+        lateOtExcludedById[emp.id],
     },
     dayCtx,
   );

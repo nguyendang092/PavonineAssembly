@@ -97,7 +97,7 @@ const vi = {
     mcDefectReport: "Báo cáo hàng lỗi",
     attendance: "Điểm danh",
     attendanceList: "Điểm danh NV",
-    attendanceSalary: "Bảng giờ công nhân viên",
+    attendanceSalary: "Xem giờ công",
     seasonalStaffAttendance: "Điểm danh NV thời vụ",
     userDepartment: "Phân quyền User",
     permissionCatalog: "Phân quyền & chức năng",
@@ -1021,7 +1021,8 @@ const vi = {
       "Mở danh sách ngày off và ngày lễ trong tháng; chỉnh sửa trong cửa sổ đầy đủ.",
     dayOffToolbarTitleDates: "Ngày off trong tháng (YYYY-MM-DD):",
     dayOffToolbarTitleHolidayDates: "Ngày lễ trong tháng (YYYY-MM-DD):",
-    dayOffToolbarTitleCompensatoryDates: "Ngày nghỉ bù trong tháng (YYYY-MM-DD):",
+    dayOffToolbarTitleCompensatoryDates:
+      "Ngày nghỉ bù trong tháng (YYYY-MM-DD):",
     dayOffToolbarLoading: "Đang tải danh sách ngày off trong tháng…",
     dayOffToolbarMonthPrefix: "Trong tháng:",
     dayOffToolbarNoOffInMonth: "Chưa có ngày off nào trong tháng này.",
@@ -1036,8 +1037,7 @@ const vi = {
     dayOffMultiCancel: "Hủy",
     dayOffMultiSave: "Lưu",
     dayOffMultiSaving: "Đang lưu…",
-    dayOffMultiLoadingList:
-      "Đang tải các ngày off / lễ / nghỉ bù trong tháng…",
+    dayOffMultiLoadingList: "Đang tải các ngày off / lễ / nghỉ bù trong tháng…",
     dayOffToggleHint:
       "Bật khi ngày đó là ngày nghỉ/off: trên bảng lương, ca ngày hiển thị giờ làm quy đổi ở cột TC off (cùng quy tắc điểm danh); cột Giờ công là «-». Ngày không off: giờ công ở cột Giờ công. Ca đêm: GC nằm ở cột GC ca đêm / GC ca đêm off.",
     dayOffHolidayDropdownTrigger: "Ngày OFF / LỄ / NGHỈ BÙ",
@@ -1118,8 +1118,7 @@ const vi = {
     updateEmployee: "Cập nhật nhân viên",
     viewEmployeeAttendance: "Xem điểm danh",
     attendanceDateLabel: "Ngày điểm danh",
-    viewOnlyAttendanceHint:
-      "Chế độ chỉ xem — không thể chỉnh sửa hoặc lưu.",
+    viewOnlyAttendanceHint: "Chế độ chỉ xem — không thể chỉnh sửa hoặc lưu.",
     restrictedEditManagerHint:
       "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù và Chế độ nhân viên.",
     addEmployee: "Thêm nhân viên mới",
@@ -1200,8 +1199,9 @@ const vi = {
     unknown: "(Không rõ)",
   },
   salaryCalc: {
-    pageTitle: "Bảng giờ công nhân viên",
-    pageSubtitle: "Bảng giờ công nhân viên dựa trên dữ liệu chấm công.",
+    pageTitle: "Xem giờ công",
+    pageSubtitle:
+      "Cùng dữ liệu với Điểm danh NV; cột Sửa mở form cập nhật tại đây — lưu Firebase đồng bộ mọi nơi dùng MNV.",
     table: {
       ...workforcePayrollSharedVi,
     },
@@ -1223,7 +1223,7 @@ const vi = {
     workShiftStats: "Thống kê ca làm việc",
     noShiftStats: "Không có ca làm việc",
     date: "Ngày",
-    title: "Bảng giờ công nhân viên",
+    title: "Xem giờ công",
     subtitle:
       "Dựa trên dữ liệu attendance/{ngày} và cùng logic phân loại với thống kê điểm danh.",
     disclaimer:
@@ -1253,8 +1253,23 @@ const vi = {
     formulaNote:
       "Công thức: (lương cơ bản ÷ ngày chuẩn) × (ngày làm + phép hưởng lương) − (ngày KL/KP × một ngày lương).",
     empty: "Chọn khoảng ngày và bấm «Tính lương».",
-    monthlyTimesheetButton: "Bảng chấm công",
+    monthlyTimesheetButton: "Xem giờ công",
     monthlyTimesheetButtonHint: "Xem bảng chấm công theo từng ngày.",
+    monthlyGridMenu: "Xem giờ công",
+    monthlyGridMenuHint:
+      "Mở bảng chấm công tháng hoặc lưới giờ vào / ra tháng.",
+    monthlyGridMenuHead: "Chọn loại xem",
+    monthlyGridMenuTimesheetDesc: "Giờ công, phép, hệ số tăng ca",
+    monthlyGridMenuTimeInOutDesc: "Giờ vào & giờ ra mỗi ngày",
+    monthlyTimeInOutButton: "Xem giờ vào & ra",
+    monthlyTimeInOutButtonHint:
+      "Xem giờ vào và giờ ra mỗi ngày trong tháng (lưới tương tự bảng chấm công).",
+    monthlyTimeInOutTitle: "Giờ vào / ra tháng",
+    monthlyTimeInOutSubtitle: "Mỗi ô: giờ vào (trên) · giờ ra (dưới).",
+    monthlyTimeInOutLegendIn: "Vào",
+    monthlyTimeInOutEmpty: "Không có dữ liệu điểm danh nào trong tháng này.",
+    monthlyTimeInOutError: "Không tải được dữ liệu: {{error}}",
+    monthlyTimeInOutCellEditHint: "Bấm để sửa giờ vào/ra ngày này.",
     monthlyTimesheetTitle: "PAVONINE - Bảng chấm công",
     monthlyTimesheetHint:
       "Mỗi nhân viên 7 dòng: dòng 1 giờ thường / phép; các dòng sau là giờ theo hệ số TC (0,3 … 3,9).",
@@ -1305,8 +1320,7 @@ const vi = {
     monthlyTimesheetExportExcel: "Xuất Excel",
     monthlyTimesheetExportError: "Xuất Excel thất bại: {{error}}",
     monthlyTimesheetDayCellEditHint: "Bấm để sửa điểm danh ngày này.",
-    monthlyTimesheetDayCellViewHint:
-      "Bấm để xem thông tin điểm danh ngày này.",
+    monthlyTimesheetDayCellViewHint: "Bấm để xem thông tin điểm danh ngày này.",
     monthlyTimesheetNoViewPermission:
       "Bạn không có quyền xem điểm danh nhân viên này.",
     monthlyTimesheetLoginToEdit: "Đăng nhập để chỉnh sửa điểm danh.",

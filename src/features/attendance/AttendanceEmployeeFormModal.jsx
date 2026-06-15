@@ -38,6 +38,7 @@ import {
   employeeRegimeFlagsFromSelectValue,
   getEmployeeRegimeSelectValue,
 } from "./employeeRegime";
+import { ATTENDANCE_EMP } from "./attendanceEmployeeFields";
 
 /**
  * Map legacy `includeTsNvInWorkingHours` + chuẩn hóa `loaiPhep` khi mở form từ snapshot.
@@ -56,9 +57,9 @@ function applyLegacyIncludeTsNvAndCanonicalPhep(record) {
       merged.includeThaiSanInWorkingHours = "YES";
     }
   }
-  let gioVao = String(merged.gioVao ?? "").trim();
-  let gioRa = String(merged.gioRa ?? "").trim();
-  const loaiPhepCanon = canonicalAttendanceLoaiPhep(merged.loaiPhep);
+  let gioVao = String(merged[ATTENDANCE_EMP.TIME_IN] ?? "").trim();
+  let gioRa = String(merged[ATTENDANCE_EMP.TIME_OUT] ?? "").trim();
+  const loaiPhepCanon = canonicalAttendanceLoaiPhep(merged[ATTENDANCE_EMP.LEAVE_TYPE]);
   const isHalfPn = isAttendanceHalfAnnualLeave(loaiPhepCanon);
   let loaiPhep = loaiPhepCanon;
   if (isAttendanceGioVaoClockTime(gioVao) && !isHalfPn) {
@@ -70,31 +71,31 @@ function applyLegacyIncludeTsNvAndCanonicalPhep(record) {
   }
   return {
     ...merged,
-    gioVao,
-    gioRa,
-    loaiPhep,
+    [ATTENDANCE_EMP.TIME_IN]: gioVao,
+    [ATTENDANCE_EMP.TIME_OUT]: gioRa,
+    [ATTENDANCE_EMP.LEAVE_TYPE]: loaiPhep,
   };
 }
 
 const EMPTY_EMPLOYEE_FORM = {
   id: "",
-  stt: "",
-  mnv: "",
-  mvt: "",
-  hoVaTen: "",
-  gioiTinh: "YES",
-  ngayVaoLam: "",
-  ngayHopDong: "",
-  maBoPhan: "",
-  boPhan: "",
-  gioVao: "",
-  loaiPhep: "",
-  gioRa: "",
-  tangCaTrua: "",
-  caLamViec: "",
-  duocNghiBu: "",
+  [ATTENDANCE_EMP.STT]: "",
+  [ATTENDANCE_EMP.MNV]: "",
+  [ATTENDANCE_EMP.MVT]: "",
+  [ATTENDANCE_EMP.EMPLOYEE_NAME]: "",
+  [ATTENDANCE_EMP.GENDER]: "YES",
+  [ATTENDANCE_EMP.JOIN_DATE]: "",
+  [ATTENDANCE_EMP.CONTRACT_DATE]: "",
+  [ATTENDANCE_EMP.DEPT_CODE]: "",
+  [ATTENDANCE_EMP.DEPARTMENT]: "",
+  [ATTENDANCE_EMP.TIME_IN]: "",
+  [ATTENDANCE_EMP.LEAVE_TYPE]: "",
+  [ATTENDANCE_EMP.TIME_OUT]: "",
+  [ATTENDANCE_EMP.LUNCH_OT_HOURS]: "",
+  [ATTENDANCE_EMP.SHIFT]: "",
+  [ATTENDANCE_EMP.COMP_LEAVE_ALLOWED]: "",
   /** Firebase: `attendance/{ngày}/{key}/boPhanChuaDung` — `"YES"` = sai bộ phận. */
-  boPhanChuaDung: "",
+  [ATTENDANCE_EMP.DEPT_WRONG_FLAG]: "",
   includeTapVuInWorkingHours: "",
   includeThaiSanInWorkingHours: "",
   includeTaiXeInWorkingHours: "",
@@ -286,23 +287,23 @@ export default function AttendanceEmployeeFormModal({
   }, []);
 
   const hasClockInTime = useMemo(
-    () => isAttendanceGioVaoClockTime(form.gioVao),
-    [form.gioVao],
+    () => isAttendanceGioVaoClockTime(form[ATTENDANCE_EMP.TIME_IN]),
+    [form[ATTENDANCE_EMP.TIME_IN]],
   );
 
   /** Có loại phép (trừ 1/2PN) → khóa giờ vào & giờ ra. */
   const clockTimesDisabled = useMemo(() => {
-    const lp = String(form.loaiPhep ?? "").trim();
+    const lp = String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim();
     return Boolean(lp) && !isAttendanceHalfAnnualLeave(lp);
-  }, [form.loaiPhep]);
+  }, [form[ATTENDANCE_EMP.LEAVE_TYPE]]);
 
   const handleGioVaoTimeInput = useCallback((e) => {
     const gioVao = e.target.value || "";
     setForm((prev) => ({
       ...prev,
-      gioVao,
-      ...(gioVao && !isAttendanceHalfAnnualLeave(prev.loaiPhep)
-        ? { loaiPhep: "" }
+      [ATTENDANCE_EMP.TIME_IN]: gioVao,
+      ...(gioVao && !isAttendanceHalfAnnualLeave(prev[ATTENDANCE_EMP.LEAVE_TYPE])
+        ? { [ATTENDANCE_EMP.LEAVE_TYPE]: "" }
         : {}),
     }));
   }, []);
@@ -312,9 +313,12 @@ export default function AttendanceEmployeeFormModal({
     const loaiPhep = v === "" ? "" : canonicalAttendanceLoaiPhep(v);
     setForm((prev) => ({
       ...prev,
-      loaiPhep,
+      [ATTENDANCE_EMP.LEAVE_TYPE]: loaiPhep,
       ...(loaiPhep && !isAttendanceHalfAnnualLeave(loaiPhep)
-        ? { gioVao: "", gioRa: "" }
+        ? {
+            [ATTENDANCE_EMP.TIME_IN]: "",
+            [ATTENDANCE_EMP.TIME_OUT]: "",
+          }
         : {}),
     }));
   }, []);
@@ -370,17 +374,17 @@ export default function AttendanceEmployeeFormModal({
         const existingRaw = daySnap.val() || {};
         const allowFullEdit = isAdminAccess(user, userRole);
         const loaiPhepToSave = canonicalAttendanceLoaiPhep(
-          String(form.loaiPhep ?? "").trim(),
+          String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim(),
         );
 
         const sliceOverrides = {
           businessId: storageKey,
-          loaiPhep: loaiPhepToSave,
+          [ATTENDANCE_EMP.LEAVE_TYPE]: loaiPhepToSave,
           boPhanChuaDung: normalizeBoPhanChuaDungForForm(form.boPhanChuaDung),
           ...(isSeasonalAttendance ? { sttThoiVu: form.stt } : {}),
         };
         if (!allowFullEdit) {
-          sliceOverrides.caLamViec = form.caLamViec;
+          sliceOverrides[ATTENDANCE_EMP.SHIFT] = form[ATTENDANCE_EMP.SHIFT];
         }
 
         const dayDoc = buildEmployeeAttendanceDayDocument({
@@ -420,7 +424,7 @@ export default function AttendanceEmployeeFormModal({
           return;
         }
         const loaiPhepToSave = canonicalAttendanceLoaiPhep(
-          String(form.loaiPhep ?? "").trim(),
+          String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim(),
         );
         const firebaseKeyPreview = resolveAttendanceFormPersistTarget({
           storageKey,
@@ -445,7 +449,7 @@ export default function AttendanceEmployeeFormModal({
         const dayDoc = buildEmployeeAttendanceDayDocument({
           form: formSliceForAttendanceDayDocument(form, {
             businessId: storageKey,
-            loaiPhep: loaiPhepToSave,
+            [ATTENDANCE_EMP.LEAVE_TYPE]: loaiPhepToSave,
             boPhanChuaDung: normalizeBoPhanChuaDungForForm(form.boPhanChuaDung),
             ...(isSeasonalAttendance ? { sttThoiVu: form.stt } : {}),
           }),
@@ -722,7 +726,7 @@ export default function AttendanceEmployeeFormModal({
               <div className="flex min-w-0 flex-nowrap items-stretch gap-1.5 sm:gap-2">
                 <input
                   type="time"
-                  value={normalizeTimeForHtmlInput(form.gioVao) || ""}
+                  value={normalizeTimeForHtmlInput(form[ATTENDANCE_EMP.TIME_IN]) || ""}
                   onChange={handleGioVaoTimeInput}
                   disabled={fieldsLocked || clockTimesDisabled}
                   className={`${employeeModalFieldClass} min-w-0 flex-1${
@@ -732,11 +736,16 @@ export default function AttendanceEmployeeFormModal({
                 />
                 <button
                   type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, gioVao: "" }))}
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      [ATTENDANCE_EMP.TIME_IN]: "",
+                    }))
+                  }
                   disabled={
                     fieldsLocked ||
                     clockTimesDisabled ||
-                    !String(form.gioVao ?? "").trim()
+                    !String(form[ATTENDANCE_EMP.TIME_IN] ?? "").trim()
                   }
                   className={employeeModalClearTimeButtonClass}
                   title={tl("timeInClearHint", "Xóa giờ vào (để trống)")}
@@ -760,12 +769,12 @@ export default function AttendanceEmployeeFormModal({
               <div className="flex min-w-0 flex-nowrap items-stretch gap-1.5 sm:gap-2">
                 <input
                   type="time"
-                  name="gioRa"
-                  value={normalizeTimeForHtmlInput(form.gioRa) || ""}
+                  name={ATTENDANCE_EMP.TIME_OUT}
+                  value={normalizeTimeForHtmlInput(form[ATTENDANCE_EMP.TIME_OUT]) || ""}
                   onChange={(e) =>
                     setForm((prev) => ({
                       ...prev,
-                      gioRa: e.target.value || "",
+                      [ATTENDANCE_EMP.TIME_OUT]: e.target.value || "",
                     }))
                   }
                   disabled={fieldsLocked || clockTimesDisabled}
@@ -776,11 +785,16 @@ export default function AttendanceEmployeeFormModal({
                 />
                 <button
                   type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, gioRa: "" }))}
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      [ATTENDANCE_EMP.TIME_OUT]: "",
+                    }))
+                  }
                   disabled={
                     fieldsLocked ||
                     clockTimesDisabled ||
-                    !String(form.gioRa ?? "").trim()
+                    !String(form[ATTENDANCE_EMP.TIME_OUT] ?? "").trim()
                   }
                   className={employeeModalClearTimeButtonClass}
                   title={tl("timeOutClearHint", "Xóa thời gian ra (để trống)")}
@@ -795,11 +809,11 @@ export default function AttendanceEmployeeFormModal({
               {tl("lunchOvertimeHours", "Thời gian tăng ca trưa")}
             </label>
             <select
-              name="tangCaTrua"
+              name={ATTENDANCE_EMP.LUNCH_OT_HOURS}
               value={
-                form.tangCaTrua === "" || form.tangCaTrua == null
+                form[ATTENDANCE_EMP.LUNCH_OT_HOURS] === "" || form[ATTENDANCE_EMP.LUNCH_OT_HOURS] == null
                   ? ""
-                  : String(form.tangCaTrua)
+                  : String(form[ATTENDANCE_EMP.LUNCH_OT_HOURS])
               }
               onChange={handleChange}
               disabled={fieldsLocked}
@@ -819,7 +833,7 @@ export default function AttendanceEmployeeFormModal({
               {tl("leaveTypeColumn", "Loại phép")}
             </label>
             <select
-              value={String(form.loaiPhep ?? "").trim()}
+              value={String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim()}
               onChange={handleLoaiPhepSelect}
               disabled={isViewOnly}
               className={employeeModalSelectFieldClass}
@@ -828,7 +842,7 @@ export default function AttendanceEmployeeFormModal({
                 {tl("leaveTypePlaceholder", "— Không chọn —")}
               </option>
               {(() => {
-                const raw = String(form.loaiPhep ?? "").trim();
+                const raw = String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim();
                 const isStd = Boolean(findGioVaoTypeOptionMatch(raw));
                 return !isStd && raw ? (
                   <option value={raw}>
@@ -844,7 +858,7 @@ export default function AttendanceEmployeeFormModal({
             </select>
             <p className="mt-1.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
               {hasClockInTime &&
-              !isAttendanceHalfAnnualLeave(form.loaiPhep)
+              !isAttendanceHalfAnnualLeave(form[ATTENDANCE_EMP.LEAVE_TYPE])
                 ? tl(
                     "loaiPhepClearsTimeInOnSelect",
                     "Đã có giờ vào — chọn loại phép (trừ 1/2PN) sẽ xóa giờ vào/ra khi lưu.",
@@ -858,12 +872,12 @@ export default function AttendanceEmployeeFormModal({
                 {tl("workShift", "Ca làm việc")}
               </label>
               <select
-                name="caLamViec"
-                value={form.caLamViec ?? ""}
+                name={ATTENDANCE_EMP.SHIFT}
+                value={form[ATTENDANCE_EMP.SHIFT] ?? ""}
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
-                    caLamViec: e.target.value,
+                    [ATTENDANCE_EMP.SHIFT]: e.target.value,
                   }))
                 }
                 disabled={isViewOnly}
@@ -871,7 +885,7 @@ export default function AttendanceEmployeeFormModal({
               >
                 <option value="">{tl("chooseShift", "Chọn ca")}</option>
                 {(() => {
-                  const raw = String(form.caLamViec ?? "").trim();
+                  const raw = String(form[ATTENDANCE_EMP.SHIFT] ?? "").trim();
                   const isStd = ATTENDANCE_CA_LAM_VIEC_OPTIONS.some(
                     (o) => o.value === raw,
                   );

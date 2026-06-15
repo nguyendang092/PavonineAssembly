@@ -26,8 +26,12 @@ import {
   formatAttendanceGenderDisplay,
   isAttendanceFemaleGioiTinh,
 } from "../attendanceGender";
-import { PAYROLL_EMPTY_CELL, ATTENDANCE_EMPTY_CELL } from "./constants";
+import {
+  ATTENDANCE_EMP,
+  pickAttendanceEmployeeDayFields,
+} from "@/features/attendance/attendanceEmployeeFields";
 import { payrollDash } from "./payrollDash";
+import { PAYROLL_EMPTY_CELL, ATTENDANCE_EMPTY_CELL } from "./constants";
 import { getAttendanceGridColumnStart, attendanceGridCellStyle, cellClsForAttendanceTable } from "./gridLayout";
 import { cellClsForGrid } from "./cellClassNames";
 import { propsAreEqual } from "./propsAreEqual";
@@ -102,17 +106,19 @@ function AttendanceTableRow({
       tableVariant,
     );
 
+  const dayFields = pickAttendanceEmployeeDayFields(emp);
+
   const gioVaoTrimmed =
-    emp.gioVao != null && String(emp.gioVao).trim() !== ""
-      ? String(emp.gioVao).trim()
+    dayFields.timeIn != null && String(dayFields.timeIn).trim() !== ""
+      ? String(dayFields.timeIn).trim()
       : "";
   const timeInCol = formatAttendanceTimeInColumnDisplay(gioVaoTrimmed);
   const leaveTypeCol = formatAttendanceLeaveTypeColumnForEmployee(emp);
   const leaveTypeColorClass =
     getAttendanceLeaveTypeColorClassNameForEmployee(emp);
   const caLamViecTrimmed =
-    emp.caLamViec != null && String(emp.caLamViec).trim() !== ""
-      ? String(emp.caLamViec).trim()
+    dayFields.shiftCode != null && String(dayFields.shiftCode).trim() !== ""
+      ? String(dayFields.shiftCode).trim()
       : "";
 
   const rowStyle = isGrid
@@ -330,7 +336,7 @@ function AttendanceTableRow({
                 : "text-red-600 font-bold text-xs md:text-base"
             }
           >
-            {payrollDash(emp.gioRa, isPayroll)}
+            {payrollDash(dayFields.timeOut, isPayroll)}
           </span>
         </Cell>
       ) : null}
@@ -533,11 +539,11 @@ function AttendanceTableRow({
           >
             <span className="font-bold tabular-nums text-amber-900 dark:text-amber-100">
               {formatPayrollTableWorkingHoursCell(
-                emp.gioVao,
-                emp.gioRa,
+                dayFields.timeIn,
+                dayFields.timeOut,
                 payrollOffLike,
-                emp.caLamViec,
-                emp.loaiPhep,
+                dayFields.shiftCode,
+                dayFields.leaveType,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
                 includeTaiXeInWorkingHours,
@@ -630,11 +636,11 @@ function AttendanceTableRow({
           >
             <span className="font-bold tabular-nums text-teal-900 dark:text-teal-100">
               {formatPayrollTableNightShiftWorkingCell(
-                emp.gioVao,
-                emp.gioRa,
+                dayFields.timeIn,
+                dayFields.timeOut,
                 payrollOffLike,
-                emp.caLamViec,
-                emp.loaiPhep,
+                dayFields.shiftCode,
+                dayFields.leaveType,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
                 includeTaiXeInWorkingHours,
@@ -658,11 +664,11 @@ function AttendanceTableRow({
           >
             <span className="font-bold tabular-nums text-fuchsia-900 dark:text-fuchsia-100">
               {formatPayrollTableNightShiftOvertimeCell(
-                emp.gioVao,
-                emp.gioRa,
+                dayFields.timeIn,
+                dayFields.timeOut,
                 payrollOffLike,
-                emp.caLamViec,
-                emp.loaiPhep,
+                dayFields.shiftCode,
+                dayFields.leaveType,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
                 includeTaiXeInWorkingHours,
@@ -686,11 +692,11 @@ function AttendanceTableRow({
           >
             <span className="font-bold tabular-nums text-emerald-900 dark:text-emerald-100">
               {formatPayrollTableNightShiftOffDayWorkingCell(
-                emp.gioVao,
-                emp.gioRa,
+                dayFields.timeIn,
+                dayFields.timeOut,
                 strictOffDay,
-                emp.caLamViec,
-                emp.loaiPhep,
+                dayFields.shiftCode,
+                dayFields.leaveType,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
                 includeTaiXeInWorkingHours,
@@ -714,11 +720,11 @@ function AttendanceTableRow({
           >
             <span className="font-bold tabular-nums text-lime-950 dark:text-lime-100">
               {formatPayrollTableHolidayNightWorkingCell(
-                emp.gioVao,
-                emp.gioRa,
+                dayFields.timeIn,
+                dayFields.timeOut,
                 isHolidayDay,
-                emp.caLamViec,
-                emp.loaiPhep,
+                dayFields.shiftCode,
+                dayFields.leaveType,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
                 includeTaiXeInWorkingHours,
@@ -739,11 +745,11 @@ function AttendanceTableRow({
           >
             <span className="font-bold tabular-nums text-indigo-950 dark:text-indigo-100">
               {formatPayrollTableTotalNightGcCell(
-                emp.gioVao,
-                emp.gioRa,
+                dayFields.timeIn,
+                dayFields.timeOut,
                 payrollOffLike,
-                emp.caLamViec,
-                emp.loaiPhep,
+                dayFields.shiftCode,
+                dayFields.leaveType,
                 includeTapVuInWorkingHours,
                 includeThaiSanInWorkingHours,
                 includeTaiXeInWorkingHours,

@@ -8,6 +8,7 @@ import {
   isAttendanceHalfAnnualLeave,
   normalizeAttendanceDayRecord,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import { ATTENDANCE_EMP } from "@/features/attendance/attendanceEmployeeFields";
 
 /**
  * Chuẩn MNV duy nhất: trim, bỏ mọi khoảng trắng; giữ chữ/số/ký tự mã (vd. PAVO123).
@@ -183,74 +184,74 @@ const STRIP_LEGACY_ENGLISH_KEYS = [
 ];
 
 const ATTENDANCE_EXTRA_KEYS = [
-  "gioVao",
-  "loaiPhep",
-  "gioRa",
-  "tangCaTrua",
-  "caLamViec",
+  ATTENDANCE_EMP.TIME_IN,
+  ATTENDANCE_EMP.LEAVE_TYPE,
+  ATTENDANCE_EMP.TIME_OUT,
+  ATTENDANCE_EMP.LUNCH_OT_HOURS,
+  ATTENDANCE_EMP.SHIFT,
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTaiXeInWorkingHours",
   "includeTaiXeTongInWorkingHours",
   "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
-  "mvt",
-  "maBoPhan",
-  "gioiTinh",
+  ATTENDANCE_EMP.MVT,
+  ATTENDANCE_EMP.DEPT_CODE,
+  ATTENDANCE_EMP.GENDER,
 ];
 
 /** Trường form dùng khi build `attendance/{date}` — chỉ node điểm danh. */
 export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
-  "mnv",
-  "stt",
-  "sttThoiVu",
-  "hoVaTen",
-  "boPhan",
-  "ngayVaoLam",
-  "ngayHopDong",
-  "gioVao",
-  "loaiPhep",
-  "gioRa",
-  "tangCaTrua",
-  "caLamViec",
-  "duocNghiBu",
-  "boPhanChuaDung",
+  ATTENDANCE_EMP.MNV,
+  ATTENDANCE_EMP.STT,
+  ATTENDANCE_EMP.SEASONAL_STT,
+  ATTENDANCE_EMP.EMPLOYEE_NAME,
+  ATTENDANCE_EMP.DEPARTMENT,
+  ATTENDANCE_EMP.JOIN_DATE,
+  ATTENDANCE_EMP.CONTRACT_DATE,
+  ATTENDANCE_EMP.TIME_IN,
+  ATTENDANCE_EMP.LEAVE_TYPE,
+  ATTENDANCE_EMP.TIME_OUT,
+  ATTENDANCE_EMP.LUNCH_OT_HOURS,
+  ATTENDANCE_EMP.SHIFT,
+  ATTENDANCE_EMP.COMP_LEAVE_ALLOWED,
+  ATTENDANCE_EMP.DEPT_WRONG_FLAG,
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTaiXeInWorkingHours",
   "includeTaiXeTongInWorkingHours",
   "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
-  "mvt",
-  "maBoPhan",
-  "gioiTinh",
+  ATTENDANCE_EMP.MVT,
+  ATTENDANCE_EMP.DEPT_CODE,
+  ATTENDANCE_EMP.GENDER,
 ]);
 
 /** Trường được phép trên bản ghi khi đọc UI điểm danh (chính thức / thời vụ) — không trường hồ sơ. */
 export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
-  "stt",
-  "sttThoiVu",
-  "mnv",
-  "businessId",
-  "mvt",
-  "hoVaTen",
-  "gioiTinh",
-  "ngayVaoLam",
-  "ngayHopDong",
-  "maBoPhan",
-  "boPhan",
-  "gioVao",
-  "loaiPhep",
-  "gioRa",
-  "tangCaTrua",
-  "caLamViec",
-  "duocNghiBu",
-  "boPhanChuaDung",
+  ATTENDANCE_EMP.STT,
+  ATTENDANCE_EMP.SEASONAL_STT,
+  ATTENDANCE_EMP.MNV,
+  ATTENDANCE_EMP.BUSINESS_ID,
+  ATTENDANCE_EMP.MVT,
+  ATTENDANCE_EMP.EMPLOYEE_NAME,
+  ATTENDANCE_EMP.GENDER,
+  ATTENDANCE_EMP.JOIN_DATE,
+  ATTENDANCE_EMP.CONTRACT_DATE,
+  ATTENDANCE_EMP.DEPT_CODE,
+  ATTENDANCE_EMP.DEPARTMENT,
+  ATTENDANCE_EMP.TIME_IN,
+  ATTENDANCE_EMP.LEAVE_TYPE,
+  ATTENDANCE_EMP.TIME_OUT,
+  ATTENDANCE_EMP.LUNCH_OT_HOURS,
+  ATTENDANCE_EMP.SHIFT,
+  ATTENDANCE_EMP.COMP_LEAVE_ALLOWED,
+  ATTENDANCE_EMP.DEPT_WRONG_FLAG,
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTaiXeInWorkingHours",
   "includeTaiXeTongInWorkingHours",
   "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
-  "chamCong",
-  "phepNam",
+  ATTENDANCE_EMP.CHAM_CONG,
+  ATTENDANCE_EMP.PHEP_NAM,
 ]);
 
 export function pickAttendanceDayFields(raw) {
@@ -270,19 +271,22 @@ export function pickAttendanceDayFields(raw) {
 function normalizeAttendanceDayRowDisplay(emp) {
   if (!emp || typeof emp !== "object") return emp;
   const mnvDisplay =
-    attendanceMnvStorageKey(emp.mnv) || String(emp.mnv ?? "").trim();
+    attendanceMnvStorageKey(emp[ATTENDANCE_EMP.MNV]) ||
+    String(emp[ATTENDANCE_EMP.MNV] ?? "").trim();
   const out = {
     ...emp,
-    mnv: mnvDisplay || String(emp.mnv ?? "").trim(),
-    hoVaTen: String(emp.hoVaTen ?? "").trim(),
-    ngayVaoLam: (() => {
-      const jr = emp.ngayVaoLam;
+    [ATTENDANCE_EMP.MNV]: mnvDisplay || String(emp[ATTENDANCE_EMP.MNV] ?? "").trim(),
+    [ATTENDANCE_EMP.EMPLOYEE_NAME]: String(
+      emp[ATTENDANCE_EMP.EMPLOYEE_NAME] ?? "",
+    ).trim(),
+    [ATTENDANCE_EMP.JOIN_DATE]: (() => {
+      const jr = emp[ATTENDANCE_EMP.JOIN_DATE];
       if (jr === undefined || jr === null || String(jr).trim() === "")
         return "";
       const jn = normalizeDateForHtmlInput(jr);
       return jn || String(jr).trim();
     })(),
-    boPhan: String(emp.boPhan ?? "").trim(),
+    [ATTENDANCE_EMP.DEPARTMENT]: String(emp[ATTENDANCE_EMP.DEPARTMENT] ?? "").trim(),
   };
   delete out.ngayThangNamSinh;
   delete out.birthDate;
@@ -323,7 +327,10 @@ export function formSliceForAttendanceDayDocument(form, overrides = {}) {
         o[k] = form[k];
       }
     }
-    const bid = overrides.businessId ?? form.businessId ?? form.mnv;
+    const bid =
+      overrides.businessId ??
+      form.businessId ??
+      form[ATTENDANCE_EMP.MNV];
     if (bid !== undefined && bid !== null && String(bid).trim() !== "") {
       o.businessId = bid;
     }
@@ -365,7 +372,9 @@ function attendanceDayOptionalStringFromForm(form, key) {
   if (!Object.prototype.hasOwnProperty.call(form, key)) return undefined;
   const v = form[key];
   if (v === null || v === undefined) {
-    return key === "gioVao" || key === "gioRa" ? "" : undefined;
+    return key === ATTENDANCE_EMP.TIME_IN || key === ATTENDANCE_EMP.TIME_OUT
+      ? ""
+      : undefined;
   }
   return typeof v === "string" ? v.trim() : String(v);
 }
@@ -401,57 +410,90 @@ export function buildEmployeeAttendanceDayDocument({
 
   const sttNum = isSeasonal
     ? undefined
-    : parseSttNumber(form.stt, existing.stt);
+    : parseSttNumber(form[ATTENDANCE_EMP.STT], existing[ATTENDANCE_EMP.STT]);
   const sttThoiVuNum = isSeasonal
     ? parseSttNumber(
-        Object.prototype.hasOwnProperty.call(form, "sttThoiVu")
-          ? form.sttThoiVu
-          : form.stt,
-        existing.sttThoiVu,
+        Object.prototype.hasOwnProperty.call(form, ATTENDANCE_EMP.SEASONAL_STT)
+          ? form[ATTENDANCE_EMP.SEASONAL_STT]
+          : form[ATTENDANCE_EMP.STT],
+        existing[ATTENDANCE_EMP.SEASONAL_STT],
       )
     : undefined;
 
   const extras = stripUndefined({
-    hoVaTen: attendanceDayOptionalStringFromForm(form, "hoVaTen"),
-    boPhan: attendanceDayOptionalStringFromForm(form, "boPhan"),
-    gioVao: (() => {
-      if (!Object.prototype.hasOwnProperty.call(form, "loaiPhep")) {
-        return attendanceDayOptionalStringFromForm(form, "gioVao");
+    [ATTENDANCE_EMP.EMPLOYEE_NAME]: attendanceDayOptionalStringFromForm(
+      form,
+      ATTENDANCE_EMP.EMPLOYEE_NAME,
+    ),
+    [ATTENDANCE_EMP.DEPARTMENT]: attendanceDayOptionalStringFromForm(
+      form,
+      ATTENDANCE_EMP.DEPARTMENT,
+    ),
+    [ATTENDANCE_EMP.TIME_IN]: (() => {
+      if (
+        !Object.prototype.hasOwnProperty.call(form, ATTENDANCE_EMP.LEAVE_TYPE)
+      ) {
+        return attendanceDayOptionalStringFromForm(form, ATTENDANCE_EMP.TIME_IN);
       }
-      const s = attendanceDayOptionalStringFromForm(form, "loaiPhep");
+      const s = attendanceDayOptionalStringFromForm(
+        form,
+        ATTENDANCE_EMP.LEAVE_TYPE,
+      );
       const canon = s ? canonicalAttendanceLoaiPhepValue(s) : undefined;
       if (canon && !isAttendanceHalfAnnualLeave(canon)) return "";
-      return attendanceDayOptionalStringFromForm(form, "gioVao");
+      return attendanceDayOptionalStringFromForm(form, ATTENDANCE_EMP.TIME_IN);
     })(),
-    loaiPhep: (() => {
-      if (!Object.prototype.hasOwnProperty.call(form, "loaiPhep")) {
+    [ATTENDANCE_EMP.LEAVE_TYPE]: (() => {
+      if (
+        !Object.prototype.hasOwnProperty.call(form, ATTENDANCE_EMP.LEAVE_TYPE)
+      ) {
         return undefined;
       }
-      const s = attendanceDayOptionalStringFromForm(form, "loaiPhep");
+      const s = attendanceDayOptionalStringFromForm(
+        form,
+        ATTENDANCE_EMP.LEAVE_TYPE,
+      );
       if (!s) return "";
       const canon = canonicalAttendanceLoaiPhepValue(s);
       if (canon && !isAttendanceHalfAnnualLeave(canon)) {
         return canon;
       }
-      const gv = attendanceDayOptionalStringFromForm(form, "gioVao");
+      const gv = attendanceDayOptionalStringFromForm(
+        form,
+        ATTENDANCE_EMP.TIME_IN,
+      );
       if (gv && isAttendanceGioVaoClockTime(gv)) {
         return canon && isAttendanceHalfAnnualLeave(canon) ? canon : undefined;
       }
       return canon || "";
     })(),
-    gioRa: (() => {
-      const s = attendanceDayOptionalStringFromForm(form, "loaiPhep");
+    [ATTENDANCE_EMP.TIME_OUT]: (() => {
+      const s = attendanceDayOptionalStringFromForm(
+        form,
+        ATTENDANCE_EMP.LEAVE_TYPE,
+      );
       const canon = s ? canonicalAttendanceLoaiPhepValue(s) : undefined;
       if (canon && !isAttendanceHalfAnnualLeave(canon)) return "";
-      return attendanceDayOptionalStringFromForm(form, "gioRa");
+      return attendanceDayOptionalStringFromForm(form, ATTENDANCE_EMP.TIME_OUT);
     })(),
-    caLamViec: attendanceDayOptionalStringFromForm(form, "caLamViec"),
-    duocNghiBu: attendanceDayOptionalStringFromForm(form, "duocNghiBu"),
-    boPhanChuaDung: (() => {
-      if (!Object.prototype.hasOwnProperty.call(form, "boPhanChuaDung")) {
+    [ATTENDANCE_EMP.SHIFT]: attendanceDayOptionalStringFromForm(
+      form,
+      ATTENDANCE_EMP.SHIFT,
+    ),
+    [ATTENDANCE_EMP.COMP_LEAVE_ALLOWED]: attendanceDayOptionalStringFromForm(
+      form,
+      ATTENDANCE_EMP.COMP_LEAVE_ALLOWED,
+    ),
+    [ATTENDANCE_EMP.DEPT_WRONG_FLAG]: (() => {
+      if (
+        !Object.prototype.hasOwnProperty.call(
+          form,
+          ATTENDANCE_EMP.DEPT_WRONG_FLAG,
+        )
+      ) {
         return undefined;
       }
-      const v = String(form.boPhanChuaDung ?? "")
+      const v = String(form[ATTENDANCE_EMP.DEPT_WRONG_FLAG] ?? "")
         .trim()
         .toUpperCase();
       return v === "YES" ? "YES" : null;
@@ -476,32 +518,52 @@ export function buildEmployeeAttendanceDayDocument({
       form,
       "includeTsNvInWorkingHours",
     ),
-    tangCaTrua: (() => {
-      if (!Object.prototype.hasOwnProperty.call(form, "tangCaTrua")) {
+    [ATTENDANCE_EMP.LUNCH_OT_HOURS]: (() => {
+      if (
+        !Object.prototype.hasOwnProperty.call(
+          form,
+          ATTENDANCE_EMP.LUNCH_OT_HOURS,
+        )
+      ) {
         return undefined;
       }
-      const s = String(form.tangCaTrua ?? "").trim();
+      const s = String(form[ATTENDANCE_EMP.LUNCH_OT_HOURS] ?? "").trim();
       if (!s) return null;
       const n = Number(s);
       const allowed = [0.5, 1, 1.5, 2];
       if (!Number.isFinite(n) || !allowed.includes(n)) return undefined;
       return n;
     })(),
-    mvt: attendanceDayNonWipingOptionalStringFromForm(form, "mvt"),
-    maBoPhan: attendanceDayNonWipingOptionalStringFromForm(form, "maBoPhan"),
-    gioiTinh: Object.prototype.hasOwnProperty.call(form, "gioiTinh")
-      ? form.gioiTinh
+    [ATTENDANCE_EMP.MVT]: attendanceDayNonWipingOptionalStringFromForm(
+      form,
+      ATTENDANCE_EMP.MVT,
+    ),
+    [ATTENDANCE_EMP.DEPT_CODE]: attendanceDayNonWipingOptionalStringFromForm(
+      form,
+      ATTENDANCE_EMP.DEPT_CODE,
+    ),
+    [ATTENDANCE_EMP.GENDER]: Object.prototype.hasOwnProperty.call(
+      form,
+      ATTENDANCE_EMP.GENDER,
+    )
+      ? form[ATTENDANCE_EMP.GENDER]
       : undefined,
-    ngayVaoLam: Object.prototype.hasOwnProperty.call(form, "ngayVaoLam")
+    [ATTENDANCE_EMP.JOIN_DATE]: Object.prototype.hasOwnProperty.call(
+      form,
+      ATTENDANCE_EMP.JOIN_DATE,
+    )
       ? (() => {
-          const s = String(form.ngayVaoLam ?? "").trim();
+          const s = String(form[ATTENDANCE_EMP.JOIN_DATE] ?? "").trim();
           if (!s) return "";
           return normalizeDateForHtmlInput(s) || s;
         })()
       : undefined,
-    ngayHopDong: Object.prototype.hasOwnProperty.call(form, "ngayHopDong")
+    [ATTENDANCE_EMP.CONTRACT_DATE]: Object.prototype.hasOwnProperty.call(
+      form,
+      ATTENDANCE_EMP.CONTRACT_DATE,
+    )
       ? (() => {
-          const s = String(form.ngayHopDong ?? "").trim();
+          const s = String(form[ATTENDANCE_EMP.CONTRACT_DATE] ?? "").trim();
           if (!s) return "";
           return normalizeDateForHtmlInput(s) || s;
         })()
@@ -511,10 +573,10 @@ export function buildEmployeeAttendanceDayDocument({
   const preserved = {};
   const attendancePreserveKeys = [
     ...ATTENDANCE_EXTRA_KEYS,
-    "hoVaTen",
-    "boPhan",
-    "ngayVaoLam",
-    "ngayHopDong",
+    ATTENDANCE_EMP.EMPLOYEE_NAME,
+    ATTENDANCE_EMP.DEPARTMENT,
+    ATTENDANCE_EMP.JOIN_DATE,
+    ATTENDANCE_EMP.CONTRACT_DATE,
   ];
   attendancePreserveKeys.forEach((k) => {
     if (extras[k] !== undefined) return;
@@ -524,14 +586,14 @@ export function buildEmployeeAttendanceDayDocument({
   });
 
   const merged = {
-    mnv: mnvStored,
+    [ATTENDANCE_EMP.MNV]: mnvStored,
     ...preserved,
     ...extras,
   };
-  delete merged.chamCong;
+  delete merged[ATTENDANCE_EMP.CHAM_CONG];
   if (!isSeasonal) {
     if (sttNum !== undefined && sttNum !== null && !Number.isNaN(sttNum)) {
-      merged.stt = sttNum;
+      merged[ATTENDANCE_EMP.STT] = sttNum;
     }
   } else {
     if (
@@ -539,10 +601,9 @@ export function buildEmployeeAttendanceDayDocument({
       sttThoiVuNum !== null &&
       !Number.isNaN(sttThoiVuNum)
     ) {
-      merged.sttThoiVu = sttThoiVuNum;
+      merged[ATTENDANCE_EMP.SEASONAL_STT] = sttThoiVuNum;
     }
-    /** Bỏ `stt` chính thức còn sót trên bản ghi thời vụ. */
-    delete merged.stt;
+    delete merged[ATTENDANCE_EMP.STT];
   }
 
   STRIP_LEGACY_ENGLISH_KEYS.forEach((k) => {
@@ -554,12 +615,17 @@ export function buildEmployeeAttendanceDayDocument({
 
   delete merged.firebaseKey;
   const out = stripUndefined({ ...merged });
-  if (Object.prototype.hasOwnProperty.call(form, "boPhanChuaDung")) {
-    const v = String(form.boPhanChuaDung ?? "")
+  if (
+    Object.prototype.hasOwnProperty.call(
+      form,
+      ATTENDANCE_EMP.DEPT_WRONG_FLAG,
+    )
+  ) {
+    const v = String(form[ATTENDANCE_EMP.DEPT_WRONG_FLAG] ?? "")
       .trim()
       .toUpperCase();
     if (v !== "YES") {
-      out.boPhanChuaDung = null;
+      out[ATTENDANCE_EMP.DEPT_WRONG_FLAG] = null;
     }
   }
   return out;

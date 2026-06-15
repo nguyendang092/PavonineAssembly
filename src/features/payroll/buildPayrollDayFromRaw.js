@@ -38,8 +38,8 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "includeTaiXeInWorkingHours",
   "includeTaiXeTongInWorkingHours",
   "includeTsNvInWorkingHours",
-  "payrollEarlyOtPaperwork",
-  "payrollLateOtExcluded",
+  PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK,
+  PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED,
 ];
 
 function shallowStringRecordEqual(a, b) {
@@ -70,15 +70,15 @@ export function reconcilePayrollEmployeesFromBase(
     const payrollLateOtExcluded = lateOtExcludedById[e.id];
     const candidate = {
       ...e,
-      payrollEarlyOtPaperwork,
-      payrollLateOtExcluded,
+      [PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK]: payrollEarlyOtPaperwork,
+      [PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED]: payrollLateOtExcluded,
     };
     const prior = prevById.get(e.id);
     if (
       prior &&
       attendanceDayRowSnapshotEqual(prior, candidate) &&
-      prior.payrollEarlyOtPaperwork === payrollEarlyOtPaperwork &&
-      prior.payrollLateOtExcluded === payrollLateOtExcluded
+      prior[PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK] === payrollEarlyOtPaperwork &&
+      prior[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED] === payrollLateOtExcluded
     ) {
       return prior;
     }
@@ -185,9 +185,10 @@ export function buildPayrollMonthDayCellFormRecord({
     ...baseEmp,
     id: attendanceKey,
     monthEmployeeKey: dayEmp.monthEmployeeKey || rowId,
-    payrollEarlyOtPaperwork:
+    [PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK]:
       chunk?.earlyOtPaperworkById?.[attendanceKey],
-    payrollLateOtExcluded: chunk?.lateOtExcludedById?.[attendanceKey],
+    [PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED]:
+      chunk?.lateOtExcludedById?.[attendanceKey],
   };
 }
 

@@ -95,7 +95,7 @@ const ko = {
     attendanceList: "출석부(명단)",
     seasonalStaffAttendance: "임시직 출석부",
     attendanceSalaryTitle: "근무시간",
-    attendanceSalary: "직원 근무시간표",
+    attendanceSalary: "근무시간 보기",
     userDepartment: "사용자 권한",
     permissionCatalog: "권한·기능 안내",
     internalAnnouncements: "공지",
@@ -1208,7 +1208,7 @@ const ko = {
     unknown: "(미상)",
   },
   salaryCalc: {
-    pageTitle: "직원 근무시간표",
+    pageTitle: "근무시간 보기",
     pageSubtitle:
       "해당 일 출근 데이터를 바탕으로 근무시간을 표시합니다.",
     tableSectionHint:
@@ -1262,9 +1262,24 @@ const ko = {
     formulaNote:
       "기본급 ÷ 기준일수 × (근무일 + 유급 휴가) − 무급/KP 일수 × 일급.",
     empty: "기간을 선택하고 «급여 계산»을 누르세요.",
-    monthlyTimesheetButton: "월간 출근표",
+    monthlyTimesheetButton: "근무시간 보기",
     monthlyTimesheetButtonHint:
       "선택한 날짜가 속한 달의 일별 출근 격자를 봅니다(검색·부서 필터 동일).",
+    monthlyGridMenu: "근무시간 보기",
+    monthlyGridMenuHint:
+      "월간 출근표 또는 월간 출·퇴근 시간표를 엽니다.",
+    monthlyGridMenuHead: "보기 종류 선택",
+    monthlyGridMenuTimesheetDesc: "근무·휴가·연장 계수",
+    monthlyGridMenuTimeInOutDesc: "일별 출·퇴근 시간",
+    monthlyTimeInOutButton: "출·퇴근 시간 보기",
+    monthlyTimeInOutButtonHint:
+      "해당 월의 일별 출근·퇴근 시간을 격자로 봅니다(월간 출근표와 유사).",
+    monthlyTimeInOutTitle: "월간 출·퇴근",
+    monthlyTimeInOutSubtitle: "각 칸: 출근(위) · 퇴근(아래).",
+    monthlyTimeInOutLegendIn: "출근",
+    monthlyTimeInOutEmpty: "이 달에 출근 데이터가 없습니다.",
+    monthlyTimeInOutError: "데이터를 불러오지 못했습니다: {{error}}",
+    monthlyTimeInOutCellEditHint: "클릭하여 해당 일 출·퇴근을 수정합니다.",
     monthlyTimesheetTitle: "월간 출근표",
     monthlyTimesheetHint:
       "직원당 7행: 1행은 기본근무/휴가, 이후 행은 연장 계수별 시간(0,3~3,9).",
