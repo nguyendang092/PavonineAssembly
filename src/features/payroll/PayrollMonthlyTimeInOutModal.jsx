@@ -24,6 +24,7 @@ import {
 } from "@/features/payroll/payrollMonthlyTimesheetGridStyle";
 import { isPayrollMonthDayOnOrAfterJoin } from "@/features/payroll/payrollMonthlyRuleSummary";
 import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
+import { isNightShiftCaLamViec } from "@/features/attendance/attendanceWorkingHours";
 import {
   formatAttendanceLeaveTypeColumnForEmployee,
   formatAttendanceTimeInColumnDisplay,
@@ -103,22 +104,24 @@ function stickyColStyle(colIndex) {
   };
 }
 
-function TimeInOutTimeGrid({ timeInDisp, timeOutDisp, tlPage }) {
+function TimeInOutTimeGrid({ timeInDisp, timeOutDisp, tlPage, isNightShift = false }) {
   const inLabel = tlPage("monthlyTimeInOutLegendIn", "Vào");
   const outLabel = tlPage("timeOutShortLabel", "Ra");
   const inEmpty = timeInDisp === "—";
   const outEmpty = timeOutDisp === "—";
+  const nightFilled =
+    isNightShift ? " pm-tio-time-value--night" : "";
   return (
     <div className="pm-tio-time-grid">
       <span className="pm-tio-time-label pm-tio-time-label--in">{inLabel}</span>
       <span
-        className={`pm-tio-time-value ${inEmpty ? "pm-tio-time-value--empty" : "pm-tio-time-value--filled"}`}
+        className={`pm-tio-time-value ${inEmpty ? "pm-tio-time-value--empty" : `pm-tio-time-value--filled${nightFilled}`}`}
       >
         {timeInDisp}
       </span>
       <span className="pm-tio-time-label pm-tio-time-label--out">{outLabel}</span>
       <span
-        className={`pm-tio-time-value ${outEmpty ? "pm-tio-time-value--empty" : "pm-tio-time-value--filled"}`}
+        className={`pm-tio-time-value ${outEmpty ? "pm-tio-time-value--empty" : `pm-tio-time-value--filled${nightFilled}`}`}
       >
         {timeOutDisp}
       </span>
@@ -267,6 +270,7 @@ const TimeInOutDayCell = memo(function TimeInOutDayCell({
     ? formatAttendanceTimeInColumnDisplay(timeInRaw)
     : "—";
   const timeOutDisp = formatTimeOutDisplay(timeOutRaw);
+  const isNightShift = isNightShiftCaLamViec(fields.shiftCode);
 
   return (
     <td
@@ -278,6 +282,7 @@ const TimeInOutDayCell = memo(function TimeInOutDayCell({
         timeInDisp={timeInDisp}
         timeOutDisp={timeOutDisp}
         tlPage={tlPage}
+        isNightShift={isNightShift}
       />
     </td>
   );

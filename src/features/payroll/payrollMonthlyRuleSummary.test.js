@@ -362,3 +362,32 @@ describe("buildMonthlyRuleSummary — 1/2PN + TC", () => {
     expect(total.pnDays).toBe(0.5);
   });
 });
+
+describe("buildMonthlyRuleSummary — Tổng GC thực tế vs cộng ô ngày", () => {
+  const empId = "e-gc";
+  const dk = "2026-01-14";
+
+  it("workHours = GC dòng chính + TC (dòng hệ số) — không chỉ dòng chính", () => {
+    const emp = {
+      id: empId,
+      gioVao: "08:00",
+      gioRa: "18:00",
+      caLamViec: "S1",
+      loaiPhep: "",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+    };
+    const dayChunks = new Map([
+      [dk, makeChunk({ isOffDay: false, isHolidayDay: false, employees: [emp] })],
+    ]);
+    const { total } = buildMonthlyRuleSummary(
+      dayChunks,
+      [dk],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+    // Dòng chính chỉ GC 8; TC ×1.5 = 1 trên dòng hệ số.
+    expect(total.workHours).toBe(9);
+    expect(total.coeff15).toBe(1);
+  });
+});

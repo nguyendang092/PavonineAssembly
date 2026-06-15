@@ -258,6 +258,15 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* Ca đêm S2 — giờ vào/ra nổi bật đỏ */
+.pm-tio-time-value--filled.pm-tio-time-value--night {
+  color: rgb(220 38 38) !important;
+}
+
+.dark .pm-tio-time-value--filled.pm-tio-time-value--night {
+  color: rgb(248 113 113) !important;
+}
+
 .dark .pm-tio-time-value--filled {
   color: rgb(248 250 252) !important;
 }

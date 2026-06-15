@@ -266,15 +266,12 @@ function formatEnglishWeekday3(date) {
 
 /** Màu nền ô ngày — bản in A3. */
 function monthTimesheetDayBgPrint(ch, pd) {
-  if (pd) {
-    const dow = pd.getDay();
-    if (dow === 0) return "#C7C7C7";
-    if (dow === 6) return "#94a3b8";
-  }
+  if (pd?.getDay() === 0) return "#C7C7C7";
   if (!ch) return "#f8fafc";
   if (ch.isHolidayDay) return "#ffe4e6";
   if (ch.isCompensatoryDay) return "#ccfbf1";
-  if (ch.isOffDay) return "#e0f2fe";
+  if (ch.isOffDay) return "#fef9c3";
+  if (pd?.getDay() === 6) return "#94a3b8";
   return "#f1f5f9";
 }
 

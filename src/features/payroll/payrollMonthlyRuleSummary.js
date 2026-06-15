@@ -289,8 +289,11 @@ export function buildMonthlyRuleSummary(
       payrollOtDayParamsFromMonthChunkEmp(emp, ch),
     );
     const coeffSum = sumPayrollMonthlyCoeffHours(coeffMap);
+    /** Cộng theo bước 0,5h — khớp `formatCoeffHoursForDisplay` trên lưới tháng. */
     const addWorkedHours = (hours) => {
-      if (Number.isFinite(hours) && hours > 0) out.workHours += hours;
+      if (!Number.isFinite(hours) || hours <= 0) return;
+      const r = roundHoursForPayrollDisplay(hours);
+      if (r > 0) out.workHours += r;
     };
 
     if (main.kind === "leave") {

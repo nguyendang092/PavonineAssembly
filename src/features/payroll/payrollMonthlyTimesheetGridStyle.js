@@ -17,15 +17,16 @@ export const PTS_COLORS = {
   headBorder: "FF94A3B8",
   bodyBorder: "FFCBD5E1",
   daySunHeader: "FFFEF08A",
-  daySatHeader: "FF94A3B8",
   daySunBody: "FFFEF9C3",
+  daySatHeader: "FF94A3B8",
   daySatBody: "FFE2E8F0",
   dayHolidayHeader: "FF99F6E4",
   dayHolidayBody: "FFCCFBF1",
   dayCompHeader: "FFD9F99D",
   dayCompBody: "FFECFCCB",
-  dayOffHeader: "FFF5D0FE",
-  dayOffBody: "FFFAE8FF",
+  /** Ngày off — cùng tông vàng như chủ nhật. */
+  dayOffHeader: "FFFEF08A",
+  dayOffBody: "FFFEF9C3",
   dayDefaultHeader: "FFF1F5F9",
   detailTotalHeader: "FFE2E8F0",
   detailTrialHeader: "FFCFFAFE",
@@ -45,27 +46,21 @@ export function hexToExcelArgb(hex) {
 
 /** Nền header cột ngày — khớp `monthTimesheetDayHeaderClass`. */
 export function getPayrollMonthlyTimesheetDayHeaderBg(pd, ch) {
-  if (pd) {
-    const dow = pd.getDay();
-    if (dow === 0) return PTS_COLORS.daySunHeader;
-    if (dow === 6) return PTS_COLORS.daySatHeader;
-  }
+  if (pd?.getDay() === 0) return PTS_COLORS.daySunHeader;
   if (ch?.isHolidayDay) return PTS_COLORS.dayHolidayHeader;
   if (ch?.isCompensatoryDay) return PTS_COLORS.dayCompHeader;
   if (ch?.isOffDay) return PTS_COLORS.dayOffHeader;
+  if (pd?.getDay() === 6) return PTS_COLORS.daySatHeader;
   return PTS_COLORS.dayDefaultHeader;
 }
 
 /** Nền ô ngày body; `null` = dùng nền dải NV. */
 export function getPayrollMonthlyTimesheetDayBodyBg(pd, ch) {
-  if (pd) {
-    const dow = pd.getDay();
-    if (dow === 0) return PTS_COLORS.daySunBody;
-    if (dow === 6) return PTS_COLORS.daySatBody;
-  }
+  if (pd?.getDay() === 0) return PTS_COLORS.daySunBody;
   if (ch?.isHolidayDay) return PTS_COLORS.dayHolidayBody;
   if (ch?.isCompensatoryDay) return PTS_COLORS.dayCompBody;
   if (ch?.isOffDay) return PTS_COLORS.dayOffBody;
+  if (pd?.getDay() === 6) return PTS_COLORS.daySatBody;
   return null;
 }
 
@@ -95,7 +90,7 @@ export function payrollMonthlyTimesheetDayHeaderBgClass(pd, ch) {
     [PTS_COLORS.daySatHeader]: "bg-slate-400 dark:bg-slate-600",
     [PTS_COLORS.dayHolidayHeader]: "bg-teal-200 dark:bg-rose-900/40",
     [PTS_COLORS.dayCompHeader]: "bg-lime-200 dark:bg-teal-900/40",
-    [PTS_COLORS.dayOffHeader]: "bg-fuchsia-200 dark:bg-cyan-900/35",
+    [PTS_COLORS.dayOffHeader]: "bg-yellow-200 dark:bg-slate-700/55",
     [PTS_COLORS.dayDefaultHeader]: "bg-slate-100 dark:bg-slate-800",
   };
   return map[argb] || "bg-slate-100 dark:bg-slate-800";
@@ -109,7 +104,7 @@ export function payrollMonthlyTimesheetDayBodyBgClass(pd, ch) {
     [PTS_COLORS.daySatBody]: "bg-slate-200 dark:bg-slate-700",
     [PTS_COLORS.dayHolidayBody]: "bg-teal-100 dark:bg-amber-950/25",
     [PTS_COLORS.dayCompBody]: "bg-lime-100 dark:bg-teal-950/25",
-    [PTS_COLORS.dayOffBody]: "bg-fuchsia-100 dark:bg-sky-950/20",
+    [PTS_COLORS.dayOffBody]: "bg-yellow-100 dark:bg-slate-800/55",
   };
   return map[argb] || "";
 }
