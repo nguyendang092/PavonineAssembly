@@ -81,6 +81,25 @@ describe("getPayrollDayOvertimeHoursNumeric", () => {
     ).toBe(0);
   });
 
+  it("tangCaTrua — ngày OFF cộng vào TC gộp", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "08:00",
+        "17:00",
+        true,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        1,
+      ),
+    ).toBe(1);
+  });
+
   it("tangCaTrua cộng vào TC ca ngày", () => {
     expect(
       getPayrollDayOvertimeHoursNumeric(
@@ -397,6 +416,26 @@ describe("formatPayrollTableTotalDayGcCell", () => {
         1,
       ),
     ).toBe("5");
+  });
+
+  it("ngày OFF + tangCaTrua — TC trưa cộng vào Tổng GC", () => {
+    expect(
+      formatPayrollTableTotalDayGcCell(
+        "08:00",
+        "17:00",
+        true,
+        false,
+        "S1",
+        false,
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        false,
+        1,
+      ),
+    ).toBe("9");
   });
 });
 

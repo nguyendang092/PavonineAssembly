@@ -55,6 +55,7 @@ export function formatPayrollTableOffDayTcCellFromEmp(emp, dayCtx, maps) {
     p.includeThaiSanInWorkingHours,
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
+    p.lunchOtHours,
   );
 }
 
@@ -77,6 +78,7 @@ export function formatPayrollTableHolidayDayWorkingCellFromEmp(
     p.includeThaiSanInWorkingHours,
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
+    p.lunchOtHours,
   );
 }
 

@@ -111,6 +111,21 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     expect(coeffHours(lines, 1.5)).toBe(0);
   });
 
+  it("ngày OFF + tangCaTrua — cộng vào ×2.0 gộp", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "08:00",
+      timeOut: "17:00",
+      isOffDay: true,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      lunchOtHours: 1,
+    });
+    expect(coeffHours(lines, 2.0)).toBe(9);
+    expect(coeffHours(lines, 1.5)).toBe(0);
+  });
+
   it("ngày OFF ca đêm — ×2.7 gộp", () => {
     const lines = getPayrollMonthlyCoefficientLines({
       timeIn: "22:00",

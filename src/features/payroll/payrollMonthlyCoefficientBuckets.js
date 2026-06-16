@@ -40,6 +40,7 @@ function resolvePayrollMonthlyRegimeFlags(p) {
  *   payrollEarlyOtPaperwork: boolean | undefined,
  *   payrollLateOtExcluded: boolean | undefined,
  *   lunchOtHours?: unknown,
+ *   leaveType?: unknown,
  * }} p
  * @returns {{ coeff: number; hours: number; key: string }[]}
  */
@@ -54,6 +55,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     payrollEarlyOtPaperwork,
     payrollLateOtExcluded,
     lunchOtHours,
+    leaveType,
   } = p;
   const strictOffDay = isOffDay || isCompensatoryDay;
   const {
@@ -84,12 +86,13 @@ export function getPayrollMonthlyCoefficientLines(p) {
       true,
       shiftCode,
       payrollEarlyOtPaperwork,
-      undefined,
+      leaveType,
       payrollLateOtExcluded,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
       includeTaiXeInWorkingHours,
       includeTaiXeTongInWorkingHours,
+      lunchOtHours,
     );
     if (m != null && m > 0) {
       lines.push({ coeff: 3.0, hours: m, key: "dh30" });
@@ -116,12 +119,13 @@ export function getPayrollMonthlyCoefficientLines(p) {
       false,
       shiftCode,
       payrollEarlyOtPaperwork,
-      undefined,
+      leaveType,
       payrollLateOtExcluded,
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
       includeTaiXeInWorkingHours,
       includeTaiXeTongInWorkingHours,
+      lunchOtHours,
     );
     if (m != null && m > 0) {
       lines.push({ coeff: 2.0, hours: m, key: "off20" });
@@ -234,7 +238,7 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     // 1/2PN: vẫn có thể đi làm nửa ngày; hiển thị thêm số giờ thực tế trong cùng ô.
     if (leaveShort === "1/2PN") {
       const night = isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT]);
-      if (!night && !ch.isOffDay && !ch.isHolidayDay && !ch.isCompensatoryDay) {
+      if (!night) {
         workedHours =
           getPayrollHalfDayLeaveWorkedHours(
             emp[PAYROLL_EMP.TIME_IN],
