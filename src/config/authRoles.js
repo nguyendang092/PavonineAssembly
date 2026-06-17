@@ -100,6 +100,35 @@ export function canAddAttendanceForDepartment({
   });
 }
 
+/**
+ * Xác nhận tăng ca sớm / không tăng ca sau 17:30 trên bảng giờ công.
+ * Admin/HR hoặc quản lý bộ phận (manager).
+ */
+export function canConfirmOtPaperwork(user, userRole) {
+  if (!user) return false;
+  if (isAdminAccess(user, userRole)) return true;
+  return normalizeRole(userRole) === ROLES.MANAGER;
+}
+
+/**
+ * Manager chỉ tick/lưu NV trong bộ phận được gán; Admin/HR mọi NV.
+ */
+export function canConfirmOtPaperworkForEmployee({
+  user,
+  userRole,
+  userDepartments,
+  employee,
+}) {
+  if (!canConfirmOtPaperwork(user, userRole)) return false;
+  if (isAdminAccess(user, userRole)) return true;
+  return canEditAttendanceForEmployee({
+    user,
+    userRole,
+    userDepartments,
+    employee,
+  });
+}
+
 /** Đăng thông báo nội bộ: Admin/HR + Manager (sếp bộ phận). */
 export function canPostInternalAnnouncements(user, userRole) {
   if (!user?.email) return false;

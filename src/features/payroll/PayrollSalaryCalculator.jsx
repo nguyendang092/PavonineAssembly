@@ -10,6 +10,8 @@ import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUser } from "@/contexts/UserContext";
 import {
+  canConfirmOtPaperwork,
+  canConfirmOtPaperworkForEmployee,
   canEditAttendanceForEmployee,
   isAdminAccess,
 } from "@/config/authRoles";
@@ -85,7 +87,18 @@ export default function PayrollSalaryCalculator() {
   const { t, i18n } = useTranslation();
   const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
   const { user, userRole, userDepartments } = useUser();
-  const canConfirmOtPaperwork = isAdminAccess(user, userRole);
+  const canConfirmOt = canConfirmOtPaperwork(user, userRole);
+
+  const canConfirmOtForEmployee = useCallback(
+    (employee) =>
+      canConfirmOtPaperworkForEmployee({
+        user,
+        userRole,
+        userDepartments,
+        employee,
+      }),
+    [user, userRole, userDepartments],
+  );
 
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
@@ -258,16 +271,35 @@ export default function PayrollSalaryCalculator() {
     return next;
   }, [employees, earlyOtMap, lateOtExcludedMap]);
 
+  /** Manager chỉ xác nhận TC trong bộ phận; Admin/HR toàn công ty. */
+  const otPaperworkScopeEmployees = useMemo(() => {
+    if (isAdminAccess(user, userRole)) return employees;
+    return employees.filter((e) => canConfirmOtForEmployee(e));
+  }, [employees, user, userRole, canConfirmOtForEmployee]);
+
+  const filterOtPaperworkUpdates = useCallback(
+    (updates) => {
+      if (isAdminAccess(user, userRole)) return updates;
+      const out = {};
+      for (const [id, val] of Object.entries(updates)) {
+        const emp = employees.find((e) => e.id === id);
+        if (emp && canConfirmOtForEmployee(emp)) out[id] = val;
+      }
+      return out;
+    },
+    [user, userRole, employees, canConfirmOtForEmployee],
+  );
+
   /** Vào ≤ 06:40 (ca ngày) — hiện nút «Xác nhận tăng ca» (mở popup thủ công). */
   const earlyOtEligibleEmployees = useMemo(
     () =>
       sortEmployeesAscForPopup(
-        employees.filter((e) => {
-          const { timeIn, shiftCode, timeOut } = pickPayrollEmployeeDayFields(e);
+        otPaperworkScopeEmployees.filter((e) => {
+          const { timeIn, shiftCode } = pickPayrollEmployeeDayFields(e);
           return isEarlyArrivalFor0600PaperworkOvertime(timeIn, shiftCode);
         }),
       ),
-    [employees],
+    [otPaperworkScopeEmployees],
   );
 
   const pendingEarlyOtEmployees = useMemo(
@@ -279,14 +311,14 @@ export default function PayrollSalaryCalculator() {
   const lateOtEligibleEmployees = useMemo(
     () =>
       sortEmployeesAscForPopup(
-        employees.filter((e) => {
+        otPaperworkScopeEmployees.filter((e) => {
           const { shiftCode, timeOut } = pickPayrollEmployeeDayFields(e);
           if (isNightShiftCaLamViec(shiftCode)) return false;
           const ot = getOvertimeHoursFromGioRa(timeOut);
           return Number.isFinite(ot) && ot > 0;
         }),
       ),
-    [employees],
+    [otPaperworkScopeEmployees],
   );
 
   const pendingLateOtEmployees = useMemo(
@@ -322,20 +354,20 @@ export default function PayrollSalaryCalculator() {
 
   const handleEarlyOtSave = useCallback(
     async (updates) => {
-      if (!canConfirmOtPaperwork) {
+      if (!canConfirmOt) {
         setAlert({
           show: true,
           type: "error",
           message: tlPage(
             "otPaperworkSaveForbidden",
-            "Chỉ Admin / HR được xác nhận tăng ca.",
+            "Chỉ Admin / HR / quản lý bộ phận được xác nhận tăng ca.",
           ),
         });
         return;
       }
       setEarlyOtSaving(true);
       try {
-        await mergeEarlyOt(updates);
+        await mergeEarlyOt(filterOtPaperworkUpdates(updates));
         setEarlyOtModalOpen(false);
         setEarlyOtModalMode("pending");
       } catch (err) {
@@ -352,7 +384,7 @@ export default function PayrollSalaryCalculator() {
         setEarlyOtSaving(false);
       }
     },
-    [canConfirmOtPaperwork, mergeEarlyOt, tlPage],
+    [canConfirmOt, filterOtPaperworkUpdates, mergeEarlyOt, tlPage],
   );
 
   const handleEarlyOtDismiss = useCallback(() => {
@@ -362,20 +394,20 @@ export default function PayrollSalaryCalculator() {
 
   const handleLateOtSave = useCallback(
     async (updates) => {
-      if (!canConfirmOtPaperwork) {
+      if (!canConfirmOt) {
         setAlert({
           show: true,
           type: "error",
           message: tlPage(
             "otPaperworkSaveForbidden",
-            "Chỉ Admin / HR được xác nhận tăng ca.",
+            "Chỉ Admin / HR / quản lý bộ phận được xác nhận tăng ca.",
           ),
         });
         return;
       }
       setLateOtSaving(true);
       try {
-        await mergeLateOt(updates);
+        await mergeLateOt(filterOtPaperworkUpdates(updates));
         setLateOtModalOpen(false);
         setLateOtModalMode("pending");
       } catch (err) {
@@ -392,7 +424,7 @@ export default function PayrollSalaryCalculator() {
         setLateOtSaving(false);
       }
     },
-    [canConfirmOtPaperwork, mergeLateOt, tlPage],
+    [canConfirmOt, filterOtPaperworkUpdates, mergeLateOt, tlPage],
   );
 
   const handleLateOtDismiss = useCallback(() => {
@@ -1178,10 +1210,10 @@ export default function PayrollSalaryCalculator() {
           "paperworkModalDepartmentPlaceholder",
           "Tất cả bộ phận",
         )}
-        readOnly={!canConfirmOtPaperwork}
+        readOnly={!canConfirmOt}
         viewOnlyHint={tlPage(
           "otPaperworkViewOnlyHint",
-          "Chỉ Admin / HR được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
+          "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
         )}
       />
 
@@ -1209,10 +1241,10 @@ export default function PayrollSalaryCalculator() {
           "paperworkModalDepartmentPlaceholder",
           "Tất cả bộ phận",
         )}
-        readOnly={!canConfirmOtPaperwork}
+        readOnly={!canConfirmOt}
         viewOnlyHint={tlPage(
           "otPaperworkViewOnlyHint",
-          "Chỉ Admin / HR được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
+          "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
         )}
       />
     </>

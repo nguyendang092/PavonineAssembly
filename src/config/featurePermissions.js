@@ -92,10 +92,15 @@ export const PERMISSION_CATALOG = Object.freeze([
   {
     id: PERMISSION_IDS.PAYROLL_SALARY_ROWS,
     labelVi: "Trang tính lương — chỉnh dòng liên quan điểm danh",
-    quyTac: "Theo canEditAttendanceForEmployee (phạm vi bộ phận / Admin HR).",
+    quyTac:
+      "Theo canEditAttendanceForEmployee (phạm vi bộ phận / Admin HR). Xác nhận tăng ca: canConfirmOtPaperwork / canConfirmOtPaperworkForEmployee.",
     routes: ["/attendance-salary"],
     modules: ["features/payroll/PayrollSalaryCalculator.jsx"],
-    authRolesHelpers: ["canEditAttendanceForEmployee"],
+    authRolesHelpers: [
+      "canEditAttendanceForEmployee",
+      "canConfirmOtPaperwork",
+      "canConfirmOtPaperworkForEmployee",
+    ],
   },
   {
     id: PERMISSION_IDS.USER_DEPARTMENT_MAPPING,

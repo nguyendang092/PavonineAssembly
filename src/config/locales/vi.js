@@ -1383,8 +1383,9 @@ const vi = {
     lateOtSaveError:
       "Không lưu được giấy tăng ca (sau 17:30). Kiểm tra kết nối hoặc quyền ghi.",
     otPaperworkViewOnlyHint:
-      "Chỉ Admin / HR được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
-    otPaperworkSaveForbidden: "Chỉ Admin / HR được xác nhận tăng ca.",
+      "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
+    otPaperworkSaveForbidden:
+      "Chỉ Admin / HR / quản lý bộ phận được xác nhận tăng ca.",
     earlyOtModalTitle: "Xác nhận đăng ký tăng ca",
     earlyOtModalDescription:
       "Nhân viên vào ≤ 06:40 (ca ngày): xác nhận có giấy tăng ca sớm. Có giấy → TC khung 05:40–07:40 (30 phút = 0,5h; 05:40–06:40 = 1h, tối đa 2h).",

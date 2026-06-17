@@ -1386,8 +1386,9 @@ const ko = {
     lateOtSaveError:
       "17:30 이후 연장 제외 정보를 저장하지 못했습니다. 연결·권한을 확인하세요.",
     otPaperworkViewOnlyHint:
-      "Admin / HR만 선택·저장할 수 있습니다. 목록과 현재 상태만 볼 수 있습니다.",
-    otPaperworkSaveForbidden: "Admin / HR만 연장근무를 확인할 수 있습니다.",
+      "Admin / HR / 부서 관리자만 선택·저장할 수 있습니다. 목록과 현재 상태만 볼 수 있습니다.",
+    otPaperworkSaveForbidden:
+      "Admin / HR / 부서 관리자만 연장근무를 확인할 수 있습니다.",
     earlyOtModalTitle: "조기 연장근무 확인",
     earlyOtModalDescription:
       "06:40 이전 출근(주간): 조기 연장근무 서류 여부를 확인합니다. 서류 있음 → 05:40–07:40 연장 (30분=0.5h, 05:40–06:40=1h, 최대 2h).",
