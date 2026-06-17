@@ -1377,7 +1377,7 @@ const ko = {
     exportRangeExcelSuccess: "✅ Excel보내기 완료 (여러 날).",
     earlyOtPaperworkButton: "연장근무 확인",
     earlyOtPaperworkHint:
-      "06:40 이전 출근(주간): 조기 연장근무 서류 확인 (05:40–07:40, 30분=0.5h, 최대 2h).",
+      "06:40 이전 출근(주간): 조기 연장근무 서류 확인 (출근 시각부터 07:40까지, 0.1h 반올림, 최대 2h).",
     lateOtPaperworkButton: "17:30 이후 연장 제외",
     lateOtPaperworkHint:
       "17:30 이후 퇴근하지만 연장근무로 계산하지 않는 직원을 표시합니다.",
@@ -1391,7 +1391,7 @@ const ko = {
       "Admin / HR / 부서 관리자만 연장근무를 확인할 수 있습니다.",
     earlyOtModalTitle: "조기 연장근무 확인",
     earlyOtModalDescription:
-      "06:40 이전 출근(주간): 조기 연장근무 서류 여부를 확인합니다. 서류 있음 → 05:40–07:40 연장 (30분=0.5h, 05:40–06:40=1h, 최대 2h).",
+      "06:40 이전 출근(주간): 조기 연장근무 서류 여부를 확인합니다. 서류 있음 → 출근 시각(05:40 이전은 05:40)부터 07:40, 실제 시간 0.1h 반올림 (예: 05:45 → 1.9h), 최대 2h.",
     earlyOtModalSave: "저장",
     earlyOtModalSkipAll: "모두 서류 없음",
     lateOtModalTitle: "17:30 이후 연장 제외 확인",

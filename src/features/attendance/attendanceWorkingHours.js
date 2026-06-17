@@ -907,11 +907,12 @@ const OT_PAY_START_MIN = 17 * 60;
 /** Chỉ có tăng ca khi giờ ra sau > 17:30 (phút). */
 const OT_ELIGIBLE_AFTER_MIN = 17 * 60 + 30;
 
-/** Bảng lương: vào ≤ 06:40 (ca ngày) + có giấy → TC sớm khung 05:40–07:40 (block 30 phút). */
+/** Bảng lương: vào ≤ 06:40 (ca ngày) + có giấy → TC sớm khung 05:40–07:40 (thời lượng thực, làm tròn 0,1h). */
 const EARLY_PAPERWORK_CUTOFF_MIN = 6 * 60 + 40;
-/** Khung tính TC sớm (có giấy): từ 05:40 đến 07:40 (tối đa 2h; 05:40–06:40 = 1h). */
+/** Khung TC sớm (có giấy): từ max(giờ vào, 05:40) đến 07:40 (tối đa 2h). */
 const EARLY_PAPERWORK_OT_WINDOW_START_MIN = 5 * 60 + 40;
 const EARLY_PAPERWORK_OT_WINDOW_END_MIN = 7 * 60 + 40;
+const EARLY_PAPERWORK_OT_MAX_HOURS = 2;
 
 /**
  * Giờ tăng ca: từ 17:00 đến giờ ra, cứ 30 phút = 0.5h (làm tròn xuống theo block 30 phút).
@@ -941,7 +942,8 @@ export function isEarlyArrivalFor0600PaperworkOvertime(timeIn, shiftCode) {
 }
 
 /**
- * TC sớm (có giấy, vào ≤ 06:40): từ max(giờ vào, 05:40) đến **07:40**, block 30 phút = 0,5h (tối đa 2h).
+ * TC sớm (có giấy, vào ≤ 06:40): từ **giờ vào thực** (không trước 05:40) đến **07:40**,
+ * làm tròn **0,1h** — không block 30 phút (khác TC chiều).
  * @param {unknown} timeIn
  * @param {boolean | undefined} payrollEarlyOtPaperwork
  * @param {unknown} shiftCode
@@ -959,8 +961,11 @@ export function getEarlyPaperworkOvertimeHours(
   const start = Math.max(a, EARLY_PAPERWORK_OT_WINDOW_START_MIN);
   if (start >= EARLY_PAPERWORK_OT_WINDOW_END_MIN) return 0;
   const minutes = EARLY_PAPERWORK_OT_WINDOW_END_MIN - start;
-  const blocks = Math.floor(minutes / 30);
-  return blocks * 0.5;
+  if (minutes <= 0) return 0;
+  const rawHours = minutes / 60;
+  return roundHoursToTenths(
+    Math.min(rawHours, EARLY_PAPERWORK_OT_MAX_HOURS),
+  );
 }
 
 /** Giờ TC trưa — chọn thủ công trên form điểm danh (`tangCaTrua`). */

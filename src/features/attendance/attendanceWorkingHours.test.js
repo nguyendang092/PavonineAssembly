@@ -256,16 +256,16 @@ describe("chế độ Tài xế / Tài xế tổng", () => {
 });
 
 describe("getEarlyPaperworkOvertimeHours", () => {
-  it("có giấy: 05:40–07:40 → tối đa 2h (4 block)", () => {
+  it("có giấy: 05:40–07:40 → 2h; vào trước 05:40 coi từ 05:40", () => {
     expect(getEarlyPaperworkOvertimeHours("05:40", true, "S1")).toBe(2);
     expect(getEarlyPaperworkOvertimeHours("05:30", true, "S1")).toBe(2);
   });
 
-  it("có giấy: vào 06:00 → 1,5h (3 block đến 07:40)", () => {
-    expect(getEarlyPaperworkOvertimeHours("06:00", true, "S1")).toBe(1.5);
-  });
-
-  it("có giấy: vào 06:40 → 1h (2 block đến 07:40)", () => {
+  it("có giấy: tính từ giờ vào thực (không block 30p)", () => {
+    expect(getEarlyPaperworkOvertimeHours("05:45", true, "S1")).toBe(1.9);
+    expect(getEarlyPaperworkOvertimeHours("05:55", true, "S1")).toBe(1.8);
+    expect(getEarlyPaperworkOvertimeHours("06:00", true, "S1")).toBe(1.7);
+    expect(getEarlyPaperworkOvertimeHours("06:15", true, "S1")).toBe(1.4);
     expect(getEarlyPaperworkOvertimeHours("06:40", true, "S1")).toBe(1);
   });
 
@@ -285,7 +285,7 @@ describe("getEarlyPaperworkOvertimeHours", () => {
         false,
         false,
       ),
-    ).toBe(2.5);
+    ).toBe(2.7);
   });
 });
 

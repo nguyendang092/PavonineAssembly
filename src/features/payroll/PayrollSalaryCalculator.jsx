@@ -911,7 +911,7 @@ export default function PayrollSalaryCalculator() {
                 className="h-8 shrink-0 rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-3 text-xs font-bold text-white shadow-md shadow-sky-600/25 transition hover:from-sky-400 hover:to-blue-500 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:hover:from-sky-500 dark:hover:to-blue-600"
                 title={tlPage(
                   "earlyOtPaperworkHint",
-                  "Xác nhận giấy tăng ca sớm (05:40–07:40, block 30 phút, tối đa 2h) cho nhân viên vào ≤ 06:40 (ca ngày).",
+                  "Xác nhận giấy tăng ca sớm (từ giờ vào đến 07:40, làm tròn 0,1h, tối đa 2h) cho nhân viên vào ≤ 06:40 (ca ngày).",
                 )}
               >
                 {tlPage("earlyOtPaperworkButton", "Xác nhận tăng ca")}
@@ -1195,7 +1195,7 @@ export default function PayrollSalaryCalculator() {
         title={tlPage("earlyOtModalTitle", "Xác nhận đăng ký tăng ca")}
         description={tlPage(
           "earlyOtModalDescription",
-          "Nhân viên vào ≤ 06:40 (ca ngày): xác nhận có giấy tăng ca sớm. Có giấy → TC khung 05:40–07:40 (30 phút = 0,5h; 05:40–06:40 = 1h, tối đa 2h).",
+          "Nhân viên vào ≤ 06:40 (ca ngày): xác nhận có giấy tăng ca sớm. Có giấy → TC từ giờ vào (không trước 05:40) đến 07:40, thời lượng thực làm tròn 0,1h (vd. 05:45 → 1,9h), tối đa 2h.",
         )}
         saveLabel={tlPage("earlyOtModalSave", "Lưu")}
         skipAllLabel={tlPage(

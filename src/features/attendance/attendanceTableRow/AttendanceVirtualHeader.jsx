@@ -140,7 +140,7 @@ function AttendanceVirtualHeader({
               className="flex min-w-0 items-center justify-center py-px px-1 text-center text-xs font-extrabold uppercase tracking-wide text-gray-900 md:px-2 md:py-0.5 md:text-xs"
               title={tl(
                 "dayShiftOvertimeHoursHint",
-                "Ca ngày: giờ ra sau 17:30 (từ 17:00, 30 phút = 0,5h). Vào ≤ 06:40 có giấy TC → 05:40–07:40 (30 phút = 0,5h; tối đa 2h). Ca đêm: «-».",
+                "Ca ngày: giờ ra sau 17:30 (từ 17:00, 30 phút = 0,5h). Vào ≤ 06:40 có giấy TC → từ giờ vào (không trước 05:40) đến 07:40, làm tròn 0,1h (tối đa 2h). Ca đêm: «-».",
               )}
             >
               {tl("dayShiftOvertimeHours", "TC ca ngày (×1.5)")}
