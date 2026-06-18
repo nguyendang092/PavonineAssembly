@@ -11,12 +11,9 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { buildPayrollMonthDayCellFormRecord } from "@/features/payroll/buildPayrollDayFromRaw";
 import { pickPayrollEmployeeJoinDate } from "@/features/payroll/payrollEmployeeFields";
 import {
-  collectPayrollMonthSortedEmployeeIds,
-  fetchPayrollMonthDayChunks,
   formatPayrollMonthWeekday3,
   matchesPayrollMonthRowFilter,
   parsePayrollMonthSortableStt,
-  payrollMonthRepresentativeEmployee,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
   payrollMonthlyTimesheetDayBodyBgClass,
@@ -36,6 +33,13 @@ import {
 import { pickAttendanceEmployeeDayFields } from "@/features/attendance/attendanceEmployeeFields";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import { canEditPayrollMonthTimesheetGridCell } from "@/config/featurePermissions";
+import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
+import {
+  buildPayrollMonthGridOverlayCopy,
+  usePayrollMonthModalScrollLock,
+} from "@/features/payroll/payrollMonthModalUi";
+import { usePayrollMonthDayChunks } from "@/features/payroll/usePayrollMonthDayChunks";
+import { usePayrollMonthEmployeeIndex } from "@/features/payroll/usePayrollMonthEmployeeIndex";
 import {
   enumerateDateKeysInclusive,
   getFirstDayOfMonthKey,
@@ -378,14 +382,9 @@ export default function PayrollMonthlyTimeInOutModal({
   onAlert,
   employees = [],
 }) {
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState("");
-  const [dayChunks, setDayChunks] = useState([]);
   const [localNameFilter, setLocalNameFilter] = useState("");
   const [zoomIdx, setZoomIdx] = useState(readStoredZoomIdx);
   const tableBodyScrollRef = useRef(null);
-  const loadSeqRef = useRef(0);
   const [dayCellFormOpen, setDayCellFormOpen] = useState(false);
   const [dayCellFormDate, setDayCellFormDate] = useState("");
   const [dayCellFormInitial, setDayCellFormInitial] = useState(null);
@@ -430,72 +429,28 @@ export default function PayrollMonthlyTimeInOutModal({
     }
   }, []);
 
-  const loadMonth = useCallback(async () => {
-    const currentLoadSeq = loadSeqRef.current + 1;
-    loadSeqRef.current = currentLoadSeq;
-    setLoading(true);
-    setLoadingMore(false);
-    setError("");
-    setDayChunks([]);
-    try {
-      const allChunks = await fetchPayrollMonthDayChunks(monthRange.keys, {
-        isStale: () => loadSeqRef.current !== currentLoadSeq,
-        onFirstBatch: (chunks) => {
-          setDayChunks(chunks);
-          setLoading(false);
-        },
-        onAfterBatch: (i, total, chunks) => {
-          setDayChunks(chunks);
-          setLoadingMore(i + 4 < total);
-        },
-      });
-      if (loadSeqRef.current !== currentLoadSeq || allChunks == null) return;
-      setDayChunks(allChunks);
-      if (!allChunks.length) {
-        setError(
-          tlPage(
-            "monthlyTimeInOutEmpty",
-            "Không có dữ liệu điểm danh nào trong tháng này.",
-          ),
-        );
-      }
-    } catch (e) {
-      if (loadSeqRef.current !== currentLoadSeq) return;
-      setError(
-        tlPage("monthlyTimeInOutError", "Không tải được dữ liệu: {{error}}", {
-          error: e?.message || String(e),
-        }),
-      );
-    } finally {
-      if (loadSeqRef.current === currentLoadSeq) {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    }
-  }, [monthRange.keys, tlPage]);
+  const {
+    dayChunks,
+    displayDayChunks,
+    loading,
+    loadingMore,
+    isGridBusy,
+    isDisplayStale,
+    error,
+    loadMonth,
+  } = usePayrollMonthDayChunks({
+    monthKeys: monthRange.keys,
+    tlPage,
+    emptyMessageKey: "monthlyTimeInOutEmpty",
+    errorMessageKey: "monthlyTimeInOutError",
+  });
 
   useEffect(() => {
     if (!open) return;
     void loadMonth();
   }, [open, loadMonth]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const html = document.documentElement;
-    const body = document.body;
-    const mainScroll = document.getElementById("app-main-scroll");
-    const prevHtmlOverflow = html.style.overflow;
-    const prevBodyOverflow = body.style.overflow;
-    const prevMainOverflow = mainScroll?.style.overflow ?? "";
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    if (mainScroll) mainScroll.style.overflow = "hidden";
-    return () => {
-      html.style.overflow = prevHtmlOverflow;
-      body.style.overflow = prevBodyOverflow;
-      if (mainScroll) mainScroll.style.overflow = prevMainOverflow;
-    };
-  }, [open]);
+  usePayrollMonthModalScrollLock(open);
 
   useEffect(() => {
     if (open) return;
@@ -505,22 +460,17 @@ export default function PayrollMonthlyTimeInOutModal({
     setDayCellFormEmployees([]);
   }, [open]);
 
-  const sortedIds = useMemo(
-    () => collectPayrollMonthSortedEmployeeIds(dayChunks),
-    [dayChunks],
-  );
+  const { sortedIds, repById, chunkByDate, chunkByDateLive } =
+    usePayrollMonthEmployeeIndex(dayChunks, displayDayChunks);
 
-  const repById = useMemo(() => {
-    const m = new Map();
-    for (const id of sortedIds) {
-      m.set(id, payrollMonthRepresentativeEmployee(dayChunks, id));
-    }
-    return m;
-  }, [sortedIds, dayChunks]);
-
-  const chunkByDate = useMemo(
-    () => new Map(dayChunks.map((c) => [c.dateKey, c])),
-    [dayChunks],
+  const gridOverlayCopy = useMemo(
+    () =>
+      buildPayrollMonthGridOverlayCopy({
+        tlPage,
+        loadingMore,
+        isDisplayStale,
+      }),
+    [tlPage, loadingMore, isDisplayStale],
   );
 
   const effectiveDepartmentFilter = departmentFilter || "";
@@ -608,7 +558,7 @@ export default function PayrollMonthlyTimeInOutModal({
         });
         return;
       }
-      const ch = chunkByDate.get(dateKey);
+      const ch = chunkByDateLive.get(dateKey);
       if (!ch) return;
       const rep = repById.get(rowId);
       if (!rep) return;
@@ -653,7 +603,7 @@ export default function PayrollMonthlyTimeInOutModal({
     },
     [
       user,
-      chunkByDate,
+      chunkByDateLive,
       repById,
       userRole,
       userDepartments,
@@ -849,24 +799,34 @@ export default function PayrollMonthlyTimeInOutModal({
               </div>
             </div>
 
-            {loading && dayChunks.length === 0 ? (
-              <p className="py-8 text-center text-sm font-semibold text-slate-600">
-                {tlPage("monthlyTimesheetLoading", "Đang tải dữ liệu điểm danh…")}
-              </p>
-            ) : error ? (
+            {loading && !displayDayChunks.length ? (
+              <PayrollMonthGridLoadingOverlay
+                active
+                mode="inline"
+                message={tlPage(
+                  "monthlyTimesheetLoading",
+                  "Đang tải dữ liệu điểm danh…",
+                )}
+              />
+            ) : error && !displayDayChunks.length ? (
               <p className="py-8 text-center text-sm font-semibold text-red-600">
                 {error}
               </p>
             ) : (
               <div
                 ref={tableBodyScrollRef}
-                className="pm-tio-scroll min-h-0 flex-1 overflow-auto rounded-lg bg-white shadow-inner dark:bg-slate-950"
+                className="pm-tio-scroll relative min-h-0 flex-1 overflow-auto rounded-lg bg-white shadow-inner dark:bg-slate-950"
                 style={
                   ZOOM_CSS_OK
                     ? { zoom }
                     : { transform: `scale(${zoom})`, transformOrigin: "top left" }
                 }
               >
+                <PayrollMonthGridLoadingOverlay
+                  active={isGridBusy && displayDayChunks.length > 0}
+                  message={gridOverlayCopy.message}
+                  subtitle={gridOverlayCopy.subtitle}
+                />
                 <div className="pm-tio-table-wrap inline-block min-w-full align-middle">
                   <table
                     className="pm-tio-table border-collapse text-left text-slate-900 dark:text-slate-100"
@@ -996,7 +956,7 @@ export default function PayrollMonthlyTimeInOutModal({
                   </tbody>
                 </table>
                 </div>
-                {filteredIds.length === 0 && !loading ? (
+                {filteredIds.length === 0 && !isGridBusy ? (
                   <p className="py-6 text-center text-sm text-slate-500">
                     {tlPage(
                       "monthlyTimesheetNoRowsAfterFilter",
@@ -1006,11 +966,6 @@ export default function PayrollMonthlyTimeInOutModal({
                 ) : null}
               </div>
             )}
-            {loadingMore ? (
-              <p className="mt-1 text-center text-[10px] font-medium text-slate-500">
-                {tlPage("monthlyTimesheetLoadingMore", "Đang tải thêm ngày…")}
-              </p>
-            ) : null}
           </div>
         </div>
       </div>
@@ -1030,7 +985,7 @@ export default function PayrollMonthlyTimeInOutModal({
           void loadMonth();
         }}
         dayIsCompensatory={
-          chunkByDate.get(dayCellFormDate)?.isCompensatoryDay ?? false
+          chunkByDateLive.get(dayCellFormDate)?.isCompensatoryDay ?? false
         }
       />
     </>,

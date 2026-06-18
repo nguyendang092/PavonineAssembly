@@ -1,6 +1,7 @@
 /* Lưới bảng chấm công tháng — chỉ hiển thị, không đổi bố cục */
 
 .pm-ts-scroll {
+  position: relative;
   border-radius: 0.5rem;
   border: 1px solid rgb(203 213 225);
   background: linear-gradient(180deg, rgb(248 250 252) 0%, rgb(241 245 249) 100%);

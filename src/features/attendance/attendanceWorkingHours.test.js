@@ -100,6 +100,62 @@ describe("getPayrollDayOvertimeHoursNumeric", () => {
     ).toBe(1);
   });
 
+  it("tangCaTrua 0.833h — parse và cộng TC ca ngày", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "08:00",
+        "17:00",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        0.833,
+      ),
+    ).toBe(0.833);
+  });
+
+  it("tangCaTrua 0.833h — hiển thị ô TC không làm tròn 0,5h", () => {
+    expect(
+      formatPayrollTableDayShiftOvertimeCell(
+        "08:00",
+        "17:00",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        0.833,
+      ),
+    ).toBe("0.833");
+    expect(
+      formatPayrollTableTotalDayGcCell(
+        "08:00",
+        "17:00",
+        false,
+        false,
+        "S1",
+        false,
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        false,
+        0.833,
+      ),
+    ).toBe("8.833");
+  });
+
   it("tangCaTrua cộng vào TC ca ngày", () => {
     expect(
       getPayrollDayOvertimeHoursNumeric(

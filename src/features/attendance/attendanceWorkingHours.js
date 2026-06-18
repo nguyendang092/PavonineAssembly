@@ -110,12 +110,26 @@ export function roundHoursToTenths(value) {
 
 /**
  * Làm tròn giờ hiển thị bảng lương / xuất Excel: **0,5 giờ** (gần nhất).
+ * @deprecated Dùng `formatPayrollHoursForDisplay` cho ô bảng lương — không làm tròn 0,5h.
  * @param {number} value
  * @returns {number}
  */
 export function roundHoursForPayrollDisplay(value) {
   if (!Number.isFinite(value)) return value;
   return Math.round(value * 2 + 1e-9) / 2;
+}
+
+/**
+ * Chuỗi hiển thị ô giờ bảng lương — giữ giá trị tính (tối đa 3 số lẻ, vd. 0.833).
+ * @param {number} value
+ * @returns {string}
+ */
+export function formatPayrollHoursForDisplay(value) {
+  if (!Number.isFinite(value)) return String(value);
+  if (value === 0) return "0";
+  const n = Math.round(value * 1000 + 1e-9) / 1000;
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(3).replace(/\.?0+$/, "");
 }
 
 /** @param {unknown} s */
@@ -601,7 +615,7 @@ export function getPayrollHalfDayLeaveWorkedHours(
  * Đọc từ bản ghi RTDB qua `PAYROLL_EMP`; gộp ngày qua `payrollOtDayParamsFromEmp`.
  */
 
-/** Chuỗi hiển thị ô giờ lương: số → làm tròn 0,5h; 0, rỗng, em-dash → «-». */
+/** Chuỗi hiển thị ô giờ lương: số thực (không làm tròn 0,5h); 0, rỗng, em-dash → «-». */
 function payrollHoursCellDisplay(value) {
   if (value == null) return PAYROLL_CELL_DASH;
   const s = String(value).trim();
@@ -609,9 +623,7 @@ function payrollHoursCellDisplay(value) {
   const n = Number(s.replace(",", "."));
   if (!Number.isFinite(n)) return s;
   if (n === 0) return PAYROLL_CELL_DASH;
-  const r = roundHoursForPayrollDisplay(n);
-  if (r === 0) return PAYROLL_CELL_DASH;
-  return String(r);
+  return formatPayrollHoursForDisplay(n);
 }
 
 /**
@@ -969,7 +981,7 @@ export function getEarlyPaperworkOvertimeHours(
 }
 
 /** Giờ TC trưa — chọn thủ công trên form điểm danh (`tangCaTrua`). */
-export const LUNCH_OT_HOUR_OPTIONS = Object.freeze([0.5, 1, 1.5, 2]);
+export const LUNCH_OT_HOUR_OPTIONS = Object.freeze([0.5, 0.833, 1, 1.5, 2]);
 
 export function parseLunchOtHours(value) {
   if (value === null || value === undefined || value === "") return 0;
@@ -991,7 +1003,7 @@ export const parseTangCaTruaHours = parseLunchOtHours;
  * @param {boolean | undefined} payrollLateOtExcluded — `true` nếu user xác nhận KHONG tinh tang ca sau 17:30.
  * @param {unknown} [includeTapVuInWorkingHours]
  * @param {unknown} [includeThaiSanInWorkingHours]
- * @param {unknown} [lunchOtHours] — giờ TC trưa (0.5 / 1 / 1.5 / 2); cộng vào TC off / GC lễ khi gộp.
+ * @param {unknown} [lunchOtHours] — giờ TC trưa (0.5 / 0.833 / 1 / 1.5 / 2); cộng vào TC off / GC lễ khi gộp.
  * @returns {number | null} null nếu không đọc được giờ ra (ca ngày / ca đêm).
  */
 export function getPayrollDayOvertimeHoursNumeric(
@@ -1031,8 +1043,9 @@ export function getPayrollDayOvertimeHoursNumeric(
     shiftCode,
   );
   const parsedLunchOtHours = parseLunchOtHours(lunchOtHours);
+  const paperOtHours = roundHoursToTenths(eveningOtHours + earlyOtHours);
 
-  return roundHoursToTenths(eveningOtHours + earlyOtHours + parsedLunchOtHours);
+  return paperOtHours + parsedLunchOtHours;
 }
 
 /**
@@ -1104,7 +1117,7 @@ export function getPayrollDayShiftOffHolidayMergedHoursNumeric(
   if (h == null && n == null) return null;
   const regularHours = h == null ? 0 : h;
   const overtimeHours = n == null ? 0 : n;
-  return roundHoursToTenths(regularHours + overtimeHours);
+  return regularHours + overtimeHours;
 }
 
 /**
@@ -1206,7 +1219,7 @@ function payrollTotalDayGcNumeric(
           lunchOtHours,
         );
         const overtimeHours = n == null ? 0 : n;
-        return roundHoursForPayrollDisplay(roundHoursToTenths(regularHours + overtimeHours));
+        return regularHours + overtimeHours;
       }
       const merged = getPayrollDayShiftOffHolidayMergedHoursNumeric(
         timeIn,
@@ -1223,7 +1236,7 @@ function payrollTotalDayGcNumeric(
         includeTaiXeTongInWorkingHours,
         lunchOtHours,
       );
-      return roundHoursForPayrollDisplay(merged == null ? 0 : merged);
+      return merged == null ? 0 : merged;
     }
     return 0;
   }
@@ -1282,9 +1295,9 @@ function payrollTotalDayGcNumeric(
       includeTaiXeTongInWorkingHours,
       lunchOtHours,
     );
-    return roundHoursForPayrollDisplay(merged == null ? 0 : merged);
+    return merged == null ? 0 : merged;
   }
-  return roundHoursForPayrollDisplay(roundHoursToTenths(regularHours + overtimeHours));
+  return regularHours + overtimeHours;
 }
 
 export function formatPayrollTableTotalDayGcCell(
@@ -1348,7 +1361,7 @@ export function formatPayrollTableTotalNightGcCell(
       timeOut,
       shiftCode,
     );
-    const sum = roundHoursForPayrollDisplay(merged == null ? 0 : merged);
+    const sum = merged == null ? 0 : merged;
     if (sum === 0) return PAYROLL_CELL_DASH;
     return payrollHoursCellDisplay(String(sum));
   }
@@ -1363,7 +1376,7 @@ export function formatPayrollTableTotalNightGcCell(
       : 0;
   const otH = getNightShiftPayrollOvertimeHours(timeIn, timeOut, shiftCode);
   const overtimeHours = otH != null && Number.isFinite(otH) ? otH : 0;
-  const sum = roundHoursForPayrollDisplay(roundHoursToTenths(regularHours + overtimeHours));
+  const sum = regularHours + overtimeHours;
   if (sum === 0) return PAYROLL_CELL_DASH;
   return payrollHoursCellDisplay(String(sum));
 }

@@ -1121,6 +1121,8 @@ const vi = {
     viewOnlyAttendanceHint: "Chế độ chỉ xem — không thể chỉnh sửa hoặc lưu.",
     restrictedEditManagerHint:
       "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù và Chế độ nhân viên.",
+    restrictedEditManagerHintWithLunchOt:
+      "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù, Chế độ nhân viên và Tăng ca trưa.",
     addEmployee: "Thêm nhân viên mới",
     employeeRegimeField: "Chế độ nhân viên",
     employeeRegimePlaceholder: "— Chọn —",
@@ -1301,6 +1303,12 @@ const vi = {
     monthlyTimesheetPrintBlocked:
       "Trình duyệt đã chặn cửa sổ mới — không thể mở bản in.",
     monthlyTimesheetLoading: "Đang tải dữ liệu điểm danh…",
+    monthlyTimesheetLoadingMore: "Đang tải thêm dữ liệu của tháng…",
+    monthlyTimesheetRendering: "Đang cập nhật lưới…",
+    monthlyTimesheetSummariesProgress:
+      "Đang tính tổng hợp tháng… ({{done}}/{{total}})",
+    dayDataLoading: "Đang tải dữ liệu điểm danh…",
+    dayDataRendering: "Đang cập nhật bảng…",
     monthlyTimesheetEmpty: "Không có dữ liệu điểm danh nào trong tháng này.",
     monthlyTimesheetError: "Không tải được dữ liệu: {{error}}",
     monthlyTimesheetNoRowsAfterFilter:

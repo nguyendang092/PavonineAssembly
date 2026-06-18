@@ -9,6 +9,7 @@ import {
   normalizeAttendanceDayRecord,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { ATTENDANCE_EMP } from "@/features/attendance/attendanceEmployeeFields";
+import { LUNCH_OT_HOUR_OPTIONS } from "@/features/attendance/attendanceWorkingHours";
 
 /**
  * Chuẩn MNV duy nhất: trim, bỏ mọi khoảng trắng; giữ chữ/số/ký tự mã (vd. PAVO123).
@@ -530,8 +531,7 @@ export function buildEmployeeAttendanceDayDocument({
       const s = String(form[ATTENDANCE_EMP.LUNCH_OT_HOURS] ?? "").trim();
       if (!s) return null;
       const n = Number(s);
-      const allowed = [0.5, 1, 1.5, 2];
-      if (!Number.isFinite(n) || !allowed.includes(n)) return undefined;
+      if (!Number.isFinite(n) || !LUNCH_OT_HOUR_OPTIONS.includes(n)) return undefined;
       return n;
     })(),
     [ATTENDANCE_EMP.MVT]: attendanceDayNonWipingOptionalStringFromForm(

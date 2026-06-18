@@ -129,6 +129,64 @@ export function canConfirmOtPaperworkForEmployee({
   });
 }
 
+/** BP được phép manager chỉnh TC trưa (`tangCaTrua`) trên form điểm danh. */
+export const MANAGER_LUNCH_OT_DEPARTMENT_MATCH_KEYS = new Set([
+  "anodizing",
+  "extrusion",
+]);
+
+/**
+ * Khóa so khớp BP Anodizing / Extrusion (kể cả `EXTRUCSION`, tiền tố số).
+ * @param {unknown} deptRaw
+ * @returns {string}
+ */
+export function managerLunchOtDepartmentMatchKey(deptRaw) {
+  const s = String(deptRaw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/-/g, "");
+  if (!s) return "";
+  if (s === "extrucsion") return "extrusion";
+  const withoutLeadingOrdinal = s.replace(/^\d+/, "");
+  if (MANAGER_LUNCH_OT_DEPARTMENT_MATCH_KEYS.has(withoutLeadingOrdinal)) {
+    return withoutLeadingOrdinal;
+  }
+  if (MANAGER_LUNCH_OT_DEPARTMENT_MATCH_KEYS.has(s)) return s;
+  return withoutLeadingOrdinal;
+}
+
+/** @param {unknown} deptRaw */
+export function isManagerLunchOtDepartment(deptRaw) {
+  const key = managerLunchOtDepartmentMatchKey(deptRaw);
+  return MANAGER_LUNCH_OT_DEPARTMENT_MATCH_KEYS.has(key);
+}
+
+/**
+ * Chỉnh TC trưa trên form: Admin/HR mọi NV; manager Anodizing / Extrusion — NV cùng BP được gán.
+ */
+export function canEditLunchOtForEmployee({
+  user,
+  userRole,
+  userDepartments,
+  employee,
+}) {
+  if (!user) return false;
+  if (isAdminAccess(user, userRole)) return true;
+  if (normalizeRole(userRole) !== ROLES.MANAGER) return false;
+  if (
+    !canEditAttendanceForEmployee({
+      user,
+      userRole,
+      userDepartments,
+      employee,
+    })
+  ) {
+    return false;
+  }
+  return userDepartments.some((d) => isManagerLunchOtDepartment(d));
+}
+
 /** Đăng thông báo nội bộ: Admin/HR + Manager (sếp bộ phận). */
 export function canPostInternalAnnouncements(user, userRole) {
   if (!user?.email) return false;

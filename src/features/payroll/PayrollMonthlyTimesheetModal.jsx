@@ -11,12 +11,9 @@ import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { buildPayrollMonthDayCellFormRecord } from "@/features/payroll/buildPayrollDayFromRaw";
 import {
-  collectPayrollMonthSortedEmployeeIds,
-  fetchPayrollMonthDayChunks,
   formatPayrollMonthWeekday3,
   matchesPayrollMonthRowFilter,
   parsePayrollMonthSortableStt,
-  payrollMonthRepresentativeEmployee,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
   formatCoeffHoursForDisplay,
@@ -29,7 +26,6 @@ import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollO
 import { writePayrollMonthlyTimesheetWorkbook } from "@/features/payroll/payrollMonthlyTimesheetExcelGrid";
 import {
   buildMonthlyDetailMatrixForEmployee,
-  buildMonthlyRuleSummary,
   isPayrollMonthDayOnOrAfterJoin,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
@@ -62,9 +58,16 @@ import {
   getAttendanceLeaveTypeEmphasisPrintCellBg,
   getAttendanceLeaveTypeEmphasisPrintStyleAttr,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
-import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import { canEditPayrollMonthTimesheetGridCell } from "@/config/featurePermissions";
+import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
+import {
+  buildPayrollMonthGridOverlayCopy,
+  usePayrollMonthModalScrollLock,
+} from "@/features/payroll/payrollMonthModalUi";
+import { usePayrollMonthDayChunks } from "@/features/payroll/usePayrollMonthDayChunks";
+import { usePayrollMonthEmployeeIndex } from "@/features/payroll/usePayrollMonthEmployeeIndex";
+import { usePayrollMonthSummaries } from "@/features/payroll/usePayrollMonthSummaries";
 import "./payrollMonthlyTimesheetModal.css";
 
 /** Cột cố định trái: STT, Họ tên, MNV, BP, Hệ số TC [px]. */
@@ -332,7 +335,7 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
       }
       const h = dayCell.coeffMap?.get(sr.coeff);
       const show =
-        h != null && Number.isFinite(h) && roundHoursForPayrollDisplay(h) !== 0;
+        h != null && Number.isFinite(h) && h > 0;
       const txt = show ? escapeHtml(formatCoeffHoursForDisplay(h)) : " ";
       parts.push(
         `<td style="background:${bg};${btm};text-align:center;font-family:monospace;font-weight:700;font-size:6.5pt">${txt}</td>`,
@@ -849,7 +852,7 @@ const PayrollMonthlyTimesheetDayCell = memo(
 
     const h = dayCell.coeffMap?.get(sr.coeff);
     const show =
-      h != null && Number.isFinite(h) && roundHoursForPayrollDisplay(h) !== 0;
+      h != null && Number.isFinite(h) && h > 0;
     return (
       <td
         style={cellStyle}
@@ -1067,10 +1070,6 @@ export default function PayrollMonthlyTimesheetModal({
   /** Danh sách NV ngày đang chọn trên trang lương (fallback khi mở form). */
   employees = [],
 }) {
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState("");
-  const [dayChunks, setDayChunks] = useState([]);
   const [localNameFilter, setLocalNameFilter] = useState("");
   const [headerRowTops, setHeaderRowTops] = useState(
     MONTH_HEADER_ROW_TOPS_DEFAULT,
@@ -1080,7 +1079,6 @@ export default function PayrollMonthlyTimesheetModal({
   );
   const tableWrapRef = useRef(null);
   const tableBodyScrollRef = useRef(null);
-  const loadSeqRef = useRef(0);
   const [dayCellFormOpen, setDayCellFormOpen] = useState(false);
   const [dayCellFormDate, setDayCellFormDate] = useState("");
   const [dayCellFormInitial, setDayCellFormInitial] = useState(null);
@@ -1131,73 +1129,27 @@ export default function PayrollMonthlyTimesheetModal({
     }
   }, []);
 
-  const loadMonth = useCallback(async () => {
-    const currentLoadSeq = loadSeqRef.current + 1;
-    loadSeqRef.current = currentLoadSeq;
-    setLoading(true);
-    setLoadingMore(false);
-    setError("");
-    setDayChunks([]);
-    try {
-      const allChunks = await fetchPayrollMonthDayChunks(monthRange.keys, {
-        isStale: () => loadSeqRef.current !== currentLoadSeq,
-        onFirstBatch: (chunks) => {
-          setDayChunks(chunks);
-          setLoading(false);
-        },
-        onAfterBatch: (i, total, chunks) => {
-          setDayChunks(chunks);
-          setLoadingMore(i + 4 < total);
-        },
-      });
-      if (loadSeqRef.current !== currentLoadSeq || allChunks == null) return;
-      setDayChunks(allChunks);
-      if (!allChunks.length) {
-        setError(
-          tlPage(
-            "monthlyTimesheetEmpty",
-            "Không có dữ liệu điểm danh nào trong tháng này.",
-          ),
-        );
-      }
-    } catch (e) {
-      if (loadSeqRef.current !== currentLoadSeq) return;
-      setError(
-        tlPage("monthlyTimesheetError", "Không tải được dữ liệu: {{error}}", {
-          error: e?.message || String(e),
-        }),
-      );
-    } finally {
-      if (loadSeqRef.current === currentLoadSeq) {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    }
-  }, [monthRange.keys, tlPage]);
+  const {
+    dayChunks,
+    displayDayChunks,
+    loading,
+    loadingMore,
+    isGridBusy,
+    isDisplayStale,
+    error,
+    setError,
+    loadMonth,
+  } = usePayrollMonthDayChunks({
+    monthKeys: monthRange.keys,
+    tlPage,
+  });
 
   useEffect(() => {
     if (!open) return;
     void loadMonth();
   }, [open, loadMonth]);
 
-  /** Khóa cuộn trang sau — scroll nằm trên `#app-main-scroll`, không chỉ `body`. */
-  useEffect(() => {
-    if (!open) return undefined;
-    const html = document.documentElement;
-    const body = document.body;
-    const mainScroll = document.getElementById("app-main-scroll");
-    const prevHtmlOverflow = html.style.overflow;
-    const prevBodyOverflow = body.style.overflow;
-    const prevMainOverflow = mainScroll?.style.overflow ?? "";
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    if (mainScroll) mainScroll.style.overflow = "hidden";
-    return () => {
-      html.style.overflow = prevHtmlOverflow;
-      body.style.overflow = prevBodyOverflow;
-      if (mainScroll) mainScroll.style.overflow = prevMainOverflow;
-    };
-  }, [open]);
+  usePayrollMonthModalScrollLock(open);
 
   useEffect(() => {
     if (open) return;
@@ -1207,23 +1159,8 @@ export default function PayrollMonthlyTimesheetModal({
     setDayCellFormEmployees([]);
   }, [open]);
 
-  const sortedIds = useMemo(
-    () => collectPayrollMonthSortedEmployeeIds(dayChunks),
-    [dayChunks],
-  );
-
-  const repById = useMemo(() => {
-    const m = new Map();
-    for (const id of sortedIds) {
-      m.set(id, payrollMonthRepresentativeEmployee(dayChunks, id));
-    }
-    return m;
-  }, [sortedIds, dayChunks]);
-
-  const chunkByDate = useMemo(
-    () => new Map(dayChunks.map((c) => [c.dateKey, c])),
-    [dayChunks],
-  );
+  const { sortedIds, repById, chunkByDate, chunkByDateLive } =
+    usePayrollMonthEmployeeIndex(dayChunks, displayDayChunks);
 
   const openDayCellForm = useCallback(
     (dateKey, dayEmps, formInitial) => {
@@ -1248,7 +1185,7 @@ export default function PayrollMonthlyTimesheetModal({
         });
         return;
       }
-      const ch = chunkByDate.get(dateKey);
+      const ch = chunkByDateLive.get(dateKey);
       if (!ch) return;
       const rep = repById.get(rowId);
       if (!rep) return;
@@ -1296,7 +1233,7 @@ export default function PayrollMonthlyTimesheetModal({
     },
     [
       user,
-      chunkByDate,
+      chunkByDateLive,
       repById,
       userRole,
       userDepartments,
@@ -1354,21 +1291,37 @@ export default function PayrollMonthlyTimesheetModal({
     normalizeDepartment,
   ]);
 
-  const monthlySummaryById = useMemo(() => {
-    const m = new Map();
-    for (const id of filteredIds) {
-      m.set(
-        id,
-        buildMonthlyRuleSummary(
-          chunkByDate,
-          monthRange.keys,
-          id,
-          repById.get(id),
-        ),
-      );
-    }
-    return m;
-  }, [filteredIds, chunkByDate, monthRange.keys, repById]);
+  const {
+    monthlySummaryById,
+    isSummariesBusy,
+    summaryProgress,
+  } = usePayrollMonthSummaries({
+    enabled: open,
+    monthKeys: monthRange.keys,
+    chunkByDate,
+    filteredIds,
+    repById,
+  });
+
+  const isGridFullyBusy = isGridBusy || isSummariesBusy;
+
+  const gridOverlayCopy = useMemo(
+    () =>
+      buildPayrollMonthGridOverlayCopy({
+        tlPage,
+        loadingMore,
+        isDisplayStale,
+        isSummariesBusy,
+        summaryProgress,
+      }),
+    [
+      tlPage,
+      loadingMore,
+      isDisplayStale,
+      isSummariesBusy,
+      summaryProgress,
+    ],
+  );
 
   const monthDayMeta = useMemo(
     () =>
@@ -1411,8 +1364,7 @@ export default function PayrollMonthlyTimesheetModal({
     shouldVirtualizeTimesheetBody,
     filteredIds.length,
     timesheetZoomIdx,
-    loading,
-    loadingMore,
+    isGridFullyBusy,
     monthRange.keys.length,
   ]);
 
@@ -1740,7 +1692,11 @@ export default function PayrollMonthlyTimesheetModal({
               <button
                 type="button"
                 onClick={handlePrintA3WorkTimeOnly}
-                disabled={loading || !filteredIds.length || !dayChunks.length}
+                disabled={
+                  isGridFullyBusy ||
+                  !filteredIds.length ||
+                  !displayDayChunks.length
+                }
                 className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
               >
                 {tlPage("monthlyTimesheetPrintA3", "In A3 (TG làm việc)")}
@@ -1760,26 +1716,33 @@ export default function PayrollMonthlyTimesheetModal({
                 height: `min(calc(100vh - 11.5rem), ${tableViewportHeight}px)`,
               }}
             >
-              {loading && !dayChunks.length ? (
-                <p className="py-8 text-center text-sm font-semibold text-slate-600 dark:text-slate-300">
-                  {tlPage(
+              {loading && !displayDayChunks.length ? (
+                <PayrollMonthGridLoadingOverlay
+                  active
+                  mode="inline"
+                  message={tlPage(
                     "monthlyTimesheetLoading",
                     "Đang tải dữ liệu điểm danh…",
                   )}
-                </p>
-              ) : error && !dayChunks.length ? (
+                />
+              ) : error && !displayDayChunks.length ? (
                 <p className="py-8 text-center text-sm font-semibold text-red-600 dark:text-red-400">
                   {error}
                 </p>
               ) : (
                 <div
                   ref={tableWrapRef}
-                  className="pm-ts-table-wrap inline-block min-w-full align-middle"
+                  className="pm-ts-table-wrap relative inline-block min-w-full align-middle"
                   style={{
                     "--pm-ts-day-cell-size": `${MONTH_DAY_COL_WIDTH}px`,
                     ...(TIMESHEET_ZOOM_CSS_OK ? { zoom: timesheetZoom } : {}),
                   }}
                 >
+                  <PayrollMonthGridLoadingOverlay
+                    active={isGridFullyBusy && displayDayChunks.length > 0}
+                    message={gridOverlayCopy.message}
+                    subtitle={gridOverlayCopy.subtitle}
+                  />
                   <table
                     className={`pm-ts-table w-max min-w-full border-collapse text-left text-slate-900 dark:text-slate-100 ${STRONG_BORDER_CLASS}`}
                   >
@@ -2024,20 +1987,12 @@ export default function PayrollMonthlyTimesheetModal({
                       </tbody>
                     )}
                   </table>
-                  {error && dayChunks.length ? (
+                  {error && displayDayChunks.length ? (
                     <p className="mt-2 text-center text-xs text-amber-700 dark:text-amber-300">
                       {error}
                     </p>
                   ) : null}
-                  {loadingMore ? (
-                    <p className="mt-2 text-center text-xs font-semibold text-indigo-700 dark:text-indigo-300">
-                      {tlPage(
-                        "monthlyTimesheetLoadingMore",
-                        "Đang tải thêm dữ liệu của tháng...",
-                      )}
-                    </p>
-                  ) : null}
-                  {!filteredIds.length && dayChunks.length ? (
+                  {!filteredIds.length && displayDayChunks.length ? (
                     <p className="mt-4 text-center text-sm text-slate-600 dark:text-slate-300">
                       {tlPage(
                         "monthlyTimesheetNoRowsAfterFilter",

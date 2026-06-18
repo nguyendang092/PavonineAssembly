@@ -4,6 +4,8 @@ import React, {
   useMemo,
   useCallback,
   useRef,
+  useDeferredValue,
+  startTransition,
 } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -43,6 +45,7 @@ import {
   normalizeLateOtPaperworkMap,
 } from "@/features/attendance/attendanceDayMeta";
 import AlertMessage from "@/components/ui/AlertMessage";
+import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import {
   buildPayrollSalaryExcelWorkbookMultiDay,
@@ -133,8 +136,10 @@ export default function PayrollSalaryCalculator() {
   const [monthlyGridMenuOpen, setMonthlyGridMenuOpen] = useState(false);
   const [monthlyTimesheetOpen, setMonthlyTimesheetOpen] = useState(false);
   const [monthlyTimeInOutOpen, setMonthlyTimeInOutOpen] = useState(false);
+  const [isDayLoading, setIsDayLoading] = useState(false);
 
   const attendanceRawRef = useRef(undefined);
+  const listenGenerationRef = useRef(0);
   const excelExportMenuRef = useRef(null);
   const monthlyGridMenuRef = useRef(null);
   const employeesRef = useRef([]);
@@ -166,49 +171,61 @@ export default function PayrollSalaryCalculator() {
       .toLowerCase();
   }, []);
 
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const isSearchStale = searchTerm !== deferredSearchTerm;
+  const isTableBusy = isDayLoading || isSearchStale;
+
   useEffect(() => {
+    const generation = ++listenGenerationRef.current;
     attendanceRawRef.current = undefined;
+    setIsDayLoading(true);
     setEmployees([]);
     setEarlyOtMap({});
     setLateOtExcludedMap({});
     const empRef = ref(db, `attendance/${selectedDate}`);
     const unsubscribe = onValue(empRef, (snapshot) => {
+      if (generation !== listenGenerationRef.current) return;
+
       const data = snapshot.val();
       attendanceRawRef.current = data;
-      const parsed = parsePayrollDayFromAttendanceRaw(
-        data,
-        employeesRef.current,
-        payrollEmployeesRef.current,
-      );
-      payrollEmployeesRef.current = parsed.payrollEmployees;
-      setIsOffDay((prev) =>
-        prev === parsed.isOffDay ? prev : parsed.isOffDay,
-      );
-      setIsHolidayDay((prev) =>
-        prev === parsed.isHolidayDay ? prev : parsed.isHolidayDay,
-      );
-      setIsCompensatoryDay((prev) =>
-        prev === parsed.isCompensatoryDay ? prev : parsed.isCompensatoryDay,
-      );
-      setEarlyOtMap((prev) =>
-        shallowStringRecordEqual(prev, parsed.earlyOtPaperworkById)
-          ? prev
-          : parsed.earlyOtPaperworkById,
-      );
-      setLateOtExcludedMap((prev) =>
-        shallowStringRecordEqual(prev, parsed.lateOtExcludedById)
-          ? prev
-          : parsed.lateOtExcludedById,
-      );
-      setEmployees((prevBase) => {
-        if (
-          parsed.baseEmployees === prevBase ||
-          (prevBase.length === parsed.baseEmployees.length &&
-            prevBase.every((row, i) => row === parsed.baseEmployees[i]))
-        ) {
-          return prevBase;
-        }
-        return parsed.baseEmployees;
+
+      startTransition(() => {
+        const parsed = parsePayrollDayFromAttendanceRaw(
+          data,
+          employeesRef.current,
+          payrollEmployeesRef.current,
+        );
+        payrollEmployeesRef.current = parsed.payrollEmployees;
+        setIsOffDay((prev) =>
+          prev === parsed.isOffDay ? prev : parsed.isOffDay,
+        );
+        setIsHolidayDay((prev) =>
+          prev === parsed.isHolidayDay ? prev : parsed.isHolidayDay,
+        );
+        setIsCompensatoryDay((prev) =>
+          prev === parsed.isCompensatoryDay ? prev : parsed.isCompensatoryDay,
+        );
+        setEarlyOtMap((prev) =>
+          shallowStringRecordEqual(prev, parsed.earlyOtPaperworkById)
+            ? prev
+            : parsed.earlyOtPaperworkById,
+        );
+        setLateOtExcludedMap((prev) =>
+          shallowStringRecordEqual(prev, parsed.lateOtExcludedById)
+            ? prev
+            : parsed.lateOtExcludedById,
+        );
+        setEmployees((prevBase) => {
+          if (
+            parsed.baseEmployees === prevBase ||
+            (prevBase.length === parsed.baseEmployees.length &&
+              prevBase.every((row, i) => row === parsed.baseEmployees[i]))
+          ) {
+            return prevBase;
+          }
+          return parsed.baseEmployees;
+        });
+        setIsDayLoading(false);
       });
     });
     return () => unsubscribe();
@@ -433,8 +450,8 @@ export default function PayrollSalaryCalculator() {
   }, []);
 
   const filterRows = useCallback(
-    (list) => {
-      const q = searchTerm.trim().toLowerCase();
+    (list, term) => {
+      const q = term.trim().toLowerCase();
       return list.filter((emp) => {
         const empDeptKey = normalizeDepartment(emp.boPhan);
         const departmentFilterKey = normalizeDepartment(departmentFilter);
@@ -448,12 +465,15 @@ export default function PayrollSalaryCalculator() {
         );
       });
     },
-    [searchTerm, departmentFilter, normalizeDepartment],
+    [departmentFilter, normalizeDepartment],
   );
 
   const filteredEmployees = useMemo(
-    () => sortEmployeesAscForPopup(filterRows(employeesForPayroll)),
-    [employeesForPayroll, filterRows],
+    () =>
+      sortEmployeesAscForPopup(
+        filterRows(employeesForPayroll, deferredSearchTerm),
+      ),
+    [employeesForPayroll, filterRows, deferredSearchTerm],
   );
 
   const departments = useMemo(() => {
@@ -1017,7 +1037,15 @@ export default function PayrollSalaryCalculator() {
             </div>
           </div>
         </div>
-        <div className="payroll-salary-table-compact min-w-0 w-full max-w-full overflow-x-auto rounded-lg bg-white text-[10px] leading-tight shadow-lg md:text-[11px] dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+        <div className="payroll-salary-table-compact relative min-w-0 w-full max-w-full overflow-x-auto rounded-lg bg-white text-[10px] leading-tight shadow-lg md:text-[11px] dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+          <PayrollMonthGridLoadingOverlay
+            active={isTableBusy}
+            message={
+              isDayLoading
+                ? tlPage("dayDataLoading", "Đang tải dữ liệu điểm danh…")
+                : tlPage("dayDataRendering", "Đang cập nhật bảng…")
+            }
+          />
           {shouldVirtualizeTable ? (
             <div
               ref={tableScrollParentRef}

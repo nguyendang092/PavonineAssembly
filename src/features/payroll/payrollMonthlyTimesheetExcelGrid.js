@@ -9,7 +9,6 @@ import {
   PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
-import { roundHoursForPayrollDisplay } from "@/features/attendance/attendanceWorkingHours";
 import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
 import {
   buildMonthlyDetailMatrixForEmployee,
@@ -72,7 +71,7 @@ export function formatPayrollMonthlyTimesheetDayCellText({
   }
   const h = coeffMap.get(sr.coeff);
   const show =
-    h != null && Number.isFinite(h) && roundHoursForPayrollDisplay(h) !== 0;
+    h != null && Number.isFinite(h) && h > 0;
   return show ? formatCoeffHoursForDisplay(h) : " ";
 }
 

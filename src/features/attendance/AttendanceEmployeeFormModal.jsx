@@ -12,6 +12,7 @@ import {
 import {
   canEditAttendanceForEmployee,
   canAddAttendanceForDepartment,
+  canEditLunchOtForEmployee,
   isAdminAccess,
 } from "@/config/authRoles";
 import {
@@ -20,6 +21,7 @@ import {
   isAttendanceHalfAnnualLeave,
 } from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
+import { LUNCH_OT_HOUR_OPTIONS } from "./attendanceWorkingHours";
 import {
   normalizeDuocNghiBuForForm,
   isDuocNghiBuExplicitlyNo,
@@ -491,10 +493,20 @@ export default function AttendanceEmployeeFormModal({
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
   const isEditMode = Boolean(editAttendanceKey);
   const isViewOnly = Boolean(readOnly);
-  /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP: loại phép, ca, nghỉ bù, chế độ NV. */
+  /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP: loại phép, ca, nghỉ bù, chế độ NV (+ TC trưa Anodizing/Extrusion). */
   const isRestrictedEdit =
     isEditMode && !isAdminAccess(user, userRole) && !isViewOnly;
+  const employeeBoPhanForPerm =
+    String(form.boPhan ?? form[ATTENDANCE_EMP.DEPARTMENT] ?? "").trim() ||
+    undefined;
+  const canEditLunchOt = canEditLunchOtForEmployee({
+    user,
+    userRole,
+    userDepartments,
+    employee: { boPhan: employeeBoPhanForPerm },
+  });
   const fieldsLocked = isViewOnly || isRestrictedEdit;
+  const lunchOtLocked = isViewOnly || (isRestrictedEdit && !canEditLunchOt);
 
   return (
     <div
@@ -546,8 +558,12 @@ export default function AttendanceEmployeeFormModal({
         ) : isRestrictedEdit ? (
           <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
             {tl(
-              "restrictedEditManagerHint",
-              "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù và Chế độ nhân viên.",
+              canEditLunchOt
+                ? "restrictedEditManagerHintWithLunchOt"
+                : "restrictedEditManagerHint",
+              canEditLunchOt
+                ? "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù, Chế độ nhân viên và Tăng ca trưa."
+                : "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù và Chế độ nhân viên.",
             )}
           </p>
         ) : null}
@@ -816,16 +832,15 @@ export default function AttendanceEmployeeFormModal({
                   : String(form[ATTENDANCE_EMP.LUNCH_OT_HOURS])
               }
               onChange={handleChange}
-              disabled={fieldsLocked}
+              disabled={lunchOtLocked}
               className={employeeModalSelectFieldClass}
             >
               <option value="">
                 {tl("lunchOvertimePlaceholder", "— Không chọn —")}
               </option>
-              <option value="0.5">0.5</option>
-              <option value="1">1</option>
-              <option value="1.5">1.5</option>
-              <option value="2">2</option>
+              {LUNCH_OT_HOUR_OPTIONS.map((h) => (
+                <option key={h} value={String(h)}>{h}</option>
+              ))}
             </select>
           </div>
           <div className="sm:col-span-2">

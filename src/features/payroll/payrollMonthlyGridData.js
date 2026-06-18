@@ -1,5 +1,9 @@
 import { db, ref, get } from "@/services/firebase";
 import { buildPayrollMonthDayChunkFromRaw } from "@/features/payroll/buildPayrollDayFromRaw";
+import {
+  PAYROLL_MONTH_FETCH_BATCH_SIZE,
+  PAYROLL_MONTH_FETCH_YIELD_MS,
+} from "@/features/payroll/payrollMonthDataScale";
 
 export function parsePayrollMonthSortableStt(raw) {
   const n = Number(raw);
@@ -86,7 +90,10 @@ export function formatPayrollMonthWeekday3(date) {
  */
 export async function fetchPayrollMonthDayChunks(monthKeys, hooks = {}) {
   const allChunks = [];
-  const batchSize = 4;
+  const batchSize =
+    hooks.batchSize ?? PAYROLL_MONTH_FETCH_BATCH_SIZE;
+  const yieldMs = hooks.yieldMs ?? PAYROLL_MONTH_FETCH_YIELD_MS;
+
   for (let i = 0; i < monthKeys.length; i += batchSize) {
     if (hooks.isStale?.()) return null;
     const batchKeys = monthKeys.slice(i, i + batchSize);
@@ -103,6 +110,9 @@ export async function fetchPayrollMonthDayChunks(monthKeys, hooks = {}) {
       hooks.onAfterBatch(i, monthKeys.length, [...allChunks]);
     }
     if (i === 0 && hooks.onFirstBatch) hooks.onFirstBatch([...allChunks]);
+    if (yieldMs > 0 || i + batchSize < monthKeys.length) {
+      await new Promise((r) => setTimeout(r, yieldMs));
+    }
   }
   return allChunks;
 }

@@ -1132,6 +1132,8 @@ const ko = {
     viewOnlyAttendanceHint: "보기 전용 — 수정·저장할 수 없습니다.",
     restrictedEditManagerHint:
       "휴가 유형, 근무조, 보상휴무, 직원 유형만 수정할 수 있습니다.",
+    restrictedEditManagerHintWithLunchOt:
+      "휴가 유형, 근무조, 보상휴무, 직원 유형, 점심 연장만 수정할 수 있습니다.",
     addEmployee: "신규 직원 추가",
     employeeRegimeField: "직원 유형",
     employeeRegimePlaceholder: "— 선택 —",
@@ -1307,6 +1309,12 @@ const ko = {
       "A3 가로. «근무 시간» 블록만 인쇄(수습/계약 블록 제외).",
     monthlyTimesheetPrintGenerated: "현재 그리드 필터 기준.",
     monthlyTimesheetLoading: "출근 데이터 불러오는 중…",
+    monthlyTimesheetLoadingMore: "월 데이터 추가 불러오는 중…",
+    monthlyTimesheetRendering: "표 업데이트 중…",
+    monthlyTimesheetSummariesProgress:
+      "월 집계 계산 중… ({{done}}/{{total}})",
+    dayDataLoading: "출근 데이터 불러오는 중…",
+    dayDataRendering: "표 업데이트 중…",
     monthlyTimesheetEmpty: "이 달에 출근 데이터가 없습니다.",
     monthlyTimesheetError: "불러오기 실패: {{error}}",
     monthlyTimesheetNoRowsAfterFilter: "검색·부서 필터에 맞는 직원이 없습니다.",

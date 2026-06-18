@@ -17,16 +17,13 @@ import { isDuocNghiBuExplicitlyNo } from "@/features/attendance/attendanceDayMet
 import {
   getNightShiftTotalWindowHours22To05,
   isNightShiftCaLamViec,
-  roundHoursForPayrollDisplay,
 } from "@/features/attendance/attendanceWorkingHours";
 import { normalizeDateForHtmlInput } from "@/utils/attendanceEmployeeRecord";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
 /** Ô tổng hợp khối THỜI GIAN LÀM VIỆC — ẩn số 0. */
 export function fmtPayrollMonthlySummaryCell(n) {
-  return Number.isFinite(n) && roundHoursForPayrollDisplay(n) !== 0
-    ? formatCoeffHoursForDisplay(n)
-    : " ";
+  return Number.isFinite(n) && n > 0 ? formatCoeffHoursForDisplay(n) : " ";
 }
 
 /** Chuẩn hóa ngày hồ sơ (ngày vào làm / ngày HĐ) để so sánh với `dateKey` YYYY-MM-DD. */
@@ -289,11 +286,9 @@ export function buildMonthlyRuleSummary(
       payrollOtDayParamsFromMonthChunkEmp(emp, ch),
     );
     const coeffSum = sumPayrollMonthlyCoeffHours(coeffMap);
-    /** Cộng theo bước 0,5h — khớp `formatCoeffHoursForDisplay` trên lưới tháng. */
     const addWorkedHours = (hours) => {
       if (!Number.isFinite(hours) || hours <= 0) return;
-      const r = roundHoursForPayrollDisplay(hours);
-      if (r > 0) out.workHours += r;
+      out.workHours += hours;
     };
 
     if (main.kind === "leave") {

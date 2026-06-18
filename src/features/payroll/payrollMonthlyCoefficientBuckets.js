@@ -1,4 +1,5 @@
 import {
+  formatPayrollHoursForDisplay,
   getAttendanceWorkingHoursHours,
   getNightShiftPayrollOffHolidayMergedHoursNumeric,
   getNightShiftPayrollOvertimeHoursFromOtMinutes,
@@ -7,7 +8,6 @@ import {
   getPayrollDayShiftOffHolidayMergedHoursNumeric,
   getPayrollHalfDayLeaveWorkedHours,
   isNightShiftCaLamViec,
-  roundHoursForPayrollDisplay,
   roundHoursToTenths,
 } from "@/features/attendance/attendanceWorkingHours";
 import {
@@ -188,7 +188,7 @@ export function sortPayrollMonthlyCoefficientLines(lines) {
 }
 
 export function formatCoeffHoursForDisplay(hours) {
-  return String(roundHoursForPayrollDisplay(hours));
+  return formatPayrollHoursForDisplay(hours);
 }
 
 export function formatCoeffLabel(coeff, displayLocale = "vi-VN") {
