@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 /**
- * Xác nhận có giấy tăng ca sớm (ca ngày: trước 05:40 → 05:40–06:40 / từ 05:40 → 06:40–07:40; ca đêm: 18:40–19:40).
+ * Xác nhận có giấy tăng ca sớm (ca ngày: trước 05:40 → 2h; 05:40–05:59 / từ 06:00 → 1h theo mốc).
  * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: () => void, onSave: (updates: Record<string, boolean>) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, readOnly?: boolean, viewOnlyHint?: string, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
  */
 export default function PayrollEarlyOvertimePaperworkModal({

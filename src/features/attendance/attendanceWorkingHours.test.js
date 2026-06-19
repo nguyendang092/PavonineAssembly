@@ -315,8 +315,8 @@ describe("chế độ Tài xế / Tài xế tổng", () => {
 });
 
 describe("getEarlyPaperworkOvertimeHours", () => {
-  it("có giấy: một khung — trước 05:40 (05:40–06:40) hoặc từ 05:40 (06:40–07:40)", () => {
-    expect(getEarlyPaperworkOvertimeHours("05:30", true, "S1")).toBe(1);
+  it("có giấy: trước 05:40 → 2h; 05:40–05:59 → 1h; từ 06:00 → khung 06:40", () => {
+    expect(getEarlyPaperworkOvertimeHours("05:30", true, "S1")).toBe(2);
     expect(getEarlyPaperworkOvertimeHours("05:40", true, "S1")).toBe(1);
     expect(getEarlyPaperworkOvertimeHours("05:45", true, "S1")).toBe(1);
     expect(getEarlyPaperworkOvertimeHours("06:00", true, "S1")).toBe(1);

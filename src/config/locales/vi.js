@@ -1396,7 +1396,7 @@ const vi = {
       "Chỉ Admin / HR / quản lý bộ phận được xác nhận tăng ca.",
     earlyOtModalTitle: "Xác nhận đăng ký tăng ca",
     earlyOtModalDescription:
-      "Ca ngày vào ≤ 06:40: trước 05:40 → TC 05:40–06:40; từ 05:40 → TC 06:40–07:40 (một khung, 0,1h). Ca đêm S2 17:00–18:40: TC 18:40–19:40; GC từ 18:40 (có giấy → GC từ 19:40).",
+      "Ca ngày ≤ 06:40: trước 05:40 → 2h; 05:40–05:59 → 05:40–06:40; từ 06:00 → 06:40–07:40. Ca đêm 17:00–18:40: TC 18:40–19:40.",
     earlyOtModalSave: "Lưu",
     earlyOtModalSkipAll: "Tất cả không có giấy tăng ca",
     lateOtModalTitle: "Xác nhận không tăng ca sau 17:30",

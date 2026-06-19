@@ -6,17 +6,21 @@
 /** Ca ngày: điều kiện popup / giấy — vào ≤ 06:40. */
 export const DAY_EARLY_PAPERWORK_CUTOFF_MIN = 6 * 60 + 40;
 
-/** Vào trước 05:40 → khung 05:40–06:40; từ 05:40 → khung 06:40–07:40 (chỉ một khung). */
-export const DAY_EARLY_OT_MARKER_SPLIT_MIN = 5 * 60 + 40;
+/** Mốc khung 05:40–06:40 và 06:40–07:40. */
+export const DAY_EARLY_OT_MARKER_FIRST_MIN = 5 * 60 + 40;
+export const DAY_EARLY_OT_MARKER_SECOND_MIN = 6 * 60 + 40;
+/** Từ 06:00 → chỉ khung mốc 06:40; trước đó (≥05:40) → khung 05:40. */
+export const DAY_EARLY_OT_SECOND_TIER_MIN = 6 * 60;
+
 export const DAY_EARLY_OT_SEGMENT_EARLY = Object.freeze([
-  5 * 60 + 40,
-  6 * 60 + 40,
+  DAY_EARLY_OT_MARKER_FIRST_MIN,
+  DAY_EARLY_OT_MARKER_SECOND_MIN,
 ]);
 export const DAY_EARLY_OT_SEGMENT_LATE = Object.freeze([
-  6 * 60 + 40,
+  DAY_EARLY_OT_MARKER_SECOND_MIN,
   7 * 60 + 40,
 ]);
-export const DAY_EARLY_OT_MAX_HOURS = 1;
+export const DAY_EARLY_OT_MAX_HOURS = 2;
 
 /** Ca đêm S2: mốc GC / TC sớm 18:40; có giấy → GC từ 19:40. */
 export const NIGHT_SHIFT_OFFICIAL_START_MIN = 18 * 60 + 40;
@@ -54,13 +58,25 @@ export function sumPaperworkOvertimeSegmentMinutes(entryMin, segments) {
 }
 
 /**
- * Ca ngày TC sớm: một khung duy nhất theo giờ vào.
+ * Ca ngày TC sớm theo giờ vào — luôn tính từ **mốc** (không trừ phút chấm sớm trong khung):
+ * - Trước 05:40 → 05:40–06:40 + 06:40–07:40 (2h)
+ * - 05:40–05:59 → 05:40–06:40 (1h)
+ * - Từ 06:00 đến ≤06:40 → 06:40–07:40 (1h)
  * @param {number} entryMin — phút từ 0:00
  */
 export function dayEarlyPaperworkOvertimeMinutes(entryMin) {
-  const [segStart, segEnd] =
-    entryMin < DAY_EARLY_OT_MARKER_SPLIT_MIN
-      ? DAY_EARLY_OT_SEGMENT_EARLY
-      : DAY_EARLY_OT_SEGMENT_LATE;
-  return paperworkOvertimeSegmentMinutes(entryMin, segStart, segEnd);
+  const earlyLen =
+    DAY_EARLY_OT_SEGMENT_EARLY[1] - DAY_EARLY_OT_SEGMENT_EARLY[0];
+  const lateLen = DAY_EARLY_OT_SEGMENT_LATE[1] - DAY_EARLY_OT_SEGMENT_LATE[0];
+
+  if (entryMin < DAY_EARLY_OT_MARKER_FIRST_MIN) {
+    return earlyLen + lateLen;
+  }
+  if (entryMin < DAY_EARLY_OT_SECOND_TIER_MIN) {
+    return earlyLen;
+  }
+  if (entryMin <= DAY_EARLY_PAPERWORK_CUTOFF_MIN) {
+    return lateLen;
+  }
+  return 0;
 }

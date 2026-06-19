@@ -931,7 +931,7 @@ export default function PayrollSalaryCalculator() {
                 className="h-8 shrink-0 rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-3 text-xs font-bold text-white shadow-md shadow-sky-600/25 transition hover:from-sky-400 hover:to-blue-500 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:hover:from-sky-500 dark:hover:to-blue-600"
                 title={tlPage(
                   "earlyOtPaperworkHint",
-                  "Xác nhận giấy TC sớm (trước 05:40: 05:40–06:40; từ 05:40: 06:40–07:40) cho NV vào ≤ 06:40.",
+                  "TC sớm (giấy): trước 05:40 → 2h; 05:40–05:59 → 05:40–06:40; từ 06:00 → 06:40–07:40.",
                 )}
               >
                 {tlPage("earlyOtPaperworkButton", "Xác nhận tăng ca")}
@@ -1223,7 +1223,7 @@ export default function PayrollSalaryCalculator() {
         title={tlPage("earlyOtModalTitle", "Xác nhận đăng ký tăng ca")}
         description={tlPage(
           "earlyOtModalDescription",
-          "Ca ngày ≤ 06:40: trước 05:40 → 05:40–06:40; từ 05:40 → 06:40–07:40. Ca đêm 17:00–18:40: 18:40–19:40.",
+          "Trước 05:40 → 2h; 05:40–05:59 → 05:40–06:40; từ 06:00 → 06:40–07:40. Ca đêm: 18:40–19:40.",
         )}
         saveLabel={tlPage("earlyOtModalSave", "Lưu")}
         skipAllLabel={tlPage(

@@ -33,7 +33,7 @@ export const workforcePayrollSharedVi = {
   payrollWorkingHoursHint: workingHoursHintVi,
   dayShiftOvertimeHours: "Giờ công tăng ca (×1.5)",
   dayShiftOvertimeHoursHint:
-    "Ca ngày (không S2): giờ ra sau 17:30 — tính từ 17:00, 30 phút = 0,5 giờ. Vào ≤ 06:40 có giấy TC → trước 05:40: khung 05:40–06:40; từ 05:40: khung 06:40–07:40 (một khung, 0,1h). Ca đêm: «-».",
+    "Ca ngày (không S2): giờ ra sau 17:30 — từ 17:00, 30 phút = 0,5 giờ. TC sớm (giấy, ≤06:40): trước 05:40 → 2h; 05:40–05:59 → 05:40–06:40; từ 06:00 → 06:40–07:40. Ca đêm: «-».",
   overtimeHours: "Giờ công tăng ca (x1.5)",
   overtimeHoursHint: "Đã thay bằng cột «TC ca ngày (×1.5)» trên bảng lương.",
   offDayOvertimeHours: "Giờ công ngày off (x2.0)",
