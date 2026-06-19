@@ -6,17 +6,17 @@ import {
 } from "../attendanceGioVaoTypeOptions";
 import {
   formatPayrollTableHolidayNightWorkingCell,
-  formatPayrollTableNightShiftOffDayWorkingCell,
-  formatPayrollTableNightShiftOvertimeCell,
-  formatPayrollTableNightShiftWorkingCell,
-  formatPayrollTableTotalNightGcCell,
   formatPayrollTableWorkingHoursCell,
 } from "../attendanceWorkingHours";
 import {
   formatPayrollTableDayShiftOvertimeCellFromEmp,
   formatPayrollTableHolidayDayWorkingCellFromEmp,
+  formatPayrollTableNightShiftOffDayWorkingCellFromEmp,
+  formatPayrollTableNightShiftOvertimeCellFromEmp,
+  formatPayrollTableNightShiftWorkingCellFromEmp,
   formatPayrollTableOffDayTcCellFromEmp,
   formatPayrollTableTotalDayGcCellFromEmp,
+  formatPayrollTableTotalNightGcCellFromEmp,
 } from "@/features/payroll/payrollTableOtCells";
 import { employeeRegimeWorkingHoursFlags } from "../employeeRegime";
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
@@ -635,17 +635,7 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-teal-900 dark:text-teal-100">
-              {formatPayrollTableNightShiftWorkingCell(
-                dayFields.timeIn,
-                dayFields.timeOut,
-                payrollOffLike,
-                dayFields.shiftCode,
-                dayFields.leaveType,
-                includeTapVuInWorkingHours,
-                includeThaiSanInWorkingHours,
-                includeTaiXeInWorkingHours,
-                includeTaiXeTongInWorkingHours,
-              )}
+              {formatPayrollTableNightShiftWorkingCellFromEmp(emp, payrollDayCtx)}
             </span>
           </Cell>
           <Cell
@@ -663,17 +653,7 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-fuchsia-900 dark:text-fuchsia-100">
-              {formatPayrollTableNightShiftOvertimeCell(
-                dayFields.timeIn,
-                dayFields.timeOut,
-                payrollOffLike,
-                dayFields.shiftCode,
-                dayFields.leaveType,
-                includeTapVuInWorkingHours,
-                includeThaiSanInWorkingHours,
-                includeTaiXeInWorkingHours,
-                includeTaiXeTongInWorkingHours,
-              )}
+              {formatPayrollTableNightShiftOvertimeCellFromEmp(emp, payrollDayCtx)}
             </span>
           </Cell>
           <Cell
@@ -691,16 +671,9 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-emerald-900 dark:text-emerald-100">
-              {formatPayrollTableNightShiftOffDayWorkingCell(
-                dayFields.timeIn,
-                dayFields.timeOut,
-                strictOffDay,
-                dayFields.shiftCode,
-                dayFields.leaveType,
-                includeTapVuInWorkingHours,
-                includeThaiSanInWorkingHours,
-                includeTaiXeInWorkingHours,
-                includeTaiXeTongInWorkingHours,
+              {formatPayrollTableNightShiftOffDayWorkingCellFromEmp(
+                emp,
+                payrollDayCtx,
               )}
             </span>
           </Cell>
@@ -744,17 +717,7 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-indigo-950 dark:text-indigo-100">
-              {formatPayrollTableTotalNightGcCell(
-                dayFields.timeIn,
-                dayFields.timeOut,
-                payrollOffLike,
-                dayFields.shiftCode,
-                dayFields.leaveType,
-                includeTapVuInWorkingHours,
-                includeThaiSanInWorkingHours,
-                includeTaiXeInWorkingHours,
-                includeTaiXeTongInWorkingHours,
-              )}
+              {formatPayrollTableTotalNightGcCellFromEmp(emp, payrollDayCtx)}
             </span>
           </Cell>
         </>

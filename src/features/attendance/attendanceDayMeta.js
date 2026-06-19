@@ -5,7 +5,8 @@
 export const ATTENDANCE_DAY_META_KEY = "_meta";
 
 /**
- * Bảng lương: map `employeeId` (key Firebase của dòng `attendance/{ngày}/{id}`) → có giấy TC sớm 05:40–07:40 (vào ≤ 06:40).
+ * Bảng lương: map `employeeId` → có giấy TC sớm.
+ * Ca ngày: vào ≤ 06:40. Ca đêm S2: vào 17:00–18:40.
  * Lưu tại `attendance/{ngày}/_meta.earlyOtPaperwork`.
  */
 export const ATTENDANCE_DAY_META_EARLY_OT_KEY = "earlyOtPaperwork";

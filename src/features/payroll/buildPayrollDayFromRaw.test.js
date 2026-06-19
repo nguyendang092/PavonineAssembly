@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { PAYROLL_EMP } from "./payrollEmployeeFields";
 import {
   buildPayrollMonthDayCellFormRecord,
+  parsePayrollDayFromAttendanceRaw,
   pickPayrollMonthRepProfileFields,
 } from "./buildPayrollDayFromRaw";
 
@@ -22,7 +24,7 @@ describe("buildPayrollMonthDayCellFormRecord", () => {
         mnv: "NV001",
         hoVaTen: "Day Name",
         boPhan: "SX",
-        gioVao: "07:30",
+        gioVao: "06:00",
         gioRa: "18:00",
         loaiPhep: "",
         caLamViec: "S1",
@@ -38,7 +40,7 @@ describe("buildPayrollMonthDayCellFormRecord", () => {
     id: "firebase-key-1",
     monthEmployeeKey: "NV001",
     mnv: "NV001",
-    gioVao: "07:30",
+    gioVao: "06:00",
     gioRa: "18:00",
     loaiPhep: "",
     caLamViec: "S1",
@@ -52,7 +54,7 @@ describe("buildPayrollMonthDayCellFormRecord", () => {
       dayEmp,
     });
     expect(record.id).toBe("firebase-key-1");
-    expect(record.gioVao).toBe("07:30");
+    expect(record.gioVao).toBe("06:00");
     expect(record.gioRa).toBe("18:00");
     expect(record.loaiPhep).toBe("");
     expect(record.caLamViec).toBe("S1");
@@ -91,5 +93,25 @@ describe("pickPayrollMonthRepProfileFields", () => {
     expect(profile.hoVaTen).toBe("A");
     expect(profile.gioVao).toBeUndefined();
     expect(profile.loaiPhep).toBeUndefined();
+  });
+});
+
+describe("parsePayrollDayFromAttendanceRaw — TC sớm ca đêm", () => {
+  it("bỏ cờ earlyOt trên S2 dù _meta có true", () => {
+    const raw = {
+      _meta: { earlyOtPaperwork: { "night-1": true } },
+      "night-1": {
+        mnv: "NV002",
+        gioVao: "06:00",
+        gioRa: "06:30",
+        caLamViec: "S2",
+        stt: 1,
+      },
+    };
+    const parsed = parsePayrollDayFromAttendanceRaw(raw);
+    expect(parsed.earlyOtPaperworkById).toEqual({});
+    expect(
+      parsed.payrollEmployees[0][PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK],
+    ).toBeUndefined();
   });
 });

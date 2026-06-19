@@ -62,7 +62,7 @@ import { businessEmployeeCode } from "@/utils/attendanceEmployeeRecord";
 import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
 import {
   getOvertimeHoursFromGioRa,
-  isEarlyArrivalFor0600PaperworkOvertime,
+  isEarlyArrivalForPaperworkOvertime,
   isNightShiftCaLamViec,
 } from "@/features/attendance/attendanceWorkingHours";
 import PayrollEarlyOvertimePaperworkModal from "@/features/payroll/PayrollEarlyOvertimePaperworkModal";
@@ -307,13 +307,13 @@ export default function PayrollSalaryCalculator() {
     [user, userRole, employees, canConfirmOtForEmployee],
   );
 
-  /** Vào ≤ 06:40 (ca ngày) — hiện nút «Xác nhận tăng ca» (mở popup thủ công). */
+  /** Vào sớm (ca ngày ≤ 06:40 / ca đêm 17:00–18:40) — hiện nút «Xác nhận tăng ca». */
   const earlyOtEligibleEmployees = useMemo(
     () =>
       sortEmployeesAscForPopup(
         otPaperworkScopeEmployees.filter((e) => {
           const { timeIn, shiftCode } = pickPayrollEmployeeDayFields(e);
-          return isEarlyArrivalFor0600PaperworkOvertime(timeIn, shiftCode);
+          return isEarlyArrivalForPaperworkOvertime(timeIn, shiftCode);
         }),
       ),
     [otPaperworkScopeEmployees],
@@ -931,7 +931,7 @@ export default function PayrollSalaryCalculator() {
                 className="h-8 shrink-0 rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-3 text-xs font-bold text-white shadow-md shadow-sky-600/25 transition hover:from-sky-400 hover:to-blue-500 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:hover:from-sky-500 dark:hover:to-blue-600"
                 title={tlPage(
                   "earlyOtPaperworkHint",
-                  "Xác nhận giấy tăng ca sớm (từ giờ vào đến 07:40, làm tròn 0,1h, tối đa 2h) cho nhân viên vào ≤ 06:40 (ca ngày).",
+                  "Xác nhận giấy TC sớm (trước 05:40: 05:40–06:40; từ 05:40: 06:40–07:40) cho NV vào ≤ 06:40.",
                 )}
               >
                 {tlPage("earlyOtPaperworkButton", "Xác nhận tăng ca")}
@@ -1223,7 +1223,7 @@ export default function PayrollSalaryCalculator() {
         title={tlPage("earlyOtModalTitle", "Xác nhận đăng ký tăng ca")}
         description={tlPage(
           "earlyOtModalDescription",
-          "Nhân viên vào ≤ 06:40 (ca ngày): xác nhận có giấy tăng ca sớm. Có giấy → TC từ giờ vào (không trước 05:40) đến 07:40, thời lượng thực làm tròn 0,1h (vd. 05:45 → 1,9h), tối đa 2h.",
+          "Ca ngày ≤ 06:40: trước 05:40 → 05:40–06:40; từ 05:40 → 06:40–07:40. Ca đêm 17:00–18:40: 18:40–19:40.",
         )}
         saveLabel={tlPage("earlyOtModalSave", "Lưu")}
         skipAllLabel={tlPage(

@@ -5,6 +5,7 @@ import {
   formatPayrollTableTotalDayGcCell,
   formatPayrollTableWorkingHoursCell,
   getPayrollHalfDayLeaveWorkedHours,
+  getNightShiftEarlyPaperworkOvertimeHours,
   getNightShiftPayrollOvertimeHours,
   getNightShiftPayrollRegularHoursAndOtMinutes,
   getOvertimeHoursFromGioRa,
@@ -14,6 +15,8 @@ import {
   getPayrollDayOvertimeHoursNumeric,
   getTaiXeOvertimeHoursFromGioRa,
   isEarlyArrivalFor0600PaperworkOvertime,
+  isEarlyArrivalForNightShiftPaperworkOvertime,
+  isEarlyArrivalForPaperworkOvertime,
   isNightShiftCaLamViec,
 } from "@/features/attendance/attendanceWorkingHours";
 
@@ -312,22 +315,22 @@ describe("chế độ Tài xế / Tài xế tổng", () => {
 });
 
 describe("getEarlyPaperworkOvertimeHours", () => {
-  it("có giấy: 05:40–07:40 → 2h; vào trước 05:40 coi từ 05:40", () => {
-    expect(getEarlyPaperworkOvertimeHours("05:40", true, "S1")).toBe(2);
-    expect(getEarlyPaperworkOvertimeHours("05:30", true, "S1")).toBe(2);
-  });
-
-  it("có giấy: tính từ giờ vào thực (không block 30p)", () => {
-    expect(getEarlyPaperworkOvertimeHours("05:45", true, "S1")).toBe(1.9);
-    expect(getEarlyPaperworkOvertimeHours("05:55", true, "S1")).toBe(1.8);
-    expect(getEarlyPaperworkOvertimeHours("06:00", true, "S1")).toBe(1.7);
-    expect(getEarlyPaperworkOvertimeHours("06:15", true, "S1")).toBe(1.4);
+  it("có giấy: một khung — trước 05:40 (05:40–06:40) hoặc từ 05:40 (06:40–07:40)", () => {
+    expect(getEarlyPaperworkOvertimeHours("05:30", true, "S1")).toBe(1);
+    expect(getEarlyPaperworkOvertimeHours("05:40", true, "S1")).toBe(1);
+    expect(getEarlyPaperworkOvertimeHours("05:45", true, "S1")).toBe(1);
+    expect(getEarlyPaperworkOvertimeHours("06:00", true, "S1")).toBe(1);
     expect(getEarlyPaperworkOvertimeHours("06:40", true, "S1")).toBe(1);
   });
 
   it("không giấy hoặc vào sau 06:40 → 0", () => {
     expect(getEarlyPaperworkOvertimeHours("06:00", false, "S1")).toBe(0);
     expect(getEarlyPaperworkOvertimeHours("06:41", true, "S1")).toBe(0);
+  });
+
+  it("ca đêm S2 — không áp dụng TC sớm dù có giấy", () => {
+    expect(getEarlyPaperworkOvertimeHours("06:00", true, "S2")).toBe(0);
+    expect(getEarlyPaperworkOvertimeHours("05:45", true, "S2")).toBe(0);
   });
 
   it("cộng vào TC ngày khi có giấy và giờ ra", () => {
@@ -341,7 +344,7 @@ describe("getEarlyPaperworkOvertimeHours", () => {
         false,
         false,
       ),
-    ).toBe(2.7);
+    ).toBe(2);
   });
 });
 
@@ -507,5 +510,79 @@ describe("isEarlyArrivalFor0600PaperworkOvertime", () => {
 
   it("ca đêm S2 không áp dụng", () => {
     expect(isEarlyArrivalFor0600PaperworkOvertime("06:00", "S2")).toBe(false);
+  });
+});
+
+describe("ca đêm — TC trước 18:40 (giấy xác nhận)", () => {
+  const ca = "S2";
+
+  it("18:40 đủ điều kiện popup; 19:40 không", () => {
+    expect(isEarlyArrivalForNightShiftPaperworkOvertime("18:40", ca)).toBe(
+      true,
+    );
+    expect(isEarlyArrivalForNightShiftPaperworkOvertime("19:40", ca)).toBe(
+      false,
+    );
+    expect(isEarlyArrivalForPaperworkOvertime("18:40", ca)).toBe(true);
+  });
+
+  it("có giấy: 17:00 → 1h TC (18:40–19:40); GC từ 19:40", () => {
+    expect(getNightShiftEarlyPaperworkOvertimeHours("17:00", true, ca)).toBe(
+      1,
+    );
+    const parts = getNightShiftPayrollRegularHoursAndOtMinutes(
+      "17:00",
+      "20:00",
+      ca,
+      true,
+    );
+    expect(parts?.regularHours).toBe(0.3);
+  });
+
+  it("có giấy: 18:40 → 1h TC; GC từ 19:40", () => {
+    expect(getNightShiftEarlyPaperworkOvertimeHours("18:40", true, ca)).toBe(
+      1,
+    );
+    expect(
+      formatPayrollTableNightShiftOvertimeCell(
+        "18:40",
+        "19:50",
+        false,
+        ca,
+        "",
+        false,
+        false,
+        false,
+        false,
+        true,
+      ),
+    ).toBe("1");
+    const parts = getNightShiftPayrollRegularHoursAndOtMinutes(
+      "18:40",
+      "19:50",
+      ca,
+      true,
+    );
+    expect(parts?.regularHours).toBe(0.2);
+  });
+
+  it("không giấy: không TC trước 18:40", () => {
+    expect(getNightShiftEarlyPaperworkOvertimeHours("18:40", false, ca)).toBe(
+      0,
+    );
+    expect(
+      formatPayrollTableNightShiftOvertimeCell(
+        "18:40",
+        "19:50",
+        false,
+        ca,
+        "",
+        false,
+        false,
+        false,
+        false,
+        false,
+      ),
+    ).toBe("-");
   });
 });

@@ -20,6 +20,9 @@ describe("payrollOtDayParamsFromMonthChunkEmp", () => {
   it("giữ cờ đã có trên dòng payroll khi chunk không có map", () => {
     const emp = {
       id: "key-1",
+      gioVao: "06:00",
+      gioRa: "18:00",
+      caLamViec: "S1",
       payrollEarlyOtPaperwork: true,
       payrollLateOtExcluded: true,
     };

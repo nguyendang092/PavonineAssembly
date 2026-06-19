@@ -33,7 +33,7 @@ export const workforcePayrollSharedVi = {
   payrollWorkingHoursHint: workingHoursHintVi,
   dayShiftOvertimeHours: "Giờ công tăng ca (×1.5)",
   dayShiftOvertimeHoursHint:
-    "Ca ngày (không S2): giờ ra sau 17:30 — tính từ 17:00, 30 phút = 0,5 giờ. Vào ≤ 06:40 có giấy TC → từ giờ vào (không trước 05:40) đến 07:40, làm tròn 0,1h (tối đa 2h). Ca đêm: «-».",
+    "Ca ngày (không S2): giờ ra sau 17:30 — tính từ 17:00, 30 phút = 0,5 giờ. Vào ≤ 06:40 có giấy TC → trước 05:40: khung 05:40–06:40; từ 05:40: khung 06:40–07:40 (một khung, 0,1h). Ca đêm: «-».",
   overtimeHours: "Giờ công tăng ca (x1.5)",
   overtimeHoursHint: "Đã thay bằng cột «TC ca ngày (×1.5)» trên bảng lương.",
   offDayOvertimeHours: "Giờ công ngày off (x2.0)",
@@ -61,10 +61,10 @@ export const workforcePayrollSharedVi = {
   holidayNightWorkingHours: "Giờ công ca đêm ngày lễ (X3.9)",
   nightShiftWorkingHours: "Giờ công ca đêm",
   nightShiftWorkingHoursHint:
-    "Chỉ khi ca «Ca đêm»: thời lượng từ giờ vào đến mốc 05:00 (05:00 cùng ngày nếu vào trước 05:00, không thì 05:00 ngày hôm sau), tối đa 8 giờ.",
+    "Ca đêm (S2): từ 18:40 đến mốc 05:00 (vào sớm có giấy → TC 18:40–19:40, GC từ 19:40); tối đa 8 giờ.",
   nightShiftOvertimeHours: "Giờ công tăng ca ca đêm (×1.5)",
   nightShiftOvertimeHoursHint:
-    "Ca đêm (S2): phần làm sau mốc 05:00 (ngày hôm sau) — 30 phút = 0,5 giờ. Ngày off/lễ: «-» (gộp ở GC ca đêm off/lễ).",
+    "Ca đêm (S2): sau mốc 05:00 (ngày hôm sau) — 30 phút = 0,5 giờ; vào 17:00–18:40 có giấy → TC từ mốc 18:40 đến 19:40 (0,1h). Ngày off/lễ: «-» (gộp ở GC ca đêm off/lễ).",
   nightShiftOffDayWorkingHours: "Giờ công ca đêm ngày OFF (X2.7)",
   nightShiftOffDayWorkingHoursHint:
     "Khi «Ngày off» và ca «Ca đêm»: GC + TC ca đêm gộp (cùng quy tắc mốc 05:00 như ngày thường); cột TC ca đêm «-». Ngày không off thì trống.",
@@ -81,7 +81,7 @@ export const workforcePayrollSharedKo = {
   payrollWorkingHoursHint: workingHoursHintKo,
   dayShiftOvertimeHours: "주간 연장 (×1.5)",
   dayShiftOvertimeHoursHint:
-    "주간(비 S2): 퇴근 17:30 이후 — 17:00부터 30분당 0.5h. 06:40 이전 출근+서류 → 출근 시각(05:40 이전은 05:40)부터 07:40, 0.1h 반올림 (최대 2h). 야간: «-».",
+    "주간(비 S2): 퇴근 17:30 이후 — 17:00부터 30분당 0.5h. 06:40 이전 출근+서류 → 05:40 이전: 05:40–06:40; 05:40 이후: 06:40–07:40 (한 구간, 0.1h). 야간: «-».",
   overtimeHours: "연장근무",
   overtimeHoursHint: "급여 표에서는 «주간 연장 (×1.5)» 열 사용.",
   offDayOvertimeHours: "휴무일 연장 (×2.0)",
@@ -107,10 +107,10 @@ export const workforcePayrollSharedKo = {
   holidayNightWorkingHours: "공휴일 야간 (×3.9)",
   nightShiftWorkingHours: "야간 근무",
   nightShiftWorkingHoursHint:
-    "야간: 출근부터 05:00(당일 05:00 이전 출근이면 당일, 아니면 다음 날 05:00)까지, 최대 8시간.",
+    "야간(S2): 18:40부터 05:00까지(서류 있이 조출 → 연장 18:40–19:40, GC 19:40부터); 최대 8시간.",
   nightShiftOvertimeHours: "야간 연장 (×1.5)",
   nightShiftOvertimeHoursHint:
-    "야간(S2): 익일 05:00 이후 — 30분당 0.5h. 휴무/공휴: «-»(합산 열 참고).",
+    "야간(S2): 익일 05:00 이후 — 30분당 0.5h; 17:00–18:40 출근+서류 → 18:40부터 19:40까지 0.1h. 휴무/공휴: «-»(합산 열 참고).",
   nightShiftOffDayWorkingHours: "휴무일 야간 (×2.7)",
   nightShiftOffDayWorkingHoursHint:
     "휴무일+야간: 근무+연장 합산. 야간 연장 열 «-». 휴무일이 아니면 비움.",

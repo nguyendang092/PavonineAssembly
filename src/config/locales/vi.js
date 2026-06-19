@@ -1382,7 +1382,7 @@ const vi = {
     exportRangeExcelSuccess: "✅ Đã xuất Excel (nhiều ngày).",
     earlyOtPaperworkButton: "Xác nhận tăng ca",
     earlyOtPaperworkHint:
-      "Xác nhận giấy tăng ca sớm (từ giờ vào đến 07:40, làm tròn 0,1h, tối đa 2h) cho nhân viên vào ≤ 06:40 (ca ngày).",
+      "Xác nhận giấy TC sớm: ca ngày vào ≤ 06:40; ca đêm S2 vào 17:00–18:40.",
     lateOtPaperworkButton: "Không TC >17:30",
     lateOtPaperworkHint:
       "Đánh dấu những nhân viên ra sau 17:30 nhưng KHÔNG tính tăng ca.",
@@ -1396,7 +1396,7 @@ const vi = {
       "Chỉ Admin / HR / quản lý bộ phận được xác nhận tăng ca.",
     earlyOtModalTitle: "Xác nhận đăng ký tăng ca",
     earlyOtModalDescription:
-      "Nhân viên vào ≤ 06:40 (ca ngày): xác nhận có giấy tăng ca sớm. Có giấy → TC từ giờ vào (không trước 05:40) đến 07:40, thời lượng thực làm tròn 0,1h (vd. 05:45 → 1,9h), tối đa 2h.",
+      "Ca ngày vào ≤ 06:40: trước 05:40 → TC 05:40–06:40; từ 05:40 → TC 06:40–07:40 (một khung, 0,1h). Ca đêm S2 17:00–18:40: TC 18:40–19:40; GC từ 18:40 (có giấy → GC từ 19:40).",
     earlyOtModalSave: "Lưu",
     earlyOtModalSkipAll: "Tất cả không có giấy tăng ca",
     lateOtModalTitle: "Xác nhận không tăng ca sau 17:30",

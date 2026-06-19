@@ -2,18 +2,18 @@ import ExcelJS from "exceljs";
 import { parseLocalDateKey } from "@/utils/dateKey";
 import {
   formatPayrollTableHolidayNightWorkingCell,
-  formatPayrollTableNightShiftOffDayWorkingCell,
-  formatPayrollTableNightShiftOvertimeCell,
-  formatPayrollTableNightShiftWorkingCell,
-  formatPayrollTableTotalNightGcCell,
   formatPayrollTableWorkingHoursCell,
   roundHoursToTenths,
 } from "@/features/attendance/attendanceWorkingHours";
 import {
   formatPayrollTableDayShiftOvertimeCellFromEmp,
   formatPayrollTableHolidayDayWorkingCellFromEmp,
+  formatPayrollTableNightShiftOffDayWorkingCellFromEmp,
+  formatPayrollTableNightShiftOvertimeCellFromEmp,
+  formatPayrollTableNightShiftWorkingCellFromEmp,
   formatPayrollTableOffDayTcCellFromEmp,
   formatPayrollTableTotalDayGcCellFromEmp,
+  formatPayrollTableTotalNightGcCellFromEmp,
 } from "@/features/payroll/payrollTableOtCells";
 import {
   formatAttendanceLeaveTypeColumnForEmployee,
@@ -173,7 +173,6 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       : Boolean(isOffDay) ||
         Boolean(isHolidayDay) ||
         Boolean(isCompensatoryDay);
-  const strictOff = Boolean(isOffDay) || Boolean(isCompensatoryDay);
   const payrollDayCtx = {
     isOffDay,
     isHolidayDay,
@@ -223,38 +222,12 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     formatPayrollTableOffDayTcCellFromEmp(emp, payrollDayCtx, otMaps),
     formatPayrollTableHolidayDayWorkingCellFromEmp(emp, payrollDayCtx, otMaps),
     formatPayrollTableTotalDayGcCellFromEmp(emp, payrollDayCtx, otMaps),
-    formatPayrollTableNightShiftWorkingCell(
-      timeIn,
-      timeOut,
-      offLike,
-      shiftCode,
-      leaveType,
-      includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours,
-      includeTaiXeInWorkingHours,
-      includeTaiXeTongInWorkingHours,
-    ),
-    formatPayrollTableNightShiftOvertimeCell(
-      timeIn,
-      timeOut,
-      offLike,
-      shiftCode,
-      leaveType,
-      includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours,
-      includeTaiXeInWorkingHours,
-      includeTaiXeTongInWorkingHours,
-    ),
-    formatPayrollTableNightShiftOffDayWorkingCell(
-      timeIn,
-      timeOut,
-      strictOff,
-      shiftCode,
-      leaveType,
-      includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours,
-      includeTaiXeInWorkingHours,
-      includeTaiXeTongInWorkingHours,
+    formatPayrollTableNightShiftWorkingCellFromEmp(emp, payrollDayCtx, otMaps),
+    formatPayrollTableNightShiftOvertimeCellFromEmp(emp, payrollDayCtx, otMaps),
+    formatPayrollTableNightShiftOffDayWorkingCellFromEmp(
+      emp,
+      payrollDayCtx,
+      otMaps,
     ),
     formatPayrollTableHolidayNightWorkingCell(
       timeIn,
@@ -267,17 +240,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       includeTaiXeInWorkingHours,
       includeTaiXeTongInWorkingHours,
     ),
-    formatPayrollTableTotalNightGcCell(
-      timeIn,
-      timeOut,
-      offLike,
-      shiftCode,
-      leaveType,
-      includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours,
-      includeTaiXeInWorkingHours,
-      includeTaiXeTongInWorkingHours,
-    ),
+    formatPayrollTableTotalNightGcCellFromEmp(emp, payrollDayCtx, otMaps),
   ];
 }
 

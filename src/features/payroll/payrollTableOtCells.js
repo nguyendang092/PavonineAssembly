@@ -1,8 +1,12 @@
 import {
   formatPayrollTableDayShiftOvertimeCell,
   formatPayrollTableHolidayDayWorkingCell,
+  formatPayrollTableNightShiftOffDayWorkingCell,
+  formatPayrollTableNightShiftOvertimeCell,
+  formatPayrollTableNightShiftWorkingCell,
   formatPayrollTableOffDayTcCell,
   formatPayrollTableTotalDayGcCell,
+  formatPayrollTableTotalNightGcCell,
 } from "@/features/attendance/attendanceWorkingHours";
 import {
   payrollOtDayParamsFromEmp,
@@ -13,6 +17,14 @@ function resolveOtDayParams(emp, dayCtx, maps) {
   return maps
     ? payrollOtDayParamsFromEmpWithMaps(emp, dayCtx, maps)
     : payrollOtDayParamsFromEmp(emp, dayCtx);
+}
+
+function payrollOffLikeFromParams(p) {
+  return p.isOffDay || p.isHolidayDay || p.isCompensatoryDay;
+}
+
+function strictOffFromParams(p) {
+  return p.isOffDay || p.isCompensatoryDay;
 }
 
 /** TC ca ngày ×1.5 — từ dòng NV + ngữ cảnh ngày. */
@@ -42,11 +54,10 @@ export function formatPayrollTableDayShiftOvertimeCellFromEmp(
 /** TC off (ca ngày) — GC + TC gộp. */
 export function formatPayrollTableOffDayTcCellFromEmp(emp, dayCtx, maps) {
   const p = resolveOtDayParams(emp, dayCtx, maps);
-  const strictOff = p.isOffDay || p.isCompensatoryDay;
   return formatPayrollTableOffDayTcCell(
     p.timeIn,
     p.timeOut,
-    strictOff,
+    strictOffFromParams(p),
     p.shiftCode,
     p.payrollEarlyOtPaperwork,
     p.leaveType,
@@ -85,11 +96,10 @@ export function formatPayrollTableHolidayDayWorkingCellFromEmp(
 /** Tổng GC khối ngày. */
 export function formatPayrollTableTotalDayGcCellFromEmp(emp, dayCtx, maps) {
   const p = resolveOtDayParams(emp, dayCtx, maps);
-  const strictOff = p.isOffDay || p.isCompensatoryDay;
   return formatPayrollTableTotalDayGcCell(
     p.timeIn,
     p.timeOut,
-    strictOff,
+    strictOffFromParams(p),
     p.isHolidayDay,
     p.shiftCode,
     p.payrollEarlyOtPaperwork,
@@ -100,5 +110,85 @@ export function formatPayrollTableTotalDayGcCellFromEmp(emp, dayCtx, maps) {
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
     p.lunchOtHours,
+  );
+}
+
+/** GC ca đêm (ngày thường). */
+export function formatPayrollTableNightShiftWorkingCellFromEmp(
+  emp,
+  dayCtx,
+  maps,
+) {
+  const p = resolveOtDayParams(emp, dayCtx, maps);
+  return formatPayrollTableNightShiftWorkingCell(
+    p.timeIn,
+    p.timeOut,
+    payrollOffLikeFromParams(p),
+    p.shiftCode,
+    p.leaveType,
+    p.includeTapVuInWorkingHours,
+    p.includeThaiSanInWorkingHours,
+    p.includeTaiXeInWorkingHours,
+    p.includeTaiXeTongInWorkingHours,
+    p.payrollEarlyOtPaperwork,
+  );
+}
+
+/** TC ca đêm (sau 05:00 + TC 18:40–19:40 khi có giấy). */
+export function formatPayrollTableNightShiftOvertimeCellFromEmp(
+  emp,
+  dayCtx,
+  maps,
+) {
+  const p = resolveOtDayParams(emp, dayCtx, maps);
+  return formatPayrollTableNightShiftOvertimeCell(
+    p.timeIn,
+    p.timeOut,
+    payrollOffLikeFromParams(p),
+    p.shiftCode,
+    p.leaveType,
+    p.includeTapVuInWorkingHours,
+    p.includeThaiSanInWorkingHours,
+    p.includeTaiXeInWorkingHours,
+    p.includeTaiXeTongInWorkingHours,
+    p.payrollEarlyOtPaperwork,
+  );
+}
+
+/** GC ca đêm ngày off — GC + TC gộp. */
+export function formatPayrollTableNightShiftOffDayWorkingCellFromEmp(
+  emp,
+  dayCtx,
+  maps,
+) {
+  const p = resolveOtDayParams(emp, dayCtx, maps);
+  return formatPayrollTableNightShiftOffDayWorkingCell(
+    p.timeIn,
+    p.timeOut,
+    strictOffFromParams(p),
+    p.shiftCode,
+    p.leaveType,
+    p.includeTapVuInWorkingHours,
+    p.includeThaiSanInWorkingHours,
+    p.includeTaiXeInWorkingHours,
+    p.includeTaiXeTongInWorkingHours,
+    p.payrollEarlyOtPaperwork,
+  );
+}
+
+/** Tổng GC khối ca đêm. */
+export function formatPayrollTableTotalNightGcCellFromEmp(emp, dayCtx, maps) {
+  const p = resolveOtDayParams(emp, dayCtx, maps);
+  return formatPayrollTableTotalNightGcCell(
+    p.timeIn,
+    p.timeOut,
+    payrollOffLikeFromParams(p),
+    p.shiftCode,
+    p.leaveType,
+    p.includeTapVuInWorkingHours,
+    p.includeThaiSanInWorkingHours,
+    p.includeTaiXeInWorkingHours,
+    p.includeTaiXeTongInWorkingHours,
+    p.payrollEarlyOtPaperwork,
   );
 }

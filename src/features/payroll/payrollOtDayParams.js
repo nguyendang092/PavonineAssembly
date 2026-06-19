@@ -1,5 +1,6 @@
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
+import { resolveEffectivePayrollEarlyOtPaperwork } from "@/features/payroll/payrollEarlyOtMeta";
 
 /**
  * Tham số ngày cho tính TC / hệ số lương — một nguồn từ dòng NV + ngữ cảnh ngày.
@@ -19,7 +20,7 @@ export function payrollOtDayParamsFromEmp(emp, dayCtx) {
     isCompensatoryDay: dayCtx.isCompensatoryDay ?? false,
     shiftCode: emp[PAYROLL_EMP.SHIFT],
     leaveType: emp[PAYROLL_EMP.LEAVE_TYPE],
-    payrollEarlyOtPaperwork: emp[PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK],
+    payrollEarlyOtPaperwork: resolveEffectivePayrollEarlyOtPaperwork(emp),
     payrollLateOtExcluded: emp[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED],
     lunchOtHours: emp[PAYROLL_EMP.LUNCH_OT_HOURS],
     ...flags,
@@ -37,10 +38,12 @@ export function payrollOtDayParamsFromEmpWithMaps(
   return payrollOtDayParamsFromEmp(
     {
       ...emp,
-      payrollEarlyOtPaperwork:
-        emp[PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK] ??
-        earlyOtPaperworkById[emp.id],
-      payrollLateOtExcluded:
+      [PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK]:
+        resolveEffectivePayrollEarlyOtPaperwork(
+          emp,
+          earlyOtPaperworkById[emp.id],
+        ),
+      [PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED]:
         emp[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED] ??
         lateOtExcludedById[emp.id],
     },

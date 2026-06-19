@@ -11,6 +11,10 @@ import {
   getLateOtPaperworkFromRaw,
   getIsOffDayFromRaw,
 } from "@/features/attendance/attendanceDayMeta";
+import {
+  resolveEffectivePayrollEarlyOtPaperwork,
+  sanitizeEarlyOtPaperworkById,
+} from "@/features/payroll/payrollEarlyOtMeta";
 
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 
@@ -66,7 +70,10 @@ export function reconcilePayrollEmployeesFromBase(
   }
 
   const next = baseEmployees.map((e) => {
-    const payrollEarlyOtPaperwork = earlyOtPaperworkById[e.id];
+    const payrollEarlyOtPaperwork = resolveEffectivePayrollEarlyOtPaperwork(
+      e,
+      earlyOtPaperworkById[e.id],
+    );
     const payrollLateOtExcluded = lateOtExcludedById[e.id];
     const candidate = {
       ...e,
@@ -185,8 +192,10 @@ export function buildPayrollMonthDayCellFormRecord({
     ...baseEmp,
     id: attendanceKey,
     monthEmployeeKey: dayEmp.monthEmployeeKey || rowId,
-    [PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK]:
+    [PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK]: resolveEffectivePayrollEarlyOtPaperwork(
+      baseEmp,
       chunk?.earlyOtPaperworkById?.[attendanceKey],
+    ),
     [PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED]:
       chunk?.lateOtExcludedById?.[attendanceKey],
   };
@@ -218,11 +227,14 @@ export function parsePayrollDayFromAttendanceRaw(
   const isOffDay = getIsOffDayFromRaw(raw);
   const isHolidayDay = getIsHolidayDayFromRaw(raw);
   const isCompensatoryDay = getIsCompensatoryDayFromRaw(raw);
-  const earlyOtPaperworkById = getEarlyOtPaperworkFromRaw(raw);
-  const lateOtExcludedById = getLateOtPaperworkFromRaw(raw);
   const baseEmployees = sortPayrollEmployeesStable(
     reconcileAttendanceDayRowsFromRaw(prevBaseEmployees, raw),
   );
+  const earlyOtPaperworkById = sanitizeEarlyOtPaperworkById(
+    getEarlyOtPaperworkFromRaw(raw),
+    baseEmployees,
+  );
+  const lateOtExcludedById = getLateOtPaperworkFromRaw(raw);
   const payrollEmployees = reconcilePayrollEmployeesFromBase(
     prevPayrollEmployees,
     baseEmployees,

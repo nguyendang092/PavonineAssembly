@@ -2,7 +2,7 @@ import {
   formatPayrollHoursForDisplay,
   getAttendanceWorkingHoursHours,
   getNightShiftPayrollOffHolidayMergedHoursNumeric,
-  getNightShiftPayrollOvertimeHoursFromOtMinutes,
+  getNightShiftPayrollOvertimeHours,
   getNightShiftPayrollRegularHoursAndOtMinutes,
   getPayrollDayOvertimeHoursNumeric,
   getPayrollDayShiftOffHolidayMergedHoursNumeric,
@@ -138,14 +138,18 @@ export function getPayrollMonthlyCoefficientLines(p) {
       timeIn,
       timeOut,
       shiftCode,
+      payrollEarlyOtPaperwork,
     );
     if (parts != null) {
       const reg = Number(parts.regularHours);
       if (Number.isFinite(reg) && reg > 0) {
         lines.push({ coeff: 0.3, hours: reg, key: "nr03" });
       }
-      const otH = getNightShiftPayrollOvertimeHoursFromOtMinutes(
-        parts.otMinutes,
+      const otH = getNightShiftPayrollOvertimeHours(
+        timeIn,
+        timeOut,
+        shiftCode,
+        payrollEarlyOtPaperwork,
       );
       if (Number.isFinite(otH) && otH > 0) {
         /** Đồng bộ cột «TC ca đêm (X1.5)» trên bảng giờ công nhân viên. */
