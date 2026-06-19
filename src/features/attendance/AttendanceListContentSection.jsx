@@ -175,6 +175,7 @@ function AttendanceListContentSection() {
         isCompensatoryDay={isCompensatoryDay}
         t={t}
         attendanceRootPath={attendanceRootPath}
+        selectedDate={selectedDate}
       />
 
       <AttendanceListSummary

@@ -5,6 +5,8 @@ import AttendanceTableRow, {
 } from "./attendanceTableRow";
 import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
+import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
 
 /**
  * Bảng điểm danh — render đủ hàng (không virtual) để tránh chỉ thấy ~10–15 dòng sau tối ưu.
@@ -24,8 +26,12 @@ function AttendanceListTableSection({
   isCompensatoryDay,
   t,
   attendanceRootPath = "attendance",
+  selectedDate,
 }) {
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
+  const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
+  const { balanceByMnv: annualLeaveBalanceByMnv } =
+    useAnnualLeaveBalanceMap(annualLeaveYear);
 
   const canEditByEmpId = useMemo(() => {
     const map = new Map();
@@ -50,6 +56,7 @@ function AttendanceListTableSection({
       isHolidayDay,
       isCompensatoryDay,
       isSeasonalAttendance,
+      annualLeaveBalanceByMnv,
     }),
     [
       showRowModalActions,
@@ -64,6 +71,7 @@ function AttendanceListTableSection({
       isHolidayDay,
       isCompensatoryDay,
       isSeasonalAttendance,
+      annualLeaveBalanceByMnv,
     ],
   );
 

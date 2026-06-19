@@ -36,6 +36,8 @@ import PayrollSalaryTableRow, {
   PayrollSalaryTableThead,
   PayrollSalaryVirtualHeader,
 } from "@/features/payroll/payrollSalaryTableUi";
+import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
+import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
 import { useAttendanceColumnPlan } from "@/features/attendance/useAttendanceBirthDeptColumns";
 import {
   ATTENDANCE_DAY_META_KEY,
@@ -114,6 +116,9 @@ export default function PayrollSalaryCalculator() {
     const d = searchParams.get("date");
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(d);
   }, [searchParams]);
+  const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
+  const { balanceByMnv: annualLeaveBalanceByMnv } =
+    useAnnualLeaveBalanceMap(annualLeaveYear);
   const [isOffDay, setIsOffDay] = useState(false);
   const [isHolidayDay, setIsHolidayDay] = useState(false);
   const [isCompensatoryDay, setIsCompensatoryDay] = useState(false);
@@ -1093,6 +1098,7 @@ export default function PayrollSalaryCalculator() {
                         isOffDay={isOffDay}
                         isHolidayDay={isHolidayDay}
                         isCompensatoryDay={isCompensatoryDay}
+                        annualLeaveBalanceByMnv={annualLeaveBalanceByMnv}
                       />
                     );
                   })}
@@ -1137,6 +1143,7 @@ export default function PayrollSalaryCalculator() {
                       isOffDay={isOffDay}
                       isHolidayDay={isHolidayDay}
                       isCompensatoryDay={isCompensatoryDay}
+                      annualLeaveBalanceByMnv={annualLeaveBalanceByMnv}
                     />
                   ))}
                 </tbody>

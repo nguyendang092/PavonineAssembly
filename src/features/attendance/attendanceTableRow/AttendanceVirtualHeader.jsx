@@ -277,6 +277,7 @@ function AttendanceVirtualHeader({
   /** Layout full: Ngày vào làm, trạng thái LV, mã BP (+ bộ phận ở cột riêng). */
   const showJoinWorkStatusDeptBlock = columnPlan === "full";
   const showDeptColumn = columnPlan === "full" || columnPlan === "compact";
+  const showAnnualLeaveColumn = columnPlan !== "minimal";
 
   return (
     <div
@@ -354,6 +355,19 @@ function AttendanceVirtualHeader({
           className="hidden min-w-0 items-center justify-center py-px px-1.5 text-center uppercase text-[10px] font-extrabold tracking-wide text-white md:flex md:px-2 md:py-0.5 md:text-xs"
         >
           {tl("department", "Bộ phận")}
+        </div>
+      ) : null}
+      {showAnnualLeaveColumn ? (
+        <div
+          role="columnheader"
+          className="hidden min-w-0 items-center justify-center py-px px-1.5 text-center uppercase text-[10px] font-extrabold tracking-wide text-white md:flex md:px-2 md:py-0.5 md:text-xs"
+          style={{ gridColumnStart: gcs("annualLeaveBalance") }}
+          title={tl(
+            "annualLeaveBalanceHint",
+            "Số phép còn lại (BALANCE) từ Quản lý phép năm — khớp theo MNV.",
+          )}
+        >
+          {tl("annualLeaveBalance", "Phép năm")}
         </div>
       ) : null}
       <div

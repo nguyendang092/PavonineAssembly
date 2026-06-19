@@ -12,7 +12,7 @@ function normalizePercents(widths) {
 
 /* full — … | Ngày off | Ngày lễ | Giờ công … GC ngày lễ … | Tổng GC … */
 export const PAYROLL_WIDTHS_FULL_NO_ACTIONS = [
-  2, 3, 3, 13, 4, 7, 4, 4, 4, 5, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 4, 3, 3, 3, 3,
+  2, 3, 3, 12, 4, 7, 4, 4, 4, 4, 5, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 4, 3, 3, 3, 3,
 ];
 
 /** Trọng số cột hành động (Sửa) — nối sau PAYROLL_*_NO_ACTIONS khi `showRowModalActions`. */
@@ -20,12 +20,12 @@ export const PAYROLL_WIDTH_ACTIONS = 2;
 
 /* compact */
 export const PAYROLL_WIDTHS_COMPACT_NO_ACTIONS = [
-  7, 6, 6, 14, 6, 13, 10, 5, 8, 5, 5, 5, 4, 4, 4, 4, 3, 5, 5, 5, 5, 9,
+  7, 6, 6, 13, 6, 12, 4, 10, 5, 8, 5, 5, 5, 4, 4, 4, 4, 3, 5, 5, 5, 5, 9,
 ];
 
 /* narrow (+ cột lễ) */
 export const PAYROLL_WIDTHS_NARROW_NO_ACTIONS = [
-  8, 7, 7, 18, 7, 12, 9, 5, 6, 5, 5, 5, 4, 4, 4, 3, 5, 5, 4, 12, 4,
+  8, 7, 7, 17, 7, 4, 12, 9, 5, 6, 5, 5, 5, 4, 4, 4, 3, 5, 5, 4, 12, 4,
 ];
 
 /* minimal */

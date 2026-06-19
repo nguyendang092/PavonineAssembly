@@ -36,6 +36,9 @@ const SeasonalStaffAttendance = lazyImport(
 const PayrollSalaryCalculator = lazyImport(
   () => import("@/features/payroll/PayrollSalaryCalculator"),
 );
+const AnnualLeaveManager = lazyImport(
+  () => import("@/features/leave/AnnualLeaveManager"),
+);
 
 const WorkplaceDashboardNormal = lazyImport(
   () => import("@/features/dashboard/WorkplaceDashboardNormal"),
@@ -98,6 +101,7 @@ const ROUTE_COMPONENTS = {
   AttendanceList,
   SeasonalStaffAttendance,
   PayrollSalaryCalculator,
+  AnnualLeaveManager,
   Downloads,
   UserDepartmentManager,
   PermissionCatalogPage,

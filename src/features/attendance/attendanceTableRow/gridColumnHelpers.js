@@ -15,9 +15,9 @@ function getAttendanceVisibleColumnCount(showRowModalActions, columnPlan) {
           ? "compact"
           : "full";
   const table = {
-    full: { withAct: 16, noAct: 15 },
-    compact: { withAct: 13, noAct: 12 },
-    narrow: { withAct: 12, noAct: 11 },
+    full: { withAct: 17, noAct: 16 },
+    compact: { withAct: 14, noAct: 13 },
+    narrow: { withAct: 13, noAct: 12 },
     minimal: { withAct: 6, noAct: 5 },
   };
   const row = table[plan];

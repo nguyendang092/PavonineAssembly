@@ -34,6 +34,8 @@ import { payrollDash } from "./payrollDash";
 import { PAYROLL_EMPTY_CELL, ATTENDANCE_EMPTY_CELL } from "./constants";
 import { getAttendanceGridColumnStart, attendanceGridCellStyle, cellClsForAttendanceTable } from "./gridLayout";
 import { cellClsForGrid } from "./cellClassNames";
+import { formatAnnualLeaveDecimal } from "@/features/leave/annualLeaveCalculated";
+import { getAnnualLeaveBalanceForEmployee } from "@/features/leave/annualLeaveBalanceLookup";
 import { propsAreEqual } from "./propsAreEqual";
 
 function AttendanceTableRow({
@@ -56,6 +58,7 @@ function AttendanceTableRow({
   isCompensatoryDay = false,
   tableVariant = "attendance",
   isSeasonalAttendance = false,
+  annualLeaveBalanceByMnv = {},
 }) {
   const isPayroll = tableVariant === "payroll";
   const payrollOffLike = isOffDay || isHolidayDay || isCompensatoryDay;
@@ -77,6 +80,13 @@ function AttendanceTableRow({
   const isGrid = virtualRow != null;
   const showJoinWorkStatusDeptBlock = columnPlan === "full";
   const showDeptColumn = columnPlan === "full" || columnPlan === "compact";
+  const showAnnualLeaveColumn =
+    !isMinimal && getAttendanceGridColumnStart(
+      "annualLeaveBalance",
+      columnPlan,
+      showRowModalActions,
+      tableVariant,
+    ) != null;
   const Row = isGrid ? "div" : "tr";
   const Cell = isGrid ? "div" : "td";
   const cellCls = (s) => {
@@ -116,6 +126,16 @@ function AttendanceTableRow({
   const leaveTypeCol = formatAttendanceLeaveTypeColumnForEmployee(emp);
   const leaveTypeColorClass =
     getAttendanceLeaveTypeColorClassNameForEmployee(emp);
+  const annualLeaveBalanceRaw = getAnnualLeaveBalanceForEmployee(
+    emp,
+    annualLeaveBalanceByMnv,
+  );
+  const annualLeaveBalanceCol =
+    annualLeaveBalanceRaw != null && Number.isFinite(Number(annualLeaveBalanceRaw))
+      ? formatAnnualLeaveDecimal(annualLeaveBalanceRaw)
+      : isPayroll
+        ? PAYROLL_EMPTY_CELL
+        : ATTENDANCE_EMPTY_CELL;
   const caLamViecTrimmed =
     dayFields.shiftCode != null && String(dayFields.shiftCode).trim() !== ""
       ? String(dayFields.shiftCode).trim()
@@ -268,6 +288,21 @@ function AttendanceTableRow({
         >
           <span className="block min-w-0 truncate">{deptLabel}</span>
           {deptWrongFlagEl}
+        </Cell>
+      ) : null}
+      {showAnnualLeaveColumn ? (
+        <Cell
+          role={isGrid ? "cell" : undefined}
+          style={attendanceGridCellStyle(isGrid, gcs("annualLeaveBalance"))}
+          className={cellCls(
+            "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-semibold tabular-nums text-gray-700 dark:text-slate-200",
+          )}
+          title={tl(
+            "annualLeaveBalanceHint",
+            "Số phép còn lại (BALANCE) từ Quản lý phép năm — khớp theo MNV.",
+          )}
+        >
+          {annualLeaveBalanceCol}
         </Cell>
       ) : null}
       <Cell

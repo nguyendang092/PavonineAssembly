@@ -209,6 +209,7 @@ function AttendanceTableThead({
 
   const showJoinWorkStatusDeptBlock = columnPlan === "full";
   const showDeptColumn = columnPlan === "full" || columnPlan === "compact";
+  const showAnnualLeaveColumn = columnPlan !== "minimal";
 
   return (
     <thead
@@ -282,6 +283,19 @@ function AttendanceTableThead({
             )}
           >
             {tl("department", "Bộ phận")}
+          </th>
+        ) : null}
+        {showAnnualLeaveColumn ? (
+          <th
+            className={cellClsForAttendanceTable(
+              "hidden md:table-cell px-1 md:px-1.5 py-px md:py-0.5 text-[10px] md:text-xs font-extrabold text-white uppercase tracking-wide text-center",
+            )}
+            title={tl(
+              "annualLeaveBalanceHint",
+              "Số phép còn lại (BALANCE) từ Quản lý phép năm — khớp theo MNV.",
+            )}
+          >
+            {tl("annualLeaveBalance", "Phép năm")}
           </th>
         ) : null}
         <th className="px-1 md:px-1.5 py-px md:py-0.5 text-[9px] md:text-xs font-extrabold text-white uppercase tracking-wide text-center leading-tight">

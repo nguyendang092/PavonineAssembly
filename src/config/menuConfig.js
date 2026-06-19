@@ -102,6 +102,11 @@ export const menuConfig = [
                 ],
               },
               {
+                key: "annualLeave",
+                label: "navbar.annualLeave",
+                path: "/annual-leave",
+              },
+              {
                 key: "attendanceSalary",
                 label: "navbar.attendanceSalaryTitle",
                 type: "nested",
@@ -176,6 +181,7 @@ export const routeConfig = [
   { path: "/attendance-list", element: "AttendanceList" },
   { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
   { path: "/attendance-salary", element: "PayrollSalaryCalculator" },
+  { path: "/annual-leave", element: "AnnualLeaveManager" },
   { path: "/user-department", element: "UserDepartmentManager" },
   { path: "/permission-catalog", element: "PermissionCatalogPage" },
   { path: "/email", element: "InternalAnnouncements" },

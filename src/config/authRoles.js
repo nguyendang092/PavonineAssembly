@@ -62,6 +62,11 @@ export function canManageUserDepartmentMappings(user, userRole) {
   return isAdminAccess(user, userRole);
 }
 
+/** Quản lý phép năm (upload Excel) — Admin / HR. */
+export function canManageAnnualLeave(user, userRole) {
+  return isAdminAccess(user, userRole);
+}
+
 /**
  * Xóa dòng điểm danh theo ngày:
  * chỉ Admin / HR (xem {@link isAdminAccess}), không cho vai trò manager bộ phận.

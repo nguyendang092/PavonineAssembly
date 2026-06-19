@@ -121,24 +121,24 @@ export function cellClsForAttendanceTable(s) {
 
 /** % cột — khớp `SeasonalStaffAttendance` / điểm danh (colgroup/grid). */
 const WIDTHS_WITH_ACTIONS = [
-  2, 4, 4, 14, 4, 7, 4, 4, 8, 6, 6, 6, 6, 6, 3, 3, 5, 4, 4, 4, 4, 3, 6,
+  2, 4, 4, 13, 4, 7, 4, 4, 7, 4, 6, 6, 6, 6, 6, 3, 3, 5, 4, 4, 4, 4, 3, 6,
 ];
 const WIDTHS_NO_ACTIONS = [
-  2, 4, 4, 17, 4, 4, 4, 3, 8, 6, 6, 6, 6, 5, 3, 3, 4, 4, 4, 4, 3, 7,
+  2, 4, 4, 16, 4, 4, 4, 3, 7, 4, 6, 6, 6, 6, 5, 3, 3, 4, 4, 4, 4, 3, 7,
 ];
 /** Bỏ mã BP — compact (870–1279). */
 const WIDTHS_WITH_ACTIONS_COMPACT = [
-  8, 6, 6, 11, 6, 15, 11, 5, 6, 5, 11, 3, 3, 5, 5, 4, 4, 4, 3, 7,
+  8, 6, 6, 10, 6, 14, 4, 11, 5, 6, 5, 11, 3, 3, 5, 5, 4, 4, 4, 3, 7,
 ];
 const WIDTHS_NO_ACTIONS_COMPACT = [
-  8, 6, 6, 17, 6, 15, 11, 5, 7, 5, 5, 3, 3, 5, 4, 4, 4, 3, 11,
+  8, 6, 6, 16, 6, 14, 4, 11, 5, 7, 5, 5, 3, 3, 5, 4, 4, 4, 3, 11,
 ];
 /** Thêm bỏ bộ phận — narrow (820–869). */
 const WIDTHS_NARROW_WITH_ACTIONS = [
-  9, 7, 7, 15, 7, 13, 7, 5, 13, 5, 5, 3, 3, 5, 4, 4, 4, 3, 9,
+  9, 7, 7, 14, 7, 4, 13, 7, 5, 13, 5, 5, 3, 3, 5, 4, 4, 4, 3, 9,
 ];
 const WIDTHS_NARROW_NO_ACTIONS = [
-  9, 7, 7, 22, 7, 13, 8, 5, 5, 5, 3, 3, 5, 4, 4, 4, 3, 14,
+  9, 7, 7, 21, 7, 4, 13, 8, 5, 5, 5, 3, 3, 5, 4, 4, 4, 3, 14,
 ];
 /** Chỉ MNV, họ tên, giờ vào, ca, (hành động) — &lt;820px. */
 const WIDTHS_MINIMAL_WITH_ACTIONS = [

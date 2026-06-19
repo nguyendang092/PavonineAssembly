@@ -47,6 +47,9 @@ export const workforcePayrollSharedVi = {
     "Khi ngày được đánh dấu «Ngày lễ»: hiển thị HOLIDAY.",
   leaveTypeColumn: "Loại phép",
   workShift: "Ca làm việc",
+  annualLeaveBalance: "Phép năm",
+  annualLeaveBalanceHint:
+    "Số phép còn lại (BALANCE) từ Quản lý phép năm — khớp theo MNV.",
   holidayDayWorkingHours: "Giờ công ngày lễ (X3.0)",
   payrollOffDayTcHint:
     "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô; cột TC ca ngày là «-».",
@@ -93,6 +96,9 @@ export const workforcePayrollSharedKo = {
   holidayDayColumnHint: "«공휴일»로 지정된 날: HOLIDAY 표시.",
   leaveTypeColumn: "휴가 유형",
   workShift: "근무조",
+  annualLeaveBalance: "연차",
+  annualLeaveBalanceHint:
+    "연차 관리 BALANCE — 사번(MNV)으로 매칭.",
   holidayDayWorkingHours: "공휴일 근무 (×3.0)",
   payrollOffDayTcHint:
     "휴무일+주간: 근무시간+연장을 한 칸에 합산. 연장 열은 «-».",
