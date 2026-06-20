@@ -30,13 +30,31 @@ function notifyEntry(entry) {
   entry.listeners.forEach((listener) => listener());
 }
 
-function attendanceYearQuery(attendanceRootPath, year) {
+function attendanceScopeKey(year, throughDateKey) {
   const y = String(year);
+  if (
+    throughDateKey &&
+    String(throughDateKey).startsWith(`${y}-`) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(String(throughDateKey))
+  ) {
+    return String(throughDateKey);
+  }
+  return "full";
+}
+
+function attendanceYearEntryKey(attendanceRootPath, year, throughDateKey = null) {
+  return `${attendanceRootPath}:${year}:${attendanceScopeKey(year, throughDateKey)}`;
+}
+
+function attendanceYearQuery(attendanceRootPath, year, throughDateKey = null) {
+  const y = String(year);
+  const scope = attendanceScopeKey(year, throughDateKey);
+  const endAtKey = scope === "full" ? `${y}-12-31\uf8ff` : scope;
   return query(
     ref(db, attendanceRootPath),
     orderByKey(),
     startAt(`${y}-01-01`),
-    endAt(`${y}-12-31\uf8ff`),
+    endAt(endAtKey),
   );
 }
 
@@ -49,12 +67,20 @@ function attachAnnualLeaveYear(entry, year) {
   });
 }
 
-function attachAttendanceYear(entry, attendanceRootPath, year) {
-  return onValue(attendanceYearQuery(attendanceRootPath, year), (snapshot) => {
-    entry.data = snapshot.val();
-    entry.ready = true;
-    notifyEntry(entry);
-  });
+function attachAttendanceYear(
+  entry,
+  attendanceRootPath,
+  year,
+  throughDateKey = null,
+) {
+  return onValue(
+    attendanceYearQuery(attendanceRootPath, year, throughDateKey),
+    (snapshot) => {
+      entry.data = snapshot.val();
+      entry.ready = true;
+      notifyEntry(entry);
+    },
+  );
 }
 
 function subscribeMapEntry(map, key, attach, onChange) {
@@ -89,13 +115,23 @@ export function isAnnualLeaveYearSnapshotReady(year) {
 }
 
 /** @returns {object | null} */
-export function getAttendanceYearSnapshot(attendanceRootPath, year) {
-  const entry = attendanceYearEntries.get(`${attendanceRootPath}:${year}`);
+export function getAttendanceYearSnapshot(
+  attendanceRootPath,
+  year,
+  throughDateKey = null,
+) {
+  const key = attendanceYearEntryKey(attendanceRootPath, year, throughDateKey);
+  const entry = attendanceYearEntries.get(key);
   return entry?.ready ? entry.data : null;
 }
 
-export function isAttendanceYearSnapshotReady(attendanceRootPath, year) {
-  const entry = attendanceYearEntries.get(`${attendanceRootPath}:${year}`);
+export function isAttendanceYearSnapshotReady(
+  attendanceRootPath,
+  year,
+  throughDateKey = null,
+) {
+  const key = attendanceYearEntryKey(attendanceRootPath, year, throughDateKey);
+  const entry = attendanceYearEntries.get(key);
   return entry?.ready ?? false;
 }
 
@@ -111,12 +147,18 @@ export function subscribeAnnualLeaveYear(year, onChange) {
 }
 
 /** @returns {() => void} */
-export function subscribeAttendanceYear(attendanceRootPath, year, onChange) {
-  const key = `${attendanceRootPath}:${year}`;
+export function subscribeAttendanceYear(
+  attendanceRootPath,
+  year,
+  onChange,
+  throughDateKey = null,
+) {
+  const key = attendanceYearEntryKey(attendanceRootPath, year, throughDateKey);
   return subscribeMapEntry(
     attendanceYearEntries,
     key,
-    (entry) => attachAttendanceYear(entry, attendanceRootPath, year),
+    (entry) =>
+      attachAttendanceYear(entry, attendanceRootPath, year, throughDateKey),
     onChange,
   );
 }

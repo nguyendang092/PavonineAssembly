@@ -4,7 +4,12 @@ import {
   getAttendanceLeaveTypeRaw,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { isAttendanceDayMetaKey } from "@/features/attendance/attendanceDayMeta";
-import { isAttendanceDateCountedForAnnualLeave, listAnnualLeaveDetailDisplayMonths } from "./annualLeaveFields";
+import {
+  isAttendanceDateCountedForAnnualLeave,
+  isAttendanceDateDisplayOnlyForAnnualLeave,
+  listAnnualLeaveDetailDisplayMonths,
+  listAnnualLeavePreCountDisplayMonthKeys,
+} from "./annualLeaveFields";
 import {
   annualLeaveEmpFirebaseKey,
   annualLeaveFirebaseKeyForMnv,
@@ -109,14 +114,64 @@ export function buildAttendanceAnnualLeaveDeductionsByMnv(
   return map;
 }
 
-function emptyAnnualLeaveUsageMonth(yearMonth) {
+function emptyAnnualLeaveUsageMonth(yearMonth, { displayOnly = false } = {}) {
   return {
     yearMonth,
     pnCount: 0,
     halfPnCount: 0,
     totalDeduction: 0,
     days: [],
+    displayOnly,
   };
+}
+
+function ensureAnnualLeaveUsageMonth(empDetail, yearMonth, displayOnly = false) {
+  if (!empDetail.months[yearMonth]) {
+    empDetail.months[yearMonth] = emptyAnnualLeaveUsageMonth(yearMonth, {
+      displayOnly,
+    });
+  } else if (displayOnly) {
+    empDetail.months[yearMonth].displayOnly = true;
+  }
+  return empDetail.months[yearMonth];
+}
+
+function recordAnnualLeaveUsageDay(
+  empDetail,
+  monthDetail,
+  dateKey,
+  type,
+  deduction,
+  displayOnly,
+) {
+  if (displayOnly) {
+    monthDetail.displayOnly = true;
+    if (deduction === 1) monthDetail.pnCount += 1;
+    else monthDetail.halfPnCount += 1;
+    monthDetail.days.push({
+      dateKey,
+      type,
+      deduction,
+      displayOnly: true,
+    });
+    return;
+  }
+
+  if (deduction === 1) {
+    empDetail.totalPn += 1;
+    monthDetail.pnCount += 1;
+  } else {
+    empDetail.totalHalfPn += 1;
+    monthDetail.halfPnCount += 1;
+  }
+
+  empDetail.totalDeduction = roundAnnualLeaveHours(
+    empDetail.totalDeduction + deduction,
+  );
+  monthDetail.totalDeduction = roundAnnualLeaveHours(
+    monthDetail.totalDeduction + deduction,
+  );
+  monthDetail.days.push({ dateKey, type, deduction });
 }
 
 function fillAnnualLeaveUsageDetailMonths(empDetail, year, filterOrYearMonth) {
@@ -124,7 +179,6 @@ function fillAnnualLeaveUsageDetailMonths(empDetail, year, filterOrYearMonth) {
     filterOrYearMonth,
   );
   const monthKeys = listAnnualLeaveDetailDisplayMonths(year, throughDateKey);
-  if (!monthKeys.length) return;
 
   const monthList = Array.isArray(empDetail.months)
     ? empDetail.months
@@ -134,22 +188,41 @@ function fillAnnualLeaveUsageDetailMonths(empDetail, year, filterOrYearMonth) {
     byMonth[month.yearMonth] = month;
   }
 
-  empDetail.months = monthKeys.map(
+  const countedRows = monthKeys.map(
     (yearMonth) => byMonth[yearMonth] ?? emptyAnnualLeaveUsageMonth(yearMonth),
   );
+
+  const preCountRows = listAnnualLeavePreCountDisplayMonthKeys(year)
+    .filter((yearMonth) => byMonth[yearMonth]?.days?.length > 0)
+    .map((yearMonth) => {
+      const month = byMonth[yearMonth];
+      return {
+        ...month,
+        displayOnly: true,
+        totalDeduction: 0,
+      };
+    });
+
+  empDetail.months = [...countedRows, ...preCountRows];
 }
 
 /**
  * Chi tiết PN / 1/2PN theo tháng từ điểm danh — map `emp_{mnv}` → breakdown.
  * Filter giống `buildAttendanceAnnualLeaveDeductionsByMnv`.
+ * `targetEmpKey`: chỉ build một `emp_{mnv}` (tối ưu modal chi tiết).
  */
 export function buildAttendanceAnnualLeaveUsageDetailByEmpKey(
   attendanceRootData,
   year,
   filterOrYearMonth = null,
+  targetEmpKey = null,
 ) {
   const { yearMonthPrefix = null, throughDateKey = null } =
     normalizeAttendanceLeaveDeductionFilter(filterOrYearMonth);
+  const targetKey =
+    targetEmpKey && String(targetEmpKey).trim()
+      ? String(targetEmpKey).trim()
+      : null;
 
   const map = {};
   if (!attendanceRootData || typeof attendanceRootData !== "object") return map;
@@ -172,7 +245,10 @@ export function buildAttendanceAnnualLeaveUsageDetailByEmpKey(
     if (!dateKey.startsWith(yearPrefix)) continue;
     if (monthPrefix && !dateKey.startsWith(monthPrefix)) continue;
     if (through && dateKey > through) continue;
-    if (!isAttendanceDateCountedForAnnualLeave(dateKey, year)) continue;
+
+    const counted = isAttendanceDateCountedForAnnualLeave(dateKey, year);
+    const displayOnly = isAttendanceDateDisplayOnlyForAnnualLeave(dateKey, year);
+    if (!counted && !displayOnly) continue;
     if (!dayData || typeof dayData !== "object") continue;
 
     for (const [empKey, rawEmp] of Object.entries(dayData)) {
@@ -188,6 +264,7 @@ export function buildAttendanceAnnualLeaveUsageDetailByEmpKey(
 
       const firebaseKey = annualLeaveEmpFirebaseKey(mnvKey);
       if (!firebaseKey) continue;
+      if (targetKey && firebaseKey !== targetKey) continue;
 
       const type = deduction === 1 ? "PN" : "1/2PN";
       const yearMonth = dateKey.slice(0, 7);
@@ -202,32 +279,19 @@ export function buildAttendanceAnnualLeaveUsageDetailByEmpKey(
       }
 
       const empDetail = map[firebaseKey];
-      if (!empDetail.months[yearMonth]) {
-        empDetail.months[yearMonth] = {
-          yearMonth,
-          pnCount: 0,
-          halfPnCount: 0,
-          totalDeduction: 0,
-          days: [],
-        };
-      }
-
-      const monthDetail = empDetail.months[yearMonth];
-      if (deduction === 1) {
-        empDetail.totalPn += 1;
-        monthDetail.pnCount += 1;
-      } else {
-        empDetail.totalHalfPn += 1;
-        monthDetail.halfPnCount += 1;
-      }
-
-      empDetail.totalDeduction = roundAnnualLeaveHours(
-        empDetail.totalDeduction + deduction,
+      const monthDetail = ensureAnnualLeaveUsageMonth(
+        empDetail,
+        yearMonth,
+        displayOnly,
       );
-      monthDetail.totalDeduction = roundAnnualLeaveHours(
-        monthDetail.totalDeduction + deduction,
+      recordAnnualLeaveUsageDay(
+        empDetail,
+        monthDetail,
+        dateKey,
+        type,
+        deduction,
+        displayOnly,
       );
-      monthDetail.days.push({ dateKey, type, deduction });
     }
   }
 
@@ -239,6 +303,23 @@ export function buildAttendanceAnnualLeaveUsageDetailByEmpKey(
   }
 
   return map;
+}
+
+/** Chi tiết một nhân viên — tránh build map cho cả năm. */
+export function buildAttendanceAnnualLeaveUsageDetailForEmpKey(
+  attendanceRootData,
+  year,
+  empKey,
+  filterOrYearMonth = null,
+) {
+  if (!empKey) return null;
+  const map = buildAttendanceAnnualLeaveUsageDetailByEmpKey(
+    attendanceRootData,
+    year,
+    filterOrYearMonth,
+    empKey,
+  );
+  return map[empKey] ?? null;
 }
 
 /** Tra BALANCE theo `emp_{mnv}`. */

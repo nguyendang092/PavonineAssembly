@@ -128,6 +128,10 @@ const vi = {
     exportError: "Không xuất được file Excel.",
     lastUpdated: "Cập nhật lần cuối",
     linkToAttendanceListShort: "Điểm danh NV",
+    noUsageDetail: "Không có ngày PN / 1/2 PN từ điểm danh trong tháng này.",
+    displayOnlyMonthTag: "Chỉ hiển thị",
+    viewUsageDetail: "Chi tiết PN / 1/2 PN",
+    monthlyBreakdownHint: "PN −1 · 1/2 PN −0,5",
   },
   mcDefectReport: {
     badge: "Sản xuất / MC",
@@ -1039,8 +1043,7 @@ const vi = {
     timeOutClearHint: "Xóa thời gian ra (để trống)",
     dayOffToggle: "Ngày off",
     dayOffToolbarButton: "Ngày",
-    dayOffToolbarHint:
-      "Mở danh sách ngày off và ngày lễ trong tháng; chỉnh sửa trong cửa sổ đầy đủ.",
+    dayOffToolbarHint: "Off / lễ / nghỉ bù trong tháng.",
     dayOffToolbarTitleDates: "Ngày off trong tháng (YYYY-MM-DD):",
     dayOffToolbarTitleHolidayDates: "Ngày lễ trong tháng (YYYY-MM-DD):",
     dayOffToolbarTitleCompensatoryDates:
@@ -1049,8 +1052,7 @@ const vi = {
     dayOffToolbarMonthPrefix: "Trong tháng:",
     dayOffToolbarNoOffInMonth: "Chưa có ngày off nào trong tháng này.",
     dayOffMultiModalTitle: "Chọn nhiều ngày off / lễ / nghỉ bù",
-    dayOffMultiModalHint:
-      "Chọn loại ngày (off, lễ hoặc nghỉ bù), thêm ngày vào danh sách rồi Lưu. Off → OFF; lễ → HOLIDAY; nghỉ bù → NB (công/lương như ngày off).",
+    dayOffMultiModalHint: "Chọn loại, thêm ngày, Lưu.",
     dayOffMultiAddDate: "Thêm",
     dayOffMultiAddCurrent: "Thêm ngày đang xem ({{date}})",
     dayOffMultiEmpty:
@@ -1061,7 +1063,7 @@ const vi = {
     dayOffMultiSaving: "Đang lưu…",
     dayOffMultiLoadingList: "Đang tải các ngày off / lễ / nghỉ bù trong tháng…",
     dayOffToggleHint:
-      "Bật khi ngày đó là ngày nghỉ/off: trên bảng lương, ca ngày hiển thị giờ làm quy đổi ở cột TC off (cùng quy tắc điểm danh); cột Giờ công là «-». Ngày không off: giờ công ở cột Giờ công. Ca đêm: GC nằm ở cột GC ca đêm / GC ca đêm off.",
+      "Bật = ngày off. Off: GC ở TC off, cột GC «-». Ca đêm: cột GC/TC đêm.",
     dayOffHolidayDropdownTrigger: "Ngày OFF / LỄ / NGHỈ BÙ",
     dayOffDropdownSelectedLabel: "Ngày đang xem",
     dayKindNormal: "Ngày bình thường",
@@ -1141,10 +1143,9 @@ const vi = {
     viewEmployeeAttendance: "Xem điểm danh",
     attendanceDateLabel: "Ngày điểm danh",
     viewOnlyAttendanceHint: "Chế độ chỉ xem — không thể chỉnh sửa hoặc lưu.",
-    restrictedEditManagerHint:
-      "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù và Chế độ nhân viên.",
+    restrictedEditManagerHint: "Chỉ sửa: loại phép, ca, nghỉ bù, chế độ NV.",
     restrictedEditManagerHintWithLunchOt:
-      "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù, Chế độ nhân viên và Tăng ca trưa.",
+      "Chỉ sửa: loại phép, ca, nghỉ bù, chế độ NV, TC trưa.",
     addEmployee: "Thêm nhân viên mới",
     employeeRegimeField: "Chế độ nhân viên",
     employeeRegimePlaceholder: "— Chọn —",
@@ -1173,7 +1174,7 @@ const vi = {
     yearLeaveNote: "Lưu ý: Phép năm chưa tính tháng hiện tại.",
     monthlyDiligence: "Chuyên cần",
     monthlyDiligenceTooltip:
-      "Tỉ lệ theo tháng của ngày đang chọn: tháng này chỉ tính đến hôm nay; tháng đã qua tính trọn tháng. Ngày làm kỳ vọng: T2–T6 + Thứ 7 (trừ 2 Thứ 7 nghỉ bổ sung); CN không tính. Thai sản: mỗi ngày có Giờ vào Thai sản/TS, hoặc cột PN/chấm công (ngày đó) ghi Thai sản, thì ngày đó không vào chuyên cần. Chỉ ghi Phép năm khi nghỉ thai sản vẫn được tính đủ điểm PN — nên ghi Thai sản hoặc ghi rõ trên PN/chấm công. Cột phép năm (tổng) ghi Thai sản thì ẩn cột chuyên cần. PN/TN/PO đủ điểm; trễ giảm nhẹ; KL/KP/vắng = 0.",
+      "Chuyên cần tháng của ngày chọn. T2–T6 + T7 (trừ 2 T7 nghỉ bù); CN không tính. Thai sản/TS: không tính. PN/TN/PO đủ; trễ giảm; KL/KP = 0.",
     monthlyDiligenceNote:
       "Chuyên cần: tháng của ngày đang chọn — tháng hiện tại chỉ tính đến hôm nay.",
     monthlyDiligenceExcludedMaternity:
@@ -1202,8 +1203,7 @@ const vi = {
     overtimeFormTitle: "Biểu mẫu đăng ký tăng ca",
     exportExcelDateRange: "Xuất Excel từ ngày … đến ngày …",
     exportRangeModalTitle: "Xuất Excel theo khoảng ngày",
-    exportRangeModalHint:
-      "Dữ liệu mỗi ngày được gộp hồ sơ giống màn hình điểm danh. Bộ lọc tìm kiếm, bộ phận, giới tính và trạng thái chấm công hiện tại cũng áp dụng cho từng ngày trong file.",
+    exportRangeModalHint: "Gộp theo ngày; áp dụng bộ lọc hiện tại.",
     exportRangeFromLabel: "Từ ngày",
     exportRangeToLabel: "Đến ngày",
     exportRangeWorking: "Đang tải…",
@@ -1224,8 +1224,7 @@ const vi = {
   },
   salaryCalc: {
     pageTitle: "Xem giờ công",
-    pageSubtitle:
-      "Cùng dữ liệu với Điểm danh NV; cột Sửa mở form cập nhật tại đây — lưu Firebase đồng bộ mọi nơi dùng MNV.",
+    pageSubtitle: "Xem giờ công và giờ công tăng ca trong tháng .",
     table: {
       ...workforcePayrollSharedVi,
     },

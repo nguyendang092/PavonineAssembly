@@ -1,18 +1,17 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useEffect, useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import AttendanceTableRow, {
   AttendanceTableColgroup,
   AttendanceTableThead,
+  ATTENDANCE_VIRTUAL_THRESHOLD,
+  AttendanceVirtualHeader,
+  getAttendanceGridTemplateColumns,
 } from "./attendanceTableRow";
 import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
-import {
-  annualLeaveYearFromDateKey,
-} from "@/features/leave/annualLeaveBalanceLookup";
+import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
 
-/**
- * Bảng điểm danh — render đủ hàng (không virtual) để tránh chỉ thấy ~10–15 dòng sau tối ưu.
- */
 function AttendanceListTableSection({
   columnPlan,
   deferredFilteredEmployees,
@@ -34,12 +33,44 @@ function AttendanceListTableSection({
   const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
   const {
     balanceByMnv: annualLeaveBalanceByMnv,
-    usageDetailByEmpKey: annualLeaveUsageDetailByEmpKey,
     yearData: annualLeaveYearData,
   } = useAnnualLeaveBalanceMap(annualLeaveYear, {
     attendanceRootPath,
     throughDateKey: selectedDate,
   });
+
+  const shouldVirtualizeTable =
+    deferredFilteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
+
+  const tableScrollParentRef = useRef(null);
+
+  const attendanceGridTemplateColumns = useMemo(
+    () =>
+      getAttendanceGridTemplateColumns(
+        showRowModalActions,
+        columnPlan,
+        "attendance",
+      ),
+    [showRowModalActions, columnPlan],
+  );
+
+  const rowVirtualizer = useVirtualizer({
+    count: shouldVirtualizeTable ? deferredFilteredEmployees.length : 0,
+    getScrollElement: () => tableScrollParentRef.current,
+    estimateSize: () => 34,
+    overscan: 12,
+  });
+
+  useEffect(() => {
+    if (!shouldVirtualizeTable) return;
+    rowVirtualizer.measure();
+  }, [
+    shouldVirtualizeTable,
+    deferredFilteredEmployees.length,
+    columnPlan,
+    showRowModalActions,
+    rowVirtualizer,
+  ]);
 
   const canEditByEmpId = useMemo(() => {
     const map = new Map();
@@ -65,9 +96,10 @@ function AttendanceListTableSection({
       isCompensatoryDay,
       isSeasonalAttendance,
       annualLeaveBalanceByMnv,
-      annualLeaveUsageDetailByEmpKey,
       annualLeaveYear,
       annualLeaveYearData,
+      annualLeaveThroughDateKey: selectedDate,
+      annualLeaveAttendanceRootPath: attendanceRootPath,
     }),
     [
       showRowModalActions,
@@ -83,20 +115,71 @@ function AttendanceListTableSection({
       isCompensatoryDay,
       isSeasonalAttendance,
       annualLeaveBalanceByMnv,
-      annualLeaveUsageDetailByEmpKey,
       annualLeaveYear,
       annualLeaveYearData,
+      selectedDate,
+      attendanceRootPath,
     ],
   );
 
+  const outerScrollClass =
+    columnPlan === "minimal"
+      ? "overflow-x-hidden"
+      : "overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]";
+
+  if (shouldVirtualizeTable) {
+    return (
+      <div className={`min-w-0 w-full max-w-none bg-white ${outerScrollClass}`}>
+        <div
+          ref={tableScrollParentRef}
+          className="max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
+        >
+          <div
+            className={`w-full max-w-none ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
+            role="table"
+          >
+            <AttendanceVirtualHeader
+              tl={tl}
+              showRowModalActions={showRowModalActions}
+              gridTemplateColumns={attendanceGridTemplateColumns}
+              canDeleteRow={canDeleteDayRecord}
+              columnPlan={columnPlan}
+              tableVariant="attendance"
+            />
+            <div
+              role="rowgroup"
+              className="w-full"
+              style={{
+                position: "relative",
+                height: `${rowVirtualizer.getTotalSize()}px`,
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const emp = deferredFilteredEmployees[virtualRow.index];
+                const idx = virtualRow.index;
+                const rowKey = emp.id ?? emp.mnv ?? `row-${idx}`;
+                return (
+                  <AttendanceTableRow
+                    key={rowKey}
+                    emp={emp}
+                    idx={idx}
+                    virtualRow={virtualRow}
+                    canEdit={canEditByEmpId.get(rowKey) ?? false}
+                    measureElementRef={rowVirtualizer.measureElement}
+                    gridTemplateColumns={attendanceGridTemplateColumns}
+                    {...sharedRowProps}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={`min-w-0 w-full max-w-none bg-white ${
-        columnPlan === "minimal"
-          ? "overflow-x-hidden"
-          : "overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
-      }`}
-    >
+    <div className={`min-w-0 w-full max-w-none bg-white ${outerScrollClass}`}>
       <table
         className={`w-full max-w-none table-fixed border-collapse ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
       >

@@ -30,6 +30,9 @@ export const ANNUAL_LEAVE_ATTENDANCE_COUNT_START_BY_YEAR = {
   2026: "2026-06-01",
 };
 
+/** Năm nhỏ nhất trong dropdown quản lý phép năm. */
+export const ANNUAL_LEAVE_MANAGER_MIN_YEAR = 2026;
+
 /** ISO `yyyy-mm-dd` — ngày đầu tiên được trừ phép từ điểm danh trong năm. */
 export function annualLeaveAttendanceCountStartDate(year) {
   const y = Number(year);
@@ -49,6 +52,42 @@ export function isAttendanceDateCountedForAnnualLeave(dateKey, year) {
   const y = Number(year);
   if (!Number.isFinite(y) || !dateKey.startsWith(`${y}-`)) return false;
   return dateKey >= start;
+}
+
+/** Trước ngày bắt đầu tính (vd. thử nghiệm) — chỉ hiển thị trong chi tiết, không trừ phép. */
+export function isAttendanceDateDisplayOnlyForAnnualLeave(dateKey, year) {
+  if (!dateKey || typeof dateKey !== "string") return false;
+  const start = annualLeaveAttendanceCountStartDate(year);
+  if (!start) return false;
+  const y = Number(year);
+  if (!Number.isFinite(y) || !dateKey.startsWith(`${y}-`)) return false;
+  return dateKey < start;
+}
+
+function nextYearMonth(yearMonth) {
+  const y = Number(yearMonth.slice(0, 4));
+  const m = Number(yearMonth.slice(5, 7));
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return yearMonth;
+  if (m >= 12) return `${y + 1}-01`;
+  return `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
+/** Các tháng trước kỳ tính phép (mới → cũ), vd. 2026: 05…01. */
+export function listAnnualLeavePreCountDisplayMonthKeys(year) {
+  const start = annualLeaveAttendanceCountStartDate(year);
+  const y = Number(year);
+  if (!start || !Number.isFinite(y)) return [];
+
+  const startYearMonth = start.slice(0, 7);
+  const months = [];
+  let cursor = `${y}-01`;
+
+  while (cursor < startYearMonth) {
+    months.push(cursor);
+    cursor = nextYearMonth(cursor);
+  }
+
+  return months.reverse();
 }
 
 /** Các tháng `yyyy-mm` từ ngày bắt đầu tính đến `throughDateKey` hoặc cuối năm. */

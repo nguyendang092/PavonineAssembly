@@ -42,22 +42,34 @@ function useAnnualLeaveYearExternal(year, enabled) {
   return { data, ready };
 }
 
-function useAttendanceYearExternal(attendanceRootPath, year, skipAttendance) {
+function useAttendanceYearExternal(
+  attendanceRootPath,
+  year,
+  skipAttendance,
+  throughDateKey = null,
+) {
   const subscribe = useMemo(() => {
     if (skipAttendance) return () => () => {};
     return (onChange) =>
-      subscribeAttendanceYear(attendanceRootPath, year, onChange);
-  }, [attendanceRootPath, year, skipAttendance]);
+      subscribeAttendanceYear(
+        attendanceRootPath,
+        year,
+        onChange,
+        throughDateKey,
+      );
+  }, [attendanceRootPath, year, skipAttendance, throughDateKey]);
 
   const getSnapshot = useMemo(() => {
     if (skipAttendance) return () => null;
-    return () => getAttendanceYearSnapshot(attendanceRootPath, year);
-  }, [attendanceRootPath, year, skipAttendance]);
+    return () =>
+      getAttendanceYearSnapshot(attendanceRootPath, year, throughDateKey);
+  }, [attendanceRootPath, year, skipAttendance, throughDateKey]);
 
   const getReady = useMemo(() => {
     if (skipAttendance) return () => true;
-    return () => isAttendanceYearSnapshotReady(attendanceRootPath, year);
-  }, [attendanceRootPath, year, skipAttendance]);
+    return () =>
+      isAttendanceYearSnapshotReady(attendanceRootPath, year, throughDateKey);
+  }, [attendanceRootPath, year, skipAttendance, throughDateKey]);
 
   const data = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const ready = useSyncExternalStore(subscribe, getReady, getReady);
@@ -78,6 +90,8 @@ export function useAnnualLeaveLiveData(
     enabled = true,
     throughDateKey = null,
     yearMonthPrefix = null,
+    includeUsageDetail = true,
+    includeBalanceMap = true,
   } = {},
 ) {
   const skipAttendance = !enabled || isSeasonalAttendanceRoot(attendanceRootPath);
@@ -87,7 +101,12 @@ export function useAnnualLeaveLiveData(
     enabled,
   );
   const { data: attendanceRoot, ready: attendanceReady } =
-    useAttendanceYearExternal(attendanceRootPath, year, skipAttendance);
+    useAttendanceYearExternal(
+      attendanceRootPath,
+      year,
+      skipAttendance,
+      throughDateKey,
+    );
 
   const deductionFilter = useMemo(() => {
     if (throughDateKey) return { throughDateKey };
@@ -108,26 +127,36 @@ export function useAnnualLeaveLiveData(
   );
 
   const balanceByMnv = useMemo(
-    () => buildLiveAnnualLeaveBalanceByMnv(yearData, deductionsByEmpKey),
-    [yearData, deductionsByEmpKey],
+    () =>
+      skipAttendance || !includeBalanceMap
+        ? {}
+        : buildLiveAnnualLeaveBalanceByMnv(yearData, deductionsByEmpKey),
+    [yearData, deductionsByEmpKey, skipAttendance, includeBalanceMap],
   );
 
   const usageDetailByEmpKey = useMemo(
     () =>
-      skipAttendance
+      skipAttendance || !includeUsageDetail
         ? {}
         : buildAttendanceAnnualLeaveUsageDetailByEmpKey(
             attendanceRoot,
             year,
             deductionFilter,
           ),
-    [attendanceRoot, year, deductionFilter, skipAttendance],
+    [
+      attendanceRoot,
+      year,
+      deductionFilter,
+      skipAttendance,
+      includeUsageDetail,
+    ],
   );
 
   const loading = !yearReady || (!skipAttendance && !attendanceReady);
 
   return {
     yearData,
+    attendanceRoot: skipAttendance ? null : attendanceRoot,
     deductionsByEmpKey,
     balanceByMnv,
     usageDetailByEmpKey,

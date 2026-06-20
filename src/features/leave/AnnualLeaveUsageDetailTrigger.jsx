@@ -1,26 +1,76 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { buildAttendanceAnnualLeaveUsageDetailForEmpKey } from "./annualLeaveBalanceLookup";
 import { annualLeaveEmpFirebaseKey } from "./annualLeaveEmpKey";
 import { buildAnnualLeaveDetailModalRowFromEmp } from "./annualLeaveModalRowFromEmp";
+import {
+  getAttendanceYearSnapshot,
+  subscribeAttendanceYear,
+} from "./annualLeaveLiveStore";
 import AnnualLeaveUsageDetailModal from "./AnnualLeaveUsageDetailModal";
 import "./annualLeaveManager.css";
 
 function AnnualLeaveUsageDetailTrigger({
   emp,
-  usageDetailByEmpKey = {},
   year,
   yearData = null,
+  attendanceRootPath = "attendance",
+  throughDateKey = null,
   className = "",
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState(null);
 
   const empKey = annualLeaveEmpFirebaseKey(emp?.mnv);
   const row = useMemo(
     () => buildAnnualLeaveDetailModalRowFromEmp(emp, yearData),
     [emp, yearData],
   );
-  const detail = empKey ? usageDetailByEmpKey[empKey] : null;
+
+  const detailFilter = useMemo(
+    () => (throughDateKey ? { throughDateKey } : null),
+    [throughDateKey],
+  );
+
+  useEffect(() => {
+    if (!open || !empKey) {
+      setDetail(null);
+      return;
+    }
+
+    const rebuild = () => {
+      const attendanceRoot = getAttendanceYearSnapshot(
+        attendanceRootPath,
+        year,
+        throughDateKey,
+      );
+      if (!attendanceRoot) return;
+      setDetail(
+        buildAttendanceAnnualLeaveUsageDetailForEmpKey(
+          attendanceRoot,
+          year,
+          empKey,
+          detailFilter,
+        ),
+      );
+    };
+
+    rebuild();
+    return subscribeAttendanceYear(
+      attendanceRootPath,
+      year,
+      rebuild,
+      throughDateKey,
+    );
+  }, [
+    open,
+    empKey,
+    attendanceRootPath,
+    year,
+    throughDateKey,
+    detailFilter,
+  ]);
 
   if (!empKey) return null;
 
@@ -30,12 +80,8 @@ function AnnualLeaveUsageDetailTrigger({
         type="button"
         className={`annual-leave-inline-detail-btn ${className}`.trim()}
         onClick={() => setOpen(true)}
-        title={t("annualLeave.viewUsageDetail", {
-          defaultValue: "View PN / 1/2 PN detail",
-        })}
-        aria-label={t("annualLeave.viewUsageDetail", {
-          defaultValue: "View PN / 1/2 PN detail",
-        })}
+        title={t("annualLeave.viewUsageDetail")}
+        aria-label={t("annualLeave.viewUsageDetail")}
       >
         <svg
           className="annual-leave-inline-detail-btn-icon"

@@ -126,6 +126,11 @@ const ko = {
     exportError: "Excel보내기 실패.",
     lastUpdated: "최종 업데이트",
     linkToAttendanceListShort: "출석 체크",
+    noUsageDetail:
+      "이번 달 출석에서 PN / 1/2 PN 일자가 없습니다.",
+    displayOnlyMonthTag: "표시만",
+    viewUsageDetail: "PN / 1/2 PN 상세",
+    monthlyBreakdownHint: "PN −1 · 1/2 PN −0.5",
   },
   mcDefectReport: {
     badge: "생산 / MC",
@@ -1036,8 +1041,7 @@ const ko = {
     timeOutClearHint: "퇴근 시간 비우기",
     dayOffToggle: "휴무일",
     dayOffToolbarButton: "휴무일(여러 날)",
-    dayOffToolbarHint:
-      "이번 달 휴무·공휴·대체휴가 목록을 열고 전체 편집 모달에서 수정합니다.",
+    dayOffToolbarHint: "이번 달 휴무·공휴·대체휴가.",
     dayOffToolbarTitleDates: "이번 달 휴무일 (YYYY-MM-DD):",
     dayOffToolbarTitleHolidayDates: "이번 달 공휴일 (YYYY-MM-DD):",
     dayOffToolbarTitleCompensatoryDates: "이번 달 대체 휴가 (YYYY-MM-DD):",
@@ -1045,8 +1049,7 @@ const ko = {
     dayOffToolbarMonthPrefix: "이번 달:",
     dayOffToolbarNoOffInMonth: "이번 달에 지정된 휴무일이 없습니다.",
     dayOffMultiModalTitle: "휴무일 / 공휴일 / 대체휴가 선택",
-    dayOffMultiModalHint:
-      "날짜 유형(휴무·공휴·대체)을 선택하고 목록에 추가한 뒤 저장하세요. 휴무→OFF, 공휴→HOLIDAY, 대체→NB(휴무일과 동일 규칙).",
+    dayOffMultiModalHint: "유형 선택, 날짜 추가, 저장.",
     dayOffMultiAddDate: "추가",
     dayOffMultiAddCurrent: "현재 보는 날 추가 ({{date}})",
     dayOffMultiEmpty:
@@ -1058,7 +1061,7 @@ const ko = {
     dayOffMultiLoadingList:
       "이번 달 휴무·공휴·대체휴가 불러오는 중…",
     dayOffToggleHint:
-      "해당 일이 휴무일일 때: 주간 근무는 휴무일 연장 열에 환산 근무시간(출석 규칙과 동일), 근무시간 열은 «-». 휴무일이 아니면 근무시간 열에 표시. 야간은 야간 근무/휴무일 야간 열.",
+      "휴무일: 주간 GC는 휴무 연장 열, 근무시간 «-». 야간은 야간 열.",
     dayOffHolidayDropdownTrigger: "휴무일 / 공휴일 / 대체휴가",
     dayOffDropdownSelectedLabel: "선택한 날짜",
     dayKindNormal: "평일",
@@ -1151,10 +1154,9 @@ const ko = {
     viewEmployeeAttendance: "출근 정보 보기",
     attendanceDateLabel: "출근일",
     viewOnlyAttendanceHint: "보기 전용 — 수정·저장할 수 없습니다.",
-    restrictedEditManagerHint:
-      "휴가 유형, 근무조, 보상휴무, 직원 유형만 수정할 수 있습니다.",
+    restrictedEditManagerHint: "휴가·조·대체휴가·직원 유형만 수정.",
     restrictedEditManagerHintWithLunchOt:
-      "휴가 유형, 근무조, 보상휴무, 직원 유형, 점심 연장만 수정할 수 있습니다.",
+      "휴가·조·대체휴가·직원 유형·점심 연장만 수정.",
     addEmployee: "신규 직원 추가",
     employeeRegimeField: "직원 유형",
     employeeRegimePlaceholder: "— 선택 —",
@@ -1183,7 +1185,7 @@ const ko = {
     yearLeaveNote: "참고: 연차는 당월을 포함하지 않았습니다.",
     monthlyDiligence: "근태율",
     monthlyDiligenceTooltip:
-      "선택한 날짜가 속한 달 기준 비율입니다. 이번 달은 오늘까지 집계; 지난 달은 해당 월 전체. 출산휴가: 해당 일 출근이 출산휴가(TS)이거나 PN/근태 메모에 출산 표기 시 그날은 근태율에서 제외. 연차만 쓰면 만점 처리될 수 있으니 출산은 출산휴가 또는 메모에 표기. PN 칸에 출산 표기 시 열 숨김.",
+      "선택일의 월 근태율. 월–토+토(대체휴 2회 제외); 일요일 제외. 출산/TS 제외. PN/TN/PO 만점; 지각 감점; KL/KP=0.",
     monthlyDiligenceNote: "근태율: 해당 달 기준이며, 이번 달은 오늘까지 반영.",
     monthlyDiligenceExcludedMaternity:
       "근태율 미적용: 연차(PN) 칸에 출산휴가(TS)로 표기된 경우.",
@@ -1210,8 +1212,7 @@ const ko = {
     exportExcelDateRange: "Excel 내보내기 (기간)",
     exportExcelDateRangeHint: "시작일 ~ 종료일 — 한 파일",
     exportRangeModalTitle: "기간별 Excel 내보내기",
-    exportRangeModalHint:
-      "각 날짜의 데이터는 출근 화면과 동일하게 인사 프로필과 병합됩니다. 현재 검색·부서·성별·출근 상태 필터가 기간 내 각 날짜에도 적용됩니다.",
+    exportRangeModalHint: "날짜별 병합; 현재 필터 적용.",
     exportRangeFromLabel: "시작일",
     exportRangeToLabel: "종료일",
     exportRangeWorking: "불러오는 중…",

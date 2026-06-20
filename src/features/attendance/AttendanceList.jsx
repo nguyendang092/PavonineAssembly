@@ -34,7 +34,7 @@ import { useAttendanceListI18n } from "./useAttendanceListI18n";
 import { useAttendanceCompareEmployees } from "./useAttendanceCompareEmployees";
 import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
 import { useAnnualLeaveYearReconcile } from "@/features/leave/useAnnualLeaveYearReconcile";
-import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { canManageAnnualLeave } from "@/config/authRoles";
 import AttendanceCompareEmployeesModal from "./AttendanceCompareEmployeesModal";
 import {
   AttendanceListToolbarBranchContext,
@@ -175,11 +175,12 @@ const AttendanceList = memo(function AttendanceList({
   } = useAttendanceDayFirebase(attendanceRootPath, selectedDate);
 
   const annualLeaveSyncYear = annualLeaveYearFromDateKey(selectedDate);
+  const canManageAnnualLeaveRecords = canManageAnnualLeave(user, userRole);
   useAnnualLeaveYearReconcile({
     attendanceRootPath,
     year: annualLeaveSyncYear,
     userEmail: user?.email ?? "",
-    enabled: !isSeasonalAttendanceRoot(attendanceRootPath),
+    enabled: canManageAnnualLeaveRecords,
   });
 
   const {

@@ -6,7 +6,7 @@ Module dùng chung cho **màn điểm danh** (HTML `<table>`) và **bảng lươ
 
 | Màn hình | Component bọc | Virtual scroll | `virtualRow` |
 |----------|---------------|----------------|--------------|
-| Điểm danh chính thức / thời vụ | `AttendanceListTableSection` | **Không** — render đủ hàng | Không truyền |
+| Điểm danh chính thức / thời vụ | `AttendanceListTableSection` | **Có** khi `deferredFilteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD` (300) | Truyền từ `@tanstack/react-virtual` |
 | Tính lương | `PayrollSalaryCalculator` | **Có** khi `filteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD` (300) | Truyền từ `@tanstack/react-virtual` |
 
 `AttendanceTableRowBody` nhận `virtualRow`:
@@ -39,7 +39,7 @@ STT cột:
 ## Tối ưu render
 
 - `AttendanceTableRowBody`, header, colgroup, off-holiday cell: **`React.memo`** + `propsAreEqual`
-- **Điểm danh:** `AttendanceListTableSection` map toàn bộ `deferredFilteredEmployees` — tránh chỉ thấy ~10–15 dòng khi virtualizer lỗi viewport
+- **Điểm danh:** `@tanstack/react-virtual` khi danh sách > 300 — scroll trong `max-h-[min(82vh,900px)]`
 - **Lương:** `@tanstack/react-virtual` chỉ mount hàng trong viewport khi danh sách > 300
 
 ## Import

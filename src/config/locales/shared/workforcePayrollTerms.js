@@ -1,12 +1,12 @@
 /**
  * Thuật ngữ giờ công / 연장근무 — dùng chung `attendanceList` và `salaryCalc.table`.
- * Một nguồn để đồng bộ VI/KO và tránh lặp key trong locale files.
+ * Gợi ý cột (title) ngắn gọn, đồng bộ VI/KO.
  */
 
 const workingHoursHintVi =
-  "Giờ vào–ra dạng HH:MM. Ca ngày: vào từ 06:00 đến trước 08:00 thì mốc tính là 08:00; vào trước 06:00 giữ giờ chấm thực. Giờ công = min(chênh lệch, 8h); ca đêm: xem cột GC/TC ca đêm.";
+  "HH:MM vào–ra. Ca ngày: vào 06–08h → mốc 08h. GC max 8h. Ca đêm: cột GC/TC đêm.";
 const workingHoursHintKo =
-  "HH:MM. 주간: 출근 06:00~08:00 미만이면 08:00 기준. 야간(S2)은 야간 근무/연장 열 참고.";
+  "HH:MM. 주간 06–08h 출근 → 08h 기준. GC 최대 8h. 야간은 야간 열 참고.";
 
 /** Ô tìm / lọc — attendance + bảng lương + modal giấy TC. */
 export const workforceSearchUiVi = {
@@ -30,49 +30,45 @@ export const workforcePayrollSharedVi = {
   workDateYear: "Năm",
   workingHours: "Giờ công",
   workingHoursHint: workingHoursHintVi,
-  payrollWorkingHoursHint: workingHoursHintVi,
+  payrollWorkingHoursHint:
+    "Ngày thường: GC theo vào–ra. Ngày off: «-» (GC ở TC off).",
   dayShiftOvertimeHours: "Giờ công tăng ca (×1.5)",
   dayShiftOvertimeHoursHint:
-    "Ca ngày (không S2): giờ ra sau 17:30 — từ 17:00, 30 phút = 0,5 giờ. TC sớm (giấy, ≤06:40): trước 05:40 → 2h; 05:40–05:59 → 05:40–06:40; từ 06:00 → 06:40–07:40. Ca đêm: «-».",
+    "Ca ngày: TC sau 17:30. TC sớm có giấy ≤06:40. Ca đêm: «-».",
   overtimeHours: "Giờ công tăng ca (x1.5)",
-  overtimeHoursHint: "Đã thay bằng cột «TC ca ngày (×1.5)» trên bảng lương.",
+  overtimeHoursHint: "Dùng cột TC ca ngày (×1.5).",
   offDayOvertimeHours: "Giờ công ngày off (x2.0)",
-  offDayOvertimeHoursHint:
-    "Cột legacy: không còn dùng cho giờ làm ngày off (giờ đó nằm ở cột Giờ công). Luôn «-».",
+  offDayOvertimeHoursHint: "Cột cũ — luôn «-».",
   offDayColumn: "Ngày off",
-  offDayColumnHint:
-    "Khi ngày được đánh dấu «Ngày off» trên Điểm danh: hiển thị OFF.",
+  offDayColumnHint: "Ngày off → OFF.",
   holidayDayColumn: "Ngày lễ",
-  holidayDayColumnHint:
-    "Khi ngày được đánh dấu «Ngày lễ»: hiển thị HOLIDAY.",
+  holidayDayColumnHint: "Ngày lễ → HOLIDAY.",
   leaveTypeColumn: "Loại phép",
+  leaveTypeColumnHint: "Loại phép (PN, PO, …).",
   workShift: "Ca làm việc",
+  workShiftColumnHint: "Ca S1 ngày / S2 đêm.",
+  timeInColumnHint: "Giờ vào HH:MM.",
+  gioVaoEditOnlyViaModalHint: "Dùng nút Sửa để nhập.",
+  leaveTypeEditViaModalHint: "Dùng nút Sửa để chọn.",
+  shiftEditOnlyViaModalHint: "Dùng nút Sửa để chọn ca.",
+  shiftEditViaModalHint: "Dùng nút Sửa để chọn ca.",
   annualLeaveBalance: "Phép năm",
-  annualLeaveBalanceHint:
-    "Số phép còn lại (BALANCE) từ Quản lý phép năm — khớp theo MNV.",
+  annualLeaveBalanceHint: "Phép còn (BALANCE) — theo MNV.",
   holidayDayWorkingHours: "Giờ công ngày lễ (X3.0)",
-  payrollOffDayTcHint:
-    "Khi «Ngày off» và ca ngày: Giờ công BT + TC chiều/giấy gộp một ô; cột TC ca ngày là «-».",
-  payrollHolidayDayWorkingHoursHint:
-    "Khi cột ngày lễ là HOLIDAY thì giờ công sẽ hiển thị ở cột giờ công ngày lễ.",
+  payrollOffDayTcHint: "Off + ca ngày: GC+TC gộp; TC ca ngày «-».",
+  payrollHolidayDayWorkingHoursHint: "Lễ + ca ngày: GC+TC gộp; TC ca ngày «-».",
   payrollTotalGcDay: "Tổng GC",
-  payrollTotalGcDayHint:
-    "Tổng khối ngày: Giờ công + TC ca ngày; ngày off/lễ ca ngày ≈ TC off/GC lễ đã gộp (cột TC ca ngày «-»); không gồm ca đêm.",
+  payrollTotalGcDayHint: "Tổng ca ngày: GC + TC (off/lễ gộp một ô).",
   payrollTotalGcNight: "Tổng GC ca đêm",
-  payrollTotalGcNightHint:
-    "Tổng khối ca đêm: GC + TC; ngày off/lễ ca đêm gộp một số (cột TC ca đêm «-»).",
+  payrollTotalGcNightHint: "Tổng ca đêm: GC + TC (off/lễ gộp một ô).",
   holidayNightWorkingHours: "Giờ công ca đêm ngày lễ (X3.9)",
   nightShiftWorkingHours: "Giờ công ca đêm",
-  nightShiftWorkingHoursHint:
-    "Ca đêm (S2): từ 18:40 đến mốc 05:00 (vào sớm có giấy → TC 18:40–19:40, GC từ 19:40); tối đa 8 giờ.",
+  nightShiftWorkingHoursHint: "Ca đêm: 18:40→05:00, max 8h.",
   nightShiftOvertimeHours: "Giờ công tăng ca ca đêm (×1.5)",
-  nightShiftOvertimeHoursHint:
-    "Ca đêm (S2): sau mốc 05:00 (ngày hôm sau) — 30 phút = 0,5 giờ; vào 17:00–18:40 có giấy → TC từ mốc 18:40 đến 19:40 (0,1h). Ngày off/lễ: «-» (gộp ở GC ca đêm off/lễ).",
+  nightShiftOvertimeHoursHint: "Ca đêm: sau 05:00, 30' = 0,5h. Off/lễ: gộp GC đêm.",
   nightShiftOffDayWorkingHours: "Giờ công ca đêm ngày OFF (X2.7)",
-  nightShiftOffDayWorkingHoursHint:
-    "Khi «Ngày off» và ca «Ca đêm»: GC + TC ca đêm gộp (cùng quy tắc mốc 05:00 như ngày thường); cột TC ca đêm «-». Ngày không off thì trống.",
-  payrollHolidayNightWorkingHoursHint:
-    "Ngày lễ + ca đêm: GC + TC ca đêm gộp; cột TC ca đêm «-»; cột GC ca đêm «-».",
+  nightShiftOffDayWorkingHoursHint: "Off + ca đêm: GC+TC gộp; TC đêm «-».",
+  payrollHolidayNightWorkingHoursHint: "Lễ + ca đêm: GC+TC gộp; TC/GC đêm «-».",
 };
 
 export const workforcePayrollSharedKo = {
@@ -81,45 +77,42 @@ export const workforcePayrollSharedKo = {
   workDateYear: "년",
   workingHours: "근무시간",
   workingHoursHint: workingHoursHintKo,
-  payrollWorkingHoursHint: workingHoursHintKo,
+  payrollWorkingHoursHint: "평일: 입출근 기준 GC. 휴무일: «-»(휴무 연장 열).",
   dayShiftOvertimeHours: "주간 연장 (×1.5)",
   dayShiftOvertimeHoursHint:
-    "주간(비 S2): 퇴근 17:30 이후 — 17:00부터 30분당 0.5h. 06:40 이전 출근+서류 → 05:40 이전: 05:40–06:40; 05:40 이후: 06:40–07:40 (한 구간, 0.1h). 야간: «-».",
+    "주간: 17:30 이후 TC. 조출 서류 ≤06:40. 야간: «-».",
   overtimeHours: "연장근무",
-  overtimeHoursHint: "급여 표에서는 «주간 연장 (×1.5)» 열 사용.",
+  overtimeHoursHint: "«주간 연장 (×1.5)» 열 사용.",
   offDayOvertimeHours: "휴무일 연장 (×2.0)",
-  offDayOvertimeHoursHint:
-    "레거시 열: 휴무일 근무는 근무시간 열로 이동. 항상 «-».",
+  offDayOvertimeHoursHint: "레거시 — 항상 «-».",
   offDayColumn: "휴무일",
-  offDayColumnHint: "출근 화면에서 «휴무일»로 지정된 날: OFF 표시.",
+  offDayColumnHint: "휴무일 → OFF.",
   holidayDayColumn: "공휴일",
-  holidayDayColumnHint: "«공휴일»로 지정된 날: HOLIDAY 표시.",
+  holidayDayColumnHint: "공휴일 → HOLIDAY.",
   leaveTypeColumn: "휴가 유형",
+  leaveTypeColumnHint: "휴가 유형 (PN, PO, …).",
   workShift: "근무조",
+  workShiftColumnHint: "S1 주간 / S2 야간.",
+  timeInColumnHint: "출근 HH:MM.",
+  gioVaoEditOnlyViaModalHint: "수정 버튼으로 입력.",
+  leaveTypeEditViaModalHint: "수정 버튼으로 선택.",
+  shiftEditOnlyViaModalHint: "수정 버튼으로 조 선택.",
+  shiftEditViaModalHint: "수정 버튼으로 조 선택.",
   annualLeaveBalance: "연차",
-  annualLeaveBalanceHint:
-    "연차 관리 BALANCE — 사번(MNV)으로 매칭.",
+  annualLeaveBalanceHint: "잔여 연차(BALANCE) — 사번 매칭.",
   holidayDayWorkingHours: "공휴일 근무 (×3.0)",
-  payrollOffDayTcHint:
-    "휴무일+주간: 근무시간+연장을 한 칸에 합산. 연장 열은 «-».",
-  payrollHolidayDayWorkingHoursHint:
-    "공휴일+주간: 근무시간+연장을 한 칸에 합산. 연장 열은 «-».",
+  payrollOffDayTcHint: "휴무+주간: GC+TC 합산. 연장 열 «-».",
+  payrollHolidayDayWorkingHoursHint: "공휴+주간: GC+TC 합산. 연장 열 «-».",
   payrollTotalGcDay: "주간 근무 합계",
-  payrollTotalGcDayHint:
-    "주간 합계: 근무시간+연장. 휴무·공휴 주간은 한 칸에 합산(연장 열 «-»); 야간 열 제외.",
+  payrollTotalGcDayHint: "주간 합계: GC+TC (휴무·공휴 한 칸).",
   payrollTotalGcNight: "야간 근무 합계",
-  payrollTotalGcNightHint:
-    "야간 합계: 근무+연장. 휴무·공휴 야간은 한 칸에 합산(야간 연장 열 «-»).",
+  payrollTotalGcNightHint: "야간 합계: GC+TC (휴무·공휴 한 칸).",
   holidayNightWorkingHours: "공휴일 야간 (×3.9)",
   nightShiftWorkingHours: "야간 근무",
-  nightShiftWorkingHoursHint:
-    "야간(S2): 18:40부터 05:00까지(서류 있이 조출 → 연장 18:40–19:40, GC 19:40부터); 최대 8시간.",
+  nightShiftWorkingHoursHint: "야간: 18:40→05:00, 최대 8h.",
   nightShiftOvertimeHours: "야간 연장 (×1.5)",
-  nightShiftOvertimeHoursHint:
-    "야간(S2): 익일 05:00 이후 — 30분당 0.5h; 17:00–18:40 출근+서류 → 18:40부터 19:40까지 0.1h. 휴무/공휴: «-»(합산 열 참고).",
+  nightShiftOvertimeHoursHint: "야간: 05:00 이후, 30분=0.5h. 휴무/공휴는 야간 GC.",
   nightShiftOffDayWorkingHours: "휴무일 야간 (×2.7)",
-  nightShiftOffDayWorkingHoursHint:
-    "휴무일+야간: 근무+연장 합산. 야간 연장 열 «-». 휴무일이 아니면 비움.",
-  payrollHolidayNightWorkingHoursHint:
-    "공휴일+야간: 근무+연장 합산. 야간 연장 열 «-», 야간 근무 열 «-».",
+  nightShiftOffDayWorkingHoursHint: "휴무+야간: GC+TC 합산. 야간 연장 «-».",
+  payrollHolidayNightWorkingHoursHint: "공휴+야간: GC+TC 합산. 야간 열 «-».",
 };

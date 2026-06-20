@@ -88,7 +88,9 @@ export default function AnnualLeaveUsageDetailModal({
   const name = row[ANNUAL_LEAVE_EMP.FULL_NAME] ?? "";
   const dept = row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ?? "";
   const months = detail?.months ?? [];
-  const hasUsage = (detail?.totalDeduction ?? 0) > 0;
+  const hasUsage =
+    (detail?.totalDeduction ?? 0) > 0 ||
+    months.some((m) => (m.days?.length ?? 0) > 0);
 
   return (
     <div
@@ -211,9 +213,7 @@ export default function AnnualLeaveUsageDetailModal({
                   })}
                 </h3>
                 <span className="annual-leave-detail-section-hint">
-                  {t("annualLeave.monthlyBreakdownHint", {
-                    defaultValue: "PN −1 ngày · 1/2 PN −0.5 ngày",
-                  })}
+                  {t("annualLeave.monthlyBreakdownHint")}
                 </span>
               </div>
 
@@ -250,11 +250,25 @@ export default function AnnualLeaveUsageDetailModal({
                   </thead>
                   <tbody>
                     {months.map((month) => (
-                      <tr key={month.yearMonth}>
+                      <tr
+                        key={month.yearMonth}
+                        className={
+                          month.displayOnly
+                            ? "annual-leave-detail-row-display-only"
+                            : undefined
+                        }
+                      >
                         <td className="annual-leave-detail-month">
                           <span className="annual-leave-detail-month-pill">
                             {formatYearMonthVi(month.yearMonth)}
                           </span>
+                          {month.displayOnly ? (
+                            <span className="annual-leave-detail-month-tag">
+                              {t("annualLeave.displayOnlyMonthTag", {
+                                defaultValue: "Chỉ hiển thị",
+                              })}
+                            </span>
+                          ) : null}
                         </td>
                         <td>
                           <span className="annual-leave-detail-count annual-leave-detail-count-pn">
@@ -267,7 +281,9 @@ export default function AnnualLeaveUsageDetailModal({
                           </span>
                         </td>
                         <td className="annual-leave-detail-month-total">
-                          {formatAnnualLeaveDecimal(month.totalDeduction)}
+                          {month.displayOnly
+                            ? "—"
+                            : formatAnnualLeaveDecimal(month.totalDeduction)}
                         </td>
                         <td className="annual-leave-detail-days">
                           {month.days.length === 0 ? (
@@ -311,7 +327,7 @@ export default function AnnualLeaveUsageDetailModal({
             <p className="annual-leave-detail-empty-text">
               {t("annualLeave.noUsageDetail", {
                 defaultValue:
-                  "Không có ngày PN / 1/2 PN từ điểm danh trong năm này.",
+                  "Không có ngày PN / 1/2 PN từ điểm danh trong tháng này.",
               })}
             </p>
           </div>

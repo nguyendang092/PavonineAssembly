@@ -120,7 +120,6 @@ export default function PayrollSalaryCalculator() {
   const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
   const {
     balanceByMnv: annualLeaveBalanceByMnv,
-    usageDetailByEmpKey: annualLeaveUsageDetailByEmpKey,
     yearData: annualLeaveYearData,
   } = useAnnualLeaveBalanceMap(annualLeaveYear, {
     throughDateKey: selectedDate,
@@ -1117,11 +1116,10 @@ export default function PayrollSalaryCalculator() {
                         isHolidayDay={isHolidayDay}
                         isCompensatoryDay={isCompensatoryDay}
                         annualLeaveBalanceByMnv={annualLeaveBalanceByMnv}
-                        annualLeaveUsageDetailByEmpKey={
-                          annualLeaveUsageDetailByEmpKey
-                        }
                         annualLeaveYear={annualLeaveYear}
                         annualLeaveYearData={annualLeaveYearData}
+                        annualLeaveThroughDateKey={selectedDate}
+                        annualLeaveAttendanceRootPath="attendance"
                       />
                     );
                   })}
@@ -1167,11 +1165,10 @@ export default function PayrollSalaryCalculator() {
                       isHolidayDay={isHolidayDay}
                       isCompensatoryDay={isCompensatoryDay}
                       annualLeaveBalanceByMnv={annualLeaveBalanceByMnv}
-                      annualLeaveUsageDetailByEmpKey={
-                        annualLeaveUsageDetailByEmpKey
-                      }
                       annualLeaveYear={annualLeaveYear}
                       annualLeaveYearData={annualLeaveYearData}
+                      annualLeaveThroughDateKey={selectedDate}
+                      annualLeaveAttendanceRootPath="attendance"
                     />
                   ))}
                 </tbody>

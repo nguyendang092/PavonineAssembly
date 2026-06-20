@@ -60,9 +60,10 @@ function AttendanceTableRow({
   tableVariant = "attendance",
   isSeasonalAttendance = false,
   annualLeaveBalanceByMnv = {},
-  annualLeaveUsageDetailByEmpKey = {},
   annualLeaveYear = new Date().getFullYear(),
   annualLeaveYearData = null,
+  annualLeaveThroughDateKey = null,
+  annualLeaveAttendanceRootPath = "attendance",
 }) {
   const isPayroll = tableVariant === "payroll";
   const payrollOffLike = isOffDay || isHolidayDay || isCompensatoryDay;
@@ -310,9 +311,10 @@ function AttendanceTableRow({
             <span>{annualLeaveBalanceCol}</span>
             <AnnualLeaveUsageDetailTrigger
               emp={emp}
-              usageDetailByEmpKey={annualLeaveUsageDetailByEmpKey}
               year={annualLeaveYear}
               yearData={annualLeaveYearData}
+              attendanceRootPath={annualLeaveAttendanceRootPath}
+              throughDateKey={annualLeaveThroughDateKey}
             />
           </span>
         </Cell>

@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { getAuth, signOut } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { menuConfig } from "@/config/menuConfig";
 import { isAdminAccess } from "@/config/authRoles";
@@ -173,9 +173,9 @@ export default function Navbar({ user, setUser, userRole }) {
 
       <nav ref={navbarMeasureRef} className="navbar">
         <div className="nav-logo">
-          <a href="http://www.pavonine.net/en/">
+          <Link to="/" aria-label={t("navbar.home", "Trang chủ")}>
             <img src="/picture/logo/logo_pavo.jpg" alt={t("navbar.logoAlt")} />
-          </a>
+          </Link>
         </div>
 
         <div

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/contexts/UserContext";
@@ -10,19 +10,18 @@ import {
   ANNUAL_LEAVE_EMP,
   ANNUAL_LEAVE_META_KEY,
   ANNUAL_LEAVE_RTDB_ROOT,
+  ANNUAL_LEAVE_MANAGER_MIN_YEAR,
 } from "./annualLeaveFields";
-import {
-  formatAnnualLeaveDecimal,
-  formatAnnualLeaveDisplayDate,
-} from "./annualLeaveCalculated";
 import { normalizeAnnualLeaveRowLive } from "./annualLeaveDerived";
 import { parseAnnualLeaveExcelFile } from "./annualLeaveExcelImport";
 import { exportAnnualLeaveExcel } from "./annualLeaveExcelExport";
 import { useAnnualLeaveLiveData } from "./useAnnualLeaveLiveData";
+import { buildAttendanceAnnualLeaveUsageDetailForEmpKey } from "./annualLeaveBalanceLookup";
 import { useAnnualLeaveYearReconcile } from "./useAnnualLeaveYearReconcile";
 import { persistAnnualLeaveYearFromAttendance } from "./annualLeaveAttendanceSync";
 import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
 import AnnualLeaveUsageDetailModal from "./AnnualLeaveUsageDetailModal";
+import AnnualLeaveManagerTableRow from "./AnnualLeaveManagerTableRow";
 import {
   attendanceListDateForAnnualLeaveYear,
   attendanceListPathForAnnualLeaveYear,
@@ -32,6 +31,21 @@ import "./annualLeaveManager.css";
 
 function currentYear() {
   return new Date().getFullYear();
+}
+
+function clampAnnualLeaveManagerYear(value) {
+  const y = Number(value);
+  const max = Math.max(currentYear(), ANNUAL_LEAVE_MANAGER_MIN_YEAR) + 2;
+  if (!Number.isFinite(y)) return Math.max(currentYear(), ANNUAL_LEAVE_MANAGER_MIN_YEAR);
+  return Math.min(Math.max(y, ANNUAL_LEAVE_MANAGER_MIN_YEAR), max);
+}
+
+function listAnnualLeaveManagerYearOptions() {
+  const max = Math.max(currentYear(), ANNUAL_LEAVE_MANAGER_MIN_YEAR) + 2;
+  return Array.from(
+    { length: max - ANNUAL_LEAVE_MANAGER_MIN_YEAR + 1 },
+    (_, i) => ANNUAL_LEAVE_MANAGER_MIN_YEAR + i,
+  );
 }
 
 function normalizeAnnualLeaveRow(id, raw, deductionsByMnv) {
@@ -44,10 +58,8 @@ export default function AnnualLeaveManager() {
   const [searchParams, setSearchParams] = useSearchParams();
   const yearFromUrl = Number(searchParams.get("year"));
   const [year, setYear] = useState(() =>
-    Number.isFinite(yearFromUrl) ? yearFromUrl : currentYear(),
+    clampAnnualLeaveManagerYear(yearFromUrl),
   );
-  const [rows, setRows] = useState([]);
-  const [meta, setMeta] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
@@ -60,22 +72,28 @@ export default function AnnualLeaveManager() {
 
   const canManage = canManageAnnualLeave(user, userRole);
 
-  const { yearData, deductionsByEmpKey, usageDetailByEmpKey, loading } =
-    useAnnualLeaveLiveData(year);
+  const { yearData, attendanceRoot, deductionsByEmpKey, loading } =
+    useAnnualLeaveLiveData(year, {
+      includeUsageDetail: false,
+      includeBalanceMap: false,
+    });
 
   useAnnualLeaveYearReconcile({
     attendanceRootPath: "attendance",
     year,
     userEmail: user?.email ?? "",
-    enabled: true,
+    enabled: canManage,
   });
 
   useEffect(() => {
     const raw = searchParams.get("year");
     if (!raw) return;
-    const y = Number(raw);
-    if (Number.isFinite(y) && y >= 2000 && y <= 2100) setYear(y);
-  }, [searchParams]);
+    const y = clampAnnualLeaveManagerYear(Number(raw));
+    setYear(y);
+    if (String(y) !== raw) {
+      setSearchParams({ year: String(y) }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const attendanceListPath = useMemo(
     () => attendanceListPathForAnnualLeaveYear(year),
@@ -86,7 +104,7 @@ export default function AnnualLeaveManager() {
     [year],
   );
 
-  useEffect(() => {
+  const { rows, meta } = useMemo(() => {
     const list = [];
     let nextMeta = null;
     if (yearData && typeof yearData === "object") {
@@ -109,9 +127,26 @@ export default function AnnualLeaveManager() {
         { numeric: true },
       );
     });
-    setRows(list);
-    setMeta(nextMeta);
+    return { rows: list, meta: nextMeta };
   }, [yearData, deductionsByEmpKey]);
+
+  const deferredSearch = useDeferredValue(search);
+
+  const detailForModal = useMemo(() => {
+    if (!detailRow?.id || !attendanceRoot) return null;
+    return buildAttendanceAnnualLeaveUsageDetailForEmpKey(
+      attendanceRoot,
+      year,
+      detailRow.id,
+    );
+  }, [detailRow, attendanceRoot, year]);
+
+  const viewDetailLabel = t("annualLeave.viewDetail", { defaultValue: "View" });
+  const viewUsageTitle = t("annualLeave.viewUsageDetail");
+
+  const handleViewDetail = useCallback((row) => {
+    setDetailRow(row);
+  }, []);
 
   useEffect(() => {
     if (!alert.show) return;
@@ -149,7 +184,7 @@ export default function AnnualLeaveManager() {
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return rows.filter((r) => {
       if (deptFilter && r[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] !== deptFilter) {
         return false;
@@ -159,7 +194,7 @@ export default function AnnualLeaveManager() {
       const mnv = String(r[ANNUAL_LEAVE_EMP.MNV_PREFIX] ?? "").trim();
       return name.includes(q) || mnv.includes(q);
     });
-  }, [rows, search, deptFilter]);
+  }, [rows, deferredSearch, deptFilter]);
 
   const handleRecalculate = useCallback(async () => {
     if (!canManage || syncing) return;
@@ -272,10 +307,7 @@ export default function AnnualLeaveManager() {
     }
   }, [filteredRows, year, t]);
 
-  const yearOptions = useMemo(() => {
-    const y = currentYear();
-    return Array.from({ length: 5 }, (_, i) => y - 2 + i);
-  }, []);
+  const yearOptions = useMemo(() => listAnnualLeaveManagerYearOptions(), []);
 
   if (!user) {
     return (
@@ -481,7 +513,7 @@ export default function AnnualLeaveManager() {
           open={detailRow != null}
           onClose={() => setDetailRow(null)}
           row={detailRow}
-          detail={detailRow ? usageDetailByEmpKey[detailRow.id] : null}
+          detail={detailForModal}
           year={year}
           t={t}
         />
@@ -556,87 +588,19 @@ export default function AnnualLeaveManager() {
                     </tr>
                   ) : (
                     filteredRows.map((row, idx) => (
-                      <tr key={row.id}>
-                        <td className="annual-leave-col-no">
-                          {row.rowNo ?? idx + 1}
-                        </td>
-                        <td className="annual-leave-col-code">
-                          {row[ANNUAL_LEAVE_EMP.MNV_PREFIX]}
-                        </td>
-                        <td className="annual-leave-col-code">
-                          {row[ANNUAL_LEAVE_EMP.MNV_SUFFIX]}
-                        </td>
-                        <td className="annual-leave-name">
-                          {row[ANNUAL_LEAVE_EMP.FULL_NAME]}
-                        </td>
-                        <td className="annual-leave-col-date">
-                          {formatAnnualLeaveDisplayDate(
-                            row[ANNUAL_LEAVE_EMP.DATE_OF_BIRTH],
-                          )}
-                        </td>
-                        <td className="annual-leave-dept">
-                          {row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]}
-                        </td>
-                        <td className="annual-leave-col-date">
-                          {formatAnnualLeaveDisplayDate(
-                            row[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
-                            { fullYear: true },
-                          )}
-                        </td>
-                        <td className="annual-leave-col-num">
-                          {row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]}
-                        </td>
-                        <td className="annual-leave-dash">
-                          {row[ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV]
-                            ? row[ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV]
-                            : "-"}
-                        </td>
-                        <td className="annual-leave-dash">
-                          {row[ANNUAL_LEAVE_EMP.COMPENSATORY_DAY_OFF]
-                            ? row[ANNUAL_LEAVE_EMP.COMPENSATORY_DAY_OFF]
-                            : "-"}
-                        </td>
-                        <td className="annual-leave-col-num annual-leave-total">
-                          {formatAnnualLeaveDecimal(
-                            row[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
-                          )}
-                        </td>
-                        <td className="annual-leave-col-num annual-leave-used">
-                          {formatAnnualLeaveDecimal(
-                            row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED],
-                          )}
-                        </td>
-                        <td className="annual-leave-balance">
-                          {formatAnnualLeaveDecimal(
-                            row[ANNUAL_LEAVE_EMP.BALANCE],
-                          )}
-                        </td>
-                        <td className="annual-leave-col-detail">
-                          <button
-                            type="button"
-                            className="annual-leave-detail-btn"
-                            onClick={() => setDetailRow(row)}
-                            title={t("annualLeave.viewUsageDetail", {
-                              defaultValue: "View PN / 1/2 PN detail",
-                            })}
-                          >
-                            {t("annualLeave.viewDetail", {
-                              defaultValue: "View",
-                            })}
-                          </button>
-                        </td>
-                      </tr>
+                      <AnnualLeaveManagerTableRow
+                        key={row.id}
+                        row={row}
+                        index={idx}
+                        viewDetailLabel={viewDetailLabel}
+                        viewUsageTitle={viewUsageTitle}
+                        onViewDetail={handleViewDetail}
+                      />
                     ))
                   )}
                 </tbody>
               </table>
           </div>
-        )}
-
-        {!canManage && (
-          <p className="annual-leave-view-hint">
-            {t("annualLeave.viewOnlyHint")}
-          </p>
         )}
       </div>
     </div>

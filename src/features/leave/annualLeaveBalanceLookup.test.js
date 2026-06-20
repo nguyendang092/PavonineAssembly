@@ -153,7 +153,11 @@ describe("annualLeaveBalanceLookup", () => {
     expect(emp.totalPn).toBe(2);
     expect(emp.totalHalfPn).toBe(1);
     expect(emp.totalDeduction).toBe(2.5);
-    expect(emp.months.map((m) => m.yearMonth)).toEqual(["2026-07", "2026-06"]);
+    expect(emp.months.map((m) => m.yearMonth)).toEqual([
+      "2026-07",
+      "2026-06",
+      "2026-05",
+    ]);
     expect(emp.months[0].pnCount).toBe(1);
     expect(emp.months[1].pnCount).toBe(1);
     expect(emp.months[1].halfPnCount).toBe(1);
@@ -178,5 +182,21 @@ describe("annualLeaveBalanceLookup", () => {
     expect(detail.months[0].pnCount).toBe(0);
     expect(detail.months[0].days).toEqual([]);
     expect(detail.months[1].pnCount).toBe(1);
+  });
+
+  it("shows pre-count trial months for display only without affecting totals", () => {
+    const data = {
+      "2026-05-20": { emp_X: { mnv: "X", loaiPhep: "Phép năm" } },
+    };
+    const emp = buildAttendanceAnnualLeaveUsageDetailByEmpKey(data, 2026, {
+      throughDateKey: "2026-08-15",
+    }).emp_X;
+    expect(emp.totalPn).toBe(0);
+    expect(emp.totalDeduction).toBe(0);
+    expect(emp.months).toHaveLength(3);
+    expect(emp.months[2].yearMonth).toBe("2026-05");
+    expect(emp.months[2].displayOnly).toBe(true);
+    expect(emp.months[2].pnCount).toBe(1);
+    expect(emp.months[2].totalDeduction).toBe(0);
   });
 });

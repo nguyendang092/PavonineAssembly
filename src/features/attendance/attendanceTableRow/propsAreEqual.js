@@ -30,8 +30,9 @@ export function propsAreEqual(prev, next) {
     prev.tableVariant === next.tableVariant &&
     prev.isSeasonalAttendance === next.isSeasonalAttendance &&
     prev.annualLeaveBalanceByMnv === next.annualLeaveBalanceByMnv &&
-    prev.annualLeaveUsageDetailByEmpKey === next.annualLeaveUsageDetailByEmpKey &&
     prev.annualLeaveYear === next.annualLeaveYear &&
-    prev.annualLeaveYearData === next.annualLeaveYearData
+    prev.annualLeaveYearData === next.annualLeaveYearData &&
+    prev.annualLeaveThroughDateKey === next.annualLeaveThroughDateKey &&
+    prev.annualLeaveAttendanceRootPath === next.annualLeaveAttendanceRootPath
   );
 }
