@@ -127,6 +127,7 @@ const vi = {
     uploadError: "Không đọc được file Excel.",
     exportError: "Không xuất được file Excel.",
     lastUpdated: "Cập nhật lần cuối",
+    linkToAttendanceListShort: "Điểm danh NV",
   },
   mcDefectReport: {
     badge: "Sản xuất / MC",
@@ -1000,6 +1001,7 @@ const vi = {
     linkToAttendanceSalary: "Bảng giờ công / lương",
     seasonalActiveEmployeesTitleShort: "Điểm danh thời vụ",
     linkToAttendanceSalaryShort: "Bảng giờ công / lương",
+    linkToAnnualLeaveShort: "Quản lý phép năm",
     headerQuickLinks: "Liên kết nhanh",
     headerDateLabel: "Ngày",
     dateLabel: "Ngày/Date",

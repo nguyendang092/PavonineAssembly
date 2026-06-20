@@ -1,5 +1,5 @@
 import * as XLSX from "@e965/xlsx";
-import { attendanceFirebaseKeyFromMnv } from "@/utils/attendanceEmployeeRecord";
+import { annualLeaveFirebaseKeyForMnv } from "./annualLeaveEmpKey";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import { computeAnnualLeaveTotals, parseAnnualLeaveNumber } from "./annualLeaveCalculated";
 
@@ -186,9 +186,13 @@ export async function parseAnnualLeaveExcelFile(file) {
     if (!fullName && !mnvPrefix) continue;
 
     const mnvCombined = `${mnvPrefix}${mnvSuffix}`.replace(/\s+/g, "");
-    const firebaseKey =
-      attendanceFirebaseKeyFromMnv(mnvCombined) ||
-      `emp_row_${i}_${Date.now()}`;
+    const firebaseKey = annualLeaveFirebaseKeyForMnv(mnvPrefix);
+    if (!firebaseKey) {
+      errors.push(
+        `Dòng ${i + 1}: không tạo khóa emp_{mnv} (MNV: ${mnvPrefix || mnvCombined}).`,
+      );
+      continue;
+    }
 
     const base = {
       id: firebaseKey,
@@ -217,9 +221,13 @@ export async function parseAnnualLeaveExcelFile(file) {
         col.compensatory >= 0
           ? parseAnnualLeaveNumber(row[col.compensatory])
           : 0,
-      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]:
-        col.used >= 0 ? parseAnnualLeaveNumber(row[col.used]) : 0,
     };
+
+    const hrUsed =
+      col.used >= 0 ? parseAnnualLeaveNumber(row[col.used]) : 0;
+    base[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED] = hrUsed;
+    base[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED] = 0;
+    base[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED] = hrUsed;
 
     const totals = computeAnnualLeaveTotals(base);
     records.push({

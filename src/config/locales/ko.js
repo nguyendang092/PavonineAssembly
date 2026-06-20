@@ -125,6 +125,7 @@ const ko = {
     uploadError: "Excel 파일을 읽을 수 없습니다.",
     exportError: "Excel보내기 실패.",
     lastUpdated: "최종 업데이트",
+    linkToAttendanceListShort: "출석 체크",
   },
   mcDefectReport: {
     badge: "생산 / MC",
@@ -1003,6 +1004,7 @@ const ko = {
     linkToAttendanceSalary: "급여·근무시간표 (동일일자)",
     seasonalActiveEmployeesTitleShort: "계절·임시 직원 출석",
     linkToAttendanceSalaryShort: "근무시간·급여",
+    linkToAnnualLeaveShort: "연차 관리",
     headerQuickLinks: "빠른 링크",
     headerDateLabel: "날짜",
     dateLabel: "날짜/Date",

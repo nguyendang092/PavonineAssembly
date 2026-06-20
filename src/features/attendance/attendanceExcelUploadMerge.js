@@ -5,7 +5,7 @@
  *
  * - Trường trên Firebase **trống** và Excel **có** dữ liệu → điền từ Excel.
  * - Firebase **đã có** dữ liệu → **không** ghi đè bởi Excel (giữ chỉnh tay / lần upload trước cùng ngày).
- * - Sau merge: `normalizeAttendanceDayRecord` đồng bộ `gioVao` ↔ `loaiPhep` (giờ HH:MM xóa loại phép, trừ 1/2PN).
+ * - Sau merge: `normalizeAttendanceDayRecord` đồng bộ `gioVao` ↔ `loaiPhep` (giờ HH:MM xóa loại phép, trừ VT / 1/2PN).
  */
 
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/utils/attendanceEmployeeRecord";
 import {
   isAttendanceGioVaoClockTime,
-  isAttendanceHalfAnnualLeave,
+  isAttendanceLoaiPhepAllowsClockTimes,
   normalizeAttendanceDayRecord,
   reconcileAttendanceGioVaoLoaiPhep,
 } from "./attendanceGioVaoTypeOptions";
@@ -50,9 +50,9 @@ function reconcileAttendanceGioVaoLoaiPhepAfterExcelMerge(emp, filledFromExcel) 
   const leaveAdded =
     filledFromExcel.has("loaiPhep") &&
     loaiPhep &&
-    !isAttendanceHalfAnnualLeave(loaiPhep);
+    !isAttendanceLoaiPhepAllowsClockTimes(loaiPhep);
 
-  if (clockAdded && loaiPhep && !isAttendanceHalfAnnualLeave(loaiPhep)) {
+  if (clockAdded && loaiPhep && !isAttendanceLoaiPhepAllowsClockTimes(loaiPhep)) {
     return { ...emp, loaiPhep: "" };
   }
   if (leaveAdded && isAttendanceGioVaoClockTime(gioVao)) {

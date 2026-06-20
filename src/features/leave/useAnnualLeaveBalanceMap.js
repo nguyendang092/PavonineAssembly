@@ -1,24 +1,16 @@
-import { useEffect, useState } from "react";
-import { db, ref, onValue } from "@/services/firebase";
-import { ANNUAL_LEAVE_RTDB_ROOT } from "./annualLeaveFields";
-import { buildAnnualLeaveBalanceByMnv } from "./annualLeaveBalanceLookup";
+import { useAnnualLeaveLiveData } from "./useAnnualLeaveLiveData";
 
 /**
- * RTDB `annualLeave/{year}` → map MNV → BALANCE.
+ * Map MNV → BALANCE live.
+ * @param {number} year
+ * @param {{ throughDateKey?: string|null, yearMonthPrefix?: string|null, attendanceRootPath?: string, enabled?: boolean }} options
  */
-export function useAnnualLeaveBalanceMap(year) {
-  const [balanceByMnv, setBalanceByMnv] = useState({});
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    const yearRef = ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`);
-    const unsubscribe = onValue(yearRef, (snapshot) => {
-      setBalanceByMnv(buildAnnualLeaveBalanceByMnv(snapshot.val()));
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, [year]);
-
-  return { balanceByMnv, loading };
+export function useAnnualLeaveBalanceMap(year, options = {}) {
+  const {
+    balanceByMnv,
+    usageDetailByEmpKey,
+    yearData,
+    loading,
+  } = useAnnualLeaveLiveData(year, options);
+  return { balanceByMnv, usageDetailByEmpKey, yearData, loading };
 }

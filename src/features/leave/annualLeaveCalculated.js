@@ -25,7 +25,17 @@ export function computeAnnualLeaveTotals(row) {
   const comp = parseAnnualLeaveNumber(
     row[ANNUAL_LEAVE_EMP.COMPENSATORY_DAY_OFF],
   );
-  const used = parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]);
+  const hasSplitUsed =
+    row[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED] != null ||
+    row[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED] != null;
+  const used = hasSplitUsed
+    ? roundAnnualLeaveHours(
+        parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]) +
+          parseAnnualLeaveNumber(
+            row[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED],
+          ),
+      )
+    : parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]);
   const total = roundAnnualLeaveHours(annual + bonus + comp);
   const balance = roundAnnualLeaveHours(total - used);
   return {

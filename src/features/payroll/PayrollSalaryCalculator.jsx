@@ -38,6 +38,7 @@ import PayrollSalaryTableRow, {
 } from "@/features/payroll/payrollSalaryTableUi";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
 import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
+import { annualLeavePathForDateKey } from "@/features/leave/annualLeaveCrossLinks";
 import { useAttendanceColumnPlan } from "@/features/attendance/useAttendanceBirthDeptColumns";
 import {
   ATTENDANCE_DAY_META_KEY,
@@ -117,8 +118,13 @@ export default function PayrollSalaryCalculator() {
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(d);
   }, [searchParams]);
   const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
-  const { balanceByMnv: annualLeaveBalanceByMnv } =
-    useAnnualLeaveBalanceMap(annualLeaveYear);
+  const {
+    balanceByMnv: annualLeaveBalanceByMnv,
+    usageDetailByEmpKey: annualLeaveUsageDetailByEmpKey,
+    yearData: annualLeaveYearData,
+  } = useAnnualLeaveBalanceMap(annualLeaveYear, {
+    throughDateKey: selectedDate,
+  });
   const [isOffDay, setIsOffDay] = useState(false);
   const [isHolidayDay, setIsHolidayDay] = useState(false);
   const [isCompensatoryDay, setIsCompensatoryDay] = useState(false);
@@ -777,13 +783,25 @@ export default function PayrollSalaryCalculator() {
                   {new Date(selectedDate).toLocaleDateString(displayLocale)}
                 </p>
               </div>
-              <Link
-                to={`/attendance-list?date=${encodeURIComponent(selectedDate)}`}
-                className="mb-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline md:text-xs"
+              <nav
+                className="mb-0.5 flex shrink-0 flex-row flex-wrap items-center gap-x-2 gap-y-0.5"
+                aria-label={t("attendanceList.headerQuickLinks")}
               >
-                <span aria-hidden>←</span>
-                {tlPage("linkAttendance", "Điểm danh NV")}
-              </Link>
+                <Link
+                  to={`/attendance-list?date=${encodeURIComponent(selectedDate)}`}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline md:text-xs"
+                >
+                  <span aria-hidden>←</span>
+                  {tlPage("linkAttendance", "Điểm danh NV")}
+                </Link>
+                <Link
+                  to={annualLeavePathForDateKey(selectedDate)}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-violet-700 hover:text-violet-800 hover:underline dark:text-violet-400 dark:hover:text-violet-300 md:text-xs"
+                >
+                  <span aria-hidden>→</span>
+                  {t("attendanceList.linkToAnnualLeaveShort")}
+                </Link>
+              </nav>
             </div>
           </div>
         </div>
@@ -1099,6 +1117,11 @@ export default function PayrollSalaryCalculator() {
                         isHolidayDay={isHolidayDay}
                         isCompensatoryDay={isCompensatoryDay}
                         annualLeaveBalanceByMnv={annualLeaveBalanceByMnv}
+                        annualLeaveUsageDetailByEmpKey={
+                          annualLeaveUsageDetailByEmpKey
+                        }
+                        annualLeaveYear={annualLeaveYear}
+                        annualLeaveYearData={annualLeaveYearData}
                       />
                     );
                   })}
@@ -1144,6 +1167,11 @@ export default function PayrollSalaryCalculator() {
                       isHolidayDay={isHolidayDay}
                       isCompensatoryDay={isCompensatoryDay}
                       annualLeaveBalanceByMnv={annualLeaveBalanceByMnv}
+                      annualLeaveUsageDetailByEmpKey={
+                        annualLeaveUsageDetailByEmpKey
+                      }
+                      annualLeaveYear={annualLeaveYear}
+                      annualLeaveYearData={annualLeaveYearData}
                     />
                   ))}
                 </tbody>

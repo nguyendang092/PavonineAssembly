@@ -35,7 +35,8 @@ import { PAYROLL_EMPTY_CELL, ATTENDANCE_EMPTY_CELL } from "./constants";
 import { getAttendanceGridColumnStart, attendanceGridCellStyle, cellClsForAttendanceTable } from "./gridLayout";
 import { cellClsForGrid } from "./cellClassNames";
 import { formatAnnualLeaveDecimal } from "@/features/leave/annualLeaveCalculated";
-import { getAnnualLeaveBalanceForEmployee } from "@/features/leave/annualLeaveBalanceLookup";
+import { getDisplayAnnualLeaveBalanceForAttendance } from "@/features/leave/annualLeaveBalanceLookup";
+import AnnualLeaveUsageDetailTrigger from "@/features/leave/AnnualLeaveUsageDetailTrigger";
 import { propsAreEqual } from "./propsAreEqual";
 
 function AttendanceTableRow({
@@ -59,6 +60,9 @@ function AttendanceTableRow({
   tableVariant = "attendance",
   isSeasonalAttendance = false,
   annualLeaveBalanceByMnv = {},
+  annualLeaveUsageDetailByEmpKey = {},
+  annualLeaveYear = new Date().getFullYear(),
+  annualLeaveYearData = null,
 }) {
   const isPayroll = tableVariant === "payroll";
   const payrollOffLike = isOffDay || isHolidayDay || isCompensatoryDay;
@@ -126,7 +130,7 @@ function AttendanceTableRow({
   const leaveTypeCol = formatAttendanceLeaveTypeColumnForEmployee(emp);
   const leaveTypeColorClass =
     getAttendanceLeaveTypeColorClassNameForEmployee(emp);
-  const annualLeaveBalanceRaw = getAnnualLeaveBalanceForEmployee(
+  const annualLeaveBalanceRaw = getDisplayAnnualLeaveBalanceForAttendance(
     emp,
     annualLeaveBalanceByMnv,
   );
@@ -302,7 +306,15 @@ function AttendanceTableRow({
             "Số phép còn lại (BALANCE) từ Quản lý phép năm — khớp theo MNV.",
           )}
         >
-          {annualLeaveBalanceCol}
+          <span className="annual-leave-balance-cell inline-flex items-center justify-center gap-0.5 min-w-0">
+            <span>{annualLeaveBalanceCol}</span>
+            <AnnualLeaveUsageDetailTrigger
+              emp={emp}
+              usageDetailByEmpKey={annualLeaveUsageDetailByEmpKey}
+              year={annualLeaveYear}
+              yearData={annualLeaveYearData}
+            />
+          </span>
         </Cell>
       ) : null}
       <Cell

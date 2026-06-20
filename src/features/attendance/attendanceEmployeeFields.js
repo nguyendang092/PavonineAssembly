@@ -13,6 +13,13 @@ export const ATTENDANCE_EMP = {
   PHEP_NAM: "phepNam",
 };
 
+/** Đánh dấu PN/1/2PN đã đồng bộ sang `annualLeave/{year}`. */
+export const ATTENDANCE_ANNUAL_LEAVE_SYNCED_DEDUCTION =
+  "_annualLeaveSyncedDeduction";
+
+/** `annualLeaveUsed` trên Firebase sau lần đồng bộ thành công — tránh marker lỗi. */
+export const ATTENDANCE_ANNUAL_LEAVE_SYNCED_USED = "_annualLeaveSyncedUsed";
+
 /**
  * Tham số ngày chuẩn cho điểm danh / giờ công — đồng bộ payroll (`PayrollOtDayParams` không gồm cờ OT).
  *

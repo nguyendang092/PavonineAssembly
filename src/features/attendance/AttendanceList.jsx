@@ -32,6 +32,9 @@ import { useAttendanceListHandlers } from "./useAttendanceListHandlers";
 import { useAttendanceListSetup } from "./useAttendanceListSetup";
 import { useAttendanceListI18n } from "./useAttendanceListI18n";
 import { useAttendanceCompareEmployees } from "./useAttendanceCompareEmployees";
+import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
+import { useAnnualLeaveYearReconcile } from "@/features/leave/useAnnualLeaveYearReconcile";
+import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 import AttendanceCompareEmployeesModal from "./AttendanceCompareEmployeesModal";
 import {
   AttendanceListToolbarBranchContext,
@@ -170,6 +173,14 @@ const AttendanceList = memo(function AttendanceList({
     isHolidayDay,
     isCompensatoryDay,
   } = useAttendanceDayFirebase(attendanceRootPath, selectedDate);
+
+  const annualLeaveSyncYear = annualLeaveYearFromDateKey(selectedDate);
+  useAnnualLeaveYearReconcile({
+    attendanceRootPath,
+    year: annualLeaveSyncYear,
+    userEmail: user?.email ?? "",
+    enabled: !isSeasonalAttendanceRoot(attendanceRootPath),
+  });
 
   const {
     normalizeDepartment,

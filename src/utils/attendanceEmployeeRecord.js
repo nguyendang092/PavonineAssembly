@@ -5,10 +5,14 @@
 import {
   canonicalAttendanceLoaiPhepValue,
   isAttendanceGioVaoClockTime,
-  isAttendanceHalfAnnualLeave,
+  isAttendanceLoaiPhepAllowsClockTimes,
   normalizeAttendanceDayRecord,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
-import { ATTENDANCE_EMP } from "@/features/attendance/attendanceEmployeeFields";
+import {
+  ATTENDANCE_EMP,
+  ATTENDANCE_ANNUAL_LEAVE_SYNCED_DEDUCTION,
+  ATTENDANCE_ANNUAL_LEAVE_SYNCED_USED,
+} from "@/features/attendance/attendanceEmployeeFields";
 import { LUNCH_OT_HOUR_OPTIONS } from "@/features/attendance/attendanceWorkingHours";
 
 /**
@@ -253,6 +257,8 @@ export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
   "includeTsNvInWorkingHours", // legacy: "tạp vụ + thai sản" chung
   ATTENDANCE_EMP.CHAM_CONG,
   ATTENDANCE_EMP.PHEP_NAM,
+  ATTENDANCE_ANNUAL_LEAVE_SYNCED_DEDUCTION,
+  ATTENDANCE_ANNUAL_LEAVE_SYNCED_USED,
 ]);
 
 export function pickAttendanceDayFields(raw) {
@@ -441,7 +447,7 @@ export function buildEmployeeAttendanceDayDocument({
         ATTENDANCE_EMP.LEAVE_TYPE,
       );
       const canon = s ? canonicalAttendanceLoaiPhepValue(s) : undefined;
-      if (canon && !isAttendanceHalfAnnualLeave(canon)) return "";
+      if (canon && !isAttendanceLoaiPhepAllowsClockTimes(canon)) return "";
       return attendanceDayOptionalStringFromForm(form, ATTENDANCE_EMP.TIME_IN);
     })(),
     [ATTENDANCE_EMP.LEAVE_TYPE]: (() => {
@@ -456,7 +462,7 @@ export function buildEmployeeAttendanceDayDocument({
       );
       if (!s) return "";
       const canon = canonicalAttendanceLoaiPhepValue(s);
-      if (canon && !isAttendanceHalfAnnualLeave(canon)) {
+      if (canon && !isAttendanceLoaiPhepAllowsClockTimes(canon)) {
         return canon;
       }
       const gv = attendanceDayOptionalStringFromForm(
@@ -464,7 +470,9 @@ export function buildEmployeeAttendanceDayDocument({
         ATTENDANCE_EMP.TIME_IN,
       );
       if (gv && isAttendanceGioVaoClockTime(gv)) {
-        return canon && isAttendanceHalfAnnualLeave(canon) ? canon : undefined;
+        return canon && isAttendanceLoaiPhepAllowsClockTimes(canon)
+          ? canon
+          : undefined;
       }
       return canon || "";
     })(),
@@ -474,7 +482,7 @@ export function buildEmployeeAttendanceDayDocument({
         ATTENDANCE_EMP.LEAVE_TYPE,
       );
       const canon = s ? canonicalAttendanceLoaiPhepValue(s) : undefined;
-      if (canon && !isAttendanceHalfAnnualLeave(canon)) return "";
+      if (canon && !isAttendanceLoaiPhepAllowsClockTimes(canon)) return "";
       return attendanceDayOptionalStringFromForm(form, ATTENDANCE_EMP.TIME_OUT);
     })(),
     [ATTENDANCE_EMP.SHIFT]: attendanceDayOptionalStringFromForm(

@@ -29,6 +29,9 @@ export function propsAreEqual(prev, next) {
     prev.isCompensatoryDay === next.isCompensatoryDay &&
     prev.tableVariant === next.tableVariant &&
     prev.isSeasonalAttendance === next.isSeasonalAttendance &&
-    prev.annualLeaveBalanceByMnv === next.annualLeaveBalanceByMnv
+    prev.annualLeaveBalanceByMnv === next.annualLeaveBalanceByMnv &&
+    prev.annualLeaveUsageDetailByEmpKey === next.annualLeaveUsageDetailByEmpKey &&
+    prev.annualLeaveYear === next.annualLeaveYear &&
+    prev.annualLeaveYearData === next.annualLeaveYearData
   );
 }

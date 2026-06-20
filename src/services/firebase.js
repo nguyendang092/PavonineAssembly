@@ -14,6 +14,8 @@ import {
   limitToFirst,
   limitToLast,
   startAfter,
+  startAt,
+  endAt,
 } from "firebase/database";
 import {
   getStorage,
@@ -52,6 +54,8 @@ export {
   limitToFirst,
   limitToLast,
   startAfter,
+  startAt,
+  endAt,
 };
 
 // Export Storage functions

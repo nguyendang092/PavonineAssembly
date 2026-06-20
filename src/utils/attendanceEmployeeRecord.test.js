@@ -128,4 +128,34 @@ describe("buildEmployeeAttendanceDayDocument loaiPhep (form save)", () => {
     });
     expect(saved.loaiPhep).toBe("");
   });
+
+  it("keeps Vào trễ (VT) with gioVao and gioRa", () => {
+    const saved = simulateFormSave({
+      existingRaw: { mnv: "1", loaiPhep: "", gioVao: "" },
+      form: {
+        ...baseForm,
+        loaiPhep: "Vào trễ",
+        gioVao: "08:15",
+        gioRa: "17:30",
+      },
+    });
+    expect(saved.loaiPhep).toBe("Vào trễ");
+    expect(saved.gioVao).toBe("08:15");
+    expect(saved.gioRa).toBe("17:30");
+  });
+
+  it("keeps VT alias with clock times", () => {
+    const saved = simulateFormSave({
+      existingRaw: { mnv: "1" },
+      form: {
+        ...baseForm,
+        loaiPhep: "VT",
+        gioVao: "08:20",
+        gioRa: "17:00",
+      },
+    });
+    expect(saved.loaiPhep).toBe("Vào trễ");
+    expect(saved.gioVao).toBe("08:20");
+    expect(saved.gioRa).toBe("17:00");
+  });
 });

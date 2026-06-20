@@ -300,6 +300,14 @@ export function isAttendanceHalfAnnualLeave(raw) {
   return canonicalAttendanceLoaiPhepValue(t) === "1/2 Phép năm";
 }
 
+/** Loại phép được phép đồng thời giờ vào/ra (thống kê chuyên cần, không xóa khi nhập giờ). */
+export function isAttendanceLoaiPhepAllowsClockTimes(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return false;
+  const canon = canonicalAttendanceLoaiPhepValue(t);
+  return canon === "1/2 Phép năm" || canon === "Vào trễ";
+}
+
 /** Gập dấu / khoảng trắng — dùng khớp nhập tay, Excel, NBSP */
 export function foldGioVaoCompare(s) {
   return String(s ?? "")
@@ -502,13 +510,13 @@ export function reconcileAttendanceGioVaoLoaiPhep(emp) {
   const loaiPhep = String(emp.loaiPhep ?? "").trim();
 
   if (isAttendanceGioVaoClockTime(gioVao)) {
-    if (loaiPhep && !isAttendanceHalfAnnualLeave(loaiPhep)) {
+    if (loaiPhep && !isAttendanceLoaiPhepAllowsClockTimes(loaiPhep)) {
       return { ...emp, loaiPhep: "" };
     }
     return emp;
   }
 
-  if (loaiPhep && !isAttendanceHalfAnnualLeave(loaiPhep)) {
+  if (loaiPhep && !isAttendanceLoaiPhepAllowsClockTimes(loaiPhep)) {
     return { ...emp, gioVao: "", gioRa: "" };
   }
 

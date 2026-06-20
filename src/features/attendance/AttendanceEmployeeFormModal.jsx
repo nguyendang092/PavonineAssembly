@@ -18,7 +18,7 @@ import {
 import {
   ATTENDANCE_LOAI_PHEP_OPTIONS,
   isAttendanceGioVaoClockTime,
-  isAttendanceHalfAnnualLeave,
+  isAttendanceLoaiPhepAllowsClockTimes,
 } from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_CA_LAM_VIEC_OPTIONS } from "./attendanceCaLamViecOptions";
 import { LUNCH_OT_HOUR_OPTIONS } from "./attendanceWorkingHours";
@@ -29,6 +29,10 @@ import {
   normalizeBoPhanChuaDungForForm,
 } from "@/features/attendance/attendanceDayMeta";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import {
+  applyAnnualLeaveDeductionDelta,
+} from "@/features/leave/annualLeaveAttendanceSync";
+import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
 import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
 import {
   normalizeTimeForHtmlInput,
@@ -62,12 +66,12 @@ function applyLegacyIncludeTsNvAndCanonicalPhep(record) {
   let gioVao = String(merged[ATTENDANCE_EMP.TIME_IN] ?? "").trim();
   let gioRa = String(merged[ATTENDANCE_EMP.TIME_OUT] ?? "").trim();
   const loaiPhepCanon = canonicalAttendanceLoaiPhep(merged[ATTENDANCE_EMP.LEAVE_TYPE]);
-  const isHalfPn = isAttendanceHalfAnnualLeave(loaiPhepCanon);
+  const allowsClockWithLeave = isAttendanceLoaiPhepAllowsClockTimes(loaiPhepCanon);
   let loaiPhep = loaiPhepCanon;
-  if (isAttendanceGioVaoClockTime(gioVao) && !isHalfPn) {
+  if (isAttendanceGioVaoClockTime(gioVao) && !allowsClockWithLeave) {
     loaiPhep = "";
   }
-  if (loaiPhep && !isHalfPn) {
+  if (loaiPhep && !allowsClockWithLeave) {
     gioVao = "";
     gioRa = "";
   }
@@ -293,10 +297,10 @@ export default function AttendanceEmployeeFormModal({
     [form[ATTENDANCE_EMP.TIME_IN]],
   );
 
-  /** Có loại phép (trừ 1/2PN) → khóa giờ vào & giờ ra. */
+  /** Có loại phép (trừ VT, 1/2PN) → khóa giờ vào & giờ ra. */
   const clockTimesDisabled = useMemo(() => {
     const lp = String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim();
-    return Boolean(lp) && !isAttendanceHalfAnnualLeave(lp);
+    return Boolean(lp) && !isAttendanceLoaiPhepAllowsClockTimes(lp);
   }, [form[ATTENDANCE_EMP.LEAVE_TYPE]]);
 
   const handleGioVaoTimeInput = useCallback((e) => {
@@ -304,7 +308,8 @@ export default function AttendanceEmployeeFormModal({
     setForm((prev) => ({
       ...prev,
       [ATTENDANCE_EMP.TIME_IN]: gioVao,
-      ...(gioVao && !isAttendanceHalfAnnualLeave(prev[ATTENDANCE_EMP.LEAVE_TYPE])
+      ...(gioVao &&
+      !isAttendanceLoaiPhepAllowsClockTimes(prev[ATTENDANCE_EMP.LEAVE_TYPE])
         ? { [ATTENDANCE_EMP.LEAVE_TYPE]: "" }
         : {}),
     }));
@@ -316,7 +321,7 @@ export default function AttendanceEmployeeFormModal({
     setForm((prev) => ({
       ...prev,
       [ATTENDANCE_EMP.LEAVE_TYPE]: loaiPhep,
-      ...(loaiPhep && !isAttendanceHalfAnnualLeave(loaiPhep)
+      ...(loaiPhep && !isAttendanceLoaiPhepAllowsClockTimes(loaiPhep)
         ? {
             [ATTENDANCE_EMP.TIME_IN]: "",
             [ATTENDANCE_EMP.TIME_OUT]: "",
@@ -327,6 +332,25 @@ export default function AttendanceEmployeeFormModal({
 
   const notify = (alert) => {
     onAlert?.(alert);
+  };
+
+  const syncAnnualLeaveAfterAttendanceSave = async (oldRecord, newLoaiPhep) => {
+    if (isSeasonalAttendanceRoot(attendanceRootPath)) {
+      return { applied: false, reason: "seasonal" };
+    }
+    try {
+      const year = annualLeaveYearFromDateKey(selectedDate);
+      return await applyAnnualLeaveDeductionDelta(db, {
+        year,
+        attendanceRootPath,
+        updatedBy: user?.email ?? "",
+        oldRecord,
+        newLoaiPhep,
+      });
+    } catch (err) {
+      console.error("annualLeaveAttendanceSync failed:", err);
+      return { applied: false, reason: "error" };
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -394,14 +418,17 @@ export default function AttendanceEmployeeFormModal({
           existing: existingRaw,
           isSeasonal: isSeasonalAttendance,
         });
+        const attendancePath = `${attendanceRootPath}/${selectedDate}/${editAttendanceKey}`;
+        const persistedNode = mergeAttendanceDayNodeForPersist(
+          existingRaw,
+          dayDoc,
+          editAttendanceKey,
+        );
+
         await update(ref(db), {
-          [`${attendanceRootPath}/${selectedDate}/${editAttendanceKey}`]:
-            mergeAttendanceDayNodeForPersist(
-              existingRaw,
-              dayDoc,
-              editAttendanceKey,
-            ),
+          [attendancePath]: persistedNode,
         });
+        await syncAnnualLeaveAfterAttendanceSave(existingRaw, loaiPhepToSave);
         onClose();
         notify({
           show: true,
@@ -459,16 +486,17 @@ export default function AttendanceEmployeeFormModal({
           isSeasonal: isSeasonalAttendance,
         });
         const path = `${attendanceRootPath}/${selectedDate}/${firebaseKey}`;
-        await update(ref(db), {
-          [path]:
-            addTarget?.mode === "add-merge"
-              ? mergeAttendanceDayNodeForPersist(
-                  existingRaw,
-                  dayDoc,
-                  firebaseKey,
-                )
-              : { ...dayDoc, id: firebaseKey },
-        });
+        const persistedNode =
+          addTarget?.mode === "add-merge"
+            ? mergeAttendanceDayNodeForPersist(
+                existingRaw,
+                dayDoc,
+                firebaseKey,
+              )
+            : { ...dayDoc, id: firebaseKey };
+
+        await update(ref(db), { [path]: persistedNode });
+        await syncAnnualLeaveAfterAttendanceSave(existingRaw, loaiPhepToSave);
         onClose();
         notify({
           show: true,
@@ -873,10 +901,10 @@ export default function AttendanceEmployeeFormModal({
             </select>
             <p className="mt-1.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
               {hasClockInTime &&
-              !isAttendanceHalfAnnualLeave(form[ATTENDANCE_EMP.LEAVE_TYPE])
+              !isAttendanceLoaiPhepAllowsClockTimes(form[ATTENDANCE_EMP.LEAVE_TYPE])
                 ? tl(
                     "loaiPhepClearsTimeInOnSelect",
-                    "Đã có giờ vào — chọn loại phép (trừ 1/2PN) sẽ xóa giờ vào/ra khi lưu.",
+                    "Đã có giờ vào — chọn loại phép (trừ VT, 1/2PN) sẽ xóa giờ vào/ra khi lưu.",
                   )
                 : tl("loaiPhepModalHint", "Chọn loại phép (PN, PO, TS …)")}
             </p>

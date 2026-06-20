@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 import { Link } from "react-router-dom";
+import { annualLeavePathForDateKey } from "@/features/leave/annualLeaveCrossLinks";
 
 function AttendanceListHeader({
   headerTitle,
@@ -46,6 +47,13 @@ function AttendanceListHeader({
             >
               <span aria-hidden>→</span>
               {tl("linkToAttendanceSalaryShort", "Giờ công / Lương")}
+            </Link>
+            <Link
+              to={annualLeavePathForDateKey(selectedDate)}
+              className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-violet-700 hover:text-violet-800 hover:underline dark:text-violet-400 dark:hover:text-violet-300 sm:justify-end md:text-xs"
+            >
+              <span aria-hidden>→</span>
+              {tl("linkToAnnualLeaveShort", "Quản lý phép năm")}
             </Link>
           </nav>
         </div>
