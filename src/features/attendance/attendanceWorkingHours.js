@@ -62,7 +62,7 @@ export {
  * (`payrollMonthlyCoefficientBuckets`, `hasPayrollLeaveType` trong file này), không đọc cờ KPI combo.
  */
 
-const HHMM = /^(\d{1,2}):(\d{2})$/;
+const HHMM = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
 
 function coerceIncludeWorkingHoursFlag(v) {
   return v === true || String(v ?? "").trim().toUpperCase() === "YES";
@@ -1001,7 +1001,7 @@ export function isEarlyArrivalFor0600PaperworkOvertime(timeIn, shiftCode) {
 }
 
 /**
- * Ca đêm S2: vào từ 17:00 đến ≤ 18:40 — đủ điều kiện xác nhận giấy TC trước giờ vào chính thức.
+ * Ca đêm S2: vào từ 16:00 đến ≤ 18:40 — đủ điều kiện xác nhận giấy TC trước giờ vào chính thức.
  */
 export function isEarlyArrivalForNightShiftPaperworkOvertime(timeIn, shiftCode) {
   if (!isNightShiftCaLamViec(shiftCode)) return false;
@@ -1013,7 +1013,7 @@ export function isEarlyArrivalForNightShiftPaperworkOvertime(timeIn, shiftCode) 
   );
 }
 
-/** Ca ngày (≤ 06:40) hoặc ca đêm (17:00–18:40) — hiện popup xác nhận giấy TC sớm. */
+/** Ca ngày (≤ 06:40) hoặc ca đêm (16:00–18:40) — hiện popup xác nhận giấy TC sớm. */
 export function isEarlyArrivalForPaperworkOvertime(timeIn, shiftCode) {
   return (
     isEarlyArrivalFor0600PaperworkOvertime(timeIn, shiftCode) ||

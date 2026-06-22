@@ -128,6 +128,7 @@ const ko = {
     linkToAttendanceListShort: "출석 체크",
     noUsageDetail:
       "이번 달 출석에서 PN / 1/2 PN 일자가 없습니다.",
+    usageDetailLoading: "출석 데이터에서 상세 정보를 불러오는 중…",
     displayOnlyMonthTag: "표시만",
     viewUsageDetail: "PN / 1/2 PN 상세",
     monthlyBreakdownHint: "PN −1 · 1/2 PN −0.5",
@@ -1407,7 +1408,7 @@ const ko = {
     exportRangeExcelSuccess: "✅ Excel보내기 완료 (여러 날).",
     earlyOtPaperworkButton: "연장근무 확인",
     earlyOtPaperworkHint:
-      "06:40 이전 출근(주간): 조기 연장 서류 — 05:40 이전 05:40–06:40; 05:40 이후 06:40–07:40 (한 구간). 야간 S2: 17:00–18:40.",
+      "06:40 이전 출근(주간): 조기 연장 서류 — 05:40 이전 05:40–06:40; 05:40 이후 06:40–07:40 (한 구간). 야간 S2: 16:00–18:40.",
     lateOtPaperworkButton: "17:30 이후 연장 제외",
     lateOtPaperworkHint:
       "17:30 이후 퇴근하지만 연장근무로 계산하지 않는 직원을 표시합니다.",

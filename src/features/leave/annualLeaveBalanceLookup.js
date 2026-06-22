@@ -206,6 +206,21 @@ function fillAnnualLeaveUsageDetailMonths(empDetail, year, filterOrYearMonth) {
   empDetail.months = [...countedRows, ...preCountRows];
 }
 
+/** Chi tiết rỗng (tháng hiển thị đúng layout modal) khi chưa có PN từ điểm danh. */
+export function createEmptyAnnualLeaveUsageDetail(
+  year,
+  filterOrYearMonth = null,
+) {
+  const empDetail = {
+    totalPn: 0,
+    totalHalfPn: 0,
+    totalDeduction: 0,
+    months: {},
+  };
+  fillAnnualLeaveUsageDetailMonths(empDetail, year, filterOrYearMonth);
+  return empDetail;
+}
+
 /**
  * Chi tiết PN / 1/2PN theo tháng từ điểm danh — map `emp_{mnv}` → breakdown.
  * Filter giống `buildAttendanceAnnualLeaveDeductionsByMnv`.
@@ -313,13 +328,19 @@ export function buildAttendanceAnnualLeaveUsageDetailForEmpKey(
   filterOrYearMonth = null,
 ) {
   if (!empKey) return null;
+  if (!attendanceRootData || typeof attendanceRootData !== "object") {
+    return createEmptyAnnualLeaveUsageDetail(year, filterOrYearMonth);
+  }
   const map = buildAttendanceAnnualLeaveUsageDetailByEmpKey(
     attendanceRootData,
     year,
     filterOrYearMonth,
     empKey,
   );
-  return map[empKey] ?? null;
+  return (
+    map[empKey] ??
+    createEmptyAnnualLeaveUsageDetail(year, filterOrYearMonth)
+  );
 }
 
 /** Tra BALANCE theo `emp_{mnv}`. */

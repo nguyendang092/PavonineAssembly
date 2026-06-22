@@ -4,13 +4,13 @@ import {
   formatAnnualLeaveDecimal,
   formatAnnualLeaveDisplayDate,
 } from "./annualLeaveCalculated";
+import AnnualLeaveUsageDetailTrigger from "./AnnualLeaveUsageDetailTrigger";
 
 function AnnualLeaveManagerTableRow({
   row,
   index,
-  viewDetailLabel,
-  viewUsageTitle,
-  onViewDetail,
+  year,
+  throughDateKey,
 }) {
   return (
     <tr>
@@ -56,14 +56,14 @@ function AnnualLeaveManagerTableRow({
         {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.BALANCE])}
       </td>
       <td className="annual-leave-col-detail">
-        <button
-          type="button"
-          className="annual-leave-detail-btn"
-          onClick={() => onViewDetail(row)}
-          title={viewUsageTitle}
-        >
-          {viewDetailLabel}
-        </button>
+        <div className="annual-leave-col-detail-trigger">
+          <AnnualLeaveUsageDetailTrigger
+            managerRow={row}
+            year={year}
+            throughDateKey={throughDateKey}
+            className="annual-leave-inline-detail-btn--manager"
+          />
+        </div>
       </td>
     </tr>
   );

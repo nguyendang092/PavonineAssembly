@@ -28,3 +28,15 @@ export function buildAnnualLeaveDetailModalRowFromEmp(emp, yearData = null) {
       raw?.[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ?? emp?.boPhan ?? "",
   };
 }
+
+/** Hàng modal chi tiết từ bảng quản lý phép năm. */
+export function buildAnnualLeaveDetailModalRowFromManagerRow(row) {
+  if (!row || typeof row !== "object") return null;
+  return {
+    id: row.id,
+    [ANNUAL_LEAVE_EMP.MNV_PREFIX]: row[ANNUAL_LEAVE_EMP.MNV_PREFIX] ?? "",
+    [ANNUAL_LEAVE_EMP.MNV_SUFFIX]: row[ANNUAL_LEAVE_EMP.MNV_SUFFIX] ?? "",
+    [ANNUAL_LEAVE_EMP.FULL_NAME]: row[ANNUAL_LEAVE_EMP.FULL_NAME] ?? "",
+    [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]: row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ?? "",
+  };
+}

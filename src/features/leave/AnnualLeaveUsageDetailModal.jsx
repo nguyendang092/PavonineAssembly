@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import { formatAnnualLeaveDecimal } from "./annualLeaveCalculated";
 
@@ -20,6 +21,11 @@ function formatYearMonthVi(yearMonth) {
   return `${m}/${y}`;
 }
 
+function normalizeUsageDetailMonths(detail) {
+  if (!detail?.months) return [];
+  return Array.isArray(detail.months) ? detail.months : [];
+}
+
 export default function AnnualLeaveUsageDetailModal({
   open,
   onClose,
@@ -27,6 +33,7 @@ export default function AnnualLeaveUsageDetailModal({
   detail,
   year,
   t,
+  loading = false,
 }) {
   useEffect(() => {
     if (!open) return;
@@ -87,12 +94,14 @@ export default function AnnualLeaveUsageDetailModal({
   const mnv = String(row[ANNUAL_LEAVE_EMP.MNV_PREFIX] ?? "").trim();
   const name = row[ANNUAL_LEAVE_EMP.FULL_NAME] ?? "";
   const dept = row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ?? "";
-  const months = detail?.months ?? [];
+  const months = normalizeUsageDetailMonths(detail);
   const hasUsage =
-    (detail?.totalDeduction ?? 0) > 0 ||
-    months.some((m) => (m.days?.length ?? 0) > 0);
+    !loading &&
+    detail &&
+    ((detail.totalDeduction ?? 0) > 0 ||
+      months.some((m) => (m.days?.length ?? 0) > 0));
 
-  return (
+  const modalContent = (
     <div
       className="annual-leave-detail-overlay"
       onClick={onClose}
@@ -147,7 +156,18 @@ export default function AnnualLeaveUsageDetailModal({
           </button>
         </div>
 
-        {hasUsage ? (
+        {loading ? (
+          <div className="annual-leave-detail-empty" aria-busy="true">
+            <span className="annual-leave-detail-empty-icon" aria-hidden>
+              ⏳
+            </span>
+            <p className="annual-leave-detail-empty-text">
+              {t("annualLeave.usageDetailLoading", {
+                defaultValue: "Đang tải chi tiết từ điểm danh…",
+              })}
+            </p>
+          </div>
+        ) : hasUsage ? (
           <>
             <div className="annual-leave-detail-summary">
               <div
@@ -249,71 +269,76 @@ export default function AnnualLeaveUsageDetailModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {months.map((month) => (
-                      <tr
-                        key={month.yearMonth}
-                        className={
-                          month.displayOnly
-                            ? "annual-leave-detail-row-display-only"
-                            : undefined
-                        }
-                      >
-                        <td className="annual-leave-detail-month">
-                          <span className="annual-leave-detail-month-pill">
-                            {formatYearMonthVi(month.yearMonth)}
-                          </span>
-                          {month.displayOnly ? (
-                            <span className="annual-leave-detail-month-tag">
-                              {t("annualLeave.displayOnlyMonthTag", {
-                                defaultValue: "Chỉ hiển thị",
-                              })}
+                    {months.map((month) => {
+                      const days = Array.isArray(month.days) ? month.days : [];
+                      return (
+                        <tr
+                          key={month.yearMonth}
+                          className={
+                            month.displayOnly
+                              ? "annual-leave-detail-row-display-only"
+                              : undefined
+                          }
+                        >
+                          <td className="annual-leave-detail-month">
+                            <span className="annual-leave-detail-month-pill">
+                              {formatYearMonthVi(month.yearMonth)}
                             </span>
-                          ) : null}
-                        </td>
-                        <td>
-                          <span className="annual-leave-detail-count annual-leave-detail-count-pn">
-                            {month.pnCount}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="annual-leave-detail-count annual-leave-detail-count-half">
-                            {month.halfPnCount}
-                          </span>
-                        </td>
-                        <td className="annual-leave-detail-month-total">
-                          {month.displayOnly
-                            ? "—"
-                            : formatAnnualLeaveDecimal(month.totalDeduction)}
-                        </td>
-                        <td className="annual-leave-detail-days">
-                          {month.days.length === 0 ? (
-                            <span className="annual-leave-detail-days-empty">—</span>
-                          ) : (
-                            month.days.map((day) => (
-                              <span
-                                key={day.dateKey}
-                                className={`annual-leave-detail-day-chip annual-leave-detail-day-chip-${day.type === "PN" ? "pn" : "half"}`}
-                              >
-                                <span className="annual-leave-detail-day-date">
-                                  {formatDateKeyVi(day.dateKey)}
-                                </span>
-                                <span className="annual-leave-detail-day-type">
-                                  <span
-                                    className="annual-leave-detail-day-type-icon"
-                                    aria-hidden
-                                  >
-                                    {day.type === "PN"
-                                      ? ANNUAL_LEAVE_PN_ICON
-                                      : ANNUAL_LEAVE_HALF_PN_ICON}
-                                  </span>
-                                  {day.type}
-                                </span>
+                            {month.displayOnly ? (
+                              <span className="annual-leave-detail-month-tag">
+                                {t("annualLeave.displayOnlyMonthTag", {
+                                  defaultValue: "Chỉ hiển thị",
+                                })}
                               </span>
-                            ))
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                            ) : null}
+                          </td>
+                          <td>
+                            <span className="annual-leave-detail-count annual-leave-detail-count-pn">
+                              {month.pnCount}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="annual-leave-detail-count annual-leave-detail-count-half">
+                              {month.halfPnCount}
+                            </span>
+                          </td>
+                          <td className="annual-leave-detail-month-total">
+                            {month.displayOnly
+                              ? "—"
+                              : formatAnnualLeaveDecimal(month.totalDeduction)}
+                          </td>
+                          <td className="annual-leave-detail-days">
+                            {days.length === 0 ? (
+                              <span className="annual-leave-detail-days-empty">
+                                —
+                              </span>
+                            ) : (
+                              days.map((day) => (
+                                <span
+                                  key={day.dateKey}
+                                  className={`annual-leave-detail-day-chip annual-leave-detail-day-chip-${day.type === "PN" ? "pn" : "half"}`}
+                                >
+                                  <span className="annual-leave-detail-day-date">
+                                    {formatDateKeyVi(day.dateKey)}
+                                  </span>
+                                  <span className="annual-leave-detail-day-type">
+                                    <span
+                                      className="annual-leave-detail-day-type-icon"
+                                      aria-hidden
+                                    >
+                                      {day.type === "PN"
+                                        ? ANNUAL_LEAVE_PN_ICON
+                                        : ANNUAL_LEAVE_HALF_PN_ICON}
+                                    </span>
+                                    {day.type}
+                                  </span>
+                                </span>
+                              ))
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -335,4 +360,6 @@ export default function AnnualLeaveUsageDetailModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

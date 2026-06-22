@@ -4,6 +4,8 @@ import { buildLiveAnnualLeaveBalanceByMnv } from "./annualLeaveDerived";
 import {
   buildAttendanceAnnualLeaveDeductionsByMnv,
   buildAttendanceAnnualLeaveUsageDetailByEmpKey,
+  buildAttendanceAnnualLeaveUsageDetailForEmpKey,
+  createEmptyAnnualLeaveUsageDetail,
   attendanceMnvKeyFromDayRecord,
   getAnnualLeaveBalanceForEmployee,
   getDisplayAnnualLeaveBalanceForAttendance,
@@ -198,5 +200,26 @@ describe("annualLeaveBalanceLookup", () => {
     expect(emp.months[2].displayOnly).toBe(true);
     expect(emp.months[2].pnCount).toBe(1);
     expect(emp.months[2].totalDeduction).toBe(0);
+  });
+
+  it("createEmptyAnnualLeaveUsageDetail returns array months for modal", () => {
+    const detail = createEmptyAnnualLeaveUsageDetail(2026, {
+      throughDateKey: "2026-08-15",
+    });
+    expect(Array.isArray(detail.months)).toBe(true);
+    expect(detail.months.length).toBeGreaterThan(0);
+    expect(detail.totalDeduction).toBe(0);
+  });
+
+  it("buildAttendanceAnnualLeaveUsageDetailForEmpKey returns empty layout when no PN", () => {
+    const detail = buildAttendanceAnnualLeaveUsageDetailForEmpKey(
+      {},
+      2026,
+      "emp_X",
+      { throughDateKey: "2026-08-15" },
+    );
+    expect(detail).not.toBeNull();
+    expect(Array.isArray(detail.months)).toBe(true);
+    expect(detail.totalPn).toBe(0);
   });
 });

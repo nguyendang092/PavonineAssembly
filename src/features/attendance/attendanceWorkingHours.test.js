@@ -526,6 +526,16 @@ describe("ca đêm — TC trước 18:40 (giấy xác nhận)", () => {
     expect(isEarlyArrivalForPaperworkOvertime("18:40", ca)).toBe(true);
   });
 
+  it("16:00–17:00 đủ điều kiện popup (vào sớm trước 18:40)", () => {
+    expect(isEarlyArrivalForNightShiftPaperworkOvertime("16:00", ca)).toBe(true);
+    expect(isEarlyArrivalForNightShiftPaperworkOvertime("16:30", ca)).toBe(true);
+    expect(isEarlyArrivalForNightShiftPaperworkOvertime("17:00", ca)).toBe(true);
+    expect(isEarlyArrivalForNightShiftPaperworkOvertime("15:59", ca)).toBe(false);
+    expect(
+      isEarlyArrivalForNightShiftPaperworkOvertime("16:00:00", ca),
+    ).toBe(true);
+  });
+
   it("có giấy: 17:00 → 1h TC (18:40–19:40); GC từ 19:40", () => {
     expect(getNightShiftEarlyPaperworkOvertimeHours("17:00", true, ca)).toBe(
       1,

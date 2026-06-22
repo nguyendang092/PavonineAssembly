@@ -129,6 +129,7 @@ const vi = {
     lastUpdated: "Cập nhật lần cuối",
     linkToAttendanceListShort: "Điểm danh NV",
     noUsageDetail: "Không có ngày PN / 1/2 PN từ điểm danh trong tháng này.",
+    usageDetailLoading: "Đang tải chi tiết từ điểm danh…",
     displayOnlyMonthTag: "Chỉ hiển thị",
     viewUsageDetail: "Chi tiết PN / 1/2 PN",
     monthlyBreakdownHint: "PN −1 · 1/2 PN −0,5",
@@ -1403,7 +1404,7 @@ const vi = {
     exportRangeExcelSuccess: "✅ Đã xuất Excel (nhiều ngày).",
     earlyOtPaperworkButton: "Xác nhận tăng ca",
     earlyOtPaperworkHint:
-      "Xác nhận giấy TC sớm: ca ngày vào ≤ 06:40; ca đêm S2 vào 17:00–18:40.",
+      "Xác nhận giấy TC sớm: ca ngày vào ≤ 06:40; ca đêm S2 vào 16:00–18:40.",
     lateOtPaperworkButton: "Không TC >17:30",
     lateOtPaperworkHint:
       "Đánh dấu những nhân viên ra sau 17:30 nhưng KHÔNG tính tăng ca.",
@@ -1417,7 +1418,7 @@ const vi = {
       "Chỉ Admin / HR / quản lý bộ phận được xác nhận tăng ca.",
     earlyOtModalTitle: "Xác nhận đăng ký tăng ca",
     earlyOtModalDescription:
-      "Ca ngày ≤ 06:40: trước 05:40 → 2h; 05:40–05:59 → 05:40–06:40; từ 06:00 → 06:40–07:40. Ca đêm 17:00–18:40: TC 18:40–19:40.",
+      "Ca ngày ≤ 06:40: trước 05:40 → 2h; 05:40–05:59 → 05:40–06:40; từ 06:00 → 06:40–07:40. Ca đêm 16:00–18:40: TC 18:40–19:40.",
     earlyOtModalSave: "Lưu",
     earlyOtModalSkipAll: "Tất cả không có giấy tăng ca",
     lateOtModalTitle: "Xác nhận không tăng ca sau 17:30",

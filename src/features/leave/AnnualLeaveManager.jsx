@@ -16,11 +16,9 @@ import { normalizeAnnualLeaveRowLive } from "./annualLeaveDerived";
 import { parseAnnualLeaveExcelFile } from "./annualLeaveExcelImport";
 import { exportAnnualLeaveExcel } from "./annualLeaveExcelExport";
 import { useAnnualLeaveLiveData } from "./useAnnualLeaveLiveData";
-import { buildAttendanceAnnualLeaveUsageDetailForEmpKey } from "./annualLeaveBalanceLookup";
 import { useAnnualLeaveYearReconcile } from "./useAnnualLeaveYearReconcile";
 import { persistAnnualLeaveYearFromAttendance } from "./annualLeaveAttendanceSync";
 import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
-import AnnualLeaveUsageDetailModal from "./AnnualLeaveUsageDetailModal";
 import AnnualLeaveManagerTableRow from "./AnnualLeaveManagerTableRow";
 import {
   attendanceListDateForAnnualLeaveYear,
@@ -66,13 +64,12 @@ export default function AnnualLeaveManager() {
   const [deptFilter, setDeptFilter] = useState("");
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [detailRow, setDetailRow] = useState(null);
   const fileInputRef = useRef(null);
   const actionsMenuRef = useRef(null);
 
   const canManage = canManageAnnualLeave(user, userRole);
 
-  const { yearData, attendanceRoot, deductionsByEmpKey, loading } =
+  const { yearData, deductionsByEmpKey, loading } =
     useAnnualLeaveLiveData(year, {
       includeUsageDetail: false,
       includeBalanceMap: false,
@@ -132,21 +129,10 @@ export default function AnnualLeaveManager() {
 
   const deferredSearch = useDeferredValue(search);
 
-  const detailForModal = useMemo(() => {
-    if (!detailRow?.id || !attendanceRoot) return null;
-    return buildAttendanceAnnualLeaveUsageDetailForEmpKey(
-      attendanceRoot,
-      year,
-      detailRow.id,
-    );
-  }, [detailRow, attendanceRoot, year]);
-
-  const viewDetailLabel = t("annualLeave.viewDetail", { defaultValue: "View" });
-  const viewUsageTitle = t("annualLeave.viewUsageDetail");
-
-  const handleViewDetail = useCallback((row) => {
-    setDetailRow(row);
-  }, []);
+  const detailThroughDateKey = useMemo(
+    () => attendanceListDateForAnnualLeaveYear(year),
+    [year],
+  );
 
   useEffect(() => {
     if (!alert.show) return;
@@ -509,15 +495,6 @@ export default function AnnualLeaveManager() {
 
         <AlertMessage alert={alert} />
 
-        <AnnualLeaveUsageDetailModal
-          open={detailRow != null}
-          onClose={() => setDetailRow(null)}
-          row={detailRow}
-          detail={detailForModal}
-          year={year}
-          t={t}
-        />
-
         {loading ? (
           <LoadingBlock />
         ) : (
@@ -592,9 +569,8 @@ export default function AnnualLeaveManager() {
                         key={row.id}
                         row={row}
                         index={idx}
-                        viewDetailLabel={viewDetailLabel}
-                        viewUsageTitle={viewUsageTitle}
-                        onViewDetail={handleViewDetail}
+                        year={year}
+                        throughDateKey={detailThroughDateKey}
                       />
                     ))
                   )}

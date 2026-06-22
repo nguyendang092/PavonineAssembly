@@ -25,8 +25,8 @@ export const DAY_EARLY_OT_MAX_HOURS = 2;
 /** Ca đêm S2: mốc GC / TC sớm 18:40; có giấy → GC từ 19:40. */
 export const NIGHT_SHIFT_OFFICIAL_START_MIN = 18 * 60 + 40;
 export const NIGHT_SHIFT_EARLY_OT_GC_START_MIN = 19 * 60 + 40;
-/** Ca đêm: popup giấy — vào 17:00–18:40. */
-export const NIGHT_SHIFT_EARLY_PAPERWORK_MIN_IN_MIN = 17 * 60;
+/** Ca đêm: popup giấy — vào 16:00–18:40 (trước giờ vào chính thức 18:40). */
+export const NIGHT_SHIFT_EARLY_PAPERWORK_MIN_IN_MIN = 16 * 60;
 
 /** Ca đêm: khung TC sớm 18:40–19:40 (1h). */
 export const NIGHT_EARLY_OT_SEGMENTS = Object.freeze([

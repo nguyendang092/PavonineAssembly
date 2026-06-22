@@ -317,7 +317,7 @@ export default function PayrollSalaryCalculator() {
     [user, userRole, employees, canConfirmOtForEmployee],
   );
 
-  /** Vào sớm (ca ngày ≤ 06:40 / ca đêm 17:00–18:40) — hiện nút «Xác nhận tăng ca». */
+  /** Vào sớm (ca ngày ≤ 06:40 / ca đêm 16:00–18:40) — hiện nút «Xác nhận tăng ca». */
   const earlyOtEligibleEmployees = useMemo(
     () =>
       sortEmployeesAscForPopup(
