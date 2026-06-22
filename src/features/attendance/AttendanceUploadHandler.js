@@ -20,6 +20,7 @@ import {
   attendanceMnvStorageKey,
 } from "@/utils/attendanceEmployeeRecord";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
 import {
   persistAnnualLeaveYearFromAttendance,
 } from "@/features/leave/annualLeaveAttendanceSync";
