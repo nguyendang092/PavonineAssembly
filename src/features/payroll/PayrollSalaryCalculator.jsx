@@ -317,7 +317,7 @@ export default function PayrollSalaryCalculator() {
     [user, userRole, employees, canConfirmOtForEmployee],
   );
 
-  /** Vào sớm (ca ngày ≤ 06:40 / ca đêm 16:00–18:40) — hiện nút «Xác nhận tăng ca». */
+  /** Vào sớm (ca ngày ≤ 06:40 / ca đêm 15:00–18:40) — hiện nút «Xác nhận tăng ca». */
   const earlyOtEligibleEmployees = useMemo(
     () =>
       sortEmployeesAscForPopup(
@@ -1255,7 +1255,7 @@ export default function PayrollSalaryCalculator() {
         title={tlPage("earlyOtModalTitle", "Xác nhận đăng ký tăng ca")}
         description={tlPage(
           "earlyOtModalDescription",
-          "Trước 05:40 → 2h; 05:40–05:59 → 05:40–06:40; từ 06:00 → 06:40–07:40. Ca đêm: 18:40–19:40.",
+          "Trước 05:40 → 2h; 05:40–05:59 → 05:40–06:40; từ 06:00 → 06:40–07:40. Ca đêm: 4 khung 15:40–19:40 (max 4h), tier 16:00 / 17:00 / 18:00.",
         )}
         saveLabel={tlPage("earlyOtModalSave", "Lưu")}
         skipAllLabel={tlPage(

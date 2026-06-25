@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   DAY_EARLY_OT_SECOND_TIER_MIN,
-  NIGHT_EARLY_OT_SEGMENTS,
+  NIGHT_EARLY_OT_TIER_START_MINUTES,
   dayEarlyPaperworkOvertimeMinutes,
-  sumPaperworkOvertimeSegmentMinutes,
+  nightEarlyPaperworkOvertimeMinutes,
 } from "./payrollEarlyOvertimeWindows";
 
 describe("payrollEarlyOvertimeWindows", () => {
@@ -17,12 +17,17 @@ describe("payrollEarlyOvertimeWindows", () => {
     expect(dayEarlyPaperworkOvertimeMinutes(6 * 60 + 40)).toBe(60);
   });
 
-  it("ca đêm — khung 18:40–19:40 cố định 60 phút khi đủ điều kiện", () => {
-    expect(sumPaperworkOvertimeSegmentMinutes(17 * 60, NIGHT_EARLY_OT_SEGMENTS)).toBe(
-      60,
-    );
+  it("ca đêm — 4 khung mốc; tier 16:00 / 17:00 / 18:00", () => {
+    expect(nightEarlyPaperworkOvertimeMinutes(15 * 60 + 30)).toBe(240);
+    expect(nightEarlyPaperworkOvertimeMinutes(15 * 60 + 45)).toBe(60);
+    expect(nightEarlyPaperworkOvertimeMinutes(16 * 60)).toBe(180);
+    expect(nightEarlyPaperworkOvertimeMinutes(16 * 60 + 40)).toBe(60);
+    expect(nightEarlyPaperworkOvertimeMinutes(17 * 60)).toBe(120);
+    expect(nightEarlyPaperworkOvertimeMinutes(17 * 60 + 40)).toBe(60);
+    expect(nightEarlyPaperworkOvertimeMinutes(17 * 60 + 45)).toBe(60);
     expect(
-      sumPaperworkOvertimeSegmentMinutes(18 * 60 + 40, NIGHT_EARLY_OT_SEGMENTS),
+      nightEarlyPaperworkOvertimeMinutes(NIGHT_EARLY_OT_TIER_START_MINUTES[2]),
     ).toBe(60);
+    expect(nightEarlyPaperworkOvertimeMinutes(18 * 60 + 40)).toBe(60);
   });
 });

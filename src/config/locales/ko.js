@@ -1408,7 +1408,7 @@ const ko = {
     exportRangeExcelSuccess: "✅ Excel보내기 완료 (여러 날).",
     earlyOtPaperworkButton: "연장근무 확인",
     earlyOtPaperworkHint:
-      "06:40 이전 출근(주간): 조기 연장 서류 — 05:40 이전 05:40–06:40; 05:40 이후 06:40–07:40 (한 구간). 야간 S2: 16:00–18:40.",
+      "06:40 이전 출근(주간): 조기 연장 서류 — 05:40 이전 05:40–06:40; 05:40 이후 06:40–07:40 (한 구간). 야간 S2: 15:00–18:40.",
     lateOtPaperworkButton: "17:30 이후 연장 제외",
     lateOtPaperworkHint:
       "17:30 이후 퇴근하지만 연장근무로 계산하지 않는 직원을 표시합니다.",

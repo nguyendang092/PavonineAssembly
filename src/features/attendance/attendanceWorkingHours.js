@@ -4,7 +4,8 @@ import {
   DAY_EARLY_OT_MAX_HOURS,
   DAY_EARLY_PAPERWORK_CUTOFF_MIN,
   dayEarlyPaperworkOvertimeMinutes,
-  NIGHT_EARLY_OT_SEGMENTS,
+  NIGHT_EARLY_OT_MAX_HOURS,
+  nightEarlyPaperworkOvertimeMinutes,
   NIGHT_SHIFT_EARLY_OT_GC_START_MIN,
   NIGHT_SHIFT_EARLY_PAPERWORK_MIN_IN_MIN,
   NIGHT_SHIFT_OFFICIAL_START_MIN,
@@ -198,7 +199,7 @@ function getNightShiftPayrollCutoffEndMinutes(timeInMinutes) {
 
 /**
  * Giờ công ca đêm (tối đa 8) và phút tăng ca sau mốc 05:00 (để × 0.5 / 30p).
- * Vào trước {@link NIGHT_SHIFT_OFFICIAL_START_MIN}: GC từ 18:40; có giấy → TC 18:40–19:40, GC từ 19:40.
+ * Vào trước {@link NIGHT_SHIFT_OFFICIAL_START_MIN}: GC từ 18:40; có giấy → TC theo mốc 17:40/18:40, GC từ 19:40.
  * @returns {{ regularHours: number; otMinutes: number } | null}
  */
 export function getNightShiftPayrollRegularHoursAndOtMinutes(
@@ -1001,7 +1002,7 @@ export function isEarlyArrivalFor0600PaperworkOvertime(timeIn, shiftCode) {
 }
 
 /**
- * Ca đêm S2: vào từ 16:00 đến ≤ 18:40 — đủ điều kiện xác nhận giấy TC trước giờ vào chính thức.
+ * Ca đêm S2: vào từ 15:00 đến ≤ 18:40 — đủ điều kiện xác nhận giấy TC trước giờ vào chính thức.
  */
 export function isEarlyArrivalForNightShiftPaperworkOvertime(timeIn, shiftCode) {
   if (!isNightShiftCaLamViec(shiftCode)) return false;
@@ -1013,7 +1014,7 @@ export function isEarlyArrivalForNightShiftPaperworkOvertime(timeIn, shiftCode) 
   );
 }
 
-/** Ca ngày (≤ 06:40) hoặc ca đêm (16:00–18:40) — hiện popup xác nhận giấy TC sớm. */
+/** Ca ngày (≤ 06:40) hoặc ca đêm (15:00–18:40) — hiện popup xác nhận giấy TC sớm. */
 export function isEarlyArrivalForPaperworkOvertime(timeIn, shiftCode) {
   return (
     isEarlyArrivalFor0600PaperworkOvertime(timeIn, shiftCode) ||
@@ -1039,7 +1040,7 @@ export function effectivePayrollEarlyOtPaperwork(
 }
 
 /**
- * TC ca đêm trước giờ vào chính thức: khung 18:40–19:40 (mốc 18:40), làm tròn 0,1h.
+ * TC ca đêm trước giờ vào chính thức: khung mốc 17:40–18:40 / 18:40–19:40 (tối đa 2h), làm tròn 0,1h.
  * @param {unknown} timeIn
  * @param {boolean | undefined} payrollEarlyOtPaperwork
  * @param {unknown} shiftCode
@@ -1054,7 +1055,11 @@ export function getNightShiftEarlyPaperworkOvertimeHours(
   if (!isEarlyArrivalForNightShiftPaperworkOvertime(timeIn, shiftCode)) return 0;
   const a = parseHHMMToMinutes(timeIn);
   if (a == null) return 0;
-  return earlyPaperworkHoursFromEntry(a, NIGHT_EARLY_OT_SEGMENTS, 1);
+  const minutes = nightEarlyPaperworkOvertimeMinutes(a);
+  if (minutes <= 0) return 0;
+  return roundHoursToTenths(
+    Math.min(minutes / 60, NIGHT_EARLY_OT_MAX_HOURS),
+  );
 }
 
 /**
