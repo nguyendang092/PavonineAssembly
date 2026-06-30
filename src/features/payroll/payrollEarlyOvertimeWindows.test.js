@@ -7,10 +7,10 @@ import {
 } from "./payrollEarlyOvertimeWindows";
 
 describe("payrollEarlyOvertimeWindows", () => {
-  it("ca ngày — trước 05:40: 2h; 05:40–05:59: 1h; từ 06:00: khung 06:40", () => {
+  it("ca ngày — trước 06:00: 2h; từ 06:00: khung 06:40", () => {
     expect(dayEarlyPaperworkOvertimeMinutes(5 * 60 + 30)).toBe(120);
-    expect(dayEarlyPaperworkOvertimeMinutes(5 * 60 + 40)).toBe(60);
-    expect(dayEarlyPaperworkOvertimeMinutes(5 * 60 + 45)).toBe(60);
+    expect(dayEarlyPaperworkOvertimeMinutes(5 * 60 + 40)).toBe(120);
+    expect(dayEarlyPaperworkOvertimeMinutes(5 * 60 + 45)).toBe(120);
     expect(dayEarlyPaperworkOvertimeMinutes(DAY_EARLY_OT_SECOND_TIER_MIN)).toBe(
       60,
     );

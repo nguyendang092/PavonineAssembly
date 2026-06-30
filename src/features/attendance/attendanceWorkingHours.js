@@ -1063,8 +1063,7 @@ export function getNightShiftEarlyPaperworkOvertimeHours(
 }
 
 /**
- * TC sớm (có giấy, vào ≤ 06:40): trước 05:40 → 2 khung (2h); 05:40–05:59 → 05:40–06:40;
- * từ 06:00 → 06:40–07:40 — làm tròn 0,1h.
+ * TC sớm (có giấy, vào ≤ 06:40): trước 06:00 → 2 khung (2h); từ 06:00 → 06:40–07:40 (1h).
  * @param {unknown} timeIn
  * @param {boolean | undefined} payrollEarlyOtPaperwork
  * @param {unknown} shiftCode
