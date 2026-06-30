@@ -4,6 +4,7 @@ import {
   getPayrollMonthlyCoeffHoursMap,
   getPayrollMonthlyMainRowCell,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
+import { formatPayrollTableNightShiftOffDayWorkingCellFromEmp } from "@/features/payroll/payrollTableOtCells";
 
 function coeffHours(lines, coeff) {
   return lines.find((l) => l.coeff === coeff)?.hours ?? 0;
@@ -138,6 +139,42 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     });
     expect(coeffHours(lines, 2.7)).toBeGreaterThan(0);
     expect(coeffHours(lines, 2.0)).toBe(0);
+  });
+
+  it("ngày OFF ca đêm + giấy TC sớm — ×2.7 đồng bộ bảng ngày (16:56→09:31)", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "16:56",
+      timeOut: "09:31",
+      isOffDay: true,
+      isHolidayDay: false,
+      shiftCode: "S2",
+      payrollEarlyOtPaperwork: true,
+      payrollLateOtExcluded: false,
+    });
+    expect(coeffHours(lines, 2.7)).toBe(14.5);
+
+    const emp = {
+      id: "e1",
+      gioVao: "16:56",
+      gioRa: "09:31",
+      caLamViec: "S2",
+      payrollEarlyOtPaperwork: true,
+    };
+    const dayCtx = { isOffDay: true, isHolidayDay: false, isCompensatoryDay: false };
+    expect(formatPayrollTableNightShiftOffDayWorkingCellFromEmp(emp, dayCtx)).toBe(
+      "14.5",
+    );
+    expect(
+      getPayrollMonthlyCoeffHoursMap({
+        timeIn: "16:56",
+        timeOut: "09:31",
+        isOffDay: true,
+        isHolidayDay: false,
+        shiftCode: "S2",
+        payrollEarlyOtPaperwork: true,
+        payrollLateOtExcluded: false,
+      }).get(2.7),
+    ).toBe(14.5);
   });
 });
 

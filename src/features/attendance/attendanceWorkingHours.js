@@ -831,6 +831,7 @@ export function formatPayrollTableHolidayNightWorkingCell(
   includeThaiSanInWorkingHours = false,
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
+  payrollEarlyOtPaperwork = undefined,
 ) {
   if (
     hasPayrollLeaveType(
@@ -847,6 +848,7 @@ export function formatPayrollTableHolidayNightWorkingCell(
     timeIn,
     timeOut,
     shiftCode,
+    payrollEarlyOtPaperwork,
   );
   return payrollHoursCellDisplay(
     merged == null ? PAYROLL_CELL_DASH : String(merged),

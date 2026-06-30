@@ -1,13 +1,13 @@
 import ExcelJS from "exceljs";
 import { parseLocalDateKey } from "@/utils/dateKey";
 import {
-  formatPayrollTableHolidayNightWorkingCell,
   formatPayrollTableWorkingHoursCell,
   roundHoursToTenths,
 } from "@/features/attendance/attendanceWorkingHours";
 import {
   formatPayrollTableDayShiftOvertimeCellFromEmp,
   formatPayrollTableHolidayDayWorkingCellFromEmp,
+  formatPayrollTableHolidayNightWorkingCellFromEmp,
   formatPayrollTableNightShiftOffDayWorkingCellFromEmp,
   formatPayrollTableNightShiftOvertimeCellFromEmp,
   formatPayrollTableNightShiftWorkingCellFromEmp,
@@ -229,16 +229,10 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
       payrollDayCtx,
       otMaps,
     ),
-    formatPayrollTableHolidayNightWorkingCell(
-      timeIn,
-      timeOut,
-      isHolidayDay,
-      shiftCode,
-      leaveType,
-      includeTapVuInWorkingHours,
-      includeThaiSanInWorkingHours,
-      includeTaiXeInWorkingHours,
-      includeTaiXeTongInWorkingHours,
+    formatPayrollTableHolidayNightWorkingCellFromEmp(
+      emp,
+      payrollDayCtx,
+      otMaps,
     ),
     formatPayrollTableTotalNightGcCellFromEmp(emp, payrollDayCtx, otMaps),
   ];

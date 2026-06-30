@@ -1,6 +1,7 @@
 import {
   formatPayrollTableDayShiftOvertimeCell,
   formatPayrollTableHolidayDayWorkingCell,
+  formatPayrollTableHolidayNightWorkingCell,
   formatPayrollTableNightShiftOffDayWorkingCell,
   formatPayrollTableNightShiftOvertimeCell,
   formatPayrollTableNightShiftWorkingCell,
@@ -166,6 +167,27 @@ export function formatPayrollTableNightShiftOffDayWorkingCellFromEmp(
     p.timeIn,
     p.timeOut,
     strictOffFromParams(p),
+    p.shiftCode,
+    p.leaveType,
+    p.includeTapVuInWorkingHours,
+    p.includeThaiSanInWorkingHours,
+    p.includeTaiXeInWorkingHours,
+    p.includeTaiXeTongInWorkingHours,
+    p.payrollEarlyOtPaperwork,
+  );
+}
+
+/** GC ca đêm ngày lễ — GC + TC gộp. */
+export function formatPayrollTableHolidayNightWorkingCellFromEmp(
+  emp,
+  dayCtx,
+  maps,
+) {
+  const p = resolveOtDayParams(emp, dayCtx, maps);
+  return formatPayrollTableHolidayNightWorkingCell(
+    p.timeIn,
+    p.timeOut,
+    p.isHolidayDay,
     p.shiftCode,
     p.leaveType,
     p.includeTapVuInWorkingHours,

@@ -73,6 +73,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
         timeIn,
         timeOut,
         shiftCode,
+        payrollEarlyOtPaperwork,
       );
       if (m != null && m > 0) {
         lines.push({ coeff: 3.9, hours: m, key: "nh39" });
@@ -106,6 +107,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
         timeIn,
         timeOut,
         shiftCode,
+        payrollEarlyOtPaperwork,
       );
       if (m != null && m > 0) {
         lines.push({ coeff: 2.7, hours: m, key: "no27" });

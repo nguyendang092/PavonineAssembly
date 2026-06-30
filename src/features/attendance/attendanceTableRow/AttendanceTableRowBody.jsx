@@ -5,10 +5,10 @@ import {
   getAttendanceLeaveTypeColorClassNameForEmployee,
 } from "../attendanceGioVaoTypeOptions";
 import {
-  formatPayrollTableHolidayNightWorkingCell,
   formatPayrollTableWorkingHoursCell,
 } from "../attendanceWorkingHours";
 import {
+  formatPayrollTableHolidayNightWorkingCellFromEmp,
   formatPayrollTableDayShiftOvertimeCellFromEmp,
   formatPayrollTableHolidayDayWorkingCellFromEmp,
   formatPayrollTableNightShiftOffDayWorkingCellFromEmp,
@@ -741,16 +741,9 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-lime-950 dark:text-lime-100">
-              {formatPayrollTableHolidayNightWorkingCell(
-                dayFields.timeIn,
-                dayFields.timeOut,
-                isHolidayDay,
-                dayFields.shiftCode,
-                dayFields.leaveType,
-                includeTapVuInWorkingHours,
-                includeThaiSanInWorkingHours,
-                includeTaiXeInWorkingHours,
-                includeTaiXeTongInWorkingHours,
+              {formatPayrollTableHolidayNightWorkingCellFromEmp(
+                emp,
+                payrollDayCtx,
               )}
             </span>
           </Cell>
