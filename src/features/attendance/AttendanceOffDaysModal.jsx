@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { db, ref, get, update } from "@/services/firebase";
+import { canManageAttendanceOffHolidayDays } from "@/config/authRoles";
 import { mergeAttendanceDayMeta } from "@/features/attendance/attendanceDayMeta";
 import { fetchOffAndHolidayDateKeysInMonth } from "@/features/attendance/attendanceMonthOffDays";
 
@@ -20,10 +21,12 @@ export default function AttendanceOffDaysModal({
   onClose,
   selectedDate,
   user,
+  userRole,
   tl,
   onSaved,
   attendanceRootPath = "attendance",
 }) {
+  const canManage = canManageAttendanceOffHolidayDays(user, userRole);
   const [draft, setDraft] = useState([]);
   const [snapshot, setSnapshot] = useState([]);
   const [pick, setPick] = useState("");
@@ -33,6 +36,13 @@ export default function AttendanceOffDaysModal({
 
   useEffect(() => {
     if (!open) return;
+    if (!canManage) {
+      onClose();
+    }
+  }, [open, canManage, onClose]);
+
+  useEffect(() => {
+    if (!open || !canManage) return;
     if (!selectedDate || !DATE_KEY.test(selectedDate)) {
       setDraft([]);
       setSnapshot([]);
@@ -72,7 +82,7 @@ export default function AttendanceOffDaysModal({
     return () => {
       cancelled = true;
     };
-  }, [open, selectedDate, attendanceRootPath]);
+  }, [open, canManage, selectedDate, attendanceRootPath]);
 
   const addOrUpdateDate = useCallback((d, kind) => {
     if (!d || !DATE_KEY.test(d)) return;
@@ -88,7 +98,7 @@ export default function AttendanceOffDaysModal({
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!user) return;
+    if (!user || !canManage) return;
     setBusy(true);
     try {
       const want = new Map(draft.map((e) => [e.key, e.kind]));
@@ -140,9 +150,9 @@ export default function AttendanceOffDaysModal({
     } finally {
       setBusy(false);
     }
-  }, [user, draft, snapshot, onClose, onSaved, attendanceRootPath]);
+  }, [user, canManage, draft, snapshot, onClose, onSaved, attendanceRootPath]);
 
-  if (!open) return null;
+  if (!open || !canManage) return null;
 
   return (
     <div

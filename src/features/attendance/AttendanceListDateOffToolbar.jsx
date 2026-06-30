@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { createPortal } from "react-dom";
-import { isAdminAccess } from "@/config/authRoles";
+import { canManageAttendanceOffHolidayDays } from "@/config/authRoles";
 
 function AttendanceListDateOffToolbar({
   user,
@@ -23,6 +23,8 @@ function AttendanceListDateOffToolbar({
   setOffDaysModalOpen,
   tl,
 }) {
+  const canManageOffDays = canManageAttendanceOffHolidayDays(user, userRole);
+
   return (
       <div className="grid min-w-0 flex-1 grid-cols-2 items-center gap-2 px-1 sm:flex sm:flex-nowrap sm:items-center sm:gap-1.5 sm:px-0 sm:overflow-x-auto sm:whitespace-nowrap">
         <input
@@ -31,7 +33,7 @@ function AttendanceListDateOffToolbar({
           onChange={(e) => setSelectedDate(e.target.value)}
           className="h-8 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2.5 text-sm font-semibold text-blue-700 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300 sm:w-auto"
         />
-        {user && isAdminAccess(user, userRole) ? (
+        {canManageOffDays ? (
           <div
             className="relative min-w-0 pl-1 sm:pl-0"
             ref={offHolidayDropdownRef}
@@ -239,6 +241,7 @@ function AttendanceListDateOffToolbar({
                       role="menuitem"
                       className="w-full rounded-lg bg-gradient-to-r from-violet-600 via-violet-600 to-indigo-600 py-2.5 text-center text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-violet-600/40 transition hover:from-violet-500 hover:to-indigo-500 hover:shadow-xl hover:shadow-violet-500/45 active:scale-[0.99] dark:shadow-violet-900/50"
                       onClick={() => {
+                        if (!canManageOffDays) return;
                         setOffHolidayDropdownOpen(false);
                         setOffDaysModalOpen(true);
                       }}

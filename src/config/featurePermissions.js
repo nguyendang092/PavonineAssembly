@@ -13,6 +13,7 @@
 import {
   canAddAttendanceForDepartment,
   canEditAttendanceForEmployee,
+  canManageAttendanceOffHolidayDays,
   isAdminAccess,
 } from "./authRoles";
 
@@ -22,6 +23,7 @@ export const PERMISSION_IDS = Object.freeze({
   ATTENDANCE_LIST: "attendance_list",
   ATTENDANCE_FORM: "attendance_form",
   ATTENDANCE_DELETE: "attendance_delete",
+  ATTENDANCE_OFF_HOLIDAY_DAYS: "attendance_off_holiday_days",
   PAYROLL_SALARY_ROWS: "payroll_salary_rows",
   USER_DEPARTMENT_MAPPING: "user_department_mapping",
   INTERNAL_ANNOUNCEMENTS: "internal_announcements",
@@ -88,6 +90,17 @@ export const PERMISSION_CATALOG = Object.freeze([
     routes: ["/attendance-list"],
     modules: ["features/attendance/AttendanceList.jsx"],
     authRolesHelpers: ["canDeleteEmployeeData"],
+  },
+  {
+    id: PERMISSION_IDS.ATTENDANCE_OFF_HOLIDAY_DAYS,
+    labelVi: "Ngày OFF / LỄ / NGHỈ BÙ — chọn và lưu lịch tháng",
+    quyTac: "Chỉ Admin/HR — canManageAttendanceOffHolidayDays.",
+    routes: ["/attendance-list", "/seasonal-staff-attendance"],
+    modules: [
+      "features/attendance/AttendanceListDateOffToolbar.jsx",
+      "features/attendance/AttendanceOffDaysModal.jsx",
+    ],
+    authRolesHelpers: ["canManageAttendanceOffHolidayDays"],
   },
   {
     id: PERMISSION_IDS.PAYROLL_SALARY_ROWS,

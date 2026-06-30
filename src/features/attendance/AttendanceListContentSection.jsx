@@ -105,6 +105,7 @@ function AttendanceListContentSection() {
         onClose={closeOffDaysModal}
         selectedDate={selectedDate}
         user={user}
+        userRole={userRole}
         tl={tl}
         onSaved={refreshMonthOffDays}
         attendanceRootPath={attendanceRootPath}

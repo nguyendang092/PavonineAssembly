@@ -67,6 +67,11 @@ export function canManageAnnualLeave(user, userRole) {
   return isAdminAccess(user, userRole);
 }
 
+/** Chỉnh ngày off / lễ / nghỉ bù (`attendance/{ngày}/_meta`) — Admin / HR. */
+export function canManageAttendanceOffHolidayDays(user, userRole) {
+  return isAdminAccess(user, userRole);
+}
+
 /**
  * Xóa dòng điểm danh theo ngày:
  * chỉ Admin / HR (xem {@link isAdminAccess}), không cho vai trò manager bộ phận.
