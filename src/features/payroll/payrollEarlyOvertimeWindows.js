@@ -22,38 +22,34 @@ export const DAY_EARLY_OT_SEGMENT_LATE = Object.freeze([
 ]);
 export const DAY_EARLY_OT_MAX_HOURS = 2;
 
-/** Ca đêm S2: mốc GC / TC sớm 18:40; có giấy → GC từ 19:40. */
-export const NIGHT_SHIFT_OFFICIAL_START_MIN = 18 * 60 + 40;
+/** Ca đêm S2: GC bắt đầu 19:40 → 05:00 (tối đa 8h). */
 export const NIGHT_SHIFT_EARLY_OT_GC_START_MIN = 19 * 60 + 40;
-/** Ca đêm: popup giấy — vào từ 15:00 đến ≤ 18:40 (trước 15:40 vẫn đủ 4 khung TC). */
+/** Popup giấy TC sớm — vào ≤ 18:40 (khung TC cuối 18:40–19:40). */
+export const NIGHT_SHIFT_OFFICIAL_START_MIN = 18 * 60 + 40;
+/** Ca đêm: popup giấy — vào từ 15:00 đến ≤ 18:40. */
 export const NIGHT_SHIFT_EARLY_PAPERWORK_MIN_IN_MIN = 15 * 60;
 
-/** Bắt đầu 4 khung mốc TC sớm: 15:40 → 16:40 → 17:40 → 18:40 → 19:40 (GC). */
+/** Hai khung TC sớm: 17:40–18:40 và 18:40–19:40 (tối đa 2h). */
 export const NIGHT_EARLY_OT_SEGMENT_START_MINUTES = Object.freeze([
-  15 * 60 + 40,
-  16 * 60 + 40,
   17 * 60 + 40,
   18 * 60 + 40,
 ]);
-/** Tier 16:00 / 17:00 / 18:00 — song song pattern ca ngày (06:00 / 07:00). */
-export const NIGHT_EARLY_OT_TIER_START_MINUTES = Object.freeze([
-  16 * 60,
-  17 * 60,
-  18 * 60,
-]);
-export const NIGHT_EARLY_OT_MAX_HOURS = 4;
+/** Từ 18:00 → chỉ khung 18:40–19:40; trước 18:00 → cả hai khung (2h). */
+export const NIGHT_EARLY_OT_SECOND_TIER_MIN = 18 * 60;
+export const NIGHT_EARLY_OT_MAX_HOURS = 2;
 
-/** @deprecated alias — mốc khung đầu (15:40). */
+/** @deprecated alias — mốc khung đầu (17:40). */
 export const NIGHT_EARLY_OT_MARKER_FIRST_MIN =
   NIGHT_EARLY_OT_SEGMENT_START_MINUTES[0];
-/** @deprecated alias — mốc khung thứ hai (16:40). */
+/** @deprecated alias — mốc khung thứ hai (18:40). */
 export const NIGHT_EARLY_OT_MARKER_SECOND_MIN =
   NIGHT_EARLY_OT_SEGMENT_START_MINUTES[1];
-/** @deprecated alias — tier đầu (16:00). */
-export const NIGHT_EARLY_OT_SECOND_TIER_MIN =
-  NIGHT_EARLY_OT_TIER_START_MINUTES[0];
+/** @deprecated alias — tier 18:00. */
+export const NIGHT_EARLY_OT_TIER_START_MINUTES = Object.freeze([
+  NIGHT_EARLY_OT_SECOND_TIER_MIN,
+]);
 
-/** Ca đêm: bốn khung TC sớm (mỗi khung 1h), tối đa 4h. */
+/** Ca đêm: hai khung TC sớm (mỗi khung 1h), tối đa 2h. */
 export const NIGHT_EARLY_OT_SEGMENTS = Object.freeze(
   NIGHT_EARLY_OT_SEGMENT_START_MINUTES.map((start, i) =>
     Object.freeze([
@@ -108,31 +104,23 @@ export function dayEarlyPaperworkOvertimeMinutes(entryMin) {
 
 /**
  * Ca đêm TC sớm theo giờ vào — luôn tính từ **mốc** (không trừ phút chấm sớm trong khung):
- * Khung: 15:40–16:40, 16:40–17:40, 17:40–18:40, 18:40–19:40 (tối đa 4h).
- * Tier (giống ca ngày): trước mốc đầu → 4h; tại mốc → 1 khung; từ :00 → bỏ các khung trước.
+ * - Trước 18:00 → 17:40–18:40 + 18:40–19:40 (2h)
+ * - Từ 18:00 đến ≤18:40 → 18:40–19:40 (1h)
  * @param {number} entryMin — phút từ 0:00
  */
 export function nightEarlyPaperworkOvertimeMinutes(entryMin) {
-  const starts = NIGHT_EARLY_OT_SEGMENT_START_MINUTES;
-  const tiers = NIGHT_EARLY_OT_TIER_START_MINUTES;
-  const n = starts.length;
-  const oneHour = 60;
+  const earlyLen =
+    NIGHT_EARLY_OT_SEGMENT_START_MINUTES[1] -
+    NIGHT_EARLY_OT_SEGMENT_START_MINUTES[0];
+  const lateLen =
+    NIGHT_SHIFT_EARLY_OT_GC_START_MIN -
+    NIGHT_EARLY_OT_SEGMENT_START_MINUTES[1];
 
-  if (entryMin < starts[0]) {
-    return n * oneHour;
+  if (entryMin < NIGHT_EARLY_OT_SECOND_TIER_MIN) {
+    return earlyLen + lateLen;
   }
-
-  for (let i = 0; i < n - 1; i++) {
-    if (entryMin < tiers[i]) {
-      return oneHour;
-    }
-    if (entryMin < starts[i + 1]) {
-      return (n - i - 1) * oneHour;
-    }
-  }
-
   if (entryMin <= NIGHT_SHIFT_OFFICIAL_START_MIN) {
-    return oneHour;
+    return lateLen;
   }
   return 0;
 }

@@ -141,11 +141,10 @@ Hàm: `dayEarlyPaperworkOvertimeMinutes` / `getEarlyPaperworkOvertimeHours`. Max
 
 ### Giờ vào hiệu lực (T0) cho GC
 
-| Tình huống                                             | T0 (bắt đầu tính GC)                            |
-| ------------------------------------------------------ | ----------------------------------------------- |
-| Có giấy TC sớm, vào 16:00–18:40                        | **19:40** (`NIGHT_SHIFT_EARLY_OT_GC_START_MIN`) |
-| Vào trước 18:40 (không giấy / không đủ điều kiện giấy) | **18:40** (`NIGHT_SHIFT_OFFICIAL_START_MIN`)    |
-| Vào từ 18:40                                           | Giờ vào thực                                    |
+| Tình huống | T0 (bắt đầu tính GC) |
+| ---------- | -------------------- |
+| Vào **trước 19:40** | **19:40** (`NIGHT_SHIFT_EARLY_OT_GC_START_MIN`) |
+| Vào từ **19:40** | Giờ vào thực |
 
 GC ca đêm = thời lượng từ T0 đến `min(giờ ra, mốc 05:00)`, **max 8h**, làm tròn 0,1h.
 
@@ -168,23 +167,16 @@ Khung **22:00 – 05:00** (qua đêm), max 8h — **khác** mốc payroll 05:00:
 - Vào từ **15:00** đến **≤ 18:40** (`isEarlyArrivalForNightShiftPaperworkOvertime`).
 - User chọn có giấy → `payrollEarlyOtPaperwork === true`.
 
-### Khung tính theo mốc (luôn tính từ **mốc**, max **4h**)
+### Khung tính theo mốc (luôn tính từ **mốc**, max **2h**)
 
 | Khung TC (mỗi khung 1h) |
 |---------------------------|
-| 15:40 – 16:40 |
-| 16:40 – 17:40 |
 | 17:40 – 18:40 |
 | 18:40 – 19:40 |
 
 | Giờ vào | TC được tính |
 |--------|--------------|
-| Trước **15:40** | **4h** (cả 4 khung) |
-| **15:40 – 15:59** | 15:40–16:40 → **1h** |
-| **16:00 – 16:39** | 16:40–17:40 + 17:40–18:40 + 18:40–19:40 → **3h** |
-| **16:40 – 16:59** | 16:40–17:40 → **1h** |
-| **17:00 – 17:39** | 17:40–18:40 + 18:40–19:40 → **2h** |
-| **17:40 – 17:59** | 17:40–18:40 → **1h** |
+| Trước **18:00** | **2h** (17:40–18:40 + 18:40–19:40) |
 | **18:00 – 18:40** | 18:40–19:40 → **1h** |
 | Sau 18:40 | **0** |
 
@@ -339,10 +331,9 @@ Dùng bảng dưới để so với UI (điểm danh + lương + bảng tháng).
 | 5   | S1 05:30–17:00, có giấy sớm  | TC sớm **2h** + TC chiều **0**                                 |
 | 6   | S1 06:15–17:00, có giấy sớm  | TC sớm **1h** (06:40–07:40)                                    |
 | 7   | S2 18:40–06:00               | GC ca đêm **8h**, TC ca đêm **0,5h** (05:00–06:00)             |
-| 8   | S2 **15:30**–06:00, có giấy | TC sớm **4h**; GC từ **19:40** |
-| 8a  | S2 **16:00**–06:00, có giấy | TC sớm **3h**; GC từ **19:40** |
-| 8b  | S2 **17:40**–06:00, có giấy  | TC sớm **1h** (17:40–18:40); GC từ **19:40** |
-| 8c  | S2 **18:00**–06:00, có giấy  | TC sớm **1h** (18:40–19:40); GC từ **19:40** |
+| 8   | S2 **16:56**–09:31, OFF, có giấy | TC sớm **2h**; GC **8h**; TC sau 05:00 **4,5h** → gộp **14,5h** |
+| 8a  | S2 **17:40**–06:00, có giấy | TC sớm **2h**; GC từ **19:40** |
+| 8b  | S2 **18:00**–06:00, có giấy  | TC sớm **1h** (18:40–19:40); GC từ **19:40** |
 | 9   | Tạp vụ full ngày 07:00–16:00 | GC **8h**, TC **0**                                            |
 | 10  | Tạp vụ 07:00–17:00           | GC **8h**, TC từ 16:00 → **0,5h**                              |
 | 11  | Tài xế 07:00–19:00           | GC **8h**, TC **0**                                            |

@@ -195,11 +195,11 @@ function getNightShiftPayrollCutoffEndMinutes(timeInMinutes) {
   return MINUTES_PER_DAY + NIGHT_SHIFT_PAYROLL_CUTOFF_MIN;
 }
 
-/** Ca đêm S2: GC từ {@link NIGHT_SHIFT_OFFICIAL_START_MIN}; có giấy → GC từ {@link NIGHT_SHIFT_EARLY_OT_GC_START_MIN}. */
+/** Ca đêm S2: GC từ 19:40 → 05:00 (tối đa 8h); TC sớm có giấy: 17:40–18:40 + 18:40–19:40. */
 
 /**
  * Giờ công ca đêm (tối đa 8) và phút tăng ca sau mốc 05:00 (để × 0.5 / 30p).
- * Vào trước {@link NIGHT_SHIFT_OFFICIAL_START_MIN}: GC từ 18:40; có giấy → TC theo mốc 17:40/18:40, GC từ 19:40.
+ * Vào trước 19:40: GC từ mốc 19:40; từ 19:40 giữ giờ chấm.
  * @returns {{ regularHours: number; otMinutes: number } | null}
  */
 export function getNightShiftPayrollRegularHoursAndOtMinutes(
@@ -213,13 +213,8 @@ export function getNightShiftPayrollRegularHoursAndOtMinutes(
   const b = parseHHMMToMinutes(timeOut);
   if (a == null || b == null) return null;
   let T0 = a;
-  if (
-    payrollEarlyOtPaperwork === true &&
-    isEarlyArrivalForNightShiftPaperworkOvertime(timeIn, shiftCode)
-  ) {
+  if (a < NIGHT_SHIFT_EARLY_OT_GC_START_MIN) {
     T0 = NIGHT_SHIFT_EARLY_OT_GC_START_MIN;
-  } else if (a < NIGHT_SHIFT_OFFICIAL_START_MIN) {
-    T0 = NIGHT_SHIFT_OFFICIAL_START_MIN;
   }
   const T1 = b <= a ? MINUTES_PER_DAY + b : b;
   if (T1 <= T0) return null;
