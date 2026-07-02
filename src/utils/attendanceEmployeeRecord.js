@@ -67,11 +67,19 @@ function isLikelyFirebasePushKey(v) {
   return /^-[A-Za-z0-9_-]{10,}$/.test(s);
 }
 
-/** MNV nếu có; không thì `id` bản ghi (bỏ qua push key Firebase). */
+/** MNV nếu có; không thì businessId; không thì `emp_{mã}` / `id` bản ghi. */
 export function businessEmployeeCode(emp) {
   const m = attendanceMnvStorageKey(String(emp?.mnv ?? ""));
   if (m) return m;
+  const bid = attendanceMnvStorageKey(
+    String(emp?.businessId ?? emp?.[ATTENDANCE_EMP.BUSINESS_ID] ?? ""),
+  );
+  if (bid) return bid;
   const id = String(emp?.id ?? "").trim();
+  if (id.startsWith("emp_")) {
+    const fromKey = attendanceMnvStorageKey(id.slice(4));
+    if (fromKey) return fromKey;
+  }
   if (id && !isLikelyFirebasePushKey(id)) return id;
   return "";
 }

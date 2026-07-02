@@ -3,7 +3,7 @@ import {
   mergeAttendanceDayRowsFromRaw,
   reconcileAttendanceDayRowsFromRaw,
 } from "@/features/attendance/mergeAttendanceDayRows";
-import { businessEmployeeCode } from "@/utils/attendanceEmployeeRecord";
+import { businessEmployeeCode, attendanceMnvStorageKey } from "@/utils/attendanceEmployeeRecord";
 import {
   getEarlyOtPaperworkFromRaw,
   getIsCompensatoryDayFromRaw,
@@ -17,6 +17,47 @@ import {
 } from "@/features/payroll/payrollEarlyOtMeta";
 
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
+
+function normalizePayrollMonthRowIdKey(key) {
+  return String(key ?? "").trim();
+}
+
+function buildPayrollMonthChunkRowLookupForRaw(employees) {
+  const lookup = new Map();
+  for (const emp of employees ?? []) {
+    const keys = new Set();
+    const add = (v) => {
+      const k = normalizePayrollMonthRowIdKey(v);
+      if (k) keys.add(k);
+    };
+    add(emp.monthEmployeeKey);
+    add(businessEmployeeCode(emp));
+    add(attendanceMnvStorageKey(emp.mnv));
+    add(attendanceMnvStorageKey(emp.businessId));
+    add(emp.id);
+    const id = String(emp.id ?? "").trim();
+    if (id.startsWith("emp_")) add(id.slice(4));
+    for (const k of keys) {
+      if (!lookup.has(k)) lookup.set(k, emp);
+    }
+  }
+  return lookup;
+}
+
+function buildPayrollMonthByMonthEmployeeKeyMapForRaw(employees) {
+  const map = new Map();
+  for (const emp of employees ?? []) {
+    const id = normalizePayrollMonthRowIdKey(emp?.id);
+    if (id) map.set(id, emp);
+
+    const canonical = normalizePayrollMonthRowIdKey(emp?.monthEmployeeKey);
+    if (canonical && !map.has(canonical)) map.set(canonical, emp);
+
+    const mnv = businessEmployeeCode(emp);
+    if (mnv && !map.has(mnv)) map.set(mnv, emp);
+  }
+  return map;
+}
 
 /**
  * Chỉ giữ trường cần cho bảng giờ công tháng — giảm heap khi ghép ~31 ngày.
@@ -37,6 +78,7 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   PAYROLL_EMP.SHIFT,
   PAYROLL_EMP.LEAVE_TYPE,
   PAYROLL_EMP.COMP_LEAVE_ALLOWED,
+  "businessId",
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTaiXeInWorkingHours",
@@ -116,7 +158,9 @@ export function slimPayrollMonthEmployeeRecord(emp) {
   if (!emp || typeof emp !== "object") return emp;
   const o = {};
   if (emp.id != null) o.id = emp.id;
-  o.monthEmployeeKey = businessEmployeeCode(emp) || String(emp.id ?? "");
+  o.monthEmployeeKey = normalizePayrollMonthRowIdKey(
+    businessEmployeeCode(emp) || String(emp.id ?? ""),
+  );
   for (const k of PAYROLL_MONTH_SLIM_KEYS) {
     if (Object.prototype.hasOwnProperty.call(emp, k)) o[k] = emp[k];
   }
@@ -289,9 +333,8 @@ export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
     employees: slimEmployees,
     baseEmployees: parsed.baseEmployees,
     byId: new Map(slimEmployees.map((e) => [e.id, e])),
-    byMonthEmployeeKey: new Map(
-      slimEmployees.map((e) => [e.monthEmployeeKey || e.id, e]),
-    ),
+    byMonthEmployeeKey: buildPayrollMonthByMonthEmployeeKeyMapForRaw(slimEmployees),
+    rowLookup: buildPayrollMonthChunkRowLookupForRaw(slimEmployees),
     isOffDay: parsed.isOffDay,
     isHolidayDay: parsed.isHolidayDay,
     isCompensatoryDay: parsed.isCompensatoryDay,

@@ -3,6 +3,7 @@ import {
   buildMonthlyDetailFlatValues,
   buildMonthlyRuleSummary,
   fmtPayrollMonthlySummaryCell,
+  isPayrollMonthDayCellBeforeJoinWithoutAttendance,
   isPayrollSaturdayOffWorkDay,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import { MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW } from "@/features/payroll/payrollMonthlyTimesheetLayout";
@@ -12,15 +13,17 @@ const SAT_OFF_KEY = "2026-01-10";
 
 function makeChunk({ isOffDay, isHolidayDay, isCompensatoryDay, employees }) {
   const byId = new Map();
+  const byMonthEmployeeKey = new Map();
   for (const emp of employees) {
     byId.set(emp.id, emp);
+    byMonthEmployeeKey.set(emp.monthEmployeeKey || emp.mnv || emp.id, emp);
   }
   return {
     isOffDay: Boolean(isOffDay),
     isHolidayDay: Boolean(isHolidayDay),
     isCompensatoryDay: Boolean(isCompensatoryDay),
     byId,
-    byMonthEmployeeKey: byId,
+    byMonthEmployeeKey,
   };
 }
 
@@ -389,5 +392,142 @@ describe("buildMonthlyRuleSummary — Tổng GC thực tế vs cộng ô ngày",
     // Dòng chính chỉ GC 8; TC ×1.5 = 1 trên dòng hệ số.
     expect(total.workHours).toBe(9);
     expect(total.coeff15).toBe(1);
+  });
+});
+
+describe("buildMonthlyRuleSummary — đồng bộ bảng ngày", () => {
+  const empId = "200611";
+  const workKey = "2026-06-12";
+
+  it("vẫn tính giờ khi ngày chấm công trước ngày vào làm trên hồ sơ gộp", () => {
+    const emp = {
+      id: "-OxEmp1",
+      mnv: empId,
+      monthEmployeeKey: empId,
+      gioVao: "07:34",
+      gioRa: "20:03",
+      caLamViec: "S1",
+      loaiPhep: "",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+    };
+    const dayChunks = new Map([
+      [
+        workKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          employees: [emp],
+        }),
+      ],
+    ]);
+    const { total } = buildMonthlyRuleSummary(
+      dayChunks,
+      [workKey],
+      empId,
+      { ngayVaoLam: "2026-07-01", mnv: empId, id: "-OxEmp1" },
+    );
+
+    expect(total.workHours).toBeGreaterThan(0);
+    expect(total.coeff15).toBeGreaterThan(0);
+  });
+});
+
+describe("isPayrollMonthDayCellBeforeJoinWithoutAttendance", () => {
+  it("có điểm danh → không ẩn dù trước ngày vào làm", () => {
+    expect(
+      isPayrollMonthDayCellBeforeJoinWithoutAttendance(
+        "2026-06-12",
+        "2026-07-01",
+        { gioVao: "07:34" },
+      ),
+    ).toBe(false);
+  });
+
+  it("không điểm danh + trước ngày vào làm → ẩn", () => {
+    expect(
+      isPayrollMonthDayCellBeforeJoinWithoutAttendance(
+        "2026-06-12",
+        "2026-07-01",
+        null,
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("buildMonthlyRuleSummary — Nghỉ bù (NB)", () => {
+  const empId = "e-nb";
+  const trialKey = "2026-01-14";
+  const officialKey = "2026-01-16";
+
+  it("đếm NB theo cờ ngày nghỉ bù ở cả 3 khối tháng", () => {
+    const emp = {
+      id: empId,
+      gioVao: "08:00",
+      gioRa: "17:00",
+      caLamViec: "S1",
+      duocNghiBu: "YES",
+      loaiPhep: "",
+    };
+    const dayChunks = new Map([
+      [
+        trialKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: true,
+          employees: [emp],
+        }),
+      ],
+      [
+        officialKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: true,
+          employees: [emp],
+        }),
+      ],
+    ]);
+    const summaries = buildMonthlyRuleSummary(
+      dayChunks,
+      [trialKey, officialKey],
+      empId,
+      { ngayVaoLam: "2020-01-01", ngayHopDong: officialKey },
+    );
+
+    expect(summaries.total.nbDays).toBe(2);
+    expect(summaries.trial.nbDays).toBe(1);
+    expect(summaries.official.nbDays).toBe(1);
+  });
+
+  it("không đếm NB khi nhân viên bị đặt duocNghiBu = NO", () => {
+    const emp = {
+      id: empId,
+      gioVao: "08:00",
+      gioRa: "17:00",
+      caLamViec: "S1",
+      duocNghiBu: "NO",
+      loaiPhep: "",
+    };
+    const dayChunks = new Map([
+      [
+        trialKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: true,
+          employees: [emp],
+        }),
+      ],
+    ]);
+    const { total } = buildMonthlyRuleSummary(
+      dayChunks,
+      [trialKey],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+
+    expect(total.nbDays).toBe(0);
   });
 });

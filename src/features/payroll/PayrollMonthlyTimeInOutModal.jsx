@@ -14,12 +14,13 @@ import {
   formatPayrollMonthWeekday3,
   matchesPayrollMonthRowFilter,
   parsePayrollMonthSortableStt,
+  resolvePayrollMonthDayEmployee,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
   payrollMonthlyTimesheetDayBodyBgClass,
   payrollMonthlyTimesheetDayHeaderBgClass,
 } from "@/features/payroll/payrollMonthlyTimesheetGridStyle";
-import { isPayrollMonthDayOnOrAfterJoin } from "@/features/payroll/payrollMonthlyRuleSummary";
+import { isPayrollMonthDayCellBeforeJoinWithoutAttendance } from "@/features/payroll/payrollMonthlyRuleSummary";
 import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
 import { isNightShiftCaLamViec } from "@/features/attendance/attendanceWorkingHours";
 import {
@@ -149,15 +150,19 @@ function formatTimeOutDisplay(raw) {
 
 function buildTimeInOutDayCells({ monthDayMeta, rep, rowId }) {
   return monthDayMeta.map(({ dateKey, chunk, bodyBg }) => {
-    const beforeJoin = !isPayrollMonthDayOnOrAfterJoin(
+    if (!chunk) {
+      return { dateKey, chunk, baseBg: bodyBg, beforeJoin: false, emp: null };
+    }
+    const emp = resolvePayrollMonthDayEmployee(chunk, rowId, rep);
+    const beforeJoin = isPayrollMonthDayCellBeforeJoinWithoutAttendance(
       dateKey,
       pickPayrollEmployeeJoinDate(rep),
+      emp,
     );
-    if (beforeJoin || !chunk) {
+    if (beforeJoin) {
       return { dateKey, chunk, baseBg: bodyBg, beforeJoin, emp: null };
     }
-    const emp = (chunk.byMonthEmployeeKey || chunk.byId).get(rowId);
-    return { dateKey, chunk, baseBg: bodyBg, beforeJoin, emp };
+    return { dateKey, chunk, baseBg: bodyBg, beforeJoin: false, emp };
   });
 }
 
@@ -562,7 +567,7 @@ export default function PayrollMonthlyTimeInOutModal({
       if (!ch) return;
       const rep = repById.get(rowId);
       if (!rep) return;
-      const dayEmp = (ch.byMonthEmployeeKey || ch.byId).get(rowId);
+      const dayEmp = resolvePayrollMonthDayEmployee(ch, rowId, rep);
       const dayEmps =
         Array.isArray(ch.baseEmployees) && ch.baseEmployees.length > 0
           ? ch.baseEmployees
@@ -620,6 +625,10 @@ export default function PayrollMonthlyTimeInOutModal({
       const rep = repById.get(id);
       const d = String(rep?.boPhan ?? "").trim();
       if (d) set.add(d);
+      for (const dept of rep?.boPhanAll ?? []) {
+        const t = String(dept ?? "").trim();
+        if (t) set.add(t);
+      }
     }
     return [...set].sort((a, b) => a.localeCompare(b, "vi"));
   }, [sortedIds, repById, payrollDepartmentOptions]);

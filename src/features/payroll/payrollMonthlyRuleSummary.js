@@ -20,6 +20,7 @@ import {
 } from "@/features/attendance/attendanceWorkingHours";
 import { normalizeDateForHtmlInput } from "@/utils/attendanceEmployeeRecord";
 import { parseLocalDateKey } from "@/utils/dateKey";
+import { resolvePayrollMonthDayEmployee } from "@/features/payroll/payrollMonthlyGridData";
 
 /** Ô tổng hợp khối THỜI GIAN LÀM VIỆC — ẩn số 0. */
 export function fmtPayrollMonthlySummaryCell(n) {
@@ -68,6 +69,19 @@ export function isPayrollMonthDayOnOrAfterJoin(dateKey, joinDateRaw) {
   const dk = String(dateKey ?? "").trim();
   if (!join || !dk) return true;
   return dk >= join;
+}
+
+/**
+ * Ẩn ô lưới tháng chỉ khi chưa có điểm danh và ngày < ngày vào làm.
+ * Có dữ liệu chấm công → luôn hiện (đồng bộ bảng giờ công ngày).
+ */
+export function isPayrollMonthDayCellBeforeJoinWithoutAttendance(
+  dateKey,
+  joinDateRaw,
+  dayEmp,
+) {
+  if (dayEmp) return false;
+  return !isPayrollMonthDayOnOrAfterJoin(dateKey, joinDateRaw);
 }
 
 /** Số ngày công chuẩn tháng (trừ CN) từ ngày vào làm; không có ngày vào làm → cả tháng. */
@@ -238,6 +252,10 @@ export function buildMonthlyRuleSummary(
     return !isDuocNghiBuExplicitlyNo(emp[PAYROLL_EMP.COMP_LEAVE_ALLOWED]);
   };
 
+  const compensatoryNbUnits = (ch, emp) => {
+    return isNbVisibleForCompDay(ch, emp) ? 1 : 0;
+  };
+
   const computeHolidayWorkCreditForDash = (ch, coeffSum, emp) => {
     if (ch.isHolidayDay) return 1;
     if (isNbVisibleForCompDay(ch, emp)) return 1;
@@ -276,7 +294,9 @@ export function buildMonthlyRuleSummary(
 
   const applyDayToSummary = (out, ch, emp, dateKey) => {
     if (!emp) {
-      if (ch.isHolidayDay || isNbVisibleForCompDay(ch, null)) out.workDays += 1;
+      const nbUnits = compensatoryNbUnits(ch, null);
+      out.nbDays += nbUnits;
+      if (ch.isHolidayDay || nbUnits > 0) out.workDays += 1;
       return;
     }
 
@@ -293,8 +313,9 @@ export function buildMonthlyRuleSummary(
 
     if (main.kind === "leave") {
       const pnUnits = leaveUnitsByCode(main.leaveShort, "PN");
+      const nbLeaveUnits = leaveUnitsByCode(main.leaveShort, "NB");
       out.pnDays += pnUnits;
-      out.nbDays += leaveUnitsByCode(main.leaveShort, "NB");
+      out.nbDays += Math.max(nbLeaveUnits, compensatoryNbUnits(ch, emp));
       out.klDays += leaveUnitsByCode(main.leaveShort, "KL");
       out.kpDays += leaveUnitsByCode(main.leaveShort, "KP");
       if (main.leaveShort === "1/2PN") {
@@ -317,10 +338,12 @@ export function buildMonthlyRuleSummary(
         coeffSum,
       });
     } else if (main.kind === "hours") {
+      out.nbDays += compensatoryNbUnits(ch, emp);
       addWorkedHours(main.hours);
       addWorkedHours(coeffSum);
       out.workDays += 1;
     } else {
+      out.nbDays += compensatoryNbUnits(ch, emp);
       addWorkedHours(coeffSum);
       if (saturdayOff && coeffSum > 0) {
         out.satsWorkDays += 1;
@@ -346,9 +369,10 @@ export function buildMonthlyRuleSummary(
   for (const dk of monthKeys) {
     const ch = dayChunks.get(dk);
     if (!ch) continue;
-    if (!isPayrollMonthDayOnOrAfterJoin(dk, join)) continue;
 
-    const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
+    const emp = resolvePayrollMonthDayEmployee(ch, id, employeeProfile);
+    if (!emp && !isPayrollMonthDayOnOrAfterJoin(dk, join)) continue;
+
     const phase = monthlyWorkPhaseForDateKey(dk, join, contract);
 
     applyDayToSummary(total, ch, emp, dk);

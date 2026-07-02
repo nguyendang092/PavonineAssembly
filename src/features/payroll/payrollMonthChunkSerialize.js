@@ -1,9 +1,14 @@
+import {
+  buildPayrollMonthByMonthEmployeeKeyMap,
+  buildPayrollMonthChunkRowLookup,
+} from "@/features/payroll/payrollMonthlyGridData";
+
 export function serializePayrollMonthChunkForWorker(chunk) {
   if (!chunk) return null;
   const employeesById = {};
   for (const emp of chunk.employees ?? []) {
-    const rowKey = emp.monthEmployeeKey || emp.id;
-    if (rowKey != null) employeesById[rowKey] = emp;
+    if (emp?.id == null) continue;
+    employeesById[String(emp.id)] = emp;
   }
   return {
     dateKey: chunk.dateKey,
@@ -18,18 +23,17 @@ export function buildChunkByDateFromSerialized(serializedChunks) {
   const map = new Map();
   for (const raw of serializedChunks ?? []) {
     if (!raw?.dateKey) continue;
-    const byMonthEmployeeKey = new Map(
-      Object.entries(raw.employeesById ?? {}),
-    );
+    const employees = Object.values(raw.employeesById ?? {});
     const byId = new Map();
-    for (const emp of Object.values(raw.employeesById ?? {})) {
-      if (emp?.id != null) byId.set(emp.id, emp);
+    for (const emp of employees) {
+      if (emp?.id != null) byId.set(String(emp.id), emp);
     }
     map.set(raw.dateKey, {
       ...raw,
-      employees: Object.values(raw.employeesById ?? {}),
+      employees,
       byId,
-      byMonthEmployeeKey,
+      byMonthEmployeeKey: buildPayrollMonthByMonthEmployeeKeyMap(employees),
+      rowLookup: buildPayrollMonthChunkRowLookup(employees),
     });
   }
   return map;

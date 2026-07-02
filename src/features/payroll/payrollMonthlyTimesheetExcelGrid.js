@@ -12,6 +12,7 @@ import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDay
 import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
 import {
   buildMonthlyDetailMatrixForEmployee,
+  isPayrollMonthDayCellBeforeJoinWithoutAttendance,
   isPayrollMonthDayOnOrAfterJoin,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
@@ -25,6 +26,7 @@ import {
   resolvePayrollMonthlyTimesheetExcelCellFill,
 } from "@/features/payroll/payrollMonthlyTimesheetGridStyle";
 import { pickPayrollEmployeeJoinDate } from "@/features/payroll/payrollEmployeeFields";
+import { resolvePayrollMonthDayEmployee } from "@/features/payroll/payrollMonthlyGridData";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
 /** Một hàng tiêu đề (không gộp ô) — đủ nhãn cột, tránh lặp 3 hàng header. */
@@ -47,7 +49,11 @@ export function formatPayrollMonthlyTimesheetDayCellText({
   sr,
   joinDate,
 }) {
-  if (!isPayrollMonthDayOnOrAfterJoin(dateKey, joinDate)) return " ";
+  if (
+    isPayrollMonthDayCellBeforeJoinWithoutAttendance(dateKey, joinDate, emp)
+  ) {
+    return " ";
+  }
   if (!ch) return " ";
   if (!emp) {
     return sr.coeff == null ? payrollMonthMainRowDashMark(ch, null) : "";
@@ -142,7 +148,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
           row[cidx] = " ";
           return;
         }
-        const emp = (ch.byMonthEmployeeKey || ch.byId).get(id);
+        const emp = resolvePayrollMonthDayEmployee(ch, id, rep);
         row[cidx] = formatPayrollMonthlyTimesheetDayCellText({
           emp,
           ch,
@@ -215,9 +221,16 @@ export function applyPayrollMonthlyTimesheetExcelSheetStyles(
         const dk = monthKeys[c - L - 1];
         const ch = chunkByDate.get(dk);
         const rep = repById.get(empId);
-        if (ch && isPayrollMonthDayOnOrAfterJoin(dk, pickPayrollEmployeeJoinDate(rep))) {
-          const emp = (ch.byMonthEmployeeKey || ch.byId).get(empId);
-          if (emp) {
+        if (ch) {
+          const emp = resolvePayrollMonthDayEmployee(ch, empId, rep);
+          if (
+            emp &&
+            !isPayrollMonthDayCellBeforeJoinWithoutAttendance(
+              dk,
+              pickPayrollEmployeeJoinDate(rep),
+              emp,
+            )
+          ) {
             const main = getPayrollMonthlyMainRowCell(emp, ch);
             if (main.kind === "leave") {
               isLeaveCell = true;

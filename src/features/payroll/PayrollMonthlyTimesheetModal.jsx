@@ -14,6 +14,7 @@ import {
   formatPayrollMonthWeekday3,
   matchesPayrollMonthRowFilter,
   parsePayrollMonthSortableStt,
+  resolvePayrollMonthDayEmployee,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
   formatCoeffHoursForDisplay,
@@ -26,6 +27,7 @@ import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollO
 import { writePayrollMonthlyTimesheetWorkbook } from "@/features/payroll/payrollMonthlyTimesheetExcelGrid";
 import {
   buildMonthlyDetailMatrixForEmployee,
+  isPayrollMonthDayCellBeforeJoinWithoutAttendance,
   isPayrollMonthDayOnOrAfterJoin,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
@@ -664,11 +666,24 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
 
 function buildPayrollMonthEmployeeDayCells({ monthDayMeta, rep, rowId }) {
   return monthDayMeta.map(({ dateKey, chunk, bodyBg }) => {
-    const beforeJoin = !isPayrollMonthDayOnOrAfterJoin(
+    if (!chunk) {
+      return {
+        dateKey,
+        chunk,
+        baseBg: bodyBg,
+        beforeJoin: false,
+        emp: null,
+        main: null,
+        coeffMap: null,
+      };
+    }
+    const emp = resolvePayrollMonthDayEmployee(chunk, rowId, rep);
+    const beforeJoin = isPayrollMonthDayCellBeforeJoinWithoutAttendance(
       dateKey,
       pickPayrollEmployeeJoinDate(rep),
+      emp,
     );
-    if (beforeJoin || !chunk) {
+    if (beforeJoin) {
       return {
         dateKey,
         chunk,
@@ -679,7 +694,6 @@ function buildPayrollMonthEmployeeDayCells({ monthDayMeta, rep, rowId }) {
         coeffMap: null,
       };
     }
-    const emp = (chunk.byMonthEmployeeKey || chunk.byId).get(rowId);
     const main = emp ? getPayrollMonthlyMainRowCell(emp, chunk) : null;
     const coeffMap = emp
       ? getPayrollMonthlyCoeffHoursMap(
@@ -1189,7 +1203,7 @@ export default function PayrollMonthlyTimesheetModal({
       if (!ch) return;
       const rep = repById.get(rowId);
       if (!rep) return;
-      const dayEmp = (ch.byMonthEmployeeKey || ch.byId).get(rowId);
+      const dayEmp = resolvePayrollMonthDayEmployee(ch, rowId, rep);
       const dayEmps =
         Array.isArray(ch.baseEmployees) && ch.baseEmployees.length > 0
           ? ch.baseEmployees
@@ -1255,6 +1269,10 @@ export default function PayrollMonthlyTimesheetModal({
       const rep = repById.get(id);
       const d = String(rep?.boPhan ?? "").trim();
       if (d) set.add(d);
+      for (const dept of rep?.boPhanAll ?? []) {
+        const t = String(dept ?? "").trim();
+        if (t) set.add(t);
+      }
     });
     return [...set].sort((a, b) => a.localeCompare(b, "vi"));
   }, [sortedIds, repById, payrollDepartmentOptions]);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PAYROLL_EMP } from "./payrollEmployeeFields";
 import {
   buildPayrollMonthDayCellFormRecord,
+  buildPayrollMonthDayChunkFromRaw,
   parsePayrollDayFromAttendanceRaw,
   pickPayrollMonthRepProfileFields,
 } from "./buildPayrollDayFromRaw";
@@ -93,6 +94,28 @@ describe("pickPayrollMonthRepProfileFields", () => {
     expect(profile.hoVaTen).toBe("A");
     expect(profile.gioVao).toBeUndefined();
     expect(profile.loaiPhep).toBeUndefined();
+  });
+});
+
+describe("buildPayrollMonthDayChunkFromRaw — khóa emp_{MNV}", () => {
+  it("index theo MNV 200611 khi Firebase key là emp_200611", () => {
+    const chunk = buildPayrollMonthDayChunkFromRaw(
+      {
+        emp_200611: {
+          mnv: "200611",
+          gioVao: "07:34",
+          gioRa: "20:03",
+          caLamViec: "S1",
+          stt: 329,
+        },
+      },
+      "2026-06-12",
+    );
+    expect(chunk).not.toBeNull();
+    expect(chunk.employees).toHaveLength(1);
+    expect(chunk.employees[0]?.monthEmployeeKey).toBe("200611");
+    expect(chunk.byMonthEmployeeKey.has("200611")).toBe(true);
+    expect(chunk.rowLookup?.has("200611")).toBe(true);
   });
 });
 
