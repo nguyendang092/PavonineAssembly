@@ -384,13 +384,15 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
   const gBg = "background:#e2e8f0";
   theadParts.push(
     `<th colspan="${MONTH_DETAIL_WORKDAY_COL_COUNT}" style="${gBg};border-left:2px solid #000">${escapeHtml(labels.groupWorkday)}</th>`,
-    );
+  );
   theadParts.push(
     `<th colspan="${MONTH_DETAIL_OT_COL_COUNT}" style="${gBg}">${escapeHtml(labels.groupOt)}</th>`,
   );
-  theadParts.push(
-    `<th colspan="${MONTH_DETAIL_SATS_COL_COUNT}" style="${gBg}">${escapeHtml(labels.groupSats)}</th>`,
-  );
+  if (MONTH_DETAIL_SATS_COL_COUNT > 0) {
+    theadParts.push(
+      `<th colspan="${MONTH_DETAIL_SATS_COL_COUNT}" style="${gBg}">${escapeHtml(labels.groupSats)}</th>`,
+    );
+  }
   theadParts.push("</tr><tr>");
   for (let i = 0; i < detailHeaders.length; i++) {
     const bl = i === 0 ? "border-left:2px solid #000" : "";
@@ -406,7 +408,10 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
     const rep = repById.get(id);
     const summaries = summaryById.get(id);
     if (!rep || !summaries?.total) continue;
-    const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries);
+    // Bản in A3 chỉ in tới hết khối "THỜI GIAN LÀM VIỆC" đầu tiên.
+    const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries).map(
+      (row) => row.slice(0, MONTH_DETAIL_COLS_PER_BLOCK),
+    );
     const sttDisp =
       rep.stt != null && String(rep.stt).trim() !== ""
         ? rep.stt
@@ -438,7 +443,7 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
         `<td style="text-align:center;font-family:monospace;font-weight:700;${btm}">${coeffLabel}</td>`,
       );
       appendDayCells(employeeDayCellsById.get(id) ?? [], sr, isLastSub, bodyParts);
-      const detailVals = detailMatrix[si];
+      const detailVals = detailMatrix[si] ?? [];
       for (let idx = 0; idx < detailVals.length; idx++) {
         const v = detailVals[idx];
         const bl = idx === 0 ? "border-left:2px solid #000" : "";
@@ -1893,17 +1898,21 @@ export default function PayrollMonthlyTimesheetModal({
                             >
                               {tlPage("monthlyRuleGroupOt", "TĂNG CA (Hrs)")}
                             </th>,
-                            <th
-                              key={`${groupKey}-sats`}
-                              colSpan={MONTH_DETAIL_SATS_COL_COUNT}
-                              style={monthHeaderStickyStyle(
-                                headerRowTops.row2,
-                                85,
-                              )}
-                              className={`${THIN_HEAD_BORDER_CLASS} ${NO_TOP_BORDER_CLASS} pm-ts-detail-group-head ${groupBg} px-1 py-1 text-center font-extrabold uppercase tracking-wide text-slate-900 dark:text-slate-100`}
-                            >
-                              SAT.S
-                            </th>,
+                            ...(MONTH_DETAIL_SATS_COL_COUNT > 0
+                              ? [
+                                  <th
+                                    key={`${groupKey}-sats`}
+                                    colSpan={MONTH_DETAIL_SATS_COL_COUNT}
+                                    style={monthHeaderStickyStyle(
+                                      headerRowTops.row2,
+                                      85,
+                                    )}
+                                    className={`${THIN_HEAD_BORDER_CLASS} ${NO_TOP_BORDER_CLASS} pm-ts-detail-group-head ${groupBg} px-1 py-1 text-center font-extrabold uppercase tracking-wide text-slate-900 dark:text-slate-100`}
+                                  >
+                                    SAT.S
+                                  </th>,
+                                ]
+                              : []),
                           ];
                         })}
                       </tr>

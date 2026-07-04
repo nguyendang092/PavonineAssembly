@@ -184,9 +184,9 @@ const MINUTES_PER_DAY = 24 * 60;
 /** Mốc tách giờ công ca đêm / TC ca đêm (05:00). */
 const NIGHT_SHIFT_PAYROLL_CUTOFF_MIN = 5 * 60;
 
-/** Khung «Tổng thời gian ca đêm» bảng chấm công tháng: 22:00 → 05:00 (ngày hôm sau). */
+/** Khung «Tổng GC ca đêm» lưới tháng: 22:00 → 06:00 (ngày hôm sau), tối đa 8h. */
 const NIGHT_SHIFT_MONTHLY_WINDOW_START_MIN = 22 * 60;
-const NIGHT_SHIFT_MONTHLY_WINDOW_END_MIN = 5 * 60;
+const NIGHT_SHIFT_MONTHLY_WINDOW_END_MIN = 6 * 60;
 
 /** Phút trên trục tuyến tính: 05:00 đầu tiên **sau** `timeIn` (phút từ 0:00 ngày của dòng). */
 function getNightShiftPayrollCutoffEndMinutes(timeInMinutes) {
@@ -234,7 +234,8 @@ export function getNightShiftPayrollRegularHoursAndOtMinutes(
 }
 
 /**
- * Tổng thời gian ca đêm (bảng tháng): ca **S2**, giao [giờ vào, giờ ra] với khung **22:00–05:00**, tối đa **8h**.
+ * Tổng GC ca đêm (lưới tháng): ca **S2**, giao [giờ vào, giờ ra] với khung **22:00–06:00**
+ * (ngày hôm sau), tối đa **8h** — vd. ra 05:00 = 7h, ra 06:00 = 8h.
  * @returns {number} 0 nếu không phải ca đêm hoặc không có giao với khung.
  */
 export function getNightShiftTotalWindowHours22To05(timeIn, timeOut, shiftCode) {

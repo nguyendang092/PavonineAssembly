@@ -10,7 +10,7 @@ import {
 } from "./payrollMonthlyTimesheetLayout";
 
 describe("payrollMonthlyTimesheetLayout", () => {
-  it("matches grid column count (5 sticky + days + 3×17 detail)", () => {
+  it("matches grid column count (5 sticky + days + 3×14 detail)", () => {
     const days = 31;
     expect(payrollMonthlyTimesheetTotalColCount(days)).toBe(
       MONTHLY_TIMESHEET_STICKY_COL_COUNT + days + 3 * MONTH_DETAIL_COLS_PER_BLOCK,

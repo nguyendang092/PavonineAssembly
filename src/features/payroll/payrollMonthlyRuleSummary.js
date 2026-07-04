@@ -15,9 +15,14 @@ import {
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
 import { isDuocNghiBuExplicitlyNo } from "@/features/attendance/attendanceDayMeta";
 import {
+  formatAttendanceLeaveTypeColumnDisplay,
+  getAttendanceLeaveTypeRaw,
+} from "@/features/attendance/attendanceGioVaoTypeOptions";
+import {
   getNightShiftTotalWindowHours22To05,
   isNightShiftCaLamViec,
 } from "@/features/attendance/attendanceWorkingHours";
+import { attendanceAnnualLeaveDeductionForLoaiPhep } from "@/features/leave/annualLeaveBalanceLookup";
 import { normalizeDateForHtmlInput } from "@/utils/attendanceEmployeeRecord";
 import { parseLocalDateKey } from "@/utils/dateKey";
 import { resolvePayrollMonthDayEmployee } from "@/features/payroll/payrollMonthlyGridData";
@@ -25,6 +30,13 @@ import { resolvePayrollMonthDayEmployee } from "@/features/payroll/payrollMonthl
 /** Ô tổng hợp khối THỜI GIAN LÀM VIỆC — ẩn số 0. */
 export function fmtPayrollMonthlySummaryCell(n) {
   return Number.isFinite(n) && n > 0 ? formatCoeffHoursForDisplay(n) : " ";
+}
+
+/** Ô đếm ngày phép / nghỉ (PN 0,5 · NB/KL/KP 1). */
+export function fmtPayrollMonthlyLeaveDayCell(n) {
+  if (!Number.isFinite(n) || n <= 0) return " ";
+  if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+  return formatCoeffHoursForDisplay(n);
 }
 
 /** Chuẩn hóa ngày hồ sơ (ngày vào làm / ngày HĐ) để so sánh với `dateKey` YYYY-MM-DD. */
@@ -149,15 +161,62 @@ function leaveUnitsByCode(leaveShort, code) {
   return 0;
 }
 
+/** Đếm PN / NB / KL / KP từ `loaiPhep` — dùng cho cột tổng hợp lưới tháng. */
+export function payrollMonthlyLeaveUnitsForEmployee(emp) {
+  const leaveRaw = getAttendanceLeaveTypeRaw(emp);
+  if (!leaveRaw) {
+    return { pn: 0, nb: 0, kl: 0, kp: 0 };
+  }
+  const leaveShort = formatAttendanceLeaveTypeColumnDisplay(leaveRaw);
+  const pn =
+    attendanceAnnualLeaveDeductionForLoaiPhep(leaveRaw) ||
+    leaveUnitsByCode(leaveShort, "PN");
+  return {
+    pn,
+    nb: leaveUnitsByCode(leaveShort, "NB"),
+    kl: leaveUnitsByCode(leaveShort, "KL"),
+    kp: leaveUnitsByCode(leaveShort, "KP"),
+  };
+}
+
+function compensatoryNbUnits(ch, emp) {
+  if (!ch?.isCompensatoryDay) return 0;
+  if (emp == null) return 1;
+  return !isDuocNghiBuExplicitlyNo(emp[PAYROLL_EMP.COMP_LEAVE_ALLOWED]) ? 1 : 0;
+}
+
+function addPayrollMonthlyLeaveColumnCounts(out, emp, ch) {
+  if (emp) {
+    const units = payrollMonthlyLeaveUnitsForEmployee(emp);
+    out.pnDays += units.pn;
+    out.klDays += units.kl;
+    out.kpDays += units.kp;
+    out.nbDays += Math.max(units.nb, compensatoryNbUnits(ch, emp));
+  } else {
+    out.nbDays += compensatoryNbUnits(ch, null);
+  }
+}
+
 function leaveExcludedFromIncludedWorkDays(leaveShort) {
   return (
+    leaveUnitsByCode(leaveShort, "PO") > 0 ||
     leaveUnitsByCode(leaveShort, "KL") > 0 ||
     leaveUnitsByCode(leaveShort, "KP") > 0 ||
     leaveUnitsByCode(leaveShort, "NV") > 0
   );
 }
 
+/** Ngày có loại phép này không cộng vào «Tổng ngày công (gồm ngày nghỉ có lương)». */
+export function isPayrollMonthLeaveExcludedFromWorkDaysTotal(emp) {
+  const leaveRaw = getAttendanceLeaveTypeRaw(emp);
+  if (!leaveRaw) return false;
+  const leaveShort = formatAttendanceLeaveTypeColumnDisplay(leaveRaw);
+  return leaveExcludedFromIncludedWorkDays(leaveShort);
+}
+
+/** Phép có lương được cộng vào tổng ngày công — trừ PO, KL, KP (và NV). */
 function countedLeaveUnitsForWorkDays(leaveShort) {
+  if (leaveExcludedFromIncludedWorkDays(leaveShort)) return 0;
   const codes = ["PN", "TN", "PT", "PC", "NB", "NL", "CT"];
   let total = 0;
   for (const code of codes) total += leaveUnitsByCode(leaveShort, code);
@@ -252,10 +311,6 @@ export function buildMonthlyRuleSummary(
     return !isDuocNghiBuExplicitlyNo(emp[PAYROLL_EMP.COMP_LEAVE_ALLOWED]);
   };
 
-  const compensatoryNbUnits = (ch, emp) => {
-    return isNbVisibleForCompDay(ch, emp) ? 1 : 0;
-  };
-
   const computeHolidayWorkCreditForDash = (ch, coeffSum, emp) => {
     if (ch.isHolidayDay) return 1;
     if (isNbVisibleForCompDay(ch, emp)) return 1;
@@ -265,6 +320,8 @@ export function buildMonthlyRuleSummary(
   const computeIncludedWorkDayCreditForLeave = ({ ch, main, coeffSum }) => {
     /** BGC: có mặt, chưa có giờ vào — vẫn tính 1 ngày công; giờ bổ sung sau. */
     if (main.leaveShort === "BGC") return 1;
+
+    if (leaveExcludedFromIncludedWorkDays(main.leaveShort)) return 0;
 
     const workedH =
       Number.isFinite(main.workedHours) && main.workedHours > 0
@@ -293,10 +350,10 @@ export function buildMonthlyRuleSummary(
   };
 
   const applyDayToSummary = (out, ch, emp, dateKey) => {
+    addPayrollMonthlyLeaveColumnCounts(out, emp, ch);
+
     if (!emp) {
-      const nbUnits = compensatoryNbUnits(ch, null);
-      out.nbDays += nbUnits;
-      if (ch.isHolidayDay || nbUnits > 0) out.workDays += 1;
+      if (ch.isHolidayDay || compensatoryNbUnits(ch, null) > 0) out.workDays += 1;
       return;
     }
 
@@ -312,12 +369,6 @@ export function buildMonthlyRuleSummary(
     };
 
     if (main.kind === "leave") {
-      const pnUnits = leaveUnitsByCode(main.leaveShort, "PN");
-      const nbLeaveUnits = leaveUnitsByCode(main.leaveShort, "NB");
-      out.pnDays += pnUnits;
-      out.nbDays += Math.max(nbLeaveUnits, compensatoryNbUnits(ch, emp));
-      out.klDays += leaveUnitsByCode(main.leaveShort, "KL");
-      out.kpDays += leaveUnitsByCode(main.leaveShort, "KP");
       if (main.leaveShort === "1/2PN") {
         const offLike =
           ch.isOffDay || ch.isHolidayDay || ch.isCompensatoryDay;
@@ -338,17 +389,19 @@ export function buildMonthlyRuleSummary(
         coeffSum,
       });
     } else if (main.kind === "hours") {
-      out.nbDays += compensatoryNbUnits(ch, emp);
       addWorkedHours(main.hours);
       addWorkedHours(coeffSum);
-      out.workDays += 1;
+      if (!isPayrollMonthLeaveExcludedFromWorkDaysTotal(emp)) {
+        out.workDays += 1;
+      }
     } else {
-      out.nbDays += compensatoryNbUnits(ch, emp);
       addWorkedHours(coeffSum);
       if (saturdayOff && coeffSum > 0) {
         out.satsWorkDays += 1;
-        out.workDays += 1;
-      } else {
+        if (!isPayrollMonthLeaveExcludedFromWorkDaysTotal(emp)) {
+          out.workDays += 1;
+        }
+      } else if (!isPayrollMonthLeaveExcludedFromWorkDaysTotal(emp)) {
         out.workDays += computeHolidayWorkCreditForDash(ch, coeffSum, emp);
       }
     }
@@ -384,8 +437,8 @@ export function buildMonthlyRuleSummary(
   }
 
   const finalizeSummary = (out) => {
-    out.unpaidDays = out.klDays + out.kpDays;
     out.workDays = Math.min(out.workDays, out.standardWorkDays);
+    out.unpaidDays = Math.max(0, out.standardWorkDays - out.workDays);
   };
   finalizeSummary(total);
   finalizeSummary(trial);
@@ -395,15 +448,18 @@ export function buildMonthlyRuleSummary(
 
 /** Chỉ số cột trong khối chi tiết (`MONTH_DETAIL_COLS_PER_BLOCK`). */
 const DETAIL_COL_SO_NGAY_CONG = 0;
-const DETAIL_COL_WORK_HOURS = 1;
-const DETAIL_COL_WORK_DAYS = 2;
-const DETAIL_COL_NIGHT_SHIFT_HOURS = 3;
-const DETAIL_COL_TC_START = 9;
-const DETAIL_COL_SATS_WORK_DAYS = 15;
+const DETAIL_COL_WORK_DAYS = 1;
+const DETAIL_COL_UNPAID = 2;
+const DETAIL_COL_PN = 3;
+const DETAIL_COL_NB = 4;
+const DETAIL_COL_KL = 5;
+const DETAIL_COL_KP = 6;
+const DETAIL_COL_TC_START = 7;
+const DETAIL_COL_NIGHT_SHIFT_HOURS = 13;
 
 /**
- * 17 cột một khối THỜI GIAN *.
- * - `si === 0`: ngày công + tổng TC (cột 9–14) từ `summary.coeff**` (một nguồn `buildMonthlyRuleSummary`).
+ * 14 cột một khối THỜI GIAN *.
+ * - `si === 0`: ngày công + tổng TC (cột 7–12) + Tổng GC ca đêm (cột 13).
  * - `si > 0`: mirror một ô TC tương ứng — cùng giá trị tổng, không tính lại.
  */
 function valuesForDetailBlock({
@@ -411,6 +467,7 @@ function valuesForDetailBlock({
   summary,
   coeffColBySubrow,
   fmt,
+  fmtLeave = fmtPayrollMonthlyLeaveDayCell,
   colsPerBlock,
 }) {
   const tcByRow = [
@@ -424,33 +481,22 @@ function valuesForDetailBlock({
   return Array.from({ length: colsPerBlock }, (_, idx) => {
     if (si === 0) {
       if (idx === DETAIL_COL_SO_NGAY_CONG) return fmt(summary.standardWorkDays);
-      if (idx === DETAIL_COL_WORK_HOURS) return fmt(summary.workHours);
       if (idx === DETAIL_COL_WORK_DAYS) return fmt(summary.workDays);
-      if (idx === DETAIL_COL_NIGHT_SHIFT_HOURS) {
-        return fmt(summary.nightShiftWindowHours);
-      }
-      if (idx === 4) return fmt(summary.unpaidDays);
-      if (idx === 5) return fmt(summary.pnDays);
-      if (idx === 6) return fmt(summary.nbDays);
-      if (idx === 7) return fmt(summary.klDays);
-      if (idx === 8) return fmt(summary.kpDays);
+      if (idx === DETAIL_COL_UNPAID) return fmtLeave(summary.unpaidDays);
+      if (idx === DETAIL_COL_PN) return fmtLeave(summary.pnDays);
+      if (idx === DETAIL_COL_NB) return fmtLeave(summary.nbDays);
+      if (idx === DETAIL_COL_KL) return fmtLeave(summary.klDays);
+      if (idx === DETAIL_COL_KP) return fmtLeave(summary.kpDays);
       if (idx >= DETAIL_COL_TC_START && idx <= DETAIL_COL_TC_START + 5) {
         return fmt(tcByRow[idx - DETAIL_COL_TC_START]);
+      }
+      if (idx === DETAIL_COL_NIGHT_SHIFT_HOURS) {
+        return fmt(summary.nightShiftWindowHours);
       }
     }
     const coeffIdx = coeffColBySubrow[si];
     if (coeffIdx != null && idx === DETAIL_COL_TC_START + coeffIdx) {
       return fmt(tcByRow[coeffIdx]);
-    }
-    if (si === 0 && idx === DETAIL_COL_SATS_WORK_DAYS) {
-      const n = summary.satsWorkDays;
-      return Number.isFinite(n) && n > 0 ? String(Math.round(n)) : " ";
-    }
-    if (si === 3 && idx === DETAIL_COL_SATS_WORK_DAYS) {
-      return fmt(summary.sats20);
-    }
-    if (si === 4 && idx === DETAIL_COL_SATS_WORK_DAYS + 1) {
-      return fmt(summary.sats27);
     }
     return " ";
   });
@@ -465,12 +511,13 @@ export function buildMonthlyDetailFlatValues({
   summaries,
   coeffColBySubrow = MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
   fmt = fmtPayrollMonthlySummaryCell,
+  fmtLeave = fmtPayrollMonthlyLeaveDayCell,
   colsPerBlock = MONTH_DETAIL_COLS_PER_BLOCK,
 }) {
   const total = summaries?.total ?? summaries ?? {};
   const trial = summaries?.trial ?? {};
   const official = summaries?.official ?? {};
-  const blockArgs = { si, coeffColBySubrow, fmt, colsPerBlock };
+  const blockArgs = { si, coeffColBySubrow, fmt, fmtLeave, colsPerBlock };
   return [
     ...valuesForDetailBlock({ ...blockArgs, summary: total }),
     ...valuesForDetailBlock({ ...blockArgs, summary: trial }),
@@ -486,6 +533,7 @@ export function buildMonthlyDetailMatrixForEmployee(
   const coeffColBySubrow =
     options.coeffColBySubrow ?? MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW;
   const fmt = options.fmt ?? fmtPayrollMonthlySummaryCell;
+  const fmtLeave = options.fmtLeave ?? fmtPayrollMonthlyLeaveDayCell;
   const colsPerBlock = options.colsPerBlock ?? MONTH_DETAIL_COLS_PER_BLOCK;
   return PAYROLL_MONTHLY_SUBROWS.map((_, si) =>
     buildMonthlyDetailFlatValues({
@@ -493,6 +541,7 @@ export function buildMonthlyDetailMatrixForEmployee(
       summaries,
       coeffColBySubrow,
       fmt,
+      fmtLeave,
       colsPerBlock,
     }),
   );

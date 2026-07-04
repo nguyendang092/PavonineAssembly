@@ -19,7 +19,9 @@ import {
   isAttendanceBuGioCongType,
   normalizeAttendanceDayRecord,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import { isDuocNghiBuExplicitlyNo } from "@/features/attendance/attendanceDayMeta";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
+import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 
 function resolvePayrollMonthlyRegimeFlags(p) {
@@ -216,11 +218,27 @@ export const PAYROLL_MONTHLY_SUBROWS = [
 ];
 
 /**
+ * Tổng giờ ca off/nghỉ bù trên ngày NB — dùng cho dòng chính lưới tháng.
+ * @returns {number | null}
+ */
+function getPayrollMonthCompensatoryMainRowHours(emp, ch) {
+  if (!ch?.isCompensatoryDay) return null;
+  if (emp && isDuocNghiBuExplicitlyNo(emp?.duocNghiBu)) return null;
+  const coeffMap = getPayrollMonthlyCoeffHoursMap(
+    payrollOtDayParamsFromMonthChunkEmp(emp, ch),
+  );
+  let total = 0;
+  for (const h of coeffMap.values()) {
+    if (Number.isFinite(h) && h > 0) total += h;
+  }
+  return total > 0 ? roundHoursToTenths(total) : null;
+}
+
+/**
  * Dòng đầu (hệ số 0): ưu tiên mã phép; không phép thì giờ công (khi tính được).
  * **BGC** (chưa có giờ vào): badge «BGC» — có mặt, giờ bổ sung sau; đã có giờ → số giờ.
- * Ngày off / lễ / **nghỉ bù** và ca đêm luôn `dash` ở dòng này — lớp UI gắn nhãn
- * tương ứng (OFF / NL / NB) qua `payrollMonthMainRowDashMark`; giờ công đẩy
- * sang các dòng hệ số (2.0 cho off & nghỉ bù, 3.0 cho lễ, …) đồng bộ với NL.
+ * Ngày off / lễ và ca đêm luôn `dash` ở dòng này — lớp UI gắn nhãn tương ứng.
+ * Ngày **nghỉ bù (NB)**: có giờ công → `hours`; không có → `dash` → «NB».
  * @returns {{ kind: "leave"; leaveShort: string; leaveRaw: string; badgeClass: string; workedHours?: number } | { kind: "hours"; hours: number } | { kind: "dash" }}
  */
 export function getPayrollMonthlyMainRowCell(emp, ch) {
@@ -280,6 +298,8 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
   if (isAttendanceBuGioCongType(leaveRaw)) {
     const night = isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT]);
     if (night || ch.isOffDay || ch.isHolidayDay || ch.isCompensatoryDay) {
+      const nbHours = getPayrollMonthCompensatoryMainRowHours(emp, ch);
+      if (nbHours != null) return { kind: "hours", hours: nbHours };
       return { kind: "dash" };
     }
     const h = getAttendanceWorkingHoursHours(
@@ -300,12 +320,12 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     };
   }
   const night = isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT]);
-  /**
-   * Ngày nghỉ bù (NB) đồng bộ cơ chế với ngày lễ (NL): dòng chính luôn `dash`
-   * → dashMark hiển thị «NB» dù có hay không có giờ công; giờ công tính sang
-   * dòng hệ số 2.0 qua nhánh `strictOffDay`.
-   */
-  if (night || ch.isOffDay || ch.isHolidayDay || ch.isCompensatoryDay) {
+  if (ch.isCompensatoryDay) {
+    const nbHours = getPayrollMonthCompensatoryMainRowHours(emp, ch);
+    if (nbHours != null) return { kind: "hours", hours: nbHours };
+    return { kind: "dash" };
+  }
+  if (night || ch.isOffDay || ch.isHolidayDay) {
     return { kind: "dash" };
   }
   const h = getAttendanceWorkingHoursHours(

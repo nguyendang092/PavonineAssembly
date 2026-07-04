@@ -4,19 +4,19 @@
 
 /** STT + Họ tên + MNV + BP + Hệ số TC */
 export const MONTHLY_TIMESHEET_STICKY_COL_COUNT = 5;
-export const MONTH_DETAIL_COLS_PER_BLOCK = 17;
-/** Cột 0–8 trong mỗi khối chi tiết — «NGÀY LÀM VIỆC». */
-export const MONTH_DETAIL_WORKDAY_COL_COUNT = 9;
-/** Cột 9–14 — «TĂNG CA (Hrs)». */
-export const MONTH_DETAIL_OT_COL_COUNT = 6;
-/** Cột 15–16 — SAT.S. */
-export const MONTH_DETAIL_SATS_COL_COUNT = 2;
+export const MONTH_DETAIL_COLS_PER_BLOCK = 14;
+/** Cột 0–6 trong mỗi khối chi tiết — «NGÀY LÀM VIỆC». */
+export const MONTH_DETAIL_WORKDAY_COL_COUNT = 7;
+/** Cột 7–13 — «TĂNG CA (Hrs)» (gồm 6 cột TC + Tổng GC ca đêm). */
+export const MONTH_DETAIL_OT_COL_COUNT = 7;
+/** Cột SAT.S — đã bỏ khỏi lưới / Excel. */
+export const MONTH_DETAIL_SATS_COL_COUNT = 0;
 export const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 
 /** Nhãn nhóm SAT.S — lưới / in A3. */
 export const PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL = "SAT.S";
 
-/** `si` dòng con → chỉ số cột TC (0..5) trong khối chi tiết (sau cột «Tổng thời gian ca đêm»). */
+/** `si` dòng con → chỉ số cột TC (0..5) trong khối chi tiết. */
 export const MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW = {
   1: 0,
   2: 1,
@@ -49,28 +49,22 @@ export function payrollMonthlyTimesheetLayoutOffsets(monthKeyCount) {
   };
 }
 
-/** 17 cột chi tiết × 3 khối — dùng chung lưới và Excel. */
+/** 14 cột chi tiết × 3 khối — dùng chung lưới và Excel. */
 export function buildPayrollMonthlyTimesheetDetailHeaders(tlPage) {
   return [
     tlPage("monthlyRuleColSoNgayCong", "Ngày công chuẩn"),
-    tlPage("monthlyRuleColWorkHours", "Tổng GC thực tế"),
-    tlPage("monthlyRuleColWorkDays", "Ngày công thực tế"),
-    tlPage("monthlyRuleColNightShiftTotalHours", "Tổng GC ca đêm"),
-    tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ KL"),
+    tlPage("monthlyRuleColWorkDays", "Tổng ngày công (gồm ngày nghỉ có lương)"),
+    tlPage("monthlyRuleColUnpaid", "Tổng ngày nghỉ không có lương"),
     tlPage("monthlyRuleColPn", "Phép năm (PN)"),
     tlPage("monthlyRuleColNb", "Nghỉ bù (NB)"),
     tlPage("monthlyRuleColKl", "Nghỉ KL (KL)"),
     tlPage("monthlyRuleColKp", "Nghỉ KP (KP)"),
     tlPage("monthlyRuleColCoeff03", "Giờ làm (×0.3)"),
-    tlPage(
-      "monthlyRuleColCoeff15",
-      "TC ngày thường / TC ca đêm (×1.5)",
-    ),
+    tlPage("monthlyRuleColCoeff15", "TC ngày thường / TC ca đêm (×1.5)"),
     tlPage("monthlyRuleColCoeff20", "TC ngày off ca ngày (×2.0)"),
     tlPage("monthlyRuleColCoeff27", "TC ca đêm ngày off (×2.7)"),
     tlPage("monthlyRuleColCoeff30", "TC ngày lễ (×3.0)"),
     tlPage("monthlyRuleColCoeff39", "TC đêm ngày lễ (×3.9)"),
-    tlPage("monthlyRuleColSatsWorkDays", "Sat.S ngày công / (×2.0)"),
-    tlPage("monthlyRuleColSats27", "Sat.S (×2.7)"),
+    tlPage("monthlyRuleColNightShiftTotalHours", "Tổng GC ca đêm"),
   ];
 }

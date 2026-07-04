@@ -216,8 +216,9 @@ describe("ca đêm S2 — GC / TC sau 05:00", () => {
     expect(getNightShiftPayrollOvertimeHours(gioVao, gioRa, ca)).toBe(1);
   });
 
-  it("tổng thời gian ca đêm 22:00–05:00 (bảng tháng)", () => {
-    expect(getNightShiftTotalWindowHours22To05("22:00", "06:00", ca)).toBe(7);
+  it("tổng GC ca đêm 22:00–06:00 (bảng tháng)", () => {
+    expect(getNightShiftTotalWindowHours22To05("22:00", "06:00", ca)).toBe(8);
+    expect(getNightShiftTotalWindowHours22To05("22:00", "05:00", ca)).toBe(7);
     expect(getNightShiftTotalWindowHours22To05("23:00", "05:00", ca)).toBe(6);
     expect(getNightShiftTotalWindowHours22To05("08:00", "17:00", "S1")).toBe(0);
   });

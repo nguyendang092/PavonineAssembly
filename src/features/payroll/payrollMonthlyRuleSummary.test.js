@@ -6,7 +6,10 @@ import {
   isPayrollMonthDayCellBeforeJoinWithoutAttendance,
   isPayrollSaturdayOffWorkDay,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
-import { MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW } from "@/features/payroll/payrollMonthlyTimesheetLayout";
+import {
+  MONTH_DETAIL_COLS_PER_BLOCK,
+  MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+} from "@/features/payroll/payrollMonthlyTimesheetLayout";
 
 /** 2026-01-10 là thứ Bảy. */
 const SAT_OFF_KEY = "2026-01-10";
@@ -94,7 +97,7 @@ describe("buildMonthlyRuleSummary — SAT.S thứ Bảy OFF", () => {
     expect(total.sats27).toBe(total.coeff27);
     expect(total.satsWorkDays).toBe(1);
     expect(total.workDays).toBe(1);
-    expect(total.nightShiftWindowHours).toBe(7);
+    expect(total.nightShiftWindowHours).toBe(8);
   });
 
   it("ca ngày OFF thứ Bảy: coeff20 có giờ; sats27 = 0", () => {
@@ -193,12 +196,12 @@ describe("buildMonthlyDetailFlatValues", () => {
       summaries,
       coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
       fmt: fmtPayrollMonthlySummaryCell,
-      colsPerBlock: 17,
+      colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
     });
 
-    expect(flat[10]).toBe("6");
-    expect(flat[17 + 10]).toBe("2");
-    expect(flat[34 + 10]).toBe("4");
+    expect(flat[8]).toBe("6");
+    expect(flat[MONTH_DETAIL_COLS_PER_BLOCK + 8]).toBe("2");
+    expect(flat[2 * MONTH_DETAIL_COLS_PER_BLOCK + 8]).toBe("4");
   });
 
   it("dòng 1.5 (si=2) mirror cùng summary.coeff15 — không phải tổng riêng", () => {
@@ -267,18 +270,18 @@ describe("buildMonthlyDetailFlatValues", () => {
       summaries,
       coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
       fmt: fmtPayrollMonthlySummaryCell,
-      colsPerBlock: 17,
+      colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
     });
     const row15 = buildMonthlyDetailFlatValues({
       si: 2,
       summaries,
       coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
       fmt: fmtPayrollMonthlySummaryCell,
-      colsPerBlock: 17,
+      colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
     });
 
-    expect(mainRow[10]).toBe("6");
-    expect(row15[10]).toBe("6");
+    expect(mainRow[8]).toBe("6");
+    expect(row15[8]).toBe("6");
   });
 
   it("buildMonthlyRuleSummary: coeff* cộng theo ngày; mọi dòng con mirror cùng ô tổng", () => {
@@ -312,7 +315,7 @@ describe("buildMonthlyDetailFlatValues", () => {
       summaries,
       coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
       fmt: fmtPayrollMonthlySummaryCell,
-      colsPerBlock: 17,
+      colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
     });
     for (let si = 1; si <= 6; si += 1) {
       const coeffIdx = MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW[si];
@@ -322,9 +325,9 @@ describe("buildMonthlyDetailFlatValues", () => {
         summaries,
         coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
         fmt: fmtPayrollMonthlySummaryCell,
-        colsPerBlock: 17,
+        colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
       });
-      expect(flatSub[9 + coeffIdx]).toBe(flatMain[9 + coeffIdx]);
+      expect(flatSub[7 + coeffIdx]).toBe(flatMain[7 + coeffIdx]);
     }
   });
 });
@@ -452,6 +455,99 @@ describe("isPayrollMonthDayCellBeforeJoinWithoutAttendance", () => {
         null,
       ),
     ).toBe(true);
+  });
+});
+
+describe("buildMonthlyRuleSummary — cột PN / KL / KP", () => {
+  const empId = "e-leave-cols";
+  const dayKey = "2026-03-10";
+
+  it("đếm PN=1, 1/2PN=0,5, KL=1, KP=1 theo loaiPhep", () => {
+    const cases = [
+      { loaiPhep: "Phép năm", pn: 1, kl: 0, kp: 0 },
+      { loaiPhep: "1/2 Phép năm", pn: 0.5, kl: 0, kp: 0 },
+      { loaiPhep: "Không lương", pn: 0, kl: 1, kp: 0 },
+      { loaiPhep: "Không phép", pn: 0, kl: 0, kp: 1 },
+    ];
+    for (const c of cases) {
+      const emp = {
+        id: empId,
+        loaiPhep: c.loaiPhep,
+        gioVao: "",
+        gioRa: "",
+        caLamViec: "S1",
+      };
+      const dayChunks = new Map([
+        [dayKey, makeChunk({ employees: [emp] })],
+      ]);
+      const { total } = buildMonthlyRuleSummary(
+        dayChunks,
+        [dayKey],
+        empId,
+        { ngayVaoLam: "2020-01-01" },
+      );
+      expect(total.pnDays).toBe(c.pn);
+      expect(total.klDays).toBe(c.kl);
+      expect(total.kpDays).toBe(c.kp);
+    }
+  });
+});
+
+describe("buildMonthlyRuleSummary — Tổng ngày công", () => {
+  const empId = "e-workdays";
+  const dayKey = "2026-04-15";
+
+  it("cộng ngày công + phép có lương; trừ PO, KL, KP", () => {
+    const cases = [
+      { loaiPhep: "Phép năm", gioVao: "", gioRa: "", workDays: 1 },
+      { loaiPhep: "1/2 Phép năm", gioVao: "", gioRa: "", workDays: 0.5 },
+      { loaiPhep: "Phép ốm", gioVao: "", gioRa: "", workDays: 0 },
+      { loaiPhep: "Không lương", gioVao: "", gioRa: "", workDays: 0 },
+      { loaiPhep: "Không phép", gioVao: "", gioRa: "", workDays: 0 },
+      { loaiPhep: "Phép cưới", gioVao: "", gioRa: "", workDays: 1 },
+      { loaiPhep: "", gioVao: "07:30", gioRa: "16:30", workDays: 1 },
+    ];
+    for (const c of cases) {
+      const emp = {
+        id: empId,
+        loaiPhep: c.loaiPhep,
+        gioVao: c.gioVao,
+        gioRa: c.gioRa,
+        caLamViec: "S1",
+      };
+      const dayChunks = new Map([
+        [dayKey, makeChunk({ employees: [emp] })],
+      ]);
+      const { total } = buildMonthlyRuleSummary(
+        dayChunks,
+        [dayKey],
+        empId,
+        { ngayVaoLam: "2020-01-01" },
+      );
+      expect(total.workDays).toBe(c.workDays);
+    }
+  });
+
+  it("Tổng ngày nghỉ không lương = Ngày công chuẩn − Tổng ngày công", () => {
+    const keys = ["2026-04-14", "2026-04-15", "2026-04-16"];
+    const workEmp = {
+      id: empId,
+      loaiPhep: "",
+      gioVao: "07:30",
+      gioRa: "16:30",
+      caLamViec: "S1",
+    };
+    const dayChunks = new Map([
+      [keys[0], makeChunk({ employees: [workEmp] })],
+      [keys[1], makeChunk({ employees: [] })],
+      [keys[2], makeChunk({ employees: [] })],
+    ]);
+    const { total } = buildMonthlyRuleSummary(dayChunks, keys, empId, {
+      ngayVaoLam: "2020-01-01",
+    });
+    expect(total.standardWorkDays).toBe(3);
+    expect(total.workDays).toBe(1);
+    expect(total.unpaidDays).toBe(2);
   });
 });
 

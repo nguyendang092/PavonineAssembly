@@ -2,18 +2,18 @@
  * Ma trận xuất Excel bảng chấm công tháng — cùng layout cột với PayrollMonthlyTimesheetModal.
  */
 import ExcelJS from "exceljs";
+import { roundHoursToTenths } from "@/features/attendance/attendanceWorkingHours";
 import {
-  formatCoeffHoursForDisplay,
   getPayrollMonthlyMainRowCell,
   getPayrollMonthlyCoeffHoursMap,
   PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
 import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
+import { payrollExcelHourValueToNumber } from "@/features/payroll/payrollExcelExport";
 import {
   buildMonthlyDetailMatrixForEmployee,
   isPayrollMonthDayCellBeforeJoinWithoutAttendance,
-  isPayrollMonthDayOnOrAfterJoin,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
   DETAIL_GROUP_KEYS,
@@ -36,12 +36,26 @@ const EXCEL_BODY_ROW_HEIGHT = 24;
 /** Dòng giờ thường + phép (hệ số TC trống) — cao hơn một chút để dễ đọc. */
 const EXCEL_MAIN_SUBROW_HEIGHT = 26;
 
-function formatEnglishWeekday3(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+/** Một chữ số thập phân — đồng bộ xuất bảng lương ngày. */
+const PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT = "0.0";
+
+function excelHoursOrEmpty(n) {
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return roundHoursToTenths(n);
 }
 
-/** Giá trị ô ngày — cùng logic hiển thị lưới (main row / hệ số TC). */
+function excelLeaveCountOrEmpty(n) {
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (Math.abs(n - Math.round(n)) < 1e-9) return Math.round(n);
+  return roundHoursToTenths(n);
+}
+
+function excelDashMarkOrEmpty(mark) {
+  const s = String(mark ?? "").trim();
+  return s === "" || s === " " ? null : s;
+}
+
+/** Giá trị ô ngày Excel — số cho giờ công; chữ cho mã phép / NB / NL. */
 export function formatPayrollMonthlyTimesheetDayCellText({
   emp,
   ch,
@@ -52,11 +66,13 @@ export function formatPayrollMonthlyTimesheetDayCellText({
   if (
     isPayrollMonthDayCellBeforeJoinWithoutAttendance(dateKey, joinDate, emp)
   ) {
-    return " ";
+    return null;
   }
-  if (!ch) return " ";
+  if (!ch) return null;
   if (!emp) {
-    return sr.coeff == null ? payrollMonthMainRowDashMark(ch, null) : "";
+    return sr.coeff == null
+      ? excelDashMarkOrEmpty(payrollMonthMainRowDashMark(ch, null))
+      : null;
   }
   const coeffMap = getPayrollMonthlyCoeffHoursMap(
     payrollOtDayParamsFromMonthChunkEmp(emp, ch),
@@ -64,21 +80,86 @@ export function formatPayrollMonthlyTimesheetDayCellText({
   if (sr.coeff == null) {
     const main = getPayrollMonthlyMainRowCell(emp, ch);
     if (main.kind === "leave") {
-      const leaveLabel = main.leaveShort || "";
       if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
-        return `${leaveLabel}\n${formatCoeffHoursForDisplay(main.workedHours)}`;
+        return excelHoursOrEmpty(main.workedHours);
       }
-      return leaveLabel;
+      const leaveLabel = String(main.leaveShort ?? "").trim();
+      return leaveLabel || null;
     }
     if (main.kind === "hours") {
-      return formatCoeffHoursForDisplay(main.hours);
+      return excelHoursOrEmpty(main.hours);
     }
-    return payrollMonthMainRowDashMark(ch, emp);
+    return excelDashMarkOrEmpty(payrollMonthMainRowDashMark(ch, emp));
   }
   const h = coeffMap.get(sr.coeff);
-  const show =
-    h != null && Number.isFinite(h) && h > 0;
-  return show ? formatCoeffHoursForDisplay(h) : " ";
+  return excelHoursOrEmpty(h);
+}
+
+function formatEnglishWeekday3(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+}
+
+function parseExcelSttValue(sttDisp) {
+  const n = Number(String(sttDisp).trim());
+  return Number.isFinite(n) ? n : sttDisp;
+}
+
+function coercePayrollMonthlyExcelNumericCell(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const n = payrollExcelHourValueToNumber(value);
+  if (n != null) return n;
+  return value;
+}
+
+function applyPayrollMonthlyTimesheetExcelNumberFormats(
+  sheet,
+  { layout, monthKeys, maxRow, maxCols },
+) {
+  const L = MONTHLY_TIMESHEET_STICKY_COL_COUNT;
+  const dayColFirst = L + 1;
+  const dayColLast = L + monthKeys.length;
+  const detailColFirst = layout.totalDetailStart + 1;
+  const coeffCol = L;
+
+  sheet.getColumn(coeffCol).numFmt = PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
+  for (let c = dayColFirst; c <= dayColLast; c += 1) {
+    sheet.getColumn(c).numFmt = PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
+  }
+  for (let c = detailColFirst; c <= maxCols; c += 1) {
+    sheet.getColumn(c).numFmt = PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
+  }
+
+  for (let r = HEADER_ROW_COUNT + 1; r <= maxRow; r += 1) {
+    const row = sheet.getRow(r);
+    const sttCell = row.getCell(1);
+    sttCell.value = coercePayrollMonthlyExcelNumericCell(sttCell.value);
+
+    const coeffCell = row.getCell(coeffCol);
+    coeffCell.value = coercePayrollMonthlyExcelNumericCell(coeffCell.value);
+    if (typeof coeffCell.value === "number") {
+      coeffCell.numFmt = PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
+    }
+
+    for (let c = dayColFirst; c <= dayColLast; c += 1) {
+      const cell = row.getCell(c);
+      const coerced = coercePayrollMonthlyExcelNumericCell(cell.value);
+      cell.value = coerced;
+      if (typeof coerced === "number") {
+        cell.numFmt = PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
+      }
+    }
+
+    for (let c = detailColFirst; c <= maxCols; c += 1) {
+      const cell = row.getCell(c);
+      const coerced = coercePayrollMonthlyExcelNumericCell(cell.value);
+      cell.value = coerced;
+      if (typeof coerced === "number") {
+        cell.numFmt = PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
+      }
+    }
+  }
 }
 
 export function buildPayrollMonthlyTimesheetExcelGrid({
@@ -123,7 +204,10 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   filteredIds.forEach((id, empBlockIdx) => {
     const rep = repById.get(id);
     const summaries = summaryById.get(id);
-    const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries);
+    const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries, {
+      fmt: excelHoursOrEmpty,
+      fmtLeave: excelLeaveCountOrEmpty,
+    });
     const sttDisp =
       rep?.stt != null && String(rep.stt).trim() !== ""
         ? String(rep.stt)
@@ -135,17 +219,17 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
 
     PAYROLL_MONTHLY_SUBROWS.forEach((sr, si) => {
       const row = emptyRow();
-      row[0] = sttDisp;
+      row[0] = parseExcelSttValue(sttDisp);
       row[1] = nameDisp;
       row[2] = mnvDisp;
       row[3] = deptDisp;
-      row[4] = sr.coeff == null ? "\u00a0" : Number(sr.coeff).toFixed(1);
+      row[4] = sr.coeff == null ? null : roundHoursToTenths(sr.coeff);
 
       monthKeys.forEach((dk, di) => {
         const ch = chunkByDate.get(dk);
         const cidx = L + di;
         if (!ch) {
-          row[cidx] = " ";
+          row[cidx] = null;
           return;
         }
         const emp = resolvePayrollMonthDayEmployee(ch, id, rep);
@@ -167,12 +251,6 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
       grid.push(row);
     });
   });
-
-  for (let r = 0; r < grid.length; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c] === null) grid[r][c] = "";
-    }
-  }
 
   return { grid, layout };
 }
@@ -316,9 +394,10 @@ export async function writePayrollMonthlyTimesheetWorkbook({
   const sheet = workbook.addWorksheet("MonthlyTimesheet");
 
   grid.forEach((row) => {
-    sheet.addRow(row.map((v) => (v == null ? "" : v)));
+    sheet.addRow(row.map((v) => (v == null ? null : v)));
   });
 
+  const maxRow = sheet.rowCount;
   const maxCols = grid.reduce((m, row) => Math.max(m, row.length), 0);
   for (let c = 1; c <= maxCols; c += 1) {
     if (c === 1) sheet.getColumn(c).width = 6;
@@ -335,6 +414,13 @@ export async function writePayrollMonthlyTimesheetWorkbook({
     chunkByDate,
     filteredIds,
     repById,
+    maxCols,
+  });
+
+  applyPayrollMonthlyTimesheetExcelNumberFormats(sheet, {
+    layout,
+    monthKeys,
+    maxRow,
     maxCols,
   });
 
