@@ -321,9 +321,6 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
         let inner = " ";
         if (main.kind === "leave") {
           inner = `<span style="${getAttendanceLeaveTypeEmphasisPrintStyleAttr(main.leaveRaw, main.leaveShort)}">${escapeHtml(main.leaveShort || "")}</span>`;
-          if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
-            inner += `<br/><span style="${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(formatCoeffHoursForDisplay(main.workedHours))}</span>`;
-          }
         } else if (main.kind === "hours") {
           inner = `<span style="${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(formatCoeffHoursForDisplay(main.hours))}</span>`;
         } else {
@@ -818,11 +815,6 @@ const PayrollMonthlyTimesheetDayCell = memo(
             >
               {main.leaveShort}
             </span>
-            {Number.isFinite(main.workedHours) && main.workedHours > 0 ? (
-              <span className="pm-ts-day-value tabular-nums">
-                {formatCoeffHoursForDisplay(main.workedHours)}
-              </span>
-            ) : null}
           </div>
         );
       } else if (main.kind === "hours") {

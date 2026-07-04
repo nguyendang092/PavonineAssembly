@@ -67,7 +67,7 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     expect(coeffHours(lines, 1.5)).toBe(1);
   });
 
-  it("getPayrollMonthlyMainRowCell: 1/2PN — badge + workedHours", () => {
+  it("getPayrollMonthlyMainRowCell: 1/2PN — badge (workedHours nội bộ)", () => {
     const main = getPayrollMonthlyMainRowCell(
       {
         gioVao: "07:30",

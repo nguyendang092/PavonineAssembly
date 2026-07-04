@@ -259,7 +259,7 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
   ) {
     const leaveShort = formatAttendanceLeaveTypeColumnForEmployee(emp);
     let workedHours;
-    // 1/2PN: vẫn có thể đi làm nửa ngày; hiển thị thêm số giờ thực tế trong cùng ô.
+    // 1/2PN: vẫn có thể đi làm nửa ngày; `workedHours` dùng tính tổng tháng, không hiển thị trên lưới.
     if (leaveShort === "1/2PN") {
       const night = isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT]);
       if (!night) {

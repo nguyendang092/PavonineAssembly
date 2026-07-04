@@ -80,9 +80,6 @@ export function formatPayrollMonthlyTimesheetDayCellText({
   if (sr.coeff == null) {
     const main = getPayrollMonthlyMainRowCell(emp, ch);
     if (main.kind === "leave") {
-      if (Number.isFinite(main.workedHours) && main.workedHours > 0) {
-        return excelHoursOrEmpty(main.workedHours);
-      }
       const leaveLabel = String(main.leaveShort ?? "").trim();
       return leaveLabel || null;
     }
