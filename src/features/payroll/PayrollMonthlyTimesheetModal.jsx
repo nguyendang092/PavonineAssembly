@@ -442,7 +442,7 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
         const v = detailVals[idx];
         const bl = idx === 0 ? "border-left:2px solid #000" : "";
         bodyParts.push(
-          `<td class="pct-print-detail-col" style="text-align:center;font-weight:700;font-size:6.5pt;${bl};${btm}">${escapeHtml(String(v))}</td>`,
+          `<td class="pct-print-detail-col" style="text-align:center;vertical-align:top;font-weight:700;font-size:6.5pt;${bl};${btm}">${escapeHtml(String(v))}</td>`,
         );
       }
       bodyParts.push("</tr>");
@@ -608,11 +608,11 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
       box-sizing: border-box;
       padding: 2px 2px;
       word-break: normal;
+      vertical-align: top;
     }
 
     .print-ts th.pct-print-detail-head {
-      vertical-align: bottom;
-      padding: 3px 2px;
+      padding: 3px 2px 2px;
     }
 
     .print-ts th.pct-print-detail-head .pct-print-detail-2line {

@@ -24,8 +24,87 @@ import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeR
 import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 
+/** Trần giờ công dòng chính ngày nghỉ bù — phần vượt sang hệ số TC tương ứng. */
+const PAYROLL_MONTH_COMP_MAIN_MAX_HOURS = 8;
+
 function resolvePayrollMonthlyRegimeFlags(p) {
   return employeeRegimeWorkingHoursFlags(p);
+}
+
+/** Tổng GC+TC gộp ngày nghỉ bù (đồng bộ bảng ngày off/NB). */
+function payrollMonthCompensatoryMergedTotalHours(p) {
+  const {
+    timeIn,
+    timeOut,
+    shiftCode,
+    payrollEarlyOtPaperwork,
+    payrollLateOtExcluded,
+    lunchOtHours,
+    leaveType,
+  } = p;
+  const {
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
+  } = resolvePayrollMonthlyRegimeFlags(p);
+  const night = isNightShiftCaLamViec(shiftCode);
+
+  if (night) {
+    return getNightShiftPayrollOffHolidayMergedHoursNumeric(
+      timeIn,
+      timeOut,
+      shiftCode,
+      payrollEarlyOtPaperwork,
+    );
+  }
+
+  return getPayrollDayShiftOffHolidayMergedHoursNumeric(
+    timeIn,
+    timeOut,
+    true,
+    false,
+    shiftCode,
+    payrollEarlyOtPaperwork,
+    leaveType,
+    payrollLateOtExcluded,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
+    lunchOtHours,
+  );
+}
+
+/** Tách ngày NB: dòng chính ≤8h (gồm TC sớm/chiều gộp), phần dư → hệ số ×2.0 / ×2.7. */
+function payrollMonthCompensatoryHourSplit(p) {
+  const merged = payrollMonthCompensatoryMergedTotalHours(p);
+  if (merged == null || merged <= 0) {
+    return { mainHours: null, overflowHours: 0 };
+  }
+  const main = Math.min(merged, PAYROLL_MONTH_COMP_MAIN_MAX_HOURS);
+  const overflow = roundHoursToTenths(Math.max(0, merged - main));
+  return {
+    mainHours: roundHoursToTenths(main),
+    overflowHours: overflow,
+  };
+}
+
+function payrollMonthCompensatoryRegularMainHours(p) {
+  return payrollMonthCompensatoryHourSplit(p).mainHours;
+}
+
+function payrollMonthCompensatoryOtCoefficientLines(p) {
+  const { overflowHours } = payrollMonthCompensatoryHourSplit(p);
+  if (overflowHours <= 0) return [];
+  const night = isNightShiftCaLamViec(p.shiftCode);
+  return [
+    {
+      coeff: night ? 2.7 : 2.0,
+      hours: overflowHours,
+      key: night ? "nb27ov" : "nb20ov",
+    },
+  ];
 }
 
 /**
@@ -103,7 +182,11 @@ export function getPayrollMonthlyCoefficientLines(p) {
     return lines;
   }
 
-  if (strictOffDay) {
+  if (isCompensatoryDay) {
+    return payrollMonthCompensatoryOtCoefficientLines(p);
+  }
+
+  if (isOffDay) {
     if (night) {
       const m = getNightShiftPayrollOffHolidayMergedHoursNumeric(
         timeIn,
@@ -218,27 +301,22 @@ export const PAYROLL_MONTHLY_SUBROWS = [
 ];
 
 /**
- * Tổng giờ ca off/nghỉ bù trên ngày NB — dùng cho dòng chính lưới tháng.
+ * Giờ công thường ngày nghỉ bù trên dòng chính (tối đa 8h).
  * @returns {number | null}
  */
 function getPayrollMonthCompensatoryMainRowHours(emp, ch) {
   if (!ch?.isCompensatoryDay) return null;
   if (emp && isDuocNghiBuExplicitlyNo(emp?.duocNghiBu)) return null;
-  const coeffMap = getPayrollMonthlyCoeffHoursMap(
+  return payrollMonthCompensatoryRegularMainHours(
     payrollOtDayParamsFromMonthChunkEmp(emp, ch),
   );
-  let total = 0;
-  for (const h of coeffMap.values()) {
-    if (Number.isFinite(h) && h > 0) total += h;
-  }
-  return total > 0 ? roundHoursToTenths(total) : null;
 }
 
 /**
  * Dòng đầu (hệ số 0): ưu tiên mã phép; không phép thì giờ công (khi tính được).
  * **BGC** (chưa có giờ vào): badge «BGC» — có mặt, giờ bổ sung sau; đã có giờ → số giờ.
  * Ngày off / lễ và ca đêm luôn `dash` ở dòng này — lớp UI gắn nhãn tương ứng.
- * Ngày **nghỉ bù (NB)**: có giờ công → `hours`; không có → `dash` → «NB».
+ * Ngày **nghỉ bù (NB)**: tổng GC+TC gộp tối đa 8h trên dòng chính; phần dư → ×2.0 / ×2.7.
  * @returns {{ kind: "leave"; leaveShort: string; leaveRaw: string; badgeClass: string; workedHours?: number } | { kind: "hours"; hours: number } | { kind: "dash" }}
  */
 export function getPayrollMonthlyMainRowCell(emp, ch) {
