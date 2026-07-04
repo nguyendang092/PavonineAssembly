@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canonicalPayrollMonthRowId,
   collectPayrollMonthSortedEmployeeIds,
+  comparePayrollMonthRowsByDepartment,
   buildPayrollMonthIdentityIndexes,
   applyPayrollMonthCanonicalKeysToChunks,
   matchesPayrollMonthRowFilter,
@@ -279,5 +280,16 @@ describe("payrollMonthlyGridData employee resolution", () => {
       "07:30",
     );
     expect(resolvePayrollMonthDayEmployee(rebuilt, fbId)?.gioVao).toBe("07:30");
+  });
+
+  it("comparePayrollMonthRowsByDepartment — sắp BP A→Z, cùng BP theo STT", () => {
+    const kho = { boPhan: "Kho", stt: 50 };
+    const sx = { boPhan: "Sản xuất", stt: 10 };
+    const sx2 = { boPhan: "Sản xuất", stt: 5 };
+    const empty = { boPhan: "", stt: 1 };
+
+    expect(comparePayrollMonthRowsByDepartment(kho, sx)).toBeLessThan(0);
+    expect(comparePayrollMonthRowsByDepartment(sx2, sx)).toBeLessThan(0);
+    expect(comparePayrollMonthRowsByDepartment(sx, empty)).toBeLessThan(0);
   });
 });

@@ -11,9 +11,9 @@ import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { buildPayrollMonthDayCellFormRecord } from "@/features/payroll/buildPayrollDayFromRaw";
 import {
+  comparePayrollMonthRowsByDepartment,
   formatPayrollMonthWeekday3,
   matchesPayrollMonthRowFilter,
-  parsePayrollMonthSortableStt,
   resolvePayrollMonthDayEmployee,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
@@ -412,10 +412,7 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
     const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries).map(
       (row) => row.slice(0, MONTH_DETAIL_COLS_PER_BLOCK),
     );
-    const sttDisp =
-      rep.stt != null && String(rep.stt).trim() !== ""
-        ? rep.stt
-        : empBlockIdx + 1;
+    const sttDisp = empBlockIdx + 1;
 
     for (let si = 0; si < PAYROLL_MONTHLY_SUBROWS.length; si++) {
       const sr = PAYROLL_MONTHLY_SUBROWS[si];
@@ -949,10 +946,7 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
         }),
       [monthDayMeta, rep, rowId],
     );
-    const sttDisp =
-      rep?.stt != null && String(rep.stt).trim() !== ""
-        ? rep.stt
-        : empBlockIdx + 1;
+    const sttDisp = empBlockIdx + 1;
     const employeeStripe =
       empBlockIdx % 2 === 0
         ? "bg-white dark:bg-slate-900"
@@ -1298,14 +1292,9 @@ export default function PayrollMonthlyTimesheetModal({
           })
         );
       })
-      .sort((a, b) => {
-        const aRep = repById.get(a);
-        const bRep = repById.get(b);
-        return (
-          parsePayrollMonthSortableStt(aRep?.stt) -
-          parsePayrollMonthSortableStt(bRep?.stt)
-        );
-      });
+      .sort((a, b) =>
+        comparePayrollMonthRowsByDepartment(repById.get(a), repById.get(b)),
+      );
   }, [
     sortedIds,
     repById,

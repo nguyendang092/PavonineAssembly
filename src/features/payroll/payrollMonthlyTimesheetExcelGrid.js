@@ -100,11 +100,6 @@ function formatEnglishWeekday3(date) {
   return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
 }
 
-function parseExcelSttValue(sttDisp) {
-  const n = Number(String(sttDisp).trim());
-  return Number.isFinite(n) ? n : sttDisp;
-}
-
 function coercePayrollMonthlyExcelNumericCell(value) {
   if (value == null || value === "") return null;
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -208,10 +203,6 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
       fmt: excelHoursOrEmpty,
       fmtLeave: excelLeaveCountOrEmpty,
     });
-    const sttDisp =
-      rep?.stt != null && String(rep.stt).trim() !== ""
-        ? String(rep.stt)
-        : String(empBlockIdx + 1);
     const nameDisp = String(rep?.hoVaTen ?? "—");
     const mnvDisp =
       rep?.mnv != null && String(rep.mnv).trim() ? String(rep.mnv) : "—";
@@ -219,7 +210,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
 
     PAYROLL_MONTHLY_SUBROWS.forEach((sr, si) => {
       const row = emptyRow();
-      row[0] = parseExcelSttValue(sttDisp);
+      row[0] = empBlockIdx + 1;
       row[1] = nameDisp;
       row[2] = mnvDisp;
       row[3] = deptDisp;

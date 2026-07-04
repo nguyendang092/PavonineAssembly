@@ -300,6 +300,20 @@ export function parsePayrollMonthSortableStt(raw) {
   return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
 }
 
+/** Thứ tự hiển thị lưới tháng / Excel: BP (A→Z), rồi STT. */
+export function comparePayrollMonthRowsByDepartment(aRep, bRep) {
+  const aDept =
+    normalizePayrollDepartment(aRep?.boPhan).toLocaleLowerCase("vi") || "\uffff";
+  const bDept =
+    normalizePayrollDepartment(bRep?.boPhan).toLocaleLowerCase("vi") || "\uffff";
+  const byDept = aDept.localeCompare(bDept, "vi", { sensitivity: "base" });
+  if (byDept !== 0) return byDept;
+  return (
+    parsePayrollMonthSortableStt(aRep?.stt) -
+    parsePayrollMonthSortableStt(bRep?.stt)
+  );
+}
+
 export function collectPayrollMonthSortedEmployeeIds(dayChunks) {
   const indexes = buildPayrollMonthIdentityIndexes(dayChunks);
   const meta = new Map();
