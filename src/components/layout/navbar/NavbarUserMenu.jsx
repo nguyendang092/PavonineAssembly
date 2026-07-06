@@ -6,7 +6,8 @@ function NavbarUserMenu({
   user,
   userDropdownOpen,
   setUserDropdownOpen,
-  navbarUserDisplayShort,
+  navbarUserDisplayName,
+  navbarUserRoleLabel,
   navbarUserFullLabel,
   showAdminOnlyMenu,
   t,
@@ -21,15 +22,15 @@ function NavbarUserMenu({
   useOutsideClick(userDropdownOpen, wrapperRef, closeMenu);
 
   const initial =
-    user?.name?.trim?.() && user.name.trim().length > 0
-      ? Array.from(user.name.trim())[0]?.toUpperCase?.() ?? "?"
-      : Array.from(user.email ?? "")[0]?.toUpperCase?.() ?? "?";
+    navbarUserDisplayName?.trim?.().length > 0
+      ? Array.from(navbarUserDisplayName.trim())[0]?.toUpperCase?.() ?? "?"
+      : Array.from(user?.email ?? "")[0]?.toUpperCase?.() ?? "?";
 
   return (
     <div className="user-dropdown-wrapper" ref={wrapperRef}>
       <button
         type="button"
-        className="user-dropdown-btn user-dropdown-btn--compact"
+        className="user-dropdown-btn user-dropdown-btn--profile"
         title={navbarUserFullLabel}
         aria-expanded={userDropdownOpen}
         aria-haspopup="menu"
@@ -40,10 +41,13 @@ function NavbarUserMenu({
         }
         onClick={() => setUserDropdownOpen((o) => !o)}
       >
+        <span className="user-profile-text">
+          <span className="user-profile-name">{navbarUserDisplayName}</span>
+          <span className="user-profile-role">{navbarUserRoleLabel}</span>
+        </span>
         <span className="user-avatar" aria-hidden>
           {initial}
         </span>
-        <span className="user-name-text">{navbarUserDisplayShort}</span>
       </button>
       {userDropdownOpen ? (
         <div className="user-dropdown-menu" role="menu">

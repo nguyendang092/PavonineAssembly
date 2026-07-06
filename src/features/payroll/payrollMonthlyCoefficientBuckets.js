@@ -315,7 +315,8 @@ function getPayrollMonthCompensatoryMainRowHours(emp, ch) {
 /**
  * Dòng đầu (hệ số 0): ưu tiên mã phép; không phép thì giờ công (khi tính được).
  * **BGC** (chưa có giờ vào): badge «BGC» — có mặt, giờ bổ sung sau; đã có giờ → số giờ.
- * Ngày off / lễ và ca đêm luôn `dash` ở dòng này — lớp UI gắn nhãn tương ứng.
+ * Ngày off / lễ: `dash` ở dòng này — lớp UI gắn nhãn tương ứng.
+ * Ca đêm: GC chuyển lên dòng chính; dòng hệ số GC hiển thị mã ca (S2).
  * Ngày **nghỉ bù (NB)**: tổng GC+TC gộp tối đa 8h trên dòng chính; phần dư → ×2.0 / ×2.7.
  * @returns {{ kind: "leave"; leaveShort: string; leaveRaw: string; badgeClass: string; workedHours?: number } | { kind: "hours"; hours: number } | { kind: "dash" }}
  */
@@ -403,7 +404,11 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     if (nbHours != null) return { kind: "hours", hours: nbHours };
     return { kind: "dash" };
   }
-  if (night || ch.isOffDay || ch.isHolidayDay) {
+  if (night) {
+    const nightGc = getPayrollMonthNightShiftGcHoursForMainRow(emp, ch);
+    if (nightGc != null) return { kind: "hours", hours: nightGc };
+  }
+  if (ch.isOffDay || ch.isHolidayDay) {
     return { kind: "dash" };
   }
   const h = getAttendanceWorkingHoursHours(
@@ -432,4 +437,96 @@ export function getPayrollMonthlyCoeffHoursMap(p) {
     m.set(ln.coeff, ln.hours);
   }
   return m;
+}
+
+/** Hệ số dòng GC ca đêm (trước khi chuyển giờ lên dòng chính lưới). */
+export function payrollMonthNightShiftGcCoeffForMainRowDisplay(ch) {
+  if (ch?.isCompensatoryDay) return null;
+  if (ch?.isHolidayDay) return 3.9;
+  if (ch?.isOffDay) return 2.7;
+  return 0.3;
+}
+
+export function payrollMonthNightShiftDisplayShiftCode(shiftCode) {
+  const s = String(shiftCode ?? "").trim().toUpperCase();
+  return s || "S2";
+}
+
+export function isPayrollMonthNightShiftEmployee(emp) {
+  return isNightShiftCaLamViec(emp?.[PAYROLL_EMP.SHIFT]);
+}
+
+/** GC ca đêm chuyển lên dòng chính (không gồm ngày nghỉ bù — đã có logic riêng). */
+export function getPayrollMonthNightShiftGcHoursForMainRow(emp, ch) {
+  if (!isPayrollMonthNightShiftEmployee(emp)) return null;
+  const gcCoeff = payrollMonthNightShiftGcCoeffForMainRowDisplay(ch);
+  if (gcCoeff == null) return null;
+  const coeffMap = getPayrollMonthlyCoeffHoursMap(
+    payrollOtDayParamsFromMonthChunkEmp(emp, ch),
+  );
+  const h = coeffMap.get(gcCoeff);
+  if (!Number.isFinite(h) || h <= 0) return null;
+  return roundHoursToTenths(h);
+}
+
+/** Dòng hệ số hiển thị badge ca (S2) thay cho giờ GC đã chuyển lên dòng chính. */
+export function payrollMonthNightShiftShiftBadgeCoeff(ch, main) {
+  if (ch?.isCompensatoryDay) {
+    if (main?.kind === "hours" && main.hours > 0) return 0.3;
+    return null;
+  }
+  return payrollMonthNightShiftGcCoeffForMainRowDisplay(ch);
+}
+
+export function shouldPayrollMonthNightShiftShowShiftBadgeOnCoeff({
+  emp,
+  ch,
+  sr,
+  main,
+  coeffMap,
+}) {
+  if (!emp || sr.coeff == null || !isPayrollMonthNightShiftEmployee(emp)) {
+    return false;
+  }
+  const badgeCoeff = payrollMonthNightShiftShiftBadgeCoeff(ch, main);
+  if (badgeCoeff == null || sr.coeff !== badgeCoeff) return false;
+  if (ch?.isCompensatoryDay) return true;
+  const h = coeffMap?.get(badgeCoeff);
+  return Number.isFinite(h) && h > 0;
+}
+
+/** Ô dòng hệ số TC — ca đêm: badge S2; còn lại: số giờ. */
+export function formatPayrollMonthlyCoeffSubrowDayCell({
+  emp,
+  ch,
+  sr,
+  coeffMap,
+  main,
+}) {
+  if (sr.coeff == null) return null;
+  if (
+    shouldPayrollMonthNightShiftShowShiftBadgeOnCoeff({
+      emp,
+      ch,
+      sr,
+      main,
+      coeffMap,
+    })
+  ) {
+    return payrollMonthNightShiftDisplayShiftCode(emp[PAYROLL_EMP.SHIFT]);
+  }
+  const h = coeffMap?.get(sr.coeff);
+  if (h != null && Number.isFinite(h) && h > 0) {
+    return formatCoeffHoursForDisplay(h);
+  }
+  return null;
+}
+
+/** Tránh cộng trùng GC ca đêm khi tổng hợp tháng (giờ đã lên dòng chính). */
+export function payrollMonthNightShiftGcHoursMovedToMain(emp, ch, coeffMap) {
+  if (!isPayrollMonthNightShiftEmployee(emp)) return 0;
+  const gcCoeff = payrollMonthNightShiftGcCoeffForMainRowDisplay(ch);
+  if (gcCoeff == null) return 0;
+  const h = coeffMap?.get(gcCoeff);
+  return Number.isFinite(h) && h > 0 ? h : 0;
 }

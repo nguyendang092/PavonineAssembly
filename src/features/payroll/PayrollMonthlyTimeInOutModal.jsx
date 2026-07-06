@@ -814,7 +814,7 @@ export default function PayrollMonthlyTimeInOutModal({
                 mode="inline"
                 message={tlPage(
                   "monthlyTimesheetLoading",
-                  "Đang tải dữ liệu điểm danh…",
+                  "Đang tải dữ liệu...",
                 )}
               />
             ) : error && !displayDayChunks.length ? (

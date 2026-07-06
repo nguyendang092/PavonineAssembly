@@ -120,6 +120,26 @@ export function normalizeBoPhanChuaDungForForm(storedRaw) {
 }
 
 /**
+ * Nền vàng nhạt cột họ tên — `attendance/{ngày}/{key}/hoVaTenNenVang`.
+ * `"YES"` = bật; không có key / rỗng = tắt.
+ */
+export function isHoVaTenYellowHighlight(storedValue) {
+  const v = String(storedValue ?? "").trim().toUpperCase();
+  return v === "YES" || v === "TRUE" || v === "1";
+}
+
+export function normalizeHoVaTenYellowHighlightForForm(storedRaw) {
+  return isHoVaTenYellowHighlight(storedRaw) ? "YES" : "";
+}
+
+/** Class Tailwind cho ô họ tên trên bảng điểm danh / giờ công (không dùng trong form). */
+export function attendanceHoVaTenYellowCellClassName(enabled) {
+  return enabled
+    ? " !bg-yellow-100 hover:!bg-yellow-200 dark:!bg-yellow-900/40 dark:hover:!bg-yellow-900/55 self-stretch flex items-center"
+    : "";
+}
+
+/**
  * Form điểm danh: đồng bộ `duocNghiBu` với cờ ngày nghỉ bù lịch.
  * @returns {"" | "NO" | "YES"}
  */

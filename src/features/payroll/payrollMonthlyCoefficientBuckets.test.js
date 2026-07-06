@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatPayrollMonthlyCoeffSubrowDayCell,
   getPayrollMonthlyCoefficientLines,
   getPayrollMonthlyCoeffHoursMap,
   getPayrollMonthlyMainRowCell,
+  PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import {
   getAttendanceWorkingHoursHours,
@@ -206,7 +208,17 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     expect(coeffHours(lines, 2.0)).toBe(Math.max(0, merged - 8));
   });
 
-  it("ca đêm thường — ×0.3 + TC ×1.5 (không ×2.0)", () => {
+  it("ca đêm thường — GC dòng chính, ×0.3 hiển thị S2, TC ×1.5", () => {
+    const ch = { isOffDay: false, isHolidayDay: false, isCompensatoryDay: false };
+    const emp = {
+      gioVao: "22:00",
+      gioRa: "06:00",
+      caLamViec: "S2",
+    };
+    const main = getPayrollMonthlyMainRowCell(emp, ch);
+    expect(main.kind).toBe("hours");
+    expect(main.hours).toBe(7);
+
     const lines = getPayrollMonthlyCoefficientLines({
       timeIn: "22:00",
       timeOut: "06:00",
@@ -218,8 +230,34 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     });
     expect(coeffHours(lines, 0.3)).toBe(7);
     expect(coeffHours(lines, 1.5)).toBe(1);
-    expect(coeffHours(lines, 2.0)).toBe(0);
-    expect(coeffHours(lines, 2.7)).toBe(0);
+
+    const coeffMap = getPayrollMonthlyCoeffHoursMap({
+      timeIn: "22:00",
+      timeOut: "06:00",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S2",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+    });
+    expect(
+      formatPayrollMonthlyCoeffSubrowDayCell({
+        emp,
+        ch,
+        sr: PAYROLL_MONTHLY_SUBROWS[1],
+        coeffMap,
+        main,
+      }),
+    ).toBe("S2");
+    expect(
+      formatPayrollMonthlyCoeffSubrowDayCell({
+        emp,
+        ch,
+        sr: PAYROLL_MONTHLY_SUBROWS[2],
+        coeffMap,
+        main,
+      }),
+    ).toBe("1");
   });
 
   it("ngày OFF ca ngày — ×2.0 gộp", () => {

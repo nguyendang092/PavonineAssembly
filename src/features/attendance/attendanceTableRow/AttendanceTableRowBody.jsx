@@ -4,9 +4,7 @@ import {
   formatAttendanceTimeInColumnDisplay,
   getAttendanceLeaveTypeColorClassNameForEmployee,
 } from "../attendanceGioVaoTypeOptions";
-import {
-  formatPayrollTableWorkingHoursCell,
-} from "../attendanceWorkingHours";
+import { formatPayrollTableWorkingHoursCell } from "../attendanceWorkingHours";
 import {
   formatPayrollTableHolidayNightWorkingCellFromEmp,
   formatPayrollTableDayShiftOvertimeCellFromEmp,
@@ -20,19 +18,27 @@ import {
 } from "@/features/payroll/payrollTableOtCells";
 import { employeeRegimeWorkingHoursFlags } from "../employeeRegime";
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
-import { isBoPhanChuaDung } from "../attendanceDayMeta";
+import {
+  attendanceHoVaTenYellowCellClassName,
+  isBoPhanChuaDung,
+  isHoVaTenYellowHighlight,
+} from "../attendanceDayMeta";
+import {
+  ATTENDANCE_EMP,
+  pickAttendanceEmployeeDayFields,
+} from "../attendanceEmployeeFields";
 import { resolveAttendanceDisplayStt } from "../attendanceSeasonalStt";
 import {
   formatAttendanceGenderDisplay,
   isAttendanceFemaleGioiTinh,
 } from "../attendanceGender";
-import {
-  ATTENDANCE_EMP,
-  pickAttendanceEmployeeDayFields,
-} from "@/features/attendance/attendanceEmployeeFields";
 import { payrollDash } from "./payrollDash";
 import { PAYROLL_EMPTY_CELL, ATTENDANCE_EMPTY_CELL } from "./constants";
-import { getAttendanceGridColumnStart, attendanceGridCellStyle, cellClsForAttendanceTable } from "./gridLayout";
+import {
+  getAttendanceGridColumnStart,
+  attendanceGridCellStyle,
+  cellClsForAttendanceTable,
+} from "./gridLayout";
 import { cellClsForGrid } from "./cellClassNames";
 import { formatAnnualLeaveDecimal } from "@/features/leave/annualLeaveCalculated";
 import { getDisplayAnnualLeaveBalanceForAttendance } from "@/features/leave/annualLeaveBalanceLookup";
@@ -86,7 +92,8 @@ function AttendanceTableRow({
   const showJoinWorkStatusDeptBlock = columnPlan === "full";
   const showDeptColumn = columnPlan === "full" || columnPlan === "compact";
   const showAnnualLeaveColumn =
-    !isMinimal && getAttendanceGridColumnStart(
+    !isMinimal &&
+    getAttendanceGridColumnStart(
       "annualLeaveBalance",
       columnPlan,
       showRowModalActions,
@@ -103,6 +110,9 @@ function AttendanceTableRow({
 
   const showDeptWrongFlag = !isPayroll && isBoPhanChuaDung(emp.boPhanChuaDung);
   const deptWrongFlagHint = tl("boPhanChuaDungFlag", "Bộ phận chưa đúng");
+  const hoVaTenYellowBg = isHoVaTenYellowHighlight(
+    emp[ATTENDANCE_EMP.NAME_YELLOW_BG],
+  );
   const deptWrongFlagEl = showDeptWrongFlag ? (
     <span
       className="pointer-events-none absolute right-0.5 top-1/2 z-[1] inline-block shrink-0 -translate-y-1/2 text-xs leading-none text-red-600"
@@ -136,7 +146,8 @@ function AttendanceTableRow({
     annualLeaveBalanceByMnv,
   );
   const annualLeaveBalanceCol =
-    annualLeaveBalanceRaw != null && Number.isFinite(Number(annualLeaveBalanceRaw))
+    annualLeaveBalanceRaw != null &&
+    Number.isFinite(Number(annualLeaveBalanceRaw))
       ? formatAnnualLeaveDecimal(annualLeaveBalanceRaw)
       : isPayroll
         ? PAYROLL_EMPTY_CELL
@@ -209,7 +220,7 @@ function AttendanceTableRow({
         role={isGrid ? "cell" : undefined}
         style={attendanceGridCellStyle(isGrid, gcs("fullName"))}
         className={cellCls(
-          `${isMinimal ? "px-0.5" : "px-1"} md:px-2 py-px ${isMinimal ? "text-[9px] overflow-hidden text-ellipsis whitespace-nowrap" : "text-[11px] overflow-hidden text-ellipsis whitespace-nowrap"} md:text-sm text-left md:text-center font-bold text-gray-800 leading-tight`,
+          `${isMinimal ? "px-0.5" : "px-1"} md:px-2 py-px ${isMinimal ? "text-[9px] overflow-hidden text-ellipsis whitespace-nowrap" : "text-[11px] overflow-hidden text-ellipsis whitespace-nowrap"} md:text-sm text-left md:text-center font-bold text-gray-800 leading-tight${attendanceHoVaTenYellowCellClassName(hoVaTenYellowBg)}`,
         )}
         title={String(payrollDash(emp.hoVaTen, isPayroll) ?? "")}
       >
@@ -230,9 +241,11 @@ function AttendanceTableRow({
           ) : (
             <span
               className={`inline-flex items-center justify-center px-1.5 py-px text-[10px] font-bold leading-none rounded-full ${
-                (isSeasonalAttendance
-                  ? isAttendanceFemaleGioiTinh(emp.gioiTinh)
-                  : emp.gioiTinh === "YES")
+                (
+                  isSeasonalAttendance
+                    ? isAttendanceFemaleGioiTinh(emp.gioiTinh)
+                    : emp.gioiTinh === "YES"
+                )
                   ? "bg-pink-100 text-pink-700"
                   : "bg-blue-100 text-blue-700"
               }`}
@@ -615,7 +628,10 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-orange-900 dark:text-orange-100">
-              {formatPayrollTableDayShiftOvertimeCellFromEmp(emp, payrollDayCtx)}
+              {formatPayrollTableDayShiftOvertimeCellFromEmp(
+                emp,
+                payrollDayCtx,
+              )}
             </span>
           </Cell>
           <Cell
@@ -684,7 +700,10 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-teal-900 dark:text-teal-100">
-              {formatPayrollTableNightShiftWorkingCellFromEmp(emp, payrollDayCtx)}
+              {formatPayrollTableNightShiftWorkingCellFromEmp(
+                emp,
+                payrollDayCtx,
+              )}
             </span>
           </Cell>
           <Cell
@@ -702,7 +721,10 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-fuchsia-900 dark:text-fuchsia-100">
-              {formatPayrollTableNightShiftOvertimeCellFromEmp(emp, payrollDayCtx)}
+              {formatPayrollTableNightShiftOvertimeCellFromEmp(
+                emp,
+                payrollDayCtx,
+              )}
             </span>
           </Cell>
           <Cell

@@ -1,9 +1,11 @@
 /** className cho <li> nav cấp 1 có pill */
 export function navTopItemLiClass(itemKey, baseClass) {
   const pill =
-    itemKey === "internalAnnouncements" || itemKey === "reports"
-      ? "nav-item-top-pill"
-      : "";
+    itemKey === "internalAnnouncements"
+      ? "nav-item-top-pill nav-item-top-pill--announce"
+      : itemKey === "reports"
+        ? "nav-item-top-pill nav-item-top-pill--reports"
+        : "";
   return [baseClass, pill].filter(Boolean).join(" ");
 }
 

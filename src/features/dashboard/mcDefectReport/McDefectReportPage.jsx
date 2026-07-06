@@ -118,7 +118,7 @@ export default function McDefectReportPage() {
 
         {loading ? (
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-            {tl("loadingFirebase", "Đang tải dữ liệu từ Firebase...")}
+            {tl("loadingFirebase", "Đang tải dữ liệu...")}
           </div>
         ) : null}
 

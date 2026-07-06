@@ -52,8 +52,8 @@ export function employeeMatchesLoaiPhepFilterSet(emp, selectedSet) {
 /** Ngày chọn trên ô date / URL `?date=` — đồng bộ với Firebase path `attendance/YYYY-MM-DD`. */
 export const ISO_DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Chiều cao cố định panel menu «Bộ lọc» (dropdown); chỉ thu nhỏ khi không đủ chỗ trong viewport. */
-export const ATTENDANCE_FILTER_DROPDOWN_HEIGHT_PX = 270;
+/** Chiều cao panel menu «Công cụ» (dropdown); chỉ thu nhỏ khi không đủ chỗ trong viewport. */
+export const ATTENDANCE_FILTER_DROPDOWN_HEIGHT_PX = 520;
 
 export function attendanceTableWrapperMinWidthClass(columnPlan) {
   switch (columnPlan) {

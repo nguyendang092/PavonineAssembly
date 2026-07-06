@@ -3,7 +3,6 @@ import AttendanceSearchActionsBar from "./AttendanceSearchActionsBar";
 import SeasonalKpStreakNotification from "./SeasonalKpStreakNotification";
 import AttendanceBuCongNotificationPanel from "./AttendanceBuCongNotificationPanel";
 import AttendanceListFilterMenus from "./AttendanceListFilterMenus";
-import AttendanceListActionPrintMenus from "./AttendanceListActionPrintMenus";
 import {
   useAttendanceListSearchBranch,
   useAttendanceListToolbarBranch,
@@ -49,8 +48,6 @@ function AttendanceToolbarSearchCluster() {
     handleQuickNoCheckInFilter,
     handleOpenUnattendedPopup,
     setShowOnlyUnattendedFilter,
-    setComboDashboardGroup,
-    setShowComboChartModal,
     expandedSections,
     setExpandedSections,
     filterDepartmentSearch,
@@ -58,22 +55,10 @@ function AttendanceToolbarSearchCluster() {
     departments,
     allLeaveTypesSelectAllChecked,
     allLeaveTypeFilterValues,
-    setAlert,
     user,
     userRole,
     selectedDate,
-    actionDropdownOpen,
-    setActionDropdownOpen,
-    actionDropdownRef,
-    actionDropdownAnchorRef,
-    actionDropdownPanelRef,
-    actionDropdownPlacement,
-    printDropdownOpen,
-    setPrintDropdownOpen,
-    printDropdownRef,
-    printDropdownAnchorRef,
-    printDropdownPanelRef,
-    printDropdownPlacement,
+    setAlert,
     isUploadingExcel,
     handleUploadExcelWrapper,
     handleDownloadAttendanceExcelTemplate,
@@ -134,8 +119,6 @@ function AttendanceToolbarSearchCluster() {
         handleOpenUnattendedPopup={handleOpenUnattendedPopup}
         setShowOnlyUnattendedFilter={setShowOnlyUnattendedFilter}
         setSearchTerm={setSearchTerm}
-        setComboDashboardGroup={setComboDashboardGroup}
-        setShowComboChartModal={setShowComboChartModal}
         expandedSections={expandedSections}
         setExpandedSections={setExpandedSections}
         filterDepartmentSearch={filterDepartmentSearch}
@@ -143,29 +126,11 @@ function AttendanceToolbarSearchCluster() {
         departments={departments}
         allLeaveTypesSelectAllChecked={allLeaveTypesSelectAllChecked}
         allLeaveTypeFilterValues={allLeaveTypeFilterValues}
-      />
-
-      <AttendanceListActionPrintMenus
         user={user}
         userRole={userRole}
-        tl={tl}
-        t={t}
         selectedDate={selectedDate}
         filteredEmployees={filteredEmployees}
         setAlert={setAlert}
-        navbarMobileMenuOpen={navbarMobileMenuOpen}
-        actionDropdownOpen={actionDropdownOpen}
-        setActionDropdownOpen={setActionDropdownOpen}
-        actionDropdownRef={actionDropdownRef}
-        actionDropdownAnchorRef={actionDropdownAnchorRef}
-        actionDropdownPanelRef={actionDropdownPanelRef}
-        actionDropdownPlacement={actionDropdownPlacement}
-        printDropdownOpen={printDropdownOpen}
-        setPrintDropdownOpen={setPrintDropdownOpen}
-        printDropdownRef={printDropdownRef}
-        printDropdownAnchorRef={printDropdownAnchorRef}
-        printDropdownPanelRef={printDropdownPanelRef}
-        printDropdownPlacement={printDropdownPlacement}
         isUploadingExcel={isUploadingExcel}
         handleUploadExcelWrapper={handleUploadExcelWrapper}
         handleDownloadAttendanceExcelTemplate={

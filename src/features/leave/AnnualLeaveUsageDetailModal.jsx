@@ -163,7 +163,7 @@ export default function AnnualLeaveUsageDetailModal({
             </span>
             <p className="annual-leave-detail-empty-text">
               {t("annualLeave.usageDetailLoading", {
-                defaultValue: "Đang tải chi tiết từ điểm danh…",
+                defaultValue: "Đang tải dữ liệu...",
               })}
             </p>
           </div>

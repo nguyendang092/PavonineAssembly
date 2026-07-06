@@ -44,9 +44,9 @@ export function buildPayrollMonthGridOverlayCopy({
       : loadingMore
         ? tlPage(
             "monthlyTimesheetLoadingMore",
-            "Đang tải thêm dữ liệu của tháng…",
+            "Đang tải dữ liệu...",
           )
-        : tlPage("monthlyTimesheetLoading", "Đang tải dữ liệu điểm danh…");
+        : tlPage("monthlyTimesheetLoading", "Đang tải dữ liệu...");
 
   const subtitle =
     isDisplayStale && !loadingMore && !isSummariesBusy

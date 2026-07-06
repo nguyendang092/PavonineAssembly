@@ -1,4 +1,4 @@
-import { memo, useState, useMemo, useCallback, useEffect } from "react";
+import { memo, useState, useMemo, useCallback, useEffect, startTransition } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
@@ -18,7 +18,9 @@ import AttendanceUnattendedModal from "./AttendanceUnattendedModal";
 import AttendanceListToolbarSection from "./AttendanceListToolbarSection";
 import AttendanceListToolbarSearchCluster from "./AttendanceToolbarSearchCluster";
 import AttendanceListContentSection from "./AttendanceListContentSection";
+import AttendanceHrPageShell from "./AttendanceHrPageShell";
 import "./attendanceToolbarFocus.css";
+import "./hrPageCompact.css";
 import {
   useAttendanceListUiState,
   useAttendanceUnattendedPopupEffects,
@@ -166,13 +168,8 @@ const AttendanceList = memo(function AttendanceList({
     tl,
   });
 
-  const {
-    employees,
-    employeesRef,
-    isOffDay,
-    isHolidayDay,
-    isCompensatoryDay,
-  } = useAttendanceDayFirebase(attendanceRootPath, selectedDate);
+  const { employees, employeesRef, isOffDay, isHolidayDay, isCompensatoryDay } =
+    useAttendanceDayFirebase(attendanceRootPath, selectedDate);
 
   const annualLeaveSyncYear = annualLeaveYearFromDateKey(selectedDate);
   const canManageAnnualLeaveRecords = canManageAnnualLeave(user, userRole);
@@ -744,14 +741,24 @@ const AttendanceList = memo(function AttendanceList({
     setNavbarMobileMenuOpen,
   });
 
+  const handleSidebarOpenStatistics = useCallback(() => {
+    startTransition(() => {
+      setComboDashboardGroup("production");
+      setShowComboChartModal(true);
+    });
+  }, [setComboDashboardGroup, setShowComboChartModal]);
+
   return (
     <>
-      <div className="attendance-list-viewport w-full max-w-none">
+      <AttendanceHrPageShell
+        contextDate={selectedDate}
+        statisticsOpen={showComboChartModal}
+        onOpenStatistics={handleSidebarOpenStatistics}
+      >
+      <div className="hr-page-compact attendance-list-viewport w-full max-w-none">
         <AttendanceListHeader
           headerTitle={headerTitle}
           headerSubtitle={headerSubtitle}
-          selectedDate={selectedDate}
-          displayLocale={displayLocale}
           counterpartLinkTo={counterpartLinkTo}
           counterpartLinkLabelKey={counterpartLinkLabelKey}
           counterpartLinkLabelDefault={counterpartLinkLabelDefault}
@@ -765,7 +772,9 @@ const AttendanceList = memo(function AttendanceList({
           unattendedEmployees={unattendedEmployees}
           closeUnattendedPopup={closeUnattendedPopup}
           unattendedSuppressSessionCheckbox={unattendedSuppressSessionCheckbox}
-          setUnattendedSuppressSessionCheckbox={setUnattendedSuppressSessionCheckbox}
+          setUnattendedSuppressSessionCheckbox={
+            setUnattendedSuppressSessionCheckbox
+          }
           setShowOnlyUnattendedFilter={setShowOnlyUnattendedFilter}
           selectedDate={selectedDate}
           displayLocale={displayLocale}
@@ -773,18 +782,18 @@ const AttendanceList = memo(function AttendanceList({
           t={t}
         />
 
-    {compareEmployeesOpen ? (
-      <AttendanceCompareEmployeesModal
-        isOpen
-        onClose={closeCompareEmployees}
-        compareBusy={compareEmployeesBusy}
-        result={compareEmployeesResult}
-        criteria={compareCriteria}
-        onChangeCriteria={setCompareCriteria}
-        onCompare={handleCompareEmployeesByDepartment}
-        tl={tl}
-      />
-    ) : null}
+        {compareEmployeesOpen ? (
+          <AttendanceCompareEmployeesModal
+            isOpen
+            onClose={closeCompareEmployees}
+            compareBusy={compareEmployeesBusy}
+            result={compareEmployeesResult}
+            criteria={compareCriteria}
+            onChangeCriteria={setCompareCriteria}
+            onCompare={handleCompareEmployeesByDepartment}
+            tl={tl}
+          />
+        ) : null}
 
         <AttendanceExportRangeModal
           isOpen={showExportRangeModal}
@@ -802,7 +811,7 @@ const AttendanceList = memo(function AttendanceList({
           <AttendanceListToolbarBranchContext.Provider
             value={toolbarBranchValue}
           >
-            <div className="attendance-toolbar-controls mb-2 flex shrink-0 flex-col gap-2 border-b border-slate-200/90 bg-white px-2 py-2 sm:mb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-3 dark:border-slate-700/90 dark:bg-slate-900">
+            <div className="attendance-toolbar-controls mb-1 flex shrink-0 flex-col gap-1 border-b border-slate-200/90 bg-white pl-1.5 pr-1.5 py-1 sm:mb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2 md:pl-2 md:pr-2 dark:border-slate-700/90 dark:bg-slate-900">
               <AttendanceListToolbarSection />
               <AttendanceListFilteredDataBranchContext.Provider
                 value={filteredDataBranchValue}
@@ -824,6 +833,7 @@ const AttendanceList = memo(function AttendanceList({
           </AttendanceListToolbarBranchContext.Provider>
         </AttendanceListSearchBranchContext.Provider>
       </div>
+      </AttendanceHrPageShell>
     </>
   );
 });

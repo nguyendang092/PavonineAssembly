@@ -57,7 +57,7 @@ function AttendanceListTableSection({
   const rowVirtualizer = useVirtualizer({
     count: shouldVirtualizeTable ? deferredFilteredEmployees.length : 0,
     getScrollElement: () => tableScrollParentRef.current,
-    estimateSize: () => 34,
+    estimateSize: () => 32,
     overscan: 12,
   });
 
@@ -125,14 +125,14 @@ function AttendanceListTableSection({
   const outerScrollClass =
     columnPlan === "minimal"
       ? "overflow-x-hidden"
-      : "overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]";
+      : "overflow-x-auto overscroll-x-contain";
 
   if (shouldVirtualizeTable) {
     return (
-      <div className={`min-w-0 w-full max-w-none bg-white ${outerScrollClass}`}>
+      <div className={`min-w-0 w-full max-w-none bg-white attendance-table-compact ${outerScrollClass}`}>
         <div
           ref={tableScrollParentRef}
-          className="max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
+          className="attendance-table-scroll max-h-[min(88vh,920px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain"
         >
           <div
             className={`w-full max-w-none ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
@@ -179,7 +179,7 @@ function AttendanceListTableSection({
   }
 
   return (
-    <div className={`min-w-0 w-full max-w-none bg-white ${outerScrollClass}`}>
+    <div className={`min-w-0 w-full max-w-none bg-white attendance-table-compact ${outerScrollClass}`}>
       <table
         className={`w-full max-w-none table-fixed border-collapse ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
       >

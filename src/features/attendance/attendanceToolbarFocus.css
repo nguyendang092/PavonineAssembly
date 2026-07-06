@@ -4,7 +4,8 @@
 
 .attendance-list-viewport {
   width: 100%;
-  max-width: none;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .attendance-toolbar-controls :is(button, input, select, textarea) {

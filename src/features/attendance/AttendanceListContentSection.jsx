@@ -182,8 +182,6 @@ function AttendanceListContentSection() {
       <AttendanceListSummary
         deferredFilteredEmployees={deferredFilteredEmployees}
         employeesCount={employees.length}
-        displayLocale={displayLocale}
-        selectedDate={selectedDate}
         tl={tl}
       />
     </>

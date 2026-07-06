@@ -4,6 +4,7 @@
 import ExcelJS from "exceljs";
 import { roundHoursToTenths } from "@/features/attendance/attendanceWorkingHours";
 import {
+  formatPayrollMonthlyCoeffSubrowDayCell,
   getPayrollMonthlyMainRowCell,
   getPayrollMonthlyCoeffHoursMap,
   PAYROLL_MONTHLY_SUBROWS,
@@ -88,8 +89,17 @@ export function formatPayrollMonthlyTimesheetDayCellText({
     }
     return excelDashMarkOrEmpty(payrollMonthMainRowDashMark(ch, emp));
   }
-  const h = coeffMap.get(sr.coeff);
-  return excelHoursOrEmpty(h);
+  const main = getPayrollMonthlyMainRowCell(emp, ch);
+  const coeffTxt = formatPayrollMonthlyCoeffSubrowDayCell({
+    emp,
+    ch,
+    sr,
+    coeffMap,
+    main,
+  });
+  if (coeffTxt == null || String(coeffTxt).trim() === "") return null;
+  const asNum = payrollExcelHourValueToNumber(coeffTxt);
+  return asNum != null ? asNum : coeffTxt;
 }
 
 function formatEnglishWeekday3(date) {

@@ -2,6 +2,7 @@ import {
   formatCoeffHoursForDisplay,
   getPayrollMonthlyCoeffHoursMap,
   getPayrollMonthlyMainRowCell,
+  payrollMonthNightShiftGcHoursMovedToMain,
   PAYROLL_MONTHLY_SUBROWS,
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
@@ -363,6 +364,12 @@ export function buildMonthlyRuleSummary(
       payrollOtDayParamsFromMonthChunkEmp(emp, ch),
     );
     const coeffSum = sumPayrollMonthlyCoeffHours(coeffMap);
+    const nightGcMoved = payrollMonthNightShiftGcHoursMovedToMain(
+      emp,
+      ch,
+      coeffMap,
+    );
+    const coeffSumForWorkHours = Math.max(0, coeffSum - nightGcMoved);
     const addWorkedHours = (hours) => {
       if (!Number.isFinite(hours) || hours <= 0) return;
       out.workHours += hours;
@@ -374,10 +381,10 @@ export function buildMonthlyRuleSummary(
           ch.isOffDay || ch.isHolidayDay || ch.isCompensatoryDay;
         if (offLike) {
           /** Giờ nửa ngày + TC (kể cả trưa) đã gộp trong coeff ×2.0 / ×3.0. */
-          addWorkedHours(coeffSum);
+          addWorkedHours(coeffSumForWorkHours);
         } else {
           addWorkedHours(main.workedHours);
-          addWorkedHours(coeffSum);
+          addWorkedHours(coeffSumForWorkHours);
         }
       } else {
         addWorkedHours(main.workedHours);
@@ -390,13 +397,14 @@ export function buildMonthlyRuleSummary(
       });
     } else if (main.kind === "hours") {
       addWorkedHours(main.hours);
-      addWorkedHours(coeffSum);
+      addWorkedHours(coeffSumForWorkHours);
       if (!isPayrollMonthLeaveExcludedFromWorkDaysTotal(emp)) {
         out.workDays += 1;
+        if (saturdayOff) out.satsWorkDays += 1;
       }
     } else {
-      addWorkedHours(coeffSum);
-      if (saturdayOff && coeffSum > 0) {
+      addWorkedHours(coeffSumForWorkHours);
+      if (saturdayOff && coeffSumForWorkHours > 0) {
         out.satsWorkDays += 1;
         if (!isPayrollMonthLeaveExcludedFromWorkDaysTotal(emp)) {
           out.workDays += 1;

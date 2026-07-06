@@ -8,8 +8,6 @@ import {
 function AttendanceListSummary({
   deferredFilteredEmployees,
   employeesCount = 0,
-  displayLocale,
-  selectedDate,
   tl,
 }) {
   const shown = deferredFilteredEmployees.length;
@@ -19,7 +17,9 @@ function AttendanceListSummary({
     const timeCounts = {};
     const counts = {};
     for (const emp of deferredFilteredEmployees) {
-      const time = formatAttendanceGioVaoDisplay(getAttendanceLeaveTypeRaw(emp));
+      const time = formatAttendanceGioVaoDisplay(
+        getAttendanceLeaveTypeRaw(emp),
+      );
       if (time && !/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) {
         timeCounts[time] = (timeCounts[time] || 0) + 1;
       }
@@ -34,13 +34,12 @@ function AttendanceListSummary({
 
   return (
     <SummaryRoot>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div className="w-full">
-          <div className="flex flex-wrap items-center gap-4 border border-blue-100 rounded-lg px-3 py-2 bg-gradient-to-r from-blue-50 to-blue-100 shadow-sm">
-            <span className="flex items-center gap-1 text-sm font-bold text-gray-700">
-              <span className="text-blue-600 text-lg">📊</span>
+      <div className="w-full">
+        <div className="attendance-list-summary-inner flex flex-wrap items-center gap-2 border border-blue-100 rounded-md px-2 py-1 bg-gradient-to-r from-blue-50 to-blue-100 shadow-sm">
+            <span className="flex items-center gap-1 text-xs font-bold text-gray-700 md:text-sm">
+              <span className="text-blue-600 text-base">📊</span>
               {tl("totalEmployees", "Tổng số nhân viên")}:
-              <span className="ml-1 text-lg text-blue-700">{shown}</span>
+              <span className="ml-1 text-base text-blue-700 md:text-lg">{shown}</span>
               {filteredOut ? (
                 <span className="ml-1 text-xs font-semibold text-amber-700">
                   {tl(
@@ -51,7 +50,7 @@ function AttendanceListSummary({
                 </span>
               ) : null}
             </span>
-            <span className="flex items-center gap-1 text-sm font-bold text-gray-700 border-l border-blue-200 pl-4">
+            <span className="flex items-center gap-1 text-xs font-bold text-gray-700 border-l border-blue-200 pl-3 md:text-sm">
               <span className="text-indigo-500 text-base">🏷️</span>
               {tl("classification", "Phân loại phép")}:
               <span className="flex flex-wrap gap-1 ml-1">
@@ -71,7 +70,7 @@ function AttendanceListSummary({
                 )}
               </span>
             </span>
-            <span className="flex items-center gap-1 text-sm font-bold text-gray-700 border-l border-blue-200 pl-4">
+            <span className="flex items-center gap-1 text-xs font-bold text-gray-700 border-l border-blue-200 pl-3 md:text-sm">
               <span className="text-amber-500 text-base">🕒</span>
               {tl("workShiftStats", "Thống kê ca làm việc")}:
               <span className="flex flex-wrap gap-1 ml-1">
@@ -93,18 +92,13 @@ function AttendanceListSummary({
             </span>
           </div>
         </div>
-        <p className="text-xs text-gray-500 self-start sm:self-auto">
-          {tl("date", "Ngày")}:{" "}
-          {new Date(selectedDate).toLocaleDateString(displayLocale)}
-        </p>
-      </div>
     </SummaryRoot>
   );
 }
 
 function SummaryRoot({ children }) {
   return (
-    <div className="w-full max-w-none border-l-4 border-blue-600 border-t border-slate-200/90 bg-white p-3 sm:p-4 dark:border-slate-700/90 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+    <div className="attendance-list-summary-root w-full max-w-none border-l-4 border-blue-600 border-t border-slate-200/90 bg-white py-1 pl-1.5 pr-0 sm:py-1.5 sm:pl-2 dark:border-slate-700/90 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
       {children}
     </div>
   );

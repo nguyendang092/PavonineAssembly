@@ -27,6 +27,8 @@ import {
   isDuocNghiBuExplicitlyNo,
   isBoPhanChuaDung,
   normalizeBoPhanChuaDungForForm,
+  isHoVaTenYellowHighlight,
+  normalizeHoVaTenYellowHighlightForForm,
 } from "@/features/attendance/attendanceDayMeta";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 import {
@@ -102,6 +104,8 @@ const EMPTY_EMPLOYEE_FORM = {
   [ATTENDANCE_EMP.COMP_LEAVE_ALLOWED]: "",
   /** Firebase: `attendance/{ngày}/{key}/boPhanChuaDung` — `"YES"` = sai bộ phận. */
   [ATTENDANCE_EMP.DEPT_WRONG_FLAG]: "",
+  /** Firebase: `hoVaTenNenVang` — `"YES"` = nền vàng nhạt cột họ tên. */
+  [ATTENDANCE_EMP.NAME_YELLOW_BG]: "",
   includeTapVuInWorkingHours: "",
   includeThaiSanInWorkingHours: "",
   includeTaiXeInWorkingHours: "",
@@ -109,10 +113,10 @@ const EMPTY_EMPLOYEE_FORM = {
 };
 
 const employeeModalFieldClass =
-  "w-full min-h-[2.5rem] rounded-lg border-2 border-blue-200 bg-white px-2 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-500/40";
+  "w-full min-h-10 rounded-lg border-2 border-blue-200 bg-white px-2 py-2 text-sm font-bold text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-500/40";
 const employeeModalSelectFieldClass = `${employeeModalFieldClass} appearance-none`;
 const employeeModalLabelClass =
-  "mb-1 block text-xs font-bold uppercase tracking-wide text-purple-600 dark:text-purple-400";
+  "mb-0.5 block text-xs font-bold uppercase tracking-wide text-purple-600 dark:text-purple-400";
 const employeeModalClearTimeButtonClass =
   "shrink-0 min-w-[6.5rem] rounded-lg border-2 border-slate-300 bg-slate-100 px-4 py-2 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 sm:text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
 
@@ -201,6 +205,10 @@ export default function AttendanceEmployeeFormModal({
       merged.boPhanChuaDung = normalizeBoPhanChuaDungForForm(
         merged.boPhanChuaDung,
       );
+      merged[ATTENDANCE_EMP.NAME_YELLOW_BG] =
+        normalizeHoVaTenYellowHighlightForForm(
+          merged[ATTENDANCE_EMP.NAME_YELLOW_BG],
+        );
       if (isSeasonalAttendanceRoot(attendanceRootPath)) {
         merged.stt = merged.sttThoiVu ?? "";
         merged.gioiTinh =
@@ -223,6 +231,10 @@ export default function AttendanceEmployeeFormModal({
       merged.boPhanChuaDung = normalizeBoPhanChuaDungForForm(
         merged.boPhanChuaDung,
       );
+      merged[ATTENDANCE_EMP.NAME_YELLOW_BG] =
+        normalizeHoVaTenYellowHighlightForForm(
+          merged[ATTENDANCE_EMP.NAME_YELLOW_BG],
+        );
       if (isSeasonalAttendanceRoot(attendanceRootPath)) {
         merged.stt = merged.sttThoiVu ?? "";
         merged.gioiTinh =
@@ -414,7 +426,13 @@ export default function AttendanceEmployeeFormModal({
         }
 
         const dayDoc = buildEmployeeAttendanceDayDocument({
-          form: formSliceForAttendanceDayDocument(form, sliceOverrides),
+          form: (() => {
+            const slice = formSliceForAttendanceDayDocument(form, sliceOverrides);
+            if (!allowFullEdit) {
+              delete slice[ATTENDANCE_EMP.NAME_YELLOW_BG];
+            }
+            return slice;
+          })(),
           existing: existingRaw,
           isSeasonal: isSeasonalAttendance,
         });
@@ -476,12 +494,18 @@ export default function AttendanceEmployeeFormModal({
           existingRaw,
         });
         const dayDoc = buildEmployeeAttendanceDayDocument({
-          form: formSliceForAttendanceDayDocument(form, {
-            businessId: storageKey,
-            [ATTENDANCE_EMP.LEAVE_TYPE]: loaiPhepToSave,
-            boPhanChuaDung: normalizeBoPhanChuaDungForForm(form.boPhanChuaDung),
-            ...(isSeasonalAttendance ? { sttThoiVu: form.stt } : {}),
-          }),
+          form: (() => {
+            const slice = formSliceForAttendanceDayDocument(form, {
+              businessId: storageKey,
+              [ATTENDANCE_EMP.LEAVE_TYPE]: loaiPhepToSave,
+              boPhanChuaDung: normalizeBoPhanChuaDungForForm(form.boPhanChuaDung),
+              ...(isSeasonalAttendance ? { sttThoiVu: form.stt } : {}),
+            });
+            if (!isAdminAccess(user, userRole)) {
+              delete slice[ATTENDANCE_EMP.NAME_YELLOW_BG];
+            }
+            return slice;
+          })(),
           existing: existingRaw,
           isSeasonal: isSeasonalAttendance,
         });
@@ -535,6 +559,7 @@ export default function AttendanceEmployeeFormModal({
   });
   const fieldsLocked = isViewOnly || isRestrictedEdit;
   const lunchOtLocked = isViewOnly || (isRestrictedEdit && !canEditLunchOt);
+  const canEditOtCheck = isAdminAccess(user, userRole);
 
   return (
     <div
@@ -542,7 +567,7 @@ export default function AttendanceEmployeeFormModal({
       style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
     >
       <div
-        className={`relative mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-2xl border bg-white px-4 py-4 shadow-xl animate-fadeIn sm:px-5 sm:py-5 dark:bg-slate-900 ${
+        className={`relative mx-auto w-full max-w-[40rem] max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-2xl border bg-white px-3 py-4 shadow-xl animate-fadeIn sm:px-4 sm:py-5 dark:bg-slate-900 ${
           isEditMode
             ? "border-fuchsia-300/80 dark:border-fuchsia-700/70"
             : "border-slate-200/90 dark:border-slate-700/80"
@@ -556,7 +581,7 @@ export default function AttendanceEmployeeFormModal({
         >
           ×
         </button>
-        <h2 className="mb-2 border-b-2 border-blue-200/80 bg-gradient-to-r from-blue-700 via-purple-600 to-indigo-600 bg-clip-text pb-3 text-center text-xl font-extrabold tracking-wide text-transparent drop-shadow-sm dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 sm:text-2xl">
+        <h2 className="mb-1.5 border-b-2 border-blue-200/80 bg-gradient-to-r from-blue-700 via-purple-600 to-indigo-600 bg-clip-text pb-2 text-center text-xl font-extrabold tracking-wide text-transparent drop-shadow-sm dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 sm:text-2xl">
           {isViewOnly
             ? tl("viewEmployeeAttendance", "Xem điểm danh")
             : isEditMode
@@ -565,7 +590,7 @@ export default function AttendanceEmployeeFormModal({
         </h2>
         {formattedAttendanceDate ? (
           <p
-            className="mb-4 rounded-xl border border-indigo-200/80 bg-indigo-50/90 px-3 py-2 text-center dark:border-indigo-800/60 dark:bg-indigo-950/40"
+            className="mb-2 rounded-xl border border-indigo-200/80 bg-indigo-50/90 px-2.5 py-1.5 text-center dark:border-indigo-800/60 dark:bg-indigo-950/40"
             aria-label={tl("attendanceDateLabel", "Ngày điểm danh")}
           >
             <span className="block text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
@@ -577,14 +602,14 @@ export default function AttendanceEmployeeFormModal({
           </p>
         ) : null}
         {isViewOnly ? (
-          <p className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-center text-xs font-semibold text-sky-900 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-100">
+          <p className="mb-2 rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-center text-xs font-semibold text-sky-900 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-100">
             {tl(
               "viewOnlyAttendanceHint",
               "Chế độ chỉ xem — không thể chỉnh sửa hoặc lưu.",
             )}
           </p>
         ) : isRestrictedEdit ? (
-          <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
+          <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
             {tl(
               canEditLunchOt
                 ? "restrictedEditManagerHintWithLunchOt"
@@ -597,7 +622,7 @@ export default function AttendanceEmployeeFormModal({
         ) : null}
         <form
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2"
         >
           <div className="sm:col-span-2">
             <label className={employeeModalLabelClass}>
@@ -613,7 +638,7 @@ export default function AttendanceEmployeeFormModal({
               className={employeeModalFieldClass}
             />
           </div>
-          <div className="sm:col-span-2 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-4">
+          <div className="sm:col-span-2 grid min-w-0 grid-cols-2 gap-1.5 sm:grid-cols-4 sm:gap-3">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("stt", "STT")}
@@ -678,7 +703,7 @@ export default function AttendanceEmployeeFormModal({
               </select>
             </div>
           </div>
-          <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:gap-4">
+          <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:col-span-2 sm:gap-3">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("joinDate", "Ngày vào làm")}
@@ -706,7 +731,7 @@ export default function AttendanceEmployeeFormModal({
               />
             </div>
           </div>
-          <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 sm:grid-cols-3 sm:gap-4">
+          <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:col-span-2 sm:grid-cols-3 sm:gap-3">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("employeeRegimeField", "Chế độ nhân viên")}
@@ -909,7 +934,7 @@ export default function AttendanceEmployeeFormModal({
                 : tl("loaiPhepModalHint", "Chọn loại phép (PN, PO, TS …)")}
             </p>
           </div>
-          <div className="sm:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("workShift", "Ca làm việc")}
@@ -1011,6 +1036,34 @@ export default function AttendanceEmployeeFormModal({
                 &nbsp;
               </p>
             </div>
+          </div>
+          <div className="min-w-0 sm:col-span-2">
+            <label
+              htmlFor="hoVaTenNenVangCheck"
+              className={employeeModalLabelClass}
+            >
+              {tl("hoVaTenYellowBg", "Check tăng ca")}
+            </label>
+            <select
+              id="hoVaTenNenVangCheck"
+              value={
+                isHoVaTenYellowHighlight(form[ATTENDANCE_EMP.NAME_YELLOW_BG])
+                  ? "YES"
+                  : "NO"
+              }
+              disabled={isViewOnly || !canEditOtCheck}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  [ATTENDANCE_EMP.NAME_YELLOW_BG]:
+                    e.target.value === "YES" ? "YES" : "",
+                }))
+              }
+              className={employeeModalSelectFieldClass}
+            >
+              <option value="NO">{tl("compensatoryLeaveNo", "Không")}</option>
+              <option value="YES">{tl("compensatoryLeaveYes", "Có")}</option>
+            </select>
           </div>
           {!isViewOnly ? (
             <button

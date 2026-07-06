@@ -20,11 +20,11 @@ import { useNavbarHeight } from "./hooks/useNavbarHeight";
 import { useLockBodyScroll } from "./hooks/useLockBodyScroll";
 import { useDesktopDropdownSuppress } from "./hooks/useDesktopDropdownSuppress";
 import { useMobileMenu } from "./hooks/useMobileMenu";
-import { getNavbarUserDisplayShort } from "./userDisplay";
+import { getNavbarUserDisplayName, getNavbarUserRoleLabel } from "./userDisplay";
 import "../navbar.css";
 
-const LANGUAGE_OPTIONS = {
-  vi: "Tiếng Việt",
+const LANGUAGE_OPTIONS_UPPER = {
+  vi: "TIẾNG VIỆT",
   ko: "한국어",
 };
 
@@ -109,9 +109,14 @@ export default function Navbar({ user, setUser, userRole }) {
 
   const showAdminOnlyMenu = Boolean(user && isAdminAccess(user, userRole));
 
-  const navbarUserDisplayShort = useMemo(
-    () => getNavbarUserDisplayShort(user),
+  const navbarUserDisplayName = useMemo(
+    () => getNavbarUserDisplayName(user),
     [user],
+  );
+
+  const navbarUserRoleLabel = useMemo(
+    () => getNavbarUserRoleLabel(user, userRole),
+    [user, userRole],
   );
 
   const navbarUserFullLabel = useMemo(
@@ -173,8 +178,8 @@ export default function Navbar({ user, setUser, userRole }) {
 
       <nav ref={navbarMeasureRef} className="navbar">
         <div className="nav-logo">
-          <Link to="/" aria-label={t("navbar.home", "Trang chủ")}>
-            <img src="/picture/logo/logo_pavo.jpg" alt={t("navbar.logoAlt")} />
+          <Link to="/" className="nav-logo-text" aria-label={t("navbar.home", "Trang chủ")}>
+            Pavonine
           </Link>
         </div>
 
@@ -204,14 +209,15 @@ export default function Navbar({ user, setUser, userRole }) {
           theme={theme}
           toggleTheme={toggleTheme}
           language={language}
-          languageOptions={LANGUAGE_OPTIONS}
+          languageOptions={LANGUAGE_OPTIONS_UPPER}
           onChangeLanguage={handleChangeLanguage}
           t={t}
           toolsRegionLabel={toolsRegionLabel}
           user={user}
           userDropdownOpen={userDropdownOpen}
           setUserDropdownOpen={setUserDropdownOpen}
-          navbarUserDisplayShort={navbarUserDisplayShort}
+          navbarUserDisplayName={navbarUserDisplayName}
+          navbarUserRoleLabel={navbarUserRoleLabel}
           navbarUserFullLabel={navbarUserFullLabel}
           showAdminOnlyMenu={showAdminOnlyMenu}
           onChangePassword={() => setChangePwOpen(true)}

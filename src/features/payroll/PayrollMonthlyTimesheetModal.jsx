@@ -18,6 +18,7 @@ import {
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
   formatCoeffHoursForDisplay,
+  formatPayrollMonthlyCoeffSubrowDayCell,
   getPayrollMonthlyCoeffHoursMap,
   getPayrollMonthlyMainRowCell,
   PAYROLL_MONTHLY_SUBROWS,
@@ -332,10 +333,14 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
         );
         continue;
       }
-      const h = dayCell.coeffMap?.get(sr.coeff);
-      const show =
-        h != null && Number.isFinite(h) && h > 0;
-      const txt = show ? escapeHtml(formatCoeffHoursForDisplay(h)) : " ";
+      const coeffTxt = formatPayrollMonthlyCoeffSubrowDayCell({
+        emp: dayCell.emp,
+        ch,
+        sr,
+        coeffMap: dayCell.coeffMap,
+        main: dayCell.main,
+      });
+      const txt = coeffTxt ? escapeHtml(String(coeffTxt)) : " ";
       parts.push(
         `<td style="background:${bg};${btm};text-align:center;font-family:monospace;font-weight:700;font-size:6.5pt">${txt}</td>`,
       );
@@ -858,9 +863,14 @@ const PayrollMonthlyTimesheetDayCell = memo(
       );
     }
 
-    const h = dayCell.coeffMap?.get(sr.coeff);
-    const show =
-      h != null && Number.isFinite(h) && h > 0;
+    const coeffTxt = formatPayrollMonthlyCoeffSubrowDayCell({
+      emp: dayCell.emp,
+      ch: dayCell.chunk,
+      sr,
+      coeffMap: dayCell.coeffMap,
+      main: dayCell.main,
+    });
+    const show = coeffTxt != null && String(coeffTxt).trim() !== "";
     return (
       <td
         style={cellStyle}
@@ -869,9 +879,7 @@ const PayrollMonthlyTimesheetDayCell = memo(
       >
         {show ? (
           <div className="pm-ts-day-value-wrap">
-            <span className="pm-ts-coeff-value">
-              {formatCoeffHoursForDisplay(h)}
-            </span>
+            <span className="pm-ts-coeff-value">{coeffTxt}</span>
           </div>
         ) : (
           <div className="pm-ts-day-value-wrap">
@@ -1726,7 +1734,7 @@ export default function PayrollMonthlyTimesheetModal({
                   mode="inline"
                   message={tlPage(
                     "monthlyTimesheetLoading",
-                    "Đang tải dữ liệu điểm danh…",
+                    "Đang tải dữ liệu...",
                   )}
                 />
               ) : error && !displayDayChunks.length ? (

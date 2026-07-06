@@ -23,7 +23,7 @@ export function useAttendanceFilterDropdownPlacement(open, anchorRef) {
       const btn = anchorRef.current;
       if (!btn) return;
       const r = btn.getBoundingClientRect();
-      const w = Math.min(288, window.innerWidth - 16);
+      const w = Math.min(320, window.innerWidth - 16);
       let left =
         window.innerWidth < 640
           ? Math.max(8, Math.min(r.left, window.innerWidth - w - 8))

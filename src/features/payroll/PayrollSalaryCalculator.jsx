@@ -7,7 +7,7 @@ import React, {
   useDeferredValue,
   startTransition,
 } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUser } from "@/contexts/UserContext";
@@ -38,7 +38,6 @@ import PayrollSalaryTableRow, {
 } from "@/features/payroll/payrollSalaryTableUi";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
 import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
-import { annualLeavePathForDateKey } from "@/features/leave/annualLeaveCrossLinks";
 import { useAttendanceColumnPlan } from "@/features/attendance/useAttendanceBirthDeptColumns";
 import {
   ATTENDANCE_DAY_META_KEY,
@@ -49,6 +48,7 @@ import {
 } from "@/features/attendance/attendanceDayMeta";
 import AlertMessage from "@/components/ui/AlertMessage";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
+import PayrollToolsMenu from "@/features/payroll/PayrollToolsMenu";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import {
   buildPayrollSalaryExcelWorkbookMultiDay,
@@ -71,6 +71,8 @@ import {
 import PayrollEarlyOvertimePaperworkModal from "@/features/payroll/PayrollEarlyOvertimePaperworkModal";
 import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimesheetModal";
 import PayrollMonthlyTimeInOutModal from "@/features/payroll/PayrollMonthlyTimeInOutModal";
+import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
+import "@/features/attendance/attendanceToolbarFocus.css";
 import "./payrollTableCompact.css";
 
 const noop = () => {};
@@ -142,16 +144,12 @@ export default function PayrollSalaryCalculator() {
   const [lateOtSaving, setLateOtSaving] = useState(false);
   const [rangeExportModalOpen, setRangeExportModalOpen] = useState(false);
   const [rangeExportBusy, setRangeExportBusy] = useState(false);
-  const [excelExportMenuOpen, setExcelExportMenuOpen] = useState(false);
-  const [monthlyGridMenuOpen, setMonthlyGridMenuOpen] = useState(false);
   const [monthlyTimesheetOpen, setMonthlyTimesheetOpen] = useState(false);
   const [monthlyTimeInOutOpen, setMonthlyTimeInOutOpen] = useState(false);
   const [isDayLoading, setIsDayLoading] = useState(false);
 
   const attendanceRawRef = useRef(undefined);
   const listenGenerationRef = useRef(0);
-  const excelExportMenuRef = useRef(null);
-  const monthlyGridMenuRef = useRef(null);
   const employeesRef = useRef([]);
   const payrollEmployeesRef = useRef([]);
 
@@ -572,26 +570,6 @@ export default function PayrollSalaryCalculator() {
     }
   }, [alert.show]);
 
-  useEffect(() => {
-    if (!excelExportMenuOpen) return;
-    const onPointerDown = (e) => {
-      const el = excelExportMenuRef.current;
-      if (el && !el.contains(e.target)) setExcelExportMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [excelExportMenuOpen]);
-
-  useEffect(() => {
-    if (!monthlyGridMenuOpen) return;
-    const onPointerDown = (e) => {
-      const el = monthlyGridMenuRef.current;
-      if (el && !el.contains(e.target)) setMonthlyGridMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [monthlyGridMenuOpen]);
-
   const payrollExportSheetTitle = useMemo(() => {
     const dateStr = new Date(selectedDate).toLocaleDateString(displayLocale);
     const base = tlPage("exportSheetTitle", "Bảng giờ công nhân viên");
@@ -763,58 +741,31 @@ export default function PayrollSalaryCalculator() {
 
   return (
     <>
-      <div className="p-2 md:p-4 transition-all duration-300">
-        <div className="mb-2 md:mb-3">
-          <div className="rounded-lg border-t-4 border-violet-600 bg-white px-2.5 py-1.5 shadow-md md:px-3 md:py-2 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <h1 className="text-base font-bold uppercase leading-tight tracking-wide text-[#1e293b] md:text-lg dark:text-slate-100">
-                  {tlPage("pageTitle", "Xem giờ công")}
-                </h1>
-                <p className="mt-0.5 text-[11px] leading-snug text-gray-600 md:text-xs">
-                  {tlPage(
-                    "pageSubtitle",
-                    "Cùng dữ liệu với Điểm danh NV; cột Sửa mở form cập nhật tại đây — lưu Firebase đồng bộ mọi nơi dùng MNV. Công thức lương sẽ bổ sung sau.",
-                  )}
-                </p>
-                <p className="mt-0.5 text-[10px] text-gray-500 md:text-[11px]">
-                  {tlPage("dateLabel", "Ngày")}:{" "}
-                  {new Date(selectedDate).toLocaleDateString(displayLocale)}
-                </p>
-              </div>
-              <nav
-                className="mb-0.5 flex shrink-0 flex-row flex-wrap items-center gap-x-2 gap-y-0.5"
-                aria-label={t("attendanceList.headerQuickLinks")}
-              >
-                <Link
-                  to={`/attendance-list?date=${encodeURIComponent(selectedDate)}`}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline md:text-xs"
-                >
-                  <span aria-hidden>←</span>
-                  {tlPage("linkAttendance", "Điểm danh NV")}
-                </Link>
-                <Link
-                  to={annualLeavePathForDateKey(selectedDate)}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-violet-700 hover:text-violet-800 hover:underline dark:text-violet-400 dark:hover:text-violet-300 md:text-xs"
-                >
-                  <span aria-hidden>→</span>
-                  {t("attendanceList.linkToAnnualLeaveShort")}
-                </Link>
-              </nav>
-            </div>
+      <AttendanceHrPageShell contextDate={selectedDate}>
+      <div className="payroll-salary-page attendance-list-viewport w-full max-w-none px-1 py-0.5 md:px-1.5 md:py-1">
+        <div className="mb-1 shrink-0">
+          <div className="w-full border-t-4 border-violet-600 bg-white px-2 py-0.5 shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+            <h1 className="text-sm font-bold uppercase leading-snug tracking-wide text-[#1e293b] md:text-base dark:text-slate-100">
+              {tlPage("pageTitle", "Xem giờ công")}
+            </h1>
+            <p className="mt-0 hidden text-[10px] leading-snug text-gray-600 md:mt-0.5 md:block md:text-[11px]">
+              {tlPage(
+                "pageSubtitle",
+                "Cùng dữ liệu với Điểm danh NV; cột Sửa mở form cập nhật tại đây — lưu Firebase đồng bộ mọi nơi dùng MNV. Công thức lương sẽ bổ sung sau.",
+              )}
+            </p>
           </div>
         </div>
 
         <AlertMessage alert={alert} />
 
-        {/* Khu dự phòng: tính lương (sẽ gắn sau) */}
-        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+        <div className="attendance-toolbar-controls sticky top-0 z-30 mb-1 flex flex-col gap-1 border-b border-slate-200/90 bg-white px-1.5 py-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2 md:px-2 dark:border-slate-700/90 dark:bg-slate-900">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="h-8 w-full shrink-0 rounded-md border bg-white px-2 text-sm font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-300 dark:border-slate-600 dark:bg-slate-900 dark:text-emerald-300 sm:w-auto"
+              className="h-7 w-full shrink-0 rounded-md border bg-white px-2 text-sm font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-300 dark:border-slate-600 dark:bg-slate-900 dark:text-emerald-300 sm:w-auto"
             />
             <input
               type="text"
@@ -824,12 +775,12 @@ export default function PayrollSalaryCalculator() {
                 "searchPlaceholder",
                 "Tìm theo tên, MNV, bộ phận…",
               )}
-              className="h-8 w-full min-w-0 rounded-md border px-2 text-sm focus:ring-2 focus:ring-emerald-200 sm:w-48"
+              className="h-7 w-full min-w-0 rounded-md border px-2 text-sm focus:ring-2 focus:ring-emerald-200 sm:w-44"
             />
             <select
               value={departmentFilter}
               onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="h-8 max-w-full rounded-md border bg-white px-2 text-xs font-medium dark:border-slate-600 dark:bg-slate-900 sm:max-w-xs"
+              className="h-7 max-w-full rounded-md border bg-white px-2 text-xs font-medium dark:border-slate-600 dark:bg-slate-900 sm:max-w-[11rem]"
             >
               <option value="">{tlPage("allDepts", "Tất cả bộ phận")}</option>
               {departments.map((d) => (
@@ -839,239 +790,40 @@ export default function PayrollSalaryCalculator() {
               ))}
             </select>
           </div>
-          <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:justify-end">
-            <div className="payroll-monthly-grid-menu relative" ref={monthlyGridMenuRef}>
-              <button
-                type="button"
-                aria-expanded={monthlyGridMenuOpen}
-                aria-haspopup="menu"
-                onClick={() => setMonthlyGridMenuOpen((o) => !o)}
-                className="payroll-monthly-grid-menu__trigger"
-                title={tlPage(
-                  "monthlyGridMenuHint",
-                  "Mở bảng chấm công tháng hoặc lưới giờ vào / ra tháng.",
-                )}
-              >
-                <span className="payroll-monthly-grid-menu__trigger-icon" aria-hidden>
-                  ▦
-                </span>
-                <span>{tlPage("monthlyGridMenu", "Xem giờ công")}</span>
-                <svg
-                  className={`payroll-monthly-grid-menu__chevron ${monthlyGridMenuOpen ? "is-open" : ""}`}
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </button>
-              {monthlyGridMenuOpen ? (
-                <div
-                  role="menu"
-                  className="payroll-monthly-grid-menu__panel"
-                >
-                  <div className="payroll-monthly-grid-menu__head">
-                    {tlPage("monthlyGridMenuHead", "Chọn loại bảng")}
-                  </div>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    title={tlPage(
-                      "monthlyTimesheetButtonHint",
-                      "Xem lưới điểm danh theo từng ngày trong tháng của ngày đang chọn (cùng bộ lọc tìm / BP).",
-                    )}
-                    className="payroll-monthly-grid-menu__item payroll-monthly-grid-menu__item--timesheet"
-                    onClick={() => {
-                      setMonthlyGridMenuOpen(false);
-                      setMonthlyTimesheetOpen(true);
-                    }}
-                  >
-                    <span
-                      className="payroll-monthly-grid-menu__item-icon"
-                      aria-hidden
-                    >
-                      ▦
-                    </span>
-                    <span className="payroll-monthly-grid-menu__item-text">
-                      <span className="payroll-monthly-grid-menu__item-label">
-                        {tlPage("monthlyTimesheetButton", "Bảng chấm công")}
-                      </span>
-                      <span className="payroll-monthly-grid-menu__item-desc">
-                        {tlPage(
-                          "monthlyGridMenuTimesheetDesc",
-                          "Giờ công, phép, hệ số tăng ca",
-                        )}
-                      </span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    title={tlPage(
-                      "monthlyTimeInOutButtonHint",
-                      "Xem giờ vào và giờ ra mỗi ngày trong tháng (lưới tương tự bảng chấm công).",
-                    )}
-                    className="payroll-monthly-grid-menu__item payroll-monthly-grid-menu__item--time"
-                    onClick={() => {
-                      setMonthlyGridMenuOpen(false);
-                      setMonthlyTimeInOutOpen(true);
-                    }}
-                  >
-                    <span
-                      className="payroll-monthly-grid-menu__item-icon"
-                      aria-hidden
-                    >
-                      ⏱
-                    </span>
-                    <span className="payroll-monthly-grid-menu__item-text">
-                      <span className="payroll-monthly-grid-menu__item-label">
-                        {tlPage("monthlyTimeInOutButton", "Giờ vào / ra tháng")}
-                      </span>
-                      <span className="payroll-monthly-grid-menu__item-desc">
-                        {tlPage(
-                          "monthlyGridMenuTimeInOutDesc",
-                          "Giờ vào & giờ ra mỗi ngày",
-                        )}
-                      </span>
-                    </span>
-                  </button>
-                </div>
-              ) : null}
-            </div>
-            {earlyOtEligibleEmployees.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setEarlyOtModalMode("all");
-                  setEarlyOtModalOpen(true);
-                }}
-                className="h-8 shrink-0 rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-3 text-xs font-bold text-white shadow-md shadow-sky-600/25 transition hover:from-sky-400 hover:to-blue-500 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:hover:from-sky-500 dark:hover:to-blue-600"
-                title={tlPage(
-                  "earlyOtPaperworkHint",
-                  "TC sớm (giấy): trước 06:00 → 2h (05:40–06:40 + 06:40–07:40); từ 06:00 → 06:40–07:40 (1h).",
-                )}
-              >
-                {tlPage("earlyOtPaperworkButton", "Xác nhận tăng ca")}
-              </button>
-            ) : null}
-            {lateOtEligibleEmployees.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setLateOtModalMode("all");
-                  setLateOtModalOpen(true);
-                }}
-                className="h-8 shrink-0 rounded-lg border-2 border-amber-600/90 bg-gradient-to-b from-amber-500 to-orange-600 px-3 text-xs font-bold text-white shadow-md shadow-orange-600/25 transition hover:from-amber-400 hover:to-orange-500 dark:border-amber-500/80 dark:from-amber-600 dark:to-orange-700 dark:hover:from-amber-500 dark:hover:to-orange-600"
-                title={tlPage(
-                  "lateOtPaperworkHint",
-                  "Đánh dấu những nhân viên ra sau 17:30 nhưng KHÔNG tính tăng ca.",
-                )}
-              >
-                {tlPage("lateOtPaperworkButton", "Không TC >17:30")}
-              </button>
-            ) : null}
-            <div className="relative" ref={excelExportMenuRef}>
-              <button
-                type="button"
-                aria-expanded={excelExportMenuOpen}
-                aria-haspopup="menu"
-                onClick={() => setExcelExportMenuOpen((o) => !o)}
-                className="h-8 shrink-0 inline-flex items-center gap-1 rounded-lg border-2 border-emerald-600 bg-emerald-600 px-2.5 pr-2 text-xs font-bold text-white shadow-md shadow-emerald-900/20 transition hover:bg-emerald-700 dark:border-emerald-500 dark:hover:bg-emerald-600"
-                title={tlPage(
-                  "exportExcelMenuHint",
-                  "Xuất Excel: một ngày hoặc nhiều ngày.",
-                )}
-              >
-                <span>{tlPage("exportExcelMenu", "⬇ Xuất Excel")}</span>
-                <svg
-                  className={`h-3.5 w-3.5 shrink-0 opacity-90 transition-transform ${excelExportMenuOpen ? "rotate-180" : ""}`}
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </button>
-              {excelExportMenuOpen ? (
-                <ul
-                  role="menu"
-                  className="absolute right-0 top-full mt-1 min-w-[14.5rem] overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg ring-1 ring-black/5 dark:border-slate-600 dark:bg-slate-800 dark:ring-white/10"
-                  style={{ zIndex: "var(--z-navbar-dropdown, 110)" }}
-                >
-                  <li role="none">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      title={tlPage(
-                        "exportExcelHint",
-                        "Xuất toàn bộ nhân viên trong ngày (theo dữ liệu điểm danh), đủ các cột giờ như trên bảng.",
-                      )}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-emerald-50 dark:text-slate-100 dark:hover:bg-slate-700/80"
-                      onClick={() => {
-                        setExcelExportMenuOpen(false);
-                        void handleExportPayrollExcel();
-                      }}
-                    >
-                      <span
-                        aria-hidden
-                        className="text-emerald-600 dark:text-emerald-400"
-                      >
-                        ⬇
-                      </span>
-                      {tlPage("exportExcelOneDay", "Một ngày (ngày đang chọn)")}
-                    </button>
-                  </li>
-                  <li role="none">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      title={tlPage(
-                        "exportExcelRangeHint",
-                        "Xuất Excel nhiều ngày: chọn từ ngày và đến ngày (mặc định hôm nay).",
-                      )}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-emerald-50 dark:text-slate-100 dark:hover:bg-slate-700/80"
-                      onClick={() => {
-                        setExcelExportMenuOpen(false);
-                        setRangeExportModalOpen(true);
-                      }}
-                    >
-                      <span
-                        aria-hidden
-                        className="text-sky-600 dark:text-sky-400"
-                      >
-                        ⬇
-                      </span>
-                      {tlPage("exportExcelRange", "Nhiều ngày")}
-                    </button>
-                  </li>
-                </ul>
-              ) : null}
-            </div>
+          <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto sm:justify-end">
+            <PayrollToolsMenu
+              tlPage={tlPage}
+              t={t}
+              onOpenMonthlyTimesheet={() => setMonthlyTimesheetOpen(true)}
+              onOpenMonthlyTimeInOut={() => setMonthlyTimeInOutOpen(true)}
+              onOpenEarlyOt={() => {
+                setEarlyOtModalMode("all");
+                setEarlyOtModalOpen(true);
+              }}
+              onOpenLateOt={() => {
+                setLateOtModalMode("all");
+                setLateOtModalOpen(true);
+              }}
+              onExportOneDay={() => void handleExportPayrollExcel()}
+              onExportRange={() => setRangeExportModalOpen(true)}
+              showEarlyOtAction={earlyOtEligibleEmployees.length > 0}
+              showLateOtAction={lateOtEligibleEmployees.length > 0}
+            />
           </div>
         </div>
-        <div className="payroll-salary-table-compact relative min-w-0 w-full max-w-full overflow-x-auto rounded-lg bg-white text-[10px] leading-tight shadow-lg md:text-[11px] dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+        <div className="payroll-salary-table-compact relative min-w-0 w-full max-w-full overflow-x-auto rounded-md bg-white text-[10px] leading-tight shadow-sm md:text-[11px] dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
           <PayrollMonthGridLoadingOverlay
             active={isTableBusy}
             message={
               isDayLoading
-                ? tlPage("dayDataLoading", "Đang tải dữ liệu điểm danh…")
+                ? tlPage("dayDataLoading", "Đang tải dữ liệu...")
                 : tlPage("dayDataRendering", "Đang cập nhật bảng…")
             }
           />
           {shouldVirtualizeTable ? (
             <div
               ref={tableScrollParentRef}
-              className="max-h-[min(82vh,900px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
+              className="max-h-[min(88vh,920px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
             >
               <div
                 className={`w-full max-w-none ${payrollTableWrapperMinWidthClass(columnPlan, showRowModalActions)}`}
@@ -1307,6 +1059,7 @@ export default function PayrollSalaryCalculator() {
           "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
         )}
       />
+      </AttendanceHrPageShell>
     </>
   );
 }

@@ -1,15 +1,24 @@
 /**
  * Bảng lương: thu gọn padding / header so với điểm danh (chỉ bọc PayrollSalaryCalculator).
  */
+.payroll-salary-page {
+  transition: none;
+}
+
+.payroll-salary-table-compact .h-9 {
+  height: 2rem !important;
+  min-height: 2rem !important;
+}
+
 .payroll-salary-table-compact th,
 .payroll-salary-table-compact td,
 .payroll-salary-table-compact [role="columnheader"],
 .payroll-salary-table-compact [role="gridcell"],
 .payroll-salary-table-compact [role="cell"] {
-  padding-left: 0.15rem !important;
-  padding-right: 0.15rem !important;
-  padding-top: 0.08rem !important;
-  padding-bottom: 0.08rem !important;
+  padding-left: 0.1rem !important;
+  padding-right: 0.1rem !important;
+  padding-top: 0.05rem !important;
+  padding-bottom: 0.05rem !important;
 }
 
 @media (min-width: 768px) {
@@ -18,10 +27,10 @@
   .payroll-salary-table-compact [role="columnheader"],
   .payroll-salary-table-compact [role="gridcell"],
   .payroll-salary-table-compact [role="cell"] {
-    padding-left: 0.28rem !important;
-    padding-right: 0.28rem !important;
-    padding-top: 0.12rem !important;
-    padding-bottom: 0.12rem !important;
+    padding-left: 0.2rem !important;
+    padding-right: 0.2rem !important;
+    padding-top: 0.08rem !important;
+    padding-bottom: 0.08rem !important;
   }
 }
 

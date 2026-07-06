@@ -1,7 +1,56 @@
-import React, { memo, startTransition, useCallback, useEffect } from "react";
+import React, { memo, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { isAdminAccess } from "@/config/authRoles";
+import ExportExcelButton from "@/components/ui/ExportExcelButton";
 import { ATTENDANCE_LOAI_PHEP_OPTIONS } from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_LEAVE_FILTER_NONE } from "./attendanceListShared";
+import { useCloseDropdownOnScroll } from "./useCloseDropdownOnScroll";
+
+function ToolsMenuSection({ label, first = false }) {
+  return (
+    <div
+      className={`shrink-0 bg-slate-50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 ${
+        first ? "border-b border-gray-100" : "border-t border-b border-gray-100"
+      }`}
+    >
+      {label}
+    </div>
+  );
+}
+
+function ToolsMenuItem({
+  icon,
+  title,
+  hint,
+  onClick,
+  active = false,
+  danger = false,
+  disabled = false,
+  as: Tag = "button",
+  ...rest
+}) {
+  return (
+    <Tag
+      type={Tag === "button" ? "button" : undefined}
+      disabled={disabled}
+      onClick={onClick}
+      className={`w-full shrink-0 border-b px-4 py-2.5 text-left flex items-center gap-3 transition disabled:cursor-not-allowed disabled:opacity-45 ${
+        danger
+          ? "text-red-700 hover:bg-red-50"
+          : active
+            ? "bg-blue-50 text-blue-700 font-semibold"
+            : "text-gray-700 hover:bg-slate-50"
+      }`}
+      {...rest}
+    >
+      <span className="text-lg shrink-0">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold text-sm">{title}</div>
+        {hint ? <div className="text-xs text-gray-500">{hint}</div> : null}
+      </div>
+    </Tag>
+  );
+}
 
 function AttendanceListFilterMenus({
   tl,
@@ -30,8 +79,6 @@ function AttendanceListFilterMenus({
   handleOpenUnattendedPopup,
   setShowOnlyUnattendedFilter,
   setSearchTerm,
-  setComboDashboardGroup,
-  setShowComboChartModal,
   expandedSections,
   setExpandedSections,
   filterDepartmentSearch,
@@ -39,6 +86,21 @@ function AttendanceListFilterMenus({
   departments,
   allLeaveTypesSelectAllChecked,
   allLeaveTypeFilterValues,
+  user,
+  userRole,
+  selectedDate,
+  filteredEmployees,
+  setAlert,
+  isUploadingExcel,
+  handleUploadExcelWrapper,
+  handleDownloadAttendanceExcelTemplate,
+  setShowExportRangeModal,
+  showRowModalActions,
+  setEmployeeModalRecord,
+  setShowEmployeeModal,
+  handleDeleteAllData,
+  handlePrintOvertimeList,
+  handlePrintAttendanceList,
 }) {
   const hasAdvancedFilters =
     loaiPhepFilter.length > 0 ||
@@ -63,6 +125,16 @@ function AttendanceListFilterMenus({
     setSearchTerm,
   ]);
 
+  const closeToolsMenu = useCallback(() => {
+    setFilterMenuDropdownOpen(false);
+  }, [setFilterMenuDropdownOpen]);
+
+  useCloseDropdownOnScroll(
+    filterMenuDropdownOpen,
+    filterMenuPanelRef,
+    closeToolsMenu,
+  );
+
   useEffect(() => {
     if (!filterOpen) return;
     const onKey = (e) => {
@@ -74,154 +146,241 @@ function AttendanceListFilterMenus({
 
   return (
     <>
-      <div className="flex min-w-0 w-full flex-col gap-1 sm:w-auto sm:flex-row sm:gap-1">
-        <button
-          type="button"
-          onClick={() =>
-            startTransition(() => {
-              setComboDashboardGroup("production");
-              setShowComboChartModal(true);
-            })
-          }
-          className="inline-flex h-8 w-full min-w-0 items-center justify-center gap-0.5 rounded-lg border border-emerald-300 bg-emerald-600 px-1 text-xs font-bold text-white shadow transition hover:bg-emerald-700 sm:w-auto sm:text-sm dark:border-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
-        >
-          📊 {tl("comboChart", "Thống kê")}
-        </button>
-      </div>
-
       <div
         ref={filterMenuRef}
-        className="attendance-filter-menu relative min-w-0"
+        className="attendance-filter-menu relative min-w-0 shrink-0"
       >
         <button
           ref={filterDropdownAnchorRef}
           type="button"
           onClick={() => setFilterMenuDropdownOpen(!filterMenuDropdownOpen)}
-          className={`inline-flex h-8 w-full max-w-full items-center justify-center gap-0.5 whitespace-nowrap rounded-lg border border-slate-300 px-1 text-xs font-bold shadow transition sm:w-auto sm:text-sm ${
+          className={`inline-flex h-8 w-full max-w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg px-2 text-xs font-bold shadow transition sm:w-auto sm:text-sm ${
             hasAnyFilters
-              ? "bg-blue-600 text-white hover:bg-blue-700"
-              : "bg-gray-600 text-white hover:bg-gray-700"
+              ? "bg-[#1557b0] text-white ring-2 ring-white/30 hover:bg-[#1248a0]"
+              : "bg-[#1a73e8] text-white hover:bg-[#1557b0]"
           }`}
         >
-          🔽 {tl("filter", "Bộ lọc")}
-          <span className="text-xs">{hasAnyFilters ? "✓" : ""}</span>
+          🛠 {tl("toolsMenu", "Công cụ")}
+          {hasAnyFilters ? (
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/25 px-1 text-[10px]">
+              ✓
+            </span>
+          ) : null}
         </button>
 
-        {/* Dropdown: portal + fixed để luôn nổi trên footer / vùng scroll */}
         {!navbarMobileMenuOpen &&
           filterMenuDropdownOpen &&
           filterDropdownPlacement &&
           createPortal(
             <div
               ref={filterMenuPanelRef}
-              className="attendance-toolbar-controls fixed flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
+              className="attendance-tools-dropdown attendance-toolbar-controls fixed flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900 sm:w-80"
               style={{
-                zIndex: "var(--z-modal-backdrop, 1200)",
+                zIndex: 50,
                 top: filterDropdownPlacement.top,
                 left: filterDropdownPlacement.left,
                 width: filterDropdownPlacement.width,
                 maxHeight: filterDropdownPlacement.maxHeight,
+                minHeight: Math.min(filterDropdownPlacement.maxHeight, 420),
               }}
             >
+              <div className="shrink-0 border-b border-[#1557b0] bg-[#1a73e8] px-4 py-2.5 text-sm font-bold text-white">
+                {tl("toolsMenu", "Công cụ")}
+              </div>
               <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
-                {/* Bộ lọc nâng cao */}
-                <button
-                  type="button"
+                <ToolsMenuSection
+                  first
+                  label={tl("toolsSectionFilter", "Bộ lọc")}
+                />
+
+                <ToolsMenuItem
+                  icon="🔍"
+                  title={t("attendanceList.advancedFilter")}
+                  hint={tl(
+                    "advancedFilterDesc",
+                    "Bộ phận, Loại phép, Ngày vào làm",
+                  )}
+                  active={hasAdvancedFilters}
                   onClick={() => {
                     setFilterOpen(true);
-                    setFilterMenuDropdownOpen(false);
+                    closeToolsMenu();
                   }}
-                  className={`w-full shrink-0 text-left px-4 py-3 hover:bg-blue-50 border-b flex items-center gap-3 transition ${
-                    hasAdvancedFilters
-                      ? "bg-blue-50 text-blue-700 font-semibold"
-                      : "text-gray-700"
-                  }`}
-                >
-                  <span className="text-lg">🔍</span>
-                  <div className="flex-1">
-                    <div className="font-semibold">
-                      {t("attendanceList.advancedFilter")}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {tl(
-                        "advancedFilterDesc",
-                        "Bộ phận, Loại phép, Ngày vào làm",
-                      )}
-                    </div>
-                  </div>
-                </button>
+                />
 
-                {/* Lọc nhanh */}
-                <button
-                  type="button"
+                <ToolsMenuItem
+                  icon="⚡"
+                  title={t("attendanceList.quickFilter")}
+                  hint={tl("notCheckedIn", "Nhân viên chưa điểm danh")}
+                  active={isQuickNoCheckInActive}
                   onClick={() => {
                     handleQuickNoCheckInFilter();
-                    setFilterMenuDropdownOpen(false);
+                    closeToolsMenu();
                   }}
-                  className={`w-full shrink-0 text-left px-4 py-3 hover:bg-amber-50 border-b flex items-center gap-3 transition ${
-                    isQuickNoCheckInActive
-                      ? "bg-amber-50 text-amber-700 font-semibold"
-                      : "text-gray-700"
-                  }`}
-                >
-                  <span className="text-lg">⚡</span>
-                  <div className="flex-1">
-                    <div className="font-semibold">
-                      {t("attendanceList.quickFilter")}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {tl("notCheckedIn", "Nhân viên chưa điểm danh")}
-                    </div>
-                  </div>
-                </button>
+                />
 
-                <button
-                  type="button"
+                <ToolsMenuItem
+                  icon="📋"
+                  title={tl("openUnattendedPopup", "Danh sách chưa điểm danh")}
+                  hint={tl(
+                    "openUnattendedPopupHint",
+                    "Hiện lại hộp thông báo đã đóng.",
+                  )}
                   onClick={() => {
                     handleOpenUnattendedPopup();
-                    setFilterMenuDropdownOpen(false);
+                    closeToolsMenu();
                   }}
-                  className="w-full shrink-0 border-b px-4 py-3 text-left flex items-center gap-3 text-gray-700 transition hover:bg-amber-50"
-                >
-                  <span className="text-lg">📋</span>
-                  <div className="flex-1">
-                    <div className="font-semibold">
-                      {tl("openUnattendedPopup", "Danh sách chưa điểm danh")}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {tl(
-                        "openUnattendedPopupHint",
-                        "Hiện lại hộp thông báo đã đóng.",
-                      )}
-                    </div>
-                  </div>
-                </button>
+                />
 
-                {/* Clear Filter — luôn hiển thị để chiều cao menu không nhảy */}
-                <button
-                  type="button"
+                <ToolsMenuItem
+                  icon="🗑️"
+                  title={t("attendanceList.clearFilter")}
+                  hint={tl("resetAllFilters", "Reset tất cả bộ lọc")}
                   disabled={!hasAnyFilters}
+                  danger
                   onClick={() => {
                     if (!hasAnyFilters) return;
                     clearAllFilters();
-                    setFilterMenuDropdownOpen(false);
+                    closeToolsMenu();
                   }}
-                  className="w-full shrink-0 border-t px-4 py-3 text-left flex items-center gap-3 transition disabled:cursor-not-allowed disabled:opacity-45 text-gray-700 hover:bg-red-50 enabled:hover:text-red-800"
-                >
-                  <span className="text-lg">🗑️</span>
-                  <div className="flex-1">
-                    <div className="font-semibold">
-                      {t("attendanceList.clearFilter")}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {tl("resetAllFilters", "Reset tất cả bộ lọc")}
-                    </div>
-                  </div>
-                </button>
+                />
+
+                {user ? (
+                  <>
+                    <ToolsMenuSection
+                      label={tl("toolsSectionActions", "Chức năng")}
+                    />
+
+                    {isAdminAccess(user, userRole) ? (
+                      <label className="w-full shrink-0 cursor-pointer border-b px-4 py-2.5 text-left flex items-center gap-3 text-gray-700 transition hover:bg-slate-50">
+                        <span className="text-lg shrink-0">📤</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-sm">
+                            {isUploadingExcel
+                              ? "Đang upload..."
+                              : tl(
+                                  "uploadExcelByDate",
+                                  "Upload Excel theo ngày",
+                                )}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {tl("importDataForDate", "Import dữ liệu cho ngày")}
+                            : {selectedDate}
+                          </div>
+                        </div>
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls"
+                          disabled={isUploadingExcel}
+                          onChange={(e) => {
+                            handleUploadExcelWrapper(e);
+                            closeToolsMenu();
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    ) : null}
+
+                    {isAdminAccess(user, userRole) ? (
+                      <ToolsMenuItem
+                        icon="📄"
+                        title={tl(
+                          "downloadExcelTemplate",
+                          "Tải mẫu Excel (đồng bộ xuất)",
+                        )}
+                        onClick={() => {
+                          void handleDownloadAttendanceExcelTemplate();
+                          closeToolsMenu();
+                        }}
+                      />
+                    ) : null}
+
+                    <ToolsMenuItem
+                      icon="📥"
+                      title={t("attendanceList.export", {
+                        defaultValue: "Xuất Excel",
+                      })}
+                      onClick={() => {
+                        const exportButton = document.querySelector(
+                          '[title="Xuất Excel"]',
+                        );
+                        if (exportButton) exportButton.click();
+                        closeToolsMenu();
+                      }}
+                    />
+
+                    <ToolsMenuItem
+                      icon="📅"
+                      title={tl("exportExcelDateRange")}
+                      onClick={() => {
+                        setShowExportRangeModal(true);
+                        closeToolsMenu();
+                      }}
+                    />
+
+                    {showRowModalActions ? (
+                      <ToolsMenuItem
+                        icon="➕"
+                        title={tl("addNew", "Thêm mới")}
+                        onClick={() => {
+                          setEmployeeModalRecord(null);
+                          setShowEmployeeModal(true);
+                          closeToolsMenu();
+                        }}
+                      />
+                    ) : null}
+
+                    {isAdminAccess(user, userRole) ? (
+                      <ToolsMenuItem
+                        icon="🗑️"
+                        title={tl("deleteAllData", "Xóa toàn bộ dữ liệu")}
+                        hint={`${selectedDate}`}
+                        danger
+                        onClick={() => {
+                          handleDeleteAllData();
+                          closeToolsMenu();
+                        }}
+                      />
+                    ) : null}
+                  </>
+                ) : null}
+
+                <ToolsMenuSection label={tl("toolsSectionPrint", "In")} />
+
+                <ToolsMenuItem
+                  icon="📋"
+                  title={tl("printOvertimeRegistration", "In đăng ký tăng ca")}
+                  onClick={() => {
+                    handlePrintOvertimeList();
+                    closeToolsMenu();
+                  }}
+                />
+
+                <ToolsMenuItem
+                  icon="📝"
+                  title={tl("printAttendanceList", "In danh sách chấm công")}
+                  onClick={() => {
+                    handlePrintAttendanceList();
+                    closeToolsMenu();
+                  }}
+                />
               </div>
             </div>,
             document.body,
           )}
+
+        <div className="hidden">
+          <ExportExcelButton
+            data={filteredEmployees}
+            selectedDate={selectedDate}
+            title="Xuất Excel"
+            onSuccess={(msg) =>
+              setAlert({ show: true, type: "success", message: msg })
+            }
+            onError={(msg) =>
+              setAlert({ show: true, type: "error", message: msg })
+            }
+          />
+        </div>
 
         {/* Filter Modal — portal + z cao: tránh nằm trong .attendance-filter-menu nên bị cắt hoặc đè bởi sibling cùng stacking */}
         {filterOpen &&
