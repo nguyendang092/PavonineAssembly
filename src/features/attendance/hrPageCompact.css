@@ -28,7 +28,8 @@
 }
 
 .hr-page-compact .attendance-table-scroll,
-.hr-page-compact .annual-leave-table-scroll {
+.hr-page-compact .annual-leave-table-scroll,
+.hr-page-compact .payroll-salary-table-scroll {
   scrollbar-gutter: auto;
 }
 
@@ -86,6 +87,36 @@
     padding-top: 0.08rem !important;
     padding-bottom: 0.08rem !important;
   }
+}
+
+.hr-page-compact .payroll-salary-table-compact th,
+.hr-page-compact .payroll-salary-table-compact td,
+.hr-page-compact .payroll-salary-table-compact [role="columnheader"],
+.hr-page-compact .payroll-salary-table-compact [role="gridcell"],
+.hr-page-compact .payroll-salary-table-compact [role="cell"] {
+  padding-left: 0.1rem !important;
+  padding-right: 0.1rem !important;
+  padding-top: 0.05rem !important;
+  padding-bottom: 0.05rem !important;
+}
+
+@media (min-width: 768px) {
+  .hr-page-compact .payroll-salary-table-compact th,
+  .hr-page-compact .payroll-salary-table-compact td,
+  .hr-page-compact .payroll-salary-table-compact [role="columnheader"],
+  .hr-page-compact .payroll-salary-table-compact [role="gridcell"],
+  .hr-page-compact .payroll-salary-table-compact [role="cell"] {
+    padding-left: 0.2rem !important;
+    padding-right: 0.2rem !important;
+    padding-top: 0.08rem !important;
+    padding-bottom: 0.08rem !important;
+  }
+}
+
+.hr-page-compact .payroll-salary-table-compact .h-9,
+.hr-page-compact .payroll-salary-table-compact tr.h-9 {
+  height: 2rem !important;
+  min-height: 2rem !important;
 }
 
 .hr-page-compact .attendance-list-summary-root {

@@ -23,18 +23,20 @@ function AttendanceListHeader({
                 tl("activeEmployeesSubtitle", "List of Active Employees")}
             </p>
           </div>
-          <nav
-            className="flex w-full shrink-0 flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-slate-100 pt-0.5 text-left sm:mb-0 sm:w-auto sm:flex-nowrap sm:items-end sm:border-0 sm:pt-0 sm:text-right"
-            aria-label={tl("headerQuickLinks", "Liên kết nhanh")}
-          >
-            <Link
-              to={counterpartLinkTo}
-              className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-blue-600 hover:text-blue-700 hover:underline sm:justify-end md:text-xs"
+          {counterpartLinkTo ? (
+            <nav
+              className="flex w-full shrink-0 flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-slate-100 pt-0.5 text-left sm:mb-0 sm:w-auto sm:flex-nowrap sm:items-end sm:border-0 sm:pt-0 sm:text-right"
+              aria-label={tl("headerQuickLinks", "Liên kết nhanh")}
             >
-              <span aria-hidden>→</span>
-              {tl(counterpartLinkLabelKey, counterpartLinkLabelDefault)}
-            </Link>
-          </nav>
+              <Link
+                to={counterpartLinkTo}
+                className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-blue-600 hover:text-blue-700 hover:underline sm:justify-end md:text-xs"
+              >
+                <span aria-hidden>→</span>
+                {tl(counterpartLinkLabelKey, counterpartLinkLabelDefault)}
+              </Link>
+            </nav>
+          ) : null}
         </div>
       </div>
     </div>

@@ -7,6 +7,8 @@ import { canManageAnnualLeave } from "@/config/authRoles";
 import { db, ref, set } from "@/services/firebase";
 import AlertMessage from "@/components/ui/AlertMessage";
 import LoadingBlock from "@/components/ui/LoadingBlock";
+import HrTablePagination from "@/components/ui/HrTablePagination";
+import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import {
   ANNUAL_LEAVE_EMP,
   ANNUAL_LEAVE_META_KEY,
@@ -201,6 +203,10 @@ export default function AnnualLeaveManager() {
     });
   }, [rows, deferredSearch, deptFilter]);
 
+  const tablePagination = useHrTablePagination(filteredRows, {
+    resetDeps: [year, deferredSearch, deptFilter],
+  });
+
   const handleRecalculate = useCallback(async () => {
     if (!canManage || syncing) return;
     setSyncing(true);
@@ -357,7 +363,7 @@ export default function AnnualLeaveManager() {
                 {t("annualLeave.year")}
               </span>
               <select
-                className="h-7 min-w-[4.5rem] rounded-md border bg-white px-2 text-sm font-semibold text-blue-800 focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300"
+                className="h-8 min-w-[4.5rem] rounded-md border bg-white px-2 text-sm font-semibold text-blue-800 focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300"
                 value={year}
                 onChange={(e) => {
                   const y = Number(e.target.value);
@@ -376,13 +382,13 @@ export default function AnnualLeaveManager() {
             <input
               type="search"
               placeholder={t("annualLeave.searchPlaceholder")}
-              className="h-7 w-full min-w-0 rounded-md border px-2 text-sm focus:ring-2 focus:ring-blue-200 sm:w-44 dark:border-slate-600 dark:bg-slate-900"
+              className="h-8 w-full min-w-0 rounded-md border px-2 text-sm focus:ring-2 focus:ring-blue-200 sm:w-44 dark:border-slate-600 dark:bg-slate-900"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
 
             <select
-              className="h-7 max-w-full rounded-md border bg-white px-2 text-xs font-medium dark:border-slate-600 dark:bg-slate-900 sm:max-w-[11rem]"
+              className="h-8 max-w-full rounded-md border bg-white px-2 text-xs font-medium dark:border-slate-600 dark:bg-slate-900 sm:max-w-[11rem]"
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
             >
@@ -396,7 +402,7 @@ export default function AnnualLeaveManager() {
           </div>
 
           <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto">
-            <span className="inline-flex h-7 items-center rounded-md border border-blue-200/80 bg-blue-50 px-2 text-xs font-semibold text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200">
+            <span className="inline-flex h-8 items-center rounded-md border border-blue-200/80 bg-blue-50 px-2 text-xs font-semibold text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200">
               {t("annualLeave.rowCount", { count: filteredRows.length })}
             </span>
 
@@ -404,7 +410,7 @@ export default function AnnualLeaveManager() {
               <button
                 ref={actionsAnchorRef}
                 type="button"
-                className="inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-[#1a73e8] px-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#1557b0]"
+                className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-[#1a73e8] px-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#1557b0] sm:text-sm"
                 onClick={() => setActionsOpen((open) => !open)}
                 aria-expanded={actionsOpen}
                 aria-haspopup="menu"
@@ -602,11 +608,11 @@ export default function AnnualLeaveManager() {
                       </td>
                     </tr>
                   ) : (
-                    filteredRows.map((row, idx) => (
+                    tablePagination.pagedItems.map((row, localIdx) => (
                       <AnnualLeaveManagerTableRow
                         key={row.id}
                         row={row}
-                        index={idx}
+                        index={tablePagination.rowIndexOffset + localIdx}
                         year={year}
                         throughDateKey={detailThroughDateKey}
                       />
@@ -617,6 +623,18 @@ export default function AnnualLeaveManager() {
             </div>
           </div>
         )}
+
+        <HrTablePagination
+          rangeStart={tablePagination.rangeStart}
+          rangeEnd={tablePagination.rangeEnd}
+          totalItems={tablePagination.totalItems}
+          page={tablePagination.page}
+          totalPages={tablePagination.totalPages}
+          pageNumbers={tablePagination.pageNumbers}
+          pageSize={tablePagination.pageSize}
+          onPageChange={tablePagination.setPage}
+          onPageSizeChange={tablePagination.setPageSize}
+        />
       </div>
     </AttendanceHrPageShell>
   );

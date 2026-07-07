@@ -31,6 +31,7 @@ export const PERMISSION_IDS = Object.freeze({
   PERFORMANCE_CHART_EDIT: "performance_chart_edit",
   NAVBAR_ADMIN_MENU: "navbar_admin_menu",
   PERMISSION_CATALOG_PAGE: "permission_catalog_page",
+  KOREAN_TIMESHEET: "korean_timesheet",
 });
 
 /**
@@ -179,6 +180,17 @@ export const PERMISSION_CATALOG = Object.freeze([
     modules: ["components/layout/navbar/Navbar.jsx", "config/menuConfig.js"],
     authRolesHelpers: ["isAdminAccess"],
   },
+  {
+    id: PERMISSION_IDS.KOREAN_TIMESHEET,
+    labelVi: "Korean Timesheet — điểm danh nhân viên Hàn",
+    quyTac: "Chỉ Admin/HR — canViewKoreanTimesheet (isAdminAccess).",
+    routes: ["/korean-timesheet"],
+    modules: [
+      "features/attendance/KoreanTimesheetPage.jsx",
+      "features/attendance/AttendanceListShell.jsx",
+    ],
+    authRolesHelpers: ["isAdminAccess", "canViewKoreanTimesheet"],
+  },
 ]);
 
 /** In ra console (vd. gọi từ DevTools) để xem catalog dạng bảng. */
@@ -191,6 +203,11 @@ export function debugPrintPermissionCatalog() {
       modules: r.modules.join(", "),
     })),
   );
+}
+
+/** Korean Timesheet — chỉ Admin / HR xem và thao tác. */
+export function canViewKoreanTimesheet(user, userRole) {
+  return isAdminAccess(user, userRole);
 }
 
 function payrollMonthTimesheetGridPermEmployee(rep, rowDayEmp) {

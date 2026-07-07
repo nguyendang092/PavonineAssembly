@@ -1,5 +1,5 @@
 import { useMemo, useSyncExternalStore } from "react";
-import { isSeasonalAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
+import { shouldSkipAnnualLeaveForAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 import {
   buildAttendanceAnnualLeaveDeductionsByMnv,
   buildAttendanceAnnualLeaveUsageDetailByEmpKey,
@@ -94,7 +94,7 @@ export function useAnnualLeaveLiveData(
     includeBalanceMap = true,
   } = {},
 ) {
-  const skipAttendance = !enabled || isSeasonalAttendanceRoot(attendanceRootPath);
+  const skipAttendance = !enabled || shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
 
   const { data: yearData, ready: yearReady } = useAnnualLeaveYearExternal(
     year,

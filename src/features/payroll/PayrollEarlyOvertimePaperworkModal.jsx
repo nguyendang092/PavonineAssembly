@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 /**
  * Xác nhận có giấy tăng ca sớm (ca ngày: trước 06:00 → 2h; từ 06:00 → 1h theo mốc).
- * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: () => void, onSave: (updates: Record<string, boolean>) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, closeLabel?: string, saving?: boolean, readOnly?: boolean, viewOnlyHint?: string, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
+ * @param {{ open: boolean, rows: object[], initialChecked: (id: string) => boolean, onDismiss: (opts?: { suppressSession?: boolean }) => void, onSave: (updates: Record<string, boolean>, opts?: { suppressSession?: boolean }) => void | Promise<void>, title: string, description: string, saveLabel: string, skipAllLabel: string, selectAllLabel?: string, closeLabel?: string, saving?: boolean, readOnly?: boolean, viewOnlyHint?: string, showSuppressSession?: boolean, suppressSessionLabel?: string, timeLabel?: string, timeField?: string, searchPlaceholder?: string, departmentPlaceholder?: string }} props
  */
 export default function PayrollEarlyOvertimePaperworkModal({
   open,
@@ -14,16 +14,20 @@ export default function PayrollEarlyOvertimePaperworkModal({
   description,
   saveLabel,
   skipAllLabel,
+  selectAllLabel,
   closeLabel = "Đóng",
   saving = false,
   readOnly = false,
   viewOnlyHint = "",
+  showSuppressSession = false,
+  suppressSessionLabel = "Không tự hiển thị lại hộp thoại này trong phiên đăng nhập hiện tại",
   timeLabel = "Vào",
   timeField = "gioVao",
   searchPlaceholder = "Lọc theo tên / MNV / bộ phận",
   departmentPlaceholder = "Tất cả bộ phận",
 }) {
   const [checks, setChecks] = useState({});
+  const [suppressSessionChecked, setSuppressSessionChecked] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
 
@@ -34,6 +38,7 @@ export default function PayrollEarlyOvertimePaperworkModal({
       next[emp.id] = initialChecked(emp.id);
     }
     setChecks(next);
+    setSuppressSessionChecked(false);
     setSearchTerm("");
     setDepartmentFilter("");
   }, [open, rows, initialChecked]);
@@ -94,20 +99,52 @@ export default function PayrollEarlyOvertimePaperworkModal({
     for (const emp of rows) {
       updates[emp.id] = !!checks[emp.id];
     }
-    await Promise.resolve(onSave(updates));
+    await Promise.resolve(
+      onSave(updates, { suppressSession: suppressSessionChecked }),
+    );
+  };
+
+  const bulkSelectLocalOnly = Boolean(selectAllLabel);
+
+  const handleSelectAll = () => {
+    if (saving || readOnly) return;
+    setChecks((prev) => {
+      const next = { ...prev };
+      for (const emp of rows) {
+        next[emp.id] = true;
+      }
+      return next;
+    });
+  };
+
+  const handleDeselectAll = () => {
+    if (saving || readOnly) return;
+    setChecks((prev) => {
+      const next = { ...prev };
+      for (const emp of rows) {
+        next[emp.id] = false;
+      }
+      return next;
+    });
   };
 
   const handleSkipAllNo = async () => {
     if (saving) return;
+    if (bulkSelectLocalOnly) {
+      handleDeselectAll();
+      return;
+    }
     const updates = {};
     for (const emp of rows) {
       updates[emp.id] = false;
     }
-    await Promise.resolve(onSave(updates));
+    await Promise.resolve(
+      onSave(updates, { suppressSession: suppressSessionChecked }),
+    );
   };
 
   const handleDismiss = () => {
-    onDismiss();
+    onDismiss({ suppressSession: suppressSessionChecked });
   };
 
   return (
@@ -239,24 +276,48 @@ export default function PayrollEarlyOvertimePaperworkModal({
             ) : null}
           </ul>
         </div>
-        <div
-          className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950"
-        >
+        <div className="flex flex-col gap-2.5 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950">
           {readOnly && viewOnlyHint ? (
-            <p className="min-w-0 text-[11px] leading-snug text-sky-900/75 dark:text-sky-200/80">
+            <p className="text-[11px] leading-snug text-sky-900/75 dark:text-sky-200/80">
               {viewOnlyHint}
             </p>
           ) : null}
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {!readOnly ? (
-              <button
-                type="button"
+          {showSuppressSession && !readOnly ? (
+            <label className="flex cursor-pointer items-start gap-2.5 text-left sm:items-center">
+              <input
+                type="checkbox"
                 disabled={saving}
-                onClick={handleSkipAllNo}
-                className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-100 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
-              >
-                {skipAllLabel}
-              </button>
+                checked={suppressSessionChecked}
+                onChange={() => setSuppressSessionChecked((v) => !v)}
+                className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded border-sky-300 text-sky-600 focus:ring-2 focus:ring-sky-300/70 focus:ring-offset-1 disabled:opacity-50 sm:mt-0 dark:border-sky-600 dark:text-sky-500 dark:focus:ring-sky-800/60"
+              />
+              <span className="min-w-0 text-[11px] font-medium leading-snug text-slate-700 dark:text-slate-300">
+                {suppressSessionLabel}
+              </span>
+            </label>
+          ) : null}
+          <div className="flex w-full flex-wrap items-center justify-end gap-2">
+            {!readOnly ? (
+              <>
+                {selectAllLabel ? (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={handleSelectAll}
+                    className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-100 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
+                  >
+                    {selectAllLabel}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={handleSkipAllNo}
+                  className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-100 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
+                >
+                  {skipAllLabel}
+                </button>
+              </>
             ) : null}
             <button
               type="button"

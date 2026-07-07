@@ -5,9 +5,24 @@ import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
  * Không dùng `stt` (chính thức) để tránh lệch khi dữ liệu bị trộn.
  */
 const SEASONAL_ATTENDANCE_ROOT = "seasonalAttendance";
+const KOREAN_ATTENDANCE_ROOT = "koreanAttendance";
+
+export { KOREAN_ATTENDANCE_ROOT };
 
 export function isSeasonalAttendanceRoot(attendanceRootPath) {
   return attendanceRootPath === SEASONAL_ATTENDANCE_ROOT;
+}
+
+export function isKoreanAttendanceRoot(attendanceRootPath) {
+  return attendanceRootPath === KOREAN_ATTENDANCE_ROOT;
+}
+
+/** Điểm danh tách khỏi phép năm / attendance chính (thời vụ, nhân viên Hàn). */
+export function shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath) {
+  return (
+    isSeasonalAttendanceRoot(attendanceRootPath) ||
+    isKoreanAttendanceRoot(attendanceRootPath)
+  );
 }
 
 function hasSeasonalSttFieldValue(raw) {

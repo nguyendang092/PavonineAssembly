@@ -7,6 +7,19 @@ const vi = {
   loading: {
     loading: "Đang tải dữ liệu...",
   },
+  hrTablePagination: {
+    ariaLabel: "Phân trang bảng dữ liệu",
+    showingLabel: "HIỂN THỊ",
+    unitEmployees: "nhân viên",
+    pageNav: "Điều hướng trang",
+    firstPage: "Trang đầu",
+    prevPage: "Trang trước",
+    nextPage: "Trang sau",
+    lastPage: "Trang cuối",
+    pageNumber: "Trang {{n}}",
+    rowsPerPage: "Số dòng mỗi trang",
+    rowsOption: "{{count}} dòng",
+  },
   performanceChart: {
     saving: "Đang lưu...",
     sidebarTitle: "Chọn năm báo cáo",
@@ -940,6 +953,8 @@ const vi = {
     sidebarFooter: "Hệ thống quản lý",
     sidebarAria: "Menu nhân sự",
     sidebarAttendance: "Điểm danh",
+    sidebarKoreanTimesheet: "Korean Timesheet",
+    sidebarKoreanTimesheetDisabled: "Chỉ HR mới được quyền truy cập",
     sidebarStatistics: "Thống kê",
     sidebarWorkHours: "Giờ công",
     sidebarAnnualLeave: "Phép năm",
@@ -1016,6 +1031,8 @@ const vi = {
     cancel: "Hủy",
     activeEmployeesTitle: "ĐIỂM DANH NHÂN VIÊN",
     activeEmployeesSubtitle: "List of Active Employees",
+    koreanActiveEmployeesTitle: "KOREAN TIMESHEET",
+    koreanActiveEmployeesSubtitle: "Korean Staff Attendance",
     linkToAttendanceSalary: "Bảng giờ công / lương",
     seasonalActiveEmployeesTitleShort: "Điểm danh thời vụ",
     linkToAttendanceSalaryShort: "Bảng giờ công / lương",
@@ -1434,11 +1451,15 @@ const vi = {
     earlyOtModalDescription:
       "Ca ngày ≤ 06:40: trước 06:00 → 2h (05:40–06:40 + 06:40–07:40); từ 06:00 → 06:40–07:40 (1h). Ca đêm: TC sớm 17:40–18:40 + 18:40–19:40 (max 2h); GC từ 19:40 → 05:00 (8h).",
     earlyOtModalSave: "Lưu",
+    earlyOtModalSelectAll: "Chọn tất cả",
+    earlyOtModalDeselectAll: "Bỏ chọn tất cả",
     earlyOtModalSkipAll: "Tất cả không có giấy tăng ca",
     lateOtModalTitle: "Xác nhận không tăng ca sau 17:30",
     lateOtModalDescription:
       "Mặc định nhân viên có giờ ra sau 17:30 (ca ngày) vẫn được tính tăng ca. Hãy tick những người KHÔNG tính tăng ca.",
     lateOtModalSave: "Lưu",
+    lateOtModalSelectAll: "Chọn tất cả",
+    lateOtModalDeselectAll: "Bỏ chọn tất cả",
     lateOtModalSkipAll: "Tất cả đều có tăng ca",
     timeOutShortLabel: "Ra",
     paperworkModalSearchPlaceholder:

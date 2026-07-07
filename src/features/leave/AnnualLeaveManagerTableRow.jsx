@@ -18,13 +18,13 @@ function AnnualLeaveManagerTableRow({
 }) {
   return (
     <tr className={annualLeaveTableRowClass(index)}>
-      <td className="px-1 md:px-1.5 py-px text-xs md:text-sm text-center font-bold text-gray-700 dark:text-slate-200">
+      <td className="px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-bold text-gray-700 dark:text-slate-200">
         {row.rowNo ?? index + 1}
       </td>
       <td className="px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-bold text-blue-600 whitespace-nowrap dark:text-blue-400">
         {row[ANNUAL_LEAVE_EMP.MNV_PREFIX]}
       </td>
-      <td className="px-1 md:px-1.5 py-px text-sm text-center font-semibold text-gray-700 dark:text-slate-200">
+      <td className="px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-gray-700 dark:text-slate-200">
         {row[ANNUAL_LEAVE_EMP.MNV_SUFFIX]}
       </td>
       <td

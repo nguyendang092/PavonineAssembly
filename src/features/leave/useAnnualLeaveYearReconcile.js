@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { db } from "@/services/firebase";
-import { isSeasonalAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
+import { shouldSkipAnnualLeaveForAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 import { persistAnnualLeaveYearFromAttendance } from "@/features/leave/annualLeaveAttendanceSync";
 import {
   getAttendanceYearSnapshot,
@@ -22,7 +22,7 @@ export function useAnnualLeaveYearReconcile({
   const persistTimerRef = useRef(null);
 
   useEffect(() => {
-    if (!enabled || isSeasonalAttendanceRoot(attendanceRootPath)) return;
+    if (!enabled || shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) return;
     if (!year || !Number.isFinite(Number(year))) return;
 
     const runPersist = () => {

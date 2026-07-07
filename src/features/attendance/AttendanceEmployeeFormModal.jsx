@@ -30,7 +30,7 @@ import {
   isHoVaTenYellowHighlight,
   normalizeHoVaTenYellowHighlightForForm,
 } from "@/features/attendance/attendanceDayMeta";
-import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { isSeasonalAttendanceRoot, shouldSkipAnnualLeaveForAttendanceRoot } from "./attendanceSeasonalStt";
 import {
   applyAnnualLeaveDeductionDelta,
 } from "@/features/leave/annualLeaveAttendanceSync";
@@ -347,8 +347,8 @@ export default function AttendanceEmployeeFormModal({
   };
 
   const syncAnnualLeaveAfterAttendanceSave = async (oldRecord, newLoaiPhep) => {
-    if (isSeasonalAttendanceRoot(attendanceRootPath)) {
-      return { applied: false, reason: "seasonal" };
+    if (shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
+      return { applied: false, reason: "isolated" };
     }
     try {
       const year = annualLeaveYearFromDateKey(selectedDate);

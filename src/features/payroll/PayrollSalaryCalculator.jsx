@@ -47,6 +47,8 @@ import {
   normalizeLateOtPaperworkMap,
 } from "@/features/attendance/attendanceDayMeta";
 import AlertMessage from "@/components/ui/AlertMessage";
+import HrTablePagination from "@/components/ui/HrTablePagination";
+import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import PayrollToolsMenu from "@/features/payroll/PayrollToolsMenu";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
@@ -69,10 +71,15 @@ import {
   isNightShiftCaLamViec,
 } from "@/features/attendance/attendanceWorkingHours";
 import PayrollEarlyOvertimePaperworkModal from "@/features/payroll/PayrollEarlyOvertimePaperworkModal";
+import {
+  readEarlyOtSessionSuppressed,
+  writeEarlyOtSessionSuppressed,
+} from "@/features/payroll/payrollEarlyOtSession";
 import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimesheetModal";
 import PayrollMonthlyTimeInOutModal from "@/features/payroll/PayrollMonthlyTimeInOutModal";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
 import "@/features/attendance/attendanceToolbarFocus.css";
+import "@/features/attendance/hrPageCompact.css";
 import "./payrollTableCompact.css";
 
 const noop = () => {};
@@ -136,6 +143,8 @@ export default function PayrollSalaryCalculator() {
   const [earlyOtMap, setEarlyOtMap] = useState({});
   const [lateOtExcludedMap, setLateOtExcludedMap] = useState({});
   const [earlyOtModalOpen, setEarlyOtModalOpen] = useState(false);
+  const [earlyOtSuppressed, setEarlyOtSuppressed] = useState(false);
+  const [earlyOtSessionSuppressed, setEarlyOtSessionSuppressed] = useState(false);
   /** `"pending"` — chỉ NV chưa chọn; `"all"` — tất cả NV đủ điều kiện (mở từ nút toolbar). */
   const [earlyOtModalMode, setEarlyOtModalMode] = useState("pending");
   const [earlyOtSaving, setEarlyOtSaving] = useState(false);
@@ -240,11 +249,16 @@ export default function PayrollSalaryCalculator() {
   }, [selectedDate]);
 
   useEffect(() => {
+    setEarlyOtSuppressed(false);
     setEarlyOtModalMode("pending");
     setEarlyOtModalOpen(false);
     setLateOtModalMode("pending");
     setLateOtModalOpen(false);
   }, [selectedDate]);
+
+  useEffect(() => {
+    setEarlyOtSessionSuppressed(readEarlyOtSessionSuppressed(user?.uid));
+  }, [user?.uid]);
 
   const mergeOtPaperworkMeta = useCallback(
     async (metaFieldKey, normalizeMap, updates) => {
@@ -377,8 +391,47 @@ export default function PayrollSalaryCalculator() {
     [earlyOtModalMode, earlyOtMap],
   );
 
+  useEffect(() => {
+    if (earlyOtModalMode === "all") return;
+    if (earlyOtSuppressed || earlyOtSessionSuppressed) {
+      if (earlyOtModalOpen) setEarlyOtModalOpen(false);
+      return;
+    }
+    if (isOffDay || isHolidayDay || isCompensatoryDay) {
+      if (earlyOtModalOpen && earlyOtModalMode === "pending") {
+        setEarlyOtModalOpen(false);
+      }
+      return;
+    }
+    if (pendingEarlyOtEmployees.length > 0) {
+      setEarlyOtModalMode("pending");
+      setEarlyOtModalOpen(true);
+    } else if (earlyOtModalOpen) {
+      setEarlyOtModalOpen(false);
+    }
+  }, [
+    isOffDay,
+    isHolidayDay,
+    isCompensatoryDay,
+    earlyOtSuppressed,
+    earlyOtSessionSuppressed,
+    pendingEarlyOtEmployees,
+    earlyOtModalOpen,
+    earlyOtModalMode,
+  ]);
+
+  const openEarlyOtModal = useCallback((mode = "all") => {
+    setEarlyOtModalMode(mode);
+    setEarlyOtModalOpen(true);
+  }, []);
+
+  const openLateOtModal = useCallback((mode = "all") => {
+    setLateOtModalMode(mode);
+    setLateOtModalOpen(true);
+  }, []);
+
   const handleEarlyOtSave = useCallback(
-    async (updates) => {
+    async (updates, { suppressSession } = {}) => {
       if (!canConfirmOt) {
         setAlert({
           show: true,
@@ -395,6 +448,11 @@ export default function PayrollSalaryCalculator() {
         await mergeEarlyOt(filterOtPaperworkUpdates(updates));
         setEarlyOtModalOpen(false);
         setEarlyOtModalMode("pending");
+        setEarlyOtSuppressed(false);
+        if (suppressSession) {
+          setEarlyOtSessionSuppressed(true);
+          writeEarlyOtSessionSuppressed(user?.uid, true);
+        }
       } catch (err) {
         setAlert({
           show: true,
@@ -409,13 +467,21 @@ export default function PayrollSalaryCalculator() {
         setEarlyOtSaving(false);
       }
     },
-    [canConfirmOt, filterOtPaperworkUpdates, mergeEarlyOt, tlPage],
+    [canConfirmOt, filterOtPaperworkUpdates, mergeEarlyOt, tlPage, user?.uid],
   );
 
-  const handleEarlyOtDismiss = useCallback(() => {
-    setEarlyOtModalOpen(false);
-    setEarlyOtModalMode("pending");
-  }, []);
+  const handleEarlyOtDismiss = useCallback(
+    ({ suppressSession } = {}) => {
+      setEarlyOtModalOpen(false);
+      setEarlyOtSuppressed(true);
+      setEarlyOtModalMode("pending");
+      if (suppressSession) {
+        setEarlyOtSessionSuppressed(true);
+        writeEarlyOtSessionSuppressed(user?.uid, true);
+      }
+    },
+    [user?.uid],
+  );
 
   const handleLateOtSave = useCallback(
     async (updates) => {
@@ -483,6 +549,13 @@ export default function PayrollSalaryCalculator() {
       ),
     [employeesForPayroll, filterRows, deferredSearchTerm],
   );
+
+  const tablePagination = useHrTablePagination(filteredEmployees, {
+    resetDeps: [selectedDate, deferredSearchTerm, departmentFilter],
+  });
+
+  const pagedEmployees = tablePagination.pagedItems;
+  const rowIndexOffset = tablePagination.rowIndexOffset;
 
   const departments = useMemo(() => {
     const set = new Set();
@@ -552,10 +625,10 @@ export default function PayrollSalaryCalculator() {
 
   const tableScrollParentRef = useRef(null);
   const shouldVirtualizeTable =
-    filteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
+    pagedEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
 
   const rowVirtualizer = useVirtualizer({
-    count: filteredEmployees.length,
+    count: pagedEmployees.length,
     getScrollElement: () => tableScrollParentRef.current,
     estimateSize: () => 34,
     overscan: 12,
@@ -742,7 +815,7 @@ export default function PayrollSalaryCalculator() {
   return (
     <>
       <AttendanceHrPageShell contextDate={selectedDate}>
-      <div className="payroll-salary-page attendance-list-viewport w-full max-w-none px-1 py-0.5 md:px-1.5 md:py-1">
+      <div className="payroll-salary-page hr-page-compact attendance-list-viewport w-full max-w-none">
         <div className="mb-1 shrink-0">
           <div className="w-full border-t-4 border-violet-600 bg-white px-2 py-0.5 shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
             <h1 className="text-sm font-bold uppercase leading-snug tracking-wide text-[#1e293b] md:text-base dark:text-slate-100">
@@ -765,7 +838,7 @@ export default function PayrollSalaryCalculator() {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="h-7 w-full shrink-0 rounded-md border bg-white px-2 text-sm font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-300 dark:border-slate-600 dark:bg-slate-900 dark:text-emerald-300 sm:w-auto"
+              className="h-8 w-full min-w-0 rounded-md border bg-white px-2 text-sm font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-300 dark:border-slate-600 dark:bg-slate-900 dark:text-emerald-300 sm:w-auto"
             />
             <input
               type="text"
@@ -775,12 +848,12 @@ export default function PayrollSalaryCalculator() {
                 "searchPlaceholder",
                 "Tìm theo tên, MNV, bộ phận…",
               )}
-              className="h-7 w-full min-w-0 rounded-md border px-2 text-sm focus:ring-2 focus:ring-emerald-200 sm:w-44"
+              className="h-8 w-full min-w-0 rounded-md border px-2 text-sm focus:ring-2 focus:ring-emerald-200 sm:w-44"
             />
             <select
               value={departmentFilter}
               onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="h-7 max-w-full rounded-md border bg-white px-2 text-xs font-medium dark:border-slate-600 dark:bg-slate-900 sm:max-w-[11rem]"
+              className="h-8 max-w-full rounded-md border bg-white px-2 text-xs font-medium dark:border-slate-600 dark:bg-slate-900 sm:max-w-[11rem]"
             >
               <option value="">{tlPage("allDepts", "Tất cả bộ phận")}</option>
               {departments.map((d) => (
@@ -796,14 +869,8 @@ export default function PayrollSalaryCalculator() {
               t={t}
               onOpenMonthlyTimesheet={() => setMonthlyTimesheetOpen(true)}
               onOpenMonthlyTimeInOut={() => setMonthlyTimeInOutOpen(true)}
-              onOpenEarlyOt={() => {
-                setEarlyOtModalMode("all");
-                setEarlyOtModalOpen(true);
-              }}
-              onOpenLateOt={() => {
-                setLateOtModalMode("all");
-                setLateOtModalOpen(true);
-              }}
+              onOpenEarlyOt={() => openEarlyOtModal("all")}
+              onOpenLateOt={() => openLateOtModal("all")}
               onExportOneDay={() => void handleExportPayrollExcel()}
               onExportRange={() => setRangeExportModalOpen(true)}
               showEarlyOtAction={earlyOtEligibleEmployees.length > 0}
@@ -811,7 +878,7 @@ export default function PayrollSalaryCalculator() {
             />
           </div>
         </div>
-        <div className="payroll-salary-table-compact relative min-w-0 w-full max-w-full overflow-x-auto rounded-md bg-white text-[10px] leading-tight shadow-sm md:text-[11px] dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+        <div className="payroll-salary-table-compact relative min-w-0 w-full max-w-none overflow-x-auto overscroll-x-contain rounded-md bg-white leading-tight shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
           <PayrollMonthGridLoadingOverlay
             active={isTableBusy}
             message={
@@ -823,7 +890,7 @@ export default function PayrollSalaryCalculator() {
           {shouldVirtualizeTable ? (
             <div
               ref={tableScrollParentRef}
-              className="max-h-[min(88vh,920px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]"
+              className="payroll-salary-table-scroll max-h-[min(88vh,920px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain"
             >
               <div
                 className={`w-full max-w-none ${payrollTableWrapperMinWidthClass(columnPlan, showRowModalActions)}`}
@@ -845,8 +912,8 @@ export default function PayrollSalaryCalculator() {
                   }}
                 >
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const emp = filteredEmployees[virtualRow.index];
-                    const idx = virtualRow.index;
+                    const emp = pagedEmployees[virtualRow.index];
+                    const idx = rowIndexOffset + virtualRow.index;
                     return (
                       <PayrollSalaryTableRow
                         key={emp.id}
@@ -881,10 +948,10 @@ export default function PayrollSalaryCalculator() {
           ) : (
             <div
               ref={tableScrollParentRef}
-              className="min-w-0 w-full max-w-full overflow-x-auto"
+              className="payroll-salary-table-scroll min-w-0 w-full max-w-full overflow-x-auto overscroll-x-contain"
             >
               <table
-                className={`w-full table-fixed border-collapse max-w-none ${payrollTableWrapperMinWidthClass(columnPlan, showRowModalActions)}`}
+                className={`w-full max-w-none table-fixed border-collapse ${payrollTableWrapperMinWidthClass(columnPlan, showRowModalActions)}`}
               >
                 <PayrollSalaryTableColgroup
                   showRowModalActions={showRowModalActions}
@@ -898,11 +965,11 @@ export default function PayrollSalaryCalculator() {
                   columnPlan={columnPlan}
                 />
                 <tbody>
-                  {filteredEmployees.map((emp, idx) => (
+                  {pagedEmployees.map((emp, localIdx) => (
                     <PayrollSalaryTableRow
                       key={emp.id}
                       emp={emp}
-                      idx={idx}
+                      idx={rowIndexOffset + localIdx}
                       virtualRow={undefined}
                       showRowModalActions={showRowModalActions}
                       user={user}
@@ -928,6 +995,18 @@ export default function PayrollSalaryCalculator() {
             </div>
           )}
         </div>
+
+        <HrTablePagination
+          rangeStart={tablePagination.rangeStart}
+          rangeEnd={tablePagination.rangeEnd}
+          totalItems={tablePagination.totalItems}
+          page={tablePagination.page}
+          totalPages={tablePagination.totalPages}
+          pageNumbers={tablePagination.pageNumbers}
+          pageSize={tablePagination.pageSize}
+          onPageChange={tablePagination.setPage}
+          onPageSizeChange={tablePagination.setPageSize}
+        />
       </div>
 
       <AttendanceEmployeeFormModal
@@ -1010,10 +1089,8 @@ export default function PayrollSalaryCalculator() {
           "Trước 06:00 → 2h (05:40–06:40 + 06:40–07:40); từ 06:00 → 06:40–07:40 (1h). Ca đêm: TC sớm 17:40–18:40 + 18:40–19:40 (max 2h); GC 19:40–05:00 (8h).",
         )}
         saveLabel={tlPage("earlyOtModalSave", "Lưu")}
-        skipAllLabel={tlPage(
-          "earlyOtModalSkipAll",
-          "Tất cả không có giấy tăng ca",
-        )}
+        selectAllLabel={tlPage("earlyOtModalSelectAll", "Chọn tất cả")}
+        skipAllLabel={tlPage("earlyOtModalDeselectAll", "Bỏ chọn tất cả")}
         searchPlaceholder={tlPage(
           "paperworkModalSearchPlaceholder",
           "Lọc theo tên / MNV / bộ phận",
@@ -1023,6 +1100,11 @@ export default function PayrollSalaryCalculator() {
           "Tất cả bộ phận",
         )}
         readOnly={!canConfirmOt}
+        showSuppressSession
+        suppressSessionLabel={tlPage(
+          "earlyOtModalDontShowSession",
+          "Không hiển thị trong hôm nay.",
+        )}
         viewOnlyHint={tlPage(
           "otPaperworkViewOnlyHint",
           "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
@@ -1042,7 +1124,8 @@ export default function PayrollSalaryCalculator() {
           "Mặc định nhân viên có giờ ra sau 17:30 (ca ngày) vẫn được tính tăng ca. Hãy tick những người KHÔNG tính tăng ca.",
         )}
         saveLabel={tlPage("lateOtModalSave", "Lưu")}
-        skipAllLabel={tlPage("lateOtModalSkipAll", "Tất cả đều có tăng ca")}
+        selectAllLabel={tlPage("lateOtModalSelectAll", "Chọn tất cả")}
+        skipAllLabel={tlPage("lateOtModalDeselectAll", "Bỏ chọn tất cả")}
         timeLabel={tlPage("timeOutShortLabel", "Ra")}
         timeField="gioRa"
         searchPlaceholder={tlPage(

@@ -5,7 +5,7 @@ import {
   canDeleteEmployeeData,
   isAdminAccess,
 } from "@/config/authRoles";
-import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { shouldSkipAnnualLeaveForAttendanceRoot } from "./attendanceSeasonalStt";
 import {
   persistAnnualLeaveYearFromAttendance,
 } from "@/features/leave/annualLeaveAttendanceSync";
@@ -60,7 +60,7 @@ export function useAttendanceListMutations({
 
       try {
         await remove(ref(db, `${attendanceRootPath}/${selectedDate}/${id}`));
-        if (!isSeasonalAttendanceRoot(attendanceRootPath)) {
+        if (!shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
           const year = annualLeaveYearFromDateKey(selectedDate);
           await persistAnnualLeaveYearFromAttendance(db, {
             year,
@@ -128,7 +128,7 @@ export function useAttendanceListMutations({
       return;
     }
     try {
-      if (!isSeasonalAttendanceRoot(attendanceRootPath)) {
+      if (!shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
         const year = annualLeaveYearFromDateKey(selectedDate);
         await persistAnnualLeaveYearFromAttendance(db, {
           year,

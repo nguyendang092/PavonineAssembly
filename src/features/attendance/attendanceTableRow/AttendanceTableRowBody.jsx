@@ -82,12 +82,10 @@ function AttendanceTableRow({
     includeTaiXeTongInWorkingHours,
   } = employeeRegimeWorkingHoursFlags(emp);
   const isMinimal = columnPlan === "minimal";
-  /** Bảng lương: cỡ nhỏ hơn ô MNV; `payroll-tight-time` + payrollTableCompact.css */
-  const payrollTimeShiftFont = isPayroll
-    ? "payroll-tight-time leading-tight"
-    : isMinimal
-      ? "text-[10px] md:text-sm"
-      : "text-[11px] md:text-sm";
+  /** Giờ vào/ra + ca — cùng cỡ ô dữ liệu với Điểm danh */
+  const payrollTimeShiftFont = isMinimal
+    ? "text-[10px] md:text-sm"
+    : "text-[11px] md:text-sm";
   const isGrid = virtualRow != null;
   const showJoinWorkStatusDeptBlock = columnPlan === "full";
   const showDeptColumn = columnPlan === "full" || columnPlan === "compact";

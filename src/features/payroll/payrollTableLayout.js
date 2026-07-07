@@ -8,14 +8,14 @@ export function payrollTableWrapperMinWidthClass(
 ) {
   switch (columnPlan) {
     case "full":
-      return showRowModalActions ? "min-w-[1470px]" : "min-w-[1410px]";
+      return showRowModalActions ? "min-w-[1820px]" : "min-w-[1750px]";
     case "compact":
-      return showRowModalActions ? "min-w-[1142px]" : "min-w-[1086px]";
+      return showRowModalActions ? "min-w-[1420px]" : "min-w-[1350px]";
     case "narrow":
-      return showRowModalActions ? "min-w-[1002px]" : "min-w-[946px]";
+      return showRowModalActions ? "min-w-[1200px]" : "min-w-[1140px]";
     case "minimal":
-      return showRowModalActions ? "min-w-[622px]" : "min-w-[566px]";
+      return showRowModalActions ? "min-w-[750px]" : "min-w-[680px]";
     default:
-      return showRowModalActions ? "min-w-[1062px]" : "min-w-[1006px]";
+      return showRowModalActions ? "min-w-[1270px]" : "min-w-[1210px]";
   }
 }

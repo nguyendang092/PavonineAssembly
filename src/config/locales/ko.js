@@ -40,6 +40,19 @@ const ko = {
   loading: {
     loading: "데이터를 불러오는 중...",
   },
+  hrTablePagination: {
+    ariaLabel: "표 페이지 이동",
+    showingLabel: "표시",
+    unitEmployees: "직원",
+    pageNav: "페이지 이동",
+    firstPage: "첫 페이지",
+    prevPage: "이전 페이지",
+    nextPage: "다음 페이지",
+    lastPage: "마지막 페이지",
+    pageNumber: "{{n}}페이지",
+    rowsPerPage: "페이지당 행 수",
+    rowsOption: "{{count}}행",
+  },
   performanceChart: {
     saving: "저장 중...",
     sidebarTitle: "보고 연도 선택",
@@ -944,6 +957,8 @@ const ko = {
     sidebarFooter: "관리 시스템",
     sidebarAria: "인사 메뉴",
     sidebarAttendance: "출석",
+    sidebarKoreanTimesheet: "Korean Timesheet",
+    sidebarKoreanTimesheetDisabled: "Admin 또는 HR만 접근할 수 있습니다",
     sidebarStatistics: "통계",
     sidebarWorkHours: "근무시간",
     sidebarAnnualLeave: "연차",
@@ -1020,6 +1035,8 @@ const ko = {
     cancel: "취소",
     activeEmployeesTitle: "재직 직원 목록",
     activeEmployeesSubtitle: "재직 중인 직원 목록",
+    koreanActiveEmployeesTitle: "KOREAN TIMESHEET",
+    koreanActiveEmployeesSubtitle: "Korean Staff Attendance",
     linkToAttendanceSalary: "급여·근무시간표 (동일일자)",
     seasonalActiveEmployeesTitleShort: "계절·임시 직원 출석",
     linkToAttendanceSalaryShort: "근무시간·급여",
@@ -1438,11 +1455,15 @@ const ko = {
     earlyOtModalDescription:
       "06:40 이전 출근(주간): 05:40 이전 → 05:40–06:40; 05:40 이후 → 06:40–07:40 (한 구간, 0.1h).",
     earlyOtModalSave: "저장",
+    earlyOtModalSelectAll: "전체 선택",
+    earlyOtModalDeselectAll: "전체 해제",
     earlyOtModalSkipAll: "모두 서류 없음",
     lateOtModalTitle: "17:30 이후 연장 제외 확인",
     lateOtModalDescription:
       "기본값: 17:30 이후 퇴근(주간)은 연장근무로 계산됩니다. 연장 제외할 직원을 선택하세요.",
     lateOtModalSave: "저장",
+    lateOtModalSelectAll: "전체 선택",
+    lateOtModalDeselectAll: "전체 해제",
     lateOtModalSkipAll: "모두 연장근무 해당",
     timeOutShortLabel: "퇴근",
     paperworkModalSearchPlaceholder:

@@ -1,6 +1,8 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useUser } from "@/contexts/UserContext";
+import { canViewKoreanTimesheet } from "@/config/featurePermissions";
 import {
   annualLeavePathForDateKey,
   payrollPathForDateKey,
@@ -54,6 +56,13 @@ const ICONS = {
       <path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M14 19c0-2.2 1.8-4 4-4" />
     </svg>
   ),
+  koreanTimesheet: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <path d="M3 9h18M8 2v4M16 2v4" />
+      <path d="M7 13h3M14 13h3M7 17h10" />
+    </svg>
+  ),
 };
 
 function AttendanceListShell({
@@ -64,6 +73,8 @@ function AttendanceListShell({
 }) {
   const { pathname } = useLocation();
   const { t, i18n } = useTranslation();
+  const { user, userRole } = useUser();
+  const canAccessKoreanTimesheet = canViewKoreanTimesheet(user, userRole);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -109,6 +120,10 @@ function AttendanceListShell({
     pathname === "/attendance-list" ||
     pathname === "/seasonal-staff-attendance" ||
     pathname.startsWith("/attendance-list");
+
+  const isKoreanTimesheetActive =
+    pathname === "/korean-timesheet" ||
+    pathname.startsWith("/korean-timesheet");
 
   const isWorkHoursActive =
     pathname === "/attendance-salary" ||
@@ -174,6 +189,40 @@ function AttendanceListShell({
               label={t("attendanceList.sidebarAttendance", "Điểm danh")}
             />
           </Link>
+
+          {canAccessKoreanTimesheet ? (
+            <Link
+              to={`/korean-timesheet?date=${encodeURIComponent(dateKey)}`}
+              className={itemClass(isKoreanTimesheetActive, "sky")}
+            >
+              <SidebarItemContent
+                tone="sky"
+                icon={ICONS.koreanTimesheet}
+                label={t(
+                  "attendanceList.sidebarKoreanTimesheet",
+                  "Korean Timesheet",
+                )}
+              />
+            </Link>
+          ) : (
+            <span
+              className={`${itemClass(false, "sky")} attendance-with-sidebar__item--disabled`}
+              aria-disabled="true"
+              title={t(
+                "attendanceList.sidebarKoreanTimesheetDisabled",
+                "Chỉ Admin hoặc HR mới truy cập được",
+              )}
+            >
+              <SidebarItemContent
+                tone="sky"
+                icon={ICONS.koreanTimesheet}
+                label={t(
+                  "attendanceList.sidebarKoreanTimesheet",
+                  "Korean Timesheet",
+                )}
+              />
+            </span>
+          )}
 
           {onOpenStatistics ? (
             <button

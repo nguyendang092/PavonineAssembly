@@ -37,40 +37,6 @@
 .payroll-salary-table-compact [role="columnheader"],
 .payroll-salary-table-compact th {
   line-height: 1.12;
-  font-size: 0.625rem;
-}
-
-@media (min-width: 768px) {
-  .payroll-salary-table-compact [role="columnheader"],
-  .payroll-salary-table-compact th {
-    font-size: 0.6875rem;
-  }
-}
-
-.payroll-salary-table-compact td,
-.payroll-salary-table-compact [role="gridcell"],
-.payroll-salary-table-compact [role="cell"] {
-  font-size: 0.625rem;
-}
-
-@media (min-width: 768px) {
-  .payroll-salary-table-compact td,
-  .payroll-salary-table-compact [role="gridcell"],
-  .payroll-salary-table-compact [role="cell"] {
-    font-size: 0.6875rem;
-  }
-}
-
-/* Giờ vào / giờ ra / ca — nhỏ hơn ô MNV; !important để thắng rule font-size trên [role="cell"]. */
-.payroll-salary-table-compact .payroll-tight-time {
-  font-size: 9px !important;
-  line-height: 1.2 !important;
-}
-
-@media (min-width: 768px) {
-  .payroll-salary-table-compact .payroll-tight-time {
-    font-size: 10px !important;
-  }
 }
 
 /* Dropdown «Bảng tháng» — bảng chấm công / giờ vào ra */

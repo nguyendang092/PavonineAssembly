@@ -15,6 +15,7 @@ import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceL
 function AttendanceListTableSection({
   columnPlan,
   deferredFilteredEmployees,
+  rowIndexOffset = 0,
   showRowModalActions,
   canDeleteDayRecord,
   tl,
@@ -156,7 +157,7 @@ function AttendanceListTableSection({
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const emp = deferredFilteredEmployees[virtualRow.index];
-                const idx = virtualRow.index;
+                const idx = rowIndexOffset + virtualRow.index;
                 const rowKey = emp.id ?? emp.mnv ?? `row-${idx}`;
                 return (
                   <AttendanceTableRow
@@ -195,7 +196,8 @@ function AttendanceListTableSection({
           columnPlan={columnPlan}
         />
         <tbody>
-          {deferredFilteredEmployees.map((emp, idx) => {
+          {deferredFilteredEmployees.map((emp, localIdx) => {
+            const idx = rowIndexOffset + localIdx;
             const rowKey = emp.id ?? emp.mnv ?? `row-${idx}`;
             return (
               <AttendanceTableRow

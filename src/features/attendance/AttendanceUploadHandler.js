@@ -19,7 +19,7 @@ import {
   attendanceFirebaseKeyFromMnv,
   attendanceMnvStorageKey,
 } from "@/utils/attendanceEmployeeRecord";
-import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { isSeasonalAttendanceRoot, shouldSkipAnnualLeaveForAttendanceRoot } from "./attendanceSeasonalStt";
 import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
 import {
   persistAnnualLeaveYearFromAttendance,
@@ -276,7 +276,7 @@ export const handleUploadExcel = async ({
     });
     await set(attendanceRef, payload);
 
-    if (!isSeasonalAttendanceRoot(attendanceRootPath)) {
+    if (!shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
       const year = annualLeaveYearFromDateKey(selectedDate);
       await persistAnnualLeaveYearFromAttendance(db, {
         year,

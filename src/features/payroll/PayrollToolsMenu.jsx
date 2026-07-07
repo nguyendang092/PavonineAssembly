@@ -97,7 +97,7 @@ function PayrollToolsMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-[#1a73e8] px-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#1557b0]"
+        className="inline-flex h-8 w-full max-w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-[#1a73e8] px-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#1557b0] sm:w-auto sm:text-sm"
       >
         <span aria-hidden>🛠</span>
         {t("attendanceList.toolsMenu", { defaultValue: "Công cụ" })}

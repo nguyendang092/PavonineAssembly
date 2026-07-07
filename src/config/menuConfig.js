@@ -179,6 +179,7 @@ export const routeConfig = [
   { path: "/stock-variance", element: "WarehouseInventoryDashboard" },
   { path: "/mc-defect-report", element: "MCDefectReportDashboard" },
   { path: "/attendance-list", element: "AttendanceList" },
+  { path: "/korean-timesheet", element: "KoreanTimesheetPage" },
   { path: "/seasonal-staff-attendance", element: "SeasonalStaffAttendance" },
   { path: "/attendance-salary", element: "PayrollSalaryCalculator" },
   { path: "/annual-leave", element: "AnnualLeaveManager" },

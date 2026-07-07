@@ -1,5 +1,7 @@
 import React, { memo, lazy, Suspense, useCallback } from "react";
 import LoadingBlock from "@/components/ui/LoadingBlock";
+import HrTablePagination from "@/components/ui/HrTablePagination";
+import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import AttendanceEmployeeFormModal from "./AttendanceEmployeeFormModal";
 import AttendanceOffDaysModal from "./AttendanceOffDaysModal";
 import AttendanceListTableSection from "./AttendanceListTableSection";
@@ -7,6 +9,7 @@ import AttendanceListSummary from "./AttendanceListSummary";
 import {
   useAttendanceListContentBranch,
   useAttendanceListComboBranch,
+  useAttendanceListSearchBranch,
 } from "./attendanceListBranchContexts";
 
 const AttendanceComboChartModal = lazy(
@@ -51,6 +54,12 @@ function AttendanceListContentSection() {
     isOffDay,
     isHolidayDay,
   } = useAttendanceListContentBranch();
+
+  const { searchTerm } = useAttendanceListSearchBranch();
+
+  const tablePagination = useHrTablePagination(deferredFilteredEmployees, {
+    resetDeps: [selectedDate, searchTerm, deferredFilteredEmployees.length],
+  });
 
   const {
     comboProductionDeptCatalog,
@@ -163,7 +172,8 @@ function AttendanceListContentSection() {
 
       <AttendanceListTableSection
         columnPlan={columnPlan}
-        deferredFilteredEmployees={deferredFilteredEmployees}
+        deferredFilteredEmployees={tablePagination.pagedItems}
+        rowIndexOffset={tablePagination.rowIndexOffset}
         showRowModalActions={showRowModalActions}
         canDeleteDayRecord={canDeleteDayRecord}
         tl={tl}
@@ -177,6 +187,18 @@ function AttendanceListContentSection() {
         t={t}
         attendanceRootPath={attendanceRootPath}
         selectedDate={selectedDate}
+      />
+
+      <HrTablePagination
+        rangeStart={tablePagination.rangeStart}
+        rangeEnd={tablePagination.rangeEnd}
+        totalItems={tablePagination.totalItems}
+        page={tablePagination.page}
+        totalPages={tablePagination.totalPages}
+        pageNumbers={tablePagination.pageNumbers}
+        pageSize={tablePagination.pageSize}
+        onPageChange={tablePagination.setPage}
+        onPageSizeChange={tablePagination.setPageSize}
       />
 
       <AttendanceListSummary

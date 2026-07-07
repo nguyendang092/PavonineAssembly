@@ -34,6 +34,23 @@
       }
     },
 
+    "koreanAttendance": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$date": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "_meta": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        "$empKey": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+
     "annualLeave": {
       ".read": "auth != null",
       ".write": "auth != null",
