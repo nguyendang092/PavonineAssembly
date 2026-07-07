@@ -147,6 +147,16 @@ export default function PayrollEarlyOvertimePaperworkModal({
     onDismiss({ suppressSession: suppressSessionChecked });
   };
 
+  const footerBtnClass =
+    "inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border-2 border-sky-200/90 bg-white px-3 text-xs font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-100 dark:hover:border-sky-600 dark:hover:bg-sky-950/50";
+  const footerBtnCloseClass =
+    "inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border-2 border-sky-200/90 bg-white px-3 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-200 dark:hover:border-sky-600 dark:hover:bg-sky-950/50";
+  const footerBtnSaveClass =
+    "inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-4 text-xs font-bold text-white shadow-md shadow-sky-600/30 transition hover:from-sky-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:shadow-sky-950/40 dark:hover:from-sky-500 dark:hover:to-blue-600";
+
+  const hasFooterMeta =
+    (readOnly && viewOnlyHint) || (showSuppressSession && !readOnly);
+
   return (
     <div
       className="fixed inset-0 flex items-center justify-center overflow-hidden overscroll-none bg-slate-950/75 p-3 backdrop-blur-sm"
@@ -276,67 +286,75 @@ export default function PayrollEarlyOvertimePaperworkModal({
             ) : null}
           </ul>
         </div>
-        <div className="flex flex-col gap-2.5 border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950">
-          {readOnly && viewOnlyHint ? (
-            <p className="text-[11px] leading-snug text-sky-900/75 dark:text-sky-200/80">
-              {viewOnlyHint}
-            </p>
-          ) : null}
-          {showSuppressSession && !readOnly ? (
-            <label className="flex cursor-pointer items-start gap-2.5 text-left sm:items-center">
-              <input
-                type="checkbox"
-                disabled={saving}
-                checked={suppressSessionChecked}
-                onChange={() => setSuppressSessionChecked((v) => !v)}
-                className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded border-sky-300 text-sky-600 focus:ring-2 focus:ring-sky-300/70 focus:ring-offset-1 disabled:opacity-50 sm:mt-0 dark:border-sky-600 dark:text-sky-500 dark:focus:ring-sky-800/60"
-              />
-              <span className="min-w-0 text-[11px] font-medium leading-snug text-slate-700 dark:text-slate-300">
-                {suppressSessionLabel}
-              </span>
-            </label>
-          ) : null}
-          <div className="flex w-full flex-wrap items-center justify-end gap-2">
-            {!readOnly ? (
-              <>
-                {selectAllLabel ? (
+        <div className="border-t border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-indigo-50/40 px-3 py-3 dark:border-sky-900/50 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950">
+          <div
+            className={`flex flex-col gap-3${hasFooterMeta ? " sm:flex-row sm:items-center sm:justify-between" : ""}`}
+          >
+            {hasFooterMeta ? (
+              <div className="min-w-0 sm:flex-1 sm:pr-3">
+                {readOnly && viewOnlyHint ? (
+                  <p className="text-[11px] leading-snug text-sky-900/75 dark:text-sky-200/80">
+                    {viewOnlyHint}
+                  </p>
+                ) : null}
+                {showSuppressSession && !readOnly ? (
+                  <label className="flex cursor-pointer items-center gap-2.5 text-left">
+                    <input
+                      type="checkbox"
+                      disabled={saving}
+                      checked={suppressSessionChecked}
+                      onChange={() => setSuppressSessionChecked((v) => !v)}
+                      className="h-[18px] w-[18px] shrink-0 rounded border-sky-300 text-sky-600 focus:ring-2 focus:ring-sky-300/70 focus:ring-offset-1 disabled:opacity-50 dark:border-sky-600 dark:text-sky-500 dark:focus:ring-sky-800/60"
+                    />
+                    <span className="min-w-0 text-[11px] font-medium leading-snug text-slate-700 dark:text-slate-300">
+                      {suppressSessionLabel}
+                    </span>
+                  </label>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
+              {!readOnly ? (
+                <>
+                  {selectAllLabel ? (
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={handleSelectAll}
+                      className={footerBtnClass}
+                    >
+                      {selectAllLabel}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     disabled={saving}
-                    onClick={handleSelectAll}
-                    className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-100 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
+                    onClick={handleSkipAllNo}
+                    className={footerBtnClass}
                   >
-                    {selectAllLabel}
+                    {skipAllLabel}
                   </button>
-                ) : null}
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={handleSkipAllNo}
-                  className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-100 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
-                >
-                  {skipAllLabel}
-                </button>
-              </>
-            ) : null}
-            <button
-              type="button"
-              disabled={saving}
-              onClick={handleDismiss}
-              className="rounded-lg border-2 border-sky-200/90 bg-white px-3 py-2 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-700/80 dark:bg-slate-800 dark:text-sky-200 dark:hover:border-sky-600 dark:hover:bg-sky-950/50"
-            >
-              {closeLabel}
-            </button>
-            {!readOnly ? (
+                </>
+              ) : null}
               <button
                 type="button"
                 disabled={saving}
-                onClick={handleSave}
-                className="rounded-lg border-2 border-blue-600/90 bg-gradient-to-b from-sky-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-sky-600/30 transition hover:from-sky-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-500/80 dark:from-sky-600 dark:to-blue-700 dark:shadow-sky-950/40 dark:hover:from-sky-500 dark:hover:to-blue-600"
+                onClick={handleDismiss}
+                className={footerBtnCloseClass}
               >
-                {saving ? "…" : saveLabel}
+                {closeLabel}
               </button>
-            ) : null}
+              {!readOnly ? (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={handleSave}
+                  className={footerBtnSaveClass}
+                >
+                  {saving ? "…" : saveLabel}
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
