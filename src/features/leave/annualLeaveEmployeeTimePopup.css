@@ -1,0 +1,304 @@
+.annual-leave-time-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal-backdrop, 1200) + 100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(15 23 42 / 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.annual-leave-time-popup {
+  width: min(52rem, calc(100vw - 2rem));
+  max-height: min(36rem, calc(100vh - 2rem));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgb(148 163 184 / 0.45);
+  border-radius: 0.875rem;
+  background: #fff;
+  box-shadow: 0 24px 48px -20px rgb(15 23 42 / 0.45);
+  overflow: hidden;
+}
+
+.dark .annual-leave-time-popup {
+  border-color: rgb(71 85 105 / 0.8);
+  background: rgb(15 23 42);
+}
+
+.annual-leave-time-popup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.125rem;
+  border-bottom: 1px solid var(--al-leave-teal-header-border, rgb(255 255 255 / 0.1));
+  background: var(
+    --al-leave-teal-header,
+    linear-gradient(135deg, #0f766e 0%, #115e59 55%, #134e4a 100%)
+  );
+  color: #fff;
+}
+
+.dark .annual-leave-time-popup-header {
+  border-bottom-color: rgb(255 255 255 / 0.08);
+}
+
+.annual-leave-time-popup-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--al-leave-teal-kicker, rgb(204 251 241 / 0.92));
+}
+
+.annual-leave-time-popup-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.annual-leave-time-popup-meta {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(204 251 241 / 0.85);
+}
+
+.annual-leave-time-popup-close {
+  flex-shrink: 0;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 0.5rem;
+  background: rgb(255 255 255 / 0.14);
+  width: 2rem;
+  height: 2rem;
+  color: #fff;
+  cursor: pointer;
+}
+
+.annual-leave-time-popup-close:hover {
+  background: rgb(255 255 255 / 0.28);
+}
+
+.annual-leave-time-popup-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.875rem 1.125rem;
+  border-bottom: 1px solid rgb(226 232 240);
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.dark .annual-leave-time-popup-toolbar {
+  border-bottom-color: rgb(51 65 85);
+  background: linear-gradient(180deg, rgb(30 41 59) 0%, rgb(15 23 42) 100%);
+}
+
+.annual-leave-time-popup-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem 0.875rem;
+}
+
+.annual-leave-time-popup-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 8.5rem;
+}
+
+.annual-leave-time-popup-filter-label {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.dark .annual-leave-time-popup-filter-label {
+  color: #94a3b8;
+}
+
+.annual-leave-time-popup-select {
+  min-height: 2.25rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid rgb(203 213 225);
+  border-radius: 0.5rem;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dark .annual-leave-time-popup-select {
+  border-color: rgb(71 85 105);
+  background: rgb(15 23 42);
+  color: #e2e8f0;
+}
+
+.annual-leave-time-popup-export {
+  align-self: flex-end;
+  min-height: 2.25rem;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid rgb(14 165 233 / 0.45);
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.annual-leave-time-popup-export:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.annual-leave-time-popup-export:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.annual-leave-time-popup-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.dark .annual-leave-time-popup-summary {
+  color: #cbd5e1;
+}
+
+.annual-leave-time-popup-summary-period {
+  font-weight: 800;
+  color: #0369a1;
+}
+
+.dark .annual-leave-time-popup-summary-period {
+  color: #7dd3fc;
+}
+
+.annual-leave-time-popup-summary-count {
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(224 242 254);
+  color: #0369a1;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.dark .annual-leave-time-popup-summary-count {
+  background: rgb(12 74 110 / 0.55);
+  color: #bae6fd;
+}
+
+.annual-leave-time-popup-month-row td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgb(203 213 225);
+  background: linear-gradient(90deg, #e0f2fe 0%, #f0f9ff 100%);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #0369a1;
+}
+
+.dark .annual-leave-time-popup-month-row td {
+  border-bottom-color: rgb(51 65 85);
+  background: linear-gradient(90deg, rgb(12 74 110) 0%, rgb(15 23 42) 100%);
+  color: #7dd3fc;
+}
+
+.annual-leave-time-popup-month-count {
+  margin-left: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+  color: #0284c7;
+}
+
+.dark .annual-leave-time-popup-month-count {
+  color: #bae6fd;
+}
+
+.annual-leave-time-popup-empty {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dark .annual-leave-time-popup-empty {
+  color: #94a3b8;
+}
+
+.annual-leave-time-popup-table-wrap {
+  overflow: auto;
+  max-height: min(28rem, calc(100vh - 10rem));
+}
+
+.annual-leave-time-popup-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.annual-leave-time-popup-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid rgb(203 213 225);
+  background: #f8fafc;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  color: #475569;
+}
+
+.dark .annual-leave-time-popup-table th {
+  background: rgb(30 41 59);
+  border-bottom-color: rgb(71 85 105);
+  color: #cbd5e1;
+}
+
+.annual-leave-time-popup-table td {
+  padding: 0.5625rem 0.75rem;
+  border-bottom: 1px solid rgb(241 245 249);
+  color: #0f172a;
+  vertical-align: middle;
+}
+
+.dark .annual-leave-time-popup-table td {
+  border-bottom-color: rgb(51 65 85);
+  color: #e2e8f0;
+}
+
+.annual-leave-time-popup-table tbody tr:nth-child(even) td {
+  background: rgb(248 250 252);
+}
+
+.dark .annual-leave-time-popup-table tbody tr:nth-child(even) td {
+  background: rgb(30 41 59 / 0.55);
+}
+
+.annual-leave-time-popup-date {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

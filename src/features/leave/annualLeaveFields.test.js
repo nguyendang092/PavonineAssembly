@@ -5,6 +5,8 @@ import {
   isAttendanceDateDisplayOnlyForAnnualLeave,
   listAnnualLeaveCountYearMonths,
   listAnnualLeaveDetailDisplayMonths,
+  listAnnualLeaveDetailHistoryMonths,
+  listAnnualLeaveDetailRecentMonths,
   listAnnualLeavePreCountDisplayMonthKeys,
   resolveAnnualLeaveDetailThroughDateKey,
 } from "./annualLeaveFields";
@@ -61,13 +63,30 @@ describe("annualLeave attendance count start", () => {
     ]);
   });
 
-  it("detail display months: current month and previous only", () => {
+  it("detail history months: full counted period newest first", () => {
+    expect(
+      listAnnualLeaveDetailHistoryMonths(2026, "2026-08-15"),
+    ).toEqual(["2026-08", "2026-07", "2026-06"]);
+    expect(listAnnualLeaveDetailHistoryMonths(2026, "2026-06-01")).toEqual([
+      "2026-06",
+    ]);
+  });
+
+  it("detail recent months: three newest by default", () => {
+    expect(
+      listAnnualLeaveDetailRecentMonths(2026, "2026-08-15"),
+    ).toEqual(["2026-08", "2026-07", "2026-06"]);
+    expect(listAnnualLeaveDetailRecentMonths(2027, "2027-05-01")).toEqual([
+      "2027-05",
+      "2027-04",
+      "2027-03",
+    ]);
+  });
+
+  it("legacy detail display months keeps two-month slice", () => {
     expect(
       listAnnualLeaveDetailDisplayMonths(2026, "2026-08-15"),
     ).toEqual(["2026-08", "2026-07"]);
-    expect(listAnnualLeaveDetailDisplayMonths(2026, "2026-06-01")).toEqual([
-      "2026-06",
-    ]);
   });
 
   it("resolve detail through date defaults to today in current year", () => {
@@ -75,9 +94,8 @@ describe("annualLeave attendance count start", () => {
       "2026-08-10T12:00:00.000Z",
     );
     expect(resolveAnnualLeaveDetailThroughDateKey(2026)).toBe("2026-08-10");
-    expect(listAnnualLeaveDetailDisplayMonths(2026)).toEqual([
-      "2026-08",
-      "2026-07",
-    ]);
+    expect(
+      listAnnualLeaveDetailRecentMonths(2026, "2026-08-10"),
+    ).toEqual(["2026-08", "2026-07", "2026-06"]);
   });
 });

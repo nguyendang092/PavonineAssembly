@@ -402,7 +402,7 @@ describe("buildMonthlyRuleSummary — đồng bộ bảng ngày", () => {
   const empId = "200611";
   const workKey = "2026-06-12";
 
-  it("vẫn tính giờ khi ngày chấm công trước ngày vào làm trên hồ sơ gộp", () => {
+  it("không tính giờ khi ngày chấm công trước ngày vào làm trên hồ sơ gộp", () => {
     const emp = {
       id: "-OxEmp1",
       mnv: empId,
@@ -431,20 +431,20 @@ describe("buildMonthlyRuleSummary — đồng bộ bảng ngày", () => {
       { ngayVaoLam: "2026-07-01", mnv: empId, id: "-OxEmp1" },
     );
 
-    expect(total.workHours).toBeGreaterThan(0);
-    expect(total.coeff15).toBeGreaterThan(0);
+    expect(total.workHours).toBe(0);
+    expect(total.coeff15).toBe(0);
   });
 });
 
 describe("isPayrollMonthDayCellBeforeJoinWithoutAttendance", () => {
-  it("có điểm danh → không ẩn dù trước ngày vào làm", () => {
+  it("có điểm danh nhưng trước ngày vào làm → vẫn ẩn", () => {
     expect(
       isPayrollMonthDayCellBeforeJoinWithoutAttendance(
         "2026-06-12",
         "2026-07-01",
         { gioVao: "07:34" },
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("không điểm danh + trước ngày vào làm → ẩn", () => {
@@ -455,6 +455,16 @@ describe("isPayrollMonthDayCellBeforeJoinWithoutAttendance", () => {
         null,
       ),
     ).toBe(true);
+  });
+
+  it("từ ngày vào làm trở đi → không ẩn", () => {
+    expect(
+      isPayrollMonthDayCellBeforeJoinWithoutAttendance(
+        "2026-07-01",
+        "2026-07-01",
+        null,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -597,6 +607,48 @@ describe("buildMonthlyRuleSummary — Nghỉ bù (NB)", () => {
     expect(summaries.official.nbDays).toBe(1);
   });
 
+  it("không đếm NB khi ngày nghỉ bù trước ngày vào làm", () => {
+    const nbKey = "2026-07-05";
+    const dayChunks = new Map([
+      [
+        nbKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: true,
+          employees: [],
+        }),
+      ],
+    ]);
+    const { total } = buildMonthlyRuleSummary(dayChunks, [nbKey], empId, {
+      ngayVaoLam: "2026-07-10",
+    });
+
+    expect(total.nbDays).toBe(0);
+    expect(total.workDays).toBe(0);
+  });
+
+  it("đếm NB khi ngày nghỉ bù từ ngày vào làm trở đi", () => {
+    const nbKey = "2026-07-10";
+    const dayChunks = new Map([
+      [
+        nbKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: true,
+          employees: [],
+        }),
+      ],
+    ]);
+    const { total } = buildMonthlyRuleSummary(dayChunks, [nbKey], empId, {
+      ngayVaoLam: "2026-07-10",
+    });
+
+    expect(total.nbDays).toBe(1);
+    expect(total.workDays).toBe(1);
+  });
+
   it("không đếm NB khi nhân viên bị đặt duocNghiBu = NO", () => {
     const emp = {
       id: empId,
@@ -605,6 +657,58 @@ describe("buildMonthlyRuleSummary — Nghỉ bù (NB)", () => {
       caLamViec: "S1",
       duocNghiBu: "NO",
       loaiPhep: "",
+    };
+    const dayChunks = new Map([
+      [
+        trialKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: true,
+          employees: [emp],
+        }),
+      ],
+    ]);
+    const { total } = buildMonthlyRuleSummary(
+      dayChunks,
+      [trialKey],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+
+    expect(total.nbDays).toBe(0);
+  });
+
+  it("không đếm NB khi loại phép NV trên ngày nghỉ bù", () => {
+    const emp = {
+      id: empId,
+      loaiPhep: "Nghỉ việc",
+    };
+    const dayChunks = new Map([
+      [
+        trialKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: true,
+          employees: [emp],
+        }),
+      ],
+    ]);
+    const { total } = buildMonthlyRuleSummary(
+      dayChunks,
+      [trialKey],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+
+    expect(total.nbDays).toBe(0);
+  });
+
+  it("không đếm NB khi loại phép TS trên ngày nghỉ bù", () => {
+    const emp = {
+      id: empId,
+      loaiPhep: "Thai sản",
     };
     const dayChunks = new Map([
       [

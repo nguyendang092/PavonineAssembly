@@ -26,6 +26,11 @@ export function buildAnnualLeaveDetailModalRowFromEmp(emp, yearData = null) {
       raw?.[ANNUAL_LEAVE_EMP.FULL_NAME] ?? emp?.hoVaTen ?? "",
     [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]:
       raw?.[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ?? emp?.boPhan ?? "",
+    [ANNUAL_LEAVE_EMP.BALANCE]: raw?.[ANNUAL_LEAVE_EMP.BALANCE] ?? null,
+    [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]:
+      raw?.[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE] ?? null,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]:
+      raw?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED] ?? null,
   };
 }
 
@@ -38,5 +43,10 @@ export function buildAnnualLeaveDetailModalRowFromManagerRow(row) {
     [ANNUAL_LEAVE_EMP.MNV_SUFFIX]: row[ANNUAL_LEAVE_EMP.MNV_SUFFIX] ?? "",
     [ANNUAL_LEAVE_EMP.FULL_NAME]: row[ANNUAL_LEAVE_EMP.FULL_NAME] ?? "",
     [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]: row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ?? "",
+    [ANNUAL_LEAVE_EMP.BALANCE]: row[ANNUAL_LEAVE_EMP.BALANCE] ?? null,
+    [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]:
+      row[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE] ?? null,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]:
+      row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED] ?? null,
   };
 }

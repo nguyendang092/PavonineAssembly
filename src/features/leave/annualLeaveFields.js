@@ -159,27 +159,24 @@ function previousYearMonth(yearMonth) {
 }
 
 /**
- * Tháng hiển thị trong modal chi tiết: tháng `through` (trên) và tháng liền trước (dưới).
- * Không liệt kê các tháng sau `through` hoặc toàn bộ kỳ trong năm.
+ * Toàn bộ tháng lịch sử phép (mới → cũ) từ ngày bắt đầu tính đến `through`.
+ */
+export function listAnnualLeaveDetailHistoryMonths(year, throughDateKey = null) {
+  return listAnnualLeaveCountYearMonths(year, throughDateKey).slice().reverse();
+}
+
+/** Ba tháng gần nhất trong modal chi tiết (mặc định trước khi mở rộng). */
+export function listAnnualLeaveDetailRecentMonths(
+  year,
+  throughDateKey = null,
+  limit = 3,
+) {
+  return listAnnualLeaveDetailHistoryMonths(year, throughDateKey).slice(0, limit);
+}
+
+/**
+ * @deprecated Dùng `listAnnualLeaveDetailRecentMonths` — giữ tương thích test cũ.
  */
 export function listAnnualLeaveDetailDisplayMonths(year, throughDateKey = null) {
-  const start = annualLeaveAttendanceCountStartDate(year);
-  if (!start) return [];
-
-  const y = Number(year);
-  if (!Number.isFinite(y)) return [];
-
-  const startYearMonth = start.slice(0, 7);
-  const through = resolveAnnualLeaveDetailThroughDateKey(year, throughDateKey);
-  const endYearMonth = through.slice(0, 7);
-
-  if (!endYearMonth.startsWith(`${y}-`) || endYearMonth < startYearMonth) return [];
-
-  const months = [endYearMonth];
-  const prev = previousYearMonth(endYearMonth);
-  if (prev >= startYearMonth) {
-    months.push(prev);
-  }
-
-  return months;
+  return listAnnualLeaveDetailRecentMonths(year, throughDateKey, 2);
 }

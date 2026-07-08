@@ -7,7 +7,7 @@ import { isAttendanceDayMetaKey } from "@/features/attendance/attendanceDayMeta"
 import {
   isAttendanceDateCountedForAnnualLeave,
   isAttendanceDateDisplayOnlyForAnnualLeave,
-  listAnnualLeaveDetailDisplayMonths,
+  listAnnualLeaveDetailHistoryMonths,
   listAnnualLeavePreCountDisplayMonthKeys,
 } from "./annualLeaveFields";
 import {
@@ -178,7 +178,7 @@ function fillAnnualLeaveUsageDetailMonths(empDetail, year, filterOrYearMonth) {
   const { throughDateKey = null } = normalizeAttendanceLeaveDeductionFilter(
     filterOrYearMonth,
   );
-  const monthKeys = listAnnualLeaveDetailDisplayMonths(year, throughDateKey);
+  const monthKeys = listAnnualLeaveDetailHistoryMonths(year, throughDateKey);
 
   const monthList = Array.isArray(empDetail.months)
     ? empDetail.months

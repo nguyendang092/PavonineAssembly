@@ -190,40 +190,6 @@ function AttendanceListShell({
             />
           </Link>
 
-          {canAccessKoreanTimesheet ? (
-            <Link
-              to={`/korean-timesheet?date=${encodeURIComponent(dateKey)}`}
-              className={itemClass(isKoreanTimesheetActive, "sky")}
-            >
-              <SidebarItemContent
-                tone="sky"
-                icon={ICONS.koreanTimesheet}
-                label={t(
-                  "attendanceList.sidebarKoreanTimesheet",
-                  "Korean Timesheet",
-                )}
-              />
-            </Link>
-          ) : (
-            <span
-              className={`${itemClass(false, "sky")} attendance-with-sidebar__item--disabled`}
-              aria-disabled="true"
-              title={t(
-                "attendanceList.sidebarKoreanTimesheetDisabled",
-                "Chỉ Admin hoặc HR mới truy cập được",
-              )}
-            >
-              <SidebarItemContent
-                tone="sky"
-                icon={ICONS.koreanTimesheet}
-                label={t(
-                  "attendanceList.sidebarKoreanTimesheet",
-                  "Korean Timesheet",
-                )}
-              />
-            </span>
-          )}
-
           {onOpenStatistics ? (
             <button
               type="button"
@@ -270,6 +236,40 @@ function AttendanceListShell({
               label={t("attendanceList.sidebarAnnualLeave", "Phép năm")}
             />
           </Link>
+
+          {canAccessKoreanTimesheet ? (
+            <Link
+              to={`/korean-timesheet?date=${encodeURIComponent(dateKey)}`}
+              className={itemClass(isKoreanTimesheetActive, "sky")}
+            >
+              <SidebarItemContent
+                tone="sky"
+                icon={ICONS.koreanTimesheet}
+                label={t(
+                  "attendanceList.sidebarKoreanTimesheet",
+                  "Korean Timesheet",
+                )}
+              />
+            </Link>
+          ) : (
+            <span
+              className={`${itemClass(false, "sky")} attendance-with-sidebar__item--disabled`}
+              aria-disabled="true"
+              title={t(
+                "attendanceList.sidebarKoreanTimesheetDisabled",
+                "Chỉ Admin hoặc HR mới truy cập được",
+              )}
+            >
+              <SidebarItemContent
+                tone="sky"
+                icon={ICONS.koreanTimesheet}
+                label={t(
+                  "attendanceList.sidebarKoreanTimesheet",
+                  "Korean Timesheet",
+                )}
+              />
+            </span>
+          )}
 
           <Link
             to="/user-department"

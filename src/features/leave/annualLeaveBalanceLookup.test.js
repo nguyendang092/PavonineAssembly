@@ -169,7 +169,7 @@ describe("annualLeaveBalanceLookup", () => {
     ]);
   });
 
-  it("fills display months: current and previous only", () => {
+  it("fills all counted months through throughDateKey", () => {
     const data = {
       "2026-06-03": { emp_X: { mnv: "X", loaiPhep: "Phép năm" } },
       "2026-07-05": { emp_X: { mnv: "X", loaiPhep: "Phép năm" } },
@@ -180,10 +180,12 @@ describe("annualLeaveBalanceLookup", () => {
     expect(detail.months.map((m) => m.yearMonth)).toEqual([
       "2026-08",
       "2026-07",
+      "2026-06",
     ]);
     expect(detail.months[0].pnCount).toBe(0);
     expect(detail.months[0].days).toEqual([]);
     expect(detail.months[1].pnCount).toBe(1);
+    expect(detail.months[2].pnCount).toBe(1);
   });
 
   it("shows pre-count trial months for display only without affecting totals", () => {
@@ -195,11 +197,11 @@ describe("annualLeaveBalanceLookup", () => {
     }).emp_X;
     expect(emp.totalPn).toBe(0);
     expect(emp.totalDeduction).toBe(0);
-    expect(emp.months).toHaveLength(3);
-    expect(emp.months[2].yearMonth).toBe("2026-05");
-    expect(emp.months[2].displayOnly).toBe(true);
-    expect(emp.months[2].pnCount).toBe(1);
-    expect(emp.months[2].totalDeduction).toBe(0);
+    expect(emp.months).toHaveLength(4);
+    expect(emp.months[3].yearMonth).toBe("2026-05");
+    expect(emp.months[3].displayOnly).toBe(true);
+    expect(emp.months[3].pnCount).toBe(1);
+    expect(emp.months[3].totalDeduction).toBe(0);
   });
 
   it("createEmptyAnnualLeaveUsageDetail returns array months for modal", () => {

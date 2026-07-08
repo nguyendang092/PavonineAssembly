@@ -14,7 +14,7 @@ import {
   MONTH_DETAIL_COLS_PER_BLOCK,
   MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
-import { isDuocNghiBuExplicitlyNo } from "@/features/attendance/attendanceDayMeta";
+import { isCompensatoryNbVisibleForDayContext } from "@/features/attendance/attendanceDayMeta";
 import {
   formatAttendanceLeaveTypeColumnDisplay,
   getAttendanceLeaveTypeRaw,
@@ -85,15 +85,14 @@ export function isPayrollMonthDayOnOrAfterJoin(dateKey, joinDateRaw) {
 }
 
 /**
- * Ẩn ô lưới tháng chỉ khi chưa có điểm danh và ngày < ngày vào làm.
- * Có dữ liệu chấm công → luôn hiện (đồng bộ bảng giờ công ngày).
+ * Ẩn ô lưới tháng / Excel khi ngày < ngày vào làm (kể cả NB, NL, giờ công).
+ * Từ ngày vào làm trở đi → hiển thị như bình thường.
  */
 export function isPayrollMonthDayCellBeforeJoinWithoutAttendance(
   dateKey,
   joinDateRaw,
-  dayEmp,
+  _dayEmp,
 ) {
-  if (dayEmp) return false;
   return !isPayrollMonthDayOnOrAfterJoin(dateKey, joinDateRaw);
 }
 
@@ -181,9 +180,7 @@ export function payrollMonthlyLeaveUnitsForEmployee(emp) {
 }
 
 function compensatoryNbUnits(ch, emp) {
-  if (!ch?.isCompensatoryDay) return 0;
-  if (emp == null) return 1;
-  return !isDuocNghiBuExplicitlyNo(emp[PAYROLL_EMP.COMP_LEAVE_ALLOWED]) ? 1 : 0;
+  return isCompensatoryNbVisibleForDayContext(ch, emp) ? 1 : 0;
 }
 
 function addPayrollMonthlyLeaveColumnCounts(out, emp, ch) {
@@ -306,11 +303,8 @@ export function buildMonthlyRuleSummary(
     if (h27 > 0) out.sats27 += h27;
   };
 
-  const isNbVisibleForCompDay = (ch, emp) => {
-    if (!ch?.isCompensatoryDay) return false;
-    if (emp == null) return true;
-    return !isDuocNghiBuExplicitlyNo(emp[PAYROLL_EMP.COMP_LEAVE_ALLOWED]);
-  };
+  const isNbVisibleForCompDay = (ch, emp) =>
+    isCompensatoryNbVisibleForDayContext(ch, emp);
 
   const computeHolidayWorkCreditForDash = (ch, coeffSum, emp) => {
     if (ch.isHolidayDay) return 1;
@@ -432,7 +426,7 @@ export function buildMonthlyRuleSummary(
     if (!ch) continue;
 
     const emp = resolvePayrollMonthDayEmployee(ch, id, employeeProfile);
-    if (!emp && !isPayrollMonthDayOnOrAfterJoin(dk, join)) continue;
+    if (!isPayrollMonthDayOnOrAfterJoin(dk, join)) continue;
 
     const phase = monthlyWorkPhaseForDateKey(dk, join, contract);
 

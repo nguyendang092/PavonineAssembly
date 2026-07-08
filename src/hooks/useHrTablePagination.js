@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
-export const HR_TABLE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
-export const HR_TABLE_DEFAULT_PAGE_SIZE = 20;
+export const HR_TABLE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+export const HR_TABLE_DEFAULT_PAGE_SIZE = 25;
 
 /** Sinh dãy số trang + «…» cho thanh phân trang HR. */
 export function buildHrTablePageNumbers(currentPage, totalPages) {

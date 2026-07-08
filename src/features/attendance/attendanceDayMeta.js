@@ -1,3 +1,8 @@
+import {
+  formatAttendanceLeaveTypeColumnDisplay,
+  getAttendanceLeaveTypeRaw,
+} from "@/features/attendance/attendanceGioVaoTypeOptions";
+
 /**
  * Metadata theo ngày tại `attendance/{YYYY-MM-DD}/_meta` (không phải bản ghi nhân viên).
  */
@@ -148,6 +153,40 @@ export function normalizeDuocNghiBuForForm(dayIsCompensatory, storedRaw) {
   return isDuocNghiBuExplicitlyNo(storedRaw) ? "NO" : "YES";
 }
 
+const COMPENSATORY_NB_BLOCKED_LEAVE_CODES = new Set(["NV", "TS"]);
+
+function attendanceLeaveShortBlocksCompensatoryNb(emp) {
+  if (!emp || typeof emp !== "object") return false;
+  const leaveRaw = getAttendanceLeaveTypeRaw(emp);
+  if (!leaveRaw) return false;
+  const leaveShort = formatAttendanceLeaveTypeColumnDisplay(leaveRaw);
+  return COMPENSATORY_NB_BLOCKED_LEAVE_CODES.has(leaveShort);
+}
+
+/** Loại phép NV — không hiển thị / không đếm NB nghỉ bù lịch. */
+export function isAttendanceLeaveTypeNv(emp) {
+  if (!emp || typeof emp !== "object") return false;
+  const leaveRaw = getAttendanceLeaveTypeRaw(emp);
+  if (!leaveRaw) return false;
+  return formatAttendanceLeaveTypeColumnDisplay(leaveRaw) === "NV";
+}
+
+/**
+ * Ngày nghỉ bù lịch có được tính/hiển thị NB cho nhân viên.
+ * @param {{ isCompensatoryDay?: boolean } | Record<string, unknown> | null | undefined} dayCtx — chunk ngày hoặc snapshot `attendance/{ngày}`
+ * @param {unknown} [emp]
+ */
+export function isCompensatoryNbVisibleForDayContext(dayCtx, emp) {
+  const isCompDay =
+    Boolean(dayCtx?.isCompensatoryDay) || getIsCompensatoryDayFromRaw(dayCtx);
+  if (!isCompDay) return false;
+  if (emp != null) {
+    if (attendanceLeaveShortBlocksCompensatoryNb(emp)) return false;
+    if (isDuocNghiBuExplicitlyNo(emp?.duocNghiBu)) return false;
+  }
+  return true;
+}
+
 /**
  * Lưới tháng / Excel: ký hiệu ô dòng chính khi `getPayrollMonthlyMainRowCell` trả `dash`.
  * `emp == null` = chưa có dòng điểm danh → NB theo lịch (nếu ngày nghỉ bù).
@@ -157,10 +196,7 @@ export function normalizeDuocNghiBuForForm(dayIsCompensatory, storedRaw) {
 export function payrollMonthMainRowDashMark(ch, emp) {
   if (!ch) return " ";
   if (ch.isHolidayDay) return "NL";
-  if (ch.isCompensatoryDay) {
-    if (emp == null) return "NB";
-    return isDuocNghiBuExplicitlyNo(emp?.duocNghiBu) ? " " : "NB";
-  }
+  if (isCompensatoryNbVisibleForDayContext(ch, emp)) return "NB";
   return " ";
 }
 

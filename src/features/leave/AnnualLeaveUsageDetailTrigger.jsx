@@ -135,6 +135,9 @@ function AnnualLeaveUsageDetailTrigger({
         year={year}
         t={t}
         loading={detailLoading}
+        empKey={empKey}
+        attendanceRootPath={attendanceRootPath}
+        throughDateKey={throughDateKey}
       />
     </>
   );
