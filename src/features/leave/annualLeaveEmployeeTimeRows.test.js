@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildEmployeeAttendanceTimeRows } from "./annualLeaveEmployeeTimeRows";
+import { buildEmployeeAttendanceDayRow, buildEmployeeAttendanceTimeRows } from "./annualLeaveEmployeeTimeRows";
 
 describe("buildEmployeeAttendanceTimeRows", () => {
   const attendanceRoot = {
@@ -126,6 +126,39 @@ describe("buildEmployeeAttendanceTimeRows", () => {
     expect(rows[0]).toMatchObject({
       dateKey: "2026-06-06",
       leaveType: "TS",
+    });
+  });
+});
+
+describe("buildEmployeeAttendanceDayRow", () => {
+  it("returns attendance fields for one date", () => {
+    const row = buildEmployeeAttendanceDayRow(
+      {
+        "2026-06-03": {
+          emp_240324: {
+            mnv: "240324",
+            loaiPhep: "Phép năm",
+          },
+        },
+      },
+      "2026-06-03",
+      "emp_240324",
+    );
+    expect(row).toMatchObject({
+      dateKey: "2026-06-03",
+      timeIn: "—",
+      timeOut: "—",
+      leaveType: "PN",
+      hasRecord: true,
+    });
+  });
+
+  it("returns empty row when day is missing", () => {
+    const row = buildEmployeeAttendanceDayRow({}, "2026-06-02", "emp_240324");
+    expect(row).toMatchObject({
+      dateKey: "2026-06-02",
+      hasRecord: false,
+      timeIn: "—",
     });
   });
 });

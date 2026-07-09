@@ -312,6 +312,27 @@
   transition: width 0.35s ease;
 }
 
+.annual-leave-detail-summary-card-clickable {
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.annual-leave-detail-summary-card-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -12px rgb(15 23 42 / 0.35);
+}
+
+.annual-leave-detail-summary-card-clickable:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
+
 .annual-leave-detail-summary-card-balance {
   background: linear-gradient(145deg, #ecfdf5 0%, #a7f3d0 100%);
   border-color: rgb(52 211 153 / 0.45);
@@ -491,6 +512,21 @@
   font-size: 0.75rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.annual-leave-detail-day-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px -6px rgb(15 23 42 / 0.35);
+}
+
+.annual-leave-detail-day-item:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
 }
 
 .annual-leave-detail-day-item-pn {

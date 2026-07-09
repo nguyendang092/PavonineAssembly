@@ -207,12 +207,51 @@ col.annual-leave-col-detail {
 
 .annual-leave-detail-title {
   margin: 0;
-  font-size: 1.1875rem;
+  font-size: 1.0625rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.25;
   color: #fff;
   text-shadow: 0 1px 2px rgb(15 23 42 / 0.25);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.annual-leave-detail-employee-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.annual-leave-detail-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.18rem 0.45rem 0.18rem 0.38rem;
+  border-radius: 0.375rem;
+  background: rgb(255 255 255 / 0.18);
+  border: 1px solid rgb(255 255 255 / 0.24);
+}
+
+.annual-leave-detail-meta-label {
+  flex-shrink: 0;
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(224 242 254 / 0.9);
+}
+
+.annual-leave-detail-meta-value {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .annual-leave-detail-meta {
@@ -258,6 +297,88 @@ col.annual-leave-col-detail {
   background: rgb(255 255 255 / 0.16);
   color: #e0f2fe;
   border-color: rgb(186 230 253 / 0.35);
+}
+
+.annual-leave-detail-scope-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  padding: 0.625rem 1.375rem;
+  border-bottom: 1px solid rgb(226 232 240);
+  background: #f8fafc;
+}
+
+.dark .annual-leave-detail-scope-bar {
+  border-bottom-color: rgb(51 65 85);
+  background: rgb(30 41 59 / 0.55);
+}
+
+.annual-leave-detail-scope-label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.dark .annual-leave-detail-scope-label {
+  color: #94a3b8;
+}
+
+.annual-leave-detail-year-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.annual-leave-detail-year-select-label {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  line-height: 1;
+}
+
+.dark .annual-leave-detail-year-select-label {
+  color: #94a3b8;
+}
+
+.annual-leave-detail-year-select-input {
+  min-width: 5.25rem;
+  min-height: 2rem;
+  padding: 0.25rem 1.5rem 0.25rem 0.625rem;
+  border: 1px solid rgb(203 213 225);
+  border-radius: 0.5rem;
+  background: #fff
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 0.45rem center;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #0f766e;
+  cursor: pointer;
+  appearance: none;
+}
+
+.dark .annual-leave-detail-year-select-input {
+  border-color: rgb(71 85 105);
+  background-color: rgb(15 23 42);
+  color: #5eead4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235eead4' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+.annual-leave-detail-year-select-input:focus {
+  outline: none;
+}
+
+.annual-leave-detail-year-select-input:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
+
+.dark .annual-leave-detail-year-select-input:focus-visible {
+  outline-color: #5eead4;
 }
 
 .annual-leave-detail-close {

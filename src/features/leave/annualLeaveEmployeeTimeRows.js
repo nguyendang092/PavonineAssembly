@@ -118,3 +118,40 @@ export function buildEmployeeAttendanceTimeRows(
   rows.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
   return rows;
 }
+
+/**
+ * Một ngày điểm danh của nhân viên — dùng popup chi tiết ngày nghỉ phép.
+ * @returns {{ dateKey: string, timeIn: string, timeOut: string, leaveType: string, shift: string, hasRecord: boolean } | null}
+ */
+export function buildEmployeeAttendanceDayRow(attendanceRootData, dateKey, empKey) {
+  const targetKey = String(empKey ?? "").trim();
+  const dk = String(dateKey ?? "").trim();
+  if (!targetKey || !dk || !attendanceRootData || typeof attendanceRootData !== "object") {
+    return null;
+  }
+
+  const dayData = attendanceRootData[dk];
+  if (!dayData || typeof dayData !== "object") {
+    return {
+      dateKey: dk,
+      timeIn: "—",
+      timeOut: "—",
+      leaveType: "—",
+      shift: "—",
+      hasRecord: false,
+    };
+  }
+
+  const raw = resolveAttendanceDayRecordForEmpKey(dayData, targetKey);
+  const compensatoryNb = isCompensatoryNbVisibleForDayContext(dayData, raw);
+  const fields = raw ? pickAttendanceEmployeeDayFields(raw) : null;
+
+  return {
+    dateKey: dk,
+    timeIn: fields ? formatTimeInDisplay(fields.timeIn) : "—",
+    timeOut: fields ? formatTimeOutDisplay(fields.timeOut) : "—",
+    leaveType: resolveLeaveTypeForTimeRow(raw, compensatoryNb),
+    shift: fields ? String(fields.shiftCode ?? "").trim() || "—" : "—",
+    hasRecord: Boolean(raw && attendanceDayHasSignal(fields)),
+  };
+}
