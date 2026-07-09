@@ -445,6 +445,7 @@ export default function PayrollMonthlyTimeInOutModal({
     loadMonth,
   } = usePayrollMonthDayChunks({
     monthKeys: monthRange.keys,
+    liveEnabled: open,
     tlPage,
     emptyMessageKey: "monthlyTimeInOutEmpty",
     errorMessageKey: "monthlyTimeInOutError",

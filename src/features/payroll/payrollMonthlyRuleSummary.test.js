@@ -566,11 +566,53 @@ describe("buildMonthlyRuleSummary — Nghỉ bù (NB)", () => {
   const trialKey = "2026-01-14";
   const officialKey = "2026-01-16";
 
-  it("đếm NB theo cờ ngày nghỉ bù ở cả 3 khối tháng", () => {
+  it("không đếm NB khi ngày nghỉ bù có giờ công — chỉ đếm khi ô lưới là NB", () => {
     const emp = {
       id: empId,
       gioVao: "08:00",
       gioRa: "17:00",
+      caLamViec: "S1",
+      duocNghiBu: "YES",
+      loaiPhep: "",
+    };
+    const dayChunks = new Map([
+      [
+        trialKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: true,
+          employees: [emp],
+        }),
+      ],
+      [
+        officialKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: true,
+          employees: [emp],
+        }),
+      ],
+    ]);
+    const summaries = buildMonthlyRuleSummary(
+      dayChunks,
+      [trialKey, officialKey],
+      empId,
+      { ngayVaoLam: "2020-01-01", ngayHopDong: officialKey },
+    );
+
+    expect(summaries.total.nbDays).toBe(0);
+    expect(summaries.trial.nbDays).toBe(0);
+    expect(summaries.official.nbDays).toBe(0);
+    expect(summaries.total.workHours).toBeGreaterThan(0);
+  });
+
+  it("đếm NB khi ngày nghỉ bù không có giờ công ở cả 3 khối tháng", () => {
+    const emp = {
+      id: empId,
+      gioVao: "",
+      gioRa: "",
       caLamViec: "S1",
       duocNghiBu: "YES",
       loaiPhep: "",

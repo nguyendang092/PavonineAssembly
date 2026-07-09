@@ -378,9 +378,11 @@ export default function AnnualLeaveUsageDetailModal({
       return;
     }
     setSelectedYear(Number(year));
-    setYearDetail(detail);
-    setYearLoading(loading);
-  }, [open, year, detail, loading]);
+    if (!empKey) {
+      setYearDetail(detail);
+      setYearLoading(loading);
+    }
+  }, [open, year, empKey, detail, loading]);
 
   useEffect(() => {
     if (!open) return;

@@ -1154,6 +1154,7 @@ export default function PayrollMonthlyTimesheetModal({
     loadMonth,
   } = usePayrollMonthDayChunks({
     monthKeys: monthRange.keys,
+    liveEnabled: open,
     tlPage,
   });
 

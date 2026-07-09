@@ -180,7 +180,11 @@ export function payrollMonthlyLeaveUnitsForEmployee(emp) {
 }
 
 function compensatoryNbUnits(ch, emp) {
-  return isCompensatoryNbVisibleForDayContext(ch, emp) ? 1 : 0;
+  if (!isCompensatoryNbVisibleForDayContext(ch, emp)) return 0;
+  if (emp == null) return 1;
+  const main = getPayrollMonthlyMainRowCell(emp, ch);
+  if (main.kind === "hours" || main.kind === "leave") return 0;
+  return 1;
 }
 
 function addPayrollMonthlyLeaveColumnCounts(out, emp, ch) {

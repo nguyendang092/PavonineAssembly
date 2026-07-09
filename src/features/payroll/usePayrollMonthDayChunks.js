@@ -1,10 +1,13 @@
 import {
   useCallback,
   useDeferredValue,
+  useEffect,
   useRef,
   useState,
   startTransition,
 } from "react";
+import { db, ref, onValue } from "@/services/firebase";
+import { buildPayrollMonthDayChunkFromRaw } from "@/features/payroll/buildPayrollDayFromRaw";
 import { fetchPayrollMonthDayChunks } from "@/features/payroll/payrollMonthlyGridData";
 import {
   PAYROLL_MONTH_FETCH_BATCH_SIZE,
@@ -16,6 +19,7 @@ import {
  */
 export function usePayrollMonthDayChunks({
   monthKeys,
+  liveEnabled = false,
   tlPage,
   emptyMessageKey = "monthlyTimesheetEmpty",
   emptyMessageDefault = "Không có dữ liệu điểm danh nào trong tháng này.",
@@ -82,6 +86,28 @@ export function usePayrollMonthDayChunks({
       }
     }
   }, [monthKeys, tlPage, emptyMessageKey, emptyMessageDefault, errorMessageKey]);
+
+  useEffect(() => {
+    if (!liveEnabled || !monthKeys?.length) return;
+
+    const unsubs = monthKeys.map((dateKey) =>
+      onValue(ref(db, `attendance/${dateKey}`), (snapshot) => {
+        const chunk = buildPayrollMonthDayChunkFromRaw(snapshot.val(), dateKey);
+        if (!chunk) return;
+        startTransition(() => {
+          setDayChunks((prev) => {
+            const byDate = new Map(prev.map((c) => [c.dateKey, c]));
+            byDate.set(dateKey, chunk);
+            return monthKeys.map((dk) => byDate.get(dk)).filter(Boolean);
+          });
+        });
+      }),
+    );
+
+    return () => {
+      for (const unsub of unsubs) unsub();
+    };
+  }, [liveEnabled, monthKeys]);
 
   return {
     dayChunks,
