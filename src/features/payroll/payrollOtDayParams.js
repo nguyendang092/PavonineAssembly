@@ -18,6 +18,7 @@ export function payrollOtDayParamsFromEmp(emp, dayCtx) {
     isOffDay: dayCtx.isOffDay ?? false,
     isHolidayDay: dayCtx.isHolidayDay ?? false,
     isCompensatoryDay: dayCtx.isCompensatoryDay ?? false,
+    dateKey: dayCtx.dateKey ?? null,
     shiftCode: emp[PAYROLL_EMP.SHIFT],
     leaveType: emp[PAYROLL_EMP.LEAVE_TYPE],
     payrollEarlyOtPaperwork: resolveEffectivePayrollEarlyOtPaperwork(emp),
@@ -58,6 +59,7 @@ export function payrollOtDayParamsFromEmpWithMaps(
  *   isOffDay?: boolean,
  *   isHolidayDay?: boolean,
  *   isCompensatoryDay?: boolean,
+ *   dateKey?: string,
  *   earlyOtPaperworkById?: Record<string, boolean>,
  *   lateOtExcludedById?: Record<string, boolean>,
  * } | null | undefined} monthDayChunk

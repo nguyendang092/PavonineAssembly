@@ -23,6 +23,43 @@ import { isDuocNghiBuExplicitlyNo } from "@/features/attendance/attendanceDayMet
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
 import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
+import { parseLocalDateKey } from "@/utils/dateKey";
+
+/** Chủ nhật trên lưới tháng — giờ công hiển thị ô dòng chính (hệ số 0), không ô TC. */
+export function isPayrollMonthSundayDateKey(dateKey) {
+  const pd = parseLocalDateKey(String(dateKey ?? ""));
+  return Boolean(pd && pd.getDay() === 0);
+}
+
+function isPayrollMonthSundayOffOrHoliday(ch) {
+  if (!isPayrollMonthSundayDateKey(ch?.dateKey)) return false;
+  if (ch?.isCompensatoryDay) return false;
+  return Boolean(ch?.isOffDay || ch?.isHolidayDay);
+}
+
+function getPayrollMonthSundayOffHolidayMainRowHours(emp, ch) {
+  if (!isPayrollMonthSundayOffOrHoliday(ch)) return null;
+  const p = payrollOtDayParamsFromMonthChunkEmp(emp, ch);
+  if (isNightShiftCaLamViec(p.shiftCode)) return null;
+  const flags = resolvePayrollMonthlyRegimeFlags(p);
+
+  const m = getPayrollDayShiftOffHolidayMergedHoursNumeric(
+    p.timeIn,
+    p.timeOut,
+    Boolean(ch.isOffDay),
+    Boolean(ch.isHolidayDay),
+    p.shiftCode,
+    p.payrollEarlyOtPaperwork,
+    p.leaveType,
+    p.payrollLateOtExcluded,
+    flags.includeTapVuInWorkingHours,
+    flags.includeThaiSanInWorkingHours,
+    flags.includeTaiXeInWorkingHours,
+    flags.includeTaiXeTongInWorkingHours,
+    p.lunchOtHours,
+  );
+  return m != null && m > 0 ? roundHoursToTenths(m) : null;
+}
 
 /** Trần giờ công dòng chính ngày nghỉ bù — phần vượt sang hệ số TC tương ứng. */
 const PAYROLL_MONTH_COMP_MAIN_MAX_HOURS = 8;
@@ -122,6 +159,7 @@ function payrollMonthCompensatoryOtCoefficientLines(p) {
  *   payrollLateOtExcluded: boolean | undefined,
  *   lunchOtHours?: unknown,
  *   leaveType?: unknown,
+ *   dateKey?: string | null,
  * }} p
  * @returns {{ coeff: number; hours: number; key: string }[]}
  */
@@ -137,6 +175,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     payrollLateOtExcluded,
     lunchOtHours,
     leaveType,
+    dateKey = null,
   } = p;
   const strictOffDay = isOffDay || isCompensatoryDay;
   const {
@@ -147,6 +186,15 @@ export function getPayrollMonthlyCoefficientLines(p) {
   } = resolvePayrollMonthlyRegimeFlags(p);
   const night = isNightShiftCaLamViec(shiftCode);
   const lines = [];
+
+  if (
+    isPayrollMonthSundayDateKey(dateKey) &&
+    !isCompensatoryDay &&
+    !night &&
+    (isOffDay || isHolidayDay)
+  ) {
+    return lines;
+  }
 
   if (isHolidayDay) {
     if (night) {
@@ -404,9 +452,17 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     if (nbHours != null) return { kind: "hours", hours: nbHours };
     return { kind: "dash" };
   }
+  const sundayMainHours = getPayrollMonthSundayOffHolidayMainRowHours(emp, ch);
+  if (sundayMainHours != null) {
+    return { kind: "hours", hours: sundayMainHours };
+  }
   if (night) {
-    const nightGc = getPayrollMonthNightShiftGcHoursForMainRow(emp, ch);
-    if (nightGc != null) return { kind: "hours", hours: nightGc };
+    if (!isPayrollMonthSundayDateKey(ch?.dateKey)) {
+      const nightGc = getPayrollMonthNightShiftGcHoursForMainRow(emp, ch);
+      if (nightGc != null) return { kind: "hours", hours: nightGc };
+    } else {
+      return { kind: "dash" };
+    }
   }
   if (ch.isOffDay || ch.isHolidayDay) {
     return { kind: "dash" };
@@ -442,6 +498,7 @@ export function getPayrollMonthlyCoeffHoursMap(p) {
 /** Hệ số dòng GC ca đêm (trước khi chuyển giờ lên dòng chính lưới). */
 export function payrollMonthNightShiftGcCoeffForMainRowDisplay(ch) {
   if (ch?.isCompensatoryDay) return null;
+  if (isPayrollMonthSundayOffOrHoliday(ch)) return null;
   if (ch?.isHolidayDay) return 3.9;
   if (ch?.isOffDay) return 2.7;
   return 0.3;
@@ -488,6 +545,7 @@ export function shouldPayrollMonthNightShiftShowShiftBadgeOnCoeff({
   if (!emp || sr.coeff == null || !isPayrollMonthNightShiftEmployee(emp)) {
     return false;
   }
+  if (isPayrollMonthSundayDateKey(ch?.dateKey)) return false;
   const badgeCoeff = payrollMonthNightShiftShiftBadgeCoeff(ch, main);
   if (badgeCoeff == null || sr.coeff !== badgeCoeff) return false;
   if (ch?.isCompensatoryDay) return true;
