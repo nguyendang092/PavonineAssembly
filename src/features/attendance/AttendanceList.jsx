@@ -45,6 +45,11 @@ import {
   AttendanceListFilteredDataBranchContext,
   AttendanceListComboBranchContext,
 } from "./attendanceListBranchContexts";
+import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimesheetModal";
+import {
+  isKoreanAttendanceRoot,
+  KOREAN_ATTENDANCE_ROOT,
+} from "./attendanceSeasonalStt";
 
 const AttendanceList = memo(function AttendanceList({
   attendanceRootPath = "attendance",
@@ -62,6 +67,7 @@ const AttendanceList = memo(function AttendanceList({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [offDaysModalOpen, setOffDaysModalOpen] = useState(false);
+  const [monthlyTimesheetOpen, setMonthlyTimesheetOpen] = useState(false);
   const { t, i18n } = useTranslation();
   const { user, userDepartments, userRole } = useUser();
   const ui = useAttendanceListUiState(user);
@@ -148,6 +154,34 @@ const AttendanceList = memo(function AttendanceList({
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { tl, tlComboStat, displayLocale } = useAttendanceListI18n(t, i18n);
+  const tlPayrollPage = useCallback(
+    (key, defaultValue, options = {}) =>
+      t(`payrollSalary.${key}`, {
+        ...(defaultValue !== undefined ? { defaultValue } : {}),
+        ...options,
+      }),
+    [t],
+  );
+  const showKoreanMonthlyTimesheet = isKoreanAttendanceRoot(attendanceRootPath);
+
+  const koreanMonthlyDepartmentFilter = useMemo(() => {
+    if (Array.isArray(departmentListFilter)) {
+      return departmentListFilter[0] ?? "";
+    }
+    return String(departmentListFilter ?? "").trim();
+  }, [departmentListFilter]);
+
+  const handleKoreanMonthlyDepartmentFilterChange = useCallback((value) => {
+    const v = String(value ?? "").trim();
+    setDepartmentListFilter(v ? [v] : []);
+  }, [setDepartmentListFilter]);
+
+  useEffect(() => {
+    if (!Array.isArray(departmentListFilter)) {
+      const v = String(departmentListFilter ?? "").trim();
+      setDepartmentListFilter(v ? [v] : []);
+    }
+  }, [departmentListFilter, setDepartmentListFilter]);
 
   useAttendanceChartOrderHydration(
     userEmailKey,
@@ -487,6 +521,10 @@ const AttendanceList = memo(function AttendanceList({
       handleDeleteAllData,
       handlePrintOvertimeList,
       handlePrintAttendanceList,
+      showKoreanMonthlyTimesheet,
+      onOpenMonthlyTimesheet: showKoreanMonthlyTimesheet
+        ? () => setMonthlyTimesheetOpen(true)
+        : null,
     }),
     [
       navbarMobileMenuOpen,
@@ -564,6 +602,7 @@ const AttendanceList = memo(function AttendanceList({
       handleDeleteAllData,
       handlePrintOvertimeList,
       handlePrintAttendanceList,
+      showKoreanMonthlyTimesheet,
     ],
   );
 
@@ -806,6 +845,27 @@ const AttendanceList = memo(function AttendanceList({
           onConfirmExport={handleExportAttendanceDateRange}
           tl={tl}
         />
+
+        {showKoreanMonthlyTimesheet ? (
+          <PayrollMonthlyTimesheetModal
+            open={monthlyTimesheetOpen}
+            onClose={() => setMonthlyTimesheetOpen(false)}
+            anchorDateKey={selectedDate}
+            displayLocale={displayLocale}
+            tlPage={tlPayrollPage}
+            searchTerm={searchTerm}
+            departmentFilter={koreanMonthlyDepartmentFilter}
+            payrollDepartmentOptions={departments}
+            onDepartmentFilterChange={handleKoreanMonthlyDepartmentFilterChange}
+            normalizeDepartment={normalizeDepartment}
+            user={user}
+            userRole={userRole}
+            userDepartments={userDepartments}
+            onAlert={setAlert}
+            employees={employees}
+            attendanceRootPath={KOREAN_ATTENDANCE_ROOT}
+          />
+        ) : null}
 
         <AttendanceListSearchBranchContext.Provider value={searchBranchValue}>
           <AttendanceListToolbarBranchContext.Provider

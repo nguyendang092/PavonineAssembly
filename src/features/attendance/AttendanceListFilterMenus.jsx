@@ -101,6 +101,8 @@ function AttendanceListFilterMenus({
   handleDeleteAllData,
   handlePrintOvertimeList,
   handlePrintAttendanceList,
+  showKoreanMonthlyTimesheet = false,
+  onOpenMonthlyTimesheet = null,
 }) {
   const hasAdvancedFilters =
     loaiPhepFilter.length > 0 ||
@@ -243,6 +245,35 @@ function AttendanceListFilterMenus({
                     closeToolsMenu();
                   }}
                 />
+
+                {showKoreanMonthlyTimesheet && onOpenMonthlyTimesheet ? (
+                  <>
+                    <ToolsMenuSection
+                      label={tl("toolsSectionMonthlyTimesheet", "Xem giờ công")}
+                    />
+                    <ToolsMenuItem
+                      icon="▦"
+                      title={t("payrollSalary.monthlyTimesheetButton", {
+                        defaultValue: "Xem giờ công",
+                      })}
+                      hint={t(
+                        "payrollSalary.koreanMonthlyTimesheetButtonHint",
+                        {
+                          defaultValue: t(
+                            "payrollSalary.monthlyTimesheetButtonHint",
+                            {
+                              defaultValue: "Bảng chấm công tháng.",
+                            },
+                          ),
+                        },
+                      )}
+                      onClick={() => {
+                        onOpenMonthlyTimesheet();
+                        closeToolsMenu();
+                      }}
+                    />
+                  </>
+                ) : null}
 
                 {user ? (
                   <>

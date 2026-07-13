@@ -435,9 +435,11 @@ export function formatPayrollMonthWeekday3(date) {
 }
 
 /**
- * Tải dữ liệu `attendance/{ngày}` cho cả tháng — batch 4 ngày/lần.
+ * Tải dữ liệu `{attendanceRootPath}/{ngày}` cho cả tháng — batch 4 ngày/lần.
+ * @param {string} [hooks.attendanceRootPath="attendance"] — `attendance` hoặc `koreanAttendance`
  */
 export async function fetchPayrollMonthDayChunks(monthKeys, hooks = {}) {
+  const attendanceRootPath = hooks.attendanceRootPath ?? "attendance";
   const allChunks = [];
   const batchSize =
     hooks.batchSize ?? PAYROLL_MONTH_FETCH_BATCH_SIZE;
@@ -448,7 +450,7 @@ export async function fetchPayrollMonthDayChunks(monthKeys, hooks = {}) {
     const batchKeys = monthKeys.slice(i, i + batchSize);
     const batchResults = await Promise.all(
       batchKeys.map(async (dateKey) => {
-        const snap = await get(ref(db, `attendance/${dateKey}`));
+        const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
         return buildPayrollMonthDayChunkFromRaw(snap.val(), dateKey);
       }),
     );

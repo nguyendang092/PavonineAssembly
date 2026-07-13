@@ -1035,6 +1035,7 @@ const vi = {
     sidebarPersonnel: "Nhân sự",
     toolsMenu: "Công cụ",
     toolsSectionFilter: "Bộ lọc",
+    toolsSectionMonthlyTimesheet: "Xem giờ công",
     toolsSectionActions: "Chức năng",
     toolsSectionPrint: "In",
     comboChart: "Thống kê",
@@ -1384,6 +1385,10 @@ const vi = {
     empty: "Chọn khoảng ngày và bấm «Tính lương».",
     monthlyTimesheetButton: "Xem giờ công",
     monthlyTimesheetButtonHint: "Xem bảng chấm công theo từng ngày.",
+    koreanMonthlyTimesheetButtonHint: "Bảng chấm công tháng.",
+    koreanMonthlyTimesheetTitle: "KOREAN TIMESHEET - Bảng chấm công tháng",
+    koreanMonthlyTimesheetEmpty:
+      "Không có dữ liệu điểm danh Korean Timesheet trong tháng này.",
     monthlyGridMenu: "Xem giờ công",
     monthlyGridMenuHint:
       "Mở bảng chấm công tháng hoặc lưới giờ vào / ra tháng.",

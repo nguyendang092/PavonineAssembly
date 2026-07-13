@@ -68,6 +68,7 @@ import {
   buildPayrollMonthGridOverlayCopy,
   usePayrollMonthModalScrollLock,
 } from "@/features/payroll/payrollMonthModalUi";
+import { isKoreanAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 import { usePayrollMonthDayChunks } from "@/features/payroll/usePayrollMonthDayChunks";
 import { usePayrollMonthEmployeeIndex } from "@/features/payroll/usePayrollMonthEmployeeIndex";
 import { usePayrollMonthSummaries } from "@/features/payroll/usePayrollMonthSummaries";
@@ -146,8 +147,7 @@ const MONTH_DAY_MAIN_CELL_CLASS =
 const MONTH_DAY_MAIN_VALUE_CLASS =
   "pm-ts-day-value tabular-nums text-black dark:text-black";
 
-const MONTH_DAY_LEAVE_BADGE_BASE_CLASS =
-  "pm-ts-leave-badge";
+const MONTH_DAY_LEAVE_BADGE_BASE_CLASS = "pm-ts-leave-badge";
 
 /** In A3 — cùng cỡ với ô ngày dòng chính (6.5pt). */
 const MONTH_DAY_PRINT_MAIN_FONT_STYLE =
@@ -441,7 +441,12 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
       bodyParts.push(
         `<td style="text-align:center;font-family:monospace;font-weight:700;${btm}">${coeffLabel}</td>`,
       );
-      appendDayCells(employeeDayCellsById.get(id) ?? [], sr, isLastSub, bodyParts);
+      appendDayCells(
+        employeeDayCellsById.get(id) ?? [],
+        sr,
+        isLastSub,
+        bodyParts,
+      );
       const detailVals = detailMatrix[si] ?? [];
       for (let idx = 0; idx < detailVals.length; idx++) {
         const v = detailVals[idx];
@@ -836,9 +841,7 @@ const PayrollMonthlyTimesheetDayCell = memo(
           <div className="pm-ts-day-value-wrap">
             <span
               className={
-                dayMark !== " "
-                  ? MONTH_DAY_MAIN_VALUE_CLASS
-                  : "pm-ts-day-empty"
+                dayMark !== " " ? MONTH_DAY_MAIN_VALUE_CLASS : "pm-ts-day-empty"
               }
             >
               {dayMark}
@@ -986,9 +989,7 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
                   className={`${STICKY_TD_BASE_CLASS} ${stickyColClass(1)} pm-ts-name-col text-center align-middle leading-tight ${STRONG_BORDER_BOTTOM_CLASS}`}
                   title={rep?.hoVaTen ?? ""}
                 >
-                  <div className="pm-ts-name-cell">
-                    {rep?.hoVaTen ?? "—"}
-                  </div>
+                  <div className="pm-ts-name-cell">{rep?.hoVaTen ?? "—"}</div>
                 </td>
               ) : null}
               <td
@@ -1082,6 +1083,8 @@ export default function PayrollMonthlyTimesheetModal({
   onAlert,
   /** Danh sách NV ngày đang chọn trên trang lương (fallback khi mở form). */
   employees = [],
+  /** Firebase root — `attendance` (mặc định) hoặc `koreanAttendance`. */
+  attendanceRootPath = "attendance",
 }) {
   const [localNameFilter, setLocalNameFilter] = useState("");
   const [headerRowTops, setHeaderRowTops] = useState(
@@ -1112,6 +1115,14 @@ export default function PayrollMonthlyTimesheetModal({
       year: "numeric",
     });
   }, [monthRange.first, anchorDateKey, displayLocale]);
+
+  const isKoreanTimesheetSource = isKoreanAttendanceRoot(attendanceRootPath);
+  const timesheetTitleKey = isKoreanTimesheetSource
+    ? "koreanMonthlyTimesheetTitle"
+    : "monthlyTimesheetTitle";
+  const timesheetTitleDefault = isKoreanTimesheetSource
+    ? "KOREAN TIMESHEET - Bảng chấm công tháng"
+    : "Bảng chấm công tháng";
 
   const timesheetZoom = TIMESHEET_ZOOM_LEVELS[timesheetZoomIdx];
 
@@ -1154,8 +1165,15 @@ export default function PayrollMonthlyTimesheetModal({
     loadMonth,
   } = usePayrollMonthDayChunks({
     monthKeys: monthRange.keys,
+    attendanceRootPath,
     liveEnabled: open,
     tlPage,
+    emptyMessageKey: isKoreanTimesheetSource
+      ? "koreanMonthlyTimesheetEmpty"
+      : "monthlyTimesheetEmpty",
+    emptyMessageDefault: isKoreanTimesheetSource
+      ? "Không có dữ liệu điểm danh Korean Timesheet trong tháng này."
+      : "Không có dữ liệu điểm danh nào trong tháng này.",
   });
 
   useEffect(() => {
@@ -1176,15 +1194,12 @@ export default function PayrollMonthlyTimesheetModal({
   const { sortedIds, repById, chunkByDate, chunkByDateLive } =
     usePayrollMonthEmployeeIndex(dayChunks, displayDayChunks);
 
-  const openDayCellForm = useCallback(
-    (dateKey, dayEmps, formInitial) => {
-      setDayCellFormEmployees(dayEmps);
-      setDayCellFormDate(dateKey);
-      setDayCellFormInitial(formInitial);
-      setDayCellFormOpen(true);
-    },
-    [],
-  );
+  const openDayCellForm = useCallback((dateKey, dayEmps, formInitial) => {
+    setDayCellFormEmployees(dayEmps);
+    setDayCellFormDate(dateKey);
+    setDayCellFormInitial(formInitial);
+    setDayCellFormOpen(true);
+  }, []);
 
   const openDayCellEditor = useCallback(
     (dateKey, rowId) => {
@@ -1304,17 +1319,14 @@ export default function PayrollMonthlyTimesheetModal({
     normalizeDepartment,
   ]);
 
-  const {
-    monthlySummaryById,
-    isSummariesBusy,
-    summaryProgress,
-  } = usePayrollMonthSummaries({
-    enabled: open,
-    monthKeys: monthRange.keys,
-    chunkByDate,
-    filteredIds,
-    repById,
-  });
+  const { monthlySummaryById, isSummariesBusy, summaryProgress } =
+    usePayrollMonthSummaries({
+      enabled: open,
+      monthKeys: monthRange.keys,
+      chunkByDate,
+      filteredIds,
+      repById,
+    });
 
   const isGridFullyBusy = isGridBusy || isSummariesBusy;
 
@@ -1327,13 +1339,7 @@ export default function PayrollMonthlyTimesheetModal({
         isSummariesBusy,
         summaryProgress,
       }),
-    [
-      tlPage,
-      loadingMore,
-      isDisplayStale,
-      isSummariesBusy,
-      summaryProgress,
-    ],
+    [tlPage, loadingMore, isDisplayStale, isSummariesBusy, summaryProgress],
   );
 
   const monthDayMeta = useMemo(
@@ -1487,7 +1493,7 @@ export default function PayrollMonthlyTimesheetModal({
   const handlePrintA3WorkTimeOnly = useCallback(() => {
     if (!filteredIds.length || !monthRange.keys.length) return;
     const labels = {
-      docTitle: `${tlPage("monthlyTimesheetTitle", "PAVONINE - Bảng chấm công")} — ${monthTitle}`,
+      docTitle: `${tlPage(timesheetTitleKey, timesheetTitleDefault)} — ${monthTitle}`,
       stt: tlPage("monthlyTimesheetColStt", "STT"),
       name: tlPage("monthlyTimesheetColName", "Họ và tên"),
       mnv: tlPage("monthlyTimesheetColMnv", "MNV"),
@@ -1599,7 +1605,7 @@ export default function PayrollMonthlyTimesheetModal({
                 id="payroll-monthly-timesheet-title"
                 className="truncate text-sm font-extrabold uppercase tracking-wide text-white sm:text-base"
               >
-                {tlPage("monthlyTimesheetTitle", "Bảng chấm công tháng")}
+                {tlPage(timesheetTitleKey, timesheetTitleDefault)}
                 {` (${monthTitle})`}
               </h2>
             </div>
@@ -1712,7 +1718,7 @@ export default function PayrollMonthlyTimesheetModal({
                 }
                 className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
               >
-                {tlPage("monthlyTimesheetPrintA3", "In A3 (TG làm việc)")}
+                {tlPage("monthlyTimesheetPrintA3", "In A3")}
               </button>
               <button
                 type="button"
@@ -1774,20 +1780,18 @@ export default function PayrollMonthlyTimesheetModal({
                             }}
                             className={`${STICKY_TH_BASE_CLASS} ${stickyColClass(ci)} text-center align-middle`}
                           >
-                            {ci === 3 ? (
-                              tlPage("monthlyTimesheetColDept", "BP")
-                            ) : ci === 4 ? (
-                              tlPage(
-                                "monthlyTimesheetColCoeff",
-                                "Hệ số TC",
-                              )
-                            ) : ci === 0 ? (
-                              tlPage("monthlyTimesheetColStt", "STT")
-                            ) : ci === 1 ? (
-                              tlPage("monthlyTimesheetColName", "Họ và tên")
-                            ) : (
-                              tlPage("monthlyTimesheetColMnv", "MNV")
-                            )}
+                            {ci === 3
+                              ? tlPage("monthlyTimesheetColDept", "BP")
+                              : ci === 4
+                                ? tlPage("monthlyTimesheetColCoeff", "Hệ số TC")
+                                : ci === 0
+                                  ? tlPage("monthlyTimesheetColStt", "STT")
+                                  : ci === 1
+                                    ? tlPage(
+                                        "monthlyTimesheetColName",
+                                        "Họ và tên",
+                                      )
+                                    : tlPage("monthlyTimesheetColMnv", "MNV")}
                           </th>
                         ))}
                         <th
@@ -2039,6 +2043,7 @@ export default function PayrollMonthlyTimesheetModal({
         userDepartments={userDepartments}
         onAlert={onAlert}
         onSaved={() => void loadMonth()}
+        attendanceRootPath={attendanceRootPath}
         dayIsCompensatory={Boolean(
           dayCellFormDate &&
           chunkByDate.get(dayCellFormDate)?.isCompensatoryDay,

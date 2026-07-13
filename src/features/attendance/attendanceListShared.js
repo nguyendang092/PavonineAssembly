@@ -55,10 +55,14 @@ export const ISO_DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 /** Chiều cao panel menu «Công cụ» (dropdown); chỉ thu nhỏ khi không đủ chỗ trong viewport. */
 export const ATTENDANCE_FILTER_DROPDOWN_HEIGHT_PX = 520;
 
-export function attendanceTableWrapperMinWidthClass(columnPlan) {
+export function attendanceTableWrapperMinWidthClass(
+  columnPlan,
+  layoutOptions = {},
+) {
+  const korean = Boolean(layoutOptions?.koreanAttendanceLayout);
   switch (columnPlan) {
     case "full":
-      return "min-w-[1128px]";
+      return korean ? "min-w-[1240px]" : "min-w-[1128px]";
     case "compact":
       return "min-w-[1040px]";
     case "narrow":

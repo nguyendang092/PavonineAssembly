@@ -35,12 +35,18 @@ export function useAttendanceListFilters({
     [loaiPhepFilter],
   );
 
+  const departmentFilterList = useMemo(() => {
+    if (Array.isArray(departmentListFilter)) return departmentListFilter;
+    const single = String(departmentListFilter ?? "").trim();
+    return single ? [single] : [];
+  }, [departmentListFilter]);
+
   const selectedDeptKeys = useMemo(
     () =>
       new Set(
-        departmentListFilter.map((dept) => normalizeDepartment(dept)),
+        departmentFilterList.map((dept) => normalizeDepartment(dept)),
       ),
-    [departmentListFilter, normalizeDepartment],
+    [departmentFilterList, normalizeDepartment],
   );
 
   const joinYear = String(joinDateYearFilter || "").trim();

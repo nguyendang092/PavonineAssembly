@@ -148,7 +148,7 @@ const WIDTHS_MINIMAL_NO_ACTIONS = [12, 24, 14, 5, 5, 8, 3, 3, 5, 5, 4, 3, 14];
 
 /**
  * @param {"full"|"compact"|"narrow"|"minimal"} [columnPlan="full"]
- * @param {{ seasonalOmitWorkStatus?: boolean }} [layoutOptions] — điểm danh thời vụ (`full`): không có cột «Trạng thái LV» → bỏ 1 trọng số (khớp số `<col>` với `<th>`).
+ * @param {{ seasonalOmitWorkStatus?: boolean, koreanAttendanceLayout?: boolean }} [layoutOptions]
  */
 export function getAttendanceColWidthPercents(
   showRowModalActions,
@@ -190,6 +190,21 @@ export function getAttendanceColWidthPercents(
     const copy = [...result];
     /** Trùng `FULL_ATTENDANCE_ONLY` cột 7 — `workStatus` — thời vụ không render. */
     copy.splice(6, 1);
+    result = normalizePercents(copy);
+  }
+  if (
+    layoutOptions?.koreanAttendanceLayout &&
+    tableVariant === "attendance" &&
+    columnPlan === "full" &&
+    result.length > 9
+  ) {
+    const copy = [...result];
+    /** Cột «Ngày HĐ» (`workStatus`) — index 6; «Bộ phận» (`dept`) — index 8. */
+    copy[6] = (copy[6] ?? 0) + 2;
+    copy[8] = (copy[8] ?? 0) + 3;
+    copy[3] = Math.max(2, (copy[3] ?? 0) - 2);
+    copy[4] = Math.max(2, (copy[4] ?? 0) - 1);
+    copy[9] = Math.max(2, (copy[9] ?? 0) - 2);
     result = normalizePercents(copy);
   }
   return result;

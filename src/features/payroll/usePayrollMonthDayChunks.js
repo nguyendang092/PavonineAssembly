@@ -14,11 +14,12 @@ import {
 } from "@/features/payroll/payrollMonthDataScale";
 
 /**
- * Tải `attendance/{ngày}` cả tháng — batch + `startTransition` + `useDeferredValue`
+ * Tải `{attendanceRootPath}/{ngày}` cả tháng — batch + `startTransition` + `useDeferredValue`
  * để render lưới không giật khi cập nhật từng batch.
  */
 export function usePayrollMonthDayChunks({
   monthKeys,
+  attendanceRootPath = "attendance",
   liveEnabled = false,
   tlPage,
   emptyMessageKey = "monthlyTimesheetEmpty",
@@ -45,6 +46,7 @@ export function usePayrollMonthDayChunks({
 
     try {
       const allChunks = await fetchPayrollMonthDayChunks(monthKeys, {
+        attendanceRootPath,
         isStale: () => loadSeqRef.current !== currentLoadSeq,
         onFirstBatch: (chunks) => {
           startTransition(() => {
@@ -85,13 +87,13 @@ export function usePayrollMonthDayChunks({
         setLoadingMore(false);
       }
     }
-  }, [monthKeys, tlPage, emptyMessageKey, emptyMessageDefault, errorMessageKey]);
+  }, [monthKeys, attendanceRootPath, tlPage, emptyMessageKey, emptyMessageDefault, errorMessageKey]);
 
   useEffect(() => {
     if (!liveEnabled || !monthKeys?.length) return;
 
     const unsubs = monthKeys.map((dateKey) =>
-      onValue(ref(db, `attendance/${dateKey}`), (snapshot) => {
+      onValue(ref(db, `${attendanceRootPath}/${dateKey}`), (snapshot) => {
         const chunk = buildPayrollMonthDayChunkFromRaw(snapshot.val(), dateKey);
         if (!chunk) return;
         startTransition(() => {
@@ -107,7 +109,7 @@ export function usePayrollMonthDayChunks({
     return () => {
       for (const unsub of unsubs) unsub();
     };
-  }, [liveEnabled, monthKeys]);
+  }, [liveEnabled, monthKeys, attendanceRootPath]);
 
   return {
     dayChunks,

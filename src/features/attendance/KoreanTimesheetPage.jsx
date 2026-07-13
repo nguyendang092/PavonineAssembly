@@ -6,6 +6,10 @@ import { canViewKoreanTimesheet } from "@/config/featurePermissions";
 import AttendanceList from "./AttendanceList";
 import { KOREAN_ATTENDANCE_ROOT } from "./attendanceSeasonalStt";
 
+/**
+ * Trang điểm danh nhân viên Hàn — dữ liệu Firebase `koreanAttendance/{ngày}`.
+ * Lưới tháng «Xem giờ công» cũng đọc từ cùng nguồn này.
+ */
 export default function KoreanTimesheetPage() {
   const { t } = useTranslation();
   const { user, userRole } = useUser();

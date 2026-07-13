@@ -8,7 +8,7 @@ import AttendanceTableRow, {
   getAttendanceGridTemplateColumns,
 } from "./attendanceTableRow";
 import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
-import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { isSeasonalAttendanceRoot, isKoreanAttendanceRoot } from "./attendanceSeasonalStt";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
 import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
 
@@ -31,6 +31,15 @@ function AttendanceListTableSection({
   selectedDate,
 }) {
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
+  const isKoreanAttendance = isKoreanAttendanceRoot(attendanceRootPath);
+  const attendanceLayoutOptions = useMemo(
+    () => (isKoreanAttendance ? { koreanAttendanceLayout: true } : {}),
+    [isKoreanAttendance],
+  );
+  const attendanceTableMinWidthClass = attendanceTableWrapperMinWidthClass(
+    columnPlan,
+    attendanceLayoutOptions,
+  );
   const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
   const {
     balanceByMnv: annualLeaveBalanceByMnv,
@@ -51,8 +60,9 @@ function AttendanceListTableSection({
         showRowModalActions,
         columnPlan,
         "attendance",
+        attendanceLayoutOptions,
       ),
-    [showRowModalActions, columnPlan],
+    [showRowModalActions, columnPlan, attendanceLayoutOptions],
   );
 
   const rowVirtualizer = useVirtualizer({
@@ -96,6 +106,7 @@ function AttendanceListTableSection({
       isHolidayDay,
       isCompensatoryDay,
       isSeasonalAttendance,
+      isKoreanAttendance,
       annualLeaveBalanceByMnv,
       annualLeaveYear,
       annualLeaveYearData,
@@ -115,6 +126,7 @@ function AttendanceListTableSection({
       isHolidayDay,
       isCompensatoryDay,
       isSeasonalAttendance,
+      isKoreanAttendance,
       annualLeaveBalanceByMnv,
       annualLeaveYear,
       annualLeaveYearData,
@@ -136,7 +148,7 @@ function AttendanceListTableSection({
           className="attendance-table-scroll max-h-[min(88vh,920px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain"
         >
           <div
-            className={`w-full max-w-none ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
+            className={`w-full max-w-none ${attendanceTableMinWidthClass}`}
             role="table"
           >
             <AttendanceVirtualHeader
@@ -182,11 +194,12 @@ function AttendanceListTableSection({
   return (
     <div className={`min-w-0 w-full max-w-none bg-white attendance-table-compact ${outerScrollClass}`}>
       <table
-        className={`w-full max-w-none table-fixed border-collapse ${attendanceTableWrapperMinWidthClass(columnPlan)}`}
+        className={`w-full max-w-none table-fixed border-collapse ${attendanceTableMinWidthClass}`}
       >
         <AttendanceTableColgroup
           showRowModalActions={showRowModalActions}
           columnPlan={columnPlan}
+          layoutOptions={attendanceLayoutOptions}
         />
         <AttendanceTableThead
           tl={tl}

@@ -69,6 +69,8 @@ function AttendanceToolbarSearchCluster() {
     handleDeleteAllData,
     handlePrintOvertimeList,
     handlePrintAttendanceList,
+    showKoreanMonthlyTimesheet,
+    onOpenMonthlyTimesheet,
   } = useAttendanceListToolbarBranch();
 
   return (
@@ -143,6 +145,8 @@ function AttendanceToolbarSearchCluster() {
         handleDeleteAllData={handleDeleteAllData}
         handlePrintOvertimeList={handlePrintOvertimeList}
         handlePrintAttendanceList={handlePrintAttendanceList}
+        showKoreanMonthlyTimesheet={showKoreanMonthlyTimesheet}
+        onOpenMonthlyTimesheet={onOpenMonthlyTimesheet}
       />
     </AttendanceSearchActionsBar>
   );

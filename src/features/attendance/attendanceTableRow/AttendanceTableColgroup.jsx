@@ -5,11 +5,13 @@ function AttendanceTableColgroup({
   showRowModalActions,
   columnPlan = "full",
   tableVariant = "attendance",
+  layoutOptions = {},
 }) {
   const widths = getAttendanceColWidthPercents(
     showRowModalActions,
     columnPlan,
     tableVariant,
+    layoutOptions,
   );
   return (
     <colgroup>

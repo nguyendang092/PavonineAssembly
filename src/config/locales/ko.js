@@ -1041,6 +1041,7 @@ const ko = {
     sidebarPersonnel: "인사",
     toolsMenu: "도구",
     toolsSectionFilter: "필터",
+    toolsSectionMonthlyTimesheet: "근무시간 보기",
     toolsSectionActions: "기능",
     toolsSectionPrint: "인쇄",
     comboChart: "통계",
@@ -1397,6 +1398,11 @@ const ko = {
     monthlyTimesheetButton: "근무시간 보기",
     monthlyTimesheetButtonHint:
       "선택한 날짜가 속한 달의 일별 출근 격자를 봅니다(검색·부서 필터 동일).",
+    koreanMonthlyTimesheetButtonHint:
+      "월간 출근표 — Korean Timesheet 출석 데이터 기준.",
+    koreanMonthlyTimesheetTitle: "KOREAN TIMESHEET - 월간 출근표",
+    koreanMonthlyTimesheetEmpty:
+      "이 달에 Korean Timesheet 출석 데이터가 없습니다.",
     monthlyGridMenu: "근무시간 보기",
     monthlyGridMenuHint:
       "월간 출근표 또는 월간 출·퇴근 시간표를 엽니다.",

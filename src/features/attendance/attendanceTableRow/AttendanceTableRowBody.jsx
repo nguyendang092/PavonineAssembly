@@ -65,6 +65,7 @@ function AttendanceTableRow({
   isCompensatoryDay = false,
   tableVariant = "attendance",
   isSeasonalAttendance = false,
+  isKoreanAttendance = false,
   annualLeaveBalanceByMnv = {},
   annualLeaveYear = new Date().getFullYear(),
   annualLeaveYearData = null,
@@ -273,7 +274,7 @@ function AttendanceTableRow({
             role={isGrid ? "cell" : undefined}
             style={attendanceGridCellStyle(isGrid, gcs("workStatus"))}
             className={cellCls(
-              "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-semibold tabular-nums text-gray-700",
+              "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-semibold tabular-nums text-gray-700 whitespace-nowrap",
             )}
           >
             {payrollDash(emp.ngayHopDong, isPayroll)}
@@ -294,7 +295,9 @@ function AttendanceTableRow({
           role={isGrid ? "cell" : undefined}
           style={attendanceGridCellStyle(isGrid, gcs("dept"))}
           className={cellCls(
-            `relative hidden md:table-cell min-w-0 overflow-hidden px-1.5 md:px-2 py-px text-sm text-center font-semibold text-gray-700${showDeptWrongFlag ? " pr-4" : ""}`,
+            isKoreanAttendance
+              ? `relative hidden md:table-cell px-1.5 md:px-2 py-px text-sm text-center font-semibold text-gray-700 whitespace-nowrap${showDeptWrongFlag ? " pr-4" : ""}`
+              : `relative hidden md:table-cell min-w-0 overflow-hidden px-1.5 md:px-2 py-px text-sm text-center font-semibold text-gray-700${showDeptWrongFlag ? " pr-4" : ""}`,
           )}
           title={
             showDeptWrongFlag
@@ -302,7 +305,13 @@ function AttendanceTableRow({
               : deptLabel || undefined
           }
         >
-          <span className="block min-w-0 truncate">{deptLabel}</span>
+          <span
+            className={
+              isKoreanAttendance ? "block" : "block min-w-0 truncate"
+            }
+          >
+            {deptLabel}
+          </span>
           {deptWrongFlagEl}
         </Cell>
       ) : null}
