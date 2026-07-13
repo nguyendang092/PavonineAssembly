@@ -399,7 +399,7 @@ export async function writePayrollMonthlyTimesheetWorkbook({
   const maxCols = grid.reduce((m, row) => Math.max(m, row.length), 0);
   for (let c = 1; c <= maxCols; c += 1) {
     if (c === 1) sheet.getColumn(c).width = 6;
-    else if (c === 2) sheet.getColumn(c).width = 22;
+    else if (c === 2) sheet.getColumn(c).width = 24;
     else if (c === 3) sheet.getColumn(c).width = 12;
     else if (c <= MONTHLY_TIMESHEET_STICKY_COL_COUNT)
       sheet.getColumn(c).width = 12;

@@ -63,18 +63,22 @@
 .pm-ts-name-col {
   text-align: center !important;
   vertical-align: middle;
+  overflow: visible;
+  white-space: normal;
 }
 
 .pm-ts-name-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   width: 100%;
-  min-height: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
   text-align: center;
   font-size: 12px;
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.2;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   color: rgb(15 23 42);
 }
 

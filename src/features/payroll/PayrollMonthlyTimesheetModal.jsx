@@ -75,7 +75,7 @@ import { usePayrollMonthSummaries } from "@/features/payroll/usePayrollMonthSumm
 import "./payrollMonthlyTimesheetModal.css";
 
 /** Cột cố định trái: STT, Họ tên, MNV, BP, Hệ số TC [px]. */
-const STICKY_COL_WIDTHS = [36, 176, 72, 80, 64];
+const STICKY_COL_WIDTHS = [36, 200, 72, 80, 64];
 const MONTH_DAY_COL_WIDTH = 42;
 const MONTH_DETAIL_COL_WIDTH = 45;
 
@@ -196,7 +196,7 @@ function stickyColStyle(colIndex) {
     zIndex: 120 - colIndex,
     width: STICKY_COL_WIDTHS[colIndex],
     minWidth: STICKY_COL_WIDTHS[colIndex],
-    maxWidth: colIndex === 1 ? 248 : STICKY_COL_WIDTHS[colIndex],
+    maxWidth: STICKY_COL_WIDTHS[colIndex],
     boxSizing: "border-box",
     backgroundClip: "padding-box",
     transform: "translateZ(0)",
