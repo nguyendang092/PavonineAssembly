@@ -8,6 +8,7 @@ import {
   getPayrollDayShiftOffHolidayMergedHoursNumeric,
   getPayrollHalfDayLeaveWorkedHours,
   isNightShiftCaLamViec,
+  roundHoursToHundredths,
   roundHoursToTenths,
 } from "@/features/attendance/attendanceWorkingHours";
 import {
@@ -21,7 +22,7 @@ import {
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { isDuocNghiBuExplicitlyNo } from "@/features/attendance/attendanceDayMeta";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
-import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
+import { payrollOtDayParamsFromMonthChunkEmp, payrollDayOvertimeOptionsFromParams } from "@/features/payroll/payrollOtDayParams";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
@@ -78,6 +79,7 @@ function payrollMonthSundayMergedCoefficientLines(p) {
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
+    payrollDayOvertimeOptionsFromParams(p),
   );
   if (m != null && m > 0) {
     lines.push({ coeff: 2.0, hours: m, key: "sun20" });
@@ -90,6 +92,10 @@ const PAYROLL_MONTH_COMP_MAIN_MAX_HOURS = 8;
 
 function resolvePayrollMonthlyRegimeFlags(p) {
   return employeeRegimeWorkingHoursFlags(p);
+}
+
+function payrollMonthHourRoundFn(p) {
+  return p?.koreanTimesheetRules ? roundHoursToHundredths : roundHoursToTenths;
 }
 
 /** Tổng GC+TC gộp ngày nghỉ bù (đồng bộ bảng ngày off/NB). */
@@ -134,6 +140,7 @@ function payrollMonthCompensatoryMergedTotalHours(p) {
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
+    payrollDayOvertimeOptionsFromParams(p),
   );
 }
 
@@ -143,10 +150,11 @@ function payrollMonthCompensatoryHourSplit(p) {
   if (merged == null || merged <= 0) {
     return { mainHours: null, overflowHours: 0 };
   }
+  const roundFn = payrollMonthHourRoundFn(p);
   const main = Math.min(merged, PAYROLL_MONTH_COMP_MAIN_MAX_HOURS);
-  const overflow = roundHoursToTenths(Math.max(0, merged - main));
+  const overflow = roundFn(Math.max(0, merged - main));
   return {
-    mainHours: roundHoursToTenths(main),
+    mainHours: roundFn(main),
     overflowHours: overflow,
   };
 }
@@ -238,6 +246,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
       includeTaiXeInWorkingHours,
       includeTaiXeTongInWorkingHours,
       lunchOtHours,
+      payrollDayOvertimeOptionsFromParams(p),
     );
     if (m != null && m > 0) {
       lines.push({ coeff: 3.0, hours: m, key: "dh30" });
@@ -280,6 +289,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
       includeTaiXeInWorkingHours,
       includeTaiXeTongInWorkingHours,
       lunchOtHours,
+      payrollDayOvertimeOptionsFromParams(p),
     );
     if (m != null && m > 0) {
       lines.push({ coeff: 2.0, hours: m, key: "off20" });
@@ -327,6 +337,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
+    payrollDayOvertimeOptionsFromParams(p),
   );
   if (sum15 != null && sum15 > 0) {
     lines.push({ coeff: 1.5, hours: sum15, key: "d15" });

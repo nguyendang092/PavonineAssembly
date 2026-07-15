@@ -8,7 +8,7 @@ import {
 } from "react";
 import { db, ref, onValue } from "@/services/firebase";
 import { buildPayrollMonthDayChunkFromRaw } from "@/features/payroll/buildPayrollDayFromRaw";
-import { fetchPayrollMonthDayChunks } from "@/features/payroll/payrollMonthlyGridData";
+import { fetchPayrollMonthDayChunks, stampPayrollMonthChunkAttendanceRootFlags } from "@/features/payroll/payrollMonthlyGridData";
 import {
   PAYROLL_MONTH_FETCH_BATCH_SIZE,
 } from "@/features/payroll/payrollMonthDataScale";
@@ -94,7 +94,10 @@ export function usePayrollMonthDayChunks({
 
     const unsubs = monthKeys.map((dateKey) =>
       onValue(ref(db, `${attendanceRootPath}/${dateKey}`), (snapshot) => {
-        const chunk = buildPayrollMonthDayChunkFromRaw(snapshot.val(), dateKey);
+        const chunk = stampPayrollMonthChunkAttendanceRootFlags(
+          buildPayrollMonthDayChunkFromRaw(snapshot.val(), dateKey),
+          attendanceRootPath,
+        );
         if (!chunk) return;
         startTransition(() => {
           setDayChunks((prev) => {

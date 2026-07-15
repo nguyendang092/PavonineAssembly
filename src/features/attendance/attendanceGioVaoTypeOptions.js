@@ -726,20 +726,28 @@ export function getAttendanceLeaveTypeEmphasisPrintCellBg(raw) {
   return "#f87171";
 }
 
+/** Màu hex loại phép — khớp cột «Loại phép» / `getAttendanceLeaveTypeColorClassName` (light). */
+export function getAttendanceLeaveTypeHexColor(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return "#64748b";
+  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
+    rawMatchesAttendanceTypeOption(t, opt),
+  );
+  if (!matched) return "#dc2626";
+  const sl = matched.shortLabel;
+  if (sl === "TS") return "#2563eb";
+  if (sl === "PN" || sl === "1/2PN") return "#16a34a";
+  if (sl === "NV") return "#4b5563";
+  if (sl === "BGC" || sl === "VT") return "#b45309";
+  return "#dc2626";
+}
+
 /** In trang (`window.print`): style inline theo cùng quy tắc màu. */
 export function getAttendanceLeaveTypePrintStyleAttr(raw) {
   const t = String(raw ?? "").trim();
   if (!t) return "";
-  const matched = ATTENDANCE_GIO_VAO_OPTIONS_BY_VALUE_LENGTH.find((opt) =>
-    rawMatchesAttendanceTypeOption(t, opt),
-  );
   const base = "font-weight:bold;";
-  if (!matched) return `${base}color:#dc2626;`;
-  const sl = matched.shortLabel;
-  if (sl === "TS") return `${base}color:#2563eb;`;
-  if (sl === "PN" || sl === "1/2PN") return `${base}color:#16a34a;`;
-  if (sl === "NV") return `${base}color:#4b5563;`;
-  return `${base}color:#dc2626;`;
+  return `${base}color:${getAttendanceLeaveTypeHexColor(t)};`;
 }
 
 export function getAttendanceLeaveTypePrintStyleAttrForEmployee(emp) {

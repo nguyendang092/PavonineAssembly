@@ -4,6 +4,10 @@
   --att-sb-radius: 8px;
 
   position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   min-height: calc(100dvh - var(--app-navbar-height, 4rem));
   background: var(--att-sb-surface);
   font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
@@ -190,6 +194,12 @@
   --sb-tone-border: rgba(2, 132, 199, 0.28);
 }
 
+.attendance-with-sidebar__item--indigo {
+  --sb-tone: #4f46e5;
+  --sb-tone-bg: #e0e7ff;
+  --sb-tone-border: rgba(79, 70, 229, 0.28);
+}
+
 .attendance-with-sidebar__item::before {
   content: "";
   position: absolute;
@@ -282,6 +292,11 @@
 .attendance-with-sidebar__icon--sky {
   background: #bae6fd;
   color: #0369a1;
+}
+
+.attendance-with-sidebar__icon--indigo {
+  background: #c7d2fe;
+  color: #4338ca;
 }
 
 .attendance-with-sidebar__item--active .attendance-with-sidebar__icon {

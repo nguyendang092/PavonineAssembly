@@ -8,9 +8,10 @@ import {
 } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import {
   getAttendanceWorkingHoursHours,
+  getPayrollDayOvertimeHoursNumeric,
   getPayrollDayShiftOffHolidayMergedHoursNumeric,
 } from "@/features/attendance/attendanceWorkingHours";
-import { formatPayrollTableNightShiftOffDayWorkingCellFromEmp } from "@/features/payroll/payrollTableOtCells";
+import { formatPayrollTableNightShiftOffDayWorkingCellFromEmp, formatPayrollTableTotalDayGcCellFromEmp } from "@/features/payroll/payrollTableOtCells";
 
 function coeffHours(lines, coeff) {
   return lines.find((l) => l.coeff === coeff)?.hours ?? 0;
@@ -57,6 +58,140 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     });
     expect(coeffHours(lines, 1.5)).toBe(1);
     expect(coeffHours(lines, 2.0)).toBe(0);
+  });
+
+  it("Korean Timesheet ngày thường — TC 17:32 = 0.53h", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "08:00",
+      timeOut: "17:32",
+      isOffDay: false,
+      isHolidayDay: false,
+      isCompensatoryDay: false,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      koreanTimesheetRules: true,
+      dateKey: "2026-07-08",
+    });
+    expect(coeffHours(lines, 1.5)).toBe(0.53);
+  });
+
+  it("Korean Timesheet Chủ nhật — TC 17:32 gộp ×2.0", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "08:00",
+      timeOut: "17:32",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      koreanTimesheetRules: true,
+      dateKey: "2026-07-12",
+    });
+    expect(coeffHours(lines, 2.0)).toBe(8.53);
+    const eveningOnly = getPayrollDayOvertimeHoursNumeric(
+      "08:00",
+      "17:32",
+      true,
+      "S1",
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      undefined,
+      { koreanTimesheetRules: true, dateKey: "2026-07-12" },
+    );
+    expect(eveningOnly).toBe(0.53);
+  });
+
+  it("Korean Timesheet Chủ nhật — TC 17:15 gộp ×2.0", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "08:00",
+      timeOut: "17:15",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      koreanTimesheetRules: true,
+      dateKey: "2026-07-12",
+    });
+    expect(coeffHours(lines, 2.0)).toBe(8.25);
+  });
+
+  it("Korean Timesheet ngày NB — TC 17:32 phần dư ×2.0", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "08:00",
+      timeOut: "17:32",
+      isOffDay: false,
+      isHolidayDay: false,
+      isCompensatoryDay: true,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      koreanTimesheetRules: true,
+    });
+    const main = getPayrollMonthlyMainRowCell(
+      {
+        gioVao: "08:00",
+        gioRa: "17:32",
+        caLamViec: "S1",
+        duocNghiBu: "YES",
+      },
+      { isCompensatoryDay: true, koreanTimesheetRules: true },
+    );
+    expect(main.kind).toBe("hours");
+    expect(main.hours).toBe(8);
+    expect(coeffHours(lines, 2.0)).toBe(0.53);
+    expect(coeffHours(lines, 1.5)).toBe(0);
+  });
+
+  it("Korean Timesheet ngày NB — TC 17:15 phần dư ×2.0", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "08:00",
+      timeOut: "17:15",
+      isOffDay: false,
+      isHolidayDay: false,
+      isCompensatoryDay: true,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      koreanTimesheetRules: true,
+    });
+    expect(coeffHours(lines, 2.0)).toBe(0.25);
+  });
+
+  it("Korean Timesheet ngày NB — Tổng GC bảng ngày gồm TC chiều", () => {
+    const cell = formatPayrollTableTotalDayGcCellFromEmp(
+      {
+        gioVao: "08:00",
+        gioRa: "17:32",
+        caLamViec: "S1",
+      },
+      {
+        isCompensatoryDay: true,
+        koreanTimesheetRules: true,
+      },
+    );
+    expect(cell).toBe("8.53");
+  });
+
+  it("Korean Timesheet ngày NB — Tổng GC 17:15 gồm TC từ 17:00", () => {
+    const cell = formatPayrollTableTotalDayGcCellFromEmp(
+      {
+        gioVao: "08:00",
+        gioRa: "17:15",
+        caLamViec: "S1",
+      },
+      {
+        isCompensatoryDay: true,
+        koreanTimesheetRules: true,
+      },
+    );
+    expect(cell).toBe("8.25");
   });
 
   it("1/2PN + ra 18:00 — TC ×1.5 như ngày thường", () => {

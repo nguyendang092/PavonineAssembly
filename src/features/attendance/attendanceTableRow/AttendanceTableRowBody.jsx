@@ -66,6 +66,7 @@ function AttendanceTableRow({
   tableVariant = "attendance",
   isSeasonalAttendance = false,
   isKoreanAttendance = false,
+  attendanceDateKey = null,
   annualLeaveBalanceByMnv = {},
   annualLeaveYear = new Date().getFullYear(),
   annualLeaveYearData = null,
@@ -75,7 +76,13 @@ function AttendanceTableRow({
   const isPayroll = tableVariant === "payroll";
   const payrollOffLike = isOffDay || isHolidayDay || isCompensatoryDay;
   const strictOffDay = isOffDay || isCompensatoryDay;
-  const payrollDayCtx = { isOffDay, isHolidayDay, isCompensatoryDay };
+  const payrollDayCtx = {
+    isOffDay,
+    isHolidayDay,
+    isCompensatoryDay,
+    koreanTimesheetRules: isKoreanAttendance,
+    dateKey: attendanceDateKey,
+  };
   const {
     includeTapVuInWorkingHours,
     includeThaiSanInWorkingHours,

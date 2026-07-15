@@ -3,6 +3,7 @@ import {
   buildMonthlyDetailFlatValues,
   buildMonthlyRuleSummary,
   fmtPayrollMonthlySummaryCell,
+  fmtPayrollMonthlySummaryHoursCell,
   isPayrollMonthDayCellBeforeJoinWithoutAttendance,
   isPayrollSaturdayOffWorkDay,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
@@ -202,6 +203,84 @@ describe("buildMonthlyDetailFlatValues", () => {
     expect(flat[8]).toBe("6");
     expect(flat[MONTH_DETAIL_COLS_PER_BLOCK + 8]).toBe("2");
     expect(flat[2 * MONTH_DETAIL_COLS_PER_BLOCK + 8]).toBe("4");
+  });
+
+  it("fmtHours — giờ TC khối THỜI GIAN LÀM VIỆC & HỢP ĐỒNG: 2 số thập phân", () => {
+    const summaries = {
+      total: {
+        standardWorkDays: 26,
+        workHours: 0,
+        workDays: 0,
+        unpaidDays: 0,
+        pnDays: 0,
+        nbDays: 0,
+        klDays: 0,
+        kpDays: 0,
+        coeff03: 0,
+        coeff15: 0.53,
+        coeff20: 0,
+        coeff27: 0,
+        coeff30: 0,
+        coeff39: 0,
+        satsWorkDays: 0,
+        sats20: 0,
+        sats27: 0,
+        nightShiftWindowHours: 0,
+      },
+      trial: {
+        standardWorkDays: 0,
+        workHours: 0,
+        workDays: 0,
+        unpaidDays: 0,
+        pnDays: 0,
+        nbDays: 0,
+        klDays: 0,
+        kpDays: 0,
+        coeff03: 0,
+        coeff15: 1.5,
+        coeff20: 0,
+        coeff27: 0,
+        coeff30: 0,
+        coeff39: 0,
+        satsWorkDays: 0,
+        sats20: 0,
+        sats27: 0,
+        nightShiftWindowHours: 0,
+      },
+      official: {
+        standardWorkDays: 0,
+        workHours: 0,
+        workDays: 0,
+        unpaidDays: 0,
+        pnDays: 0,
+        nbDays: 0,
+        klDays: 0,
+        kpDays: 0,
+        coeff03: 0,
+        coeff15: 1,
+        coeff20: 0,
+        coeff27: 0,
+        coeff30: 0,
+        coeff39: 0,
+        satsWorkDays: 0,
+        sats20: 0,
+        sats27: 0,
+        nightShiftWindowHours: 0,
+      },
+    };
+
+    const flat = buildMonthlyDetailFlatValues({
+      si: 0,
+      summaries,
+      coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+      fmt: fmtPayrollMonthlySummaryCell,
+      fmtHours: fmtPayrollMonthlySummaryHoursCell,
+      colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
+    });
+
+    expect(flat[8]).toBe("0.53");
+    expect(flat[MONTH_DETAIL_COLS_PER_BLOCK + 8]).toBe("1.5");
+    expect(flat[2 * MONTH_DETAIL_COLS_PER_BLOCK + 8]).toBe("1.00");
   });
 
   it("dòng 1.5 (si=2) mirror cùng summary.coeff15 — không phải tổng riêng", () => {

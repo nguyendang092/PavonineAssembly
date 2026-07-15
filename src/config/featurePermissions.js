@@ -21,6 +21,7 @@ import {
 export const PERMISSION_IDS = Object.freeze({
   PAYROLL_MONTH_GRID_DAY_CELL: "payroll_month_grid_day_cell",
   ATTENDANCE_LIST: "attendance_list",
+  ATTENDANCE_DASHBOARD: "attendance_dashboard",
   ATTENDANCE_FORM: "attendance_form",
   ATTENDANCE_DELETE: "attendance_delete",
   ATTENDANCE_OFF_HOLIDAY_DAYS: "attendance_off_holiday_days",
@@ -70,6 +71,23 @@ export const PERMISSION_CATALOG = Object.freeze([
       "isAdminAccess",
       "canEditAttendanceForEmployee",
       "canDeleteEmployeeData",
+    ],
+  },
+  {
+    id: PERMISSION_IDS.ATTENDANCE_DASHBOARD,
+    labelVi: "Dashboard điểm danh — xem báo cáo / xuất Excel",
+    quyTac:
+      "Mọi user đã đăng nhập: xem toàn bộ dashboard (mọi bộ phận), in báo cáo, xuất Excel; không chặn theo Admin/HR/Manager/Staff hay bộ phận.",
+    routes: ["/attendance-dashboard"],
+    modules: [
+      "features/attendance/AttendanceDashboardPage.jsx",
+      "features/attendance/useAttendanceDashboardData.js",
+      "features/attendance/AttendanceListShell.jsx",
+    ],
+    authRolesHelpers: [
+      "canViewAttendanceDashboard",
+      "canExportAttendanceDashboard",
+      "canPrintAttendanceDashboardReport",
     ],
   },
   {
@@ -208,6 +226,19 @@ export function debugPrintPermissionCatalog() {
 /** Korean Timesheet — chỉ Admin / HR xem và thao tác. */
 export function canViewKoreanTimesheet(user, userRole) {
   return isAdminAccess(user, userRole);
+}
+
+/** Dashboard điểm danh — mọi user đã đăng nhập, không phân quyền theo vai trò/bộ phận. */
+export function canViewAttendanceDashboard(user) {
+  return Boolean(user?.email);
+}
+
+export function canExportAttendanceDashboard(user) {
+  return canViewAttendanceDashboard(user);
+}
+
+export function canPrintAttendanceDashboardReport(user) {
+  return canViewAttendanceDashboard(user);
 }
 
 function payrollMonthTimesheetGridPermEmployee(rep, rowDayEmp) {

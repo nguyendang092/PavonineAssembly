@@ -9,6 +9,8 @@ import {
   getNightShiftPayrollOffHolidayMergedHoursNumeric,
   getNightShiftPayrollOvertimeHours,
   getNightShiftPayrollRegularHoursAndOtMinutes,
+  getKoreanTimesheetEveningOvertimeHoursFromGioRa,
+  getKoreanTimesheetNbSundayEveningOvertimeHoursFromGioRa,
   getOvertimeHoursFromGioRa,
   getAttendanceWorkingHoursHours,
   getEarlyPaperworkOvertimeHours,
@@ -42,6 +44,41 @@ describe("getOvertimeHoursFromGioRa (ca ngày)", () => {
   });
 });
 
+describe("getKoreanTimesheetEveningOvertimeHoursFromGioRa", () => {
+  it("ra 17:32 → 30 + 2 phút = 0.53h", () => {
+    expect(getKoreanTimesheetEveningOvertimeHoursFromGioRa("17:32")).toBe(0.53);
+  });
+
+  it("ra 18:00 → 30 + 30 phút = 1h", () => {
+    expect(getKoreanTimesheetEveningOvertimeHoursFromGioRa("18:00")).toBe(1);
+  });
+
+  it("ra trước hoặc bằng 17:30 → 0", () => {
+    expect(getKoreanTimesheetEveningOvertimeHoursFromGioRa("17:30")).toBe(0);
+    expect(getKoreanTimesheetEveningOvertimeHoursFromGioRa("17:15")).toBe(0);
+  });
+});
+
+describe("getKoreanTimesheetNbSundayEveningOvertimeHoursFromGioRa", () => {
+  it("ra 17:32 → 32 phút từ 17:00 = 0.53h", () => {
+    expect(getKoreanTimesheetNbSundayEveningOvertimeHoursFromGioRa("17:32")).toBe(
+      0.53,
+    );
+  });
+
+  it("ra 17:15 → 15 phút từ 17:00 = 0.25h", () => {
+    expect(getKoreanTimesheetNbSundayEveningOvertimeHoursFromGioRa("17:15")).toBe(
+      0.25,
+    );
+  });
+
+  it("ra trước hoặc bằng 17:00 → 0", () => {
+    expect(getKoreanTimesheetNbSundayEveningOvertimeHoursFromGioRa("17:00")).toBe(
+      0,
+    );
+  });
+});
+
 describe("getPayrollDayOvertimeHoursNumeric", () => {
   it("ca đêm S2 → 0 (TC nằm cột TC ca đêm)", () => {
     expect(
@@ -69,6 +106,123 @@ describe("getPayrollDayOvertimeHoursNumeric", () => {
         false,
       ),
     ).toBe(1);
+  });
+
+  it("Korean Timesheet ngày thường ra 17:32 → 0.53h", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "08:00",
+        "17:32",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        {
+          koreanTimesheetRules: true,
+          isCompensatoryDay: false,
+          dateKey: "2026-07-08",
+        },
+      ),
+    ).toBe(0.53);
+  });
+
+  it("Korean Timesheet ngày thường ra 17:15 → 0 (chỉ sau 17:30)", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "08:00",
+        "17:15",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        {
+          koreanTimesheetRules: true,
+          isCompensatoryDay: false,
+          dateKey: "2026-07-08",
+        },
+      ),
+    ).toBe(0);
+  });
+
+  it("Korean Timesheet Chủ nhật — TC 17:15 từ 17:00", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "08:00",
+        "17:15",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        {
+          koreanTimesheetRules: true,
+          dateKey: "2026-07-12",
+        },
+      ),
+    ).toBe(0.25);
+  });
+
+  it("Korean Timesheet ngày NB — TC 17:15 từ 17:00", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "08:00",
+        "17:15",
+        true,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        {
+          koreanTimesheetRules: true,
+          isCompensatoryDay: true,
+        },
+      ),
+    ).toBe(0.25);
+  });
+
+  it("Korean Timesheet Chủ nhật — TC 17:32 từ 17:00", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "08:00",
+        "17:32",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        {
+          koreanTimesheetRules: true,
+          dateKey: "2026-07-12",
+        },
+      ),
+    ).toBe(0.53);
   });
 
   it("lateOtExcluded → không tính TC chiều", () => {

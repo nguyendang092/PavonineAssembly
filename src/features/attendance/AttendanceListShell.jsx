@@ -63,6 +63,14 @@ const ICONS = {
       <path d="M7 13h3M14 13h3M7 17h10" />
     </svg>
   ),
+  dashboard: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <rect x="3" y="3" width="8" height="8" rx="1.5" />
+      <rect x="13" y="3" width="8" height="5" rx="1.5" />
+      <rect x="13" y="10" width="8" height="11" rx="1.5" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" />
+    </svg>
+  ),
 };
 
 function AttendanceListShell({
@@ -131,6 +139,10 @@ function AttendanceListShell({
 
   const isAnnualLeaveActive =
     pathname === "/annual-leave" || pathname.startsWith("/annual-leave");
+
+  const isDashboardActive =
+    pathname === "/attendance-dashboard" ||
+    pathname.startsWith("/attendance-dashboard");
 
   const isPersonnelActive =
     pathname === "/user-department" ||
@@ -234,6 +246,17 @@ function AttendanceListShell({
               tone="amber"
               icon={ICONS.annualLeave}
               label={t("attendanceList.sidebarAnnualLeave", "Phép năm")}
+            />
+          </Link>
+
+          <Link
+            to={`/attendance-dashboard?date=${encodeURIComponent(dateKey)}`}
+            className={itemClass(isDashboardActive, "indigo")}
+          >
+            <SidebarItemContent
+              tone="indigo"
+              icon={ICONS.dashboard}
+              label={t("attendanceList.sidebarDashboard", "Dashboard")}
             />
           </Link>
 

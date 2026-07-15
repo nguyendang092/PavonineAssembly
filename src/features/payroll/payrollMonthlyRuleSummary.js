@@ -1,4 +1,7 @@
 import {
+  formatPayrollHoursForDisplayHundredths,
+} from "@/features/attendance/attendanceWorkingHours";
+import {
   formatCoeffHoursForDisplay,
   getPayrollMonthlyCoeffHoursMap,
   getPayrollMonthlyMainRowCell,
@@ -31,6 +34,13 @@ import { resolvePayrollMonthDayEmployee } from "@/features/payroll/payrollMonthl
 /** Ô tổng hợp khối THỜI GIAN LÀM VIỆC — ẩn số 0. */
 export function fmtPayrollMonthlySummaryCell(n) {
   return Number.isFinite(n) && n > 0 ? formatCoeffHoursForDisplay(n) : " ";
+}
+
+/** Ô giờ công / TC khối THỜI GIAN LÀM VIỆC & HỢP ĐỒNG — 2 số thập phân (Korean Timesheet). */
+export function fmtPayrollMonthlySummaryHoursCell(n) {
+  return Number.isFinite(n) && n > 0
+    ? formatPayrollHoursForDisplayHundredths(n)
+    : " ";
 }
 
 /** Ô đếm ngày phép / nghỉ (PN 0,5 · NB/KL/KP 1). */
@@ -468,11 +478,16 @@ const DETAIL_COL_NIGHT_SHIFT_HOURS = 13;
  * - `si === 0`: ngày công + tổng TC (cột 7–12) + Tổng GC ca đêm (cột 13).
  * - `si > 0`: mirror một ô TC tương ứng — cùng giá trị tổng, không tính lại.
  */
+function formatDetailSummaryHoursCell(fmt, fmtHours, n) {
+  return (fmtHours ?? fmt)(n);
+}
+
 function valuesForDetailBlock({
   si,
   summary,
   coeffColBySubrow,
   fmt,
+  fmtHours = null,
   fmtLeave = fmtPayrollMonthlyLeaveDayCell,
   colsPerBlock,
 }) {
@@ -494,15 +509,23 @@ function valuesForDetailBlock({
       if (idx === DETAIL_COL_KL) return fmtLeave(summary.klDays);
       if (idx === DETAIL_COL_KP) return fmtLeave(summary.kpDays);
       if (idx >= DETAIL_COL_TC_START && idx <= DETAIL_COL_TC_START + 5) {
-        return fmt(tcByRow[idx - DETAIL_COL_TC_START]);
+        return formatDetailSummaryHoursCell(
+          fmt,
+          fmtHours,
+          tcByRow[idx - DETAIL_COL_TC_START],
+        );
       }
       if (idx === DETAIL_COL_NIGHT_SHIFT_HOURS) {
-        return fmt(summary.nightShiftWindowHours);
+        return formatDetailSummaryHoursCell(
+          fmt,
+          fmtHours,
+          summary.nightShiftWindowHours,
+        );
       }
     }
     const coeffIdx = coeffColBySubrow[si];
     if (coeffIdx != null && idx === DETAIL_COL_TC_START + coeffIdx) {
-      return fmt(tcByRow[coeffIdx]);
+      return formatDetailSummaryHoursCell(fmt, fmtHours, tcByRow[coeffIdx]);
     }
     return " ";
   });
@@ -517,6 +540,7 @@ export function buildMonthlyDetailFlatValues({
   summaries,
   coeffColBySubrow = MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
   fmt = fmtPayrollMonthlySummaryCell,
+  fmtHours = null,
   fmtLeave = fmtPayrollMonthlyLeaveDayCell,
   colsPerBlock = MONTH_DETAIL_COLS_PER_BLOCK,
 }) {
@@ -525,9 +549,9 @@ export function buildMonthlyDetailFlatValues({
   const official = summaries?.official ?? {};
   const blockArgs = { si, coeffColBySubrow, fmt, fmtLeave, colsPerBlock };
   return [
-    ...valuesForDetailBlock({ ...blockArgs, summary: total }),
+    ...valuesForDetailBlock({ ...blockArgs, summary: total, fmtHours }),
     ...valuesForDetailBlock({ ...blockArgs, summary: trial }),
-    ...valuesForDetailBlock({ ...blockArgs, summary: official }),
+    ...valuesForDetailBlock({ ...blockArgs, summary: official, fmtHours }),
   ];
 }
 
@@ -539,6 +563,7 @@ export function buildMonthlyDetailMatrixForEmployee(
   const coeffColBySubrow =
     options.coeffColBySubrow ?? MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW;
   const fmt = options.fmt ?? fmtPayrollMonthlySummaryCell;
+  const fmtHours = options.fmtHours ?? null;
   const fmtLeave = options.fmtLeave ?? fmtPayrollMonthlyLeaveDayCell;
   const colsPerBlock = options.colsPerBlock ?? MONTH_DETAIL_COLS_PER_BLOCK;
   return PAYROLL_MONTHLY_SUBROWS.map((_, si) =>
@@ -547,6 +572,7 @@ export function buildMonthlyDetailMatrixForEmployee(
       summaries,
       coeffColBySubrow,
       fmt,
+      fmtHours,
       fmtLeave,
       colsPerBlock,
     }),

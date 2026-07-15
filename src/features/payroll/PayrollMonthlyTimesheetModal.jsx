@@ -28,6 +28,7 @@ import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollO
 import { writePayrollMonthlyTimesheetWorkbook } from "@/features/payroll/payrollMonthlyTimesheetExcelGrid";
 import {
   buildMonthlyDetailMatrixForEmployee,
+  fmtPayrollMonthlySummaryHoursCell,
   isPayrollMonthDayCellBeforeJoinWithoutAttendance,
   isPayrollMonthDayOnOrAfterJoin,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
@@ -294,6 +295,7 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
   detailHeaders,
   labels,
   employeeDayCellsById,
+  fmtHours = null,
 }) {
   const dayCellBg = (ch, pd) => monthTimesheetDayBgPrint(ch, pd);
 
@@ -411,7 +413,9 @@ function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
     const summaries = summaryById.get(id);
     if (!rep || !summaries?.total) continue;
     // Bản in A3 chỉ in tới hết khối "THỜI GIAN LÀM VIỆC" đầu tiên.
-    const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries).map(
+    const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries, {
+      fmtHours,
+    }).map(
       (row) => row.slice(0, MONTH_DETAIL_COLS_PER_BLOCK),
     );
     const sttDisp = empBlockIdx + 1;
@@ -939,6 +943,7 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
     userDepartments,
     openDayCellEditor,
     tlPage,
+    fmtHours = null,
   }) {
     const rowDays = useMemo(
       () =>
@@ -956,8 +961,11 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
         : "bg-slate-50 dark:bg-slate-900/80";
 
     const detailValuesBySubrow = useMemo(
-      () => buildMonthlyDetailMatrixForEmployee(summaries),
-      [summaries],
+      () =>
+        buildMonthlyDetailMatrixForEmployee(summaries, {
+          fmtHours,
+        }),
+      [summaries, fmtHours],
     );
 
     return (
@@ -1117,6 +1125,9 @@ export default function PayrollMonthlyTimesheetModal({
   }, [monthRange.first, anchorDateKey, displayLocale]);
 
   const isKoreanTimesheetSource = isKoreanAttendanceRoot(attendanceRootPath);
+  const monthlyDetailFmtHours = isKoreanTimesheetSource
+    ? fmtPayrollMonthlySummaryHoursCell
+    : null;
   const timesheetTitleKey = isKoreanTimesheetSource
     ? "koreanMonthlyTimesheetTitle"
     : "monthlyTimesheetTitle";
@@ -1451,6 +1462,7 @@ export default function PayrollMonthlyTimesheetModal({
         repById,
         summaryById: monthlySummaryById,
         detailHeaders,
+        koreanTimesheetRules: isKoreanTimesheetSource,
       });
       const blob = new Blob([buf], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1488,6 +1500,7 @@ export default function PayrollMonthlyTimesheetModal({
     monthRange.keys,
     repById,
     tlPage,
+    isKoreanTimesheetSource,
   ]);
 
   const handlePrintA3WorkTimeOnly = useCallback(() => {
@@ -1526,6 +1539,7 @@ export default function PayrollMonthlyTimesheetModal({
         monthDayMeta,
         repById,
       ),
+      fmtHours: monthlyDetailFmtHours,
     });
     const w = window.open("", "_blank");
     if (!w) {
@@ -1566,6 +1580,9 @@ export default function PayrollMonthlyTimesheetModal({
     monthTitle,
     tlPage,
     onAlert,
+    monthlyDetailFmtHours,
+    timesheetTitleKey,
+    timesheetTitleDefault,
   ]);
 
   const virtualEmpItems = shouldVirtualizeTimesheetBody
@@ -1967,6 +1984,7 @@ export default function PayrollMonthlyTimesheetModal({
                                 userDepartments={userDepartments}
                                 openDayCellEditor={openDayCellEditor}
                                 tlPage={tlPage}
+                                fmtHours={monthlyDetailFmtHours}
                               />
                             </tbody>
                           );
@@ -2003,6 +2021,7 @@ export default function PayrollMonthlyTimesheetModal({
                             userDepartments={userDepartments}
                             openDayCellEditor={openDayCellEditor}
                             tlPage={tlPage}
+                            fmtHours={monthlyDetailFmtHours}
                           />
                         ))}
                       </tbody>

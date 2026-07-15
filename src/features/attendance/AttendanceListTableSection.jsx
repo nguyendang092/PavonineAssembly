@@ -107,6 +107,7 @@ function AttendanceListTableSection({
       isCompensatoryDay,
       isSeasonalAttendance,
       isKoreanAttendance,
+      attendanceDateKey: selectedDate,
       annualLeaveBalanceByMnv,
       annualLeaveYear,
       annualLeaveYearData,

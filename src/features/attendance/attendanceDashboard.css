@@ -1,0 +1,1248 @@
+/* Báo cáo dashboard điểm danh — layout card navy */
+
+.attendance-dashboard {
+  --ad-navy: #0f1f3d;
+  --ad-navy-mid: #152a52;
+  --ad-navy-soft: #1e3a6e;
+  --ad-gold: #c9a227;
+  --ad-card: #ffffff;
+  --ad-muted: #64748b;
+  color: #0f172a;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.attendance-dashboard--fit.hr-page-compact {
+  padding: 0.125rem 0.25rem 0.25rem 0.125rem;
+}
+
+@media (min-width: 768px) {
+  .attendance-dashboard--fit.hr-page-compact {
+    padding: 0.2rem 0.35rem 0.35rem 0.15rem;
+  }
+}
+
+.attendance-dashboard__shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.45rem 0.5rem 0.85rem;
+  min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #e8eef8 0%, #f1f5f9 28%, #f8fafc 100%);
+}
+
+.attendance-dashboard__report-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 1rem 1.25rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 0.65rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+}
+
+.attendance-dashboard__report-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.attendance-dashboard__report-logo {
+  display: flex;
+  flex-shrink: 0;
+  height: 2.75rem;
+  width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.45rem;
+  background: var(--ad-navy);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.attendance-dashboard__report-brand-text {
+  min-width: 0;
+}
+
+.attendance-dashboard__report-company {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: var(--ad-navy);
+  line-height: 1.25;
+}
+
+.attendance-dashboard__report-address {
+  margin: 0.3rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #64748b;
+}
+
+.attendance-dashboard__report-date-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  padding: 0 0.25rem;
+}
+
+.attendance-dashboard__report-date-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.attendance-dashboard__report-date-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--ad-navy);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.attendance-dashboard__report-signatures {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.25rem;
+}
+
+.attendance-dashboard__report-sign {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 5.5rem;
+}
+
+.attendance-dashboard__report-sign-line {
+  display: block;
+  width: 5.5rem;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.attendance-dashboard__report-sign-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.attendance-dashboard__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+@media (max-width: 1100px) {
+  .attendance-dashboard__report-head {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-dashboard__report-date-block {
+    align-items: flex-start;
+  }
+
+  .attendance-dashboard__report-signatures {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+.attendance-dashboard__hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.attendance-dashboard__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 0.45rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ad-navy);
+  transition: background 0.15s ease;
+}
+
+.attendance-dashboard__btn:hover {
+  background: #f8fafc;
+}
+
+.attendance-dashboard__btn--gold {
+  border-color: var(--ad-gold);
+  background: #fef9e8;
+  color: #92400e;
+}
+
+.attendance-dashboard__btn--outline {
+  border-color: #94a3b8;
+}
+
+.attendance-dashboard__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.65rem;
+  background: var(--ad-card);
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+}
+
+.attendance-dashboard__filter-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--ad-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.attendance-dashboard__filter-input,
+.attendance-dashboard__filter-select {
+  height: 2rem;
+  border-radius: 0.4rem;
+  border: 1px solid #cbd5e1;
+  padding: 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #fff;
+}
+
+.attendance-dashboard__filter-chip {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ad-navy-soft);
+}
+
+.attendance-dashboard__kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+@media (max-width: 1100px) {
+  .attendance-dashboard__kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .attendance-dashboard__kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.attendance-dashboard__kpi {
+  border-radius: 0.65rem;
+  border: 1px solid #e2e8f0;
+  background: var(--ad-card);
+  padding: 0.65rem 0.75rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+}
+
+.attendance-dashboard__kpi-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ad-muted);
+  line-height: 1.2;
+}
+
+.attendance-dashboard__kpi-value {
+  margin-top: 0.2rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--ad-navy);
+}
+
+.attendance-dashboard__kpi-sub {
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.attendance-dashboard__kpi--green .attendance-dashboard__kpi-value {
+  color: #047857;
+}
+
+.attendance-dashboard__kpi--amber .attendance-dashboard__kpi-value {
+  color: #b45309;
+}
+
+.attendance-dashboard__kpi--rose .attendance-dashboard__kpi-value {
+  color: #be123c;
+}
+
+.attendance-dashboard__kpi--sky .attendance-dashboard__kpi-value {
+  color: #0369a1;
+}
+
+.attendance-dashboard__insight {
+  border-radius: 0.55rem;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.attendance-dashboard__insight--warn {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.attendance-dashboard__insight--info {
+  background: #ede9fe;
+  border: 1px solid #c4b5fd;
+  color: #5b21b6;
+}
+
+.attendance-dashboard__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.attendance-dashboard__grid--pair {
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+}
+
+.attendance-dashboard__grid--dept-week {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr) minmax(0, 1.35fr);
+  align-items: stretch;
+}
+
+.attendance-dashboard__grid--dept-week > .attendance-dashboard__card {
+  height: 100%;
+}
+
+.attendance-dashboard__grid--dept-week .attendance-dashboard__card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.attendance-dashboard__dept-week-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 0.35rem;
+}
+
+.attendance-dashboard__dept-watch-sort {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.01em;
+}
+
+.attendance-dashboard__dept-week-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  padding-right: 0.1rem;
+}
+
+.attendance-dashboard__grid--mid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.65rem;
+}
+
+.attendance-dashboard__grid--mid > .attendance-dashboard__card {
+  height: 100%;
+  min-height: 0;
+}
+
+.attendance-dashboard__grid--mid .attendance-dashboard__card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.attendance-dashboard__grid--bottom {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.35fr);
+  align-items: start;
+}
+
+.attendance-dashboard__grid--bottom > .attendance-dashboard__card {
+  height: auto;
+  width: 100%;
+}
+
+.attendance-dashboard__card--absent .attendance-dashboard__card-body,
+.attendance-dashboard__card--seniority .attendance-dashboard__card-body,
+.attendance-dashboard__card--new-hires .attendance-dashboard__card-body {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  min-height: 0;
+  padding: 0.35rem 0.3rem 0.1rem 0.15rem;
+}
+
+.attendance-dashboard__chart--seniority,
+.attendance-dashboard__chart--new-hires {
+  height: 260px;
+  min-height: 260px;
+  max-height: 260px;
+  flex: none;
+  overflow: hidden;
+  margin: 0 0 -0.25rem -0.2rem;
+}
+
+.attendance-dashboard__card--new-hires .attendance-dashboard__empty,
+.attendance-dashboard__card--absent .attendance-dashboard__empty {
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .attendance-dashboard__grid,
+  .attendance-dashboard__grid--pair,
+  .attendance-dashboard__grid--dept-week,
+  .attendance-dashboard__grid--mid,
+  .attendance-dashboard__grid--bottom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .attendance-dashboard__leave-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .attendance-dashboard__leave-donut {
+    max-width: 180px;
+    margin: 0 auto;
+  }
+}
+
+.attendance-dashboard__card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 0.65rem;
+  border: 1px solid #dbe3f0;
+  background: var(--ad-card);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+}
+
+.attendance-dashboard__card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(180deg, var(--ad-navy) 0%, var(--ad-navy-mid) 100%);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.attendance-dashboard__card-head-main {
+  min-width: 0;
+}
+
+.attendance-dashboard__card-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.65rem;
+  height: 1.35rem;
+  padding: 0 0.4rem;
+  border-radius: 0.35rem;
+  background: #e11d48;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.attendance-dashboard__card-head-text {
+  line-height: 1.3;
+}
+
+.attendance-dashboard__card-subtitle {
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: rgb(255 255 255 / 0.78);
+}
+
+.attendance-dashboard__leave-subtitle {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.attendance-dashboard__leave-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 0;
+}
+
+.attendance-dashboard__leave-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+}
+
+.attendance-dashboard__leave-donut {
+  width: 100%;
+  height: 148px;
+  min-width: 0;
+}
+
+.attendance-dashboard__leave-donut--tall {
+  height: 200px;
+}
+
+.attendance-dashboard__resignation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-height: 0;
+}
+
+.attendance-dashboard__resignation-formula {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  line-height: 1.4;
+}
+
+.attendance-dashboard__resignation-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.attendance-dashboard__resignation-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.45rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.attendance-dashboard__resignation-kpi--accent {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.attendance-dashboard__resignation-kpi-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.attendance-dashboard__resignation-kpi strong {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.attendance-dashboard__resignation-kpi--accent strong {
+  color: #4b5563;
+}
+
+.attendance-dashboard__resignation-section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--ad-navy);
+  letter-spacing: 0.02em;
+}
+
+.attendance-dashboard__resignation-legend-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.attendance-dashboard__resignation-legend-head,
+.attendance-dashboard__resignation-legend-item {
+  display: grid;
+  grid-template-columns: 0.55rem repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.attendance-dashboard__resignation-legend-head {
+  padding: 0.2rem 0 0.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.attendance-dashboard__resignation-legend-head > span:nth-child(2),
+.attendance-dashboard__resignation-legend-dept {
+  text-align: left;
+  min-width: 0;
+}
+
+.attendance-dashboard__resignation-legend-head > span:nth-child(3),
+.attendance-dashboard__resignation-legend-head > span:nth-child(4),
+.attendance-dashboard__resignation-legend-head > span:nth-child(5) {
+  text-align: center;
+}
+
+.attendance-dashboard__resignation-legend-metric {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.attendance-dashboard__resignation-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+}
+
+.attendance-dashboard__resignation-legend-dept {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendance-dashboard__resignation-legend-metric {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.attendance-dashboard__resignation-legend-metric--rate {
+  color: #4b5563;
+}
+
+.attendance-dashboard__list--resignation {
+  margin-top: 0.35rem;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 0.35rem;
+}
+
+.attendance-dashboard__resignation-employees-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 15rem;
+  overflow-y: auto;
+  padding-right: 0.1rem;
+  scrollbar-gutter: stable;
+}
+
+.attendance-dashboard__list-head--resignation-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-bottom: 0;
+  border-radius: 0;
+  box-shadow: 0 1px 0 #cbd5e1;
+}
+
+.attendance-dashboard__list-head--resignation-days,
+.attendance-dashboard__list-row--resignation-days {
+  gap: 0.5rem;
+  padding-inline: 0.4rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.attendance-dashboard__list-head--resignation-days > span:nth-child(1),
+.attendance-dashboard__list-row--resignation-days .attendance-dashboard__list-name,
+.attendance-dashboard__list-head--resignation-days > span:nth-child(2),
+.attendance-dashboard__list-row--resignation-days .attendance-dashboard__list-meta--dept {
+  text-align: left;
+  min-width: 0;
+}
+
+.attendance-dashboard__list-head--resignation-days > span:nth-child(3),
+.attendance-dashboard__list-row--resignation-days .attendance-dashboard__list-meta--mnv {
+  text-align: center;
+  min-width: 0;
+}
+
+.attendance-dashboard__list-head--resignation-days > span:nth-child(4),
+.attendance-dashboard__list-row--resignation-days .attendance-dashboard__list-badge--days {
+  text-align: center;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendance-dashboard__list--resignation .attendance-dashboard__list-head--resignation-days {
+  padding-block: 0.35rem 0.4rem;
+}
+
+.attendance-dashboard__list--resignation .attendance-dashboard__list-row--resignation-days {
+  padding-block: 0.35rem;
+}
+
+.attendance-dashboard__list--resignation .attendance-dashboard__list-name {
+  font-size: 0.75rem;
+}
+
+.attendance-dashboard__list--resignation .attendance-dashboard__list-meta {
+  font-size: 0.72rem;
+  color: #475569;
+}
+
+.attendance-dashboard__list--resignation .attendance-dashboard__list-meta--dept {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendance-dashboard__list--resignation .attendance-dashboard__list-badge--muted {
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.attendance-dashboard__list-badge--muted {
+  color: #64748b;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .attendance-dashboard__resignation-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.attendance-dashboard__leave-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.attendance-dashboard__leave-legend-item {
+  display: grid;
+  grid-template-columns: 0.55rem minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.72rem;
+  color: #334155;
+}
+
+.attendance-dashboard__leave-legend-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.attendance-dashboard__leave-legend-label {
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.attendance-dashboard__leave-legend-count {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #0f172a;
+}
+
+.attendance-dashboard__leave-divider {
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.attendance-dashboard__leave-list-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ad-navy);
+}
+
+.attendance-dashboard__leave-people {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 16.5rem;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.attendance-dashboard__leave-person {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.attendance-dashboard__leave-person:last-child {
+  border-bottom: none;
+}
+
+.attendance-dashboard__leave-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.45rem;
+  background: linear-gradient(180deg, var(--ad-navy) 0%, var(--ad-navy-mid) 100%);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.attendance-dashboard__leave-person-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.attendance-dashboard__leave-person-name {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendance-dashboard__leave-person-meta {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendance-dashboard__leave-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  white-space: nowrap;
+  max-width: 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendance-dashboard__card-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0.65rem 0.75rem;
+}
+
+.attendance-dashboard__chart {
+  width: 100%;
+  height: 220px;
+}
+
+.attendance-dashboard__chart--tall {
+  height: 260px;
+}
+
+.attendance-dashboard__card--dept-headcount .attendance-dashboard__card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 0.3rem;
+}
+
+.attendance-dashboard__card--dept-resignation .attendance-dashboard__card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 0.3rem;
+}
+
+.attendance-dashboard__dept-headcount-wrap {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.1rem;
+}
+
+.attendance-dashboard__chart--dept-headcount {
+  width: 100%;
+  min-height: 220px;
+  flex: none;
+  overflow: visible;
+}
+
+.attendance-dashboard__list--tall {
+  max-height: 260px;
+}
+
+.attendance-dashboard__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 0.75rem;
+}
+
+.attendance-dashboard__list.attendance-dashboard__list--capped,
+.attendance-dashboard__list.attendance-dashboard__list--absent {
+  flex: 1;
+  max-height: none;
+  overflow: visible;
+  gap: 0;
+  font-size: 0.75rem;
+}
+
+.attendance-dashboard__list-body--capped-scroll,
+.attendance-dashboard__list-body--absent-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 15rem;
+  overflow-y: auto;
+  padding-right: 0.1rem;
+}
+
+.attendance-dashboard__grid--bottom .attendance-dashboard__card--absent .attendance-dashboard__list.attendance-dashboard__list--capped {
+  height: 260px;
+  max-height: 260px;
+  flex: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.attendance-dashboard__grid--bottom .attendance-dashboard__card--absent .attendance-dashboard__list-body--capped-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
+.attendance-dashboard__grid--dept-week .attendance-dashboard__card--late .attendance-dashboard__dept-week-panel {
+  flex: 1;
+  min-height: 0;
+}
+
+.attendance-dashboard__grid--dept-week .attendance-dashboard__list--late-fill {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.attendance-dashboard__late-employees-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  overflow-y: auto;
+  padding-right: 0.1rem;
+  scrollbar-gutter: stable;
+}
+
+.attendance-dashboard__list-head--late-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-bottom: 0;
+  border-radius: 0;
+  box-shadow: 0 1px 0 #cbd5e1;
+}
+
+.attendance-dashboard__card--late .attendance-dashboard__card-body,
+.attendance-dashboard__card--absent .attendance-dashboard__card-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.attendance-dashboard__grid--bottom .attendance-dashboard__card--absent .attendance-dashboard__card-body {
+  flex: none;
+  padding: 0.35rem 0.3rem 0.1rem 0.15rem;
+}
+
+.attendance-dashboard__list.attendance-dashboard__list--leave {
+  margin-top: 0.5rem;
+  max-height: none;
+  overflow: visible;
+  gap: 0;
+}
+
+.attendance-dashboard__list-body--leave-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 21.5rem;
+  overflow-y: auto;
+  padding-right: 0.1rem;
+}
+
+.attendance-dashboard__list-head {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr auto;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.35rem 0.4rem 0.4rem;
+  border-bottom: 1px solid #cbd5e1;
+  margin-bottom: 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #475569;
+  background: #f1f5f9;
+  border-radius: 0.35rem 0.35rem 0 0;
+}
+
+.attendance-dashboard__list-head--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.attendance-dashboard__list-head:not(.attendance-dashboard__list-head--4):not(.attendance-dashboard__list-head--resignation-days) > span:last-child {
+  text-align: right;
+  min-width: 3.5rem;
+}
+
+.attendance-dashboard__list-head--4 > span {
+  text-align: left;
+  min-width: 0;
+}
+
+.attendance-dashboard__list-row--3 .attendance-dashboard__list-meta:last-child,
+.attendance-dashboard__list-row--3 .attendance-dashboard__list-badge {
+  text-align: right;
+  min-width: 3.5rem;
+}
+
+.attendance-dashboard__list-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.3rem 0.4rem;
+  border-radius: 0.35rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.attendance-dashboard__list-row--3 {
+  grid-template-columns: 1.2fr 0.8fr auto;
+}
+
+.attendance-dashboard__list-row--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.attendance-dashboard__list-row--4 .attendance-dashboard__list-meta:nth-child(3) {
+  text-align: left;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.attendance-dashboard__list-head.attendance-dashboard__list-head--resignation-days,
+.attendance-dashboard__list-row.attendance-dashboard__list-row--resignation-days {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.attendance-dashboard__list-leave-type {
+  color: #4338ca;
+  font-weight: 700;
+}
+
+.attendance-dashboard__list-name {
+  font-weight: 700;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendance-dashboard__list-meta {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.68rem;
+}
+
+.attendance-dashboard__list-badge {
+  font-weight: 800;
+  color: #b45309;
+  font-variant-numeric: tabular-nums;
+}
+
+.attendance-dashboard__dept-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) auto minmax(0, 1.15fr) auto;
+  gap: 0.3rem 0.4rem;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.attendance-dashboard__dept-bar-name {
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendance-dashboard__dept-bar-ratio {
+  font-variant-numeric: tabular-nums;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.64rem;
+  white-space: nowrap;
+}
+
+.attendance-dashboard__dept-bar-track {
+  height: 0.42rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  overflow: hidden;
+}
+
+.attendance-dashboard__dept-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.attendance-dashboard__dept-bar-fill--full {
+  background: linear-gradient(90deg, #0f766e, #14b8a6);
+}
+
+.attendance-dashboard__dept-bar-fill--below {
+  background: linear-gradient(90deg, #b45309, #d97706);
+}
+
+.attendance-dashboard__dept-bar-pct {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.75rem;
+  text-align: right;
+  font-size: 0.68rem;
+}
+
+.attendance-dashboard__dept-bar-pct--full {
+  color: #0f766e;
+}
+
+.attendance-dashboard__dept-bar-pct--below {
+  color: #b45309;
+}
+
+.attendance-dashboard__empty {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.attendance-dashboard__loading {
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ad-navy-soft);
+}
+
+@media print {
+  .attendance-dashboard__no-print {
+    display: none !important;
+  }
+
+  .attendance-dashboard__shell {
+    background: #fff;
+    padding: 0;
+  }
+}

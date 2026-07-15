@@ -19,12 +19,22 @@ export function payrollOtDayParamsFromEmp(emp, dayCtx) {
     isHolidayDay: dayCtx.isHolidayDay ?? false,
     isCompensatoryDay: dayCtx.isCompensatoryDay ?? false,
     dateKey: dayCtx.dateKey ?? null,
+    koreanTimesheetRules: dayCtx.koreanTimesheetRules === true,
     shiftCode: emp[PAYROLL_EMP.SHIFT],
     leaveType: emp[PAYROLL_EMP.LEAVE_TYPE],
     payrollEarlyOtPaperwork: resolveEffectivePayrollEarlyOtPaperwork(emp),
     payrollLateOtExcluded: emp[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED],
     lunchOtHours: emp[PAYROLL_EMP.LUNCH_OT_HOURS],
     ...flags,
+  };
+}
+
+/** Tuỳ chọn TC — Korean Timesheet, ngày NB, Chủ nhật. */
+export function payrollDayOvertimeOptionsFromParams(p) {
+  return {
+    koreanTimesheetRules: p?.koreanTimesheetRules === true,
+    isCompensatoryDay: p?.isCompensatoryDay === true,
+    dateKey: p?.dateKey ?? null,
   };
 }
 

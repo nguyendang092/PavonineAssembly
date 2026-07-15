@@ -1,5 +1,6 @@
 import { isAttendanceActualLeaveType } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { formatAttendanceLeaveTypeColumnDisplay } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import { parseLocalDateKey } from "@/utils/dateKey";
 import {
   DAY_EARLY_OT_MAX_HOURS,
   DAY_EARLY_PAPERWORK_CUTOFF_MIN,
@@ -124,6 +125,66 @@ export function roundHoursToTenths(value) {
   return Math.ceil(value * 10 - 0.5 - 1e-9) / 10;
 }
 
+/** Làm tròn về **0.01 giờ** (2 số thập phân) — Korean Timesheet TC chiều. */
+export function roundHoursToHundredths(value) {
+  if (!Number.isFinite(value)) return value;
+  if (value >= 0) return Math.floor(value * 100 + 0.5 + 1e-9) / 100;
+  return Math.ceil(value * 100 - 0.5 - 1e-9) / 100;
+}
+
+function isSundayDateKeyForKoreanOt(dateKey) {
+  const pd = parseLocalDateKey(String(dateKey ?? ""));
+  return Boolean(pd && pd.getDay() === 0);
+}
+
+/**
+ * Korean Timesheet — ngày **NB** / **Chủ nhật**: TC chiều từ 17:00, không block 30 phút.
+ * Ví dụ ra 17:32 → 32 phút → 0.53h; ra 17:15 → 15 phút → 0.25h.
+ */
+export function getKoreanTimesheetNbSundayEveningOvertimeHoursFromGioRa(timeOut) {
+  const b = parseHHMMToMinutes(timeOut);
+  if (b == null) return null;
+  const otStartMin = 17 * 60;
+  if (b <= otStartMin) return 0;
+  return roundHoursToHundredths((b - otStartMin) / 60);
+}
+
+/**
+ * Korean Timesheet — **ngày thường**: 30 phút + số phút sau 17:30; quy đổi giờ, 2 số thập phân.
+ * Ví dụ ra 17:32 → 32 phút → 0.53h.
+ */
+export function getKoreanTimesheetEveningOvertimeHoursFromGioRa(timeOut) {
+  const b = parseHHMMToMinutes(timeOut);
+  if (b == null) return null;
+  if (b <= OT_ELIGIBLE_AFTER_MIN) return 0;
+  const minutesAfter1730 = b - OT_ELIGIBLE_AFTER_MIN;
+  const otMinutes = 30 + minutesAfter1730;
+  return roundHoursToHundredths(otMinutes / 60);
+}
+
+export function shouldUseKoreanNbSundayEveningOtRule({
+  koreanTimesheetRules = false,
+  isCompensatoryDay = false,
+  dateKey = null,
+} = {}) {
+  if (!koreanTimesheetRules) return false;
+  if (isCompensatoryDay) return true;
+  return isSundayDateKeyForKoreanOt(dateKey);
+}
+
+export function shouldUseKoreanTimesheetEveningOtRule({
+  koreanTimesheetRules = false,
+  isCompensatoryDay = false,
+  dateKey = null,
+} = {}) {
+  if (!koreanTimesheetRules) return false;
+  return !shouldUseKoreanNbSundayEveningOtRule({
+    koreanTimesheetRules,
+    isCompensatoryDay,
+    dateKey,
+  });
+}
+
 /**
  * Chuỗi hiển thị ô giờ bảng lương — giữ giá trị tính (tối đa 3 số lẻ, vd. 0.833).
  * @param {number} value
@@ -135,6 +196,14 @@ export function formatPayrollHoursForDisplay(value) {
   const n = Math.round(value * 1000 + 1e-9) / 1000;
   if (Number.isInteger(n)) return String(n);
   return n.toFixed(3).replace(/\.?0+$/, "");
+}
+
+/** Chuỗi hiển thị giờ — làm tròn 0.01h, luôn 2 chữ số thập phân (vd. 0.53, 1.00). */
+export function formatPayrollHoursForDisplayHundredths(value) {
+  if (!Number.isFinite(value)) return String(value);
+  const n = roundHoursToHundredths(value);
+  if (n === 0) return "0";
+  return n.toFixed(2);
 }
 
 /** @param {unknown} s */
@@ -407,7 +476,14 @@ function getDayShiftEveningOvertimeHoursFromGioRa(
   includeThaiSanInWorkingHours,
   includeTaiXeInWorkingHours,
   includeTaiXeTongInWorkingHours,
+  otOptions = {},
 ) {
+  if (shouldUseKoreanNbSundayEveningOtRule(otOptions)) {
+    return getKoreanTimesheetNbSundayEveningOvertimeHoursFromGioRa(timeOut);
+  }
+  if (shouldUseKoreanTimesheetEveningOtRule(otOptions)) {
+    return getKoreanTimesheetEveningOvertimeHoursFromGioRa(timeOut);
+  }
   if (
     useTaiXeDayShiftRules(
       shiftCode,
@@ -734,6 +810,7 @@ export function formatPayrollTableOffDayTcCell(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
+  otOptions = {},
 ) {
   if (
     hasPayrollLeaveType(
@@ -764,6 +841,7 @@ export function formatPayrollTableOffDayTcCell(
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
+    otOptions,
   );
   return payrollHoursCellDisplay(
     merged == null ? PAYROLL_CELL_DASH : String(merged),
@@ -1116,11 +1194,15 @@ export function getPayrollDayOvertimeHoursNumeric(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
+  otOptions = {},
 ) {
   if (isNightShiftCaLamViec(shiftCode)) {
     return 0;
   }
 
+  const useKoreanEveningOt =
+    shouldUseKoreanTimesheetEveningOtRule(otOptions) ||
+    shouldUseKoreanNbSundayEveningOtRule(otOptions);
   const eveningOtHoursRaw = getDayShiftEveningOvertimeHoursFromGioRa(
     timeOut,
     shiftCode,
@@ -1128,6 +1210,7 @@ export function getPayrollDayOvertimeHoursNumeric(
     includeThaiSanInWorkingHours,
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
+    otOptions,
   );
   if (eveningOtHoursRaw == null) {
     return null;
@@ -1140,7 +1223,10 @@ export function getPayrollDayOvertimeHoursNumeric(
     shiftCode,
   );
   const parsedLunchOtHours = parseLunchOtHours(lunchOtHours);
-  const paperOtHours = roundHoursToTenths(eveningOtHours + earlyOtHours);
+  const roundFn = useKoreanEveningOt
+    ? roundHoursToHundredths
+    : roundHoursToTenths;
+  const paperOtHours = roundFn(eveningOtHours + earlyOtHours);
 
   return paperOtHours + parsedLunchOtHours;
 }
@@ -1163,6 +1249,7 @@ export function getPayrollDayShiftOffHolidayMergedHoursNumeric(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
+  otOptions = {},
 ) {
   const halfPn = isHalfPnLeaveType(leaveType);
   if (
@@ -1210,6 +1297,7 @@ export function getPayrollDayShiftOffHolidayMergedHoursNumeric(
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
+    otOptions,
   );
   if (h == null && n == null) return null;
   const regularHours = h == null ? 0 : h;
@@ -1235,6 +1323,7 @@ export function formatPayrollTableDayShiftOvertimeCell(
   includeTaiXeTongInWorkingHours = false,
   isCompensatoryDay = false,
   lunchOtHours = undefined,
+  otOptions = {},
 ) {
   const strictOff = isOffDay || isCompensatoryDay;
   if (isNightShiftCaLamViec(shiftCode)) {
@@ -1256,6 +1345,7 @@ export function formatPayrollTableDayShiftOvertimeCell(
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
+    otOptions,
   );
   if (n == null) return PAYROLL_CELL_DASH;
   if (n === 0) return PAYROLL_CELL_DASH;
@@ -1281,6 +1371,7 @@ function payrollTotalDayGcNumeric(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
+  otOptions = {},
 ) {
   if (
     hasPayrollLeaveType(
@@ -1314,6 +1405,7 @@ function payrollTotalDayGcNumeric(
           includeTaiXeInWorkingHours,
           includeTaiXeTongInWorkingHours,
           lunchOtHours,
+          otOptions,
         );
         const overtimeHours = n == null ? 0 : n;
         return regularHours + overtimeHours;
@@ -1332,6 +1424,7 @@ function payrollTotalDayGcNumeric(
         includeTaiXeInWorkingHours,
         includeTaiXeTongInWorkingHours,
         lunchOtHours,
+        otOptions,
       );
       return merged == null ? 0 : merged;
     }
@@ -1370,6 +1463,7 @@ function payrollTotalDayGcNumeric(
         includeTaiXeInWorkingHours,
         includeTaiXeTongInWorkingHours,
         lunchOtHours,
+        otOptions,
       );
       overtimeHours = n == null ? 0 : n;
     }
@@ -1391,6 +1485,7 @@ function payrollTotalDayGcNumeric(
       includeTaiXeInWorkingHours,
       includeTaiXeTongInWorkingHours,
       lunchOtHours,
+      otOptions,
     );
     return merged == null ? 0 : merged;
   }
@@ -1411,6 +1506,7 @@ export function formatPayrollTableTotalDayGcCell(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
+  otOptions = {},
 ) {
   const sum = payrollTotalDayGcNumeric(
     timeIn,
@@ -1426,6 +1522,7 @@ export function formatPayrollTableTotalDayGcCell(
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
+    otOptions,
   );
   if (sum === 0) return PAYROLL_CELL_DASH;
   return payrollHoursCellDisplay(String(sum));

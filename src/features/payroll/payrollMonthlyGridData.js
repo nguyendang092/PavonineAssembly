@@ -1,4 +1,5 @@
 import { db, ref, get } from "@/services/firebase";
+import { isKoreanAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 import { buildPayrollMonthDayChunkFromRaw } from "@/features/payroll/buildPayrollDayFromRaw";
 import {
   PAYROLL_MONTH_FETCH_BATCH_SIZE,
@@ -434,6 +435,18 @@ export function formatPayrollMonthWeekday3(date) {
   return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
 }
 
+/** Gắn cờ quy tắc Korean Timesheet lên chunk ngày (fetch + realtime). */
+export function stampPayrollMonthChunkAttendanceRootFlags(
+  chunk,
+  attendanceRootPath = "attendance",
+) {
+  if (!chunk) return chunk;
+  if (isKoreanAttendanceRoot(attendanceRootPath)) {
+    chunk.koreanTimesheetRules = true;
+  }
+  return chunk;
+}
+
 /**
  * Tải dữ liệu `{attendanceRootPath}/{ngày}` cho cả tháng — batch 4 ngày/lần.
  * @param {string} [hooks.attendanceRootPath="attendance"] — `attendance` hoặc `koreanAttendance`
@@ -451,7 +464,12 @@ export async function fetchPayrollMonthDayChunks(monthKeys, hooks = {}) {
     const batchResults = await Promise.all(
       batchKeys.map(async (dateKey) => {
         const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-        return buildPayrollMonthDayChunkFromRaw(snap.val(), dateKey);
+        const chunk = stampPayrollMonthChunkAttendanceRootFlags(
+          buildPayrollMonthDayChunkFromRaw(snap.val(), dateKey),
+          attendanceRootPath,
+        );
+        if (!chunk) return null;
+        return chunk;
       }),
     );
     if (hooks.isStale?.()) return null;

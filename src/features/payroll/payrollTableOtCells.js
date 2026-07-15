@@ -12,6 +12,7 @@ import {
 import {
   payrollOtDayParamsFromEmp,
   payrollOtDayParamsFromEmpWithMaps,
+  payrollDayOvertimeOptionsFromParams,
 } from "@/features/payroll/payrollOtDayParams";
 
 function resolveOtDayParams(emp, dayCtx, maps) {
@@ -49,6 +50,7 @@ export function formatPayrollTableDayShiftOvertimeCellFromEmp(
     p.includeTaiXeTongInWorkingHours,
     p.isCompensatoryDay,
     p.lunchOtHours,
+    payrollDayOvertimeOptionsFromParams(p),
   );
 }
 
@@ -68,6 +70,7 @@ export function formatPayrollTableOffDayTcCellFromEmp(emp, dayCtx, maps) {
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
     p.lunchOtHours,
+    payrollDayOvertimeOptionsFromParams(p),
   );
 }
 
@@ -111,6 +114,7 @@ export function formatPayrollTableTotalDayGcCellFromEmp(emp, dayCtx, maps) {
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
     p.lunchOtHours,
+    payrollDayOvertimeOptionsFromParams(p),
   );
 }
 

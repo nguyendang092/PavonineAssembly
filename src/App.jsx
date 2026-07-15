@@ -42,6 +42,9 @@ const AnnualLeaveManager = lazyImport(
 const KoreanTimesheetPage = lazyImport(
   () => import("@/features/attendance/KoreanTimesheetPage"),
 );
+const AttendanceDashboardPage = lazyImport(
+  () => import("@/features/attendance/AttendanceDashboardPage"),
+);
 
 const WorkplaceDashboardNormal = lazyImport(
   () => import("@/features/dashboard/WorkplaceDashboardNormal"),
@@ -106,6 +109,7 @@ const ROUTE_COMPONENTS = {
   PayrollSalaryCalculator,
   AnnualLeaveManager,
   KoreanTimesheetPage,
+  AttendanceDashboardPage,
   Downloads,
   UserDepartmentManager,
   PermissionCatalogPage,
