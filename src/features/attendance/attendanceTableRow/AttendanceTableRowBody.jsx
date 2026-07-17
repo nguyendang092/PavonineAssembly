@@ -74,8 +74,9 @@ function AttendanceTableRow({
   annualLeaveAttendanceRootPath = "attendance",
 }) {
   const isPayroll = tableVariant === "payroll";
-  const payrollOffLike = isOffDay || isHolidayDay || isCompensatoryDay;
-  const strictOffDay = isOffDay || isCompensatoryDay;
+  const payrollOffLike =
+    isOffDay || isHolidayDay || (isCompensatoryDay && !isKoreanAttendance);
+  const strictOffDay = isOffDay || (isCompensatoryDay && !isKoreanAttendance);
   const payrollDayCtx = {
     isOffDay,
     isHolidayDay,

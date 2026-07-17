@@ -13,20 +13,15 @@ import {
   payrollOtDayParamsFromEmp,
   payrollOtDayParamsFromEmpWithMaps,
   payrollDayOvertimeOptionsFromParams,
+  payrollMonthCompensatoryUsesOffSplit,
+  payrollOffLikeFromParams,
+  payrollStrictOffFromParams,
 } from "@/features/payroll/payrollOtDayParams";
 
 function resolveOtDayParams(emp, dayCtx, maps) {
   return maps
     ? payrollOtDayParamsFromEmpWithMaps(emp, dayCtx, maps)
     : payrollOtDayParamsFromEmp(emp, dayCtx);
-}
-
-function payrollOffLikeFromParams(p) {
-  return p.isOffDay || p.isHolidayDay || p.isCompensatoryDay;
-}
-
-function strictOffFromParams(p) {
-  return p.isOffDay || p.isCompensatoryDay;
 }
 
 /** TC ca ngày ×1.5 — từ dòng NV + ngữ cảnh ngày. */
@@ -48,7 +43,7 @@ export function formatPayrollTableDayShiftOvertimeCellFromEmp(
     p.includeThaiSanInWorkingHours,
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
-    p.isCompensatoryDay,
+    payrollMonthCompensatoryUsesOffSplit(p) ? p.isCompensatoryDay : false,
     p.lunchOtHours,
     payrollDayOvertimeOptionsFromParams(p),
   );
@@ -60,7 +55,7 @@ export function formatPayrollTableOffDayTcCellFromEmp(emp, dayCtx, maps) {
   return formatPayrollTableOffDayTcCell(
     p.timeIn,
     p.timeOut,
-    strictOffFromParams(p),
+    payrollStrictOffFromParams(p),
     p.shiftCode,
     p.payrollEarlyOtPaperwork,
     p.leaveType,
@@ -103,7 +98,7 @@ export function formatPayrollTableTotalDayGcCellFromEmp(emp, dayCtx, maps) {
   return formatPayrollTableTotalDayGcCell(
     p.timeIn,
     p.timeOut,
-    strictOffFromParams(p),
+    payrollStrictOffFromParams(p),
     p.isHolidayDay,
     p.shiftCode,
     p.payrollEarlyOtPaperwork,
@@ -170,7 +165,7 @@ export function formatPayrollTableNightShiftOffDayWorkingCellFromEmp(
   return formatPayrollTableNightShiftOffDayWorkingCell(
     p.timeIn,
     p.timeOut,
-    strictOffFromParams(p),
+    payrollStrictOffFromParams(p),
     p.shiftCode,
     p.leaveType,
     p.includeTapVuInWorkingHours,

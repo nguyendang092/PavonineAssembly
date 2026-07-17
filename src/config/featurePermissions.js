@@ -27,7 +27,6 @@ export const PERMISSION_IDS = Object.freeze({
   ATTENDANCE_OFF_HOLIDAY_DAYS: "attendance_off_holiday_days",
   PAYROLL_SALARY_ROWS: "payroll_salary_rows",
   USER_DEPARTMENT_MAPPING: "user_department_mapping",
-  INTERNAL_ANNOUNCEMENTS: "internal_announcements",
   CERTIFICATE_EDIT: "certificate_edit",
   PERFORMANCE_CHART_EDIT: "performance_chart_edit",
   NAVBAR_ADMIN_MENU: "navbar_admin_menu",
@@ -141,23 +140,6 @@ export const PERMISSION_CATALOG = Object.freeze([
     routes: ["/user-department"],
     modules: ["features/employee/UserDepartmentManager.jsx"],
     authRolesHelpers: ["canManageUserDepartmentMappings"],
-  },
-  {
-    id: PERMISSION_IDS.INTERNAL_ANNOUNCEMENTS,
-    labelVi: "Thông báo nội bộ — đăng / quản trị visibility",
-    quyTac:
-      "Đăng bài: canPostInternalAnnouncements (Admin/HR + Manager). Xem theo visibility: canViewAnnouncement.",
-    routes: ["/", "/email"],
-    modules: [
-      "features/employee/InternalAnnouncements.jsx",
-      "features/employee/InternalAnnouncementsCompose.jsx",
-    ],
-    authRolesHelpers: [
-      "canPostInternalAnnouncements",
-      "isAdminAccess",
-      "ANNOUNCEMENT_VISIBILITY",
-      "canViewAnnouncement",
-    ],
   },
   {
     id: PERMISSION_IDS.CERTIFICATE_EDIT,

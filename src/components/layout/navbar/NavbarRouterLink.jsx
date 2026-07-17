@@ -1,18 +1,13 @@
 import { memo } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
-/** NavLink active + `/email` ↔ `/email/login` — giữ behavior cũ. */
+/** NavLink active state for top-level navbar links. */
 function NavbarRouterLink({ to, onClick, children }) {
-  const location = useLocation();
   return (
     <NavLink
       to={to}
       end
-      className={({ isActive }) => {
-        const active =
-          isActive || (to === "/email" && location.pathname === "/email/login");
-        return active ? "navbar-link-active" : undefined;
-      }}
+      className={({ isActive }) => (isActive ? "navbar-link-active" : undefined)}
       onClick={onClick}
     >
       {children}

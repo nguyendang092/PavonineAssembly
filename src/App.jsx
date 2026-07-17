@@ -81,16 +81,13 @@ const UserDepartmentManager = lazyImport(
 const PermissionCatalogPage = lazyImport(
   () => import("@/features/admin/PermissionCatalogPage"),
 );
-const InternalAnnouncements = lazyImport(
-  () => import("@/features/employee/InternalAnnouncements"),
-);
-const InternalAnnouncementsLogin = lazyImport(
-  () => import("@/features/employee/InternalAnnouncementsLogin"),
+const NavigationBoardPage = lazyImport(
+  () => import("@/features/home/NavigationBoardPage"),
 );
 const LoginRoute = lazyImport(() => import("@/auth/LoginRoute"));
 const NotFoundPage = lazyImport(() => import("@/components/ui/NotFoundPage"));
 
-const AUTH_PATHS = new Set(["/login", "/email/login"]);
+const AUTH_PATHS = new Set(["/login"]);
 const NAVBAR_SCROLLED_CLASS =
   "bg-indigo-100/90 backdrop-blur-md border-b border-indigo-200 shadow-md dark:bg-slate-900/85 dark:border-slate-700";
 const ROUTE_COMPONENTS = {
@@ -113,7 +110,7 @@ const ROUTE_COMPONENTS = {
   Downloads,
   UserDepartmentManager,
   PermissionCatalogPage,
-  InternalAnnouncements,
+  NavigationBoardPage,
 };
 
 function clearSessionAndRedirectToLogin(setUser) {
@@ -320,10 +317,8 @@ const App = () => {
             <Suspense fallback={<LoadingBlock className="min-h-[60vh]" />}>
               <Routes>
                 <Route path="/login" element={<LoginRoute />} />
-                <Route
-                  path="/email/login"
-                  element={<InternalAnnouncementsLogin />}
-                />
+                <Route path="/email/login" element={<Navigate to="/login" replace />} />
+                <Route path="/email" element={<Navigate to="/" replace />} />
                 <Route
                   path="/ng"
                   element={

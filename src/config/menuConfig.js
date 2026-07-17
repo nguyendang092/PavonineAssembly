@@ -1,11 +1,5 @@
 export const menuConfig = [
   {
-    key: "internalAnnouncements",
-    label: "navbar.internalAnnouncements",
-    /** Trang nội dung; chưa đăng nhập → `/login` */
-    path: "/email",
-  },
-  {
     key: "reports",
     label: "navbar.reports",
     type: "dropdown",
@@ -168,11 +162,11 @@ export const menuConfig = [
 ];
 
 /** Không bọc ProtectedRoute — dùng cho App.jsx */
-export const PUBLIC_ROUTE_PATHS = new Set(["/login", "/email/login"]);
+export const PUBLIC_ROUTE_PATHS = new Set(["/login"]);
 
-// Cấu hình route cho App.jsx (route công khai /login, /email/login khai báo trực tiếp trong App)
+// Cấu hình route cho App.jsx (route công khai /login khai báo trực tiếp trong App)
 export const routeConfig = [
-  { path: "/", element: "InternalAnnouncements" },
+  { path: "/", element: "NavigationBoardPage" },
   { path: "/normal", element: "WorkplaceDashboardNormal" },
   { path: "/bangkhen1", element: "CertificateGenerator1" },
   { path: "/bangkhen2", element: "CertificateGenerator2" },
@@ -191,6 +185,5 @@ export const routeConfig = [
   { path: "/attendance-dashboard", element: "AttendanceDashboardPage" },
   { path: "/user-department", element: "UserDepartmentManager" },
   { path: "/permission-catalog", element: "PermissionCatalogPage" },
-  { path: "/email", element: "InternalAnnouncements" },
   { path: "/downloads", element: "Downloads" },
 ];

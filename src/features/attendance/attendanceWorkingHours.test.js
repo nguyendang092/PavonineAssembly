@@ -179,12 +179,12 @@ describe("getPayrollDayOvertimeHoursNumeric", () => {
     ).toBe(0.25);
   });
 
-  it("Korean Timesheet ngày NB — TC 17:15 từ 17:00", () => {
+  it("Korean Timesheet ngày NB — TC 17:15 như ngày thường (sau 17:30)", () => {
     expect(
       getPayrollDayOvertimeHoursNumeric(
         "08:00",
         "17:15",
-        true,
+        false,
         "S1",
         false,
         false,
@@ -199,7 +199,7 @@ describe("getPayrollDayOvertimeHoursNumeric", () => {
           isCompensatoryDay: true,
         },
       ),
-    ).toBe(0.25);
+    ).toBe(0);
   });
 
   it("Korean Timesheet Chủ nhật — TC 17:32 từ 17:00", () => {

@@ -138,8 +138,9 @@ function isSundayDateKeyForKoreanOt(dateKey) {
 }
 
 /**
- * Korean Timesheet — ngày **NB** / **Chủ nhật**: TC chiều từ 17:00, không block 30 phút.
+ * Korean Timesheet — **Chủ nhật**: TC chiều từ 17:00, không block 30 phút.
  * Ví dụ ra 17:32 → 32 phút → 0.53h; ra 17:15 → 15 phút → 0.25h.
+ * Ngày **NB** tính như ngày thường (không dùng luật này).
  */
 export function getKoreanTimesheetNbSundayEveningOvertimeHoursFromGioRa(timeOut) {
   const b = parseHHMMToMinutes(timeOut);
@@ -168,7 +169,7 @@ export function shouldUseKoreanNbSundayEveningOtRule({
   dateKey = null,
 } = {}) {
   if (!koreanTimesheetRules) return false;
-  if (isCompensatoryDay) return true;
+  if (isCompensatoryDay) return false;
   return isSundayDateKeyForKoreanOt(dateKey);
 }
 

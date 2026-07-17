@@ -122,7 +122,7 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     expect(coeffHours(lines, 2.0)).toBe(8.25);
   });
 
-  it("Korean Timesheet ngày NB — TC 17:32 phần dư ×2.0", () => {
+  it("Korean Timesheet ngày NB — TC 17:32 như ngày thường ×1.5", () => {
     const lines = getPayrollMonthlyCoefficientLines({
       timeIn: "08:00",
       timeOut: "17:32",
@@ -145,11 +145,11 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     );
     expect(main.kind).toBe("hours");
     expect(main.hours).toBe(8);
-    expect(coeffHours(lines, 2.0)).toBe(0.53);
-    expect(coeffHours(lines, 1.5)).toBe(0);
+    expect(coeffHours(lines, 1.5)).toBe(0.53);
+    expect(coeffHours(lines, 2.0)).toBe(0);
   });
 
-  it("Korean Timesheet ngày NB — TC 17:15 phần dư ×2.0", () => {
+  it("Korean Timesheet ngày NB — TC 17:15 như ngày thường (sau 17:30)", () => {
     const lines = getPayrollMonthlyCoefficientLines({
       timeIn: "08:00",
       timeOut: "17:15",
@@ -161,7 +161,8 @@ describe("getPayrollMonthlyCoefficientLines", () => {
       payrollLateOtExcluded: false,
       koreanTimesheetRules: true,
     });
-    expect(coeffHours(lines, 2.0)).toBe(0.25);
+    expect(coeffHours(lines, 1.5)).toBe(0);
+    expect(coeffHours(lines, 2.0)).toBe(0);
   });
 
   it("Korean Timesheet ngày NB — Tổng GC bảng ngày gồm TC chiều", () => {
@@ -179,7 +180,7 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     expect(cell).toBe("8.53");
   });
 
-  it("Korean Timesheet ngày NB — Tổng GC 17:15 gồm TC từ 17:00", () => {
+  it("Korean Timesheet ngày NB — Tổng GC 17:15 như ngày thường (không TC trước 17:30)", () => {
     const cell = formatPayrollTableTotalDayGcCellFromEmp(
       {
         gioVao: "08:00",
@@ -191,7 +192,7 @@ describe("getPayrollMonthlyCoefficientLines", () => {
         koreanTimesheetRules: true,
       },
     );
-    expect(cell).toBe("8.25");
+    expect(cell).toBe("8");
   });
 
   it("1/2PN + ra 18:00 — TC ×1.5 như ngày thường", () => {

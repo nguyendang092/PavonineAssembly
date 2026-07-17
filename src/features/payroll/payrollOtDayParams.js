@@ -38,6 +38,23 @@ export function payrollDayOvertimeOptionsFromParams(p) {
   };
 }
 
+/** NB tách off (×2.0) — Korean Timesheet tính như ngày thường. */
+export function payrollMonthCompensatoryUsesOffSplit(ctx) {
+  return Boolean(ctx?.isCompensatoryDay) && ctx?.koreanTimesheetRules !== true;
+}
+
+export function payrollStrictOffFromParams(p) {
+  return Boolean(p?.isOffDay) || payrollMonthCompensatoryUsesOffSplit(p);
+}
+
+export function payrollOffLikeFromParams(p) {
+  return (
+    Boolean(p?.isOffDay) ||
+    Boolean(p?.isHolidayDay) ||
+    payrollMonthCompensatoryUsesOffSplit(p)
+  );
+}
+
 /**
  * Khi xuất Excel từ `baseEmployees` — gộp cờ TC từ `_meta` nếu row chưa có.
  */

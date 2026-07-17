@@ -22,7 +22,7 @@ import {
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { isDuocNghiBuExplicitlyNo } from "@/features/attendance/attendanceDayMeta";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
-import { payrollOtDayParamsFromMonthChunkEmp, payrollDayOvertimeOptionsFromParams } from "@/features/payroll/payrollOtDayParams";
+import { payrollOtDayParamsFromMonthChunkEmp, payrollDayOvertimeOptionsFromParams, payrollMonthCompensatoryUsesOffSplit } from "@/features/payroll/payrollOtDayParams";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
@@ -209,7 +209,8 @@ export function getPayrollMonthlyCoefficientLines(p) {
     leaveType,
     dateKey = null,
   } = p;
-  const strictOffDay = isOffDay || isCompensatoryDay;
+  const strictOffDay =
+    isOffDay || payrollMonthCompensatoryUsesOffSplit(p);
   const {
     includeTapVuInWorkingHours,
     includeThaiSanInWorkingHours,
@@ -254,7 +255,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     return lines;
   }
 
-  if (isCompensatoryDay) {
+  if (payrollMonthCompensatoryUsesOffSplit(p)) {
     return payrollMonthCompensatoryOtCoefficientLines(p);
   }
 
@@ -383,7 +384,7 @@ export const PAYROLL_MONTHLY_SUBROWS = [
  * @returns {number | null}
  */
 function getPayrollMonthCompensatoryMainRowHours(emp, ch) {
-  if (!ch?.isCompensatoryDay) return null;
+  if (!payrollMonthCompensatoryUsesOffSplit(ch)) return null;
   if (emp && isDuocNghiBuExplicitlyNo(emp?.duocNghiBu)) return null;
   return payrollMonthCompensatoryRegularMainHours(
     payrollOtDayParamsFromMonthChunkEmp(emp, ch),
@@ -455,7 +456,12 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
   }
   if (isAttendanceBuGioCongType(leaveRaw)) {
     const night = isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT]);
-    if (night || ch.isOffDay || ch.isHolidayDay || ch.isCompensatoryDay) {
+    if (
+      night ||
+      ch.isOffDay ||
+      ch.isHolidayDay ||
+      payrollMonthCompensatoryUsesOffSplit(ch)
+    ) {
       const nbHours = getPayrollMonthCompensatoryMainRowHours(emp, ch);
       if (nbHours != null) return { kind: "hours", hours: nbHours };
       return { kind: "dash" };
@@ -478,7 +484,7 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     };
   }
   const night = isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT]);
-  if (ch.isCompensatoryDay) {
+  if (payrollMonthCompensatoryUsesOffSplit(ch)) {
     const nbHours = getPayrollMonthCompensatoryMainRowHours(emp, ch);
     if (nbHours != null) return { kind: "hours", hours: nbHours };
     return { kind: "dash" };
@@ -523,7 +529,7 @@ export function getPayrollMonthlyCoeffHoursMap(p) {
 
 /** Hệ số dòng GC ca đêm (trước khi chuyển giờ lên dòng chính lưới). */
 export function payrollMonthNightShiftGcCoeffForMainRowDisplay(ch) {
-  if (ch?.isCompensatoryDay) return null;
+  if (payrollMonthCompensatoryUsesOffSplit(ch)) return null;
   if (isPayrollMonthSundayDateKey(ch?.dateKey)) return null;
   if (ch?.isHolidayDay) return 3.9;
   if (ch?.isOffDay) return 2.7;
@@ -554,7 +560,7 @@ export function getPayrollMonthNightShiftGcHoursForMainRow(emp, ch) {
 
 /** Dòng hệ số hiển thị badge ca (S2) thay cho giờ GC đã chuyển lên dòng chính. */
 export function payrollMonthNightShiftShiftBadgeCoeff(ch, main) {
-  if (ch?.isCompensatoryDay) {
+  if (payrollMonthCompensatoryUsesOffSplit(ch)) {
     if (main?.kind === "hours" && main.hours > 0) return 0.3;
     return null;
   }
@@ -574,7 +580,7 @@ export function shouldPayrollMonthNightShiftShowShiftBadgeOnCoeff({
   if (isPayrollMonthSundayDateKey(ch?.dateKey)) return false;
   const badgeCoeff = payrollMonthNightShiftShiftBadgeCoeff(ch, main);
   if (badgeCoeff == null || sr.coeff !== badgeCoeff) return false;
-  if (ch?.isCompensatoryDay) return true;
+  if (payrollMonthCompensatoryUsesOffSplit(ch)) return true;
   const h = coeffMap?.get(badgeCoeff);
   return Number.isFinite(h) && h > 0;
 }
