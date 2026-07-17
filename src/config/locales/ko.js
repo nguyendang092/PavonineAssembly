@@ -1629,11 +1629,26 @@ const ko = {
     exportCompensatorySuffix: "보상휴무",
     exportOffDaySuffix: "휴무일",
     exportExcelMenu: "⬇ Excel보내기",
-    exportExcelMenuHint: "Excel보내기: 하루 또는 여러 날.",
+    exportExcelMenuHint:
+      "Excel보내기: 하루 또는 여러 날; 하나 또는 여러 부서 선택 가능.",
     exportExcelOneDay: "하루 (선택한 날짜)",
     exportExcelRange: "여러 날",
     exportExcelRangeHint:
-      "여러 날 Excel: 시작일과 종료일을 선택하세요 (기본값은 오늘).",
+      "여러 날 Excel: 기간과 부서를 선택하세요 (기본값은 오늘).",
+    exportSingleDayModalTitle: "하루 Excel보내기",
+    exportSingleDayModalHint:
+      "선택한 날짜의 근무시간표를보냅니다. 부서별로 필터할 수 있습니다.",
+    exportDateSectionLabel: "기간",
+    exportDepartmentLabel: "부서",
+    exportDepartmentHint: "선택 안 함 = 전체 부서",
+    exportDepartmentAll: "전체 부서",
+    exportDepartmentSelected: "{{total}}개 중 {{count}}개 선택",
+    exportSummarySingle: "날짜 {{date}}",
+    exportSummaryRange: "{{from}} → {{to}}",
+    exportDepartmentSelectAll: "전체 선택",
+    exportDepartmentClear: "선택 해제",
+    exportDepartmentFilteredEmpty:
+      "선택한 기간에 해당 부서 직원 데이터가 없습니다.",
     exportRangeModalTitle: "기간별 Excel보내기",
     exportRangeFrom: "시작일",
     exportRangeTo: "종료일",

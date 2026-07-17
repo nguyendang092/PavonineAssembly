@@ -15,6 +15,7 @@ import {
   FiSave,
   FiThermometer,
 } from "react-icons/fi";
+import { getMachineDisplayName } from "@/features/dashboard/temperatureMachineDisplay";
 
 const PAGE_SIZE = 10;
 
@@ -171,7 +172,7 @@ const SingleMachineTable = ({ area, machine, selectedMonth, showToast }) => {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl dark:text-white">
-              {t(`machineNames.${machine}`)}
+              {getMachineDisplayName(t, machine)}
             </h3>
           </div>
           <span className="shrink-0 rounded-full border-2 border-slate-300/90 bg-white px-3 py-1.5 text-sm font-bold tabular-nums tracking-wide text-slate-900 shadow-sm dark:border-slate-500 dark:bg-slate-900 dark:text-slate-50">

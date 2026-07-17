@@ -460,10 +460,13 @@ function triggerDownloadXlsxBuffer(buffer, filename) {
 }
 
 export async function downloadPayrollSalaryExcel(opts) {
-  const { selectedDate } = opts;
+  const { selectedDate, filename } = opts;
   const workbook = await buildPayrollSalaryExcelWorkbook(opts);
   const buffer = await workbook.xlsx.writeBuffer();
-  triggerDownloadXlsxBuffer(buffer, `Bang-gio-cong_${selectedDate}.xlsx`);
+  triggerDownloadXlsxBuffer(
+    buffer,
+    filename || `Bang-gio-cong_${selectedDate}.xlsx`,
+  );
 }
 
 /** @param {{ workbook: object, filename: string }} opts */

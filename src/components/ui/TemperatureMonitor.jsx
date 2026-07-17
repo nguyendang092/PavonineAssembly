@@ -21,6 +21,7 @@ import LoadingBlock from "./LoadingBlock";
 import SingleMachineTable from "@/features/dashboard/SingleMachineTable";
 import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/layout/Sidebar";
+import { getMachineDisplayName } from "@/features/dashboard/temperatureMachineDisplay";
 
 Modal.setAppElement("#root");
 
@@ -445,9 +446,7 @@ const TemperatureMonitor = () => {
                     ) : (
                       <>
                         <span className="truncate pr-2 text-sm font-medium text-white">
-                          {t(`machineNames.${machine}`, {
-                            defaultValue: machine,
-                          })}
+                          {getMachineDisplayName(t, machine)}
                         </span>
 
                         {user && (

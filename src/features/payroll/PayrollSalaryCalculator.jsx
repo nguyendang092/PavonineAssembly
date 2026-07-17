@@ -66,6 +66,10 @@ import {
 import { businessEmployeeCode } from "@/utils/attendanceEmployeeRecord";
 import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
 import {
+  filterPayrollEmployeesByDepartments,
+  payrollExportDepartmentFilenameSuffix,
+} from "@/features/payroll/payrollExportDepartmentFilter";
+import {
   getOvertimeHoursFromGioRa,
   isEarlyArrivalForPaperworkOvertime,
   isNightShiftCaLamViec,
@@ -152,6 +156,7 @@ export default function PayrollSalaryCalculator() {
   const [lateOtModalMode, setLateOtModalMode] = useState("pending");
   const [lateOtSaving, setLateOtSaving] = useState(false);
   const [rangeExportModalOpen, setRangeExportModalOpen] = useState(false);
+  const [exportModalMode, setExportModalMode] = useState("range");
   const [rangeExportBusy, setRangeExportBusy] = useState(false);
   const [monthlyTimesheetOpen, setMonthlyTimesheetOpen] = useState(false);
   const [monthlyTimeInOutOpen, setMonthlyTimeInOutOpen] = useState(false);
@@ -662,8 +667,8 @@ export default function PayrollSalaryCalculator() {
     tlPage,
   ]);
 
-  const handleExportPayrollExcelRange = useCallback(
-    async (rangeFrom, rangeTo) => {
+  const handleExportPayrollExcelFromModal = useCallback(
+    async (rangeFrom, rangeTo, selectedDepartments) => {
       const keys = enumerateDateKeysInclusive(rangeFrom, rangeTo);
       if (!keys.length) {
         setAlert({
@@ -687,17 +692,117 @@ export default function PayrollSalaryCalculator() {
         });
         return;
       }
+
+      const deptSuffix =
+        payrollExportDepartmentFilenameSuffix(selectedDepartments);
+      const deptSheetSuffix =
+        selectedDepartments?.length > 0
+          ? ` — ${selectedDepartments.join(", ")}`
+          : "";
+
       setRangeExportBusy(true);
       try {
+        if (keys.length === 1) {
+          const dateKey = keys[0];
+          let dayEmployees = [];
+          let dayMeta = {
+            isPayrollOffLikeDay: false,
+            isOffDay: false,
+            isHolidayDay: false,
+            isCompensatoryDay: false,
+            earlyOtPaperworkById: {},
+            lateOtExcludedById: {},
+          };
+
+          if (dateKey === selectedDate && employees.length) {
+            dayEmployees = employees;
+            dayMeta = {
+              isPayrollOffLikeDay:
+                isOffDay || isHolidayDay || isCompensatoryDay,
+              isOffDay,
+              isHolidayDay,
+              isCompensatoryDay,
+              earlyOtPaperworkById: earlyOtMap,
+              lateOtExcludedById: lateOtExcludedMap,
+            };
+          } else {
+            const snap = await get(ref(db, `attendance/${dateKey}`));
+            const parsed = parsePayrollDayFromAttendanceRaw(snap.val());
+            dayEmployees = parsed.baseEmployees;
+            dayMeta = {
+              isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
+              isOffDay: parsed.isOffDay,
+              isHolidayDay: parsed.isHolidayDay,
+              isCompensatoryDay: parsed.isCompensatoryDay,
+              earlyOtPaperworkById: parsed.earlyOtPaperworkById,
+              lateOtExcludedById: parsed.lateOtExcludedById || {},
+            };
+          }
+
+          const filteredEmployees = filterPayrollEmployeesByDepartments(
+            dayEmployees,
+            selectedDepartments,
+            normalizeDepartment,
+          );
+          if (!filteredEmployees.length) {
+            setAlert({
+              show: true,
+              type: "error",
+              message: tlPage(
+                selectedDepartments?.length
+                  ? "exportDepartmentFilteredEmpty"
+                  : "exportExcelEmpty",
+                selectedDepartments?.length
+                  ? "Không có nhân viên thuộc bộ phận đã chọn trong ngày này."
+                  : "Không có dữ liệu điểm danh trong ngày để xuất.",
+              ),
+            });
+            return;
+          }
+
+          const sheetTitleBase =
+            dateKey === selectedDate
+              ? payrollExportSheetTitle
+              : `${tlPage("exportSheetTitle", "Bảng giờ công nhân viên")} — ${formatPayrollExcelDateCell(dateKey, displayLocale)}`;
+          const sheetTitle = `${sheetTitleBase}${deptSheetSuffix}`;
+          await downloadPayrollSalaryExcel({
+            employees: filteredEmployees,
+            selectedDate: dateKey,
+            isPayrollOffLikeDay: dayMeta.isPayrollOffLikeDay,
+            isOffDay: dayMeta.isOffDay,
+            isHolidayDay: dayMeta.isHolidayDay,
+            isCompensatoryDay: dayMeta.isCompensatoryDay,
+            tlTable,
+            sheetTitle,
+            earlyOtPaperworkById: dayMeta.earlyOtPaperworkById,
+            lateOtExcludedById: dayMeta.lateOtExcludedById,
+            filename: `Bang-gio-cong_${dateKey}${deptSuffix}.xlsx`,
+          });
+          setAlert({
+            show: true,
+            type: "success",
+            message: tlPage("exportExcelSuccess", "✅ Đã xuất Excel.", {
+              rows: filteredEmployees.length,
+            }),
+          });
+          setRangeExportModalOpen(false);
+          return;
+        }
+
         const dayChunks = [];
         for (const dateKey of keys) {
           const snap = await get(ref(db, `attendance/${dateKey}`));
           const raw = snap.val();
           const parsed = parsePayrollDayFromAttendanceRaw(raw);
-          if (!parsed.baseEmployees.length) continue;
+          const filteredEmployees = filterPayrollEmployeesByDepartments(
+            parsed.baseEmployees,
+            selectedDepartments,
+            normalizeDepartment,
+          );
+          if (!filteredEmployees.length) continue;
           dayChunks.push({
             dateKey,
-            employees: parsed.baseEmployees,
+            employees: filteredEmployees,
             isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
             isOffDay: parsed.isOffDay,
             isHolidayDay: parsed.isHolidayDay,
@@ -711,15 +816,19 @@ export default function PayrollSalaryCalculator() {
             show: true,
             type: "error",
             message: tlPage(
-              "exportRangePayrollEmpty",
-              "Không có dữ liệu điểm danh trong khoảng ngày đã chọn.",
+              selectedDepartments?.length
+                ? "exportDepartmentFilteredEmpty"
+                : "exportRangePayrollEmpty",
+              selectedDepartments?.length
+                ? "Không có nhân viên thuộc bộ phận đã chọn trong khoảng ngày."
+                : "Không có dữ liệu điểm danh trong khoảng ngày đã chọn.",
             ),
           });
           return;
         }
         const fromKey = keys[0];
         const toKey = keys[keys.length - 1];
-        const sheetTitle = `${tlPage("exportSheetTitle", "Bảng giờ công nhân viên")} — ${formatPayrollExcelDateCell(fromKey, displayLocale)} – ${formatPayrollExcelDateCell(toKey, displayLocale)}`;
+        const sheetTitle = `${tlPage("exportSheetTitle", "Bảng giờ công nhân viên")} — ${formatPayrollExcelDateCell(fromKey, displayLocale)} – ${formatPayrollExcelDateCell(toKey, displayLocale)}${deptSheetSuffix}`;
         const workbook = await buildPayrollSalaryExcelWorkbookMultiDay({
           dayChunks,
           tlTable,
@@ -727,7 +836,7 @@ export default function PayrollSalaryCalculator() {
         });
         await downloadPayrollWorkbookToFile({
           workbook,
-          filename: `Bang-gio-cong_${fromKey}_den_${toKey}.xlsx`,
+          filename: `Bang-gio-cong_${fromKey}_den_${toKey}${deptSuffix}.xlsx`,
         });
         const totalRows = dayChunks.reduce((s, d) => s + d.employees.length, 0);
         setAlert({
@@ -755,62 +864,22 @@ export default function PayrollSalaryCalculator() {
         setRangeExportBusy(false);
       }
     },
-    [db, displayLocale, tlPage, tlTable],
+    [
+      db,
+      displayLocale,
+      tlPage,
+      tlTable,
+      selectedDate,
+      employees,
+      isOffDay,
+      isHolidayDay,
+      isCompensatoryDay,
+      earlyOtMap,
+      lateOtExcludedMap,
+      normalizeDepartment,
+      payrollExportSheetTitle,
+    ],
   );
-
-  const handleExportPayrollExcel = useCallback(async () => {
-    if (!employees.length) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: tlPage(
-          "exportExcelEmpty",
-          "Không có dữ liệu điểm danh trong ngày để xuất.",
-        ),
-      });
-      return;
-    }
-    try {
-      await downloadPayrollSalaryExcel({
-        employees,
-        selectedDate,
-        isPayrollOffLikeDay: isOffDay || isHolidayDay || isCompensatoryDay,
-        isOffDay,
-        isHolidayDay,
-        isCompensatoryDay,
-        tlTable,
-        sheetTitle: payrollExportSheetTitle,
-        earlyOtPaperworkById: earlyOtMap,
-        lateOtExcludedById: lateOtExcludedMap,
-      });
-      setAlert({
-        show: true,
-        type: "success",
-        message: tlPage("exportExcelSuccess", "✅ Đã xuất Excel.", {
-          rows: employees.length,
-        }),
-      });
-    } catch (err) {
-      setAlert({
-        show: true,
-        type: "error",
-        message: tlPage("exportExcelError", "❌ Xuất Excel thất bại.", {
-          error: err?.message || String(err),
-        }),
-      });
-    }
-  }, [
-    employees,
-    selectedDate,
-    isOffDay,
-    isHolidayDay,
-    isCompensatoryDay,
-    tlTable,
-    tlPage,
-    payrollExportSheetTitle,
-    earlyOtMap,
-    lateOtExcludedMap,
-  ]);
 
   return (
     <>
@@ -871,8 +940,14 @@ export default function PayrollSalaryCalculator() {
               onOpenMonthlyTimeInOut={() => setMonthlyTimeInOutOpen(true)}
               onOpenEarlyOt={() => openEarlyOtModal("all")}
               onOpenLateOt={() => openLateOtModal("all")}
-              onExportOneDay={() => void handleExportPayrollExcel()}
-              onExportRange={() => setRangeExportModalOpen(true)}
+              onExportOneDay={() => {
+                setExportModalMode("single");
+                setRangeExportModalOpen(true);
+              }}
+              onExportRange={() => {
+                setExportModalMode("range");
+                setRangeExportModalOpen(true);
+              }}
               showEarlyOtAction={earlyOtEligibleEmployees.length > 0}
               showLateOtAction={lateOtEligibleEmployees.length > 0}
             />
@@ -1030,14 +1105,56 @@ export default function PayrollSalaryCalculator() {
         onDismiss={() => {
           if (!rangeExportBusy) setRangeExportModalOpen(false);
         }}
-        onExport={handleExportPayrollExcelRange}
+        onExport={handleExportPayrollExcelFromModal}
         todayKey={getTodayDateKeyLocal()}
+        singleDayKey={exportModalMode === "single" ? selectedDate : null}
+        departmentOptions={departments}
+        initialDepartmentFilter={departmentFilter}
         exporting={rangeExportBusy}
-        title={tlPage("exportRangeModalTitle", "Xuất Excel nhiều ngày")}
+        title={tlPage(
+          exportModalMode === "single"
+            ? "exportSingleDayModalTitle"
+            : "exportRangeModalTitle",
+          exportModalMode === "single"
+            ? "Xuất Excel một ngày"
+            : "Xuất Excel nhiều ngày",
+        )}
+        hint={tlPage(
+          exportModalMode === "single"
+            ? "exportSingleDayModalHint"
+            : "exportExcelRangeHint",
+          exportModalMode === "single"
+            ? "Xuất bảng giờ công của ngày đang chọn. Có thể lọc theo bộ phận."
+            : "Chọn khoảng ngày và bộ phận cần xuất.",
+        )}
+        dateSectionLabel={tlPage("exportDateSectionLabel", "Khoảng ngày")}
         fromLabel={tlPage("exportRangeFrom", "Từ ngày")}
         toLabel={tlPage("exportRangeTo", "Đến ngày")}
         exportLabel={tlPage("exportRangeSubmit", "Xuất Excel")}
         cancelLabel={tlPage("exportRangeCancel", "Hủy")}
+        departmentLabel={tlPage("exportDepartmentLabel", "Bộ phận")}
+        departmentHint={tlPage(
+          "exportDepartmentHint",
+          "Không chọn = xuất tất cả bộ phận",
+        )}
+        departmentAllLabel={tlPage("exportDepartmentAll", "Tất cả bộ phận")}
+        departmentSelectedLabel={tlPage(
+          "exportDepartmentSelected",
+          "Đã chọn {{count}}/{{total}} bộ phận",
+        )}
+        summarySingleLabel={tlPage(
+          "exportSummarySingle",
+          "Ngày {{date}}",
+        )}
+        summaryRangeLabel={tlPage(
+          "exportSummaryRange",
+          "{{from}} → {{to}}",
+        )}
+        selectAllDepartmentsLabel={tlPage(
+          "exportDepartmentSelectAll",
+          "Chọn tất cả",
+        )}
+        clearDepartmentsLabel={tlPage("exportDepartmentClear", "Bỏ chọn")}
       />
 
       <PayrollMonthlyTimeInOutModal

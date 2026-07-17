@@ -16,6 +16,7 @@ import {
 import * as XLSX from "@e965/xlsx";
 import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
+import { getMachineDisplayName } from "@/features/dashboard/temperatureMachineDisplay";
 
 const COLORS = [
   "#000000",
@@ -250,7 +251,7 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
               key={`line-${machine}`}
               type="monotone"
               dataKey={machine}
-              name={t(`machineNames.${machine}`)}
+              name={getMachineDisplayName(t, machine)}
               stroke={COLORS[index % COLORS.length]}
               strokeWidth={2}
               connectNulls
@@ -307,7 +308,7 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
                       {alert.day}
                     </td>
                     <td className="border border-slate-200 px-4 py-2 text-slate-800 dark:border-slate-600 dark:text-slate-200">
-                      {t(`machineNames.${alert.machine}`)}
+                      {getMachineDisplayName(t, alert.machine)}
                     </td>
                     <td className="border border-slate-200 px-4 py-2 text-slate-800 dark:border-slate-600 dark:text-slate-200">
                       {alert.value}

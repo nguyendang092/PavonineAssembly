@@ -1621,11 +1621,26 @@ const vi = {
     exportCompensatorySuffix: "Nghỉ bù",
     exportOffDaySuffix: "Ngày off",
     exportExcelMenu: "⬇ Xuất Excel",
-    exportExcelMenuHint: "Xuất Excel: một ngày hoặc nhiều ngày.",
+    exportExcelMenuHint:
+      "Xuất Excel: một ngày hoặc nhiều ngày; có thể chọn một hoặc nhiều bộ phận.",
     exportExcelOneDay: "Một ngày (ngày đang chọn)",
     exportExcelRange: "Nhiều ngày",
     exportExcelRangeHint:
-      "Xuất Excel nhiều ngày: chọn từ ngày và đến ngày (mặc định hôm nay).",
+      "Xuất Excel nhiều ngày: chọn khoảng ngày và bộ phận (mặc định hôm nay).",
+    exportSingleDayModalTitle: "Xuất Excel một ngày",
+    exportSingleDayModalHint:
+      "Xuất bảng giờ công của ngày đang chọn. Có thể lọc theo bộ phận.",
+    exportDateSectionLabel: "Khoảng ngày",
+    exportDepartmentLabel: "Bộ phận",
+    exportDepartmentHint: "Không chọn = xuất tất cả bộ phận",
+    exportDepartmentAll: "Tất cả bộ phận",
+    exportDepartmentSelected: "Đã chọn {{count}}/{{total}} bộ phận",
+    exportSummarySingle: "Ngày {{date}}",
+    exportSummaryRange: "{{from}} → {{to}}",
+    exportDepartmentSelectAll: "Chọn tất cả",
+    exportDepartmentClear: "Bỏ chọn",
+    exportDepartmentFilteredEmpty:
+      "Không có nhân viên thuộc bộ phận đã chọn trong khoảng đã chọn.",
     exportRangeModalTitle: "Xuất Excel nhiều ngày",
     exportRangeFrom: "Từ ngày",
     exportRangeTo: "Đến ngày",
