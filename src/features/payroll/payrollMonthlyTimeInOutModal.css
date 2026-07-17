@@ -133,6 +133,8 @@
 }
 
 .pm-tio-filters {
+  position: relative;
+  z-index: 30;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

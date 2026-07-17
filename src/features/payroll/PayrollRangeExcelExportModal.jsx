@@ -29,6 +29,11 @@ export default function PayrollRangeExcelExportModal({
   departmentAllLabel = "Tất cả bộ phận",
   summarySingleLabel = "Ngày {{date}}",
   summaryRangeLabel = "{{from}} → {{to}}",
+  /** Chỉ chọn bộ phận (lưới tháng) — ẩn khoảng ngày. */
+  departmentsOnly = false,
+  monthTitle = "",
+  monthSectionLabel = "Tháng xuất",
+  initialSelectedDepartments = null,
 }) {
   const [from, setFrom] = useState(todayKey);
   const [to, setTo] = useState(todayKey);
@@ -43,9 +48,19 @@ export default function PayrollRangeExcelExportModal({
     const day = singleDayKey || todayKey;
     setFrom(day);
     setTo(day);
+    if (Array.isArray(initialSelectedDepartments)) {
+      setSelectedDepartments(initialSelectedDepartments.filter(Boolean));
+      return;
+    }
     const initial = String(initialDepartmentFilter ?? "").trim();
     setSelectedDepartments(initial ? [initial] : []);
-  }, [open, todayKey, singleDayKey, initialDepartmentFilter]);
+  }, [
+    open,
+    todayKey,
+    singleDayKey,
+    initialDepartmentFilter,
+    initialSelectedDepartments,
+  ]);
 
   const departmentBadge = useMemo(() => {
     if (!totalDepartments) return departmentHint;
@@ -62,6 +77,9 @@ export default function PayrollRangeExcelExportModal({
   ]);
 
   const footerSummary = useMemo(() => {
+    if (departmentsOnly) {
+      return `${monthTitle || "—"} · ${departmentBadge}`;
+    }
     const datePart = isSingleDay
       ? summarySingleLabel.replace("{{date}}", singleDayKey || "")
       : summaryRangeLabel
@@ -69,6 +87,8 @@ export default function PayrollRangeExcelExportModal({
           .replace("{{to}}", to || "");
     return `${datePart} · ${departmentBadge}`;
   }, [
+    departmentsOnly,
+    monthTitle,
     isSingleDay,
     singleDayKey,
     from,
@@ -131,49 +151,64 @@ export default function PayrollRangeExcelExportModal({
       <div className="prex-body">
         {hint ? <p className="prex-hint">{hint}</p> : null}
 
-        <section className="prex-section" aria-labelledby="prex-date-section">
-          <header className="prex-section-head" id="prex-date-section">
-            <span className="prex-step">1</span>
-            <span>{isSingleDay ? fromLabel : dateSectionLabel}</span>
-          </header>
-          <div className="prex-section-body">
-            {isSingleDay ? (
+        {departmentsOnly ? (
+          <section className="prex-section" aria-labelledby="prex-month-section">
+            <header className="prex-section-head" id="prex-month-section">
+              <span className="prex-step">1</span>
+              <span>{monthSectionLabel}</span>
+            </header>
+            <div className="prex-section-body">
               <div className="prex-date-single">
                 <span aria-hidden="true">📅</span>
-                <span>{singleDayKey}</span>
+                <span>{monthTitle || "—"}</span>
               </div>
-            ) : (
-              <div className="prex-date-grid">
-                <label className="prex-field">
-                  <span className="prex-field-label">{fromLabel}</span>
-                  <input
-                    type="date"
-                    required
-                    value={from}
-                    disabled={exporting}
-                    onChange={(e) => setFrom(e.target.value)}
-                    className="prex-field-input"
-                  />
-                </label>
-                <label className="prex-field">
-                  <span className="prex-field-label">{toLabel}</span>
-                  <input
-                    type="date"
-                    required
-                    value={to}
-                    disabled={exporting}
-                    onChange={(e) => setTo(e.target.value)}
-                    className="prex-field-input"
-                  />
-                </label>
-              </div>
-            )}
-          </div>
-        </section>
+            </div>
+          </section>
+        ) : (
+          <section className="prex-section" aria-labelledby="prex-date-section">
+            <header className="prex-section-head" id="prex-date-section">
+              <span className="prex-step">1</span>
+              <span>{isSingleDay ? fromLabel : dateSectionLabel}</span>
+            </header>
+            <div className="prex-section-body">
+              {isSingleDay ? (
+                <div className="prex-date-single">
+                  <span aria-hidden="true">📅</span>
+                  <span>{singleDayKey}</span>
+                </div>
+              ) : (
+                <div className="prex-date-grid">
+                  <label className="prex-field">
+                    <span className="prex-field-label">{fromLabel}</span>
+                    <input
+                      type="date"
+                      required
+                      value={from}
+                      disabled={exporting}
+                      onChange={(e) => setFrom(e.target.value)}
+                      className="prex-field-input"
+                    />
+                  </label>
+                  <label className="prex-field">
+                    <span className="prex-field-label">{toLabel}</span>
+                    <input
+                      type="date"
+                      required
+                      value={to}
+                      disabled={exporting}
+                      onChange={(e) => setTo(e.target.value)}
+                      className="prex-field-input"
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="prex-section" aria-labelledby="prex-dept-section">
           <header className="prex-section-head" id="prex-dept-section">
-            <span className="prex-step">2</span>
+            <span className="prex-step">{departmentsOnly ? "2" : "2"}</span>
             <span>{departmentLabel}</span>
           </header>
           <div className="prex-section-body">

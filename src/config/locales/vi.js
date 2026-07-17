@@ -1641,6 +1641,10 @@ const vi = {
     exportDepartmentClear: "Bỏ chọn",
     exportDepartmentFilteredEmpty:
       "Không có nhân viên thuộc bộ phận đã chọn trong khoảng đã chọn.",
+    monthlyTimesheetExportModalTitle: "Xuất Excel bảng chấm công tháng",
+    monthlyTimesheetExportModalHint:
+      "Chọn một hoặc nhiều bộ phận cần xuất. Không chọn = xuất tất cả bộ phận.",
+    exportMonthSectionLabel: "Tháng xuất",
     exportRangeModalTitle: "Xuất Excel nhiều ngày",
     exportRangeFrom: "Từ ngày",
     exportRangeTo: "Đến ngày",

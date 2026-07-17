@@ -1649,6 +1649,10 @@ const ko = {
     exportDepartmentClear: "선택 해제",
     exportDepartmentFilteredEmpty:
       "선택한 기간에 해당 부서 직원 데이터가 없습니다.",
+    monthlyTimesheetExportModalTitle: "월별 근무시간표 Excel보내기",
+    monthlyTimesheetExportModalHint:
+      "보낼 부서를 하나 이상 선택하세요. 선택 안 함 = 전체 부서.",
+    exportMonthSectionLabel: "보낼 달",
     exportRangeModalTitle: "기간별 Excel보내기",
     exportRangeFrom: "시작일",
     exportRangeTo: "종료일",

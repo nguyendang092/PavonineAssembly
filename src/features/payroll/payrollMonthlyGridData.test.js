@@ -242,6 +242,38 @@ describe("payrollMonthlyGridData employee resolution", () => {
     ).toBe(false);
   });
 
+  it("matchesPayrollMonthRowFilter — lọc nhiều bộ phận (OR)", () => {
+    const rep = {
+      hoVaTen: "Tran A",
+      mnv: "200611",
+      boPhan: "SX Mới",
+      boPhanAll: ["SX Cũ", "SX Mới"],
+    };
+    const norm = (v) => String(v ?? "").trim();
+
+    expect(
+      matchesPayrollMonthRowFilter(rep, {
+        searchTerm: "",
+        departmentFilters: ["SX Cũ", "Kho"],
+        normalizeDepartment: norm,
+      }),
+    ).toBe(true);
+    expect(
+      matchesPayrollMonthRowFilter(rep, {
+        searchTerm: "",
+        departmentFilters: ["Kho", "QC"],
+        normalizeDepartment: norm,
+      }),
+    ).toBe(false);
+    expect(
+      matchesPayrollMonthRowFilter(rep, {
+        searchTerm: "",
+        departmentFilters: [],
+        normalizeDepartment: norm,
+      }),
+    ).toBe(true);
+  });
+
   it("applyPayrollMonthCanonicalKeysToChunks — gán monthEmployeeKey và rebuild index", () => {
     const fbA = "-OxA";
     const fbB = "-OxB";

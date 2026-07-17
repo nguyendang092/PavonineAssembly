@@ -35,6 +35,7 @@ import { pickAttendanceEmployeeDayFields } from "@/features/attendance/attendanc
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import { canEditPayrollMonthTimesheetGridCell } from "@/config/featurePermissions";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
+import PayrollDepartmentMultiSelect from "@/features/payroll/PayrollDepartmentMultiSelect";
 import {
   buildPayrollMonthGridOverlayCopy,
   usePayrollMonthModalScrollLock,
@@ -388,6 +389,7 @@ export default function PayrollMonthlyTimeInOutModal({
   employees = [],
 }) {
   const [localNameFilter, setLocalNameFilter] = useState("");
+  const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [zoomIdx, setZoomIdx] = useState(readStoredZoomIdx);
   const tableBodyScrollRef = useRef(null);
   const [dayCellFormOpen, setDayCellFormOpen] = useState(false);
@@ -410,6 +412,12 @@ export default function PayrollMonthlyTimeInOutModal({
       year: "numeric",
     });
   }, [monthRange.first, anchorDateKey, displayLocale]);
+
+  useEffect(() => {
+    if (!open) return;
+    const initial = String(departmentFilter ?? "").trim();
+    setSelectedDepartments(initial ? [initial] : []);
+  }, [open, departmentFilter]);
 
   const zoom = ZOOM_LEVELS[zoomIdx];
 
@@ -479,7 +487,6 @@ export default function PayrollMonthlyTimeInOutModal({
     [tlPage, loadingMore, isDisplayStale],
   );
 
-  const effectiveDepartmentFilter = departmentFilter || "";
   const effectiveSearchTerm = localNameFilter || searchTerm || "";
 
   const filteredIds = useMemo(() => {
@@ -490,7 +497,7 @@ export default function PayrollMonthlyTimeInOutModal({
           rep &&
           matchesPayrollMonthRowFilter(rep, {
             searchTerm: effectiveSearchTerm,
-            departmentFilter: effectiveDepartmentFilter,
+            departmentFilters: selectedDepartments,
             normalizeDepartment,
           })
         );
@@ -507,7 +514,7 @@ export default function PayrollMonthlyTimeInOutModal({
     sortedIds,
     repById,
     effectiveSearchTerm,
-    effectiveDepartmentFilter,
+    selectedDepartments,
     normalizeDepartment,
   ]);
 
@@ -760,23 +767,27 @@ export default function PayrollMonthlyTimeInOutModal({
                 )}
                 className="pm-tio-filter-input pm-tio-filter-input--search"
               />
-              <select
-                value={departmentFilter}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (onDepartmentFilterChange) onDepartmentFilterChange(v);
-                }}
+              <PayrollDepartmentMultiSelect
+                options={departmentOptions}
+                selected={selectedDepartments}
+                onChange={setSelectedDepartments}
+                disabled={isGridBusy}
                 className="pm-tio-filter-input pm-tio-filter-input--select"
-              >
-                <option value="">
-                  {tlPage("monthlyTimesheetDeptAll", "Tất cả bộ phận")}
-                </option>
-                {departmentOptions.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
+                allLabel={tlPage("monthlyTimesheetDeptAll", "Tất cả bộ phận")}
+                selectedLabel={tlPage(
+                  "exportDepartmentSelected",
+                  "Đã chọn {{count}}/{{total}} bộ phận",
+                )}
+                selectAllLabel={tlPage(
+                  "exportDepartmentSelectAll",
+                  "Chọn tất cả",
+                )}
+                clearLabel={tlPage("exportDepartmentClear", "Bỏ chọn")}
+                hint={tlPage(
+                  "exportDepartmentHint",
+                  "Không chọn = xuất tất cả bộ phận",
+                )}
+              />
               {ZOOM_CSS_OK ? (
                 <div className="flex items-center gap-1">
                   <button

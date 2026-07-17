@@ -73,6 +73,9 @@ import { isKoreanAttendanceRoot } from "@/features/attendance/attendanceSeasonal
 import { usePayrollMonthDayChunks } from "@/features/payroll/usePayrollMonthDayChunks";
 import { usePayrollMonthEmployeeIndex } from "@/features/payroll/usePayrollMonthEmployeeIndex";
 import { usePayrollMonthSummaries } from "@/features/payroll/usePayrollMonthSummaries";
+import PayrollDepartmentMultiSelect from "@/features/payroll/PayrollDepartmentMultiSelect";
+import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
+import { payrollExportDepartmentFilenameSuffix } from "@/features/payroll/payrollExportDepartmentFilter";
 import "./payrollMonthlyTimesheetModal.css";
 
 /** Cột cố định trái: STT, Họ tên, MNV, BP, Hệ số TC [px]. */
@@ -1095,6 +1098,9 @@ export default function PayrollMonthlyTimesheetModal({
   attendanceRootPath = "attendance",
 }) {
   const [localNameFilter, setLocalNameFilter] = useState("");
+  const [selectedDepartments, setSelectedDepartments] = useState([]);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
   const [headerRowTops, setHeaderRowTops] = useState(
     MONTH_HEADER_ROW_TOPS_DEFAULT,
   );
@@ -1123,6 +1129,12 @@ export default function PayrollMonthlyTimesheetModal({
       year: "numeric",
     });
   }, [monthRange.first, anchorDateKey, displayLocale]);
+
+  useEffect(() => {
+    if (!open) return;
+    const initial = String(departmentFilter ?? "").trim();
+    setSelectedDepartments(initial ? [initial] : []);
+  }, [open, departmentFilter]);
 
   const isKoreanTimesheetSource = isKoreanAttendanceRoot(attendanceRootPath);
   const monthlyDetailFmtHours = isKoreanTimesheetSource
@@ -1303,7 +1315,6 @@ export default function PayrollMonthlyTimesheetModal({
     return [...set].sort((a, b) => a.localeCompare(b, "vi"));
   }, [sortedIds, repById, payrollDepartmentOptions]);
 
-  const effectiveDepartmentFilter = departmentFilter || "";
   const effectiveSearchTerm = localNameFilter || searchTerm || "";
 
   const filteredIds = useMemo(() => {
@@ -1314,7 +1325,7 @@ export default function PayrollMonthlyTimesheetModal({
           rep &&
           matchesPayrollMonthRowFilter(rep, {
             searchTerm: effectiveSearchTerm,
-            departmentFilter: effectiveDepartmentFilter,
+            departmentFilters: selectedDepartments,
             normalizeDepartment,
           })
         );
@@ -1326,7 +1337,7 @@ export default function PayrollMonthlyTimesheetModal({
     sortedIds,
     repById,
     effectiveSearchTerm,
-    effectiveDepartmentFilter,
+    selectedDepartments,
     normalizeDepartment,
   ]);
 
@@ -1451,57 +1462,109 @@ export default function PayrollMonthlyTimesheetModal({
     [tlPage],
   );
 
-  const handleExportExcel = useCallback(async () => {
-    if (!filteredIds.length) return;
-    try {
-      const buf = await writePayrollMonthlyTimesheetWorkbook({
-        tlPage,
-        monthKeys: monthRange.keys,
-        chunkByDate,
-        filteredIds,
-        repById,
-        summaryById: monthlySummaryById,
-        detailHeaders,
-        koreanTimesheetRules: isKoreanTimesheetSource,
-      });
-      const blob = new Blob([buf], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const d = new Date();
-      const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(
-        2,
-        "0",
-      )}${String(d.getDate()).padStart(2, "0")}_${String(d.getHours()).padStart(
-        2,
-        "0",
-      )}${String(d.getMinutes()).padStart(2, "0")}`;
-      a.href = url;
-      a.download = `BangChamCongThang_${stamp}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setError(
-        tlPage(
-          "monthlyTimesheetExportError",
-          "Không xuất được Excel: {{error}}",
-          {
-            error: e?.message || String(e),
-          },
+  const buildExportIds = useCallback(
+    (exportDepartments) =>
+      sortedIds
+        .filter((id) => {
+          const rep = repById.get(id);
+          return (
+            rep &&
+            matchesPayrollMonthRowFilter(rep, {
+              searchTerm: effectiveSearchTerm,
+              departmentFilters: exportDepartments,
+              normalizeDepartment,
+            })
+          );
+        })
+        .sort((a, b) =>
+          comparePayrollMonthRowsByDepartment(repById.get(a), repById.get(b)),
         ),
-      );
-    }
-  }, [
-    chunkByDate,
-    detailHeaders,
-    filteredIds,
-    monthlySummaryById,
-    monthRange.keys,
-    repById,
-    tlPage,
-    isKoreanTimesheetSource,
-  ]);
+    [
+      sortedIds,
+      repById,
+      effectiveSearchTerm,
+      normalizeDepartment,
+    ],
+  );
+
+  const handleExportExcel = useCallback(
+    async (exportDepartments) => {
+      const exportIds = buildExportIds(exportDepartments);
+      if (!exportIds.length) {
+        setError(
+          tlPage(
+            "exportDepartmentFilteredEmpty",
+            "Không có nhân viên thuộc bộ phận đã chọn trong khoảng đã chọn.",
+          ),
+        );
+        return;
+      }
+      try {
+        const buf = await writePayrollMonthlyTimesheetWorkbook({
+          tlPage,
+          monthKeys: monthRange.keys,
+          chunkByDate,
+          filteredIds: exportIds,
+          repById,
+          summaryById: monthlySummaryById,
+          detailHeaders,
+          koreanTimesheetRules: isKoreanTimesheetSource,
+        });
+        const blob = new Blob([buf], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const d = new Date();
+        const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(
+          2,
+          "0",
+        )}${String(d.getDate()).padStart(2, "0")}_${String(d.getHours()).padStart(
+          2,
+          "0",
+        )}${String(d.getMinutes()).padStart(2, "0")}`;
+        a.href = url;
+        const deptSuffix =
+          payrollExportDepartmentFilenameSuffix(exportDepartments);
+        a.download = `BangChamCongThang_${stamp}${deptSuffix}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setExportModalOpen(false);
+      } catch (e) {
+        setError(
+          tlPage(
+            "monthlyTimesheetExportError",
+            "Không xuất được Excel: {{error}}",
+            {
+              error: e?.message || String(e),
+            },
+          ),
+        );
+      }
+    },
+    [
+      buildExportIds,
+      chunkByDate,
+      detailHeaders,
+      monthlySummaryById,
+      monthRange.keys,
+      repById,
+      tlPage,
+      isKoreanTimesheetSource,
+    ],
+  );
+
+  const handleExportFromModal = useCallback(
+    async (_from, _to, exportDepartments) => {
+      setExportBusy(true);
+      try {
+        await handleExportExcel(exportDepartments);
+      } finally {
+        setExportBusy(false);
+      }
+    },
+    [handleExportExcel],
+  );
 
   const handlePrintA3WorkTimeOnly = useCallback(() => {
     if (!filteredIds.length || !monthRange.keys.length) return;
@@ -1646,7 +1709,7 @@ export default function PayrollMonthlyTimesheetModal({
           </div>
 
           <div className="min-h-0 flex flex-1 flex-col p-2 sm:p-3">
-            <div className="mb-2 flex flex-wrap items-center justify-end gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-sky-50 px-2 py-1.5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+            <div className="pm-ts-toolbar mb-2 flex flex-wrap items-center justify-end gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-sky-50 px-2 py-1.5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
               <input
                 type="text"
                 value={localNameFilter}
@@ -1657,23 +1720,26 @@ export default function PayrollMonthlyTimesheetModal({
                 )}
                 className="w-[220px] rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               />
-              <select
-                value={departmentFilter}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (onDepartmentFilterChange) onDepartmentFilterChange(v);
-                }}
-                className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              >
-                <option value="">
-                  {tlPage("monthlyTimesheetDeptAll", "Tất cả bộ phận")}
-                </option>
-                {departmentOptions.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
+              <PayrollDepartmentMultiSelect
+                options={departmentOptions}
+                selected={selectedDepartments}
+                onChange={setSelectedDepartments}
+                disabled={isGridFullyBusy}
+                allLabel={tlPage("monthlyTimesheetDeptAll", "Tất cả bộ phận")}
+                selectedLabel={tlPage(
+                  "exportDepartmentSelected",
+                  "Đã chọn {{count}}/{{total}} bộ phận",
+                )}
+                selectAllLabel={tlPage(
+                  "exportDepartmentSelectAll",
+                  "Chọn tất cả",
+                )}
+                clearLabel={tlPage("exportDepartmentClear", "Bỏ chọn")}
+                hint={tlPage(
+                  "exportDepartmentHint",
+                  "Không chọn = xuất tất cả bộ phận",
+                )}
+              />
               {TIMESHEET_ZOOM_CSS_OK ? (
                 <div
                   className="flex flex-wrap items-center gap-0.5 rounded-md border border-slate-300 bg-white/90 px-1 py-0.5 shadow-sm dark:border-slate-600 dark:bg-slate-800/80"
@@ -1739,8 +1805,13 @@ export default function PayrollMonthlyTimesheetModal({
               </button>
               <button
                 type="button"
-                onClick={handleExportExcel}
-                className="rounded-md border border-emerald-300 bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800 shadow-sm hover:bg-emerald-200"
+                onClick={() => setExportModalOpen(true)}
+                disabled={
+                  isGridFullyBusy ||
+                  !sortedIds.length ||
+                  !displayDayChunks.length
+                }
+                className="rounded-md border border-emerald-300 bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800 shadow-sm hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {tlPage("monthlyTimesheetExportExcel", "Xuất Excel")}
               </button>
@@ -2046,6 +2117,45 @@ export default function PayrollMonthlyTimesheetModal({
           </div>
         </div>
       </div>
+      <PayrollRangeExcelExportModal
+        open={exportModalOpen}
+        onDismiss={() => {
+          if (!exportBusy) setExportModalOpen(false);
+        }}
+        onExport={handleExportFromModal}
+        todayKey={monthRange.first}
+        departmentsOnly
+        monthTitle={monthTitle}
+        departmentOptions={departmentOptions}
+        initialSelectedDepartments={selectedDepartments}
+        exporting={exportBusy}
+        title={tlPage(
+          "monthlyTimesheetExportModalTitle",
+          "Xuất Excel bảng chấm công tháng",
+        )}
+        hint={tlPage(
+          "monthlyTimesheetExportModalHint",
+          "Chọn một hoặc nhiều bộ phận cần xuất. Không chọn = xuất tất cả bộ phận.",
+        )}
+        monthSectionLabel={tlPage("exportMonthSectionLabel", "Tháng xuất")}
+        departmentLabel={tlPage("exportDepartmentLabel", "Bộ phận")}
+        departmentHint={tlPage(
+          "exportDepartmentHint",
+          "Không chọn = xuất tất cả bộ phận",
+        )}
+        departmentAllLabel={tlPage("exportDepartmentAll", "Tất cả bộ phận")}
+        departmentSelectedLabel={tlPage(
+          "exportDepartmentSelected",
+          "Đã chọn {{count}}/{{total}} bộ phận",
+        )}
+        selectAllDepartmentsLabel={tlPage(
+          "exportDepartmentSelectAll",
+          "Chọn tất cả",
+        )}
+        clearDepartmentsLabel={tlPage("exportDepartmentClear", "Bỏ chọn")}
+        exportLabel={tlPage("exportRangeSubmit", "Xuất Excel")}
+        cancelLabel={tlPage("exportRangeCancel", "Hủy")}
+      />
       <AttendanceEmployeeFormModal
         open={dayCellFormOpen}
         onClose={() => {

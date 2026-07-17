@@ -1,5 +1,10 @@
 /* Lưới bảng chấm công tháng — chỉ hiển thị, không đổi bố cục */
 
+.pm-ts-toolbar {
+  position: relative;
+  z-index: 30;
+}
+
 .pm-ts-scroll {
   position: relative;
   border-radius: 0.5rem;

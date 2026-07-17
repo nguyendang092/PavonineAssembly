@@ -408,13 +408,27 @@ function payrollMonthEmployeeDepartmentKeys(emp, normalizeDepartmentFn) {
 
 export function matchesPayrollMonthRowFilter(
   emp,
-  { searchTerm, departmentFilter, normalizeDepartment },
+  { searchTerm, departmentFilter, departmentFilters, normalizeDepartment },
 ) {
   const normDept = normalizeDepartment ?? normalizePayrollDepartment;
-  const departmentFilterKey = normDept(departmentFilter);
-  if (departmentFilterKey) {
+  const selectedDepartments = Array.isArray(departmentFilters)
+    ? departmentFilters.filter(Boolean)
+    : departmentFilter
+      ? [departmentFilter]
+      : [];
+  if (selectedDepartments.length) {
     const deptKeys = payrollMonthEmployeeDepartmentKeys(emp, normDept);
-    if (!deptKeys.has(departmentFilterKey)) return false;
+    const allowed = new Set(
+      selectedDepartments.map((d) => normDept(String(d).trim())),
+    );
+    let matched = false;
+    for (const key of allowed) {
+      if (deptKeys.has(key)) {
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) return false;
   }
   const q = searchTerm.trim().toLowerCase();
   if (!q) return true;
