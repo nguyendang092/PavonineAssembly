@@ -2,6 +2,14 @@ import {
   formatAttendanceLeaveTypeColumnDisplay,
   getAttendanceLeaveTypeRaw,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
+import {
+  effectivePayrollEarlyOtPaperwork,
+  getNightShiftPayrollOvertimeHours,
+  getPayrollDayOvertimeHoursNumeric,
+  isNightShiftCaLamViec,
+  parseLunchOtHours,
+} from "@/features/attendance/attendanceWorkingHours";
 
 /**
  * Metadata theo ngày tại `attendance/{YYYY-MM-DD}/_meta` (không phải bản ghi nhân viên).
@@ -149,14 +157,136 @@ export function normalizeLeaveTypeCheckForForm(storedRaw) {
   return isLeaveTypeCheckHighlight(storedRaw) ? "YES" : "";
 }
 
-/** Class nền cả dòng — ưu tiên check tăng ca nếu cả hai đều bật. */
+export function isAttendanceHalfPnLeaveType(leaveType) {
+  return formatAttendanceLeaveTypeColumnDisplay(leaveType) === "1/2PN";
+}
+
+export function hasAttendanceLeaveTypeSelected(leaveType) {
+  return Boolean(String(leaveType ?? "").trim());
+}
+
+function payrollStrictOffFromDayCtx(dayCtx = {}) {
+  const isCompensatoryDay = Boolean(dayCtx.isCompensatoryDay);
+  const koreanTimesheetRules = dayCtx.koreanTimesheetRules === true;
+  const compensatoryUsesOffSplit =
+    isCompensatoryDay && !koreanTimesheetRules;
+  return Boolean(dayCtx.isOffDay) || compensatoryUsesOffSplit;
+}
+
+function payrollDayOvertimeOptionsFromDayCtx(dayCtx = {}) {
+  return {
+    koreanTimesheetRules: dayCtx.koreanTimesheetRules === true,
+    isCompensatoryDay: Boolean(dayCtx.isCompensatoryDay),
+    dateKey: dayCtx.dateKey ?? null,
+  };
+}
+
+/**
+ * Có giờ công tăng ca > 0 — dùng cho màu tím (1/2PN + check loại phép).
+ * Không import `payrollOtDayParams` để tránh vòng phụ thuộc với `PAYROLL_EMP`.
+ * @param {object} emp
+ * @param {{ isOffDay?: boolean, isHolidayDay?: boolean, isCompensatoryDay?: boolean, koreanTimesheetRules?: boolean, dateKey?: string | null }} [dayCtx]
+ */
+export function employeeHasPayrollOvertimeHours(emp, dayCtx = {}) {
+  if (!emp || typeof emp !== "object") return false;
+
+  const flags = employeeRegimeWorkingHoursFlags(emp);
+  const timeIn = emp.gioVao;
+  const timeOut = emp.gioRa;
+  const shiftCode = emp.caLamViec;
+  const lunchOtHours = emp.tangCaTrua;
+  const payrollEarlyOtPaperwork = effectivePayrollEarlyOtPaperwork(
+    timeIn,
+    shiftCode,
+    emp.payrollEarlyOtPaperwork,
+  );
+  const payrollLateOtExcluded = emp.payrollLateOtExcluded;
+  const otOptions = payrollDayOvertimeOptionsFromDayCtx(dayCtx);
+  const strictOffDay = payrollStrictOffFromDayCtx(dayCtx);
+  const isHolidayDay = Boolean(dayCtx.isHolidayDay);
+
+  if (isNightShiftCaLamViec(shiftCode)) {
+    const nightOt = getNightShiftPayrollOvertimeHours(
+      timeIn,
+      timeOut,
+      shiftCode,
+      payrollEarlyOtPaperwork,
+    );
+    const lunchOt = parseLunchOtHours(lunchOtHours);
+    return (nightOt != null && nightOt > 0) || lunchOt > 0;
+  }
+
+  const dayOt = getPayrollDayOvertimeHoursNumeric(
+    timeIn,
+    timeOut,
+    strictOffDay,
+    shiftCode,
+    payrollEarlyOtPaperwork,
+    isHolidayDay,
+    payrollLateOtExcluded,
+    flags.includeTapVuInWorkingHours,
+    flags.includeThaiSanInWorkingHours,
+    flags.includeTaiXeInWorkingHours,
+    flags.includeTaiXeTongInWorkingHours,
+    lunchOtHours,
+    otOptions,
+  );
+  return dayOt != null && dayOt > 0;
+}
+
+/** Check loại phép tím: chỉ 1/2PN + có giờ TC, không kèm check tăng ca. */
+export function isLeaveTypeCheckPurpleHighlight({
+  otCheck = false,
+  leaveTypeCheck = false,
+  leaveType = "",
+  hasOvertimeHours = false,
+} = {}) {
+  if (otCheck || !leaveTypeCheck) return false;
+  return isAttendanceHalfPnLeaveType(leaveType) && hasOvertimeHours;
+}
+
+/**
+ * Class nền cả dòng:
+ * - Check tăng ca (hoặc cả hai check) → vàng
+ * - Chỉ check loại phép + 1/2PN + có giờ TC → tím
+ * - Chỉ check loại phép (còn lại, hoặc 1/2PN không TC) → vàng
+ */
 export function attendanceRowCheckHighlightClassName({
   otCheck = false,
   leaveTypeCheck = false,
+  leaveType = "",
+  hasOvertimeHours = false,
 } = {}) {
-  if (otCheck) return "att-row-check-ot";
-  if (leaveTypeCheck) return "att-row-check-leave";
+  if (isLeaveTypeCheckPurpleHighlight({
+    otCheck,
+    leaveTypeCheck,
+    leaveType,
+    hasOvertimeHours,
+  })) {
+    return "att-row-check-leave";
+  }
+  if (otCheck || leaveTypeCheck) return "att-row-check-ot";
   return "";
+}
+
+/** Check tăng ca bật mà chưa chọn loại phép → khóa check loại phép. */
+export function isLeaveTypeCheckFieldDisabled({
+  otCheck = false,
+  leaveType = "",
+  isViewOnly = false,
+} = {}) {
+  if (isViewOnly) return true;
+  return otCheck && !hasAttendanceLeaveTypeSelected(leaveType);
+}
+
+/** 1/2PN không có giờ TC → khóa check tăng ca. */
+export function isOtCheckFieldDisabled({
+  leaveType = "",
+  hasOvertimeHours = false,
+  isViewOnly = false,
+} = {}) {
+  if (isViewOnly) return true;
+  return isAttendanceHalfPnLeaveType(leaveType) && !hasOvertimeHours;
 }
 
 /** @deprecated Dùng `attendanceRowCheckHighlightClassName` trên cả dòng. */

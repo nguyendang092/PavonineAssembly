@@ -31,6 +31,11 @@ import {
   normalizeHoVaTenYellowHighlightForForm,
   isLeaveTypeCheckHighlight,
   normalizeLeaveTypeCheckForForm,
+  employeeHasPayrollOvertimeHours,
+  isLeaveTypeCheckFieldDisabled,
+  isLeaveTypeCheckPurpleHighlight,
+  isOtCheckFieldDisabled,
+  isAttendanceHalfPnLeaveType,
 } from "@/features/attendance/attendanceDayMeta";
 import { isSeasonalAttendanceRoot, shouldSkipAnnualLeaveForAttendanceRoot } from "./attendanceSeasonalStt";
 import {
@@ -152,6 +157,8 @@ export default function AttendanceEmployeeFormModal({
       t(`attendanceList.${key}`, { defaultValue, ...options }),
     [t],
   );
+
+  const isViewOnly = Boolean(readOnly);
 
   const formattedAttendanceDate = useMemo(() => {
     if (!selectedDate || !/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) return "";
@@ -325,6 +332,62 @@ export default function AttendanceEmployeeFormModal({
     return Boolean(lp) && !isAttendanceLoaiPhepAllowsClockTimes(lp);
   }, [form[ATTENDANCE_EMP.LEAVE_TYPE]]);
 
+  const attendanceDayCtx = useMemo(
+    () => ({ isCompensatoryDay: dayIsCompensatory }),
+    [dayIsCompensatory],
+  );
+
+  const formHasOvertimeHours = useMemo(
+    () => employeeHasPayrollOvertimeHours(form, attendanceDayCtx),
+    [form, attendanceDayCtx],
+  );
+
+  const otCheckOn = isHoVaTenYellowHighlight(form[ATTENDANCE_EMP.NAME_YELLOW_BG]);
+  const leaveTypeCheckOn = isLeaveTypeCheckHighlight(
+    form[ATTENDANCE_EMP.LEAVE_TYPE_CHECK],
+  );
+  const leaveTypeCheckDisabled = isLeaveTypeCheckFieldDisabled({
+    otCheck: otCheckOn,
+    leaveType: form[ATTENDANCE_EMP.LEAVE_TYPE],
+    isViewOnly,
+  });
+  const otCheckFieldDisabled = isOtCheckFieldDisabled({
+    leaveType: form[ATTENDANCE_EMP.LEAVE_TYPE],
+    hasOvertimeHours: formHasOvertimeHours,
+    isViewOnly,
+  });
+  const leaveTypeCheckPurplePreview = isLeaveTypeCheckPurpleHighlight({
+    otCheck: otCheckOn,
+    leaveTypeCheck: leaveTypeCheckOn,
+    leaveType: form[ATTENDANCE_EMP.LEAVE_TYPE],
+    hasOvertimeHours: formHasOvertimeHours,
+  });
+
+  useEffect(() => {
+    if (!open || isViewOnly) return;
+    setForm((prev) => {
+      if (!isHoVaTenYellowHighlight(prev[ATTENDANCE_EMP.NAME_YELLOW_BG])) {
+        return prev;
+      }
+      if (
+        isAttendanceHalfPnLeaveType(prev[ATTENDANCE_EMP.LEAVE_TYPE]) &&
+        !employeeHasPayrollOvertimeHours(prev, attendanceDayCtx)
+      ) {
+        return { ...prev, [ATTENDANCE_EMP.NAME_YELLOW_BG]: "" };
+      }
+      return prev;
+    });
+  }, [
+    open,
+    isViewOnly,
+    form[ATTENDANCE_EMP.LEAVE_TYPE],
+    form[ATTENDANCE_EMP.TIME_IN],
+    form[ATTENDANCE_EMP.TIME_OUT],
+    form[ATTENDANCE_EMP.LUNCH_OT_HOURS],
+    form[ATTENDANCE_EMP.SHIFT],
+    attendanceDayCtx,
+  ]);
+
   const handleGioVaoTimeInput = useCallback((e) => {
     const gioVao = e.target.value || "";
     setForm((prev) => ({
@@ -340,17 +403,31 @@ export default function AttendanceEmployeeFormModal({
   const handleLoaiPhepSelect = useCallback((e) => {
     const v = e.target.value;
     const loaiPhep = v === "" ? "" : canonicalAttendanceLoaiPhep(v);
-    setForm((prev) => ({
-      ...prev,
-      [ATTENDANCE_EMP.LEAVE_TYPE]: loaiPhep,
-      ...(loaiPhep && !isAttendanceLoaiPhepAllowsClockTimes(loaiPhep)
-        ? {
-            [ATTENDANCE_EMP.TIME_IN]: "",
-            [ATTENDANCE_EMP.TIME_OUT]: "",
-          }
-        : {}),
-    }));
-  }, []);
+    setForm((prev) => {
+      const otOn = isHoVaTenYellowHighlight(prev[ATTENDANCE_EMP.NAME_YELLOW_BG]);
+      const next = {
+        ...prev,
+        [ATTENDANCE_EMP.LEAVE_TYPE]: loaiPhep,
+        ...(loaiPhep && !isAttendanceLoaiPhepAllowsClockTimes(loaiPhep)
+          ? {
+              [ATTENDANCE_EMP.TIME_IN]: "",
+              [ATTENDANCE_EMP.TIME_OUT]: "",
+            }
+          : {}),
+        ...(otOn && !String(loaiPhep ?? "").trim()
+          ? { [ATTENDANCE_EMP.LEAVE_TYPE_CHECK]: "" }
+          : {}),
+      };
+      if (
+        otOn &&
+        isAttendanceHalfPnLeaveType(loaiPhep) &&
+        !employeeHasPayrollOvertimeHours(next, attendanceDayCtx)
+      ) {
+        next[ATTENDANCE_EMP.NAME_YELLOW_BG] = "";
+      }
+      return next;
+    });
+  }, [attendanceDayCtx]);
 
   const notify = (alert) => {
     onAlert?.(alert);
@@ -554,7 +631,6 @@ export default function AttendanceEmployeeFormModal({
 
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
   const isEditMode = Boolean(editAttendanceKey);
-  const isViewOnly = Boolean(readOnly);
   /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP: loại phép, ca, nghỉ bù, chế độ NV (+ TC trưa Anodizing/Extrusion). */
   const isRestrictedEdit =
     isEditMode && !isAdminAccess(user, userRole) && !isViewOnly;
@@ -1046,30 +1122,35 @@ export default function AttendanceEmployeeFormModal({
               </label>
               <label
                 className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border-2 px-2 py-1 transition ${
-                  isHoVaTenYellowHighlight(form[ATTENDANCE_EMP.NAME_YELLOW_BG])
+                  otCheckOn
                     ? "border-amber-300 bg-amber-50 dark:border-amber-600/60 dark:bg-amber-950/30"
                     : "border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-950"
-                } ${isViewOnly || !canEditOtCheck ? "cursor-not-allowed opacity-60" : "hover:border-amber-300"}`}
+                } ${isViewOnly || !canEditOtCheck || otCheckFieldDisabled ? "cursor-not-allowed opacity-60" : "hover:border-amber-300"}`}
               >
                 <input
                   id="hoVaTenNenVangCheck"
                   type="checkbox"
-                  checked={isHoVaTenYellowHighlight(
-                    form[ATTENDANCE_EMP.NAME_YELLOW_BG],
-                  )}
-                  disabled={isViewOnly || !canEditOtCheck}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      [ATTENDANCE_EMP.NAME_YELLOW_BG]: e.target.checked
-                        ? "YES"
-                        : "",
-                    }))
-                  }
+                  checked={otCheckOn}
+                  disabled={isViewOnly || !canEditOtCheck || otCheckFieldDisabled}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setForm((prev) => {
+                      const leaveType = String(
+                        prev[ATTENDANCE_EMP.LEAVE_TYPE] ?? "",
+                      ).trim();
+                      return {
+                        ...prev,
+                        [ATTENDANCE_EMP.NAME_YELLOW_BG]: checked ? "YES" : "",
+                        ...(checked && !leaveType
+                          ? { [ATTENDANCE_EMP.LEAVE_TYPE_CHECK]: "" }
+                          : {}),
+                      };
+                    });
+                  }}
                   className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 accent-amber-500"
                 />
                 <span className="text-xs font-bold leading-tight text-slate-800 dark:text-slate-100">
-                  {isHoVaTenYellowHighlight(form[ATTENDANCE_EMP.NAME_YELLOW_BG])
+                  {otCheckOn
                     ? tl("compensatoryLeaveYes", "Có")
                     : tl("compensatoryLeaveNo", "Không")}
                 </span>
@@ -1080,19 +1161,23 @@ export default function AttendanceEmployeeFormModal({
                 {tl("leaveTypeCheckLabel", "Check loại phép")}
               </label>
               <label
-                className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border-2 px-2 py-1 transition ${
-                  isLeaveTypeCheckHighlight(form[ATTENDANCE_EMP.LEAVE_TYPE_CHECK])
+                className={`flex min-h-9 items-center gap-2 rounded-lg border-2 px-2 py-1 transition ${
+                  leaveTypeCheckPurplePreview
                     ? "border-violet-300 bg-violet-50 dark:border-violet-600/60 dark:bg-violet-950/30"
-                    : "border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-950"
-                } ${isViewOnly ? "cursor-not-allowed opacity-60" : "hover:border-violet-300"}`}
+                    : leaveTypeCheckOn
+                      ? "border-amber-300 bg-amber-50 dark:border-amber-600/60 dark:bg-amber-950/30"
+                      : "border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-950"
+                } ${
+                  leaveTypeCheckDisabled
+                    ? "cursor-not-allowed opacity-60"
+                    : "cursor-pointer hover:border-violet-300"
+                }`}
               >
                 <input
                   id="loaiPhepCheck"
                   type="checkbox"
-                  checked={isLeaveTypeCheckHighlight(
-                    form[ATTENDANCE_EMP.LEAVE_TYPE_CHECK],
-                  )}
-                  disabled={isViewOnly}
+                  checked={leaveTypeCheckOn}
+                  disabled={leaveTypeCheckDisabled}
                   onChange={(e) =>
                     setForm((prev) => ({
                       ...prev,
@@ -1101,10 +1186,14 @@ export default function AttendanceEmployeeFormModal({
                         : "",
                     }))
                   }
-                  className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 accent-violet-600"
+                  className={`h-3.5 w-3.5 shrink-0 rounded border-slate-300 ${
+                    leaveTypeCheckPurplePreview
+                      ? "accent-violet-600"
+                      : "accent-amber-500"
+                  }`}
                 />
                 <span className="text-xs font-bold leading-tight text-slate-800 dark:text-slate-100">
-                  {isLeaveTypeCheckHighlight(form[ATTENDANCE_EMP.LEAVE_TYPE_CHECK])
+                  {leaveTypeCheckOn
                     ? tl("compensatoryLeaveYes", "Có")
                     : tl("compensatoryLeaveNo", "Không")}
                 </span>

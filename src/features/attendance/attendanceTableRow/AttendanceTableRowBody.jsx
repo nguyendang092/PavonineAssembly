@@ -20,6 +20,7 @@ import { employeeRegimeWorkingHoursFlags } from "../employeeRegime";
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
 import {
   attendanceRowCheckHighlightClassName,
+  employeeHasPayrollOvertimeHours,
   isBoPhanChuaDung,
   isHoVaTenYellowHighlight,
   isLeaveTypeCheckHighlight,
@@ -124,9 +125,12 @@ function AttendanceTableRow({
   const leaveTypeCheckHighlight = isLeaveTypeCheckHighlight(
     emp[ATTENDANCE_EMP.LEAVE_TYPE_CHECK],
   );
+  const hasOvertimeHours = employeeHasPayrollOvertimeHours(emp, payrollDayCtx);
   const rowCheckHighlightClass = attendanceRowCheckHighlightClassName({
     otCheck: hoVaTenYellowBg,
     leaveTypeCheck: leaveTypeCheckHighlight,
+    leaveType: emp[ATTENDANCE_EMP.LEAVE_TYPE],
+    hasOvertimeHours,
   });
   const deptWrongFlagEl = showDeptWrongFlag ? (
     <span
