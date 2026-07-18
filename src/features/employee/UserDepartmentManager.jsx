@@ -62,16 +62,6 @@ function UserDepartmentManager() {
     return () => unsubscribe();
   }, []);
 
-  // Auto-hide alert after 3s
-  useEffect(() => {
-    if (alert.show) {
-      const timer = setTimeout(() => {
-        setAlert((a) => ({ ...a, show: false }));
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [alert.show]);
-
   const canManageMappings = canManageUserDepartmentMappings(user, userRole);
 
   const handleSubmit = async (e) => {
@@ -216,7 +206,10 @@ function UserDepartmentManager() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 dark:bg-slate-950">
       <div className="mx-auto max-w-6xl">
-        <AlertMessage alert={alert} />
+        <AlertMessage
+          alert={alert}
+          onClose={() => setAlert((a) => ({ ...a, show: false }))}
+        />
 
         {/* Header */}
         <div className="mb-6 rounded-lg bg-white p-6 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">

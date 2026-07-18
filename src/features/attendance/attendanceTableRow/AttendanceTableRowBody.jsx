@@ -19,9 +19,10 @@ import {
 import { employeeRegimeWorkingHoursFlags } from "../employeeRegime";
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
 import {
-  attendanceHoVaTenYellowCellClassName,
+  attendanceRowCheckHighlightClassName,
   isBoPhanChuaDung,
   isHoVaTenYellowHighlight,
+  isLeaveTypeCheckHighlight,
 } from "../attendanceDayMeta";
 import {
   ATTENDANCE_EMP,
@@ -120,6 +121,13 @@ function AttendanceTableRow({
   const hoVaTenYellowBg = isHoVaTenYellowHighlight(
     emp[ATTENDANCE_EMP.NAME_YELLOW_BG],
   );
+  const leaveTypeCheckHighlight = isLeaveTypeCheckHighlight(
+    emp[ATTENDANCE_EMP.LEAVE_TYPE_CHECK],
+  );
+  const rowCheckHighlightClass = attendanceRowCheckHighlightClassName({
+    otCheck: hoVaTenYellowBg,
+    leaveTypeCheck: leaveTypeCheckHighlight,
+  });
   const deptWrongFlagEl = showDeptWrongFlag ? (
     <span
       className="pointer-events-none absolute right-0.5 top-1/2 z-[1] inline-block shrink-0 -translate-y-1/2 text-xs leading-none text-red-600"
@@ -186,10 +194,10 @@ function AttendanceTableRow({
       data-index={virtualRow != null ? virtualRow.index : undefined}
       style={rowStyle}
       role={isGrid ? "row" : undefined}
-      className={`h-9 transition-colors hover:bg-blue-200 border-b border-slate-100 dark:border-slate-700/40 ${
-        idx % 2 === 0
-          ? "bg-blue-100 dark:bg-slate-800"
-          : "bg-white dark:bg-slate-900"
+      className={`h-9 transition-colors border-b border-slate-100 dark:border-slate-700/40 ${
+        rowCheckHighlightClass
+          ? rowCheckHighlightClass
+          : `${idx % 2 === 0 ? "bg-blue-100 dark:bg-slate-800" : "bg-white dark:bg-slate-900"} hover:bg-blue-200 dark:hover:bg-slate-700/80`
       }`}
     >
       {!isMinimal ? (
@@ -227,7 +235,13 @@ function AttendanceTableRow({
         role={isGrid ? "cell" : undefined}
         style={attendanceGridCellStyle(isGrid, gcs("fullName"))}
         className={cellCls(
-          `${isMinimal ? "px-0.5" : "px-1"} md:px-2 py-px ${isMinimal ? "text-[9px] overflow-hidden text-ellipsis whitespace-nowrap" : "text-[11px] overflow-hidden text-ellipsis whitespace-nowrap"} md:text-sm text-left md:text-center font-bold text-gray-800 leading-tight${attendanceHoVaTenYellowCellClassName(hoVaTenYellowBg)}`,
+          `${isMinimal ? "px-0.5" : "px-1"} md:px-2 py-px ${
+            isMinimal
+              ? "text-[9px] overflow-hidden text-ellipsis whitespace-nowrap"
+              : isPayroll
+                ? "text-[11px] md:text-sm whitespace-normal break-words leading-snug"
+                : "text-[11px] overflow-hidden text-ellipsis whitespace-nowrap md:text-sm"
+          } text-left md:text-center font-bold text-gray-800 leading-tight`,
         )}
         title={String(payrollDash(emp.hoVaTen, isPayroll) ?? "")}
       >

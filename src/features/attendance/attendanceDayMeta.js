@@ -125,23 +125,43 @@ export function normalizeBoPhanChuaDungForForm(storedRaw) {
 }
 
 /**
- * Nền vàng nhạt cột họ tên — `attendance/{ngày}/{key}/hoVaTenNenVang`.
- * `"YES"` = bật; không có key / rỗng = tắt.
+ * Nền cả dòng — cờ `"YES"` trên node `attendance/{ngày}/{key}`.
+ * `hoVaTenNenVang` = check tăng ca; `loaiPhepCheck` = check loại phép.
  */
-export function isHoVaTenYellowHighlight(storedValue) {
+function isAttendanceYesFlag(storedValue) {
   const v = String(storedValue ?? "").trim().toUpperCase();
   return v === "YES" || v === "TRUE" || v === "1";
+}
+
+export function isHoVaTenYellowHighlight(storedValue) {
+  return isAttendanceYesFlag(storedValue);
+}
+
+export function isLeaveTypeCheckHighlight(storedValue) {
+  return isAttendanceYesFlag(storedValue);
 }
 
 export function normalizeHoVaTenYellowHighlightForForm(storedRaw) {
   return isHoVaTenYellowHighlight(storedRaw) ? "YES" : "";
 }
 
-/** Class Tailwind cho ô họ tên trên bảng điểm danh / giờ công (không dùng trong form). */
+export function normalizeLeaveTypeCheckForForm(storedRaw) {
+  return isLeaveTypeCheckHighlight(storedRaw) ? "YES" : "";
+}
+
+/** Class nền cả dòng — ưu tiên check tăng ca nếu cả hai đều bật. */
+export function attendanceRowCheckHighlightClassName({
+  otCheck = false,
+  leaveTypeCheck = false,
+} = {}) {
+  if (otCheck) return "att-row-check-ot";
+  if (leaveTypeCheck) return "att-row-check-leave";
+  return "";
+}
+
+/** @deprecated Dùng `attendanceRowCheckHighlightClassName` trên cả dòng. */
 export function attendanceHoVaTenYellowCellClassName(enabled) {
-  return enabled
-    ? " !bg-yellow-100 hover:!bg-yellow-200 dark:!bg-yellow-900/40 dark:hover:!bg-yellow-900/55 self-stretch flex items-center"
-    : "";
+  return enabled ? "" : "";
 }
 
 /**

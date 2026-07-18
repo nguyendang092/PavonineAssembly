@@ -367,8 +367,6 @@ const AttendanceList = memo(function AttendanceList({
     user,
     userRole,
     userDepartments,
-    alert,
-    setAlert,
     searchParams,
     setSearchParams,
     setSelectedDate,
@@ -804,7 +802,10 @@ const AttendanceList = memo(function AttendanceList({
           tl={tl}
         />
 
-        <AlertMessage alert={alert} />
+        <AlertMessage
+          alert={alert}
+          onClose={() => setAlert((a) => ({ ...a, show: false }))}
+        />
 
         <AttendanceUnattendedModal
           showUnattendedPopup={showUnattendedPopup}

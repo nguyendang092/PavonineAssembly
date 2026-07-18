@@ -8,8 +8,10 @@ export const ATTENDANCE_EMP = {
   ...PAYROLL_EMP,
   SEASONAL_STT: "sttThoiVu",
   DEPT_WRONG_FLAG: "boPhanChuaDung",
-  /** `"YES"` — tô nền vàng nhạt cột họ tên trên bảng. */
+  /** `"YES"` — tô nền cả dòng trên bảng (check tăng ca). */
   NAME_YELLOW_BG: "hoVaTenNenVang",
+  /** `"YES"` — tô nền cả dòng trên bảng (check loại phép). */
+  LEAVE_TYPE_CHECK: "loaiPhepCheck",
   BUSINESS_ID: "businessId",
   CHAM_CONG: "chamCong",
   PHEP_NAM: "phepNam",

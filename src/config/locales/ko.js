@@ -1411,6 +1411,7 @@ const ko = {
     departmentCheckYes: "맞음",
     departmentCheckNo: "틀림",
     hoVaTenYellowBg: "연장근무 체크",
+    leaveTypeCheckLabel: "휴가 유형 체크",
     compensatoryLeaveField: "대체 휴가",
     compensatoryLeaveNo: "아니오",
     compensatoryLeaveYes: "예",

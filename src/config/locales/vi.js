@@ -1398,6 +1398,7 @@ const vi = {
     departmentCheckYes: "ĐÚNG",
     departmentCheckNo: "SAI",
     hoVaTenYellowBg: "Check tăng ca",
+    leaveTypeCheckLabel: "Check loại phép",
     compensatoryLeaveField: "Nghỉ bù",
     compensatoryLeaveNo: "Không",
     compensatoryLeaveYes: "Có",

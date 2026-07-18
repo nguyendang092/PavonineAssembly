@@ -29,6 +29,8 @@ import {
   normalizeBoPhanChuaDungForForm,
   isHoVaTenYellowHighlight,
   normalizeHoVaTenYellowHighlightForForm,
+  isLeaveTypeCheckHighlight,
+  normalizeLeaveTypeCheckForForm,
 } from "@/features/attendance/attendanceDayMeta";
 import { isSeasonalAttendanceRoot, shouldSkipAnnualLeaveForAttendanceRoot } from "./attendanceSeasonalStt";
 import {
@@ -104,8 +106,10 @@ const EMPTY_EMPLOYEE_FORM = {
   [ATTENDANCE_EMP.COMP_LEAVE_ALLOWED]: "",
   /** Firebase: `attendance/{ngày}/{key}/boPhanChuaDung` — `"YES"` = sai bộ phận. */
   [ATTENDANCE_EMP.DEPT_WRONG_FLAG]: "",
-  /** Firebase: `hoVaTenNenVang` — `"YES"` = nền vàng nhạt cột họ tên. */
+  /** Firebase: `hoVaTenNenVang` — `"YES"` = tô nền cả dòng (check tăng ca). */
   [ATTENDANCE_EMP.NAME_YELLOW_BG]: "",
+  /** Firebase: `loaiPhepCheck` — `"YES"` = tô nền cả dòng (check loại phép). */
+  [ATTENDANCE_EMP.LEAVE_TYPE_CHECK]: "",
   includeTapVuInWorkingHours: "",
   includeThaiSanInWorkingHours: "",
   includeTaiXeInWorkingHours: "",
@@ -113,12 +117,12 @@ const EMPTY_EMPLOYEE_FORM = {
 };
 
 const employeeModalFieldClass =
-  "w-full min-h-10 rounded-lg border-2 border-blue-200 bg-white px-2 py-2 text-sm font-bold text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-500/40";
+  "w-full min-h-9 rounded-lg border-2 border-blue-200 bg-white px-2 py-1 text-sm font-bold text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-500/40";
 const employeeModalSelectFieldClass = `${employeeModalFieldClass} appearance-none`;
 const employeeModalLabelClass =
-  "mb-0.5 block text-xs font-bold uppercase tracking-wide text-purple-600 dark:text-purple-400";
+  "mb-0 block text-[11px] font-bold uppercase tracking-wide text-purple-600 dark:text-purple-400";
 const employeeModalClearTimeButtonClass =
-  "shrink-0 min-w-[6.5rem] rounded-lg border-2 border-slate-300 bg-slate-100 px-4 py-2 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 sm:text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
+  "shrink-0 min-w-[4.25rem] rounded-lg border-2 border-slate-300 bg-slate-100 px-2 py-1 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
 
 /**
  * Modal thêm / cập nhật dòng điểm danh — chỉ ghi `attendance/{ngày}/{key}`.
@@ -209,6 +213,9 @@ export default function AttendanceEmployeeFormModal({
         normalizeHoVaTenYellowHighlightForForm(
           merged[ATTENDANCE_EMP.NAME_YELLOW_BG],
         );
+      merged[ATTENDANCE_EMP.LEAVE_TYPE_CHECK] = normalizeLeaveTypeCheckForForm(
+        merged[ATTENDANCE_EMP.LEAVE_TYPE_CHECK],
+      );
       if (isSeasonalAttendanceRoot(attendanceRootPath)) {
         merged.stt = merged.sttThoiVu ?? "";
         merged.gioiTinh =
@@ -235,6 +242,9 @@ export default function AttendanceEmployeeFormModal({
         normalizeHoVaTenYellowHighlightForForm(
           merged[ATTENDANCE_EMP.NAME_YELLOW_BG],
         );
+      merged[ATTENDANCE_EMP.LEAVE_TYPE_CHECK] = normalizeLeaveTypeCheckForForm(
+        merged[ATTENDANCE_EMP.LEAVE_TYPE_CHECK],
+      );
       if (isSeasonalAttendanceRoot(attendanceRootPath)) {
         merged.stt = merged.sttThoiVu ?? "";
         merged.gioiTinh =
@@ -567,7 +577,7 @@ export default function AttendanceEmployeeFormModal({
       style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
     >
       <div
-        className={`relative mx-auto w-full max-w-[40rem] max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-2xl border bg-white px-3 py-4 shadow-xl animate-fadeIn sm:px-4 sm:py-5 dark:bg-slate-900 ${
+        className={`relative mx-auto w-full max-w-[40rem] max-h-[92vh] overflow-y-auto overflow-x-hidden rounded-2xl border bg-white px-3 py-2.5 shadow-xl animate-fadeIn sm:px-3.5 sm:py-3 dark:bg-slate-900 ${
           isEditMode
             ? "border-fuchsia-300/80 dark:border-fuchsia-700/70"
             : "border-slate-200/90 dark:border-slate-700/80"
@@ -576,12 +586,12 @@ export default function AttendanceEmployeeFormModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent p-0 text-xl font-bold leading-none text-purple-400 transition-colors hover:bg-purple-100 hover:text-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-400 dark:text-purple-500 dark:hover:bg-purple-950 dark:hover:text-purple-200 dark:focus-visible:ring-purple-600"
+          className="absolute right-2 top-2 z-10 inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent p-0 text-lg font-bold leading-none text-purple-400 transition-colors hover:bg-purple-100 hover:text-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-400 dark:text-purple-500 dark:hover:bg-purple-950 dark:hover:text-purple-200 dark:focus-visible:ring-purple-600"
           aria-label="Đóng"
         >
           ×
         </button>
-        <h2 className="mb-1.5 border-b-2 border-blue-200/80 bg-gradient-to-r from-blue-700 via-purple-600 to-indigo-600 bg-clip-text pb-2 text-center text-xl font-extrabold tracking-wide text-transparent drop-shadow-sm dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 sm:text-2xl">
+        <h2 className="mb-1 border-b border-blue-200/80 bg-gradient-to-r from-blue-700 via-purple-600 to-indigo-600 bg-clip-text pb-1 text-center text-lg font-extrabold tracking-wide text-transparent drop-shadow-sm dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 sm:text-xl">
           {isViewOnly
             ? tl("viewEmployeeAttendance", "Xem điểm danh")
             : isEditMode
@@ -590,26 +600,25 @@ export default function AttendanceEmployeeFormModal({
         </h2>
         {formattedAttendanceDate ? (
           <p
-            className="mb-2 rounded-xl border border-indigo-200/80 bg-indigo-50/90 px-2.5 py-1.5 text-center dark:border-indigo-800/60 dark:bg-indigo-950/40"
+            className="mb-1.5 rounded-lg border border-indigo-200/80 bg-indigo-50/90 px-2 py-1 text-center text-xs font-bold text-slate-900 dark:border-indigo-800/60 dark:bg-indigo-950/40 dark:text-slate-100"
             aria-label={tl("attendanceDateLabel", "Ngày điểm danh")}
           >
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
               {tl("attendanceDateLabel", "Ngày điểm danh")}
             </span>
-            <span className="mt-0.5 block text-sm font-extrabold tabular-nums text-slate-900 dark:text-slate-100">
-              {formattedAttendanceDate}
-            </span>
+            <span className="mx-1 text-indigo-400">·</span>
+            <span className="tabular-nums">{formattedAttendanceDate}</span>
           </p>
         ) : null}
         {isViewOnly ? (
-          <p className="mb-2 rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-center text-xs font-semibold text-sky-900 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-100">
+          <p className="mb-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2 py-0.5 text-center text-[11px] font-semibold leading-snug text-sky-900 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-100">
             {tl(
               "viewOnlyAttendanceHint",
               "Chế độ chỉ xem — không thể chỉnh sửa hoặc lưu.",
             )}
           </p>
         ) : isRestrictedEdit ? (
-          <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-center text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
+          <p className="mb-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-center text-[11px] font-semibold leading-snug text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
             {tl(
               canEditLunchOt
                 ? "restrictedEditManagerHintWithLunchOt"
@@ -622,7 +631,7 @@ export default function AttendanceEmployeeFormModal({
         ) : null}
         <form
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-x-3 gap-y-1.5 sm:grid-cols-2"
         >
           <div className="sm:col-span-2">
             <label className={employeeModalLabelClass}>
@@ -823,7 +832,7 @@ export default function AttendanceEmployeeFormModal({
                 </button>
               </div>
               {clockTimesDisabled ? (
-                <p className="mt-1 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+                <p className="mt-0.5 text-[10px] leading-tight text-slate-600 dark:text-slate-400">
                   {tl(
                     "timeInDisabledWhenLeaveType",
                     "Đã chọn loại phép — xóa loại phép để nhập giờ vào/ra (trừ 1/2PN).",
@@ -873,71 +882,76 @@ export default function AttendanceEmployeeFormModal({
               </div>
             </div>
           </div>
-          <div className="sm:col-span-2">
-            <label className={employeeModalLabelClass}>
-              {tl("lunchOvertimeHours", "Thời gian tăng ca trưa")}
-            </label>
-            <select
-              name={ATTENDANCE_EMP.LUNCH_OT_HOURS}
-              value={
-                form[ATTENDANCE_EMP.LUNCH_OT_HOURS] === "" || form[ATTENDANCE_EMP.LUNCH_OT_HOURS] == null
-                  ? ""
-                  : String(form[ATTENDANCE_EMP.LUNCH_OT_HOURS])
-              }
-              onChange={handleChange}
-              disabled={lunchOtLocked}
-              className={employeeModalSelectFieldClass}
-            >
-              <option value="">
-                {tl("lunchOvertimePlaceholder", "— Không chọn —")}
-              </option>
-              {LUNCH_OT_HOUR_OPTIONS.map((h) => (
-                <option key={h} value={String(h)}>{h}</option>
-              ))}
-            </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className={employeeModalLabelClass}>
-              {tl("leaveTypeColumn", "Loại phép")}
-            </label>
-            <select
-              value={String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim()}
-              onChange={handleLoaiPhepSelect}
-              disabled={isViewOnly}
-              className={employeeModalSelectFieldClass}
-            >
-              <option value="">
-                {tl("leaveTypePlaceholder", "— Không chọn —")}
-              </option>
-              {(() => {
-                const raw = String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim();
-                const isStd = Boolean(findGioVaoTypeOptionMatch(raw));
-                return !isStd && raw ? (
-                  <option value={raw}>
-                    {raw} {tl("leaveTypeCurrentValue", "(giá trị hiện tại)")}
-                  </option>
-                ) : null;
-              })()}
-              {ATTENDANCE_LOAI_PHEP_OPTIONS.map(({ value, shortLabel }) => (
-                <option key={value} value={value}>
-                  {shortLabel} — {value}
+          <div className="grid min-w-0 grid-cols-1 gap-1.5 sm:col-span-2 sm:grid-cols-2 sm:gap-3">
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("lunchOvertimeHours", "Thời gian tăng ca trưa")}
+              </label>
+              <select
+                name={ATTENDANCE_EMP.LUNCH_OT_HOURS}
+                value={
+                  form[ATTENDANCE_EMP.LUNCH_OT_HOURS] === "" || form[ATTENDANCE_EMP.LUNCH_OT_HOURS] == null
+                    ? ""
+                    : String(form[ATTENDANCE_EMP.LUNCH_OT_HOURS])
+                }
+                onChange={handleChange}
+                disabled={lunchOtLocked}
+                className={employeeModalSelectFieldClass}
+              >
+                <option value="">
+                  {tl("lunchOvertimePlaceholder", "— Không chọn —")}
                 </option>
-              ))}
-            </select>
-            <p className="mt-1.5 text-[11px] leading-snug text-purple-700/90 dark:text-purple-300/90">
-              {hasClockInTime &&
-              !isAttendanceLoaiPhepAllowsClockTimes(form[ATTENDANCE_EMP.LEAVE_TYPE])
-                ? tl(
-                    "loaiPhepClearsTimeInOnSelect",
-                    "Đã có giờ vào — chọn loại phép (trừ VT, 1/2PN) sẽ xóa giờ vào/ra khi lưu.",
-                  )
-                : tl("loaiPhepModalHint", "Chọn loại phép (PN, PO, TS …)")}
-            </p>
+                {LUNCH_OT_HOUR_OPTIONS.map((h) => (
+                  <option key={h} value={String(h)}>{h}</option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-0">
+              <label className={employeeModalLabelClass}>
+                {tl("leaveTypeColumn", "Loại phép")}
+              </label>
+              <select
+                value={String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim()}
+                onChange={handleLoaiPhepSelect}
+                disabled={isViewOnly}
+                className={employeeModalSelectFieldClass}
+              >
+                <option value="">
+                  {tl("leaveTypePlaceholder", "— Không chọn —")}
+                </option>
+                {(() => {
+                  const raw = String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim();
+                  const isStd = Boolean(findGioVaoTypeOptionMatch(raw));
+                  return !isStd && raw ? (
+                    <option value={raw}>
+                      {raw} {tl("leaveTypeCurrentValue", "(giá trị hiện tại)")}
+                    </option>
+                  ) : null;
+                })()}
+                {ATTENDANCE_LOAI_PHEP_OPTIONS.map(({ value, shortLabel }) => (
+                  <option key={value} value={value}>
+                    {shortLabel} — {value}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="sm:col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {hasClockInTime &&
+          !isAttendanceLoaiPhepAllowsClockTimes(form[ATTENDANCE_EMP.LEAVE_TYPE]) ? (
+            <p className="sm:col-span-2 mt-0 text-[10px] leading-tight text-purple-700/90 dark:text-purple-300/90">
+              {tl(
+                "loaiPhepClearsTimeInOnSelect",
+                "Đã có giờ vào — chọn loại phép (trừ VT, 1/2PN) sẽ xóa giờ vào/ra khi lưu.",
+              )}
+            </p>
+          ) : null}
+          <div className="sm:col-span-2 grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-3">
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("workShift", "Ca làm việc")}
+                <span className="ml-1 font-normal normal-case tracking-normal text-[10px] text-slate-500 dark:text-slate-400">
+                  (S1 ngày, S2 đêm)
+                </span>
               </label>
               <select
                 name={ATTENDANCE_EMP.SHIFT}
@@ -969,9 +983,6 @@ export default function AttendanceEmployeeFormModal({
                   </option>
                 ))}
               </select>
-              <p className="mt-1.5 text-[11px] leading-snug text-blue-700/90 dark:text-blue-300/90">
-                {tl("caLamViecModalHint", "S1 là Ca ngày, S2 là Ca đêm.")}
-              </p>
             </div>
             <div className="min-w-0">
               <label
@@ -997,12 +1008,6 @@ export default function AttendanceEmployeeFormModal({
                 <option value="YES">{tl("departmentCheckYes", "ĐÚNG")}</option>
                 <option value="NO">{tl("departmentCheckNo", "SAI")}</option>
               </select>
-              <p
-                className="mt-1.5 text-[11px] leading-snug text-blue-700/90 invisible select-none sm:block"
-                aria-hidden="true"
-              >
-                &nbsp;
-              </p>
             </div>
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
@@ -1029,46 +1034,87 @@ export default function AttendanceEmployeeFormModal({
                 <option value="NO">{tl("compensatoryLeaveNo", "Không")}</option>
                 <option value="YES">{tl("compensatoryLeaveYes", "Có")}</option>
               </select>
-              <p
-                className="mt-1.5 text-[11px] leading-snug text-blue-700/90 invisible select-none sm:block"
-                aria-hidden="true"
-              >
-                &nbsp;
-              </p>
             </div>
           </div>
-          <div className="min-w-0 sm:col-span-2">
-            <label
-              htmlFor="hoVaTenNenVangCheck"
-              className={employeeModalLabelClass}
-            >
-              {tl("hoVaTenYellowBg", "Check tăng ca")}
-            </label>
-            <select
-              id="hoVaTenNenVangCheck"
-              value={
-                isHoVaTenYellowHighlight(form[ATTENDANCE_EMP.NAME_YELLOW_BG])
-                  ? "YES"
-                  : "NO"
-              }
-              disabled={isViewOnly || !canEditOtCheck}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  [ATTENDANCE_EMP.NAME_YELLOW_BG]:
-                    e.target.value === "YES" ? "YES" : "",
-                }))
-              }
-              className={employeeModalSelectFieldClass}
-            >
-              <option value="NO">{tl("compensatoryLeaveNo", "Không")}</option>
-              <option value="YES">{tl("compensatoryLeaveYes", "Có")}</option>
-            </select>
+          <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:col-span-2 sm:gap-3">
+            <div className="min-w-0">
+              <label
+                htmlFor="hoVaTenNenVangCheck"
+                className={employeeModalLabelClass}
+              >
+                {tl("hoVaTenYellowBg", "Check tăng ca")}
+              </label>
+              <label
+                className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border-2 px-2 py-1 transition ${
+                  isHoVaTenYellowHighlight(form[ATTENDANCE_EMP.NAME_YELLOW_BG])
+                    ? "border-amber-300 bg-amber-50 dark:border-amber-600/60 dark:bg-amber-950/30"
+                    : "border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-950"
+                } ${isViewOnly || !canEditOtCheck ? "cursor-not-allowed opacity-60" : "hover:border-amber-300"}`}
+              >
+                <input
+                  id="hoVaTenNenVangCheck"
+                  type="checkbox"
+                  checked={isHoVaTenYellowHighlight(
+                    form[ATTENDANCE_EMP.NAME_YELLOW_BG],
+                  )}
+                  disabled={isViewOnly || !canEditOtCheck}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      [ATTENDANCE_EMP.NAME_YELLOW_BG]: e.target.checked
+                        ? "YES"
+                        : "",
+                    }))
+                  }
+                  className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 accent-amber-500"
+                />
+                <span className="text-xs font-bold leading-tight text-slate-800 dark:text-slate-100">
+                  {isHoVaTenYellowHighlight(form[ATTENDANCE_EMP.NAME_YELLOW_BG])
+                    ? tl("compensatoryLeaveYes", "Có")
+                    : tl("compensatoryLeaveNo", "Không")}
+                </span>
+              </label>
+            </div>
+            <div className="min-w-0">
+              <label htmlFor="loaiPhepCheck" className={employeeModalLabelClass}>
+                {tl("leaveTypeCheckLabel", "Check loại phép")}
+              </label>
+              <label
+                className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border-2 px-2 py-1 transition ${
+                  isLeaveTypeCheckHighlight(form[ATTENDANCE_EMP.LEAVE_TYPE_CHECK])
+                    ? "border-violet-300 bg-violet-50 dark:border-violet-600/60 dark:bg-violet-950/30"
+                    : "border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-950"
+                } ${isViewOnly ? "cursor-not-allowed opacity-60" : "hover:border-violet-300"}`}
+              >
+                <input
+                  id="loaiPhepCheck"
+                  type="checkbox"
+                  checked={isLeaveTypeCheckHighlight(
+                    form[ATTENDANCE_EMP.LEAVE_TYPE_CHECK],
+                  )}
+                  disabled={isViewOnly}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      [ATTENDANCE_EMP.LEAVE_TYPE_CHECK]: e.target.checked
+                        ? "YES"
+                        : "",
+                    }))
+                  }
+                  className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 accent-violet-600"
+                />
+                <span className="text-xs font-bold leading-tight text-slate-800 dark:text-slate-100">
+                  {isLeaveTypeCheckHighlight(form[ATTENDANCE_EMP.LEAVE_TYPE_CHECK])
+                    ? tl("compensatoryLeaveYes", "Có")
+                    : tl("compensatoryLeaveNo", "Không")}
+                </span>
+              </label>
+            </div>
           </div>
           {!isViewOnly ? (
             <button
               type="submit"
-              className="sm:col-span-2 mt-0 w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2.5 text-sm font-extrabold tracking-wide text-white shadow-lg transition hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 active:scale-95 sm:text-base dark:focus:ring-offset-slate-900"
+              className="sm:col-span-2 mt-0.5 w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-extrabold tracking-wide text-white shadow-lg transition hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 active:scale-95 dark:focus:ring-offset-slate-900"
             >
               {isEditMode
                 ? t("attendanceList.btnUpdate")

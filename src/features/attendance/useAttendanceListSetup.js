@@ -8,14 +8,12 @@ import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
 import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 
 /**
- * Quyền, cột bảng, alert auto-hide, đồng bộ ?date= và ?edit=.
+ * Quyền, cột bảng, đồng bộ ?date= và ?edit=.
  */
 export function useAttendanceListSetup({
   user,
   userRole,
   userDepartments,
-  alert,
-  setAlert,
   searchParams,
   setSearchParams,
   setSelectedDate,
@@ -26,16 +24,6 @@ export function useAttendanceListSetup({
     const d = searchParams.get("date");
     if (d && ISO_DATE_KEY_RE.test(d)) setSelectedDate(d);
   }, [searchParams, setSelectedDate]);
-
-  useEffect(() => {
-    if (alert.show) {
-      const timer = setTimeout(() => {
-        setAlert((a) => ({ ...a, show: false }));
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [alert.show, setAlert]);
 
   const canEditEmployee = useCallback(
     (employee) =>

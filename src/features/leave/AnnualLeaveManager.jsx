@@ -142,15 +142,6 @@ export default function AnnualLeaveManager() {
   );
 
   useEffect(() => {
-    if (!alert.show) return;
-    const timer = setTimeout(
-      () => setAlert((a) => ({ ...a, show: false })),
-      4000,
-    );
-    return () => clearTimeout(timer);
-  }, [alert.show]);
-
-  useEffect(() => {
     if (!actionsOpen) return;
     const onKey = (e) => {
       if (e.key === "Escape") setActionsOpen(false);
@@ -354,7 +345,11 @@ export default function AnnualLeaveManager() {
           </div>
         </div>
 
-        <AlertMessage alert={alert} />
+        <AlertMessage
+          alert={alert}
+          autoHideMs={4000}
+          onClose={() => setAlert((a) => ({ ...a, show: false }))}
+        />
 
         <div className="attendance-toolbar-controls sticky top-0 z-30 mb-1 flex shrink-0 flex-col gap-1 border-b border-slate-200/90 bg-white px-1.5 py-1 shadow-sm sm:mb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2 md:px-2 dark:border-slate-700/90 dark:bg-slate-900">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">

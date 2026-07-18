@@ -513,16 +513,6 @@ function MoldManager() {
     });
   };
 
-  // Tự động tắt thông báo sau 3s
-  useEffect(() => {
-    if (alert.show) {
-      const timer = setTimeout(() => {
-        setAlert((a) => ({ ...a, show: false }));
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [alert.show]);
-
   // Load dữ liệu từ Firebase (chuyển key về columns chuẩn)
   useEffect(() => {
     const moldsRef = ref(db, "molds");
@@ -861,7 +851,10 @@ function MoldManager() {
         <h1 className="hidden md:block text-2xl font-extrabold uppercase mb-4 text-center tracking-widest text-[#1e293b]">
           {t("moldManager.title")}
         </h1>
-        <AlertMessage alert={alert} />
+        <AlertMessage
+          alert={alert}
+          onClose={() => setAlert((a) => ({ ...a, show: false }))}
+        />
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end mb-4">
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <input

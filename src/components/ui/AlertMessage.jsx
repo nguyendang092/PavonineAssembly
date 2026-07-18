@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const toneClass = (type) => {
   switch (type) {
@@ -15,11 +15,17 @@ const toneClass = (type) => {
 };
 
 /**
- * Thông báo nổi thống nhất (top-center).
+ * Thông báo nổi thống nhất (top-center), tự ẩn sau `autoHideMs` (mặc định 3s).
  * - `alert={{ show, type, message }}` — type: success | error | info | neutral
- * - Hoặc `message` + `onClose` (kiểu toast cũ, tự ẩn sau 3s khi có onClose)
+ * - `onClose` — đồng bộ state cha (khuyến nghị: `() => setAlert(a => ({ ...a, show: false }))`)
+ * - Hoặc `message` + `onClose` (kiểu toast cũ)
  */
-function AlertMessage({ alert: alertProp, message, onClose }) {
+function AlertMessage({
+  alert: alertProp,
+  message,
+  onClose,
+  autoHideMs = 3000,
+}) {
   const alert = useMemo(() => {
     if (alertProp != null) return alertProp;
     return {
@@ -29,15 +35,36 @@ function AlertMessage({ alert: alertProp, message, onClose }) {
     };
   }, [alertProp, message]);
 
-  useEffect(() => {
-    if (!onClose || !alert?.show) return;
-    const timer = setTimeout(() => onClose(), 3000);
-    return () => clearTimeout(timer);
-  }, [alert?.show, alert?.message, onClose]);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
-  if (!alert?.show || !String(alert.message ?? "").trim()) return null;
+  const [visible, setVisible] = useState(false);
+  const alertText = String(alert?.message ?? "").trim();
+  const shouldShow = Boolean(alert?.show) && Boolean(alertText);
+
+  useEffect(() => {
+    if (!shouldShow || autoHideMs <= 0) {
+      setVisible(false);
+      return undefined;
+    }
+
+    setVisible(true);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      onCloseRef.current?.();
+    }, autoHideMs);
+
+    return () => clearTimeout(timer);
+  }, [shouldShow, alert?.message, alert?.type, autoHideMs]);
+
+  if (!visible || !alertText) return null;
 
   const type = alert.type || "neutral";
+
+  const handleDismiss = () => {
+    setVisible(false);
+    onCloseRef.current?.();
+  };
 
   return (
     <div
@@ -46,11 +73,13 @@ function AlertMessage({ alert: alertProp, message, onClose }) {
       role="status"
       aria-live="polite"
     >
-      <div
-        className={`rounded px-4 py-2 text-center text-sm font-semibold shadow transition-all duration-300 ${toneClass(type)}`}
+      <button
+        type="button"
+        onClick={handleDismiss}
+        className={`cursor-pointer rounded px-4 py-2 text-center text-sm font-semibold shadow transition-all duration-300 ${toneClass(type)}`}
       >
-        {alert.message}
-      </div>
+        {alertText}
+      </button>
     </div>
   );
 }

@@ -229,6 +229,7 @@ export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
   ATTENDANCE_EMP.COMP_LEAVE_ALLOWED,
   ATTENDANCE_EMP.DEPT_WRONG_FLAG,
   ATTENDANCE_EMP.NAME_YELLOW_BG,
+  ATTENDANCE_EMP.LEAVE_TYPE_CHECK,
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTaiXeInWorkingHours",
@@ -260,6 +261,7 @@ export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
   ATTENDANCE_EMP.COMP_LEAVE_ALLOWED,
   ATTENDANCE_EMP.DEPT_WRONG_FLAG,
   ATTENDANCE_EMP.NAME_YELLOW_BG,
+  ATTENDANCE_EMP.LEAVE_TYPE_CHECK,
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTaiXeInWorkingHours",
@@ -531,6 +533,20 @@ export function buildEmployeeAttendanceDayDocument({
         .toUpperCase();
       return v === "YES" ? "YES" : null;
     })(),
+    [ATTENDANCE_EMP.LEAVE_TYPE_CHECK]: (() => {
+      if (
+        !Object.prototype.hasOwnProperty.call(
+          form,
+          ATTENDANCE_EMP.LEAVE_TYPE_CHECK,
+        )
+      ) {
+        return undefined;
+      }
+      const v = String(form[ATTENDANCE_EMP.LEAVE_TYPE_CHECK] ?? "")
+        .trim()
+        .toUpperCase();
+      return v === "YES" ? "YES" : null;
+    })(),
     includeTapVuInWorkingHours: attendanceDayOptionalStringFromForm(
       form,
       "includeTapVuInWorkingHours",
@@ -668,6 +684,16 @@ export function buildEmployeeAttendanceDayDocument({
       .toUpperCase();
     if (v !== "YES") {
       out[ATTENDANCE_EMP.NAME_YELLOW_BG] = null;
+    }
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(form, ATTENDANCE_EMP.LEAVE_TYPE_CHECK)
+  ) {
+    const v = String(form[ATTENDANCE_EMP.LEAVE_TYPE_CHECK] ?? "")
+      .trim()
+      .toUpperCase();
+    if (v !== "YES") {
+      out[ATTENDANCE_EMP.LEAVE_TYPE_CHECK] = null;
     }
   }
   return out;

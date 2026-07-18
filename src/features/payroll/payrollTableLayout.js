@@ -8,7 +8,7 @@ export function payrollTableWrapperMinWidthClass(
 ) {
   switch (columnPlan) {
     case "full":
-      return showRowModalActions ? "min-w-[1820px]" : "min-w-[1750px]";
+      return showRowModalActions ? "min-w-[1880px]" : "min-w-[1810px]";
     case "compact":
       return showRowModalActions ? "min-w-[1420px]" : "min-w-[1350px]";
     case "narrow":

@@ -639,15 +639,6 @@ export default function PayrollSalaryCalculator() {
     overscan: 12,
   });
 
-  useEffect(() => {
-    if (alert.show) {
-      const timer = setTimeout(() => {
-        setAlert((a) => ({ ...a, show: false }));
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [alert.show]);
-
   const payrollExportSheetTitle = useMemo(() => {
     const dateStr = new Date(selectedDate).toLocaleDateString(displayLocale);
     const base = tlPage("exportSheetTitle", "Bảng giờ công nhân viên");
@@ -899,7 +890,10 @@ export default function PayrollSalaryCalculator() {
           </div>
         </div>
 
-        <AlertMessage alert={alert} />
+        <AlertMessage
+          alert={alert}
+          onClose={() => setAlert((a) => ({ ...a, show: false }))}
+        />
 
         <div className="attendance-toolbar-controls sticky top-0 z-30 mb-1 flex flex-col gap-1 border-b border-slate-200/90 bg-white px-1.5 py-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2 md:px-2 dark:border-slate-700/90 dark:bg-slate-900">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
