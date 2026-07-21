@@ -715,6 +715,8 @@ const ko = {
     addBoard: "표 추가",
     removeBoard: "표 삭제",
     boardLabelN: "표 {{n}}",
+    expandLateShifts: "22~24 이후 교대 표시",
+    collapseLateShifts: "22~24 이후 교대 숨기기",
   },
   workplaceChart: {
     menuTitle: "📁 메뉴",

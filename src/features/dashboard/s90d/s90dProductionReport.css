@@ -550,15 +550,13 @@ body.s90d-chart-modal-open {
 .s90d-chart-pie-stat em {
   font-style: normal;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 800;
+  color: #0f172a;
 }
 
-.s90d-chart-pie-stat--ok em {
-  color: #059669;
-}
-
+.s90d-chart-pie-stat--ok em,
 .s90d-chart-pie-stat--ng em {
-  color: #dc2626;
+  color: #0f172a;
 }
 
 .s90d-chart-pie-legend {
@@ -1132,7 +1130,13 @@ body.s90d-chart-modal-open {
 }
 
 .s90d-col-product {
-  width: 4.25rem;
+  width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.s90d-process-table-layout .s90d-col-product {
+  width: 10.5rem;
 }
 
 .s90d-col-process,
@@ -1495,8 +1499,44 @@ body.s90d-chart-modal-open {
 }
 
 .s90d-cell-input--text {
-  width: 3.75rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 1.5rem;
+  box-sizing: border-box;
+}
+
+.s90d-col-product .s90d-cell-input--text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.s90d-table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.35rem 0.75rem 0.15rem;
+}
+
+.s90d-expand-shifts-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 1.75rem;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid #6366f1;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.s90d-expand-shifts-btn:hover {
+  background: #e0e7ff;
+  border-color: #4f46e5;
 }
 
 .s90d-cell-input:focus {

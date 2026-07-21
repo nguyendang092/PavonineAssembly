@@ -12,6 +12,20 @@ export const S90D_SHIFT_SLOTS = Object.freeze([
   "05~08",
 ]);
 
+/** Ca đêm / cuối ngày — ẩn mặc định, bấm nút mở rộng mới hiện. */
+export const S90D_LATE_SHIFT_SLOTS = Object.freeze([
+  "22~24",
+  "00~03",
+  "03~05",
+  "05~08",
+]);
+
+const LATE_SLOT_SET = new Set(S90D_LATE_SHIFT_SLOTS);
+
+export function isLateShiftSlot(shiftSlot) {
+  return LATE_SLOT_SET.has(String(shiftSlot ?? "").trim());
+}
+
 /** Map ca cũ → ca mới khi đọc dữ liệu Firebase/localStorage. */
 export const S90D_LEGACY_SHIFT_SLOT_MAP = Object.freeze({
   "17~19": "17~20",

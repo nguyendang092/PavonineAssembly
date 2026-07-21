@@ -87,22 +87,35 @@ function S90dRichTooltip({ active, payload, label, locale, pctKeys = [] }) {
   );
 }
 
-function S90dPieLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }) {
-  if (percent < 0.06) return null;
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+function S90dPieLabel({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent,
+}) {
+  if (!percent || percent <= 0) return null;
+
+  const pctText = `${(percent * 100).toFixed(1)}%`;
+  const isSmallSlice = percent < 0.06;
+  const radius = isSmallSlice
+    ? outerRadius + 14
+    : innerRadius + (outerRadius - innerRadius) * 0.55;
   const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
   const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
+
   return (
     <text
       x={x}
       y={y}
-      fill="#fff"
-      textAnchor="middle"
+      fill="#0f172a"
+      textAnchor={isSmallSlice ? (x > cx ? "start" : "end") : "middle"}
       dominantBaseline="central"
-      fontSize={12}
+      fontSize={isSmallSlice ? 11 : 12}
       fontWeight={800}
     >
-      {`${(percent * 100).toFixed(1)}%`}
+      {pctText}
     </text>
   );
 }
@@ -582,7 +595,7 @@ export default function S90dSummaryChartModal({
                 className="s90d-chart-panel--pie"
               >
                 <ResponsiveContainer width="100%" height={280}>
-                  <PieChart>
+                  <PieChart margin={{ top: 16, right: 28, bottom: 8, left: 28 }}>
                     <Pie
                       data={okNgPieData}
                       dataKey="value"

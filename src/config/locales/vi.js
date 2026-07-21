@@ -714,6 +714,8 @@ const vi = {
     addBoard: "Thêm bảng",
     removeBoard: "Xóa bảng",
     boardLabelN: "Bảng {{n}}",
+    expandLateShifts: "Hiện ca 22~24, 00~03, 03~05, 05~08",
+    collapseLateShifts: "Ẩn ca 22~24 trở xuống",
   },
   workplaceChart: {
     menuTitle: "📁 Menu",

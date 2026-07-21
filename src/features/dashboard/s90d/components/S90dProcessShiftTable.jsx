@@ -1,8 +1,9 @@
-import React, { memo } from "react";
+import React, { memo, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
 import { isHighDefectCell } from "../lib/buildS90dSummary";
 import { formatS90dDefectQty } from "../lib/buildS90dDailySummary";
+import { isLateShiftSlot } from "../lib/s90dShiftSlots";
 import {
   formatShiftLineLabel,
   formatShortDateLabel,
@@ -142,7 +143,7 @@ const ShiftRow = memo(function ShiftRow({
     <tr className={trClass}>
       <td className="s90d-sticky-col s90d-col-date">{dateCell}</td>
       <td className="s90d-col-line">{lineCell}</td>
-      <td className="s90d-col-product">
+      <td className="s90d-col-product" title={isPercent ? undefined : row.productCode}>
         {canEdit ? (
           <input
             type="text"
@@ -226,6 +227,7 @@ export default function S90dProcessShiftTable({
   onRemoveBoard,
 }) {
   const { t } = useTranslation();
+  const [lateShiftsExpanded, setLateShiftsExpanded] = useState(false);
   const totalRow = processSummary.totalRow;
   const totalNgQty = totalRow?.ngQty ?? 0;
   const processLabel = t(`areas.${processSummary.process}`, {
@@ -240,11 +242,38 @@ export default function S90dProcessShiftTable({
     totalRow?.productCode ??
     "S90D";
 
-  const rows = [
-    ...processSummary.shiftRows,
-    totalRow,
-    processSummary.percentRow,
-  ];
+  const { primaryShiftRows, lateShiftRows } = useMemo(() => {
+    const primary = [];
+    const late = [];
+    for (const row of processSummary.shiftRows ?? []) {
+      if (isLateShiftSlot(row.shiftSlot)) {
+        late.push(row);
+      } else {
+        primary.push(row);
+      }
+    }
+    return { primaryShiftRows: primary, lateShiftRows: late };
+  }, [processSummary.shiftRows]);
+
+  const renderShiftRow = (row) => (
+    <ShiftRow
+      key={`${processSummary.process}-${row.shiftSlot}`}
+      row={row}
+      shortDate={shortDate}
+      totalNgQty={totalNgQty}
+      t={t}
+      useDash={useDash}
+      editable={editable}
+      dateKey={dateKey}
+      boardId={boardId}
+      onProductCodeChange={onProductCodeChange}
+      onShiftFieldChange={
+        row.isTotal || row.isPercent
+          ? undefined
+          : (field, value) => onShiftFieldChange?.(row.shiftSlot, field, value)
+      }
+    />
+  );
 
   return (
     <article className="s90d-board-card">
@@ -313,6 +342,27 @@ export default function S90dProcessShiftTable({
 
       <S90dKpiCards totalRow={totalRow} />
 
+      {lateShiftRows.length > 0 ? (
+        <div className="s90d-table-toolbar">
+          <button
+            type="button"
+            className="s90d-expand-shifts-btn"
+            aria-expanded={lateShiftsExpanded}
+            onClick={() => setLateShiftsExpanded((expanded) => !expanded)}
+          >
+            {lateShiftsExpanded
+              ? t(
+                  "s90dReport.collapseLateShifts",
+                  "Ẩn ca 22~24 trở xuống",
+                )
+              : t(
+                  "s90dReport.expandLateShifts",
+                  "Hiện ca 22~24, 00~03, 03~05, 05~08",
+                )}
+          </button>
+        </div>
+      ) : null}
+
       <div className="s90d-table-wrap s90d-table-wrap--board">
         <table className="s90d-board-table s90d-process-table-layout">
           <thead>
@@ -337,7 +387,7 @@ export default function S90dProcessShiftTable({
               <th className="s90d-head-shift">
                 <S90dBilingualHeader ko="line 구분" vi="Line" />
               </th>
-              <th className="s90d-head-shift">
+              <th className="s90d-head-shift s90d-col-product">
                 <S90dBilingualHeader ko="상품 코드" vi="Mã hàng" />
               </th>
               <th className="s90d-head-shift">
@@ -369,26 +419,12 @@ export default function S90dProcessShiftTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <ShiftRow
-                key={`${processSummary.process}-${row.shiftSlot}`}
-                row={row}
-                shortDate={shortDate}
-                totalNgQty={totalNgQty}
-                t={t}
-                useDash={useDash}
-                editable={editable}
-                dateKey={dateKey}
-                boardId={boardId}
-                onProductCodeChange={onProductCodeChange}
-                onShiftFieldChange={
-                  row.isTotal || row.isPercent
-                    ? undefined
-                    : (field, value) =>
-                        onShiftFieldChange?.(row.shiftSlot, field, value)
-                }
-              />
-            ))}
+            {primaryShiftRows.map(renderShiftRow)}
+            {lateShiftsExpanded ? lateShiftRows.map(renderShiftRow) : null}
+            {totalRow ? renderShiftRow(totalRow) : null}
+            {processSummary.percentRow
+              ? renderShiftRow(processSummary.percentRow)
+              : null}
           </tbody>
         </table>
       </div>
