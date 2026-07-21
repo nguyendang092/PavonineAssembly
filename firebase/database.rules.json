@@ -97,6 +97,27 @@
       ".write": "auth != null"
     },
 
+    "s90d": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "bar": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "details": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "ng": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "manualEntries": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
     "mcDefectReport": {
       ".read": "auth != null",
       ".write": "auth != null",

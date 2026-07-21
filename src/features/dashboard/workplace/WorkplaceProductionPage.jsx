@@ -4,6 +4,7 @@
 import React, { memo, useMemo } from "react";
 import DetailedModal from "@/components/modals/DetailedModal";
 import { useWorkplaceProductionDashboard } from "./hooks/useWorkplaceProductionDashboard";
+import { DEFAULT_WORKPLACE_PRODUCTION_PATHS } from "./workplaceProductionPaths";
 import WorkplaceProductionSidebar from "./components/WorkplaceProductionSidebar";
 import WorkplaceProductionMainPanel from "./components/WorkplaceProductionMainPanel";
 import WorkplaceProductionDataTableModal from "./components/WorkplaceProductionDataTableModal";
@@ -15,6 +16,7 @@ const WorkplaceProductionShell = memo(function WorkplaceProductionShell({
   isModalOpen,
   closeDetailModal,
   modalArea,
+  detailsRoot,
 }) {
   return (
     <div className="workplace-production-viewport relative flex flex-col overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60">
@@ -25,12 +27,15 @@ const WorkplaceProductionShell = memo(function WorkplaceProductionShell({
         isOpen={isModalOpen}
         onClose={closeDetailModal}
         area={modalArea}
+        detailsRoot={detailsRoot}
       />
     </div>
   );
 });
 
-export default function WorkplaceProductionPage() {
+export default function WorkplaceProductionPage({
+  pathsConfig = DEFAULT_WORKPLACE_PRODUCTION_PATHS,
+}) {
   const {
     t,
     user,
@@ -78,7 +83,7 @@ export default function WorkplaceProductionPage() {
     handleTotalUploadClick,
     getCurrentWeekNumber,
     detailData,
-  } = useWorkplaceProductionDashboard();
+  } = useWorkplaceProductionDashboard(pathsConfig);
 
   const sidebarProps = useMemo(
     () => ({
@@ -195,7 +200,7 @@ export default function WorkplaceProductionPage() {
     ],
   );
 
-                          return (
+  return (
     <WorkplaceProductionShell
       sidebarProps={sidebarProps}
       mainPanelProps={mainPanelProps}
@@ -203,6 +208,7 @@ export default function WorkplaceProductionPage() {
       isModalOpen={isModalOpen}
       closeDetailModal={closeDetailModal}
       modalArea={modalArea}
+      detailsRoot={pathsConfig.detailsRoot}
     />
   );
 }

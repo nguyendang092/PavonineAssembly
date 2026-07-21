@@ -7,7 +7,6 @@ import { useUser } from "@/contexts/UserContext";
 import { logUserAction } from "@/utils/userLog";
 import { uploadNgFaultyExcel } from "../../ngWorkplaceUpload";
 import {
-  CHART_ORDER_KIND,
   hydrateChartOrder,
   persistChartOrder,
   applySavedKeyOrder,
@@ -19,11 +18,15 @@ import { buildChartFromWeekRows } from "../lib/buildChartFromWeekRows";
 import { dayNormalTotal, dayNGTotal, formatDayLabelShort } from "../lib/dayTotals";
 import { exportProductionToExcel } from "../lib/exportProductionExcel";
 import { getCurrentWeekNumber } from "../lib/constants";
+import { DEFAULT_WORKPLACE_PRODUCTION_PATHS } from "../workplaceProductionPaths";
 
 /**
  * State + effects + handlers sản lượng workplace — logic giữ nguyên WorkplaceDashboard.
+ * @param {import("../workplaceProductionPaths").WorkplaceProductionPaths} [pathsConfig]
  */
-export function useWorkplaceProductionDashboard() {
+export function useWorkplaceProductionDashboard(
+  pathsConfig = DEFAULT_WORKPLACE_PRODUCTION_PATHS,
+) {
   const { user } = useUser();
   const { t } = useTranslation();
   const userEmailKey = useMemo(
@@ -60,14 +63,14 @@ export function useWorkplaceProductionDashboard() {
     (async () => {
       const order = await hydrateChartOrder(
         userEmailKey,
-        CHART_ORDER_KIND.WORKPLACE_AREA,
+        pathsConfig.chartOrderKind,
       );
       if (!cancelled) setWorkplaceAreaOrder(order);
     })();
     return () => {
       cancelled = true;
     };
-  }, [userEmailKey]);
+  }, [userEmailKey, pathsConfig.chartOrderKind]);
 
   useEffect(() => {
     if (!dataTableOpen) return undefined;
@@ -98,7 +101,7 @@ export function useWorkplaceProductionDashboard() {
   useEffect(() => {
     const loadDataFromFirebase = async () => {
       try {
-        const barRef = ref(db, "bar");
+        const barRef = ref(db, pathsConfig.barRoot);
         const snapshot = await get(barRef);
         if (!snapshot.exists()) {
           return;
@@ -113,7 +116,7 @@ export function useWorkplaceProductionDashboard() {
       }
     };
     loadDataFromFirebase();
-  }, [selectedYear, processExcelData]);
+  }, [selectedYear, processExcelData, pathsConfig.barRoot]);
 
   const openDetailModal = useCallback((area) => {
     setDataTableOpen(false);
@@ -167,8 +170,8 @@ export function useWorkplaceProductionDashboard() {
             }
 
             const safeWorkplaceName = sanitizeFirebaseKey(WorkplaceName);
-            const pathGood = `bar/${safeWorkplaceName}/${Week}/${ReworkorNot}/${time_monthday}/${WorkingLight}/Total_Good`;
-            const pathNG = `bar/${safeWorkplaceName}/${Week}/${ReworkorNot}/${time_monthday}/${WorkingLight}/Total_NG`;
+            const pathGood = `${pathsConfig.barRoot}/${safeWorkplaceName}/${Week}/${ReworkorNot}/${time_monthday}/${WorkingLight}/Total_Good`;
+            const pathNG = `${pathsConfig.barRoot}/${safeWorkplaceName}/${Week}/${ReworkorNot}/${time_monthday}/${WorkingLight}/Total_NG`;
             updates[pathGood] = Number(Total_Good) || 0;
             updates[pathNG] = Number(Total_NG) || 0;
           });
@@ -181,7 +184,7 @@ export function useWorkplaceProductionDashboard() {
         setIsUploadingTotal(false);
       }
     },
-    [isUploadingTotal, selectedWeek, user],
+    [isUploadingTotal, selectedWeek, user, pathsConfig.barRoot],
   );
 
   const handleFileUpload = useCallback(
@@ -280,7 +283,7 @@ export function useWorkplaceProductionDashboard() {
 
           const safeArea = sanitizeFirebaseKey(area);
           const safeModel = sanitizeFirebaseKey(model);
-          const path = `details/${safeArea}/${week}/${safeModel}/${date}`;
+          const path = `${pathsConfig.detailsRoot}/${safeArea}/${week}/${safeModel}/${date}`;
           const totalValue = Number(total);
           updates[path] = Number.isNaN(totalValue) ? 0 : totalValue;
           hasValidData = true;
@@ -310,7 +313,7 @@ export function useWorkplaceProductionDashboard() {
     } finally {
       setIsUploadingDetail(false);
     }
-  }, [detailData, isUploadingDetail, selectedWeek, user]);
+  }, [detailData, isUploadingDetail, selectedWeek, user, pathsConfig.detailsRoot]);
 
   useEffect(() => {
     const { chartData: nextChart, dataMap: nextMap } = buildChartFromWeekRows(
@@ -541,11 +544,11 @@ export function useWorkplaceProductionDashboard() {
       setWorkplaceAreaOrder(next);
       void persistChartOrder(
         userEmailKey,
-        CHART_ORDER_KIND.WORKPLACE_AREA,
+        pathsConfig.chartOrderKind,
         next,
       );
     },
-    [chartData?.areas, workplaceAreaOrder, userEmailKey],
+    [chartData?.areas, workplaceAreaOrder, userEmailKey, pathsConfig.chartOrderKind],
   );
 
   const handleNgFaultyUpload = useCallback(() => {
@@ -559,10 +562,11 @@ export function useWorkplaceProductionDashboard() {
       user,
       logUserAction,
       onLoading: setIsUploadingNgFaulty,
+      ngRoot: pathsConfig.ngRoot,
     })
       .then(() => setPendingNgFaultyFile(null))
       .catch(() => {});
-  }, [isUploadingNgFaulty, pendingNgFaultyFile, t, user]);
+  }, [isUploadingNgFaulty, pendingNgFaultyFile, t, user, pathsConfig.ngRoot]);
 
   const handleTotalUploadClick = useCallback(() => {
     if (isUploadingTotal || isReadingTotalFile) return;

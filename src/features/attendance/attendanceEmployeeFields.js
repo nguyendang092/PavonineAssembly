@@ -12,6 +12,10 @@ export const ATTENDANCE_EMP = {
   NAME_YELLOW_BG: "hoVaTenNenVang",
   /** `"YES"` — tô nền cả dòng trên bảng (check loại phép). */
   LEAVE_TYPE_CHECK: "loaiPhepCheck",
+  /** URL ảnh giấy phép năm (ImgBB). */
+  ANNUAL_LEAVE_IMAGE_URL: "linkHinhPhepNam",
+  /** URL ảnh giấy tăng ca (ImgBB). */
+  OT_PAPERWORK_IMAGE_URL: "linkGiayTangCa",
   BUSINESS_ID: "businessId",
   CHAM_CONG: "chamCong",
   PHEP_NAM: "phepNam",

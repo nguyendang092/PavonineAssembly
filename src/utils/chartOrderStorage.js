@@ -13,6 +13,8 @@ const RTDB_ROOT = "userPreferences";
 export const CHART_ORDER_KIND = {
   ATTENDANCE_DEPT: "attendanceDept",
   WORKPLACE_AREA: "workplaceArea",
+  /** Thứ tự khu vực biểu đồ S90D — tách khỏi báo cáo sản lượng thường. */
+  WORKPLACE_AREA_S90D: "workplaceAreaS90d",
   /** Thứ tự / tập BP sản xuất trong modal Thống kê (nhóm Sản xuất) — mã nội bộ, lưu theo user. */
   COMBO_PRODUCTION_DEPT_ORDER: "comboProductionDeptOrder",
 };

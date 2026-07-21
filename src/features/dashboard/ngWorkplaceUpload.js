@@ -8,7 +8,10 @@ function sanitizeKey(key) {
 /**
  * Đọc file Excel NG (FaultyQuantity, OrganizationName, …) và ghi lên Firebase `ng/...`.
  */
-export function uploadNgFaultyExcel(file, { db, user, logUserAction, onLoading }) {
+export function uploadNgFaultyExcel(
+  file,
+  { db, user, logUserAction, onLoading, ngRoot = "ng" },
+) {
   if (!file) {
     alert("Vui lòng chọn file Excel!");
     return Promise.resolve();
@@ -65,7 +68,7 @@ export function uploadNgFaultyExcel(file, { db, user, logUserAction, onLoading }
           const model = sanitizeKey(row.ItemCode);
           const quantity = row.FaultyQuantity || 0;
           const reason = row.FaultyItemName || "";
-          const path = `ng/${workplace}/${week}/${rework}/${day}/${model}/Day`;
+          const path = `${ngRoot}/${workplace}/${week}/${rework}/${day}/${model}/Day`;
           updates[path] = { quantity, reason };
         });
         if (user && user.email) {

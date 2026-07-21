@@ -55,7 +55,12 @@ function getStartOfWeek(dateStr) {
 }
 import { useUser } from "@/contexts/UserContext";
 
-export default function DetailedModal({ isOpen, onClose, area }) {
+export default function DetailedModal({
+  isOpen,
+  onClose,
+  area,
+  detailsRoot = "details",
+}) {
   const { t } = useTranslation();
   const { user } = useUser();
   const [selectedArea, setSelectedArea] = useState(area || "Assembly");
@@ -73,13 +78,13 @@ export default function DetailedModal({ isOpen, onClose, area }) {
   const currentWeekNumber = getWeekNumber(selectedDate);
   useEffect(() => {
     const fetchAreas = async () => {
-      const snapshot = await get(ref(db, "details"));
+      const snapshot = await get(ref(db, detailsRoot));
       if (snapshot.exists()) {
         setAreas(Object.keys(snapshot.val()));
       }
     };
     fetchAreas();
-  }, []);
+  }, [detailsRoot]);
 
   useEffect(() => {
     if (!selectedArea) return;
@@ -89,7 +94,7 @@ export default function DetailedModal({ isOpen, onClose, area }) {
       // Lọc đúng theo ngày được chọn (không gom cả tuần).
       const targetDate = selectedDate;
 
-      const areaRef = ref(db, `details/${selectedArea}`);
+      const areaRef = ref(db, `${detailsRoot}/${selectedArea}`);
       const snapshot = await get(areaRef);
       if (!isMounted) return;
 
@@ -127,7 +132,7 @@ export default function DetailedModal({ isOpen, onClose, area }) {
     return () => {
       isMounted = false;
     };
-  }, [selectedArea, selectedDate, forceFetch]);
+  }, [selectedArea, selectedDate, forceFetch, detailsRoot]);
   const filteredData = allDetailData
     .filter((item) =>
       item.model.toLowerCase().includes(selectedModel.toLowerCase()),

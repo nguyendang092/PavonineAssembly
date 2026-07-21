@@ -49,6 +49,9 @@ const AttendanceDashboardPage = lazyImport(
 const WorkplaceDashboardNormal = lazyImport(
   () => import("@/features/dashboard/WorkplaceDashboardNormal"),
 );
+const S90DProductionReportPage = lazyImport(
+  () => import("@/features/dashboard/S90DProductionReportPage"),
+);
 const CertificateGenerator1 = lazyImport(
   () => import("@/components/ui/CertificateGenerator1"),
 );
@@ -92,6 +95,7 @@ const NAVBAR_SCROLLED_CLASS =
   "bg-indigo-100/90 backdrop-blur-md border-b border-indigo-200 shadow-md dark:bg-slate-900/85 dark:border-slate-700";
 const ROUTE_COMPONENTS = {
   WorkplaceDashboardNormal,
+  S90DProductionReportPage,
   CertificateGenerator1,
   CertificateGenerator2,
   HonorBoard,

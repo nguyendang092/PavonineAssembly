@@ -230,6 +230,8 @@ export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
   ATTENDANCE_EMP.DEPT_WRONG_FLAG,
   ATTENDANCE_EMP.NAME_YELLOW_BG,
   ATTENDANCE_EMP.LEAVE_TYPE_CHECK,
+  ATTENDANCE_EMP.ANNUAL_LEAVE_IMAGE_URL,
+  ATTENDANCE_EMP.OT_PAPERWORK_IMAGE_URL,
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTaiXeInWorkingHours",
@@ -262,6 +264,8 @@ export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
   ATTENDANCE_EMP.DEPT_WRONG_FLAG,
   ATTENDANCE_EMP.NAME_YELLOW_BG,
   ATTENDANCE_EMP.LEAVE_TYPE_CHECK,
+  ATTENDANCE_EMP.ANNUAL_LEAVE_IMAGE_URL,
+  ATTENDANCE_EMP.OT_PAPERWORK_IMAGE_URL,
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
   "includeTaiXeInWorkingHours",
@@ -547,6 +551,14 @@ export function buildEmployeeAttendanceDayDocument({
         .toUpperCase();
       return v === "YES" ? "YES" : null;
     })(),
+    [ATTENDANCE_EMP.ANNUAL_LEAVE_IMAGE_URL]: attendanceDayOptionalStringFromForm(
+      form,
+      ATTENDANCE_EMP.ANNUAL_LEAVE_IMAGE_URL,
+    ),
+    [ATTENDANCE_EMP.OT_PAPERWORK_IMAGE_URL]: attendanceDayOptionalStringFromForm(
+      form,
+      ATTENDANCE_EMP.OT_PAPERWORK_IMAGE_URL,
+    ),
     includeTapVuInWorkingHours: attendanceDayOptionalStringFromForm(
       form,
       "includeTapVuInWorkingHours",
@@ -695,6 +707,14 @@ export function buildEmployeeAttendanceDayDocument({
     if (v !== "YES") {
       out[ATTENDANCE_EMP.LEAVE_TYPE_CHECK] = null;
     }
+  }
+  for (const urlKey of [
+    ATTENDANCE_EMP.ANNUAL_LEAVE_IMAGE_URL,
+    ATTENDANCE_EMP.OT_PAPERWORK_IMAGE_URL,
+  ]) {
+    if (!Object.prototype.hasOwnProperty.call(form, urlKey)) continue;
+    const v = String(form[urlKey] ?? "").trim();
+    if (!v) out[urlKey] = null;
   }
   return out;
 }

@@ -36,6 +36,14 @@ export const NAVIGATION_BOARD_TOOLS = [
     status: "active",
   },
   {
+    id: "APP-21",
+    path: "/s90d-production-report",
+    category: "operations",
+    titleKey: "navbar.s90dProductionReport",
+    descriptionKey: "navigationBoard.descS90dProductionReport",
+    status: "new",
+  },
+  {
     id: "APP-03",
     path: "/performance",
     category: "operations",

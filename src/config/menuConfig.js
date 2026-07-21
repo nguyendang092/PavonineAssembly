@@ -42,6 +42,11 @@ export const menuConfig = [
                 path: "/normal",
               },
               {
+                key: "s90dProductionReport",
+                label: "navbar.s90dProductionReport",
+                path: "/s90d-production-report",
+              },
+              {
                 key: "caiTien",
                 label: "navbar.caiTien",
                 path: "/performance",
@@ -168,6 +173,7 @@ export const PUBLIC_ROUTE_PATHS = new Set(["/login"]);
 export const routeConfig = [
   { path: "/", element: "NavigationBoardPage" },
   { path: "/normal", element: "WorkplaceDashboardNormal" },
+  { path: "/s90d-production-report", element: "S90DProductionReportPage" },
   { path: "/bangkhen1", element: "CertificateGenerator1" },
   { path: "/bangkhen2", element: "CertificateGenerator2" },
   { path: "/honor-board", element: "HonorBoard" },
