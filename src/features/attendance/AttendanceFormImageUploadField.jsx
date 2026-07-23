@@ -1,5 +1,5 @@
 import React, { useCallback, useId, useRef, useState } from "react";
-import { uploadImageToImgbb } from "@/services/imgbbUpload";
+import { uploadImage } from "@/services/imageUpload";
 
 const labelClass =
   "mb-0 block text-[11px] font-bold uppercase tracking-wide text-purple-600 dark:text-purple-400";
@@ -46,7 +46,7 @@ export default function AttendanceFormImageUploadField({
           /[^\w-]+/g,
           "_",
         );
-        const { url: uploadedUrl } = await uploadImageToImgbb(file, {
+        const { url: uploadedUrl } = await uploadImage(file, {
           name: `${safePrefix}_${stamp}`,
         });
         onChange?.(uploadedUrl);
@@ -59,18 +59,32 @@ export default function AttendanceFormImageUploadField({
               "Server chưa cấu hình ImgBB — thêm IMGBB_API_KEY vào file .env rồi restart dev.",
             ),
           );
+        } else if (code === "STORAGE_PERMISSION_DENIED") {
+          setError(
+            tl(
+              "imgbbStoragePermissionDenied",
+              "Chưa cấp quyền upload ảnh trên Firebase — liên hệ IT chạy: firebase deploy --only storage",
+            ),
+          );
+        } else if (code === "AUTH_REQUIRED") {
+          setError(
+            tl(
+              "imgbbAuthRequired",
+              "Cần đăng nhập để upload ảnh — vui lòng đăng xuất rồi đăng nhập lại.",
+            ),
+          );
         } else if (code === "UPLOAD_SERVER_UNAVAILABLE") {
           setError(
             tl(
               "imgbbServerUnavailable",
-              "Không kết nối được server upload — chạy npm run dev (hoặc npm run server khi preview).",
+              "Không kết nối được server upload — thử đăng nhập lại hoặc liên hệ IT.",
             ),
           );
         } else if (code === "INVALID_IMAGE_TYPE") {
           setError(
             tl(
               "imgbbInvalidImageType",
-              "Chỉ chấp nhận PNG, JPG, GIF, WebP.",
+              "Chỉ chấp nhận PNG, JPG, GIF, WebP, HEIC.",
             ),
           );
         } else if (code === "IMAGE_TOO_LARGE") {
@@ -124,7 +138,7 @@ export default function AttendanceFormImageUploadField({
             ref={fileRef}
             id={inputId}
             type="file"
-            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"
             className="hidden"
             disabled={disabled || uploading}
             onChange={handleFileChange}

@@ -28,6 +28,9 @@ export default function S90dDefectCellEditor({
       if (key === "imgbbRemoveImage") {
         return t("s90dReport.defectRemoveImage", "Xóa", options);
       }
+      if (key.startsWith("imgbb")) {
+        return t(`s90dReport.${key}`, { defaultValue, ...options });
+      }
       return t(`attendanceList.${key}`, { defaultValue, ...options });
     },
     [t],

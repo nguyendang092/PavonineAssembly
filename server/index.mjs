@@ -1,14 +1,16 @@
 import http from "http";
 import { loadProjectEnv } from "./loadEnv.mjs";
-import { createImgbbUploadMiddleware } from "./imgbbUploadHandler.mjs";
+import { ROUTES } from "./imageUpload/constants.mjs";
+import { createImageUploadMiddleware } from "./imageUpload/createImageUploadMiddleware.mjs";
 
 loadProjectEnv();
 
 const port = Number(process.env.SERVER_PORT || 8787);
-const imgbbMiddleware = createImgbbUploadMiddleware();
+const host = String(process.env.SERVER_HOST || "127.0.0.1").trim() || "127.0.0.1";
+const uploadMiddleware = createImageUploadMiddleware();
 
 const server = http.createServer((req, res) => {
-  imgbbMiddleware(req, res, () => {
+  uploadMiddleware(req, res, () => {
     if (req.url?.startsWith("/api/")) {
       res.statusCode = 404;
       res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -20,6 +22,8 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`[imgbb-proxy] http://127.0.0.1:${port}/api/imgbb/upload`);
+server.listen(port, host, () => {
+  console.log(`[image-upload-api] http://${host}:${port}${ROUTES.UPLOAD}`);
+  console.log(`[image-upload-api] health  http://${host}:${port}${ROUTES.HEALTH}`);
+  console.log(`[image-upload-api] legacy  http://${host}:${port}/api/imgbb/upload`);
 });

@@ -673,8 +673,10 @@ const vi = {
     imgbbMissingApiKey:
       "Server chưa cấu hình ImgBB — thêm IMGBB_API_KEY vào file .env rồi restart dev.",
     imgbbServerUnavailable:
-      "Không kết nối được server upload — chạy npm run dev.",
-    imgbbInvalidImageType: "Chỉ chấp nhận PNG, JPG, GIF, WebP.",
+      "Không kết nối được server upload — thử đăng nhập lại hoặc liên hệ IT.",
+    imgbbAuthRequired:
+      "Cần đăng nhập để upload ảnh — vui lòng đăng xuất rồi đăng nhập lại.",
+    imgbbInvalidImageType: "Chỉ chấp nhận PNG, JPG, GIF, WebP, HEIC.",
     imgbbImageTooLarge: "Ảnh tối đa 32 MB.",
     imgbbUploadFailed: "Upload ảnh thất bại: {{error}}",
     viewChart: "Xem biểu đồ",
@@ -1537,8 +1539,10 @@ const vi = {
     imgbbMissingApiKey:
       "Server chưa cấu hình ImgBB — thêm IMGBB_API_KEY vào file .env rồi restart dev.",
     imgbbServerUnavailable:
-      "Không kết nối được server upload — chạy npm run dev (hoặc npm run server khi preview).",
-    imgbbInvalidImageType: "Chỉ chấp nhận PNG, JPG, GIF, WebP.",
+      "Không kết nối được server upload — thử đăng nhập lại hoặc liên hệ IT.",
+    imgbbAuthRequired:
+      "Cần đăng nhập để upload ảnh — vui lòng đăng xuất rồi đăng nhập lại.",
+    imgbbInvalidImageType: "Chỉ chấp nhận PNG, JPG, GIF, WebP, HEIC.",
     imgbbImageTooLarge: "Ảnh tối đa 32 MB.",
     imgbbUploadFailed: "Upload ảnh thất bại: {{error}}",
     compensatoryLeaveField: "Nghỉ bù",
@@ -1726,6 +1730,12 @@ const vi = {
     monthlyTimesheetDeptAll: workforceSearchUiVi.deptAll,
     monthlyTimesheetFilterNamePlaceholder:
       workforceSearchUiVi.searchFilterPlaceholder,
+    monthlyTimesheetFilterWorkHours: "Giờ công",
+    monthlyTimesheetFilterLeaveType: "Loại phép",
+    monthlyTimesheetFilterOvertime: "Tăng ca",
+    monthlyTimesheetFilterAll: "Tất cả",
+    monthlyTimesheetFilterWith: "Có",
+    monthlyTimesheetFilterWithout: "Không",
     monthlyTimesheetExportExcel: "Xuất Excel",
     monthlyTimesheetExportError: "Xuất Excel thất bại: {{error}}",
     monthlyTimesheetDayCellEditHint: "Bấm để sửa điểm danh ngày này.",

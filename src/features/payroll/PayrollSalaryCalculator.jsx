@@ -81,6 +81,12 @@ import {
 } from "@/features/payroll/payrollEarlyOtSession";
 import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimesheetModal";
 import PayrollMonthlyTimeInOutModal from "@/features/payroll/PayrollMonthlyTimeInOutModal";
+import PayrollTimesheetPresenceFilters from "@/features/payroll/PayrollTimesheetPresenceFilters";
+import {
+  getAttendanceDayEmployeePresenceFlags,
+  matchesPayrollMonthTimesheetPresenceFilter,
+  PAYROLL_TIMESHEET_PRESENCE_FILTER,
+} from "@/features/payroll/attendanceDayPresenceFilters";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
 import "@/features/attendance/attendanceToolbarFocus.css";
 import "@/features/attendance/hrPageCompact.css";
@@ -130,6 +136,12 @@ export default function PayrollSalaryCalculator() {
     const d = searchParams.get("date");
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(d);
   }, [searchParams]);
+
+  useEffect(() => {
+    setWorkHoursFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+    setLeaveTypeFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+    setOvertimeFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+  }, [selectedDate]);
   const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
   const {
     balanceByMnv: annualLeaveBalanceByMnv,
@@ -142,6 +154,15 @@ export default function PayrollSalaryCalculator() {
   const [isCompensatoryDay, setIsCompensatoryDay] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
+  const [workHoursFilter, setWorkHoursFilter] = useState(
+    PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  );
+  const [leaveTypeFilter, setLeaveTypeFilter] = useState(
+    PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  );
+  const [overtimeFilter, setOvertimeFilter] = useState(
+    PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  );
 
   const [employees, setEmployees] = useState([]);
   const [earlyOtMap, setEarlyOtMap] = useState({});
@@ -531,11 +552,25 @@ export default function PayrollSalaryCalculator() {
   const filterRows = useCallback(
     (list, term) => {
       const q = term.trim().toLowerCase();
+      const dayCtx = {
+        isOffDay,
+        isHolidayDay,
+        isCompensatoryDay,
+        dateKey: selectedDate,
+      };
       return list.filter((emp) => {
         const empDeptKey = normalizeDepartment(emp.boPhan);
         const departmentFilterKey = normalizeDepartment(departmentFilter);
         if (departmentFilterKey && empDeptKey !== departmentFilterKey)
           return false;
+        if (
+          !matchesPayrollMonthTimesheetPresenceFilter(
+            getAttendanceDayEmployeePresenceFlags(emp, dayCtx),
+            { workHoursFilter, leaveTypeFilter, overtimeFilter },
+          )
+        ) {
+          return false;
+        }
         if (!q) return true;
         return (
           (emp.hoVaTen || "").toLowerCase().includes(q) ||
@@ -544,7 +579,17 @@ export default function PayrollSalaryCalculator() {
         );
       });
     },
-    [departmentFilter, normalizeDepartment],
+    [
+      departmentFilter,
+      isCompensatoryDay,
+      isHolidayDay,
+      isOffDay,
+      leaveTypeFilter,
+      normalizeDepartment,
+      overtimeFilter,
+      selectedDate,
+      workHoursFilter,
+    ],
   );
 
   const filteredEmployees = useMemo(
@@ -556,7 +601,14 @@ export default function PayrollSalaryCalculator() {
   );
 
   const tablePagination = useHrTablePagination(filteredEmployees, {
-    resetDeps: [selectedDate, deferredSearchTerm, departmentFilter],
+    resetDeps: [
+      selectedDate,
+      deferredSearchTerm,
+      departmentFilter,
+      workHoursFilter,
+      leaveTypeFilter,
+      overtimeFilter,
+    ],
   });
 
   const pagedEmployees = tablePagination.pagedItems;
@@ -925,6 +977,16 @@ export default function PayrollSalaryCalculator() {
                 </option>
               ))}
             </select>
+            <PayrollTimesheetPresenceFilters
+              workHoursFilter={workHoursFilter}
+              leaveTypeFilter={leaveTypeFilter}
+              overtimeFilter={overtimeFilter}
+              onWorkHoursFilterChange={setWorkHoursFilter}
+              onLeaveTypeFilterChange={setLeaveTypeFilter}
+              onOvertimeFilterChange={setOvertimeFilter}
+              tl={tlPage}
+              disabled={isTableBusy}
+            />
           </div>
           <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto sm:justify-end">
             <PayrollToolsMenu
@@ -1179,6 +1241,12 @@ export default function PayrollSalaryCalculator() {
         departmentFilter={departmentFilter}
         payrollDepartmentOptions={departments}
         onDepartmentFilterChange={setDepartmentFilter}
+        workHoursFilter={workHoursFilter}
+        leaveTypeFilter={leaveTypeFilter}
+        overtimeFilter={overtimeFilter}
+        onWorkHoursFilterChange={setWorkHoursFilter}
+        onLeaveTypeFilterChange={setLeaveTypeFilter}
+        onOvertimeFilterChange={setOvertimeFilter}
         normalizeDepartment={normalizeDepartment}
         user={user}
         userRole={userRole}

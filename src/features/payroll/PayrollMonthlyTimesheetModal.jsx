@@ -17,6 +17,12 @@ import {
   resolvePayrollMonthDayEmployee,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
+  buildPayrollMonthTimesheetFlagsById,
+  matchesPayrollMonthTimesheetPresenceFilter,
+  needsPayrollMonthTimesheetPresenceFlags,
+  PAYROLL_TIMESHEET_PRESENCE_FILTER,
+} from "@/features/payroll/payrollMonthTimesheetFilters";
+import {
   formatCoeffHoursForDisplay,
   formatPayrollMonthlyCoeffSubrowDayCell,
   getPayrollMonthlyCoeffHoursMap,
@@ -75,6 +81,7 @@ import { usePayrollMonthEmployeeIndex } from "@/features/payroll/usePayrollMonth
 import { usePayrollMonthSummaries } from "@/features/payroll/usePayrollMonthSummaries";
 import PayrollDepartmentMultiSelect from "@/features/payroll/PayrollDepartmentMultiSelect";
 import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
+import PayrollTimesheetPresenceFilters from "@/features/payroll/PayrollTimesheetPresenceFilters";
 import { payrollExportDepartmentFilenameSuffix } from "@/features/payroll/payrollExportDepartmentFilter";
 import "./payrollMonthlyTimesheetModal.css";
 
@@ -1082,6 +1089,12 @@ export default function PayrollMonthlyTimesheetModal({
   payrollDepartmentOptions,
   /** Gọi khi đổi BP trong modal — giữ một state với `departmentFilter` trên trang lương. */
   onDepartmentFilterChange,
+  workHoursFilter: workHoursFilterProp,
+  leaveTypeFilter: leaveTypeFilterProp,
+  overtimeFilter: overtimeFilterProp,
+  onWorkHoursFilterChange,
+  onLeaveTypeFilterChange,
+  onOvertimeFilterChange,
   normalizeDepartment = (v) =>
     String(v || "")
       .trim()
@@ -1099,6 +1112,27 @@ export default function PayrollMonthlyTimesheetModal({
 }) {
   const [localNameFilter, setLocalNameFilter] = useState("");
   const [selectedDepartments, setSelectedDepartments] = useState([]);
+  const [internalWorkHoursFilter, setInternalWorkHoursFilter] = useState(
+    PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  );
+  const [internalLeaveTypeFilter, setInternalLeaveTypeFilter] = useState(
+    PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  );
+  const [internalOvertimeFilter, setInternalOvertimeFilter] = useState(
+    PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  );
+  const workHoursFilter =
+    workHoursFilterProp ?? internalWorkHoursFilter;
+  const leaveTypeFilter =
+    leaveTypeFilterProp ?? internalLeaveTypeFilter;
+  const overtimeFilter =
+    overtimeFilterProp ?? internalOvertimeFilter;
+  const setWorkHoursFilter =
+    onWorkHoursFilterChange ?? setInternalWorkHoursFilter;
+  const setLeaveTypeFilter =
+    onLeaveTypeFilterChange ?? setInternalLeaveTypeFilter;
+  const setOvertimeFilter =
+    onOvertimeFilterChange ?? setInternalOvertimeFilter;
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [headerRowTops, setHeaderRowTops] = useState(
@@ -1134,7 +1168,12 @@ export default function PayrollMonthlyTimesheetModal({
     if (!open) return;
     const initial = String(departmentFilter ?? "").trim();
     setSelectedDepartments(initial ? [initial] : []);
-  }, [open, departmentFilter]);
+    if (workHoursFilterProp === undefined) {
+      setInternalWorkHoursFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+      setInternalLeaveTypeFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+      setInternalOvertimeFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+    }
+  }, [open, departmentFilter, workHoursFilterProp]);
 
   const isKoreanTimesheetSource = isKoreanAttendanceRoot(attendanceRootPath);
   const monthlyDetailFmtHours = isKoreanTimesheetSource
@@ -1317,17 +1356,46 @@ export default function PayrollMonthlyTimesheetModal({
 
   const effectiveSearchTerm = localNameFilter || searchTerm || "";
 
+  const needsPresenceFlags = needsPayrollMonthTimesheetPresenceFlags({
+    workHoursFilter,
+    leaveTypeFilter,
+    overtimeFilter,
+  });
+
+  const presenceFlagsById = useMemo(() => {
+    if (!needsPresenceFlags) return null;
+    return buildPayrollMonthTimesheetFlagsById({
+      monthKeys: monthRange.keys,
+      chunkByDate,
+      sortedIds,
+      repById,
+    });
+  }, [
+    needsPresenceFlags,
+    monthRange.keys,
+    chunkByDate,
+    sortedIds,
+    repById,
+  ]);
+
   const filteredIds = useMemo(() => {
     return sortedIds
       .filter((id) => {
         const rep = repById.get(id);
-        return (
-          rep &&
-          matchesPayrollMonthRowFilter(rep, {
+        if (
+          !rep ||
+          !matchesPayrollMonthRowFilter(rep, {
             searchTerm: effectiveSearchTerm,
             departmentFilters: selectedDepartments,
             normalizeDepartment,
           })
+        ) {
+          return false;
+        }
+        if (!needsPresenceFlags) return true;
+        return matchesPayrollMonthTimesheetPresenceFilter(
+          presenceFlagsById?.get(id),
+          { workHoursFilter, leaveTypeFilter, overtimeFilter },
         );
       })
       .sort((a, b) =>
@@ -1339,6 +1407,11 @@ export default function PayrollMonthlyTimesheetModal({
     effectiveSearchTerm,
     selectedDepartments,
     normalizeDepartment,
+    needsPresenceFlags,
+    presenceFlagsById,
+    workHoursFilter,
+    leaveTypeFilter,
+    overtimeFilter,
   ]);
 
   const { monthlySummaryById, isSummariesBusy, summaryProgress } =
@@ -1467,13 +1540,20 @@ export default function PayrollMonthlyTimesheetModal({
       sortedIds
         .filter((id) => {
           const rep = repById.get(id);
-          return (
-            rep &&
-            matchesPayrollMonthRowFilter(rep, {
+          if (
+            !rep ||
+            !matchesPayrollMonthRowFilter(rep, {
               searchTerm: effectiveSearchTerm,
               departmentFilters: exportDepartments,
               normalizeDepartment,
             })
+          ) {
+            return false;
+          }
+          if (!needsPresenceFlags) return true;
+          return matchesPayrollMonthTimesheetPresenceFilter(
+            presenceFlagsById?.get(id),
+            { workHoursFilter, leaveTypeFilter, overtimeFilter },
           );
         })
         .sort((a, b) =>
@@ -1484,6 +1564,11 @@ export default function PayrollMonthlyTimesheetModal({
       repById,
       effectiveSearchTerm,
       normalizeDepartment,
+      needsPresenceFlags,
+      presenceFlagsById,
+      workHoursFilter,
+      leaveTypeFilter,
+      overtimeFilter,
     ],
   );
 
@@ -1719,6 +1804,17 @@ export default function PayrollMonthlyTimesheetModal({
                   "Lọc theo tên / MNV / bộ phận",
                 )}
                 className="w-[220px] rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+              <PayrollTimesheetPresenceFilters
+                workHoursFilter={workHoursFilter}
+                leaveTypeFilter={leaveTypeFilter}
+                overtimeFilter={overtimeFilter}
+                onWorkHoursFilterChange={setWorkHoursFilter}
+                onLeaveTypeFilterChange={setLeaveTypeFilter}
+                onOvertimeFilterChange={setOvertimeFilter}
+                tl={tlPage}
+                disabled={isGridFullyBusy}
+                compact
               />
               <PayrollDepartmentMultiSelect
                 options={departmentOptions}

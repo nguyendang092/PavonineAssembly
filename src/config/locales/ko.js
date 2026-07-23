@@ -680,8 +680,10 @@ const ko = {
     imgbbMissingApiKey:
       "ImgBB 미설정 — .env에 IMGBB_API_KEY 추가 후 dev 서버 재시작.",
     imgbbServerUnavailable:
-      "업로드 서버 연결 불가 — npm run dev 실행.",
-    imgbbInvalidImageType: "PNG, JPG, GIF, WebP만 가능합니다.",
+      "업로드 서버 연결 불가 — 다시 로그인하거나 IT에 문의하세요.",
+    imgbbAuthRequired:
+      "사진 업로드는 로그인 필요 — 로그아웃 후 다시 로그인하세요.",
+    imgbbInvalidImageType: "PNG, JPG, GIF, WebP, HEIC만 가능합니다.",
     imgbbImageTooLarge: "최대 32MB입니다.",
     imgbbUploadFailed: "업로드 실패: {{error}}",
     viewChart: "차트 보기",
@@ -1548,8 +1550,10 @@ const ko = {
     imgbbMissingApiKey:
       "ImgBB 미설정 — .env에 IMGBB_API_KEY 추가 후 dev 서버 재시작.",
     imgbbServerUnavailable:
-      "업로드 서버 연결 실패 — npm run dev (또는 preview 시 npm run server) 실행.",
-    imgbbInvalidImageType: "PNG, JPG, GIF, WebP만 가능합니다.",
+      "업로드 서버 연결 불가 — 다시 로그인하거나 IT에 문의하세요.",
+    imgbbAuthRequired:
+      "사진 업로드는 로그인 필요 — 로그아웃 후 다시 로그인하세요.",
+    imgbbInvalidImageType: "PNG, JPG, GIF, WebP, HEIC만 가능합니다.",
     imgbbImageTooLarge: "최대 32MB입니다.",
     imgbbUploadFailed: "업로드 실패: {{error}}",
     compensatoryLeaveField: "대체 휴가",
@@ -1733,6 +1737,12 @@ const ko = {
     monthlyTimesheetDeptAll: workforceSearchUiKo.deptAll,
     monthlyTimesheetFilterNamePlaceholder:
       workforceSearchUiKo.searchFilterPlaceholder,
+    monthlyTimesheetFilterWorkHours: "근무시간",
+    monthlyTimesheetFilterLeaveType: "휴가 유형",
+    monthlyTimesheetFilterOvertime: "연장근무",
+    monthlyTimesheetFilterAll: "전체",
+    monthlyTimesheetFilterWith: "있음",
+    monthlyTimesheetFilterWithout: "없음",
     monthlyTimesheetExportExcel: "Excel보내기",
     monthlyTimesheetExportError: "Excel보내기 실패: {{error}}",
     monthlyTimesheetDayCellEditHint: "클릭하여 해당 일 출근을 수정합니다.",
