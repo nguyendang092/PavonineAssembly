@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useDeferredValue,
+} from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/contexts/UserContext";
 import { canManageAnnualLeave } from "@/config/authRoles";
-import { db, ref, set } from "@/services/firebase";
+import { db, ref, remove, update } from "@/services/firebase";
 import AlertMessage from "@/components/ui/AlertMessage";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import HrTablePagination from "@/components/ui/HrTablePagination";
@@ -12,7 +19,6 @@ import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import {
   ANNUAL_LEAVE_EMP,
   ANNUAL_LEAVE_META_KEY,
-  ANNUAL_LEAVE_RTDB_ROOT,
   ANNUAL_LEAVE_MANAGER_MIN_YEAR,
 } from "./annualLeaveFields";
 import { normalizeAnnualLeaveRowLive } from "./annualLeaveDerived";
@@ -22,6 +28,10 @@ import { useAnnualLeaveLiveData } from "./useAnnualLeaveLiveData";
 import { useAnnualLeaveYearReconcile } from "./useAnnualLeaveYearReconcile";
 import { persistAnnualLeaveYearFromAttendance } from "./annualLeaveAttendanceSync";
 import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
+import {
+  annualLeaveYearRefPath,
+  buildAnnualLeaveMergeUploadUpdates,
+} from "./annualLeaveYearDataOps";
 import AnnualLeaveManagerTableRow from "./AnnualLeaveManagerTableRow";
 import { attendanceListDateForAnnualLeaveYear } from "./annualLeaveCrossLinks";
 import {
@@ -67,6 +77,7 @@ export default function AnnualLeaveManager() {
     clampAnnualLeaveManagerYear(yearFromUrl),
   );
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("");
@@ -242,19 +253,14 @@ export default function AnnualLeaveManager() {
           return;
         }
 
-        const payload = {
-          [ANNUAL_LEAVE_META_KEY]: {
-            updatedAt: new Date().toISOString(),
-            updatedBy: user?.email ?? "",
-            rowCount: records.length,
-          },
-        };
-        for (const rec of records) {
-          const { id, rowNo, ...rest } = rec;
-          payload[id] = { ...rest, rowNo };
-        }
+        const { updates, importedCount } = buildAnnualLeaveMergeUploadUpdates({
+          year,
+          records,
+          existingYearData: yearData,
+          updatedBy: user?.email ?? "",
+        });
 
-        await set(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`), payload);
+        await update(ref(db), updates);
         await persistAnnualLeaveYearFromAttendance(db, {
           year,
           attendanceRootPath: "attendance",
@@ -264,7 +270,7 @@ export default function AnnualLeaveManager() {
           show: true,
           type: "success",
           message: t("annualLeave.uploadSuccess", {
-            count: records.length,
+            count: importedCount,
             year,
           }),
         });
@@ -285,8 +291,42 @@ export default function AnnualLeaveManager() {
         setUploading(false);
       }
     },
-    [canManage, year, user?.email, t],
+    [canManage, year, user?.email, yearData, t],
   );
+
+  const handleDeleteYearData = useCallback(async () => {
+    if (!canManage || deleting) return;
+    const employeeCount = rows.length;
+    const confirmed = window.confirm(
+      t("annualLeave.deleteYearDataConfirm", {
+        year,
+        count: employeeCount,
+      }),
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      await remove(ref(db, annualLeaveYearRefPath(year)));
+      setAlert({
+        show: true,
+        type: "success",
+        message: t("annualLeave.deleteYearDataSuccess", { year }),
+      });
+    } catch (err) {
+      setAlert({
+        show: true,
+        type: "error",
+        message:
+          err?.message ||
+          t("annualLeave.deleteYearDataError", {
+            defaultValue: "Không xóa được dữ liệu phép năm.",
+          }),
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }, [canManage, deleting, rows.length, t, year]);
 
   const handleExport = useCallback(async () => {
     try {
@@ -492,6 +532,29 @@ export default function AnnualLeaveManager() {
                                   : t("annualLeave.uploadExcel")}
                               </span>
                             </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              disabled={deleting || rows.length === 0}
+                              className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-950/40"
+                              onClick={() => {
+                                setActionsOpen(false);
+                                void handleDeleteYearData();
+                              }}
+                            >
+                              <span className="shrink-0 text-lg" aria-hidden>
+                                🗑️
+                              </span>
+                              <span className="text-sm font-semibold">
+                                {deleting
+                                  ? t("annualLeave.deletingYearData", {
+                                      defaultValue: "Đang xóa…",
+                                    })
+                                  : t("annualLeave.deleteYearData", {
+                                      defaultValue: "Xóa dữ liệu phép năm",
+                                    })}
+                              </span>
+                            </button>
                           </>
                         ) : null}
 
@@ -522,10 +585,12 @@ export default function AnnualLeaveManager() {
         </div>
 
         {loading ? (
-          <LoadingBlock />
+          <div className="annual-leave-table-compact flex min-h-0 flex-1 items-center justify-center">
+            <LoadingBlock />
+          </div>
         ) : (
-          <div className="annual-leave-table-compact min-w-0 w-full max-w-none overflow-x-auto overscroll-x-contain bg-white dark:bg-slate-900">
-            <div className="annual-leave-table-scroll max-h-[min(88vh,920px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain">
+          <div className="annual-leave-table-compact min-h-0 w-full max-w-none flex-1 rounded-md bg-white shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+            <div className="annual-leave-table-scroll w-full min-w-0 max-w-full">
               <table className="annual-leave-table w-full max-w-none table-fixed border-collapse">
                 <colgroup>
                   <col className="annual-leave-col-no" />
@@ -619,17 +684,19 @@ export default function AnnualLeaveManager() {
           </div>
         )}
 
-        <HrTablePagination
-          rangeStart={tablePagination.rangeStart}
-          rangeEnd={tablePagination.rangeEnd}
-          totalItems={tablePagination.totalItems}
-          page={tablePagination.page}
-          totalPages={tablePagination.totalPages}
-          pageNumbers={tablePagination.pageNumbers}
-          pageSize={tablePagination.pageSize}
-          onPageChange={tablePagination.setPage}
-          onPageSizeChange={tablePagination.setPageSize}
-        />
+        <div className="annual-leave-pagination shrink-0">
+          <HrTablePagination
+            rangeStart={tablePagination.rangeStart}
+            rangeEnd={tablePagination.rangeEnd}
+            totalItems={tablePagination.totalItems}
+            page={tablePagination.page}
+            totalPages={tablePagination.totalPages}
+            pageNumbers={tablePagination.pageNumbers}
+            pageSize={tablePagination.pageSize}
+            onPageChange={tablePagination.setPage}
+            onPageSizeChange={tablePagination.setPageSize}
+          />
+        </div>
       </div>
     </AttendanceHrPageShell>
   );

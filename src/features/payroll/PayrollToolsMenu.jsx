@@ -48,6 +48,7 @@ function PayrollToolsMenu({
   onExportRange,
   showEarlyOtAction,
   showLateOtAction,
+  showMonthlyTimeInOut = true,
 }) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef(null);
@@ -141,18 +142,20 @@ function PayrollToolsMenu({
                     onOpenMonthlyTimesheet();
                   }}
                 />
-                <ToolsMenuItem
-                  icon="⏱"
-                  title={tlPage("monthlyTimeInOutButton", "Giờ vào / ra tháng")}
-                  hint={tlPage(
-                    "monthlyGridMenuTimeInOutDesc",
-                    "Giờ vào & giờ ra mỗi ngày",
-                  )}
-                  onClick={() => {
-                    close();
-                    onOpenMonthlyTimeInOut();
-                  }}
-                />
+                {showMonthlyTimeInOut ? (
+                  <ToolsMenuItem
+                    icon="⏱"
+                    title={tlPage("monthlyTimeInOutButton", "Giờ vào / ra tháng")}
+                    hint={tlPage(
+                      "monthlyGridMenuTimeInOutDesc",
+                      "Giờ vào & giờ ra mỗi ngày",
+                    )}
+                    onClick={() => {
+                      close();
+                      onOpenMonthlyTimeInOut();
+                    }}
+                  />
+                ) : null}
 
                 {showEarlyOtAction || showLateOtAction ? (
                   <ToolsMenuSection

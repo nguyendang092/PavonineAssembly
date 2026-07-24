@@ -46,6 +46,11 @@ import {
   AttendanceListComboBranchContext,
 } from "./attendanceListBranchContexts";
 import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimesheetModal";
+import PayrollToolsMenu from "@/features/payroll/PayrollToolsMenu";
+import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
+import { executePayrollSalaryExcelExportRange } from "@/features/payroll/payrollSalaryExcelExportRange";
+import { getTodayDateKeyLocal } from "@/utils/dateKey";
+import { db, get, ref } from "@/services/firebase";
 import {
   isKoreanAttendanceRoot,
   KOREAN_ATTENDANCE_ROOT,
@@ -68,6 +73,9 @@ const AttendanceList = memo(function AttendanceList({
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [offDaysModalOpen, setOffDaysModalOpen] = useState(false);
   const [monthlyTimesheetOpen, setMonthlyTimesheetOpen] = useState(false);
+  const [koreanExportModalOpen, setKoreanExportModalOpen] = useState(false);
+  const [koreanExportModalMode, setKoreanExportModalMode] = useState("range");
+  const [koreanExportBusy, setKoreanExportBusy] = useState(false);
   const { t, i18n } = useTranslation();
   const { user, userDepartments, userRole } = useUser();
   const ui = useAttendanceListUiState(user);
@@ -158,6 +166,14 @@ const AttendanceList = memo(function AttendanceList({
     (key, defaultValue, options = {}) =>
       t(`payrollSalary.${key}`, {
         ...(defaultValue !== undefined ? { defaultValue } : {}),
+        ...options,
+      }),
+    [t],
+  );
+  const tlPayrollTable = useCallback(
+    (key, defaultValue, options = {}) =>
+      t(`salaryCalc.table.${key}`, {
+        defaultValue: t(`attendanceList.${key}`, { defaultValue, ...options }),
         ...options,
       }),
     [t],
@@ -293,6 +309,55 @@ const AttendanceList = memo(function AttendanceList({
     }
     return Array.from(s).sort((a, b) => Number(a) - Number(b));
   }, [employees, joinDateYearFilter]);
+
+  const handleKoreanPayrollExport = useCallback(
+    async (rangeFrom, rangeTo, selectedDepartments) => {
+      setKoreanExportBusy(true);
+      try {
+        const result = await executePayrollSalaryExcelExportRange({
+          rangeFrom,
+          rangeTo,
+          selectedDepartments,
+          attendanceRootPath,
+          selectedDate,
+          db,
+          ref,
+          get,
+          displayLocale,
+          tlPage: tlPayrollPage,
+          tlTable: tlPayrollTable,
+          normalizeDepartment,
+          sheetTitleBase: tlPayrollPage(
+            "koreanExportSheetTitle",
+            "KOREAN TIMESHEET",
+          ),
+          filenamePrefix: "Korean-timesheet",
+        });
+        setAlert({ show: true, ...result.alert });
+        if (result.ok) setKoreanExportModalOpen(false);
+      } catch (err) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tlPayrollPage(
+            "exportExcelError",
+            "❌ Xuất Excel thất bại.",
+            { error: err?.message || String(err) },
+          ),
+        });
+      } finally {
+        setKoreanExportBusy(false);
+      }
+    },
+    [
+      attendanceRootPath,
+      selectedDate,
+      displayLocale,
+      tlPayrollPage,
+      tlPayrollTable,
+      normalizeDepartment,
+    ],
+  );
 
   const {
     comboProductionDeptCatalog,
@@ -523,6 +588,19 @@ const AttendanceList = memo(function AttendanceList({
       onOpenMonthlyTimesheet: showKoreanMonthlyTimesheet
         ? () => setMonthlyTimesheetOpen(true)
         : null,
+      onKoreanExportOneDay: showKoreanMonthlyTimesheet
+        ? () => {
+            setKoreanExportModalMode("single");
+            setKoreanExportModalOpen(true);
+          }
+        : null,
+      onKoreanExportRange: showKoreanMonthlyTimesheet
+        ? () => {
+            setKoreanExportModalMode("range");
+            setKoreanExportModalOpen(true);
+          }
+        : null,
+      tlPayrollPage,
     }),
     [
       navbarMobileMenuOpen,
@@ -601,6 +679,7 @@ const AttendanceList = memo(function AttendanceList({
       handlePrintOvertimeList,
       handlePrintAttendanceList,
       showKoreanMonthlyTimesheet,
+      tlPayrollPage,
     ],
   );
 
@@ -865,6 +944,76 @@ const AttendanceList = memo(function AttendanceList({
             onAlert={setAlert}
             employees={employees}
             attendanceRootPath={KOREAN_ATTENDANCE_ROOT}
+          />
+        ) : null}
+
+        {showKoreanMonthlyTimesheet ? (
+          <PayrollRangeExcelExportModal
+            open={koreanExportModalOpen}
+            onDismiss={() => {
+              if (!koreanExportBusy) setKoreanExportModalOpen(false);
+            }}
+            onExport={handleKoreanPayrollExport}
+            todayKey={getTodayDateKeyLocal()}
+            singleDayKey={
+              koreanExportModalMode === "single" ? selectedDate : null
+            }
+            departmentOptions={departments}
+            initialDepartmentFilter={koreanMonthlyDepartmentFilter}
+            exporting={koreanExportBusy}
+            title={tlPayrollPage(
+              koreanExportModalMode === "single"
+                ? "exportSingleDayModalTitle"
+                : "exportRangeModalTitle",
+              koreanExportModalMode === "single"
+                ? "Xuất Excel một ngày"
+                : "Xuất Excel nhiều ngày",
+            )}
+            hint={tlPayrollPage(
+              koreanExportModalMode === "single"
+                ? "exportSingleDayModalHint"
+                : "exportExcelRangeHint",
+              koreanExportModalMode === "single"
+                ? "Xuất bảng giờ công của ngày đang chọn. Có thể lọc theo bộ phận."
+                : "Chọn khoảng ngày và bộ phận cần xuất.",
+            )}
+            dateSectionLabel={tlPayrollPage(
+              "exportDateSectionLabel",
+              "Khoảng ngày",
+            )}
+            fromLabel={tlPayrollPage("exportRangeFrom", "Từ ngày")}
+            toLabel={tlPayrollPage("exportRangeTo", "Đến ngày")}
+            exportLabel={tlPayrollPage("exportRangeSubmit", "Xuất Excel")}
+            cancelLabel={tlPayrollPage("exportRangeCancel", "Hủy")}
+            departmentLabel={tlPayrollPage("exportDepartmentLabel", "Bộ phận")}
+            departmentHint={tlPayrollPage(
+              "exportDepartmentHint",
+              "Không chọn = xuất tất cả bộ phận",
+            )}
+            departmentAllLabel={tlPayrollPage(
+              "exportDepartmentAll",
+              "Tất cả bộ phận",
+            )}
+            departmentSelectedLabel={tlPayrollPage(
+              "exportDepartmentSelected",
+              "Đã chọn {{count}}/{{total}} bộ phận",
+            )}
+            summarySingleLabel={tlPayrollPage(
+              "exportSummarySingle",
+              "Ngày {{date}}",
+            )}
+            summaryRangeLabel={tlPayrollPage(
+              "exportSummaryRange",
+              "{{from}} → {{to}}",
+            )}
+            selectAllDepartmentsLabel={tlPayrollPage(
+              "exportDepartmentSelectAll",
+              "Chọn tất cả",
+            )}
+            clearDepartmentsLabel={tlPayrollPage(
+              "exportDepartmentClear",
+              "Bỏ chọn",
+            )}
           />
         ) : null}
 

@@ -167,7 +167,7 @@ const ko = {
   },
   annualLeave: {
     title: "연차 관리",
-    subtitle: "HR 양식에 따라 연차를 관리합니다. Excel 업로드로 연도 데이터를 갱신합니다.",
+    subtitle: "HR 양식에 따라 연차를 관리합니다. Excel 업로드는 파일에 있는 사원만 갱신합니다. 전체를 새로 올리려면 먼저 데이터를 삭제하세요.",
     year: "연도",
     searchPlaceholder: "이름 / 사번 검색…",
     allDepartments: "전체 부서",
@@ -178,8 +178,15 @@ const ko = {
     noData: "데이터 없음 — Excel 업로드 또는 다른 연도를 선택하세요.",
     pleaseLogin: "연차를 보려면 로그인하세요.",
     viewOnlyHint: "Admin / HR만 Excel 업로드 가능. 읽기 전용입니다.",
-    uploadSuccess: "{{year}}년 {{count}}명 import 완료.",
+    uploadSuccess:
+      "{{year}}년 Excel {{count}}명 반영 완료. 파일에 없는 사원은 유지됩니다.",
     uploadError: "Excel 파일을 읽을 수 없습니다.",
+    deleteYearData: "연차 데이터 삭제",
+    deletingYearData: "삭제 중…",
+    deleteYearDataConfirm:
+      "{{year}}년 연차 데이터({{count}}명)를 모두 삭제할까요?\n\n되돌릴 수 없습니다. 삭제 후 Excel을 새로 업로드할 수 있습니다.",
+    deleteYearDataSuccess: "{{year}}년 연차 데이터를 삭제했습니다.",
+    deleteYearDataError: "연차 데이터를 삭제할 수 없습니다.",
     exportError: "Excel보내기 실패.",
     lastUpdated: "최종 업데이트",
     linkToAttendanceListShort: "출석 체크",
@@ -1672,6 +1679,7 @@ const ko = {
     koreanMonthlyTimesheetButtonHint:
       "월간 출근표 — Korean Timesheet 출석 데이터 기준.",
     koreanMonthlyTimesheetTitle: "KOREAN TIMESHEET - 월간 출근표",
+    koreanExportSheetTitle: "KOREAN TIMESHEET",
     koreanMonthlyTimesheetEmpty:
       "이 달에 Korean Timesheet 출석 데이터가 없습니다.",
     monthlyGridMenu: "근무시간 보기",

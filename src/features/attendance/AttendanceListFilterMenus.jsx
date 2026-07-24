@@ -103,7 +103,14 @@ function AttendanceListFilterMenus({
   handlePrintAttendanceList,
   showKoreanMonthlyTimesheet = false,
   onOpenMonthlyTimesheet = null,
+  onKoreanExportOneDay = null,
+  onKoreanExportRange = null,
+  tlPayrollPage = null,
 }) {
+  const tlPay =
+    tlPayrollPage ||
+    ((key, defaultValue, options = {}) =>
+      t(`payrollSalary.${key}`, { defaultValue, ...options }));
   const hasAdvancedFilters =
     loaiPhepFilter.length > 0 ||
     departmentListFilter.length > 0 ||
@@ -272,6 +279,40 @@ function AttendanceListFilterMenus({
                         closeToolsMenu();
                       }}
                     />
+                    {onKoreanExportOneDay && onKoreanExportRange ? (
+                      <>
+                        <ToolsMenuSection
+                          label={tlPay("toolsSectionExport", "Xuất Excel")}
+                        />
+                        <ToolsMenuItem
+                          icon="⬇"
+                          title={tlPay(
+                            "exportExcelOneDay",
+                            "Một ngày (ngày đang chọn)",
+                          )}
+                          hint={tlPay(
+                            "exportExcelHint",
+                            "Xuất toàn bộ nhân viên trong ngày (theo dữ liệu điểm danh), đủ các cột giờ như trên bảng.",
+                          )}
+                          onClick={() => {
+                            onKoreanExportOneDay();
+                            closeToolsMenu();
+                          }}
+                        />
+                        <ToolsMenuItem
+                          icon="⬇"
+                          title={tlPay("exportExcelRange", "Nhiều ngày")}
+                          hint={tlPay(
+                            "exportExcelRangeHint",
+                            "Xuất Excel nhiều ngày: chọn từ ngày và đến ngày (mặc định hôm nay).",
+                          )}
+                          onClick={() => {
+                            onKoreanExportRange();
+                            closeToolsMenu();
+                          }}
+                        />
+                      </>
+                    ) : null}
                   </>
                 ) : null}
 
@@ -325,28 +366,32 @@ function AttendanceListFilterMenus({
                       />
                     ) : null}
 
-                    <ToolsMenuItem
-                      icon="📥"
-                      title={t("attendanceList.export", {
-                        defaultValue: "Xuất Excel",
-                      })}
-                      onClick={() => {
-                        const exportButton = document.querySelector(
-                          '[title="Xuất Excel"]',
-                        );
-                        if (exportButton) exportButton.click();
-                        closeToolsMenu();
-                      }}
-                    />
+                    {!showKoreanMonthlyTimesheet ? (
+                      <>
+                        <ToolsMenuItem
+                          icon="📥"
+                          title={t("attendanceList.export", {
+                            defaultValue: "Xuất Excel",
+                          })}
+                          onClick={() => {
+                            const exportButton = document.querySelector(
+                              '[title="Xuất Excel"]',
+                            );
+                            if (exportButton) exportButton.click();
+                            closeToolsMenu();
+                          }}
+                        />
 
-                    <ToolsMenuItem
-                      icon="📅"
-                      title={tl("exportExcelDateRange")}
-                      onClick={() => {
-                        setShowExportRangeModal(true);
-                        closeToolsMenu();
-                      }}
-                    />
+                        <ToolsMenuItem
+                          icon="📅"
+                          title={tl("exportExcelDateRange")}
+                          onClick={() => {
+                            setShowExportRangeModal(true);
+                            closeToolsMenu();
+                          }}
+                        />
+                      </>
+                    ) : null}
 
                     {showRowModalActions ? (
                       <ToolsMenuItem

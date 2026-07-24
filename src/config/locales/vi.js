@@ -169,7 +169,7 @@ const vi = {
   annualLeave: {
     title: "Quản lý phép năm",
     subtitle:
-      "Theo dõi phép năm theo form HR. Upload file Excel để cập nhật dữ liệu năm đã chọn.",
+      "Theo dõi phép năm theo form HR. Upload Excel chỉ cập nhật NV có trong file; muốn làm mới toàn bộ năm thì xóa dữ liệu trước khi upload.",
     year: "Năm",
     searchPlaceholder: "Tìm tên / mã NV…",
     allDepartments: "Tất cả bộ phận",
@@ -180,8 +180,15 @@ const vi = {
     noData: "Chưa có dữ liệu — upload file Excel hoặc chọn năm khác.",
     pleaseLogin: "Vui lòng đăng nhập để xem phép năm.",
     viewOnlyHint: "Chỉ Admin / HR được upload Excel. Bạn chỉ xem dữ liệu.",
-    uploadSuccess: "Đã import {{count}} nhân viên cho năm {{year}}.",
+    uploadSuccess:
+      "Đã cập nhật {{count}} nhân viên từ Excel (năm {{year}}). NV không có trong file giữ nguyên.",
     uploadError: "Không đọc được file Excel.",
+    deleteYearData: "Xóa dữ liệu phép năm",
+    deletingYearData: "Đang xóa…",
+    deleteYearDataConfirm:
+      "Xóa toàn bộ dữ liệu phép năm năm {{year}} ({{count}} nhân viên)?\n\nHành động không thể hoàn tác. Sau đó bạn có thể upload Excel mới.",
+    deleteYearDataSuccess: "Đã xóa dữ liệu phép năm năm {{year}}.",
+    deleteYearDataError: "Không xóa được dữ liệu phép năm.",
     exportError: "Không xuất được file Excel.",
     lastUpdated: "Cập nhật lần cuối",
     linkToAttendanceListShort: "Điểm danh NV",
@@ -1660,6 +1667,7 @@ const vi = {
     monthlyTimesheetButtonHint: "Xem bảng chấm công theo từng ngày.",
     koreanMonthlyTimesheetButtonHint: "Bảng chấm công tháng.",
     koreanMonthlyTimesheetTitle: "KOREAN TIMESHEET - Bảng chấm công tháng",
+    koreanExportSheetTitle: "KOREAN TIMESHEET",
     koreanMonthlyTimesheetEmpty:
       "Không có dữ liệu điểm danh Korean Timesheet trong tháng này.",
     monthlyGridMenu: "Xem giờ công",

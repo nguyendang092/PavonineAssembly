@@ -71,6 +71,9 @@ function AttendanceToolbarSearchCluster() {
     handlePrintAttendanceList,
     showKoreanMonthlyTimesheet,
     onOpenMonthlyTimesheet,
+    onKoreanExportOneDay,
+    onKoreanExportRange,
+    tlPayrollPage,
   } = useAttendanceListToolbarBranch();
 
   return (
@@ -147,6 +150,9 @@ function AttendanceToolbarSearchCluster() {
         handlePrintAttendanceList={handlePrintAttendanceList}
         showKoreanMonthlyTimesheet={showKoreanMonthlyTimesheet}
         onOpenMonthlyTimesheet={onOpenMonthlyTimesheet}
+        onKoreanExportOneDay={onKoreanExportOneDay}
+        onKoreanExportRange={onKoreanExportRange}
+        tlPayrollPage={tlPayrollPage}
       />
     </AttendanceSearchActionsBar>
   );

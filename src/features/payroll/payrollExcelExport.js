@@ -154,6 +154,8 @@ export function getPayrollExcelDateParts(dateKey) {
  *   isOffDay?: boolean,
  *   isHolidayDay?: boolean,
  *   isCompensatoryDay?: boolean,
+ *   koreanTimesheetRules?: boolean,
+ *   dateKey?: string | null,
  *   earlyOtPaperworkById?: Record<string, boolean>,
  *   lateOtExcludedById?: Record<string, boolean>,
  * }} ctx — `isCompensatoryDay` vẫn dùng cho công thức giờ; không còn cột «Nghỉ bù» trên sheet (chỉ OFF/HOLIDAY + khối giờ).
@@ -164,19 +166,25 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     isOffDay = false,
     isHolidayDay = false,
     isCompensatoryDay = false,
+    koreanTimesheetRules = false,
+    dateKey = null,
     earlyOtPaperworkById = {},
     lateOtExcludedById = {},
   } = ctx;
   const offLike =
     isPayrollOffLikeDay !== undefined
       ? isPayrollOffLikeDay
-      : Boolean(isOffDay) ||
-        Boolean(isHolidayDay) ||
-        Boolean(isCompensatoryDay);
+      : koreanTimesheetRules
+        ? Boolean(isOffDay) || Boolean(isHolidayDay)
+        : Boolean(isOffDay) ||
+          Boolean(isHolidayDay) ||
+          Boolean(isCompensatoryDay);
   const payrollDayCtx = {
     isOffDay,
     isHolidayDay,
     isCompensatoryDay,
+    koreanTimesheetRules,
+    dateKey,
   };
   const otMaps = { earlyOtPaperworkById, lateOtExcludedById };
   const {
@@ -375,7 +383,7 @@ function finalizePayrollWorksheetColumns(worksheet) {
 
 /**
  * Xuất Excel bảng lương (một ngày): ba cột Ngày / Tháng / Năm + đủ cột giống bảng desktop, cùng layout với xuất nhiều ngày.
- * @param {{ employees: object[], selectedDate: string, isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, isCompensatoryDay?: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean>, lateOtExcludedById?: Record<string, boolean> }} opts
+ * @param {{ employees: object[], selectedDate: string, isPayrollOffLikeDay: boolean, isOffDay?: boolean, isHolidayDay?: boolean, isCompensatoryDay?: boolean, koreanTimesheetRules?: boolean, tlTable: function, sheetTitle: string, earlyOtPaperworkById?: Record<string, boolean>, lateOtExcludedById?: Record<string, boolean> }} opts
  */
 export async function buildPayrollSalaryExcelWorkbook({
   employees,
@@ -384,6 +392,7 @@ export async function buildPayrollSalaryExcelWorkbook({
   isOffDay = false,
   isHolidayDay = false,
   isCompensatoryDay = false,
+  koreanTimesheetRules = false,
   tlTable,
   sheetTitle,
   earlyOtPaperworkById = {},
@@ -400,6 +409,8 @@ export async function buildPayrollSalaryExcelWorkbook({
     isOffDay,
     isHolidayDay,
     isCompensatoryDay,
+    koreanTimesheetRules,
+    dateKey: selectedDate,
     earlyOtPaperworkById,
     lateOtExcludedById,
   };
@@ -432,6 +443,8 @@ export async function buildPayrollSalaryExcelWorkbookMultiDay({
       isOffDay: chunk.isOffDay ?? false,
       isHolidayDay: chunk.isHolidayDay ?? false,
       isCompensatoryDay: chunk.isCompensatoryDay ?? false,
+      koreanTimesheetRules: chunk.koreanTimesheetRules === true,
+      dateKey: chunk.dateKey,
       earlyOtPaperworkById: chunk.earlyOtPaperworkById || {},
       lateOtExcludedById: chunk.lateOtExcludedById || {},
     };
