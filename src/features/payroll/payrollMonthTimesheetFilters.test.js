@@ -3,6 +3,7 @@ import {
   buildPayrollMonthTimesheetFlagsById,
   matchesPayrollMonthTimesheetPresenceFilter,
   PAYROLL_TIMESHEET_PRESENCE_FILTER,
+  PAYROLL_SHORT_HOURS_FILTER,
   needsPayrollMonthTimesheetPresenceFlags,
 } from "./payrollMonthTimesheetFilters";
 
@@ -123,6 +124,133 @@ describe("payrollMonthTimesheetFilters", () => {
       hasWorkHours: true,
       hasLeaveType: true,
       hasOvertime: false,
+      hasShortHours: true,
+    });
+  });
+
+  it("detects short hours from month chunks", () => {
+    const monthKeys = ["2026-07-01"];
+    const chunkByDate = new Map([
+      [
+        "2026-07-01",
+        {
+          employees: [
+            {
+              id: "emp-2",
+              mnv: "002",
+              hoVaTen: "B",
+              gioVao: "08:30",
+              gioRa: "16:00",
+              caLamViec: "Ca ngày",
+              loaiPhep: "",
+            },
+          ],
+          byId: new Map([
+            [
+              "emp-2",
+              {
+                id: "emp-2",
+                mnv: "002",
+                hoVaTen: "B",
+                gioVao: "08:30",
+                gioRa: "16:00",
+                caLamViec: "Ca ngày",
+                loaiPhep: "",
+              },
+            ],
+          ]),
+          rowLookup: new Map(),
+          byMonthEmployeeKey: new Map(),
+        },
+      ],
+    ]);
+    const repById = new Map([
+      [
+        "002",
+        {
+          id: "emp-2",
+          mnv: "002",
+          hoVaTen: "B",
+          ngayVaoLam: "2026-01-01",
+        },
+      ],
+    ]);
+
+    const flagsById = buildPayrollMonthTimesheetFlagsById({
+      monthKeys,
+      chunkByDate,
+      sortedIds: ["002"],
+      repById,
+    });
+
+    expect(flagsById.get("002")).toEqual({
+      hasWorkHours: true,
+      hasLeaveType: false,
+      hasOvertime: false,
+      hasShortHours: true,
+    });
+  });
+
+  it("excludes 1/2PN from short-hours flag", () => {
+    const monthKeys = ["2026-07-01"];
+    const chunkByDate = new Map([
+      [
+        "2026-07-01",
+        {
+          employees: [
+            {
+              id: "emp-3",
+              mnv: "003",
+              hoVaTen: "C",
+              gioVao: "08:30",
+              gioRa: "16:00",
+              caLamViec: "Ca ngày",
+              loaiPhep: "1/2PN",
+            },
+          ],
+          byId: new Map([
+            [
+              "emp-3",
+              {
+                id: "emp-3",
+                mnv: "003",
+                hoVaTen: "C",
+                gioVao: "08:30",
+                gioRa: "16:00",
+                caLamViec: "Ca ngày",
+                loaiPhep: "1/2PN",
+              },
+            ],
+          ]),
+          rowLookup: new Map(),
+          byMonthEmployeeKey: new Map(),
+        },
+      ],
+    ]);
+    const repById = new Map([
+      [
+        "003",
+        {
+          id: "emp-3",
+          mnv: "003",
+          hoVaTen: "C",
+          ngayVaoLam: "2026-01-01",
+        },
+      ],
+    ]);
+
+    const flagsById = buildPayrollMonthTimesheetFlagsById({
+      monthKeys,
+      chunkByDate,
+      sortedIds: ["003"],
+      repById,
+    });
+
+    expect(flagsById.get("003")).toEqual({
+      hasWorkHours: true,
+      hasLeaveType: true,
+      hasOvertime: false,
+      hasShortHours: false,
     });
   });
 
@@ -131,6 +259,11 @@ describe("payrollMonthTimesheetFilters", () => {
     expect(
       needsPayrollMonthTimesheetPresenceFlags({
         workHoursFilter: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH,
+      }),
+    ).toBe(true);
+    expect(
+      needsPayrollMonthTimesheetPresenceFlags({
+        shortHoursFilter: PAYROLL_SHORT_HOURS_FILTER.UNDER_STANDARD,
       }),
     ).toBe(true);
   });

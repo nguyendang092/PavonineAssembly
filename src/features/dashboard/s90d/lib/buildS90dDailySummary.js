@@ -17,6 +17,7 @@ import {
   filterNgEntriesByDate,
   ngSnapshotToEntries,
 } from "./buildS90dSummary";
+import { applyS90dCumulativeYieldPct } from "./s90dCumulativeYield";
 
 function pct(numerator, denominator) {
   if (!denominator) return 0;
@@ -53,22 +54,17 @@ function aggregateDailyRows(rows) {
     byProcess[process].totalQty += good + ng;
   });
 
-  let cumulative = 1;
-  S90D_PROCESSES.forEach((process, index) => {
+  const processRows = S90D_PROCESSES.map((process) => {
     const row = byProcess[process];
     row.yieldPct = pct(row.okQty, row.totalQty);
-    if (row.totalQty > 0) {
-      cumulative *= row.okQty / row.totalQty;
-      row.cumulativeYieldPct =
-        index === 0 ? null : Math.round(cumulative * 1000) / 10;
-    } else {
-      row.cumulativeYieldPct = null;
-    }
     row.ngRatePct = pct(row.ngQty, row.totalQty);
     row.defectTotal = sumDefectCounts(row.defects);
+    return row;
   });
 
-  return S90D_PROCESSES.map((p) => byProcess[p]);
+  applyS90dCumulativeYieldPct(processRows, { emptyAsNull: true });
+
+  return processRows;
 }
 
 function applyDailyNgDefects(processRows, ngEntries) {

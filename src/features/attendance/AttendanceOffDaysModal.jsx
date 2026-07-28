@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { db, ref, get, update } from "@/services/firebase";
 import { canManageAttendanceOffHolidayDays } from "@/config/authRoles";
 import { mergeAttendanceDayMeta } from "@/features/attendance/attendanceDayMeta";
@@ -25,6 +26,8 @@ export default function AttendanceOffDaysModal({
   tl,
   onSaved,
   attendanceRootPath = "attendance",
+  /** Mở từ modal cha (lưới tháng): portal + nền mờ mạnh hơn. */
+  elevatedOverlay = false,
 }) {
   const canManage = canManageAttendanceOffHolidayDays(user, userRole);
   const [draft, setDraft] = useState([]);
@@ -154,10 +157,18 @@ export default function AttendanceOffDaysModal({
 
   if (!open || !canManage) return null;
 
-  return (
+  const modal = (
     <div
-      className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
-      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+      className={
+        elevatedOverlay
+          ? "fixed inset-0 flex items-center justify-center overflow-hidden overscroll-none bg-slate-950/75 p-4 backdrop-blur-sm"
+          : "fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+      }
+      style={{
+        zIndex: elevatedOverlay
+          ? "calc(var(--z-modal-backdrop, 1200) + 80)"
+          : "var(--z-modal-backdrop, 1200)",
+      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="off-days-modal-title"
@@ -302,4 +313,10 @@ export default function AttendanceOffDaysModal({
       </div>
     </div>
   );
+
+  if (elevatedOverlay) {
+    return createPortal(modal, document.body);
+  }
+
+  return modal;
 }

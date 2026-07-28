@@ -266,6 +266,7 @@ export default function S90dSummaryChartModal({
       okQty: totalSummary.okQty,
       ngQty: totalSummary.ngQty,
       yieldPct: totalSummary.yieldPct,
+      cumulativeYieldPct: totalSummary.cumulativeYieldPct,
       ngRatePct: totalSummary.ngRatePct,
     }),
     [totalSummary],

@@ -12,6 +12,7 @@ import {
   createEmptyDefectImageLists,
   normalizeDefectImageUrls,
 } from "./s90dDefectImages";
+import { applyS90dCumulativeYieldPct } from "./s90dCumulativeYield";
 import { S90D_SHIFT_SLOTS } from "./s90dShiftSlots";
 
 function pct(numerator, denominator) {
@@ -363,14 +364,7 @@ export function buildDailySummaryFromManual({ dayEntry, dateKey }) {
     return aggregate.processRow;
   });
 
-  let cumulative = 1;
-  processRows.forEach((row, index) => {
-    if (row.totalQty > 0) {
-      cumulative *= row.okQty / row.totalQty;
-      row.cumulativeYieldPct =
-        index === 0 ? null : Math.round(cumulative * 1000) / 10;
-    }
-  });
+  applyS90dCumulativeYieldPct(processRows, { emptyAsNull: true });
 
   const totalRow = buildDailyTotalRow(processRows);
   const percentRow = buildDailyPercentRow(totalRow);
@@ -473,18 +467,15 @@ export function buildGrandTotalSummaryFromManual(dailySummaries) {
     });
   });
 
-  let cumulative = 1;
   const processRows = S90D_PROCESSES.map((process) => {
     const row = byProcess[process];
     row.yieldPct = pctOrZero(row.okQty, row.totalQty);
-    if (row.totalQty > 0) {
-      cumulative *= row.okQty / row.totalQty;
-    }
-    row.cumulativeYieldPct = Math.round(cumulative * 1000) / 10;
     row.ngRatePct = pctOrZero(row.ngQty, row.totalQty);
     row.defectTotal = sumDefectCounts(row.defects);
     return row;
   });
+
+  applyS90dCumulativeYieldPct(processRows);
 
   const totalRow = buildGrandTotalRow(processRows);
   const percentRow = buildGrandPercentRow(totalRow);

@@ -616,7 +616,7 @@ const ko = {
     empty:
       "S90D 생산 데이터가 없습니다. Excel을 s90d/bar 또는 s90d/ng에 업로드하세요.",
     dateTotal: "TOTAL",
-    totalLabel: "계",
+    totalLabel: "TOTAL",
     demoBanner:
       "Excel 샘플 데이터를 표시 중입니다. Firebase s90d/bar · s90d/ng에 업로드하면 실제 데이터로 대체됩니다.",
     dateFilter: "일자",
@@ -1441,6 +1441,8 @@ const ko = {
     dayOffDropdownSectionCompensatory: "대체 휴가",
     dayOffDropdownEmptyCompensatory: "이번 달에 대체 휴가일이 없습니다.",
     dayOffDropdownOpenModal: "휴무·공휴·대체휴가 편집",
+    dayOffDropdownViewOnlyHint:
+      "휴무·공휴·대체휴가 편집은 Admin/HR만 가능합니다.",
     dayOffMultiKindLabel: "날짜 유형",
     dayKindOff: "휴무일",
     dayKindHoliday: "공휴일",
@@ -1523,9 +1525,9 @@ const ko = {
     viewEmployeeAttendance: "출근 정보 보기",
     attendanceDateLabel: "출근일",
     viewOnlyAttendanceHint: "보기 전용 — 수정·저장할 수 없습니다.",
-    restrictedEditManagerHint: "휴가·조·대체휴가·직원 유형만 수정.",
+    restrictedEditManagerHint: "휴가·조·직원 유형만 수정.",
     restrictedEditManagerHintWithLunchOt:
-      "휴가·조·대체휴가·직원 유형·점심 연장만 수정.",
+      "휴가·조·직원 유형·점심 연장만 수정.",
     addEmployee: "신규 직원 추가",
     employeeRegimeField: "직원 유형",
     employeeRegimePlaceholder: "— 선택 —",
@@ -1632,6 +1634,8 @@ const ko = {
     exportExcelHint:
       "해당 일 전체 직원(출석 데이터)을 표와 동일 열 구성으로 내보냅니다.",
     exportExcelEmpty: "내보낼 해당 일 데이터가 없습니다.",
+    exportToolbarFilteredEmpty:
+      "툴바 필터와 일치하는 직원이 해당 일에 없습니다.",
     exportExcelSuccess: "✅ Excel 내보내기 완료 ({{rows}}행).",
     exportExcelError: "❌ Excel 내보내기 실패: {{error}}",
     exportSheetTitle: "직원 근무시간표",
@@ -1748,6 +1752,10 @@ const ko = {
     monthlyTimesheetFilterWorkHours: "근무시간",
     monthlyTimesheetFilterLeaveType: "휴가 유형",
     monthlyTimesheetFilterOvertime: "연장근무",
+    monthlyTimesheetFilterShortHours: "근무시간 < 8",
+    monthlyTimesheetFilterShortHoursHint:
+      "지각/조퇴 — 당일 근무시간 8시간 미만",
+    monthlyTimesheetFilterShortHoursUnder: "지각/조퇴",
     monthlyTimesheetFilterAll: "전체",
     monthlyTimesheetFilterWith: "있음",
     monthlyTimesheetFilterWithout: "없음",

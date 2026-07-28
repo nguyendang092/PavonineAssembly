@@ -9,6 +9,7 @@ import {
   normalizeS90dProcess,
   sumDefectCounts,
 } from "./s90dDefectColumns";
+import { applyS90dCumulativeYieldPct } from "./s90dCumulativeYield";
 function emptyProcessRow(process) {
   return {
     process,
@@ -65,19 +66,17 @@ function aggregateBarRows(rows) {
     byProcess[process].totalQty += good + ng;
   });
 
-  let cumulative = 1;
-  S90D_PROCESSES.forEach((process) => {
+  const processRows = S90D_PROCESSES.map((process) => {
     const row = byProcess[process];
     row.yieldPct = pct(row.okQty, row.totalQty);
-    if (row.totalQty > 0) {
-      cumulative *= row.okQty / row.totalQty;
-    }
-    row.cumulativeYieldPct = Math.round(cumulative * 1000) / 10;
     row.ngRatePct = pct(row.ngQty, row.totalQty);
     row.defectTotal = sumDefects(row.defects);
+    return row;
   });
 
-  return byProcess;
+  applyS90dCumulativeYieldPct(processRows);
+
+  return Object.fromEntries(processRows.map((row) => [row.process, row]));
 }
 
 export function ngSnapshotToEntries(ngData) {

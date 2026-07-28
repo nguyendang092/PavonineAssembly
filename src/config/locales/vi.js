@@ -612,7 +612,7 @@ const vi = {
     empty:
       "Chưa có dữ liệu sản lượng S90D. Upload file Excel lên Firebase s90d/bar hoặc s90d/ng.",
     dateTotal: "TOTAL",
-    totalLabel: "Kế",
+    totalLabel: "TOTAL",
     demoBanner:
       "Đang hiển thị dữ liệu mẫu theo bảng Excel. Upload dữ liệu lên Firebase s90d/bar và s90d/ng để thay bằng số thực tế.",
     dateFilter: "Ngày",
@@ -1443,6 +1443,8 @@ const vi = {
     dayOffDropdownSectionCompensatory: "Nghỉ bù",
     dayOffDropdownEmptyCompensatory: "Chưa có ngày nghỉ bù trong tháng này.",
     dayOffDropdownOpenModal: "Chỉnh sửa ngày OFF / LỄ / NGHỈ BÙ",
+    dayOffDropdownViewOnlyHint:
+      "Chỉ Admin/HR được chỉnh sửa ngày OFF / LỄ / NGHỈ BÙ.",
     dayOffMultiKindLabel: "Loại ngày",
     dayKindOff: "Ngày off",
     dayKindHoliday: "Ngày lễ",
@@ -1512,9 +1514,9 @@ const vi = {
     viewEmployeeAttendance: "Xem điểm danh",
     attendanceDateLabel: "Ngày điểm danh",
     viewOnlyAttendanceHint: "Chế độ chỉ xem — không thể chỉnh sửa hoặc lưu.",
-    restrictedEditManagerHint: "Chỉ sửa: loại phép, ca, nghỉ bù, chế độ NV.",
+    restrictedEditManagerHint: "Chỉ sửa: loại phép, ca, chế độ NV.",
     restrictedEditManagerHintWithLunchOt:
-      "Chỉ sửa: loại phép, ca, nghỉ bù, chế độ NV, TC trưa.",
+      "Chỉ sửa: loại phép, ca, chế độ NV, TC trưa.",
     addEmployee: "Thêm nhân viên mới",
     employeeRegimeField: "Chế độ nhân viên",
     employeeRegimePlaceholder: "— Chọn —",
@@ -1620,6 +1622,8 @@ const vi = {
     exportExcelHint:
       "Xuất toàn bộ nhân viên trong ngày (theo điểm danh), đủ các cột giờ như bảng.",
     exportExcelEmpty: "Không có dữ liệu điểm danh trong ngày để xuất.",
+    exportToolbarFilteredEmpty:
+      "Không có nhân viên khớp bộ lọc trên toolbar trong ngày này.",
     exportExcelSuccess: "✅ Đã xuất Excel ({{rows}} dòng).",
     exportExcelError: "❌ Xuất Excel thất bại: {{error}}",
     exportSheetTitle: "Bảng giờ công nhân viên",
@@ -1741,6 +1745,10 @@ const vi = {
     monthlyTimesheetFilterWorkHours: "Giờ công",
     monthlyTimesheetFilterLeaveType: "Loại phép",
     monthlyTimesheetFilterOvertime: "Tăng ca",
+    monthlyTimesheetFilterShortHours: "Giờ công < 8",
+    monthlyTimesheetFilterShortHoursHint:
+      "Đi trễ / về sớm — giờ công trong ngày dưới 8 giờ",
+    monthlyTimesheetFilterShortHoursUnder: "Đi trễ / về sớm",
     monthlyTimesheetFilterAll: "Tất cả",
     monthlyTimesheetFilterWith: "Có",
     monthlyTimesheetFilterWithout: "Không",

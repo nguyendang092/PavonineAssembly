@@ -3,6 +3,7 @@ import {
   getAttendanceDayEmployeePresenceFlags,
   matchesPayrollMonthTimesheetPresenceFilter,
   PAYROLL_TIMESHEET_PRESENCE_FILTER,
+  PAYROLL_SHORT_HOURS_FILTER,
 } from "./attendanceDayPresenceFilters";
 
 describe("attendanceDayPresenceFilters", () => {
@@ -14,7 +15,12 @@ describe("attendanceDayPresenceFilters", () => {
         caLamViec: "Ca ngày",
         loaiPhep: "",
       }),
-    ).toEqual({ hasWorkHours: true, hasLeaveType: false, hasOvertime: false });
+    ).toEqual({
+      hasWorkHours: true,
+      hasLeaveType: false,
+      hasOvertime: false,
+      hasShortHours: true,
+    });
 
     expect(
       getAttendanceDayEmployeePresenceFlags({
@@ -23,7 +29,12 @@ describe("attendanceDayPresenceFilters", () => {
         caLamViec: "Ca ngày",
         loaiPhep: "Phép năm",
       }),
-    ).toEqual({ hasWorkHours: false, hasLeaveType: true, hasOvertime: false });
+    ).toEqual({
+      hasWorkHours: false,
+      hasLeaveType: true,
+      hasOvertime: false,
+      hasShortHours: false,
+    });
 
     expect(
       getAttendanceDayEmployeePresenceFlags({
@@ -32,7 +43,26 @@ describe("attendanceDayPresenceFilters", () => {
         caLamViec: "Ca ngày",
         loaiPhep: "",
       }),
-    ).toEqual({ hasWorkHours: true, hasLeaveType: false, hasOvertime: true });
+    ).toEqual({
+      hasWorkHours: true,
+      hasLeaveType: false,
+      hasOvertime: true,
+      hasShortHours: false,
+    });
+
+    expect(
+      getAttendanceDayEmployeePresenceFlags({
+        gioVao: "08:30",
+        gioRa: "16:00",
+        caLamViec: "Ca ngày",
+        loaiPhep: "1/2PN",
+      }),
+    ).toEqual({
+      hasWorkHours: true,
+      hasLeaveType: true,
+      hasOvertime: false,
+      hasShortHours: false,
+    });
   });
 
   it("reuses monthly presence matcher", () => {
@@ -47,6 +77,13 @@ describe("attendanceDayPresenceFilters", () => {
       matchesPayrollMonthTimesheetPresenceFilter(
         { hasWorkHours: true, hasLeaveType: false, hasOvertime: true },
         { overtimeFilter: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH },
+      ),
+    ).toBe(true);
+
+    expect(
+      matchesPayrollMonthTimesheetPresenceFilter(
+        { hasWorkHours: true, hasLeaveType: false, hasShortHours: true },
+        { shortHoursFilter: PAYROLL_SHORT_HOURS_FILTER.UNDER_STANDARD },
       ),
     ).toBe(true);
   });

@@ -13,6 +13,7 @@ import {
   canEditAttendanceForEmployee,
   canAddAttendanceForDepartment,
   canEditLunchOtForEmployee,
+  canManageAttendanceOffHolidayDays,
   isAdminAccess,
 } from "@/config/authRoles";
 import {
@@ -520,6 +521,7 @@ export default function AttendanceEmployeeFormModal({
             const slice = formSliceForAttendanceDayDocument(form, sliceOverrides);
             if (!allowFullEdit) {
               delete slice[ATTENDANCE_EMP.NAME_YELLOW_BG];
+              delete slice[ATTENDANCE_EMP.COMP_LEAVE_ALLOWED];
             }
             return slice;
           })(),
@@ -593,6 +595,7 @@ export default function AttendanceEmployeeFormModal({
             });
             if (!isAdminAccess(user, userRole)) {
               delete slice[ATTENDANCE_EMP.NAME_YELLOW_BG];
+              delete slice[ATTENDANCE_EMP.COMP_LEAVE_ALLOWED];
             }
             return slice;
           })(),
@@ -634,9 +637,13 @@ export default function AttendanceEmployeeFormModal({
 
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
   const isEditMode = Boolean(editAttendanceKey);
-  /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP: loại phép, ca, nghỉ bù, chế độ NV (+ TC trưa Anodizing/Extrusion). */
+  /** Sửa dòng: Admin / HR sửa toàn bộ; quản lý BP: loại phép, ca, chế độ NV (+ TC trưa Anodizing/Extrusion). */
   const isRestrictedEdit =
     isEditMode && !isAdminAccess(user, userRole) && !isViewOnly;
+  const canEditCompensatoryLeave = canManageAttendanceOffHolidayDays(
+    user,
+    userRole,
+  );
   const employeeBoPhanForPerm =
     String(form.boPhan ?? form[ATTENDANCE_EMP.DEPARTMENT] ?? "").trim() ||
     undefined;
@@ -703,8 +710,8 @@ export default function AttendanceEmployeeFormModal({
                 ? "restrictedEditManagerHintWithLunchOt"
                 : "restrictedEditManagerHint",
               canEditLunchOt
-                ? "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù, Chế độ nhân viên và Tăng ca trưa."
-                : "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Nghỉ bù và Chế độ nhân viên.",
+                ? "Bạn chỉ có thể sửa Loại phép, Ca làm việc, Chế độ nhân viên và Tăng ca trưa."
+                : "Bạn chỉ có thể sửa Loại phép, Ca làm việc và Chế độ nhân viên.",
             )}
           </p>
         ) : null}
@@ -1101,7 +1108,9 @@ export default function AttendanceEmployeeFormModal({
                       ? "NO"
                       : "YES"
                 }
-                disabled={!dayIsCompensatory || isViewOnly}
+                disabled={
+                  !dayIsCompensatory || isViewOnly || !canEditCompensatoryLeave
+                }
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,

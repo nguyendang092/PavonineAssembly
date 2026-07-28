@@ -35,8 +35,44 @@ describe("buildS90dSummary", () => {
     expect(summary.processRows[1].okQty).toBe(90);
     expect(summary.processRows[1].ngQty).toBe(10);
     expect(summary.processRows[1].cumulativeYieldPct).toBe(90);
+    expect(summary.processRows[0].cumulativeYieldPct).toBe(100);
+    expect(summary.totalRow.cumulativeYieldPct).toBe(0);
     expect(summary.totalRow.okQty).toBe(190);
     expect(summary.totalRow.ngQty).toBe(10);
+  });
+
+  it("computes cumulative yield as ratio to previous cumulative yield", () => {
+    const barData = {
+      PRESS: {
+        "10_2026": {
+          Normal: {
+            "2026-03-01": {
+              Day: { Total_Good: 95, Total_NG: 5 },
+            },
+          },
+        },
+      },
+      HAIRLINE: {
+        "10_2026": {
+          Normal: {
+            "2026-03-01": {
+              Day: { Total_Good: 90, Total_NG: 10 },
+            },
+          },
+        },
+      },
+    };
+
+    const summary = buildS90dSummary({
+      barData,
+      ngData: {},
+      weekKey: "10_2026",
+    });
+
+    expect(summary.processRows[0].yieldPct).toBe(95);
+    expect(summary.processRows[0].cumulativeYieldPct).toBe(95);
+    expect(summary.processRows[1].yieldPct).toBe(90);
+    expect(summary.processRows[1].cumulativeYieldPct).toBe(94.7);
   });
 
   it("maps ng reasons to defect columns", () => {

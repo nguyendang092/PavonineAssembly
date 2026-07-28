@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canEditLunchOtForEmployee,
+  canManageAttendanceOffHolidayDays,
   isManagerLunchOtDepartment,
   managerLunchOtDepartmentMatchKey,
 } from "./authRoles";
@@ -61,5 +62,28 @@ describe("canEditLunchOtForEmployee", () => {
         employee: { boPhan: "Press" },
       }),
     ).toBe(false);
+  });
+});
+
+describe("canManageAttendanceOffHolidayDays", () => {
+  it("chỉ Admin/HR — không cho manager", () => {
+    expect(
+      canManageAttendanceOffHolidayDays(
+        { email: "admin@gmail.com" },
+        "staff",
+      ),
+    ).toBe(true);
+    expect(
+      canManageAttendanceOffHolidayDays(
+        { email: "mgr@pavonine.net" },
+        "manager",
+      ),
+    ).toBe(false);
+    expect(
+      canManageAttendanceOffHolidayDays(
+        { email: "hr@pavonine.net" },
+        null,
+      ),
+    ).toBe(true);
   });
 });

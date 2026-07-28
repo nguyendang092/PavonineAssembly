@@ -21,6 +21,7 @@ import {
   matchesPayrollMonthTimesheetPresenceFilter,
   needsPayrollMonthTimesheetPresenceFlags,
   PAYROLL_TIMESHEET_PRESENCE_FILTER,
+  PAYROLL_SHORT_HOURS_FILTER,
 } from "@/features/payroll/payrollMonthTimesheetFilters";
 import {
   formatCoeffHoursForDisplay,
@@ -69,6 +70,7 @@ import {
   getAttendanceLeaveTypeEmphasisPrintStyleAttr,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
+import AttendanceOffHolidayDaysControl from "@/features/attendance/AttendanceOffHolidayDaysControl";
 import { canEditPayrollMonthTimesheetGridCell } from "@/config/featurePermissions";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import {
@@ -1092,9 +1094,11 @@ export default function PayrollMonthlyTimesheetModal({
   workHoursFilter: workHoursFilterProp,
   leaveTypeFilter: leaveTypeFilterProp,
   overtimeFilter: overtimeFilterProp,
+  shortHoursFilter: shortHoursFilterProp,
   onWorkHoursFilterChange,
   onLeaveTypeFilterChange,
   onOvertimeFilterChange,
+  onShortHoursFilterChange,
   normalizeDepartment = (v) =>
     String(v || "")
       .trim()
@@ -1121,18 +1125,25 @@ export default function PayrollMonthlyTimesheetModal({
   const [internalOvertimeFilter, setInternalOvertimeFilter] = useState(
     PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
   );
+  const [internalShortHoursFilter, setInternalShortHoursFilter] = useState(
+    PAYROLL_SHORT_HOURS_FILTER.ALL,
+  );
   const workHoursFilter =
     workHoursFilterProp ?? internalWorkHoursFilter;
   const leaveTypeFilter =
     leaveTypeFilterProp ?? internalLeaveTypeFilter;
   const overtimeFilter =
     overtimeFilterProp ?? internalOvertimeFilter;
+  const shortHoursFilter =
+    shortHoursFilterProp ?? internalShortHoursFilter;
   const setWorkHoursFilter =
     onWorkHoursFilterChange ?? setInternalWorkHoursFilter;
   const setLeaveTypeFilter =
     onLeaveTypeFilterChange ?? setInternalLeaveTypeFilter;
   const setOvertimeFilter =
     onOvertimeFilterChange ?? setInternalOvertimeFilter;
+  const setShortHoursFilter =
+    onShortHoursFilterChange ?? setInternalShortHoursFilter;
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [headerRowTops, setHeaderRowTops] = useState(
@@ -1172,6 +1183,7 @@ export default function PayrollMonthlyTimesheetModal({
       setInternalWorkHoursFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
       setInternalLeaveTypeFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
       setInternalOvertimeFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+      setInternalShortHoursFilter(PAYROLL_SHORT_HOURS_FILTER.ALL);
     }
   }, [open, departmentFilter, workHoursFilterProp]);
 
@@ -1255,6 +1267,26 @@ export default function PayrollMonthlyTimesheetModal({
 
   const { sortedIds, repById, chunkByDate, chunkByDateLive } =
     usePayrollMonthEmployeeIndex(dayChunks, displayDayChunks);
+
+  const anchorDayMeta = useMemo(() => {
+    const ch =
+      chunkByDateLive.get(anchorDateKey) ?? chunkByDate.get(anchorDateKey);
+    return {
+      isOffDay: Boolean(ch?.isOffDay),
+      isHolidayDay: Boolean(ch?.isHolidayDay),
+      isCompensatoryDay: Boolean(ch?.isCompensatoryDay),
+    };
+  }, [anchorDateKey, chunkByDate, chunkByDateLive]);
+
+  const tlAttendance = useCallback(
+    (key, defaultValue, options = {}) =>
+      tlPage(key, defaultValue, options),
+    [tlPage],
+  );
+
+  const handleOffHolidayDaysSaved = useCallback(() => {
+    void loadMonth();
+  }, [loadMonth]);
 
   const openDayCellForm = useCallback((dateKey, dayEmps, formInitial) => {
     setDayCellFormEmployees(dayEmps);
@@ -1360,6 +1392,7 @@ export default function PayrollMonthlyTimesheetModal({
     workHoursFilter,
     leaveTypeFilter,
     overtimeFilter,
+    shortHoursFilter,
   });
 
   const presenceFlagsById = useMemo(() => {
@@ -1395,7 +1428,7 @@ export default function PayrollMonthlyTimesheetModal({
         if (!needsPresenceFlags) return true;
         return matchesPayrollMonthTimesheetPresenceFilter(
           presenceFlagsById?.get(id),
-          { workHoursFilter, leaveTypeFilter, overtimeFilter },
+          { workHoursFilter, leaveTypeFilter, overtimeFilter, shortHoursFilter },
         );
       })
       .sort((a, b) =>
@@ -1412,6 +1445,7 @@ export default function PayrollMonthlyTimesheetModal({
     workHoursFilter,
     leaveTypeFilter,
     overtimeFilter,
+    shortHoursFilter,
   ]);
 
   const { monthlySummaryById, isSummariesBusy, summaryProgress } =
@@ -1553,7 +1587,7 @@ export default function PayrollMonthlyTimesheetModal({
           if (!needsPresenceFlags) return true;
           return matchesPayrollMonthTimesheetPresenceFilter(
             presenceFlagsById?.get(id),
-            { workHoursFilter, leaveTypeFilter, overtimeFilter },
+            { workHoursFilter, leaveTypeFilter, overtimeFilter, shortHoursFilter },
           );
         })
         .sort((a, b) =>
@@ -1569,6 +1603,7 @@ export default function PayrollMonthlyTimesheetModal({
       workHoursFilter,
       leaveTypeFilter,
       overtimeFilter,
+      shortHoursFilter,
     ],
   );
 
@@ -1795,6 +1830,21 @@ export default function PayrollMonthlyTimesheetModal({
 
           <div className="min-h-0 flex flex-1 flex-col p-2 sm:p-3">
             <div className="pm-ts-toolbar mb-2 flex flex-wrap items-center justify-end gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-sky-50 px-2 py-1.5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+              <AttendanceOffHolidayDaysControl
+                user={user}
+                userRole={userRole}
+                selectedDate={monthRange.first}
+                setSelectedDate={() => {}}
+                isOffDay={anchorDayMeta.isOffDay}
+                isHolidayDay={anchorDayMeta.isHolidayDay}
+                isCompensatoryDay={anchorDayMeta.isCompensatoryDay}
+                tl={tlAttendance}
+                attendanceRootPath={attendanceRootPath}
+                showDateInput={false}
+                elevatedOverlay
+                onSaved={handleOffHolidayDaysSaved}
+                className="mr-auto shrink-0"
+              />
               <input
                 type="text"
                 value={localNameFilter}
@@ -1809,9 +1859,11 @@ export default function PayrollMonthlyTimesheetModal({
                 workHoursFilter={workHoursFilter}
                 leaveTypeFilter={leaveTypeFilter}
                 overtimeFilter={overtimeFilter}
+                shortHoursFilter={shortHoursFilter}
                 onWorkHoursFilterChange={setWorkHoursFilter}
                 onLeaveTypeFilterChange={setLeaveTypeFilter}
                 onOvertimeFilterChange={setOvertimeFilter}
+                onShortHoursFilterChange={setShortHoursFilter}
                 tl={tlPage}
                 disabled={isGridFullyBusy}
                 compact

@@ -48,6 +48,7 @@ export function buildS90dChartKpiSummary(summary) {
     okQty: totalRow.okQty ?? 0,
     ngQty: totalRow.ngQty ?? 0,
     yieldPct: totalRow.yieldPct ?? 0,
+    cumulativeYieldPct: totalRow.cumulativeYieldPct ?? totalRow.yieldPct ?? 0,
     ngRatePct: totalRow.ngRatePct ?? 0,
     defectTotal: totalRow.defectTotal ?? 0,
     activeDays: summary?.activeDays ?? 0,

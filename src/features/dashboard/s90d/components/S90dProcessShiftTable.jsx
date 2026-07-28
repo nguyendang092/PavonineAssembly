@@ -113,13 +113,13 @@ const ShiftRow = memo(function ShiftRow({
       : "s90d-row-shift";
 
   const processLabel = isTotal
-    ? t("s90dReport.totalLabel", "Kế")
+    ? t("s90dReport.totalLabel", "TOTAL")
     : isPercent
       ? ""
       : t(`areas.${row.process}`, { defaultValue: row.process });
 
   const classificationLabel = isTotal
-    ? t("s90dReport.totalLabel", "Kế")
+    ? t("s90dReport.totalLabel", "TOTAL")
     : isPercent
       ? ""
       : row.classification
@@ -133,7 +133,7 @@ const ShiftRow = memo(function ShiftRow({
 
   if (isTotal) {
     dateCell = shortDate;
-    lineCell = `${t("s90dReport.totalLabel", "Kế")}/${t("s90dReport.tabTotal", "Tổng")}`;
+    lineCell = `${t("s90dReport.totalLabel", "TOTAL")}/${t("s90dReport.tabTotal", "Tổng")}`;
   } else if (isPercent) {
     dateCell = "";
     lineCell = t("s90dReport.defectRateRowLabel", "Tỷ lệ theo tổng SL →");

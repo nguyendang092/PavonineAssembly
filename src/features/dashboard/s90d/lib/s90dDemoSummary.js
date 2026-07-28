@@ -1,5 +1,6 @@
 import { createEmptyDefectCounts, S90D_PROCESSES } from "./s90dDefectColumns";
 import { formatS90dDailyDateLabel } from "./s90dDateUtils";
+import { applyS90dCumulativeYieldPct } from "./s90dCumulativeYield";
 import { buildS90dProcessShiftSummary } from "./buildS90dProcessShiftSummary";
 import { S90D_SHIFT_SLOTS } from "./s90dShiftSlots";
 
@@ -11,7 +12,7 @@ function demoRow(process, fields) {
     totalQty: fields.totalQty,
     okQty: fields.okQty,
     yieldPct: fields.yieldPct,
-    cumulativeYieldPct: fields.cumulativeYieldPct,
+    cumulativeYieldPct: fields.cumulativeYieldPct ?? fields.yieldPct,
     ngQty: fields.ngQty,
     ngRatePct: fields.ngRatePct,
     defects: { ...createEmptyDefectCounts(), ...fields.defects },
@@ -34,7 +35,6 @@ const DEMO_PROCESS_ROWS = [
     totalQty: 16523,
     okQty: 16232,
     yieldPct: 98,
-    cumulativeYieldPct: 98,
     ngQty: 291,
     ngRatePct: 2,
     defects: {
@@ -50,7 +50,6 @@ const DEMO_PROCESS_ROWS = [
     totalQty: 16655,
     okQty: 16277,
     yieldPct: 98,
-    cumulativeYieldPct: 96,
     ngQty: 378,
     ngRatePct: 2,
     defects: {
@@ -66,7 +65,6 @@ const DEMO_PROCESS_ROWS = [
     totalQty: 16560,
     okQty: 15113,
     yieldPct: 91,
-    cumulativeYieldPct: 86,
     ngQty: 1447,
     ngRatePct: 9,
     defects: {
@@ -90,7 +88,6 @@ function sumDemoTotalRow(processRows) {
     totalQty: 0,
     okQty: 0,
     yieldPct: 97,
-    cumulativeYieldPct: 86,
     ngQty: 0,
     ngRatePct: 3,
     defects: createEmptyDefectCounts(),
@@ -107,6 +104,8 @@ function sumDemoTotalRow(processRows) {
   });
 
   total.defectTotal = Object.values(total.defects).reduce((s, n) => s + n, 0);
+  total.cumulativeYieldPct =
+    processRows[processRows.length - 1]?.cumulativeYieldPct ?? 0;
   return total;
 }
 
@@ -218,18 +217,19 @@ export function buildEmptyProcessShiftSummaries(dateLabel) {
 }
 
 export function getS90dDemoDailySummary(dateKey = "2026-07-01") {
-  const processRows = S90D_PROCESSES.map((process, index) => ({
+  const processRows = S90D_PROCESSES.map((process) => ({
     process,
     classification: process,
     totalQty: 1,
     okQty: 1,
     yieldPct: 100,
-    cumulativeYieldPct: index === 0 ? null : 100,
     ngQty: 0,
     ngRatePct: 0,
     defects: createEmptyDefectCounts(),
     defectTotal: 0,
   }));
+
+  applyS90dCumulativeYieldPct(processRows, { emptyAsNull: true });
 
   const totalRow = {
     process: "TOTAL",
@@ -269,7 +269,8 @@ export function getS90dDemoDailySummary(dateKey = "2026-07-01") {
 }
 
 export function getS90dDemoSummary() {
-  const processRows = DEMO_PROCESS_ROWS;
+  const processRows = DEMO_PROCESS_ROWS.map((row) => ({ ...row }));
+  applyS90dCumulativeYieldPct(processRows);
   const totalRow = sumDemoTotalRow(processRows);
   const percentRow = buildDemoPercentRow(totalRow);
 

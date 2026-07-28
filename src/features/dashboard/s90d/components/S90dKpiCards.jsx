@@ -12,7 +12,9 @@ function formatPct(value) {
 
 export default function S90dKpiCards({ totalRow }) {
   const { t } = useTranslation();
-  const yieldPct = totalRow?.yieldPct ?? 0;
+  const yieldPct =
+    totalRow?.cumulativeYieldPct ?? totalRow?.yieldPct ?? 0;
+  const ngRatePct = Math.round((100 - (Number(yieldPct) || 0)) * 10) / 10;
   const ringPct = Math.min(100, Math.max(0, Number(yieldPct) || 0));
 
   return (
@@ -61,7 +63,7 @@ export default function S90dKpiCards({ totalRow }) {
           {t("s90dReport.kpiNgRate", "Tỷ lệ NG")}
         </p>
         <p className="s90d-kpi-value s90d-kpi-value--rate">
-          {formatPct(totalRow?.ngRatePct)}
+          {formatPct(ngRatePct)}
         </p>
       </div>
     </div>

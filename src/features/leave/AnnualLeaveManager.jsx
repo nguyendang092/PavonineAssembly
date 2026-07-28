@@ -13,7 +13,7 @@ import { useUser } from "@/contexts/UserContext";
 import { canManageAnnualLeave } from "@/config/authRoles";
 import { db, ref, remove, update } from "@/services/firebase";
 import AlertMessage from "@/components/ui/AlertMessage";
-import LoadingBlock from "@/components/ui/LoadingBlock";
+import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import HrTablePagination from "@/components/ui/HrTablePagination";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import {
@@ -584,10 +584,13 @@ export default function AnnualLeaveManager() {
           </div>
         </div>
 
+        <PayrollMonthGridLoadingOverlay active={loading} mode="viewport" />
+
         {loading ? (
-          <div className="annual-leave-table-compact flex min-h-0 flex-1 items-center justify-center">
-            <LoadingBlock />
-          </div>
+          <div
+            className="annual-leave-table-compact min-h-0 flex-1"
+            aria-hidden="true"
+          />
         ) : (
           <div className="annual-leave-table-compact min-h-0 w-full max-w-none flex-1 rounded-md bg-white shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
             <div className="annual-leave-table-scroll w-full min-w-0 max-w-full">

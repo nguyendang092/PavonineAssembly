@@ -21,6 +21,7 @@ function AttendanceListDateOffToolbar({
   monthOffAndHoliday,
   monthOffDaysLoading,
   setOffDaysModalOpen,
+  showDateInput = true,
   tl,
 }) {
   const canManageOffDays = canManageAttendanceOffHolidayDays(user, userRole);
@@ -55,7 +56,7 @@ function AttendanceListDateOffToolbar({
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-1.5 px-0.5 sm:gap-1 sm:px-0">
-      {canManageOffDays ? (
+      {user ? (
         <div
           className="relative shrink-0"
           ref={offHolidayDropdownRef}
@@ -225,34 +226,44 @@ function AttendanceListDateOffToolbar({
                     </div>
                   )}
                 </div>
-                <div className="shrink-0 border-t border-violet-200/80 bg-gradient-to-b from-violet-50/90 to-white px-3 py-3 dark:border-violet-800/80 dark:from-slate-900 dark:to-slate-950">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="w-full rounded-lg bg-gradient-to-r from-violet-600 via-violet-600 to-indigo-600 py-2.5 text-center text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-violet-600/40 transition hover:from-violet-500 hover:to-indigo-500 hover:shadow-xl hover:shadow-violet-500/45 active:scale-[0.99] dark:shadow-violet-900/50"
-                    onClick={() => {
-                      if (!canManageOffDays) return;
-                      setOffHolidayDropdownOpen(false);
-                      setOffDaysModalOpen(true);
-                    }}
-                  >
+                {canManageOffDays ? (
+                  <div className="shrink-0 border-t border-violet-200/80 bg-gradient-to-b from-violet-50/90 to-white px-3 py-3 dark:border-violet-800/80 dark:from-slate-900 dark:to-slate-950">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="w-full rounded-lg bg-gradient-to-r from-violet-600 via-violet-600 to-indigo-600 py-2.5 text-center text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-violet-600/40 transition hover:from-violet-500 hover:to-indigo-500 hover:shadow-xl hover:shadow-violet-500/45 active:scale-[0.99] dark:shadow-violet-900/50"
+                      onClick={() => {
+                        setOffHolidayDropdownOpen(false);
+                        setOffDaysModalOpen(true);
+                      }}
+                    >
+                      {tl(
+                        "dayOffDropdownOpenModal",
+                        "Chỉnh sửa ngày OFF / LỄ / NGHỈ BÙ",
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="shrink-0 border-t border-slate-200/80 bg-slate-50 px-3 py-3 text-center text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                     {tl(
-                      "dayOffDropdownOpenModal",
-                      "Chỉnh sửa ngày OFF / LỄ / NGHỈ BÙ",
+                      "dayOffDropdownViewOnlyHint",
+                      "Chỉ Admin/HR được chỉnh sửa ngày OFF / LỄ / NGHỈ BÙ.",
                     )}
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>,
               document.body,
             )}
         </div>
       ) : null}
-      <input
-        type="date"
-        value={selectedDate}
-        onChange={(e) => setSelectedDate(e.target.value)}
-        className="h-8 w-full min-w-0 shrink rounded-md border border-slate-300 bg-white px-2.5 text-sm font-semibold text-blue-700 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300 sm:w-auto"
-      />
+      {showDateInput ? (
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="h-8 w-full min-w-0 shrink rounded-md border border-slate-300 bg-white px-2.5 text-sm font-semibold text-blue-700 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300 sm:w-auto"
+        />
+      ) : null}
     </div>
   );
 }

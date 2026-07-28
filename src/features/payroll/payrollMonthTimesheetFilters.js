@@ -1,5 +1,7 @@
 import { getAttendanceLeaveTypeRaw } from "@/features/attendance/attendanceGioVaoTypeOptions";
-import { employeeHasPayrollOvertimeHours } from "@/features/attendance/attendanceDayMeta";
+import { employeeHasPayrollOvertimeHours, isAttendanceHalfPnLeaveType } from "@/features/attendance/attendanceDayMeta";
+import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
+import { getAttendanceWorkingHoursHours } from "@/features/attendance/attendanceWorkingHours";
 import { buildMonthlyRuleSummary } from "@/features/payroll/payrollMonthlyRuleSummary";
 import { resolvePayrollMonthDayEmployee } from "@/features/payroll/payrollMonthlyGridData";
 import { resolveEffectivePayrollEarlyOtPaperwork } from "@/features/payroll/payrollEarlyOtMeta";
@@ -11,12 +13,35 @@ export const PAYROLL_TIMESHEET_PRESENCE_FILTER = Object.freeze({
   WITHOUT: "without",
 });
 
+/** Giờ công chuẩn ca ngày — dùng lọc «đi trễ về sớm» (< 8h). */
+export const PAYROLL_STANDARD_DAY_WORK_HOURS = 8;
+
+export const PAYROLL_SHORT_HOURS_FILTER = Object.freeze({
+  ALL: "all",
+  UNDER_STANDARD: "underStandard",
+});
+
+export function isPayrollUnderStandardWorkHours(hours) {
+  return (
+    Number.isFinite(hours) &&
+    hours > 0 &&
+    hours < PAYROLL_STANDARD_DAY_WORK_HOURS
+  );
+}
+
+/** Giờ công < 8 — loại trừ nửa ngày phép năm (1/2PN). */
+export function hasPayrollShortWorkHoursFlag(hours, leaveType) {
+  if (isAttendanceHalfPnLeaveType(leaveType)) return false;
+  return isPayrollUnderStandardWorkHours(hours);
+}
+
 export function matchesPayrollMonthTimesheetPresenceFilter(
   flags,
   {
     workHoursFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
     leaveTypeFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
     overtimeFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+    shortHoursFilter = PAYROLL_SHORT_HOURS_FILTER.ALL,
   } = {},
 ) {
   if (workHoursFilter === PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH && !flags?.hasWorkHours) {
@@ -46,6 +71,12 @@ export function matchesPayrollMonthTimesheetPresenceFilter(
   ) {
     return false;
   }
+  if (
+    shortHoursFilter === PAYROLL_SHORT_HOURS_FILTER.UNDER_STANDARD &&
+    !flags?.hasShortHours
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -53,11 +84,13 @@ export function needsPayrollMonthTimesheetPresenceFlags({
   workHoursFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
   leaveTypeFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
   overtimeFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  shortHoursFilter = PAYROLL_SHORT_HOURS_FILTER.ALL,
 } = {}) {
   return (
     workHoursFilter !== PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL ||
     leaveTypeFilter !== PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL ||
-    overtimeFilter !== PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL
+    overtimeFilter !== PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL ||
+    shortHoursFilter !== PAYROLL_SHORT_HOURS_FILTER.ALL
   );
 }
 
@@ -76,6 +109,7 @@ export function buildPayrollMonthTimesheetFlagsById({
     const rep = repById?.get(id);
     let hasLeaveType = false;
     let hasOvertime = false;
+    let hasShortHours = false;
 
     for (const dateKey of monthKeys) {
       const ch = chunkByDate?.get(dateKey);
@@ -85,6 +119,24 @@ export function buildPayrollMonthTimesheetFlagsById({
 
       if (!hasLeaveType && String(getAttendanceLeaveTypeRaw(emp) ?? "").trim()) {
         hasLeaveType = true;
+      }
+
+      if (!hasShortHours) {
+        const regimeFlags = employeeRegimeWorkingHoursFlags(emp);
+        const dayHours = getAttendanceWorkingHoursHours(
+          emp?.gioVao,
+          emp?.gioRa,
+          emp?.caLamViec,
+          regimeFlags.includeTapVuInWorkingHours,
+          regimeFlags.includeThaiSanInWorkingHours,
+          regimeFlags.includeTaiXeInWorkingHours,
+          regimeFlags.includeTaiXeTongInWorkingHours,
+        );
+        if (
+          hasPayrollShortWorkHoursFlag(dayHours, getAttendanceLeaveTypeRaw(emp))
+        ) {
+          hasShortHours = true;
+        }
       }
 
       if (!hasOvertime) {
@@ -111,7 +163,7 @@ export function buildPayrollMonthTimesheetFlagsById({
         }
       }
 
-      if (hasLeaveType && hasOvertime) break;
+      if (hasLeaveType && hasOvertime && hasShortHours) break;
     }
 
     const { total } = buildMonthlyRuleSummary(
@@ -125,6 +177,7 @@ export function buildPayrollMonthTimesheetFlagsById({
       hasWorkHours: Number(total?.workHours ?? 0) > 0,
       hasLeaveType,
       hasOvertime,
+      hasShortHours,
     });
   }
 

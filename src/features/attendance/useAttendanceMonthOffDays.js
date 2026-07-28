@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { canManageAttendanceOffHolidayDays } from "@/config/authRoles";
 import { fetchOffAndHolidayDateKeysInMonth } from "./attendanceMonthOffDays";
 import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 
@@ -19,7 +18,7 @@ export function useAttendanceMonthOffDays({
   const [monthOffDaysLoading, setMonthOffDaysLoading] = useState(false);
 
   const refreshMonthOffDays = useCallback(async () => {
-    if (!user || !canManageAttendanceOffHolidayDays(user, userRole)) {
+    if (!user) {
       setMonthOffAndHoliday({ off: [], holiday: [], compensatory: [] });
       return;
     }
@@ -41,7 +40,7 @@ export function useAttendanceMonthOffDays({
     } finally {
       setMonthOffDaysLoading(false);
     }
-  }, [user, userRole, selectedDate, attendanceRootPath]);
+  }, [user, selectedDate, attendanceRootPath]);
 
   useEffect(() => {
     void refreshMonthOffDays();

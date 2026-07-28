@@ -1,0 +1,23 @@
+.payroll-month-grid-loading-overlay--viewport {
+  position: fixed;
+  top: var(--app-navbar-height, 4rem);
+  right: 0;
+  bottom: 0;
+  left: var(--att-sb-width, 13.5rem);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(255 255 255 / 0.82);
+  backdrop-filter: blur(2px);
+}
+
+.dark .payroll-month-grid-loading-overlay--viewport {
+  background: rgb(15 23 42 / 0.88);
+}
+
+@media (max-width: 1023px) {
+  .payroll-month-grid-loading-overlay--viewport {
+    left: 0;
+  }
+}

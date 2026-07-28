@@ -1,5 +1,8 @@
 import React, { memo } from "react";
-import { PAYROLL_TIMESHEET_PRESENCE_FILTER } from "@/features/payroll/payrollMonthTimesheetFilters";
+import {
+  PAYROLL_TIMESHEET_PRESENCE_FILTER,
+  PAYROLL_SHORT_HOURS_FILTER,
+} from "@/features/payroll/payrollMonthTimesheetFilters";
 
 const selectClass =
   "h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
@@ -8,9 +11,11 @@ function PayrollTimesheetPresenceFilters({
   workHoursFilter,
   leaveTypeFilter,
   overtimeFilter,
+  shortHoursFilter,
   onWorkHoursFilterChange,
   onLeaveTypeFilterChange,
   onOvertimeFilterChange,
+  onShortHoursFilterChange,
   tl,
   disabled = false,
   compact = false,
@@ -75,6 +80,31 @@ function PayrollTimesheetPresenceFilters({
           </option>
           <option value={PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT}>
             {tl("monthlyTimesheetFilterWithout", "Không")}
+          </option>
+        </select>
+      </label>
+      <label className={labelClass}>
+        <span>
+          {tl("monthlyTimesheetFilterShortHours", "Giờ công < 8")}
+        </span>
+        <select
+          value={shortHoursFilter}
+          onChange={(e) => onShortHoursFilterChange?.(e.target.value)}
+          disabled={disabled}
+          className={selectClass}
+          title={tl(
+            "monthlyTimesheetFilterShortHoursHint",
+            "Đi trễ / về sớm — giờ công trong ngày dưới 8 giờ",
+          )}
+        >
+          <option value={PAYROLL_SHORT_HOURS_FILTER.ALL}>
+            {tl("monthlyTimesheetFilterAll", "Tất cả")}
+          </option>
+          <option value={PAYROLL_SHORT_HOURS_FILTER.UNDER_STANDARD}>
+            {tl(
+              "monthlyTimesheetFilterShortHoursUnder",
+              "Đi trễ / về sớm",
+            )}
           </option>
         </select>
       </label>

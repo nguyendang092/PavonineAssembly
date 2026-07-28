@@ -46,7 +46,8 @@ describe("buildS90dDailySummary", () => {
     });
 
     expect(daily.processRows[0].okQty).toBe(10);
-    expect(daily.processRows[0].cumulativeYieldPct).toBeNull();
+    expect(daily.processRows[0].cumulativeYieldPct).toBe(100);
+    expect(daily.processRows[1].cumulativeYieldPct).toBe(80);
     expect(daily.processRows[1].ngQty).toBe(2);
     expect(daily.totalRow.totalQty).toBe(20);
     expect(daily.percentRow).toBeTruthy();

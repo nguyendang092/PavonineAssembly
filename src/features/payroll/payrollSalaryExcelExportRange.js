@@ -6,10 +6,12 @@ import {
   formatPayrollExcelDateCell,
   PAYROLL_EXCEL_MAX_RANGE_DAYS,
 } from "@/features/payroll/payrollExcelExport";
+import { payrollExportDepartmentFilenameSuffix } from "@/features/payroll/payrollExportDepartmentFilter";
 import {
-  filterPayrollEmployeesByDepartments,
-  payrollExportDepartmentFilenameSuffix,
-} from "@/features/payroll/payrollExportDepartmentFilter";
+  filterPayrollEmployeesForTimesheetExport,
+  hasActivePayrollTimesheetToolbarExportFilters,
+  PAYROLL_TIMESHEET_EXPORT_FILTER_DEFAULTS,
+} from "@/features/payroll/payrollTimesheetExportFilters";
 import { enumerateDateKeysInclusive } from "@/utils/dateKey";
 import { isKoreanAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 
@@ -37,6 +39,82 @@ function buildDayMetaFromParsed(parsed, koreanTimesheetRules) {
   };
 }
 
+function resolveExportEmptyMessage({
+  tlPage,
+  selectedDepartments,
+  toolbarFilters,
+}) {
+  if (selectedDepartments?.length) {
+    return tlPage(
+      "exportDepartmentFilteredEmpty",
+      "Không có nhân viên thuộc bộ phận đã chọn trong ngày này.",
+    );
+  }
+  if (hasActivePayrollTimesheetToolbarExportFilters(toolbarFilters)) {
+    return tlPage(
+      "exportToolbarFilteredEmpty",
+      "Không có nhân viên khớp bộ lọc trên toolbar trong ngày này.",
+    );
+  }
+  return tlPage(
+    "exportExcelEmpty",
+    "Không có dữ liệu điểm danh trong ngày để xuất.",
+  );
+}
+
+function resolveExportRangeEmptyMessage({
+  tlPage,
+  selectedDepartments,
+  toolbarFilters,
+}) {
+  if (selectedDepartments?.length) {
+    return tlPage(
+      "exportDepartmentFilteredEmpty",
+      "Không có nhân viên thuộc bộ phận đã chọn trong khoảng ngày.",
+    );
+  }
+  if (hasActivePayrollTimesheetToolbarExportFilters(toolbarFilters)) {
+    return tlPage(
+      "exportToolbarFilteredEmpty",
+      "Không có nhân viên khớp bộ lọc trên toolbar trong khoảng ngày đã chọn.",
+    );
+  }
+  return tlPage(
+    "exportRangePayrollEmpty",
+    "Không có dữ liệu điểm danh trong khoảng ngày đã chọn.",
+  );
+}
+
+function filterDayEmployeesForExport(
+  dayEmployees,
+  {
+    selectedDepartments,
+    toolbarFilters,
+    normalizeDepartment,
+    dayMeta,
+    dateKey,
+  },
+) {
+  const filters = {
+    ...PAYROLL_TIMESHEET_EXPORT_FILTER_DEFAULTS,
+    ...toolbarFilters,
+  };
+
+  return filterPayrollEmployeesForTimesheetExport(dayEmployees, {
+    ...filters,
+    exportDepartments: selectedDepartments,
+    normalizeDepartment,
+    dayCtx: {
+      isOffDay: dayMeta.isOffDay,
+      isHolidayDay: dayMeta.isHolidayDay,
+      isCompensatoryDay: dayMeta.isCompensatoryDay,
+      dateKey,
+    },
+    earlyOtPaperworkById: dayMeta.earlyOtPaperworkById,
+    lateOtExcludedById: dayMeta.lateOtExcludedById,
+  });
+}
+
 /**
  * Xuất Excel bảng giờ công 1 ngày / nhiều ngày (Giờ công & Korean Timesheet).
  */
@@ -48,6 +126,7 @@ export async function executePayrollSalaryExcelExportRange({
   selectedDate,
   currentDayEmployees = null,
   currentDayMeta = null,
+  toolbarFilters = null,
   db,
   ref,
   get,
@@ -56,9 +135,11 @@ export async function executePayrollSalaryExcelExportRange({
   tlTable,
   normalizeDepartment,
   sheetTitleBase,
+  singleDaySheetTitle = null,
   filenamePrefix = "Bang-gio-cong",
 }) {
   const keys = enumerateDateKeysInclusive(rangeFrom, rangeTo);
+  const resolvedToolbarFilters = toolbarFilters ?? null;
   if (!keys.length) {
     return {
       ok: false,
@@ -120,6 +201,8 @@ export async function executePayrollSalaryExcelExportRange({
           isCompensatoryDay: currentDayMeta.isCompensatoryDay,
           koreanTimesheetRules,
         }),
+        earlyOtPaperworkById: currentDayMeta.earlyOtPaperworkById || {},
+        lateOtExcludedById: currentDayMeta.lateOtExcludedById || {},
       };
     } else {
       const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
@@ -128,24 +211,29 @@ export async function executePayrollSalaryExcelExportRange({
       dayMeta = buildDayMetaFromParsed(parsed, koreanTimesheetRules);
     }
 
-    const filteredEmployees = filterPayrollEmployeesByDepartments(
-      dayEmployees,
-      selectedDepartments,
-      normalizeDepartment,
-    );
+    const filteredEmployees = resolvedToolbarFilters
+      ? filterDayEmployeesForExport(dayEmployees, {
+          selectedDepartments,
+          toolbarFilters: resolvedToolbarFilters,
+          normalizeDepartment,
+          dayMeta,
+          dateKey,
+        })
+      : filterPayrollEmployeesForTimesheetExport(dayEmployees, {
+          exportDepartments: selectedDepartments,
+          normalizeDepartment,
+        });
+
     if (!filteredEmployees.length) {
       return {
         ok: false,
         alert: {
           type: "error",
-          message: tlPage(
-            selectedDepartments?.length
-              ? "exportDepartmentFilteredEmpty"
-              : "exportExcelEmpty",
-            selectedDepartments?.length
-              ? "Không có nhân viên thuộc bộ phận đã chọn trong ngày này."
-              : "Không có dữ liệu điểm danh trong ngày để xuất.",
-          ),
+          message: resolveExportEmptyMessage({
+            tlPage,
+            selectedDepartments,
+            toolbarFilters: resolvedToolbarFilters,
+          }),
         },
       };
     }
@@ -153,7 +241,9 @@ export async function executePayrollSalaryExcelExportRange({
     const sheetTitleBaseResolved =
       sheetTitleBase ||
       tlPage("exportSheetTitle", "Bảng giờ công nhân viên");
-    const sheetTitle = `${sheetTitleBaseResolved} — ${formatPayrollExcelDateCell(dateKey, displayLocale)}${deptSheetSuffix}`;
+    const sheetTitle = singleDaySheetTitle
+      ? `${singleDaySheetTitle}${deptSheetSuffix}`
+      : `${sheetTitleBaseResolved} — ${formatPayrollExcelDateCell(dateKey, displayLocale)}${deptSheetSuffix}`;
 
     await downloadPayrollSalaryExcel({
       employees: filteredEmployees,
@@ -203,14 +293,22 @@ export async function executePayrollSalaryExcelExportRange({
       parsed = parsePayrollDayFromAttendanceRaw(snap.val());
     }
 
-    const filteredEmployees = filterPayrollEmployeesByDepartments(
-      parsed.baseEmployees,
-      selectedDepartments,
-      normalizeDepartment,
-    );
+    const meta = buildDayMetaFromParsed(parsed, koreanTimesheetRules);
+    const filteredEmployees = resolvedToolbarFilters
+      ? filterDayEmployeesForExport(parsed.baseEmployees, {
+          selectedDepartments,
+          toolbarFilters: resolvedToolbarFilters,
+          normalizeDepartment,
+          dayMeta: meta,
+          dateKey,
+        })
+      : filterPayrollEmployeesForTimesheetExport(parsed.baseEmployees, {
+          exportDepartments: selectedDepartments,
+          normalizeDepartment,
+        });
+
     if (!filteredEmployees.length) continue;
 
-    const meta = buildDayMetaFromParsed(parsed, koreanTimesheetRules);
     dayChunks.push({
       dateKey,
       employees: filteredEmployees,
@@ -224,14 +322,11 @@ export async function executePayrollSalaryExcelExportRange({
       ok: false,
       alert: {
         type: "error",
-        message: tlPage(
-          selectedDepartments?.length
-            ? "exportDepartmentFilteredEmpty"
-            : "exportRangePayrollEmpty",
-          selectedDepartments?.length
-            ? "Không có nhân viên thuộc bộ phận đã chọn trong khoảng ngày."
-            : "Không có dữ liệu điểm danh trong khoảng ngày đã chọn.",
-        ),
+        message: resolveExportRangeEmptyMessage({
+          tlPage,
+          selectedDepartments,
+          toolbarFilters: resolvedToolbarFilters,
+        }),
       },
     };
   }

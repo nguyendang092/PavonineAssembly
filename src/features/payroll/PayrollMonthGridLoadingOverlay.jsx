@@ -1,8 +1,10 @@
 import LoadingBlock from "@/components/ui/LoadingBlock";
+import "./payrollMonthGridLoadingOverlay.css";
 
 /**
  * Overlay / inline loading cho lưới tháng và bảng giờ công ngày.
  * `mode="overlay"` — phủ trên vùng bảng (giữ layout, tránh giật khi render).
+ * `mode="viewport"` — cố định giữa vùng nội dung chính (dưới navbar + sidebar HR).
  */
 export default function PayrollMonthGridLoadingOverlay({
   active,
@@ -21,6 +23,18 @@ export default function PayrollMonthGridLoadingOverlay({
         aria-live="polite"
       >
         <LoadingBlock message={message} subtitle={subtitle} size="md" />
+      </div>
+    );
+  }
+
+  if (mode === "viewport") {
+    return (
+      <div
+        className={`payroll-month-grid-loading-overlay payroll-month-grid-loading-overlay--viewport ${className}`}
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <LoadingBlock message={message} subtitle={subtitle} size="md" className="py-4" />
       </div>
     );
   }

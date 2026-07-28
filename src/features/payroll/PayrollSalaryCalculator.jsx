@@ -52,23 +52,11 @@ import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import PayrollToolsMenu from "@/features/payroll/PayrollToolsMenu";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
-import {
-  buildPayrollSalaryExcelWorkbookMultiDay,
-  downloadPayrollSalaryExcel,
-  downloadPayrollWorkbookToFile,
-  formatPayrollExcelDateCell,
-  PAYROLL_EXCEL_MAX_RANGE_DAYS,
-} from "@/features/payroll/payrollExcelExport";
-import {
-  enumerateDateKeysInclusive,
-  getTodayDateKeyLocal,
-} from "@/utils/dateKey";
-import { businessEmployeeCode } from "@/utils/attendanceEmployeeRecord";
+import AttendanceOffHolidayDaysControl from "@/features/attendance/AttendanceOffHolidayDaysControl";
 import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
-import {
-  filterPayrollEmployeesByDepartments,
-  payrollExportDepartmentFilenameSuffix,
-} from "@/features/payroll/payrollExportDepartmentFilter";
+import { getTodayDateKeyLocal } from "@/utils/dateKey";
+import { executePayrollSalaryExcelExportRange } from "@/features/payroll/payrollSalaryExcelExportRange";
+import { filterPayrollEmployeesForTimesheetExport } from "@/features/payroll/payrollTimesheetExportFilters";
 import {
   getOvertimeHoursFromGioRa,
   isEarlyArrivalForPaperworkOvertime,
@@ -83,9 +71,8 @@ import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimes
 import PayrollMonthlyTimeInOutModal from "@/features/payroll/PayrollMonthlyTimeInOutModal";
 import PayrollTimesheetPresenceFilters from "@/features/payroll/PayrollTimesheetPresenceFilters";
 import {
-  getAttendanceDayEmployeePresenceFlags,
-  matchesPayrollMonthTimesheetPresenceFilter,
   PAYROLL_TIMESHEET_PRESENCE_FILTER,
+  PAYROLL_SHORT_HOURS_FILTER,
 } from "@/features/payroll/attendanceDayPresenceFilters";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
 import "@/features/attendance/attendanceToolbarFocus.css";
@@ -141,6 +128,7 @@ export default function PayrollSalaryCalculator() {
     setWorkHoursFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
     setLeaveTypeFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
     setOvertimeFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+    setShortHoursFilter(PAYROLL_SHORT_HOURS_FILTER.ALL);
   }, [selectedDate]);
   const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
   const {
@@ -162,6 +150,9 @@ export default function PayrollSalaryCalculator() {
   );
   const [overtimeFilter, setOvertimeFilter] = useState(
     PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  );
+  const [shortHoursFilter, setShortHoursFilter] = useState(
+    PAYROLL_SHORT_HOURS_FILTER.ALL,
   );
 
   const [employees, setEmployees] = useState([]);
@@ -204,6 +195,11 @@ export default function PayrollSalaryCalculator() {
   const tlPage = useCallback(
     (key, defaultValue, options = {}) =>
       t(`salaryCalc.${key}`, { defaultValue, ...options }),
+    [t],
+  );
+  const tlAttendance = useCallback(
+    (key, defaultValue, options = {}) =>
+      t(`attendanceList.${key}`, { defaultValue, ...options }),
     [t],
   );
 
@@ -550,43 +546,35 @@ export default function PayrollSalaryCalculator() {
   }, []);
 
   const filterRows = useCallback(
-    (list, term) => {
-      const q = term.trim().toLowerCase();
-      const dayCtx = {
-        isOffDay,
-        isHolidayDay,
-        isCompensatoryDay,
-        dateKey: selectedDate,
-      };
-      return list.filter((emp) => {
-        const empDeptKey = normalizeDepartment(emp.boPhan);
-        const departmentFilterKey = normalizeDepartment(departmentFilter);
-        if (departmentFilterKey && empDeptKey !== departmentFilterKey)
-          return false;
-        if (
-          !matchesPayrollMonthTimesheetPresenceFilter(
-            getAttendanceDayEmployeePresenceFlags(emp, dayCtx),
-            { workHoursFilter, leaveTypeFilter, overtimeFilter },
-          )
-        ) {
-          return false;
-        }
-        if (!q) return true;
-        return (
-          (emp.hoVaTen || "").toLowerCase().includes(q) ||
-          (emp.mnv || "").toLowerCase().includes(q) ||
-          (emp.boPhan || "").toLowerCase().includes(q)
-        );
-      });
-    },
+    (list, term) =>
+      filterPayrollEmployeesForTimesheetExport(list, {
+        searchTerm: term,
+        departmentFilter,
+        workHoursFilter,
+        leaveTypeFilter,
+        overtimeFilter,
+        shortHoursFilter,
+        normalizeDepartment,
+        dayCtx: {
+          isOffDay,
+          isHolidayDay,
+          isCompensatoryDay,
+          dateKey: selectedDate,
+        },
+        earlyOtPaperworkById: earlyOtMap,
+        lateOtExcludedById: lateOtExcludedMap,
+      }),
     [
       departmentFilter,
+      earlyOtMap,
       isCompensatoryDay,
       isHolidayDay,
       isOffDay,
+      lateOtExcludedMap,
       leaveTypeFilter,
       normalizeDepartment,
       overtimeFilter,
+      shortHoursFilter,
       selectedDate,
       workHoursFilter,
     ],
@@ -608,6 +596,7 @@ export default function PayrollSalaryCalculator() {
       workHoursFilter,
       leaveTypeFilter,
       overtimeFilter,
+      shortHoursFilter,
     ],
   });
 
@@ -712,189 +701,43 @@ export default function PayrollSalaryCalculator() {
 
   const handleExportPayrollExcelFromModal = useCallback(
     async (rangeFrom, rangeTo, selectedDepartments) => {
-      const keys = enumerateDateKeysInclusive(rangeFrom, rangeTo);
-      if (!keys.length) {
-        setAlert({
-          show: true,
-          type: "error",
-          message: tlPage(
-            "exportRangeInvalid",
-            "Khoảng ngày không hợp lệ hoặc từ ngày lớn hơn đến ngày.",
-          ),
-        });
-        return;
-      }
-      if (keys.length > PAYROLL_EXCEL_MAX_RANGE_DAYS) {
-        setAlert({
-          show: true,
-          type: "error",
-          message: tlPage(
-            "exportRangeTooLong",
-            "Tối đa 366 ngày mỗi lần xuất. Vui lòng thu hẹp khoảng ngày.",
-          ),
-        });
-        return;
-      }
-
-      const deptSuffix =
-        payrollExportDepartmentFilenameSuffix(selectedDepartments);
-      const deptSheetSuffix =
-        selectedDepartments?.length > 0
-          ? ` — ${selectedDepartments.join(", ")}`
-          : "";
-
       setRangeExportBusy(true);
       try {
-        if (keys.length === 1) {
-          const dateKey = keys[0];
-          let dayEmployees = [];
-          let dayMeta = {
-            isPayrollOffLikeDay: false,
-            isOffDay: false,
-            isHolidayDay: false,
-            isCompensatoryDay: false,
-            earlyOtPaperworkById: {},
-            lateOtExcludedById: {},
-          };
-
-          if (dateKey === selectedDate && employees.length) {
-            dayEmployees = employees;
-            dayMeta = {
-              isPayrollOffLikeDay:
-                isOffDay || isHolidayDay || isCompensatoryDay,
-              isOffDay,
-              isHolidayDay,
-              isCompensatoryDay,
-              earlyOtPaperworkById: earlyOtMap,
-              lateOtExcludedById: lateOtExcludedMap,
-            };
-          } else {
-            const snap = await get(ref(db, `attendance/${dateKey}`));
-            const parsed = parsePayrollDayFromAttendanceRaw(snap.val());
-            dayEmployees = parsed.baseEmployees;
-            dayMeta = {
-              isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
-              isOffDay: parsed.isOffDay,
-              isHolidayDay: parsed.isHolidayDay,
-              isCompensatoryDay: parsed.isCompensatoryDay,
-              earlyOtPaperworkById: parsed.earlyOtPaperworkById,
-              lateOtExcludedById: parsed.lateOtExcludedById || {},
-            };
-          }
-
-          const filteredEmployees = filterPayrollEmployeesByDepartments(
-            dayEmployees,
-            selectedDepartments,
-            normalizeDepartment,
-          );
-          if (!filteredEmployees.length) {
-            setAlert({
-              show: true,
-              type: "error",
-              message: tlPage(
-                selectedDepartments?.length
-                  ? "exportDepartmentFilteredEmpty"
-                  : "exportExcelEmpty",
-                selectedDepartments?.length
-                  ? "Không có nhân viên thuộc bộ phận đã chọn trong ngày này."
-                  : "Không có dữ liệu điểm danh trong ngày để xuất.",
-              ),
-            });
-            return;
-          }
-
-          const sheetTitleBase =
-            dateKey === selectedDate
-              ? payrollExportSheetTitle
-              : `${tlPage("exportSheetTitle", "Bảng giờ công nhân viên")} — ${formatPayrollExcelDateCell(dateKey, displayLocale)}`;
-          const sheetTitle = `${sheetTitleBase}${deptSheetSuffix}`;
-          await downloadPayrollSalaryExcel({
-            employees: filteredEmployees,
-            selectedDate: dateKey,
-            isPayrollOffLikeDay: dayMeta.isPayrollOffLikeDay,
-            isOffDay: dayMeta.isOffDay,
-            isHolidayDay: dayMeta.isHolidayDay,
-            isCompensatoryDay: dayMeta.isCompensatoryDay,
-            tlTable,
-            sheetTitle,
-            earlyOtPaperworkById: dayMeta.earlyOtPaperworkById,
-            lateOtExcludedById: dayMeta.lateOtExcludedById,
-            filename: `Bang-gio-cong_${dateKey}${deptSuffix}.xlsx`,
-          });
-          setAlert({
-            show: true,
-            type: "success",
-            message: tlPage("exportExcelSuccess", "✅ Đã xuất Excel.", {
-              rows: filteredEmployees.length,
-            }),
-          });
-          setRangeExportModalOpen(false);
-          return;
-        }
-
-        const dayChunks = [];
-        for (const dateKey of keys) {
-          const snap = await get(ref(db, `attendance/${dateKey}`));
-          const raw = snap.val();
-          const parsed = parsePayrollDayFromAttendanceRaw(raw);
-          const filteredEmployees = filterPayrollEmployeesByDepartments(
-            parsed.baseEmployees,
-            selectedDepartments,
-            normalizeDepartment,
-          );
-          if (!filteredEmployees.length) continue;
-          dayChunks.push({
-            dateKey,
-            employees: filteredEmployees,
-            isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
-            isOffDay: parsed.isOffDay,
-            isHolidayDay: parsed.isHolidayDay,
-            isCompensatoryDay: parsed.isCompensatoryDay,
-            earlyOtPaperworkById: parsed.earlyOtPaperworkById,
-            lateOtExcludedById: parsed.lateOtExcludedById || {},
-          });
-        }
-        if (!dayChunks.length) {
-          setAlert({
-            show: true,
-            type: "error",
-            message: tlPage(
-              selectedDepartments?.length
-                ? "exportDepartmentFilteredEmpty"
-                : "exportRangePayrollEmpty",
-              selectedDepartments?.length
-                ? "Không có nhân viên thuộc bộ phận đã chọn trong khoảng ngày."
-                : "Không có dữ liệu điểm danh trong khoảng ngày đã chọn.",
-            ),
-          });
-          return;
-        }
-        const fromKey = keys[0];
-        const toKey = keys[keys.length - 1];
-        const sheetTitle = `${tlPage("exportSheetTitle", "Bảng giờ công nhân viên")} — ${formatPayrollExcelDateCell(fromKey, displayLocale)} – ${formatPayrollExcelDateCell(toKey, displayLocale)}${deptSheetSuffix}`;
-        const workbook = await buildPayrollSalaryExcelWorkbookMultiDay({
-          dayChunks,
+        const result = await executePayrollSalaryExcelExportRange({
+          rangeFrom,
+          rangeTo,
+          selectedDepartments,
+          selectedDate,
+          currentDayEmployees: employeesForPayroll,
+          currentDayMeta: {
+            isOffDay,
+            isHolidayDay,
+            isCompensatoryDay,
+            earlyOtPaperworkById: earlyOtMap,
+            lateOtExcludedById: lateOtExcludedMap,
+          },
+          toolbarFilters: {
+            searchTerm,
+            departmentFilter,
+            workHoursFilter,
+            leaveTypeFilter,
+            overtimeFilter,
+            shortHoursFilter,
+          },
+          db,
+          ref,
+          get,
+          displayLocale,
+          tlPage,
           tlTable,
-          sheetTitle,
+          normalizeDepartment,
+          singleDaySheetTitle:
+            rangeFrom === rangeTo && rangeFrom === selectedDate
+              ? payrollExportSheetTitle
+              : null,
         });
-        await downloadPayrollWorkbookToFile({
-          workbook,
-          filename: `Bang-gio-cong_${fromKey}_den_${toKey}${deptSuffix}.xlsx`,
-        });
-        const totalRows = dayChunks.reduce((s, d) => s + d.employees.length, 0);
-        setAlert({
-          show: true,
-          type: "success",
-          message: tlPage(
-            "exportRangeExcelSuccess",
-            "✅ Đã xuất Excel (nhiều ngày).",
-            {
-              days: dayChunks.length,
-              rows: totalRows,
-            },
-          ),
-        });
-        setRangeExportModalOpen(false);
+        setAlert({ show: true, ...result.alert });
+        if (result.ok) setRangeExportModalOpen(false);
       } catch (err) {
         setAlert({
           show: true,
@@ -913,7 +756,7 @@ export default function PayrollSalaryCalculator() {
       tlPage,
       tlTable,
       selectedDate,
-      employees,
+      employeesForPayroll,
       isOffDay,
       isHolidayDay,
       isCompensatoryDay,
@@ -921,6 +764,12 @@ export default function PayrollSalaryCalculator() {
       lateOtExcludedMap,
       normalizeDepartment,
       payrollExportSheetTitle,
+      searchTerm,
+      departmentFilter,
+      workHoursFilter,
+      leaveTypeFilter,
+      overtimeFilter,
+      shortHoursFilter,
     ],
   );
 
@@ -949,11 +798,16 @@ export default function PayrollSalaryCalculator() {
 
         <div className="attendance-toolbar-controls sticky top-0 z-30 mb-1 flex flex-col gap-1 border-b border-slate-200/90 bg-white px-1.5 py-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2 md:px-2 dark:border-slate-700/90 dark:bg-slate-900">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="h-8 w-full min-w-0 rounded-md border bg-white px-2 text-sm font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-300 dark:border-slate-600 dark:bg-slate-900 dark:text-emerald-300 sm:w-auto"
+            <AttendanceOffHolidayDaysControl
+              user={user}
+              userRole={userRole}
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              isOffDay={isOffDay}
+              isHolidayDay={isHolidayDay}
+              isCompensatoryDay={isCompensatoryDay}
+              tl={tlAttendance}
+              className="min-w-0 flex-1"
             />
             <input
               type="text"
@@ -981,9 +835,11 @@ export default function PayrollSalaryCalculator() {
               workHoursFilter={workHoursFilter}
               leaveTypeFilter={leaveTypeFilter}
               overtimeFilter={overtimeFilter}
+              shortHoursFilter={shortHoursFilter}
               onWorkHoursFilterChange={setWorkHoursFilter}
               onLeaveTypeFilterChange={setLeaveTypeFilter}
               onOvertimeFilterChange={setOvertimeFilter}
+              onShortHoursFilterChange={setShortHoursFilter}
               tl={tlPage}
               disabled={isTableBusy}
             />
@@ -1009,14 +865,15 @@ export default function PayrollSalaryCalculator() {
             />
           </div>
         </div>
+        <PayrollMonthGridLoadingOverlay
+          active={isDayLoading}
+          mode="viewport"
+          message={tlPage("dayDataLoading", "Đang tải dữ liệu...")}
+        />
         <div className="payroll-salary-table-compact relative min-w-0 w-full max-w-none overflow-x-auto overscroll-x-contain rounded-md bg-white leading-tight shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
           <PayrollMonthGridLoadingOverlay
-            active={isTableBusy}
-            message={
-              isDayLoading
-                ? tlPage("dayDataLoading", "Đang tải dữ liệu...")
-                : tlPage("dayDataRendering", "Đang cập nhật bảng…")
-            }
+            active={isSearchStale && !isDayLoading}
+            message={tlPage("dayDataRendering", "Đang cập nhật bảng…")}
           />
           {shouldVirtualizeTable ? (
             <div
@@ -1244,9 +1101,11 @@ export default function PayrollSalaryCalculator() {
         workHoursFilter={workHoursFilter}
         leaveTypeFilter={leaveTypeFilter}
         overtimeFilter={overtimeFilter}
+        shortHoursFilter={shortHoursFilter}
         onWorkHoursFilterChange={setWorkHoursFilter}
         onLeaveTypeFilterChange={setLeaveTypeFilter}
         onOvertimeFilterChange={setOvertimeFilter}
+        onShortHoursFilterChange={setShortHoursFilter}
         normalizeDepartment={normalizeDepartment}
         user={user}
         userRole={userRole}
