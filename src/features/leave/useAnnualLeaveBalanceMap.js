@@ -1,14 +1,24 @@
 import { useAnnualLeaveLiveData } from "./useAnnualLeaveLiveData";
 
 /**
- * Map MNV → BALANCE live (không build chi tiết PN — lazy khi mở modal).
- * @param {number} year
- * @param {{ throughDateKey?: string|null, yearMonthPrefix?: string|null, attendanceRootPath?: string, enabled?: boolean }} options
+ * Map MNV → BALANCE cho cột điểm danh / giờ công.
+ * - `enabled: false` — không subscribe Firebase.
+ * - `enabled: true` — tính BALANCE đúng từ điểm danh + phép năm (chỉ khi user bấm «Lấy phép năm»).
  */
 export function useAnnualLeaveBalanceMap(year, options = {}) {
-  const { balanceByMnv, yearData, loading } = useAnnualLeaveLiveData(year, {
+  const { enabled = true, ...rest } = options;
+
+  const live = useAnnualLeaveLiveData(year, {
+    enabled,
     includeUsageDetail: false,
-    ...options,
+    includeBalanceMap: true,
+    includeAttendance: true,
+    ...rest,
   });
-  return { balanceByMnv, yearData, loading };
+
+  return {
+    balanceByMnv: live.balanceByMnv,
+    yearData: live.yearData,
+    loading: enabled ? live.loading : false,
+  };
 }

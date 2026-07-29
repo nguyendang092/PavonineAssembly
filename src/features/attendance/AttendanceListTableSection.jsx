@@ -10,7 +10,10 @@ import AttendanceTableRow, {
 import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
 import { isSeasonalAttendanceRoot, isKoreanAttendanceRoot } from "./attendanceSeasonalStt";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
-import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
+import {
+  annualLeaveYearFromDateKey,
+  getDisplayAnnualLeaveBalanceForAttendance,
+} from "@/features/leave/annualLeaveBalanceLookup";
 
 function AttendanceListTableSection({
   columnPlan,
@@ -29,13 +32,16 @@ function AttendanceListTableSection({
   t,
   attendanceRootPath = "attendance",
   selectedDate,
+  annualLeaveBalanceEnabled = false,
 }) {
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
   const isKoreanAttendance = isKoreanAttendanceRoot(attendanceRootPath);
-  const attendanceLayoutOptions = useMemo(
-    () => (isKoreanAttendance ? { koreanAttendanceLayout: true } : {}),
-    [isKoreanAttendance],
-  );
+  const attendanceLayoutOptions = useMemo(() => {
+    const options = {};
+    if (isKoreanAttendance) options.koreanAttendanceLayout = true;
+    if (isSeasonalAttendance) options.seasonalAttendanceLayout = true;
+    return options;
+  }, [isKoreanAttendance, isSeasonalAttendance]);
   const attendanceTableMinWidthClass = attendanceTableWrapperMinWidthClass(
     columnPlan,
     attendanceLayoutOptions,
@@ -45,6 +51,7 @@ function AttendanceListTableSection({
     balanceByMnv: annualLeaveBalanceByMnv,
     yearData: annualLeaveYearData,
   } = useAnnualLeaveBalanceMap(annualLeaveYear, {
+    enabled: annualLeaveBalanceEnabled,
     attendanceRootPath,
     throughDateKey: selectedDate,
   });
@@ -108,7 +115,6 @@ function AttendanceListTableSection({
       isSeasonalAttendance,
       isKoreanAttendance,
       attendanceDateKey: selectedDate,
-      annualLeaveBalanceByMnv,
       annualLeaveYear,
       annualLeaveYearData,
       annualLeaveThroughDateKey: selectedDate,
@@ -128,7 +134,6 @@ function AttendanceListTableSection({
       isCompensatoryDay,
       isSeasonalAttendance,
       isKoreanAttendance,
-      annualLeaveBalanceByMnv,
       annualLeaveYear,
       annualLeaveYearData,
       selectedDate,
@@ -172,6 +177,10 @@ function AttendanceListTableSection({
                 const emp = deferredFilteredEmployees[virtualRow.index];
                 const idx = rowIndexOffset + virtualRow.index;
                 const rowKey = emp.id ?? emp.mnv ?? `row-${idx}`;
+                const annualLeaveBalance = getDisplayAnnualLeaveBalanceForAttendance(
+                  emp,
+                  annualLeaveBalanceByMnv,
+                );
                 return (
                   <AttendanceTableRow
                     key={rowKey}
@@ -181,6 +190,7 @@ function AttendanceListTableSection({
                     canEdit={canEditByEmpId.get(rowKey) ?? false}
                     measureElementRef={rowVirtualizer.measureElement}
                     gridTemplateColumns={attendanceGridTemplateColumns}
+                    annualLeaveBalance={annualLeaveBalance}
                     {...sharedRowProps}
                   />
                 );
@@ -213,12 +223,17 @@ function AttendanceListTableSection({
           {deferredFilteredEmployees.map((emp, localIdx) => {
             const idx = rowIndexOffset + localIdx;
             const rowKey = emp.id ?? emp.mnv ?? `row-${idx}`;
+            const annualLeaveBalance = getDisplayAnnualLeaveBalanceForAttendance(
+              emp,
+              annualLeaveBalanceByMnv,
+            );
             return (
               <AttendanceTableRow
                 key={rowKey}
                 emp={emp}
                 idx={idx}
                 canEdit={canEditByEmpId.get(rowKey) ?? false}
+                annualLeaveBalance={annualLeaveBalance}
                 {...sharedRowProps}
               />
             );

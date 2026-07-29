@@ -37,7 +37,10 @@ import PayrollSalaryTableRow, {
   PayrollSalaryVirtualHeader,
 } from "@/features/payroll/payrollSalaryTableUi";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
-import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
+import {
+  annualLeaveYearFromDateKey,
+  getDisplayAnnualLeaveBalanceForAttendance,
+} from "@/features/leave/annualLeaveBalanceLookup";
 import { useAttendanceColumnPlan } from "@/features/attendance/useAttendanceBirthDeptColumns";
 import {
   ATTENDANCE_DAY_META_KEY,
@@ -131,10 +134,18 @@ export default function PayrollSalaryCalculator() {
     setShortHoursFilter(PAYROLL_SHORT_HOURS_FILTER.ALL);
   }, [selectedDate]);
   const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
+  const [annualLeaveBalanceEnabled, setAnnualLeaveBalanceEnabled] =
+    useState(false);
+
+  useEffect(() => {
+    setAnnualLeaveBalanceEnabled(false);
+  }, [selectedDate]);
+
   const {
     balanceByMnv: annualLeaveBalanceByMnv,
     yearData: annualLeaveYearData,
   } = useAnnualLeaveBalanceMap(annualLeaveYear, {
+    enabled: annualLeaveBalanceEnabled,
     throughDateKey: selectedDate,
   });
   const [isOffDay, setIsOffDay] = useState(false);
@@ -603,6 +614,16 @@ export default function PayrollSalaryCalculator() {
   const pagedEmployees = tablePagination.pagedItems;
   const rowIndexOffset = tablePagination.rowIndexOffset;
 
+  const shouldVirtualizeTable =
+    filteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
+
+  const tableEmployees = useMemo(
+    () => (shouldVirtualizeTable ? filteredEmployees : pagedEmployees),
+    [shouldVirtualizeTable, filteredEmployees, pagedEmployees],
+  );
+
+  const tableRowIndexOffset = shouldVirtualizeTable ? 0 : rowIndexOffset;
+
   const departments = useMemo(() => {
     const set = new Set();
     for (const emp of employees) {
@@ -670,11 +691,9 @@ export default function PayrollSalaryCalculator() {
   );
 
   const tableScrollParentRef = useRef(null);
-  const shouldVirtualizeTable =
-    pagedEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
 
   const rowVirtualizer = useVirtualizer({
-    count: pagedEmployees.length,
+    count: shouldVirtualizeTable ? filteredEmployees.length : 0,
     getScrollElement: () => tableScrollParentRef.current,
     estimateSize: () => 34,
     overscan: 12,
@@ -831,6 +850,24 @@ export default function PayrollSalaryCalculator() {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              className={`inline-flex h-8 shrink-0 items-center rounded-md border px-2 text-xs font-semibold transition ${
+                annualLeaveBalanceEnabled
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+              }`}
+              title={tlPage(
+                "annualLeaveBalanceToggleHint",
+                "Bấm để tải cột phép năm (BALANCE) khớp điểm danh.",
+              )}
+              onClick={() => setAnnualLeaveBalanceEnabled((on) => !on)}
+              aria-pressed={annualLeaveBalanceEnabled}
+            >
+              {annualLeaveBalanceEnabled
+                ? tlPage("annualLeaveBalance", "Phép năm")
+                : tlPage("annualLeaveBalanceFetch", "Lấy phép năm")}
+            </button>
             <PayrollTimesheetPresenceFilters
               workHoursFilter={workHoursFilter}
               leaveTypeFilter={leaveTypeFilter}
@@ -900,8 +937,13 @@ export default function PayrollSalaryCalculator() {
                   }}
                 >
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const emp = pagedEmployees[virtualRow.index];
-                    const idx = rowIndexOffset + virtualRow.index;
+                    const emp = tableEmployees[virtualRow.index];
+                    const idx = tableRowIndexOffset + virtualRow.index;
+                    const annualLeaveBalance =
+                      getDisplayAnnualLeaveBalanceForAttendance(
+                        emp,
+                        annualLeaveBalanceByMnv,
+                      );
                     return (
                       <PayrollSalaryTableRow
                         key={emp.id}
@@ -923,7 +965,7 @@ export default function PayrollSalaryCalculator() {
                         isHolidayDay={isHolidayDay}
                         isCompensatoryDay={isCompensatoryDay}
                         attendanceDateKey={selectedDate}
-                        annualLeaveBalanceByMnv={annualLeaveBalanceByMnv}
+                        annualLeaveBalance={annualLeaveBalance}
                         annualLeaveYear={annualLeaveYear}
                         annualLeaveYearData={annualLeaveYearData}
                         annualLeaveThroughDateKey={selectedDate}
@@ -954,49 +996,58 @@ export default function PayrollSalaryCalculator() {
                   columnPlan={columnPlan}
                 />
                 <tbody>
-                  {pagedEmployees.map((emp, localIdx) => (
-                    <PayrollSalaryTableRow
-                      key={emp.id}
-                      emp={emp}
-                      idx={rowIndexOffset + localIdx}
-                      virtualRow={undefined}
-                      showRowModalActions={showRowModalActions}
-                      user={user}
-                      canEdit={canEditEmployeeRow(emp)}
-                      tl={tlTable}
-                      t={t}
-                      onEdit={handleOpenEditEmployee}
-                      onDelete={noop}
-                      canDeleteRow={false}
-                      columnPlan={columnPlan}
-                      isOffDay={isOffDay}
-                      isHolidayDay={isHolidayDay}
-                      isCompensatoryDay={isCompensatoryDay}
-                      attendanceDateKey={selectedDate}
-                      annualLeaveBalanceByMnv={annualLeaveBalanceByMnv}
-                      annualLeaveYear={annualLeaveYear}
-                      annualLeaveYearData={annualLeaveYearData}
-                      annualLeaveThroughDateKey={selectedDate}
-                      annualLeaveAttendanceRootPath="attendance"
-                    />
-                  ))}
+                  {tableEmployees.map((emp, localIdx) => {
+                    const annualLeaveBalance =
+                      getDisplayAnnualLeaveBalanceForAttendance(
+                        emp,
+                        annualLeaveBalanceByMnv,
+                      );
+                    return (
+                      <PayrollSalaryTableRow
+                        key={emp.id}
+                        emp={emp}
+                        idx={tableRowIndexOffset + localIdx}
+                        virtualRow={undefined}
+                        showRowModalActions={showRowModalActions}
+                        user={user}
+                        canEdit={canEditEmployeeRow(emp)}
+                        tl={tlTable}
+                        t={t}
+                        onEdit={handleOpenEditEmployee}
+                        onDelete={noop}
+                        canDeleteRow={false}
+                        columnPlan={columnPlan}
+                        isOffDay={isOffDay}
+                        isHolidayDay={isHolidayDay}
+                        isCompensatoryDay={isCompensatoryDay}
+                        attendanceDateKey={selectedDate}
+                        annualLeaveBalance={annualLeaveBalance}
+                        annualLeaveYear={annualLeaveYear}
+                        annualLeaveYearData={annualLeaveYearData}
+                        annualLeaveThroughDateKey={selectedDate}
+                        annualLeaveAttendanceRootPath="attendance"
+                      />
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
         </div>
 
-        <HrTablePagination
-          rangeStart={tablePagination.rangeStart}
-          rangeEnd={tablePagination.rangeEnd}
-          totalItems={tablePagination.totalItems}
-          page={tablePagination.page}
-          totalPages={tablePagination.totalPages}
-          pageNumbers={tablePagination.pageNumbers}
-          pageSize={tablePagination.pageSize}
-          onPageChange={tablePagination.setPage}
-          onPageSizeChange={tablePagination.setPageSize}
-        />
+        {shouldVirtualizeTable ? null : (
+          <HrTablePagination
+            rangeStart={tablePagination.rangeStart}
+            rangeEnd={tablePagination.rangeEnd}
+            totalItems={tablePagination.totalItems}
+            page={tablePagination.page}
+            totalPages={tablePagination.totalPages}
+            pageNumbers={tablePagination.pageNumbers}
+            pageSize={tablePagination.pageSize}
+            onPageChange={tablePagination.setPage}
+            onPageSizeChange={tablePagination.setPageSize}
+          />
+        )}
       </div>
 
       <AttendanceEmployeeFormModal
@@ -1072,49 +1123,53 @@ export default function PayrollSalaryCalculator() {
         clearDepartmentsLabel={tlPage("exportDepartmentClear", "Bỏ chọn")}
       />
 
-      <PayrollMonthlyTimeInOutModal
-        open={monthlyTimeInOutOpen}
-        onClose={() => setMonthlyTimeInOutOpen(false)}
-        anchorDateKey={selectedDate}
-        displayLocale={displayLocale}
-        tlPage={tlPage}
-        searchTerm={searchTerm}
-        departmentFilter={departmentFilter}
-        payrollDepartmentOptions={departments}
-        onDepartmentFilterChange={setDepartmentFilter}
-        normalizeDepartment={normalizeDepartment}
-        user={user}
-        userRole={userRole}
-        userDepartments={userDepartments}
-        onAlert={setAlert}
-        employees={employees}
-      />
+      {monthlyTimeInOutOpen ? (
+        <PayrollMonthlyTimeInOutModal
+          open
+          onClose={() => setMonthlyTimeInOutOpen(false)}
+          anchorDateKey={selectedDate}
+          displayLocale={displayLocale}
+          tlPage={tlPage}
+          searchTerm={searchTerm}
+          departmentFilter={departmentFilter}
+          payrollDepartmentOptions={departments}
+          onDepartmentFilterChange={setDepartmentFilter}
+          normalizeDepartment={normalizeDepartment}
+          user={user}
+          userRole={userRole}
+          userDepartments={userDepartments}
+          onAlert={setAlert}
+          employees={employees}
+        />
+      ) : null}
 
-      <PayrollMonthlyTimesheetModal
-        open={monthlyTimesheetOpen}
-        onClose={() => setMonthlyTimesheetOpen(false)}
-        anchorDateKey={selectedDate}
-        displayLocale={displayLocale}
-        tlPage={tlPage}
-        searchTerm={searchTerm}
-        departmentFilter={departmentFilter}
-        payrollDepartmentOptions={departments}
-        onDepartmentFilterChange={setDepartmentFilter}
-        workHoursFilter={workHoursFilter}
-        leaveTypeFilter={leaveTypeFilter}
-        overtimeFilter={overtimeFilter}
-        shortHoursFilter={shortHoursFilter}
-        onWorkHoursFilterChange={setWorkHoursFilter}
-        onLeaveTypeFilterChange={setLeaveTypeFilter}
-        onOvertimeFilterChange={setOvertimeFilter}
-        onShortHoursFilterChange={setShortHoursFilter}
-        normalizeDepartment={normalizeDepartment}
-        user={user}
-        userRole={userRole}
-        userDepartments={userDepartments}
-        onAlert={setAlert}
-        employees={employees}
-      />
+      {monthlyTimesheetOpen ? (
+        <PayrollMonthlyTimesheetModal
+          open
+          onClose={() => setMonthlyTimesheetOpen(false)}
+          anchorDateKey={selectedDate}
+          displayLocale={displayLocale}
+          tlPage={tlPage}
+          searchTerm={searchTerm}
+          departmentFilter={departmentFilter}
+          payrollDepartmentOptions={departments}
+          onDepartmentFilterChange={setDepartmentFilter}
+          workHoursFilter={workHoursFilter}
+          leaveTypeFilter={leaveTypeFilter}
+          overtimeFilter={overtimeFilter}
+          shortHoursFilter={shortHoursFilter}
+          onWorkHoursFilterChange={setWorkHoursFilter}
+          onLeaveTypeFilterChange={setLeaveTypeFilter}
+          onOvertimeFilterChange={setOvertimeFilter}
+          onShortHoursFilterChange={setShortHoursFilter}
+          normalizeDepartment={normalizeDepartment}
+          user={user}
+          userRole={userRole}
+          userDepartments={userDepartments}
+          onAlert={setAlert}
+          employees={employees}
+        />
+      ) : null}
 
       <PayrollEarlyOvertimePaperworkModal
         open={earlyOtModalOpen && earlyOtModalRows.length > 0}

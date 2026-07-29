@@ -284,6 +284,8 @@ export function buildMonthlyRuleSummary(
     coeff27: 0,
     coeff30: 0,
     coeff39: 0,
+    nbDayCoeff20: 0,
+    nbNightCoeff27: 0,
     sats20: 0,
     sats27: 0,
     /** Thứ Bảy OFF có giờ công — đếm ngày công riêng (hiển thị cột SAT.S). */
@@ -358,6 +360,28 @@ export function buildMonthlyRuleSummary(
     return dayAdd;
   };
 
+  const addNbCompensatoryWorkHours = (out, ch, emp, main, coeffMap) => {
+    if (!ch.isCompensatoryDay || !emp) return;
+    const night = isNightShiftCaLamViec(
+      emp[PAYROLL_EMP.SHIFT] ?? emp.caLamViec,
+    );
+    let mainH = 0;
+    if (main.kind === "hours" && Number.isFinite(main.hours) && main.hours > 0) {
+      mainH = main.hours;
+    } else if (
+      main.kind === "leave" &&
+      Number.isFinite(main.workedHours) &&
+      main.workedHours > 0
+    ) {
+      mainH = main.workedHours;
+    }
+    if (night) {
+      out.nbNightCoeff27 += mainH + Number(coeffMap.get(2.7) || 0);
+    } else {
+      out.nbDayCoeff20 += mainH + Number(coeffMap.get(2.0) || 0);
+    }
+  };
+
   const applyDayToSummary = (out, ch, emp, dateKey) => {
     addPayrollMonthlyLeaveColumnCounts(out, emp, ch);
 
@@ -423,6 +447,7 @@ export function buildMonthlyRuleSummary(
     }
 
     addCoeffHoursToTotals(out, coeffMap);
+    addNbCompensatoryWorkHours(out, ch, emp, main, coeffMap);
     addSaturdaySatOverlay(out, coeffMap, dateKey, ch, emp);
 
     const nightH = getNightShiftTotalWindowHours22To05(
@@ -471,11 +496,13 @@ const DETAIL_COL_NB = 4;
 const DETAIL_COL_KL = 5;
 const DETAIL_COL_KP = 6;
 const DETAIL_COL_TC_START = 7;
-const DETAIL_COL_NIGHT_SHIFT_HOURS = 13;
+const DETAIL_COL_NB_DAY_COEFF20 = 13;
+const DETAIL_COL_NB_NIGHT_COEFF27 = 14;
+const DETAIL_COL_NIGHT_SHIFT_HOURS = 15;
 
 /**
- * 14 cột một khối THỜI GIAN *.
- * - `si === 0`: ngày công + tổng TC (cột 7–12) + Tổng GC ca đêm (cột 13).
+ * 16 cột một khối THỜI GIAN *.
+ * - `si === 0`: ngày công + tổng TC (cột 7–12) + NB (13–14) + Tổng GC ca đêm (15).
  * - `si > 0`: mirror một ô TC tương ứng — cùng giá trị tổng, không tính lại.
  */
 function formatDetailSummaryHoursCell(fmt, fmtHours, n) {
@@ -490,6 +517,7 @@ function valuesForDetailBlock({
   fmtHours = null,
   fmtLeave = fmtPayrollMonthlyLeaveDayCell,
   colsPerBlock,
+  includeSoNgayCong = true,
 }) {
   const tcByRow = [
     summary.coeff03,
@@ -499,7 +527,7 @@ function valuesForDetailBlock({
     summary.coeff30,
     summary.coeff39,
   ];
-  return Array.from({ length: colsPerBlock }, (_, idx) => {
+  const values = Array.from({ length: colsPerBlock }, (_, idx) => {
     if (si === 0) {
       if (idx === DETAIL_COL_SO_NGAY_CONG) return fmt(summary.standardWorkDays);
       if (idx === DETAIL_COL_WORK_DAYS) return fmt(summary.workDays);
@@ -513,6 +541,20 @@ function valuesForDetailBlock({
           fmt,
           fmtHours,
           tcByRow[idx - DETAIL_COL_TC_START],
+        );
+      }
+      if (idx === DETAIL_COL_NB_DAY_COEFF20) {
+        return formatDetailSummaryHoursCell(
+          fmt,
+          fmtHours,
+          summary.nbDayCoeff20,
+        );
+      }
+      if (idx === DETAIL_COL_NB_NIGHT_COEFF27) {
+        return formatDetailSummaryHoursCell(
+          fmt,
+          fmtHours,
+          summary.nbNightCoeff27,
         );
       }
       if (idx === DETAIL_COL_NIGHT_SHIFT_HOURS) {
@@ -529,6 +571,10 @@ function valuesForDetailBlock({
     }
     return " ";
   });
+  if (!includeSoNgayCong) {
+    return values.filter((_, idx) => idx !== DETAIL_COL_SO_NGAY_CONG);
+  }
+  return values;
 }
 
 /**
@@ -549,9 +595,23 @@ export function buildMonthlyDetailFlatValues({
   const official = summaries?.official ?? {};
   const blockArgs = { si, coeffColBySubrow, fmt, fmtLeave, colsPerBlock };
   return [
-    ...valuesForDetailBlock({ ...blockArgs, summary: total, fmtHours }),
-    ...valuesForDetailBlock({ ...blockArgs, summary: trial }),
-    ...valuesForDetailBlock({ ...blockArgs, summary: official, fmtHours }),
+    ...valuesForDetailBlock({
+      ...blockArgs,
+      summary: total,
+      fmtHours,
+      includeSoNgayCong: true,
+    }),
+    ...valuesForDetailBlock({
+      ...blockArgs,
+      summary: trial,
+      includeSoNgayCong: false,
+    }),
+    ...valuesForDetailBlock({
+      ...blockArgs,
+      summary: official,
+      fmtHours,
+      includeSoNgayCong: false,
+    }),
   ];
 }
 

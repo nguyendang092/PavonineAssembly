@@ -269,7 +269,7 @@ function AttendanceTableThead({
             </th>
             <th
               className={cellClsForAttendanceTable(
-                "hidden md:table-cell px-1 md:px-1.5 py-px md:py-0.5 text-[10px] md:text-xs font-extrabold text-white uppercase tracking-wide text-center",
+                "hidden md:table-cell px-1 md:px-1.5 py-px md:py-0.5 text-[10px] md:text-xs font-extrabold text-white uppercase tracking-wide text-center whitespace-nowrap",
               )}
             >
               {tl("departmentCode", "Mã BP")}

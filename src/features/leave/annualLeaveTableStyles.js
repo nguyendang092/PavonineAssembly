@@ -31,9 +31,9 @@ export function annualLeaveStickyColClass(colIndex, { header = false, rowIndex =
 }
 
 export function annualLeaveTableRowClass(index) {
-  return `min-h-8 transition-colors hover:bg-blue-200 border-b border-slate-100 dark:border-slate-700/40 ${
-    index % 2 === 0
-      ? "bg-blue-100 dark:bg-slate-800"
-      : "bg-white dark:bg-slate-900"
-  }`;
+  const stripe =
+    Number(index) % 2 === 0
+      ? "annual-leave-table-row-even"
+      : "annual-leave-table-row-odd";
+  return `annual-leave-table-row min-h-8 border-b border-slate-100 dark:border-slate-700/40 ${stripe}`;
 }

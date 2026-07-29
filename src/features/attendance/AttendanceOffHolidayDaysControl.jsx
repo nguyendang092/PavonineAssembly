@@ -45,6 +45,7 @@ export default function AttendanceOffHolidayDaysControl({
     selectedDate,
     attendanceRootPath,
     tl,
+    enabled: offHolidayDropdownOpen || offDaysModalOpen,
   });
 
   const offHolidayDropdownPlacement = useAttendanceOffHolidayDropdownPlacement(

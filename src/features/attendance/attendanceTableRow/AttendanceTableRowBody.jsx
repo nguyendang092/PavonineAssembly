@@ -71,6 +71,7 @@ function AttendanceTableRow({
   isSeasonalAttendance = false,
   isKoreanAttendance = false,
   attendanceDateKey = null,
+  annualLeaveBalance = undefined,
   annualLeaveBalanceByMnv = {},
   annualLeaveYear = new Date().getFullYear(),
   annualLeaveYearData = null,
@@ -170,10 +171,10 @@ function AttendanceTableRow({
   const leaveTypeCol = formatAttendanceLeaveTypeColumnForEmployee(emp);
   const leaveTypeColorClass =
     getAttendanceLeaveTypeColorClassNameForEmployee(emp);
-  const annualLeaveBalanceRaw = getDisplayAnnualLeaveBalanceForAttendance(
-    emp,
-    annualLeaveBalanceByMnv,
-  );
+  const annualLeaveBalanceRaw =
+    annualLeaveBalance !== undefined
+      ? annualLeaveBalance
+      : getDisplayAnnualLeaveBalanceForAttendance(emp, annualLeaveBalanceByMnv);
   const annualLeaveBalanceCol =
     annualLeaveBalanceRaw != null &&
     Number.isFinite(Number(annualLeaveBalanceRaw))
@@ -319,7 +320,7 @@ function AttendanceTableRow({
             role={isGrid ? "cell" : undefined}
             style={attendanceGridCellStyle(isGrid, gcs("deptCode"))}
             className={cellCls(
-              "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-bold text-gray-700",
+              "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-bold text-gray-700 whitespace-nowrap",
             )}
           >
             {payrollDash(emp.maBoPhan, isPayroll)}

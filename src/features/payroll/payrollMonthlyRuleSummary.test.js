@@ -201,8 +201,10 @@ describe("buildMonthlyDetailFlatValues", () => {
     });
 
     expect(flat[8]).toBe("6");
-    expect(flat[MONTH_DETAIL_COLS_PER_BLOCK + 8]).toBe("2");
-    expect(flat[2 * MONTH_DETAIL_COLS_PER_BLOCK + 8]).toBe("4");
+    expect(flat[MONTH_DETAIL_COLS_PER_BLOCK + 7]).toBe("2");
+    expect(
+      flat[MONTH_DETAIL_COLS_PER_BLOCK + MONTH_DETAIL_COLS_PER_BLOCK - 1 + 7],
+    ).toBe("4");
   });
 
   it("fmtHours — giờ TC khối THỜI GIAN LÀM VIỆC & HỢP ĐỒNG: 2 số thập phân", () => {
@@ -279,8 +281,10 @@ describe("buildMonthlyDetailFlatValues", () => {
     });
 
     expect(flat[8]).toBe("0.53");
-    expect(flat[MONTH_DETAIL_COLS_PER_BLOCK + 8]).toBe("1.5");
-    expect(flat[2 * MONTH_DETAIL_COLS_PER_BLOCK + 8]).toBe("1.00");
+    expect(flat[MONTH_DETAIL_COLS_PER_BLOCK + 7]).toBe("1.5");
+    expect(
+      flat[MONTH_DETAIL_COLS_PER_BLOCK + MONTH_DETAIL_COLS_PER_BLOCK - 1 + 7],
+    ).toBe("1.00");
   });
 
   it("dòng 1.5 (si=2) mirror cùng summary.coeff15 — không phải tổng riêng", () => {
@@ -850,5 +854,63 @@ describe("buildMonthlyRuleSummary — Nghỉ bù (NB)", () => {
     );
 
     expect(total.nbDays).toBe(0);
+  });
+
+  it("tách giờ NB ca ngày (×2.0) và ca đêm S2 (×2.7) vào cột riêng", () => {
+    const dayKey = "2026-02-10";
+    const nightKey = "2026-02-11";
+    const dayEmp = {
+      id: empId,
+      gioVao: "08:00",
+      gioRa: "18:00",
+      caLamViec: "S1",
+      duocNghiBu: "YES",
+      loaiPhep: "",
+    };
+    const nightEmp = {
+      id: empId,
+      gioVao: "22:00",
+      gioRa: "08:00",
+      caLamViec: "S2",
+      duocNghiBu: "YES",
+      loaiPhep: "",
+    };
+    const dayChunks = new Map([
+      [
+        dayKey,
+        makeChunk({
+          isCompensatoryDay: true,
+          employees: [dayEmp],
+        }),
+      ],
+      [
+        nightKey,
+        makeChunk({
+          isCompensatoryDay: true,
+          employees: [nightEmp],
+        }),
+      ],
+    ]);
+    const summaries = buildMonthlyRuleSummary(
+      dayChunks,
+      [dayKey, nightKey],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+
+    expect(summaries.total.nbDayCoeff20).toBeGreaterThan(0);
+    expect(summaries.total.nbNightCoeff27).toBeGreaterThan(0);
+    expect(summaries.total.coeff20).toBeGreaterThan(0);
+    expect(summaries.total.coeff27).toBeGreaterThan(0);
+
+    const flat = buildMonthlyDetailFlatValues({
+      si: 0,
+      summaries,
+      fmt: fmtPayrollMonthlySummaryCell,
+      fmtHours: fmtPayrollMonthlySummaryHoursCell,
+      colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
+    });
+    expect(flat[13]).not.toBe(" ");
+    expect(flat[14]).not.toBe(" ");
   });
 });

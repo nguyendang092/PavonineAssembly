@@ -148,7 +148,7 @@ const WIDTHS_MINIMAL_NO_ACTIONS = [12, 24, 14, 5, 5, 8, 3, 3, 5, 5, 4, 3, 14];
 
 /**
  * @param {"full"|"compact"|"narrow"|"minimal"} [columnPlan="full"]
- * @param {{ seasonalOmitWorkStatus?: boolean, koreanAttendanceLayout?: boolean }} [layoutOptions]
+ * @param {{ seasonalOmitWorkStatus?: boolean, seasonalAttendanceLayout?: boolean, koreanAttendanceLayout?: boolean }} [layoutOptions]
  */
 export function getAttendanceColWidthPercents(
   showRowModalActions,
@@ -205,6 +205,22 @@ export function getAttendanceColWidthPercents(
     copy[3] = Math.max(2, (copy[3] ?? 0) - 2);
     copy[4] = Math.max(2, (copy[4] ?? 0) - 1);
     copy[9] = Math.max(2, (copy[9] ?? 0) - 2);
+    result = normalizePercents(copy);
+  }
+  if (
+    layoutOptions?.seasonalAttendanceLayout &&
+    tableVariant === "attendance" &&
+    columnPlan === "full" &&
+    result.length > 7
+  ) {
+    const copy = [...result];
+    /** Cột «Mã BP» (`deptCode`) — index 7 trong full attendance. */
+    copy[7] = (copy[7] ?? 0) + 5;
+    copy[3] = Math.max(2, (copy[3] ?? 0) - 1);
+    copy[5] = Math.max(2, (copy[5] ?? 0) - 1);
+    copy[6] = Math.max(2, (copy[6] ?? 0) - 1);
+    copy[8] = Math.max(2, (copy[8] ?? 0) - 1);
+    copy[9] = Math.max(2, (copy[9] ?? 0) - 1);
     result = normalizePercents(copy);
   }
   return result;

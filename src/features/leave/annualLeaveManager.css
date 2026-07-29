@@ -173,16 +173,44 @@
 }
 
 .annual-leave-sticky-bg-even {
-  background-color: rgb(219 234 254);
+  background-color: #dbeafe;
 }
 
 .annual-leave-sticky-bg-odd {
   background-color: #fff;
 }
 
-.annual-leave-table tbody tr:hover .annual-leave-sticky-bg-even,
-.annual-leave-table tbody tr:hover .annual-leave-sticky-bg-odd {
-  background-color: rgb(191 219 254);
+.annual-leave-table-row-even > td {
+  background-color: #dbeafe;
+}
+
+.annual-leave-table-row-odd > td {
+  background-color: #fff;
+}
+
+.annual-leave-table tbody tr.annual-leave-table-row > td {
+  transition: background-color 0.14s ease;
+}
+
+.annual-leave-table tbody tr.annual-leave-table-row:hover > td,
+.annual-leave-table tbody tr.annual-leave-table-row:hover .annual-leave-sticky-bg-even,
+.annual-leave-table tbody tr.annual-leave-table-row:hover .annual-leave-sticky-bg-odd {
+  background-color: #bfdbfe;
+}
+
+.annual-leave-month-cell {
+  color: rgb(51 65 85);
+}
+
+.annual-leave-month-empty {
+  display: inline-block;
+  font-size: 0.5rem;
+  line-height: 1;
+  font-weight: 400;
+  color: rgb(148 163 184);
+  opacity: 0.7;
+  user-select: none;
+  vertical-align: middle;
 }
 
 .dark .annual-leave-sticky-bg-even {
@@ -193,9 +221,27 @@
   background-color: rgb(15 23 42);
 }
 
-.dark .annual-leave-table tbody tr:hover .annual-leave-sticky-bg-even,
-.dark .annual-leave-table tbody tr:hover .annual-leave-sticky-bg-odd {
-  background-color: rgb(51 65 85);
+.dark .annual-leave-table-row-even > td {
+  background-color: rgb(30 41 59);
+}
+
+.dark .annual-leave-table-row-odd > td {
+  background-color: rgb(15 23 42);
+}
+
+.dark .annual-leave-table tbody tr.annual-leave-table-row:hover > td,
+.dark .annual-leave-table tbody tr.annual-leave-table-row:hover .annual-leave-sticky-bg-even,
+.dark .annual-leave-table tbody tr.annual-leave-table-row:hover .annual-leave-sticky-bg-odd {
+  background-color: rgb(51 65 85 / 0.8);
+}
+
+.dark .annual-leave-month-cell {
+  color: rgb(226 232 240);
+}
+
+.dark .annual-leave-month-empty {
+  color: rgb(104, 104, 126);
+  opacity: 1;
 }
 
 .dark .annual-leave-sticky-col-header {

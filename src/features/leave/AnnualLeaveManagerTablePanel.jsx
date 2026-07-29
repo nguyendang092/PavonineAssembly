@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo } from "react";
 import HrTablePagination from "@/components/ui/HrTablePagination";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import AnnualLeaveManagerTableRow from "./AnnualLeaveManagerTableRow";
@@ -7,28 +7,20 @@ import {
   annualLeaveStickyColClass,
   annualLeaveTableThClass,
 } from "./annualLeaveTableStyles";
-import { filterAnnualLeaveManagerRows } from "./annualLeaveManagerFilter";
 
 const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
 
 function AnnualLeaveManagerTablePanel({
-  rows,
+  filteredRows,
   monthlyByEmpKey,
-  search,
-  deptFilter,
   year,
   monthColumnLabels,
   detailThroughDateKey,
   filterPending = false,
   t,
 }) {
-  const filteredRows = useMemo(
-    () => filterAnnualLeaveManagerRows(rows, { search, deptFilter }),
-    [rows, search, deptFilter],
-  );
-
   const tablePagination = useHrTablePagination(filteredRows, {
-    resetDeps: [year, search, deptFilter],
+    resetDeps: [year, filteredRows.length],
   });
 
   return (
@@ -183,10 +175,8 @@ function AnnualLeaveManagerTablePanel({
 
 function areTablePanelPropsEqual(prev, next) {
   return (
-    prev.rows === next.rows &&
+    prev.filteredRows === next.filteredRows &&
     prev.monthlyByEmpKey === next.monthlyByEmpKey &&
-    prev.search === next.search &&
-    prev.deptFilter === next.deptFilter &&
     prev.year === next.year &&
     prev.monthColumnLabels === next.monthColumnLabels &&
     prev.detailThroughDateKey === next.detailThroughDateKey &&

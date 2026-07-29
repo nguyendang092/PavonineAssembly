@@ -102,6 +102,7 @@ export function buildPayrollMonthTimesheetFlagsById({
   chunkByDate,
   sortedIds = [],
   repById,
+  resolveWorkHours = true,
 }) {
   const map = new Map();
 
@@ -166,15 +167,19 @@ export function buildPayrollMonthTimesheetFlagsById({
       if (hasLeaveType && hasOvertime && hasShortHours) break;
     }
 
-    const { total } = buildMonthlyRuleSummary(
-      chunkByDate,
-      monthKeys,
-      id,
-      rep ?? {},
-    );
+    let hasWorkHours = false;
+    if (resolveWorkHours) {
+      const { total } = buildMonthlyRuleSummary(
+        chunkByDate,
+        monthKeys,
+        id,
+        rep ?? {},
+      );
+      hasWorkHours = Number(total?.workHours ?? 0) > 0;
+    }
 
     map.set(id, {
-      hasWorkHours: Number(total?.workHours ?? 0) > 0,
+      hasWorkHours,
       hasLeaveType,
       hasOvertime,
       hasShortHours,

@@ -13,6 +13,11 @@ import {
 const tdNum =
   "px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold tabular-nums text-gray-700 dark:text-slate-200";
 
+function hasAnnualLeaveMonthUsage(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0;
+}
+
 function AnnualLeaveManagerTableRow({
   row,
   index,
@@ -64,9 +69,19 @@ function AnnualLeaveManagerTableRow({
       {monthValues.map((value, monthIdx) => (
         <td
           key={monthIdx}
-          className={`${tdNum} min-w-[4.25rem] whitespace-nowrap${value > 0 ? " text-violet-700 dark:text-violet-300" : " text-gray-400 dark:text-slate-500"}`}
+          className={`${tdNum} annual-leave-month-cell min-w-[4.25rem] whitespace-nowrap${
+            hasAnnualLeaveMonthUsage(value)
+              ? " annual-leave-month-cell-used text-violet-700 dark:text-violet-300"
+              : ""
+          }`}
         >
-          {value > 0 ? formatAnnualLeaveDecimal(value) : "—"}
+          {hasAnnualLeaveMonthUsage(value) ? (
+            formatAnnualLeaveDecimal(value)
+          ) : (
+            <span className="annual-leave-month-empty" aria-hidden="true">
+              -
+            </span>
+          )}
         </td>
       ))}
       <td className="px-1 md:px-1.5 py-px text-center">

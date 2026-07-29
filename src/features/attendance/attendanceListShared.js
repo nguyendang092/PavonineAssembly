@@ -60,9 +60,12 @@ export function attendanceTableWrapperMinWidthClass(
   layoutOptions = {},
 ) {
   const korean = Boolean(layoutOptions?.koreanAttendanceLayout);
+  const seasonal = Boolean(layoutOptions?.seasonalAttendanceLayout);
   switch (columnPlan) {
     case "full":
-      return korean ? "min-w-[1240px]" : "min-w-[1128px]";
+      if (korean) return "min-w-[1240px]";
+      if (seasonal) return "min-w-[1180px]";
+      return "min-w-[1128px]";
     case "compact":
       return "min-w-[1040px]";
     case "narrow":

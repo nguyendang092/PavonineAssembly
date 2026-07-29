@@ -286,6 +286,9 @@
 
 .pm-ts-detail-col-head {
   font-weight: 700;
+  white-space: normal;
+  line-height: 1.2;
+  word-break: break-word;
 }
 
 .dark .pm-ts-detail-group-head {

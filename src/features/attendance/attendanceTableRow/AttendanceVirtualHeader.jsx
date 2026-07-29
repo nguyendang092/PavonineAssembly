@@ -342,7 +342,7 @@ function AttendanceVirtualHeader({
           <div
             role="columnheader"
             style={{ gridColumnStart: gcs("deptCode") }}
-            className="hidden min-w-0 items-center justify-center py-px px-1 text-center uppercase text-[10px] font-extrabold tracking-wide text-white md:flex md:px-2 md:py-0.5 md:text-xs"
+            className="hidden min-w-0 items-center justify-center py-px px-1 text-center uppercase text-[10px] font-extrabold tracking-wide text-white whitespace-nowrap md:flex md:px-2 md:py-0.5 md:text-xs"
           >
             {tl("departmentCode", "Mã BP")}
           </div>

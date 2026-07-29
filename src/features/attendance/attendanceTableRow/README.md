@@ -6,8 +6,8 @@ Module dùng chung cho **màn điểm danh** (HTML `<table>`) và **bảng lươ
 
 | Màn hình | Component bọc | Virtual scroll | `virtualRow` |
 |----------|---------------|----------------|--------------|
-| Điểm danh chính thức / thời vụ | `AttendanceListTableSection` | **Có** khi `deferredFilteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD` (300) | Truyền từ `@tanstack/react-virtual` |
-| Tính lương | `PayrollSalaryCalculator` | **Có** khi `filteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD` (300) | Truyền từ `@tanstack/react-virtual` |
+| Điểm danh chính thức / thời vụ | `AttendanceListTableSection` | **Có** khi `deferredFilteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD` (80) | Truyền từ `@tanstack/react-virtual` |
+| Tính lương | `PayrollSalaryCalculator` | **Có** khi `filteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD` (80) | Truyền từ `@tanstack/react-virtual` |
 
 `AttendanceTableRowBody` nhận `virtualRow`:
 

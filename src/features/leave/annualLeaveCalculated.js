@@ -76,7 +76,40 @@ export function resolveAnnualLeaveYearAsOfDateKey(year) {
 }
 
 /** Số tháng làm việc trong năm (mỗi tháng +1 phép) — reset theo năm lịch. */
-export function resolveAnnualLeaveMonthlyAccrualDays(startWorkingDate, year) {
+export function isStartWorkingDateInCalendarMonth(
+  startWorkingDate,
+  year,
+  monthIndex,
+) {
+  const join = parseAnnualLeaveIsoDate(startWorkingDate);
+  const y = Number(year);
+  const m = Number(monthIndex);
+  if (!join || !Number.isFinite(y) || !Number.isFinite(m)) return false;
+  return join.getFullYear() === y && join.getMonth() === m;
+}
+
+/**
+ * Tháng vào làm: đủ điều kiện +1 phép khi ngày công thực tế ≥ ½ ngày công chuẩn (giờ công).
+ * @param {{ workDays?: number, standardWorkDays?: number } | null | undefined} summary
+ */
+export function monthMeetsHalfStandardWorkDays(summary) {
+  if (!summary || typeof summary !== "object") return false;
+  const standard = Number(summary.standardWorkDays);
+  const work = Number(summary.workDays);
+  if (!Number.isFinite(standard) || standard <= 0) return false;
+  if (!Number.isFinite(work) || work < 0) return false;
+  return work >= standard / 2;
+}
+
+/**
+ * Số tháng làm việc trong năm (mỗi tháng +1 phép).
+ * Tháng có START WORKING DATE trong năm: +1 chỉ khi đủ ½ ngày công chuẩn (từ giờ công).
+ */
+export function resolveAnnualLeaveMonthlyAccrualDays(
+  startWorkingDate,
+  year,
+  joinMonthWorkSummary = null,
+) {
   const asOf = resolveAnnualLeaveYearAsOfDateKey(year);
   const y = Number(year);
   if (!asOf || !Number.isFinite(y)) return 0;
@@ -97,11 +130,26 @@ export function resolveAnnualLeaveMonthlyAccrualDays(startWorkingDate, year) {
   const endMonth = asOfDate.getFullYear() > y ? 11 : asOfDate.getMonth();
 
   if (endMonth < startMonth) return 0;
-  return endMonth - startMonth + 1;
+
+  let accrual = 0;
+  for (let monthIndex = startMonth; monthIndex <= endMonth; monthIndex += 1) {
+    if (isStartWorkingDateInCalendarMonth(startWorkingDate, y, monthIndex)) {
+      if (monthMeetsHalfStandardWorkDays(joinMonthWorkSummary)) {
+        accrual += 1;
+      }
+    } else {
+      accrual += 1;
+    }
+  }
+  return accrual;
 }
 
 /** Phép năm hiện tại = tháng trong năm (+1/tháng) + thưởng thâm niên. */
-export function resolveAnnualLeaveCurrentYear(row, year) {
+export function resolveAnnualLeaveCurrentYear(
+  row,
+  year,
+  { joinMonthWorkSummary = null } = {},
+) {
   const startDate = row?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE];
   if (!startDate) {
     return parseAnnualLeaveNumber(
@@ -109,16 +157,24 @@ export function resolveAnnualLeaveCurrentYear(row, year) {
     );
   }
 
-  const monthlyAccrual = resolveAnnualLeaveMonthlyAccrualDays(startDate, year);
+  const monthlyAccrual = resolveAnnualLeaveMonthlyAccrualDays(
+    startDate,
+    year,
+    joinMonthWorkSummary,
+  );
   const tenureBonus = resolveAnnualLeaveTenureBonus(startDate, year);
   return roundAnnualLeaveHours(monthlyAccrual + tenureBonus);
 }
 
 /** Tổng phép & tồn — luôn tính lại khi import / hiển thị. */
-export function computeAnnualLeaveTotals(row, year = null) {
+export function computeAnnualLeaveTotals(
+  row,
+  year = null,
+  { joinMonthWorkSummary = null } = {},
+) {
   const annual =
     year != null
-      ? resolveAnnualLeaveCurrentYear(row, year)
+      ? resolveAnnualLeaveCurrentYear(row, year, { joinMonthWorkSummary })
       : parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]);
   const bonus = parseAnnualLeaveNumber(
     row[ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV],

@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore, useDeferredValue } from "react";
 import { shouldSkipAnnualLeaveForAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 import {
   buildAttendanceAnnualLeaveDeductionsByMnv,
@@ -6,6 +6,9 @@ import {
   buildAttendanceAnnualLeaveUsageDetailByEmpKey,
 } from "./annualLeaveBalanceLookup";
 import { buildLiveAnnualLeaveBalanceByMnv } from "./annualLeaveDerived";
+import {
+  buildAnnualLeaveJoinMonthWorkSummaryByEmpKey,
+} from "./annualLeavePayrollAccrual";
 import {
   getAnnualLeaveYearSnapshot,
   getAttendanceYearSnapshot,
@@ -93,9 +96,14 @@ export function useAnnualLeaveLiveData(
     yearMonthPrefix = null,
     includeUsageDetail = true,
     includeBalanceMap = true,
+    /** Khi false: chỉ lắng nghe `annualLeave/{year}` — không subscribe điểm danh cả năm. */
+    includeAttendance = true,
   } = {},
 ) {
-  const skipAttendance = !enabled || shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
+  const skipAttendance =
+    !enabled ||
+    !includeAttendance ||
+    shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
 
   const { data: yearData, ready: yearReady } = useAnnualLeaveYearExternal(
     year,
@@ -114,6 +122,8 @@ export function useAnnualLeaveLiveData(
     if (yearMonthPrefix) return { yearMonthPrefix };
     return null;
   }, [throughDateKey, yearMonthPrefix]);
+
+  const deferredAttendanceRoot = useDeferredValue(attendanceRoot);
 
   const attendanceDerived = useMemo(() => {
     if (skipAttendance) {
@@ -141,6 +151,22 @@ export function useAnnualLeaveLiveData(
 
   const deductionsByEmpKey = attendanceDerived.deductionsByEmpKey;
   const attendanceMonthlyByEmpKey = attendanceDerived.attendanceMonthlyByEmpKey;
+
+  const joinMonthWorkSummaryByEmpKey = useMemo(() => {
+    if (skipAttendance || !yearData || !deferredAttendanceRoot) return {};
+    return buildAnnualLeaveJoinMonthWorkSummaryByEmpKey(
+      deferredAttendanceRoot,
+      year,
+      yearData,
+      { attendanceRootPath },
+    );
+  }, [
+    deferredAttendanceRoot,
+    year,
+    yearData,
+    skipAttendance,
+    attendanceRootPath,
+  ]);
 
   const usageDetailByEmpKey = useMemo(
     () =>
@@ -170,6 +196,7 @@ export function useAnnualLeaveLiveData(
             year,
             usageDetailByEmpKey,
             attendanceMonthlyByEmpKey,
+            joinMonthWorkSummaryByEmpKey,
           ),
     [
       yearData,
@@ -179,6 +206,7 @@ export function useAnnualLeaveLiveData(
       year,
       usageDetailByEmpKey,
       attendanceMonthlyByEmpKey,
+      joinMonthWorkSummaryByEmpKey,
     ],
   );
 
@@ -189,6 +217,7 @@ export function useAnnualLeaveLiveData(
     attendanceRoot: skipAttendance ? null : attendanceRoot,
     deductionsByEmpKey,
     attendanceMonthlyByEmpKey,
+    joinMonthWorkSummaryByEmpKey,
     balanceByMnv,
     usageDetailByEmpKey,
     loading,

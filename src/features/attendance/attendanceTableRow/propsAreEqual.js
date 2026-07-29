@@ -31,7 +31,7 @@ export function propsAreEqual(prev, next) {
     prev.isSeasonalAttendance === next.isSeasonalAttendance &&
     prev.isKoreanAttendance === next.isKoreanAttendance &&
     prev.attendanceDateKey === next.attendanceDateKey &&
-    prev.annualLeaveBalanceByMnv === next.annualLeaveBalanceByMnv &&
+    prev.annualLeaveBalance === next.annualLeaveBalance &&
     prev.annualLeaveYear === next.annualLeaveYear &&
     prev.annualLeaveYearData === next.annualLeaveYearData &&
     prev.annualLeaveThroughDateKey === next.annualLeaveThroughDateKey &&

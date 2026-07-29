@@ -54,6 +54,9 @@ export const workforcePayrollSharedVi = {
   shiftEditViaModalHint: "Dùng nút Sửa để chọn ca.",
   annualLeaveBalance: "Phép năm",
   annualLeaveBalanceHint: "Phép còn (BALANCE) — theo MNV.",
+  annualLeaveBalanceFetch: "Lấy phép năm",
+  annualLeaveBalanceToggleHint:
+    "Bấm để tải cột phép năm (BALANCE) khớp điểm danh.",
   holidayDayWorkingHours: "Giờ công ngày lễ (X3.0)",
   payrollOffDayTcHint: "Off + ca ngày: GC+TC gộp; TC ca ngày «-».",
   payrollHolidayDayWorkingHoursHint: "Lễ + ca ngày: GC+TC gộp; TC ca ngày «-».",
@@ -100,6 +103,9 @@ export const workforcePayrollSharedKo = {
   shiftEditViaModalHint: "수정 버튼으로 조 선택.",
   annualLeaveBalance: "연차",
   annualLeaveBalanceHint: "잔여 연차(BALANCE) — 사번 매칭.",
+  annualLeaveBalanceFetch: "연차 조회",
+  annualLeaveBalanceToggleHint:
+    "출근 데이터와 일치하는 연차(BALANCE) 열을 불러옵니다.",
   holidayDayWorkingHours: "공휴일 근무 (×3.0)",
   payrollOffDayTcHint: "휴무+주간: GC+TC 합산. 연장 열 «-».",
   payrollHolidayDayWorkingHoursHint: "공휴+주간: GC+TC 합산. 연장 열 «-».",

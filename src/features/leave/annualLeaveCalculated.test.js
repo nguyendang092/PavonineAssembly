@@ -4,7 +4,9 @@ import {
   completedYearsFromStartWorkingDate,
   computeAnnualLeaveTotals,
   formatAnnualLeaveMonthColumnLabel,
+  isStartWorkingDateInCalendarMonth,
   listAnnualLeaveCalendarYearMonths,
+  monthMeetsHalfStandardWorkDays,
   resolveAnnualLeaveCurrentYear,
   resolveAnnualLeaveMonthlyAccrualDays,
   resolveAnnualLeaveTenureBonus,
@@ -57,6 +59,26 @@ describe("completedYearsFromStartWorkingDate", () => {
   });
 });
 
+describe("monthMeetsHalfStandardWorkDays", () => {
+  it("requires actual work days at least half of standard", () => {
+    expect(monthMeetsHalfStandardWorkDays({ workDays: 11, standardWorkDays: 22 })).toBe(
+      true,
+    );
+    expect(monthMeetsHalfStandardWorkDays({ workDays: 10, standardWorkDays: 22 })).toBe(
+      false,
+    );
+    expect(monthMeetsHalfStandardWorkDays(null)).toBe(false);
+  });
+});
+
+describe("isStartWorkingDateInCalendarMonth", () => {
+  it("matches only the join month in the same year", () => {
+    expect(isStartWorkingDateInCalendarMonth("2026-03-15", 2026, 2)).toBe(true);
+    expect(isStartWorkingDateInCalendarMonth("2026-03-15", 2026, 3)).toBe(false);
+    expect(isStartWorkingDateInCalendarMonth("2026-03-15", 2025, 2)).toBe(false);
+  });
+});
+
 describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -67,8 +89,26 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     vi.setSystemTime(new Date(2026, 6, 24));
 
     expect(resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026)).toBe(7);
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026)).toBe(5);
     expect(resolveAnnualLeaveMonthlyAccrualDays("2026-08-01", 2026)).toBe(0);
+  });
+
+  it("gates join month in current year by half standard work days", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 24));
+
+    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026)).toBe(4);
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026, {
+        workDays: 11,
+        standardWorkDays: 20,
+      }),
+    ).toBe(5);
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026, {
+        workDays: 4,
+        standardWorkDays: 20,
+      }),
+    ).toBe(4);
   });
 
   it("resets accrual for a new calendar year", () => {

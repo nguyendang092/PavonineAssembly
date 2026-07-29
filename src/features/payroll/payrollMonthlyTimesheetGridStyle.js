@@ -7,6 +7,7 @@ import {
   DETAIL_GROUP_KEYS,
   MONTH_DETAIL_COLS_PER_BLOCK,
   MONTHLY_TIMESHEET_STICKY_COL_COUNT,
+  resolveMonthlyDetailGroupAndCol,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
 
 export const PTS_COLORS = {
@@ -155,9 +156,10 @@ export function buildPayrollMonthlyTimesheetExcelBorders({
     layout.officialDetailStart + 1,
   ];
   const isDetailGroupStart = detailGroupStarts.includes(c);
-  const col0InBlock =
-    isDetailCol &&
-    (c - 1 - layout.totalDetailStart) % MONTH_DETAIL_COLS_PER_BLOCK === 0;
+  const { groupIndex: detailGroupIdx, colInBlock } = isDetailCol
+    ? resolveMonthlyDetailGroupAndCol(c - 1 - layout.totalDetailStart)
+    : { groupIndex: 0, colInBlock: 0 };
+  const col0InBlock = isDetailCol && colInBlock === 0;
 
   const isLastSubrow =
     r > headerRowCount &&
@@ -217,7 +219,7 @@ export function resolvePayrollMonthlyTimesheetExcelCellFill({
 
     if (c > daysEnd) {
       const rel = c - 1 - layout.totalDetailStart;
-      const block = Math.floor(rel / MONTH_DETAIL_COLS_PER_BLOCK);
+      const { groupIndex: block } = resolveMonthlyDetailGroupAndCol(rel);
       return getPayrollMonthlyTimesheetDetailGroupHeaderBg(
         DETAIL_GROUP_KEYS[block],
       );
@@ -253,6 +255,6 @@ export function resolvePayrollMonthlyTimesheetExcelCellFill({
   }
 
   const rel = c - 1 - layout.totalDetailStart;
-  const groupIndex = Math.floor(rel / MONTH_DETAIL_COLS_PER_BLOCK);
+  const { groupIndex } = resolveMonthlyDetailGroupAndCol(rel);
   return getPayrollMonthlyTimesheetDetailGroupBodyBg(groupIndex);
 }

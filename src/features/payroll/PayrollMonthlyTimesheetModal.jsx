@@ -41,13 +41,20 @@ import {
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
   buildPayrollMonthlyTimesheetDetailHeaders,
+  buildPayrollMonthlyTimesheetDetailHeadersByGroup,
   DETAIL_GROUP_KEYS,
   MONTH_DETAIL_COLS_PER_BLOCK,
   MONTH_DETAIL_OT_COL_COUNT,
+  MONTH_DETAIL_PHASE_COLS_PER_BLOCK,
+  MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT,
   MONTH_DETAIL_SATS_COL_COUNT,
+  MONTH_DETAIL_TOTAL_COLS_PER_BLOCK,
   MONTH_DETAIL_WORKDAY_COL_COUNT,
+  monthlyDetailBlockColCount,
+  PAYROLL_MONTHLY_DETAIL_COL_WIDTH_PX,
   PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL,
   payrollMonthlyTimesheetTotalColCount,
+  resolveMonthlyDetailGroupAndCol,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
 import {
   payrollMonthlyTimesheetDayBodyBgClass,
@@ -90,7 +97,6 @@ import "./payrollMonthlyTimesheetModal.css";
 /** Cột cố định trái: STT, Họ tên, MNV, BP, Hệ số TC [px]. */
 const STICKY_COL_WIDTHS = [36, 200, 72, 80, 64];
 const MONTH_DAY_COL_WIDTH = 42;
-const MONTH_DETAIL_COL_WIDTH = 45;
 
 /** Chiều cao scroll mỗi khối NV (N dòng × ô ngày) — khớp `.pm-ts-data-cell`. */
 function payrollMonthlyEmpBlockScrollHeight(zoom = 1) {
@@ -232,9 +238,9 @@ function monthDayCellStyle() {
 
 function monthDetailCellStyle() {
   return {
-    width: MONTH_DETAIL_COL_WIDTH,
-    minWidth: MONTH_DETAIL_COL_WIDTH,
-    maxWidth: MONTH_DETAIL_COL_WIDTH,
+    width: PAYROLL_MONTHLY_DETAIL_COL_WIDTH_PX,
+    minWidth: PAYROLL_MONTHLY_DETAIL_COL_WIDTH_PX,
+    maxWidth: PAYROLL_MONTHLY_DETAIL_COL_WIDTH_PX,
     boxSizing: "border-box",
   };
 }
@@ -922,7 +928,8 @@ const PayrollMonthlyTimesheetDetailCells = memo(
     blockStartClass,
   }) {
     return detailValues.map((v, idx) => {
-      const group = Math.floor(idx / MONTH_DETAIL_COLS_PER_BLOCK);
+      const { groupIndex: group, colInBlock } =
+        resolveMonthlyDetailGroupAndCol(idx);
       const groupBg = payrollMonthlyTimesheetDetailGroupBodyClass(group);
       return (
         <td
@@ -932,9 +939,7 @@ const PayrollMonthlyTimesheetDetailCells = memo(
             ...(isLastSub ? { borderBottom: "2px solid #000" } : null),
           }}
           className={`${THIN_BODY_BORDER_CLASS} ${groupBg} ${subrowEdgeClass} ${
-            idx % MONTH_DETAIL_COLS_PER_BLOCK === 0
-              ? STRONG_BORDER_LEFT_CLASS
-              : ""
+            colInBlock === 0 ? STRONG_BORDER_LEFT_CLASS : ""
           } ${blockStartClass} pm-ts-data-cell pm-ts-detail-cell text-center font-bold text-slate-900 dark:text-slate-100`}
         >
           {v}
@@ -1397,6 +1402,9 @@ export default function PayrollMonthlyTimesheetModal({
     shortHoursFilter,
   });
 
+  const needsWorkHoursSummary =
+    workHoursFilter !== PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL;
+
   const presenceFlagsById = useMemo(() => {
     if (!needsPresenceFlags) return null;
     return buildPayrollMonthTimesheetFlagsById({
@@ -1404,9 +1412,11 @@ export default function PayrollMonthlyTimesheetModal({
       chunkByDate,
       sortedIds,
       repById,
+      resolveWorkHours: needsWorkHoursSummary,
     });
   }, [
     needsPresenceFlags,
+    needsWorkHoursSummary,
     monthRange.keys,
     chunkByDate,
     sortedIds,
@@ -1566,10 +1576,11 @@ export default function PayrollMonthlyTimesheetModal({
     timesheetZoomIdx,
   ]);
 
-  const detailHeaders = useMemo(
-    () => buildPayrollMonthlyTimesheetDetailHeaders(tlPage),
+  const detailHeadersByGroup = useMemo(
+    () => buildPayrollMonthlyTimesheetDetailHeadersByGroup(tlPage),
     [tlPage],
   );
+  const detailHeaders = detailHeadersByGroup.total;
 
   const buildExportIds = useCallback(
     (exportDepartments) =>
@@ -1629,7 +1640,7 @@ export default function PayrollMonthlyTimesheetModal({
           filteredIds: exportIds,
           repById,
           summaryById: monthlySummaryById,
-          detailHeaders,
+          detailHeaders: detailHeadersByGroup,
           koreanTimesheetRules: isKoreanTimesheetSource,
         });
         const blob = new Blob([buf], {
@@ -2043,7 +2054,7 @@ export default function PayrollMonthlyTimesheetModal({
                           )}
                         </th>
                         <th
-                          colSpan={MONTH_DETAIL_COLS_PER_BLOCK}
+                          colSpan={MONTH_DETAIL_TOTAL_COLS_PER_BLOCK}
                           style={monthHeaderStickyStyle(headerRowTops.row1, 90)}
                           className={`${THIN_HEAD_BORDER_CLASS} ${STRONG_BORDER_LEFT_CLASS} pm-ts-banner-head bg-slate-200 px-1 py-1.5 text-center font-extrabold text-slate-900 dark:bg-slate-700 dark:text-slate-100`}
                         >
@@ -2053,7 +2064,7 @@ export default function PayrollMonthlyTimesheetModal({
                           )}
                         </th>
                         <th
-                          colSpan={MONTH_DETAIL_COLS_PER_BLOCK}
+                          colSpan={MONTH_DETAIL_PHASE_COLS_PER_BLOCK}
                           style={monthHeaderStickyStyle(headerRowTops.row1, 90)}
                           className={`${THIN_HEAD_BORDER_CLASS} ${STRONG_BORDER_LEFT_CLASS} pm-ts-banner-head bg-slate-200 px-1 py-1.5 text-center font-extrabold text-slate-900 dark:bg-slate-700 dark:text-slate-100`}
                         >
@@ -2063,7 +2074,7 @@ export default function PayrollMonthlyTimesheetModal({
                           )}
                         </th>
                         <th
-                          colSpan={MONTH_DETAIL_COLS_PER_BLOCK}
+                          colSpan={MONTH_DETAIL_PHASE_COLS_PER_BLOCK}
                           style={monthHeaderStickyStyle(headerRowTops.row1, 90)}
                           className={`${THIN_HEAD_BORDER_CLASS} ${STRONG_BORDER_LEFT_CLASS} pm-ts-banner-head bg-slate-200 px-1 py-1.5 text-center font-extrabold text-slate-900 dark:bg-slate-700 dark:text-slate-100`}
                         >
@@ -2104,10 +2115,14 @@ export default function PayrollMonthlyTimesheetModal({
                             payrollMonthlyTimesheetDetailGroupHeaderClass(
                               groupKey,
                             );
+                          const isTotal = groupKey === "total";
+                          const workdayColSpan = isTotal
+                            ? MONTH_DETAIL_WORKDAY_COL_COUNT
+                            : MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT;
                           return [
                             <th
                               key={`${groupKey}-workday`}
-                              colSpan={MONTH_DETAIL_WORKDAY_COL_COUNT}
+                              colSpan={workdayColSpan}
                               style={monthHeaderStickyStyle(
                                 headerRowTops.row2,
                                 85,
@@ -2149,8 +2164,11 @@ export default function PayrollMonthlyTimesheetModal({
                         })}
                       </tr>
                       <tr>
-                        {DETAIL_GROUP_KEYS.map((groupKey) =>
-                          detailHeaders.map((h, idx) => (
+                        {DETAIL_GROUP_KEYS.map((groupKey) => {
+                          const headers =
+                            detailHeadersByGroup[groupKey] ??
+                            detailHeadersByGroup.total;
+                          return headers.map((h, idx) => (
                             <th
                               key={`${groupKey}-${h}`}
                               style={{
@@ -2164,8 +2182,8 @@ export default function PayrollMonthlyTimesheetModal({
                             >
                               {h}
                             </th>
-                          )),
-                        )}
+                          ));
+                        })}
                       </tr>
                     </thead>
                     {shouldVirtualizeTimesheetBody ? (

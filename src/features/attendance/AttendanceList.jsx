@@ -34,9 +34,6 @@ import { useAttendanceListHandlers } from "./useAttendanceListHandlers";
 import { useAttendanceListSetup } from "./useAttendanceListSetup";
 import { useAttendanceListI18n } from "./useAttendanceListI18n";
 import { useAttendanceCompareEmployees } from "./useAttendanceCompareEmployees";
-import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
-import { useAnnualLeaveYearReconcile } from "@/features/leave/useAnnualLeaveYearReconcile";
-import { canManageAnnualLeave } from "@/config/authRoles";
 import AttendanceCompareEmployeesModal from "./AttendanceCompareEmployeesModal";
 import {
   AttendanceListToolbarBranchContext,
@@ -53,6 +50,7 @@ import { getTodayDateKeyLocal } from "@/utils/dateKey";
 import { db, get, ref } from "@/services/firebase";
 import {
   isKoreanAttendanceRoot,
+  isSeasonalAttendanceRoot,
   KOREAN_ATTENDANCE_ROOT,
 } from "./attendanceSeasonalStt";
 
@@ -216,19 +214,18 @@ const AttendanceList = memo(function AttendanceList({
     selectedDate,
     attendanceRootPath,
     tl,
+    enabled: offHolidayDropdownOpen || offDaysModalOpen,
   });
 
   const { employees, employeesRef, isOffDay, isHolidayDay, isCompensatoryDay } =
     useAttendanceDayFirebase(attendanceRootPath, selectedDate);
 
-  const annualLeaveSyncYear = annualLeaveYearFromDateKey(selectedDate);
-  const canManageAnnualLeaveRecords = canManageAnnualLeave(user, userRole);
-  useAnnualLeaveYearReconcile({
-    attendanceRootPath,
-    year: annualLeaveSyncYear,
-    userEmail: user?.email ?? "",
-    enabled: canManageAnnualLeaveRecords,
-  });
+  const [annualLeaveBalanceEnabled, setAnnualLeaveBalanceEnabled] =
+    useState(false);
+
+  useEffect(() => {
+    setAnnualLeaveBalanceEnabled(false);
+  }, [selectedDate, attendanceRootPath]);
 
   const {
     normalizeDepartment,
@@ -601,6 +598,11 @@ const AttendanceList = memo(function AttendanceList({
           }
         : null,
       tlPayrollPage,
+      annualLeaveBalanceEnabled,
+      setAnnualLeaveBalanceEnabled,
+      showAnnualLeaveBalanceToggle:
+        !isSeasonalAttendanceRoot(attendanceRootPath) &&
+        !isKoreanAttendanceRoot(attendanceRootPath),
     }),
     [
       navbarMobileMenuOpen,
@@ -680,6 +682,8 @@ const AttendanceList = memo(function AttendanceList({
       handlePrintAttendanceList,
       showKoreanMonthlyTimesheet,
       tlPayrollPage,
+      annualLeaveBalanceEnabled,
+      setAnnualLeaveBalanceEnabled,
     ],
   );
 
@@ -737,6 +741,7 @@ const AttendanceList = memo(function AttendanceList({
       handleDelete,
       isOffDay,
       isHolidayDay,
+      annualLeaveBalanceEnabled,
     }),
     [
       showEmployeeModal,
@@ -771,6 +776,7 @@ const AttendanceList = memo(function AttendanceList({
       handleDelete,
       isOffDay,
       isHolidayDay,
+      annualLeaveBalanceEnabled,
     ],
   );
 

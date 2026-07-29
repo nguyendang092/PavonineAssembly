@@ -74,6 +74,9 @@ function AttendanceToolbarSearchCluster() {
     onKoreanExportOneDay,
     onKoreanExportRange,
     tlPayrollPage,
+    annualLeaveBalanceEnabled,
+    setAnnualLeaveBalanceEnabled,
+    showAnnualLeaveBalanceToggle,
   } = useAttendanceListToolbarBranch();
 
   return (
@@ -88,6 +91,36 @@ function AttendanceToolbarSearchCluster() {
           selectedDate={selectedDate}
           attendanceRootPath={attendanceRootPath}
         />
+      ) : showAnnualLeaveBalanceToggle ? (
+        <>
+          <button
+            type="button"
+            className={`inline-flex h-8 shrink-0 items-center rounded-md border px-2 text-xs font-semibold transition ${
+              annualLeaveBalanceEnabled
+                ? "border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+            }`}
+            title={t("attendanceList.annualLeaveBalanceToggleHint", {
+              defaultValue: "Bấm để tải cột phép năm (BALANCE) khớp điểm danh.",
+            })}
+            onClick={() => setAnnualLeaveBalanceEnabled((on) => !on)}
+            aria-pressed={annualLeaveBalanceEnabled}
+          >
+            {annualLeaveBalanceEnabled
+              ? t("attendanceList.annualLeaveBalance", {
+                  defaultValue: "Phép năm",
+                })
+              : t("attendanceList.annualLeaveBalanceFetch", {
+                  defaultValue: "Lấy phép năm",
+                })}
+          </button>
+          <AttendanceBuCongNotificationPanel
+            buCongEmployees={buCongEmployees}
+            handleExportBuCongExcel={handleExportBuCongExcel}
+            tl={tl}
+            t={t}
+          />
+        </>
       ) : (
         <AttendanceBuCongNotificationPanel
           buCongEmployees={buCongEmployees}

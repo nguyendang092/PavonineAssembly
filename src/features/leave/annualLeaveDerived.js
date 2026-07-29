@@ -173,7 +173,7 @@ export function computeLiveAnnualLeaveState(
   raw,
   liveAttendanceUsed = 0,
   year = null,
-  { usedFromMonthlySum = null } = {},
+  { usedFromMonthlySum = null, joinMonthWorkSummary = null } = {},
 ) {
   const hrUsed = resolveHrAnnualLeaveUsed(raw);
   const attendanceUsed =
@@ -194,6 +194,7 @@ export function computeLiveAnnualLeaveState(
       [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: used,
     },
     year,
+    { joinMonthWorkSummary },
   );
 
   return {
@@ -204,7 +205,7 @@ export function computeLiveAnnualLeaveState(
     balance: totals[ANNUAL_LEAVE_EMP.BALANCE],
     annualLeaveCurrentYear:
       year != null
-        ? resolveAnnualLeaveCurrentYear(raw, year)
+        ? resolveAnnualLeaveCurrentYear(raw, year, { joinMonthWorkSummary })
         : parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]),
   };
 }
@@ -212,6 +213,23 @@ export function computeLiveAnnualLeaveState(
 function assignBalanceEmpKey(map, empKey, balance) {
   if (!empKey) return;
   map[empKey] = balance;
+}
+
+/**
+ * Map `emp_{mnv}` → BALANCE đã lưu trên Firebase (không quét điểm danh).
+ */
+export function buildStoredAnnualLeaveBalanceByMnv(yearData) {
+  const map = {};
+  if (!yearData || typeof yearData !== "object") return map;
+
+  const indexed = indexAnnualLeaveYearByEmpKey(yearData);
+  for (const [empKey, { raw }] of Object.entries(indexed)) {
+    const balance = parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.BALANCE]);
+    if (Number.isFinite(balance)) {
+      assignBalanceEmpKey(map, empKey, balance);
+    }
+  }
+  return map;
 }
 
 /**
@@ -223,6 +241,7 @@ export function buildLiveAnnualLeaveBalanceByMnv(
   year = null,
   usageDetailByEmpKey = {},
   attendanceMonthlyByEmpKey = {},
+  joinMonthWorkSummaryByEmpKey = {},
 ) {
   const map = {};
   if (!yearData || typeof yearData !== "object") return map;
@@ -246,6 +265,7 @@ export function buildLiveAnnualLeaveBalanceByMnv(
       usedFromMonthlySum ?? (deductionsByEmpKey[empKey] ?? 0);
     const { balance } = computeLiveAnnualLeaveState(raw, liveAtt, year, {
       usedFromMonthlySum,
+      joinMonthWorkSummary: joinMonthWorkSummaryByEmpKey[empKey] ?? null,
     });
     assignBalanceEmpKey(map, empKey, balance);
   }
@@ -260,6 +280,7 @@ export function normalizeAnnualLeaveRowLive(
   deductionsByEmpKey = {},
   year = null,
   monthValues = null,
+  joinMonthWorkSummary = null,
 ) {
   if (!raw || typeof raw !== "object") return null;
   const empKey =
@@ -270,6 +291,7 @@ export function normalizeAnnualLeaveRowLive(
   const monthlyUsed = sumAnnualLeaveMonthlyUsageValues(resolvedMonthValues);
   const state = computeLiveAnnualLeaveState(raw, liveAtt, year, {
     usedFromMonthlySum: monthlyUsed,
+    joinMonthWorkSummary,
   });
 
   return {

@@ -17,11 +17,13 @@ import {
   isPayrollMonthDayCellBeforeJoinWithoutAttendance,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
+  buildPayrollMonthlyTimesheetDetailHeadersByGroup,
   DETAIL_GROUP_KEYS,
   MONTH_DETAIL_COLS_PER_BLOCK,
   MONTH_DETAIL_OT_COL_COUNT,
   MONTH_DETAIL_WORKDAY_COL_COUNT,
   MONTHLY_TIMESHEET_STICKY_COL_COUNT,
+  PAYROLL_MONTHLY_DETAIL_COL_EXCEL_WIDTH,
   payrollMonthlyTimesheetLayoutOffsets,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
 import {
@@ -212,6 +214,10 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   const layout = payrollMonthlyTimesheetLayoutOffsets(days);
   const cols = layout.totalCols;
   const grid = [];
+  const detailHeadersByGroup =
+    detailHeaders && typeof detailHeaders === "object" && detailHeaders.total
+      ? detailHeaders
+      : buildPayrollMonthlyTimesheetDetailHeadersByGroup(tlPage);
 
   const emptyRow = () => Array(cols).fill(null);
   const L = MONTHLY_TIMESHEET_STICKY_COL_COUNT;
@@ -231,8 +237,16 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   });
 
   for (let g = 0; g < DETAIL_GROUP_KEYS.length; g++) {
-    const base = layout.totalDetailStart + g * MONTH_DETAIL_COLS_PER_BLOCK;
-    detailHeaders.forEach((h, idx) => {
+    const groupKey = DETAIL_GROUP_KEYS[g];
+    const headers =
+      detailHeadersByGroup?.[groupKey] ?? detailHeaders ?? [];
+    const base =
+      g === 0
+        ? layout.totalDetailStart
+        : g === 1
+          ? layout.trialDetailStart
+          : layout.officialDetailStart;
+    headers.forEach((h, idx) => {
       header[base + idx] = h;
     });
   }
@@ -435,13 +449,15 @@ export async function writePayrollMonthlyTimesheetWorkbook({
 
   const maxRow = sheet.rowCount;
   const maxCols = grid.reduce((m, row) => Math.max(m, row.length), 0);
+  const { leading, days } = payrollMonthlyTimesheetLayoutOffsets(monthKeys.length);
+  const daysEndCol = leading + days;
   for (let c = 1; c <= maxCols; c += 1) {
     if (c === 1) sheet.getColumn(c).width = 6;
     else if (c === 2) sheet.getColumn(c).width = 24;
     else if (c === 3) sheet.getColumn(c).width = 12;
-    else if (c <= MONTHLY_TIMESHEET_STICKY_COL_COUNT)
-      sheet.getColumn(c).width = 12;
-    else sheet.getColumn(c).width = 6;
+    else if (c <= leading) sheet.getColumn(c).width = 12;
+    else if (c <= daysEndCol) sheet.getColumn(c).width = 6;
+    else sheet.getColumn(c).width = PAYROLL_MONTHLY_DETAIL_COL_EXCEL_WIDTH;
   }
 
   applyPayrollMonthlyTimesheetExcelSheetStyles(sheet, {

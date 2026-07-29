@@ -9,6 +9,8 @@ export function useAttendanceMonthOffDays({
   selectedDate,
   attendanceRootPath,
   tl,
+  /** Khi false: không gọi Firebase cho đến khi bật (vd. mở dropdown OFF). */
+  enabled = false,
 }) {
   const [monthOffAndHoliday, setMonthOffAndHoliday] = useState({
     off: [],
@@ -43,8 +45,9 @@ export function useAttendanceMonthOffDays({
   }, [user, selectedDate, attendanceRootPath]);
 
   useEffect(() => {
+    if (!enabled) return;
     void refreshMonthOffDays();
-  }, [refreshMonthOffDays]);
+  }, [enabled, refreshMonthOffDays]);
 
   const dayOffToolbarButtonTitle = useMemo(() => {
     const hint = tl(
