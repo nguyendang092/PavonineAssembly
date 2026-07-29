@@ -72,7 +72,7 @@ function normalizeAnnualLeaveRow(
   deductionsByMnv,
   year,
   monthValues,
-  joinMonthWorkSummary = null,
+  monthWorkSummaryByYearMonth = null,
 ) {
   return normalizeAnnualLeaveRowLive(
     id,
@@ -80,7 +80,7 @@ function normalizeAnnualLeaveRow(
     deductionsByMnv,
     year,
     monthValues,
-    joinMonthWorkSummary,
+    monthWorkSummaryByYearMonth,
   );
 }
 
@@ -113,18 +113,15 @@ export default function AnnualLeaveManager() {
   useCloseDropdownOnScroll(actionsOpen, actionsPanelRef, closeActionsMenu);
 
   const canManage = canManageAnnualLeave(user, userRole);
-  const [attendanceDataEnabled, setAttendanceDataEnabled] = useState(false);
 
-  const { yearData, deductionsByEmpKey, attendanceMonthlyByEmpKey, joinMonthWorkSummaryByEmpKey, loading } =
+  const { yearData, deductionsByEmpKey, attendanceMonthlyByEmpKey, monthWorkSummaryByEmpKey, loading } =
     useAnnualLeaveLiveData(year, {
       includeUsageDetail: false,
       includeBalanceMap: false,
-      includeAttendance: attendanceDataEnabled,
+      includeAttendance: true,
+      includeJoinMonthAccrual: true,
+      includePayrollMonthAccrual: true,
     });
-
-  useEffect(() => {
-    setAttendanceDataEnabled(false);
-  }, [year]);
 
   useAnnualLeaveYearReconcile({
     attendanceRootPath: "attendance",
@@ -148,8 +145,8 @@ export default function AnnualLeaveManager() {
   const deferredAttendanceMonthlyByEmpKey = useDeferredValue(
     attendanceMonthlyByEmpKey,
   );
-  const deferredJoinMonthWorkSummaryByEmpKey = useDeferredValue(
-    joinMonthWorkSummaryByEmpKey,
+  const deferredMonthWorkSummaryByEmpKey = useDeferredValue(
+    monthWorkSummaryByEmpKey,
   );
 
   const storedMonthlyByEmpKey = useMemo(
@@ -178,7 +175,7 @@ export default function AnnualLeaveManager() {
           deferredDeductionsByEmpKey,
           year,
           monthlyByEmpKey[empKey] ?? EMPTY_MONTH_VALUES,
-          deferredJoinMonthWorkSummaryByEmpKey[empKey] ?? null,
+          deferredMonthWorkSummaryByEmpKey[empKey] ?? null,
         );
         if (row) list.push(row);
       }
@@ -194,7 +191,7 @@ export default function AnnualLeaveManager() {
       );
     });
     return list;
-  }, [deferredYearData, deferredDeductionsByEmpKey, monthlyByEmpKey, deferredJoinMonthWorkSummaryByEmpKey, year]);
+  }, [deferredYearData, deferredDeductionsByEmpKey, monthlyByEmpKey, deferredMonthWorkSummaryByEmpKey, year]);
 
   const deferredSearch = useDeferredValue(search);
   const deferredDeptFilter = useDeferredValue(deptFilter);
@@ -498,29 +495,6 @@ export default function AnnualLeaveManager() {
             <span className="inline-flex h-8 items-center rounded-md border border-blue-200/80 bg-blue-50 px-2 text-xs font-semibold text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200">
               {t("annualLeave.rowCount", { count: displayRowCount })}
             </span>
-
-            <button
-              type="button"
-              className={`inline-flex h-8 items-center rounded-md border px-2 text-xs font-semibold transition ${
-                attendanceDataEnabled
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
-                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
-              }`}
-              onClick={() => setAttendanceDataEnabled(true)}
-              disabled={attendanceDataEnabled}
-              title={t("annualLeave.loadAttendanceHint", {
-                defaultValue:
-                  "Tải dữ liệu điểm danh để cập nhật cột tháng và phép đã dùng live.",
-              })}
-            >
-              {attendanceDataEnabled
-                ? t("annualLeave.attendanceLoaded", {
-                    defaultValue: "Đã tải điểm danh",
-                  })
-                : t("annualLeave.loadAttendance", {
-                    defaultValue: "Tải điểm danh",
-                  })}
-            </button>
 
             <div className="relative shrink-0">
               <button

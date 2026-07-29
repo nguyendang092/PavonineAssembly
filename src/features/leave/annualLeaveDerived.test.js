@@ -142,7 +142,13 @@ describe("annualLeaveDerived", () => {
       [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 2,
     };
     const monthValues = [0, 0, 0, 0, 0, 1, 0.5, 0, 0, 0, 0, 0];
-    const row = normalizeAnnualLeaveRowLive("emp_X", raw, { emp_X: 99 }, 2026, monthValues);
+    const row = normalizeAnnualLeaveRowLive(
+      "emp_X",
+      raw,
+      { emp_X: 99 },
+      2026,
+      monthValues,
+    );
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(1.5);
     expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(7.5);
   });
@@ -156,7 +162,13 @@ describe("annualLeaveDerived", () => {
       [ANNUAL_LEAVE_EMP.START_WORKING_DATE]: "2016-01-10",
       [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 0,
     };
-    const row = normalizeAnnualLeaveRowLive("emp_X", raw, {}, 2026, Array(12).fill(0));
+    const row = normalizeAnnualLeaveRowLive(
+      "emp_X",
+      raw,
+      {},
+      2026,
+      Array(12).fill(0),
+    );
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]).toBe(9);
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(0);
     expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(9);

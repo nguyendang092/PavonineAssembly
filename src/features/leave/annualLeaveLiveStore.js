@@ -17,6 +17,9 @@ const annualLeaveYearEntries = new Map();
 /** @type {Map<string, LiveEntry>} */
 const attendanceYearEntries = new Map();
 
+/** @type {Map<string, LiveEntry>} */
+const attendanceJoinMonthsEntries = new Map();
+
 function createEntry() {
   return {
     data: null,
@@ -61,6 +64,39 @@ function attendanceYearQuery(attendanceRootPath, year, throughDateKey = null) {
 function attachAnnualLeaveYear(entry, year) {
   const yearRef = ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`);
   return onValue(yearRef, (snapshot) => {
+    entry.data = snapshot.val();
+    entry.ready = true;
+    notifyEntry(entry);
+  });
+}
+
+function attendanceJoinMonthsEntryKey(
+  attendanceRootPath,
+  year,
+  yearMonthsKey,
+) {
+  return `${attendanceRootPath}:join:${year}:${yearMonthsKey}`;
+}
+
+function attendanceJoinMonthsQuery(attendanceRootPath, range) {
+  if (!range?.startAt || !range?.endAt) return null;
+  return query(
+    ref(db, attendanceRootPath),
+    orderByKey(),
+    startAt(range.startAt),
+    endAt(`${range.endAt}\uf8ff`),
+  );
+}
+
+function attachAttendanceJoinMonths(entry, attendanceRootPath, range) {
+  const q = attendanceJoinMonthsQuery(attendanceRootPath, range);
+  if (!q) {
+    entry.data = {};
+    entry.ready = true;
+    notifyEntry(entry);
+    return () => {};
+  }
+  return onValue(q, (snapshot) => {
     entry.data = snapshot.val();
     entry.ready = true;
     notifyEntry(entry);
@@ -142,6 +178,56 @@ export function subscribeAnnualLeaveYear(year, onChange) {
     annualLeaveYearEntries,
     key,
     (entry) => attachAnnualLeaveYear(entry, year),
+    onChange,
+  );
+}
+
+export function isAttendanceJoinMonthsSnapshotReady(
+  attendanceRootPath,
+  year,
+  yearMonthsKey,
+) {
+  const key = attendanceJoinMonthsEntryKey(
+    attendanceRootPath,
+    year,
+    yearMonthsKey,
+  );
+  const entry = attendanceJoinMonthsEntries.get(key);
+  return entry?.ready ?? false;
+}
+
+/** @returns {object | null} */
+export function getAttendanceJoinMonthsSnapshot(
+  attendanceRootPath,
+  year,
+  yearMonthsKey,
+) {
+  const key = attendanceJoinMonthsEntryKey(
+    attendanceRootPath,
+    year,
+    yearMonthsKey,
+  );
+  const entry = attendanceJoinMonthsEntries.get(key);
+  return entry?.ready ? entry.data : null;
+}
+
+/** @returns {() => void} */
+export function subscribeAttendanceJoinMonths(
+  attendanceRootPath,
+  year,
+  yearMonthsKey,
+  range,
+  onChange,
+) {
+  const key = attendanceJoinMonthsEntryKey(
+    attendanceRootPath,
+    year,
+    yearMonthsKey,
+  );
+  return subscribeMapEntry(
+    attendanceJoinMonthsEntries,
+    key,
+    (entry) => attachAttendanceJoinMonths(entry, attendanceRootPath, range),
     onChange,
   );
 }

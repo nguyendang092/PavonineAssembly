@@ -7,14 +7,19 @@ import {
 } from "./annualLeaveBalanceLookup";
 import { buildLiveAnnualLeaveBalanceByMnv } from "./annualLeaveDerived";
 import {
-  buildAnnualLeaveJoinMonthWorkSummaryByEmpKey,
+  buildAnnualLeaveMonthWorkSummaryByEmpKey,
+  listAnnualLeaveAccrualYearMonths,
+  resolveAccrualYearMonthsAttendanceRange,
 } from "./annualLeavePayrollAccrual";
 import {
   getAnnualLeaveYearSnapshot,
+  getAttendanceJoinMonthsSnapshot,
   getAttendanceYearSnapshot,
   isAnnualLeaveYearSnapshotReady,
+  isAttendanceJoinMonthsSnapshotReady,
   isAttendanceYearSnapshotReady,
   subscribeAnnualLeaveYear,
+  subscribeAttendanceJoinMonths,
   subscribeAttendanceYear,
 } from "./annualLeaveLiveStore";
 
@@ -81,6 +86,77 @@ function useAttendanceYearExternal(
   return { data, ready };
 }
 
+function useAttendanceJoinMonthsExternal(
+  attendanceRootPath,
+  year,
+  yearMonths,
+  skipJoinMonthAccrual,
+) {
+  const yearMonthsKey = yearMonths.join(",");
+  const range = useMemo(
+    () => resolveAccrualYearMonthsAttendanceRange(yearMonths),
+    [yearMonths],
+  );
+
+  const subscribe = useMemo(() => {
+    if (skipJoinMonthAccrual || !yearMonths.length) {
+      return () => () => {};
+    }
+    return (onChange) =>
+      subscribeAttendanceJoinMonths(
+        attendanceRootPath,
+        year,
+        yearMonthsKey,
+        range,
+        onChange,
+      );
+  }, [
+    attendanceRootPath,
+    year,
+    yearMonthsKey,
+    range,
+    skipJoinMonthAccrual,
+    yearMonths.length,
+  ]);
+
+  const getSnapshot = useMemo(() => {
+    if (skipJoinMonthAccrual || !yearMonths.length) return () => null;
+    return () =>
+      getAttendanceJoinMonthsSnapshot(
+        attendanceRootPath,
+        year,
+        yearMonthsKey,
+      );
+  }, [
+    attendanceRootPath,
+    year,
+    yearMonthsKey,
+    skipJoinMonthAccrual,
+    yearMonths.length,
+  ]);
+
+  const getReady = useMemo(() => {
+    if (skipJoinMonthAccrual || !yearMonths.length) return () => true;
+    return () =>
+      isAttendanceJoinMonthsSnapshotReady(
+        attendanceRootPath,
+        year,
+        yearMonthsKey,
+      );
+  }, [
+    attendanceRootPath,
+    year,
+    yearMonthsKey,
+    skipJoinMonthAccrual,
+    yearMonths.length,
+  ]);
+
+  const data = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const ready = useSyncExternalStore(subscribe, getReady, getReady);
+
+  return { data, ready };
+}
+
 /**
  * Dữ liệu phép năm live — một listener RTDB dùng chung (store) cho cả app.
  * - `throughDateKey`: lũy kế PN đến ngày này (điểm danh / lương).
@@ -98,17 +174,41 @@ export function useAnnualLeaveLiveData(
     includeBalanceMap = true,
     /** Khi false: chỉ lắng nghe `annualLeave/{year}` — không subscribe điểm danh cả năm. */
     includeAttendance = true,
+    /** Tải giờ công các tháng trong kỳ tính phép (lưới tháng giờ công). */
+    includePayrollMonthAccrual = false,
+    /** @deprecated Dùng `includePayrollMonthAccrual`. */
+    includeJoinMonthAccrual = false,
   } = {},
 ) {
+  const includePayrollAccrual =
+    includePayrollMonthAccrual || includeJoinMonthAccrual;
   const skipAttendance =
     !enabled ||
     !includeAttendance ||
+    shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
+  const skipPayrollMonthAccrual =
+    !enabled ||
+    !includePayrollAccrual ||
     shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
 
   const { data: yearData, ready: yearReady } = useAnnualLeaveYearExternal(
     year,
     enabled,
   );
+
+  const accrualYearMonths = useMemo(() => {
+    if (skipPayrollMonthAccrual || !yearReady || !yearData) return [];
+    return listAnnualLeaveAccrualYearMonths(yearData, year);
+  }, [skipPayrollMonthAccrual, yearReady, yearData, year]);
+
+  const { data: payrollMonthAttendanceRoot, ready: payrollMonthAttendanceReady } =
+    useAttendanceJoinMonthsExternal(
+      attendanceRootPath,
+      year,
+      accrualYearMonths,
+      skipPayrollMonthAccrual,
+    );
+
   const { data: attendanceRoot, ready: attendanceReady } =
     useAttendanceYearExternal(
       attendanceRootPath,
@@ -124,6 +224,13 @@ export function useAnnualLeaveLiveData(
   }, [throughDateKey, yearMonthPrefix]);
 
   const deferredAttendanceRoot = useDeferredValue(attendanceRoot);
+  const deferredPayrollMonthAttendanceRoot = useDeferredValue(
+    payrollMonthAttendanceRoot,
+  );
+
+  const payrollRootForMonthAccrual = skipAttendance
+    ? deferredPayrollMonthAttendanceRoot
+    : deferredAttendanceRoot;
 
   const attendanceDerived = useMemo(() => {
     if (skipAttendance) {
@@ -152,19 +259,20 @@ export function useAnnualLeaveLiveData(
   const deductionsByEmpKey = attendanceDerived.deductionsByEmpKey;
   const attendanceMonthlyByEmpKey = attendanceDerived.attendanceMonthlyByEmpKey;
 
-  const joinMonthWorkSummaryByEmpKey = useMemo(() => {
-    if (skipAttendance || !yearData || !deferredAttendanceRoot) return {};
-    return buildAnnualLeaveJoinMonthWorkSummaryByEmpKey(
-      deferredAttendanceRoot,
+  const monthWorkSummaryByEmpKey = useMemo(() => {
+    if (!yearData) return {};
+    const payrollRoot = payrollRootForMonthAccrual;
+    if (!payrollRoot) return {};
+    return buildAnnualLeaveMonthWorkSummaryByEmpKey(
+      payrollRoot,
       year,
       yearData,
       { attendanceRootPath },
     );
   }, [
-    deferredAttendanceRoot,
+    payrollRootForMonthAccrual,
     year,
     yearData,
-    skipAttendance,
     attendanceRootPath,
   ]);
 
@@ -196,7 +304,7 @@ export function useAnnualLeaveLiveData(
             year,
             usageDetailByEmpKey,
             attendanceMonthlyByEmpKey,
-            joinMonthWorkSummaryByEmpKey,
+            monthWorkSummaryByEmpKey,
           ),
     [
       yearData,
@@ -206,18 +314,23 @@ export function useAnnualLeaveLiveData(
       year,
       usageDetailByEmpKey,
       attendanceMonthlyByEmpKey,
-      joinMonthWorkSummaryByEmpKey,
+      monthWorkSummaryByEmpKey,
     ],
   );
 
-  const loading = !yearReady || (!skipAttendance && !attendanceReady);
+  const loading =
+    !yearReady ||
+    (!skipAttendance && !attendanceReady) ||
+    (!skipPayrollMonthAccrual &&
+      accrualYearMonths.length > 0 &&
+      !payrollMonthAttendanceReady);
 
   return {
     yearData,
     attendanceRoot: skipAttendance ? null : attendanceRoot,
     deductionsByEmpKey,
     attendanceMonthlyByEmpKey,
-    joinMonthWorkSummaryByEmpKey,
+    monthWorkSummaryByEmpKey,
     balanceByMnv,
     usageDetailByEmpKey,
     loading,

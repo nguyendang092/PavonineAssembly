@@ -32,7 +32,7 @@ export function resolveAnnualLeaveTenureAsOfDateKey(year) {
   const yearEnd = `${y}-12-31`;
 
   if (todayKey.startsWith(`${y}-`)) return todayKey;
-  if (y < today.getFullYear()) return yearEnd;
+  if (y < today.getFullYear()) return `${y + 1}-01-01`;
   return yearEnd;
 }
 
@@ -88,8 +88,17 @@ export function isStartWorkingDateInCalendarMonth(
   return join.getFullYear() === y && join.getMonth() === m;
 }
 
+/** NV có ngày vào làm thuộc năm lịch `year`. */
+export function isStartWorkingDateInCalendarYear(startWorkingDate, year) {
+  const join = parseAnnualLeaveIsoDate(startWorkingDate);
+  const y = Number(year);
+  if (!join || !Number.isFinite(y)) return false;
+  return join.getFullYear() === y;
+}
+
 /**
- * Tháng vào làm: đủ điều kiện +1 phép khi ngày công thực tế ≥ ½ ngày công chuẩn (giờ công).
+ * Tháng vào làm (NV vào làm trong năm hiện tại): +1 phép khi (từ lưới tháng giờ công, khối TỔNG)
+ * «Tổng ngày công (gồm ngày nghỉ có lương)» ≥ ½ «Ngày thực tế làm việc».
  * @param {{ workDays?: number, standardWorkDays?: number } | null | undefined} summary
  */
 export function monthMeetsHalfStandardWorkDays(summary) {
@@ -101,40 +110,90 @@ export function monthMeetsHalfStandardWorkDays(summary) {
   return work >= standard / 2;
 }
 
-/**
- * Số tháng làm việc trong năm (mỗi tháng +1 phép).
- * Tháng có START WORKING DATE trong năm: +1 chỉ khi đủ ½ ngày công chuẩn (từ giờ công).
- */
-export function resolveAnnualLeaveMonthlyAccrualDays(
+/** Tháng lịch `monthIndex` (0 = Jan) đã kết thúc trước ngày chốt `asOfDateKey`. */
+export function isCalendarMonthCompleteBeforeAsOf(year, monthIndex, asOfDateKey) {
+  const asOf = parseAnnualLeaveIsoDate(asOfDateKey);
+  const y = Number(year);
+  const m = Number(monthIndex);
+  if (!asOf || !Number.isFinite(y) || !Number.isFinite(m)) return false;
+  if (asOf.getFullYear() > y) return true;
+  if (asOf.getFullYear() < y) return false;
+  return asOf.getMonth() > m;
+}
+
+/** Khoảng tháng 0-based (Jan=0) tính +1 phép trong năm `year`. */
+export function resolveAnnualLeaveAccrualMonthRange(
   startWorkingDate,
   year,
-  joinMonthWorkSummary = null,
+  asOfDateKey = null,
 ) {
-  const asOf = resolveAnnualLeaveYearAsOfDateKey(year);
+  const asOf = asOfDateKey ?? resolveAnnualLeaveYearAsOfDateKey(year);
   const y = Number(year);
-  if (!asOf || !Number.isFinite(y)) return 0;
+  if (!asOf || !Number.isFinite(y)) return null;
 
   const join = parseAnnualLeaveIsoDate(startWorkingDate);
   const asOfDate = parseAnnualLeaveIsoDate(asOf);
-  if (!join || !asOfDate) return 0;
-  if (asOfDate.getTime() < join.getTime()) return 0;
+  if (!join || !asOfDate) return null;
+  if (asOfDate.getTime() < join.getTime()) return null;
 
   const yearStart = parseAnnualLeaveIsoDate(`${y}-01-01`);
   const periodStart =
     join.getTime() > yearStart.getTime() ? join : yearStart;
 
-  if (periodStart.getFullYear() > y || asOfDate.getFullYear() < y) return 0;
+  if (periodStart.getFullYear() > y || asOfDate.getFullYear() < y) return null;
 
   const startMonth =
     periodStart.getFullYear() < y ? 0 : periodStart.getMonth();
   const endMonth = asOfDate.getFullYear() > y ? 11 : asOfDate.getMonth();
 
-  if (endMonth < startMonth) return 0;
+  if (endMonth < startMonth) return null;
+  return { startMonth, endMonth };
+}
 
+function resolveMonthWorkSummaryForAccrual(
+  monthWorkSummaryByYearMonth,
+  year,
+  monthIndex,
+) {
+  if (!monthWorkSummaryByYearMonth || typeof monthWorkSummaryByYearMonth !== "object") {
+    return null;
+  }
+  const yearMonth = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+  return monthWorkSummaryByYearMonth[yearMonth] ?? null;
+}
+
+/**
+ * Số tháng +1 phép trong năm.
+ * - NV vào làm trước năm `year`: +1/tháng trong kỳ (kể cả tháng hiện tại).
+ * - NV vào làm trong năm `year`: mỗi tháng cần đủ điều kiện lưới tháng giờ công.
+ * @param {Record<string, { workDays?: number, standardWorkDays?: number }> | null | undefined} monthWorkSummaryByYearMonth
+ */
+export function resolveAnnualLeaveMonthlyAccrualDays(
+  startWorkingDate,
+  year,
+  monthWorkSummaryByYearMonth = null,
+) {
+  const range = resolveAnnualLeaveAccrualMonthRange(startWorkingDate, year);
+  if (!range) return 0;
+
+  const y = Number(year);
+  const requiresPayrollHalfDayCheck = isStartWorkingDateInCalendarYear(
+    startWorkingDate,
+    y,
+  );
   let accrual = 0;
-  for (let monthIndex = startMonth; monthIndex <= endMonth; monthIndex += 1) {
-    if (isStartWorkingDateInCalendarMonth(startWorkingDate, y, monthIndex)) {
-      if (monthMeetsHalfStandardWorkDays(joinMonthWorkSummary)) {
+  for (
+    let monthIndex = range.startMonth;
+    monthIndex <= range.endMonth;
+    monthIndex += 1
+  ) {
+    if (requiresPayrollHalfDayCheck) {
+      const summary = resolveMonthWorkSummaryForAccrual(
+        monthWorkSummaryByYearMonth,
+        y,
+        monthIndex,
+      );
+      if (monthMeetsHalfStandardWorkDays(summary)) {
         accrual += 1;
       }
     } else {
@@ -148,7 +207,7 @@ export function resolveAnnualLeaveMonthlyAccrualDays(
 export function resolveAnnualLeaveCurrentYear(
   row,
   year,
-  { joinMonthWorkSummary = null } = {},
+  { monthWorkSummaryByYearMonth = null } = {},
 ) {
   const startDate = row?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE];
   if (!startDate) {
@@ -160,7 +219,7 @@ export function resolveAnnualLeaveCurrentYear(
   const monthlyAccrual = resolveAnnualLeaveMonthlyAccrualDays(
     startDate,
     year,
-    joinMonthWorkSummary,
+    monthWorkSummaryByYearMonth,
   );
   const tenureBonus = resolveAnnualLeaveTenureBonus(startDate, year);
   return roundAnnualLeaveHours(monthlyAccrual + tenureBonus);
@@ -170,11 +229,11 @@ export function resolveAnnualLeaveCurrentYear(
 export function computeAnnualLeaveTotals(
   row,
   year = null,
-  { joinMonthWorkSummary = null } = {},
+  { monthWorkSummaryByYearMonth = null } = {},
 ) {
   const annual =
     year != null
-      ? resolveAnnualLeaveCurrentYear(row, year, { joinMonthWorkSummary })
+      ? resolveAnnualLeaveCurrentYear(row, year, { monthWorkSummaryByYearMonth })
       : parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]);
   const bonus = parseAnnualLeaveNumber(
     row[ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV],

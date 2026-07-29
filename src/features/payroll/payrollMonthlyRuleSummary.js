@@ -106,7 +106,7 @@ export function isPayrollMonthDayCellBeforeJoinWithoutAttendance(
   return !isPayrollMonthDayOnOrAfterJoin(dateKey, joinDateRaw);
 }
 
-/** Số ngày công chuẩn tháng (trừ CN) từ ngày vào làm; không có ngày vào làm → cả tháng. */
+/** Số ngày công chuẩn từ ngày vào làm (trừ CN) — dùng chốt nghỉ không lương / phép năm. */
 export function countEmployedStandardWorkDaysInMonth(monthKeys, joinDateRaw) {
   let n = 0;
   for (const dk of monthKeys) {
@@ -141,7 +141,8 @@ export function countPhaseCalendarWorkDaysInMonth(
 }
 
 /**
- * Số ngày công chuẩn tháng (trừ Chủ nhật) — dùng chung cho cả 3 khối cột chi tiết.
+ * Số ngày công chuẩn tháng (trừ Chủ nhật) — «Ngày thực tế làm việc» trên lưới tháng.
+ * = số ngày trong tháng − số Chủ nhật (không phụ thuộc ngày vào làm).
  */
 export function countMonthlyStandardWorkDays(monthKeys) {
   return countPhaseCalendarWorkDaysInMonth(monthKeys, "", "", null);
@@ -252,7 +253,7 @@ const HALF_PN_FULL_DAY_WORKED_HOURS = 4;
  * - **THỜI GIAN LÀM VIỆC** (`total`): từ ngày vào làm (nếu có) đến hết tháng.
  * - **THỜI GIAN THỬ VIỆC** (`trial`): có ngày HĐ — ngày từ ngày vào làm đến trước ngày HĐ.
  * - **THỜI GIAN HỢP ĐỒNG** (`official`): từ ngày HĐ; không có ngày HĐ → mặc định toàn bộ (từ ngày vào làm).
- * - **Số ngày công chuẩn** (`standardWorkDays`): cùng một giá trị cả tháng cho cả 3 khối.
+ * - **Ngày thực tế làm việc** (`standardWorkDays`): số ngày tháng − Chủ nhật (cả 3 khối).
  */
 export function buildMonthlyRuleSummary(
   dayChunks,
@@ -265,9 +266,22 @@ export function buildMonthlyRuleSummary(
   const join = normalizeProfileDateKey(joinDate);
   const contract = normalizeProfileDateKey(contractDate);
   const hasContract = Boolean(contract);
-  const standardWorkDaysCount = countEmployedStandardWorkDaysInMonth(
+  const calendarStandardWorkDays = countMonthlyStandardWorkDays(monthKeys);
+  const employedStandardWorkDays = countEmployedStandardWorkDaysInMonth(
     monthKeys,
     join,
+  );
+  const trialStandardWorkDays = countPhaseCalendarWorkDaysInMonth(
+    monthKeys,
+    join,
+    contract,
+    "trial",
+  );
+  const officialStandardWorkDays = countPhaseCalendarWorkDaysInMonth(
+    monthKeys,
+    join,
+    contract,
+    "official",
   );
 
   const createEmptySummary = () => ({
@@ -292,7 +306,7 @@ export function buildMonthlyRuleSummary(
     satsWorkDays: 0,
     /** Ca S2: giờ trong khung 22:00–05:00 (tối đa 8h / ngày). */
     nightShiftWindowHours: 0,
-    standardWorkDays: standardWorkDaysCount,
+    standardWorkDays: calendarStandardWorkDays,
   });
 
   const total = createEmptySummary();
@@ -477,14 +491,34 @@ export function buildMonthlyRuleSummary(
     }
   }
 
-  const finalizeSummary = (out) => {
-    out.workDays = Math.min(out.workDays, out.standardWorkDays);
-    out.unpaidDays = Math.max(0, out.standardWorkDays - out.workDays);
+  const finalizeSummary = (out, capStandardWorkDays) => {
+    out.workDays = Math.min(out.workDays, capStandardWorkDays);
+    out.unpaidDays = Math.max(0, capStandardWorkDays - out.workDays);
   };
-  finalizeSummary(total);
-  finalizeSummary(trial);
-  finalizeSummary(official);
+  finalizeSummary(total, employedStandardWorkDays);
+  finalizeSummary(trial, trialStandardWorkDays);
+  finalizeSummary(official, officialStandardWorkDays);
   return { total, trial, official };
+}
+
+/**
+ * Hai cột khối TỔNG trên lưới tháng giờ công — dùng kiểm tra +1 phép tháng vào làm.
+ * - `standardWorkDays` → «Ngày thực tế làm việc»
+ * - `workDays` → «Tổng ngày công (gồm ngày nghỉ có lương)»
+ */
+export function pickPayrollMonthlyTimesheetTotalWorkColumns(summary) {
+  return {
+    standardWorkDays: Number(summary?.standardWorkDays) || 0,
+    workDays: Number(summary?.workDays) || 0,
+  };
+}
+
+/** +1 phép tháng vào làm khi tổng ngày công ≥ ½ ngày thực tế làm việc (cùng lưới tháng). */
+export function payrollMonthlyJoinMonthMeetsAnnualLeaveAccrual(totalSummary) {
+  const { workDays, standardWorkDays } =
+    pickPayrollMonthlyTimesheetTotalWorkColumns(totalSummary);
+  if (standardWorkDays <= 0) return false;
+  return workDays >= standardWorkDays / 2;
 }
 
 /** Chỉ số cột trong khối chi tiết (`MONTH_DETAIL_COLS_PER_BLOCK`). */

@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   buildMonthlyDetailFlatValues,
   buildMonthlyRuleSummary,
+  countMonthlyStandardWorkDays,
   fmtPayrollMonthlySummaryCell,
   fmtPayrollMonthlySummaryHoursCell,
   isPayrollMonthDayCellBeforeJoinWithoutAttendance,
   isPayrollSaturdayOffWorkDay,
+  payrollMonthlyJoinMonthMeetsAnnualLeaveAccrual,
+  pickPayrollMonthlyTimesheetTotalWorkColumns,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
+import { listCalendarDateKeysForYearMonth } from "@/features/leave/annualLeavePayrollAccrual";
 import {
   MONTH_DETAIL_COLS_PER_BLOCK,
   MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
@@ -14,6 +18,29 @@ import {
 
 /** 2026-01-10 là thứ Bảy. */
 const SAT_OFF_KEY = "2026-01-10";
+
+describe("countMonthlyStandardWorkDays", () => {
+  it("counts month days minus Sundays (full calendar month)", () => {
+    expect(
+      countMonthlyStandardWorkDays(listCalendarDateKeysForYearMonth("2026-02")),
+    ).toBe(24);
+    expect(
+      countMonthlyStandardWorkDays(listCalendarDateKeysForYearMonth("2026-01")),
+    ).toBe(27);
+  });
+});
+
+describe("buildMonthlyRuleSummary — Ngày thực tế làm việc", () => {
+  it("shows full-month standard days even when join date is mid-month", () => {
+    const monthKeys = listCalendarDateKeysForYearMonth("2026-07");
+    const { total } = buildMonthlyRuleSummary(new Map(), monthKeys, "e1", {
+      ngayVaoLam: "2026-07-10",
+    });
+    expect(total.standardWorkDays).toBe(27);
+    expect(total.workDays).toBe(0);
+    expect(total.unpaidDays).toBe(19);
+  });
+});
 
 function makeChunk({ isOffDay, isHolidayDay, isCompensatoryDay, employees }) {
   const byId = new Map();
@@ -641,6 +668,23 @@ describe("buildMonthlyRuleSummary — Tổng ngày công", () => {
     expect(total.standardWorkDays).toBe(3);
     expect(total.workDays).toBe(1);
     expect(total.unpaidDays).toBe(2);
+  });
+});
+
+describe("pickPayrollMonthlyTimesheetTotalWorkColumns", () => {
+  it("maps khối TỔNG → +1 phép khi tổng ngày công ≥ ½ ngày thực tế làm việc", () => {
+    const monthKeys = listCalendarDateKeysForYearMonth("2026-06");
+    const { total } = buildMonthlyRuleSummary(new Map(), monthKeys, "e1", {
+      ngayVaoLam: "2026-06-25",
+    });
+    const cols = pickPayrollMonthlyTimesheetTotalWorkColumns(total);
+
+    expect(cols.standardWorkDays).toBe(countMonthlyStandardWorkDays(monthKeys));
+    expect(cols.workDays).toBe(0);
+    expect(payrollMonthlyJoinMonthMeetsAnnualLeaveAccrual(total)).toBe(false);
+
+    total.workDays = Math.ceil(total.standardWorkDays / 2);
+    expect(payrollMonthlyJoinMonthMeetsAnnualLeaveAccrual(total)).toBe(true);
   });
 });
 

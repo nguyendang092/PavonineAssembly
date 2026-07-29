@@ -11,7 +11,7 @@ import {
   sumAnnualLeaveMonthlyUsageValues,
 } from "./annualLeaveDerived";
 import {
-  buildAnnualLeaveJoinMonthWorkSummaryByEmpKey,
+  buildAnnualLeaveMonthWorkSummaryByEmpKey,
 } from "./annualLeavePayrollAccrual";
 import {
   indexAnnualLeaveYearByEmpKey,
@@ -115,7 +115,7 @@ export async function persistAnnualLeaveYearFromAttendance(
   }
 
   const indexed = indexAnnualLeaveYearByEmpKey(yearData);
-  const joinMonthWorkSummaryByEmpKey = buildAnnualLeaveJoinMonthWorkSummaryByEmpKey(
+  const monthWorkSummaryByEmpKey = buildAnnualLeaveMonthWorkSummaryByEmpKey(
     attendanceRootData,
     year,
     yearData,
@@ -141,7 +141,7 @@ export async function persistAnnualLeaveYearFromAttendance(
       usedFromMonthlySum ?? (deductionsByEmpKey[empKey] ?? 0);
     const state = computeLiveAnnualLeaveState(raw, liveAttendanceUsed, year, {
       usedFromMonthlySum,
-      joinMonthWorkSummary: joinMonthWorkSummaryByEmpKey[empKey] ?? null,
+      monthWorkSummaryByYearMonth: monthWorkSummaryByEmpKey[empKey] ?? null,
     });
 
     if (!needsPersistUpdate(raw, state)) continue;
