@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   useDeferredValue,
+  startTransition,
 } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
@@ -14,14 +15,20 @@ import { canManageAnnualLeave } from "@/config/authRoles";
 import { db, ref, remove, update } from "@/services/firebase";
 import AlertMessage from "@/components/ui/AlertMessage";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
-import HrTablePagination from "@/components/ui/HrTablePagination";
-import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import {
-  ANNUAL_LEAVE_EMP,
-  ANNUAL_LEAVE_META_KEY,
+  filterAnnualLeaveManagerRows,
+  listAnnualLeaveManagerDepartments,
+} from "./annualLeaveManagerFilter";
+import AnnualLeaveManagerTablePanel from "./AnnualLeaveManagerTablePanel";
+import {
   ANNUAL_LEAVE_MANAGER_MIN_YEAR,
 } from "./annualLeaveFields";
-import { normalizeAnnualLeaveRowLive } from "./annualLeaveDerived";
+import { formatAnnualLeaveMonthColumnLabel } from "./annualLeaveCalculated";
+import {
+  buildAnnualLeaveMonthlyUsageByEmpKey,
+  buildStoredMonthlyLeaveUsageByEmpKey,
+  normalizeAnnualLeaveRowLive,
+} from "./annualLeaveDerived";
 import { parseAnnualLeaveExcelFile } from "./annualLeaveExcelImport";
 import { exportAnnualLeaveExcel } from "./annualLeaveExcelExport";
 import { useAnnualLeaveLiveData } from "./useAnnualLeaveLiveData";
@@ -32,12 +39,7 @@ import {
   annualLeaveYearRefPath,
   buildAnnualLeaveMergeUploadUpdates,
 } from "./annualLeaveYearDataOps";
-import AnnualLeaveManagerTableRow from "./AnnualLeaveManagerTableRow";
 import { attendanceListDateForAnnualLeaveYear } from "./annualLeaveCrossLinks";
-import {
-  ANNUAL_LEAVE_TABLE_HEADER_GRADIENT,
-  annualLeaveTableThClass,
-} from "./annualLeaveTableStyles";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
 import { useAttendanceFilterDropdownPlacement } from "@/features/attendance/useAttendanceToolbarDropdownPlacement";
 import { useCloseDropdownOnScroll } from "@/features/attendance/useCloseDropdownOnScroll";
@@ -64,9 +66,11 @@ function listAnnualLeaveManagerYearOptions() {
   );
 }
 
-function normalizeAnnualLeaveRow(id, raw, deductionsByMnv) {
-  return normalizeAnnualLeaveRowLive(id, raw, deductionsByMnv);
+function normalizeAnnualLeaveRow(id, raw, deductionsByMnv, year, monthValues) {
+  return normalizeAnnualLeaveRowLive(id, raw, deductionsByMnv, year, monthValues);
 }
+
+const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
 
 export default function AnnualLeaveManager() {
   const { t } = useTranslation();
@@ -96,7 +100,7 @@ export default function AnnualLeaveManager() {
 
   const canManage = canManageAnnualLeave(user, userRole);
 
-  const { yearData, deductionsByEmpKey, loading } =
+  const { yearData, deductionsByEmpKey, attendanceMonthlyByEmpKey, loading } =
     useAnnualLeaveLiveData(year, {
       includeUsageDetail: false,
       includeBalanceMap: false,
@@ -119,16 +123,39 @@ export default function AnnualLeaveManager() {
     }
   }, [searchParams, setSearchParams]);
 
-  const { rows, meta } = useMemo(() => {
+  const deferredYearData = useDeferredValue(yearData);
+  const deferredDeductionsByEmpKey = useDeferredValue(deductionsByEmpKey);
+  const deferredAttendanceMonthlyByEmpKey = useDeferredValue(
+    attendanceMonthlyByEmpKey,
+  );
+
+  const storedMonthlyByEmpKey = useMemo(
+    () => buildStoredMonthlyLeaveUsageByEmpKey(deferredYearData),
+    [deferredYearData],
+  );
+
+  const { yearMonths, monthlyByEmpKey } = useMemo(
+    () =>
+      buildAnnualLeaveMonthlyUsageByEmpKey(
+        year,
+        storedMonthlyByEmpKey,
+        deferredAttendanceMonthlyByEmpKey,
+      ),
+    [deferredAttendanceMonthlyByEmpKey, year, storedMonthlyByEmpKey],
+  );
+
+  const rows = useMemo(() => {
     const list = [];
-    let nextMeta = null;
-    if (yearData && typeof yearData === "object") {
-      if (yearData[ANNUAL_LEAVE_META_KEY]) {
-        nextMeta = yearData[ANNUAL_LEAVE_META_KEY];
-      }
-      const indexed = indexAnnualLeaveYearByEmpKey(yearData);
+    if (deferredYearData && typeof deferredYearData === "object") {
+      const indexed = indexAnnualLeaveYearByEmpKey(deferredYearData);
       for (const [empKey, { raw }] of Object.entries(indexed)) {
-        const row = normalizeAnnualLeaveRow(empKey, raw, deductionsByEmpKey);
+        const row = normalizeAnnualLeaveRow(
+          empKey,
+          raw,
+          deferredDeductionsByEmpKey,
+          year,
+          monthlyByEmpKey[empKey] ?? EMPTY_MONTH_VALUES,
+        );
         if (row) list.push(row);
       }
     }
@@ -142,14 +169,22 @@ export default function AnnualLeaveManager() {
         { numeric: true },
       );
     });
-    return { rows: list, meta: nextMeta };
-  }, [yearData, deductionsByEmpKey]);
+    return list;
+  }, [deferredYearData, deferredDeductionsByEmpKey, monthlyByEmpKey, year]);
 
   const deferredSearch = useDeferredValue(search);
+  const deferredDeptFilter = useDeferredValue(deptFilter);
+  const filterPending =
+    search !== deferredSearch || deptFilter !== deferredDeptFilter;
 
   const detailThroughDateKey = useMemo(
     () => attendanceListDateForAnnualLeaveYear(year),
     [year],
+  );
+
+  const monthColumnLabels = useMemo(
+    () => yearMonths.map(formatAnnualLeaveMonthColumnLabel),
+    [yearMonths],
   );
 
   useEffect(() => {
@@ -183,31 +218,28 @@ export default function AnnualLeaveManager() {
     };
   }, [actionsOpen]);
 
-  const departments = useMemo(() => {
-    const set = new Set();
-    rows.forEach((r) => {
-      const d = r[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT];
-      if (d) set.add(String(d));
-    });
-    return Array.from(set).sort();
-  }, [rows]);
+  const departments = useMemo(
+    () => listAnnualLeaveManagerDepartments(rows),
+    [rows],
+  );
 
-  const filteredRows = useMemo(() => {
-    const q = deferredSearch.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (deptFilter && r[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] !== deptFilter) {
-        return false;
-      }
-      if (!q) return true;
-      const name = String(r[ANNUAL_LEAVE_EMP.FULL_NAME] ?? "").toLowerCase();
-      const mnv = String(r[ANNUAL_LEAVE_EMP.MNV_PREFIX] ?? "").trim();
-      return name.includes(q) || mnv.includes(q);
-    });
-  }, [rows, deferredSearch, deptFilter]);
+  const displayRowCount = useMemo(
+    () =>
+      filterAnnualLeaveManagerRows(rows, {
+        search: deferredSearch,
+        deptFilter: deferredDeptFilter,
+      }).length,
+    [rows, deferredSearch, deferredDeptFilter],
+  );
 
-  const tablePagination = useHrTablePagination(filteredRows, {
-    resetDeps: [year, deferredSearch, deptFilter],
-  });
+  const handleSearchChange = useCallback((event) => {
+    setSearch(event.target.value);
+  }, []);
+
+  const handleDeptFilterChange = useCallback((event) => {
+    const value = event.target.value;
+    startTransition(() => setDeptFilter(value));
+  }, []);
 
   const handleRecalculate = useCallback(async () => {
     if (!canManage || syncing) return;
@@ -247,7 +279,7 @@ export default function AnnualLeaveManager() {
 
       setUploading(true);
       try {
-        const { records, errors } = await parseAnnualLeaveExcelFile(file);
+        const { records, errors } = await parseAnnualLeaveExcelFile(file, { year });
         if (errors.length > 0 && records.length === 0) {
           setAlert({ show: true, type: "error", message: errors.join(" ") });
           return;
@@ -330,7 +362,14 @@ export default function AnnualLeaveManager() {
 
   const handleExport = useCallback(async () => {
     try {
-      const buffer = await exportAnnualLeaveExcel(filteredRows, year);
+      const exportRows = filterAnnualLeaveManagerRows(rows, {
+        search,
+        deptFilter,
+      });
+      const buffer = await exportAnnualLeaveExcel(exportRows, year, {
+        monthColumnLabels,
+        monthlyByEmpKey,
+      });
       const blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
@@ -347,7 +386,7 @@ export default function AnnualLeaveManager() {
         message: err?.message || t("annualLeave.exportError"),
       });
     }
-  }, [filteredRows, year, t]);
+  }, [rows, search, deptFilter, year, t, monthColumnLabels, monthlyByEmpKey]);
 
   const yearOptions = useMemo(() => listAnnualLeaveManagerYearOptions(), []);
 
@@ -375,13 +414,6 @@ export default function AnnualLeaveManager() {
             <h1 className="text-sm font-bold uppercase leading-snug tracking-wide text-[#1e293b] md:text-base dark:text-slate-100">
               {t("annualLeave.title")}
             </h1>
-            {meta?.updatedAt ? (
-              <p className="mt-0 hidden text-[10px] leading-snug text-slate-500 md:mt-0.5 md:block md:text-[11px]">
-                {t("annualLeave.lastUpdated")}:{" "}
-                {new Date(meta.updatedAt).toLocaleString()}
-                {meta.updatedBy ? ` · ${meta.updatedBy}` : ""}
-              </p>
-            ) : null}
           </div>
         </div>
 
@@ -419,13 +451,13 @@ export default function AnnualLeaveManager() {
               placeholder={t("annualLeave.searchPlaceholder")}
               className="h-8 w-full min-w-0 rounded-md border px-2 text-sm focus:ring-2 focus:ring-blue-200 sm:w-44 dark:border-slate-600 dark:bg-slate-900"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
             />
 
             <select
               className="h-8 max-w-full rounded-md border bg-white px-2 text-xs font-medium dark:border-slate-600 dark:bg-slate-900 sm:max-w-[11rem]"
               value={deptFilter}
-              onChange={(e) => setDeptFilter(e.target.value)}
+              onChange={handleDeptFilterChange}
             >
               <option value="">{t("annualLeave.allDepartments")}</option>
               {departments.map((d) => (
@@ -438,7 +470,7 @@ export default function AnnualLeaveManager() {
 
           <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto">
             <span className="inline-flex h-8 items-center rounded-md border border-blue-200/80 bg-blue-50 px-2 text-xs font-semibold text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200">
-              {t("annualLeave.rowCount", { count: filteredRows.length })}
+              {t("annualLeave.rowCount", { count: displayRowCount })}
             </span>
 
             <div className="relative shrink-0">
@@ -566,7 +598,7 @@ export default function AnnualLeaveManager() {
                             setActionsOpen(false);
                             handleExport();
                           }}
-                          disabled={filteredRows.length === 0}
+                          disabled={rows.length === 0}
                         >
                           <span className="shrink-0 text-lg" aria-hidden>
                             📥
@@ -592,114 +624,18 @@ export default function AnnualLeaveManager() {
             aria-hidden="true"
           />
         ) : (
-          <div className="annual-leave-table-compact min-h-0 w-full max-w-none flex-1 rounded-md bg-white shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-            <div className="annual-leave-table-scroll w-full min-w-0 max-w-full">
-              <table className="annual-leave-table w-full max-w-none table-fixed border-collapse">
-                <colgroup>
-                  <col className="annual-leave-col-no" />
-                  <col className="annual-leave-col-code" />
-                  <col className="annual-leave-col-code" />
-                  <col className="annual-leave-name" />
-                  <col />
-                  <col />
-                  <col />
-                  <col />
-                  <col />
-                  <col />
-                  <col />
-                  <col />
-                  <col />
-                  <col className="annual-leave-col-detail" />
-                </colgroup>
-                <thead className="sticky top-0 z-20">
-                  <tr style={{ background: ANNUAL_LEAVE_TABLE_HEADER_GRADIENT }}>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      No
-                    </th>
-                    <th colSpan={2} className={annualLeaveTableThClass}>
-                      EMPL. CODE
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      Full Name
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      Date of Birth
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      SUB-DEPARTMENT
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      START WORKING DATE
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      ANNUAL LEAVE IN CURRENT YEAR
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      BONUS ANNUAL LEAVE (Environment)
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      Compensatory day off NGHỈ BÙ
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      TOTAL ANNUAL LEAVE
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      ANNUAL LEAVE USED
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      BALANCE
-                    </th>
-                    <th rowSpan={2} className={annualLeaveTableThClass}>
-                      {t("annualLeave.detailColumn", {
-                        defaultValue: "DETAIL",
-                      })}
-                    </th>
-                  </tr>
-                  <tr style={{ background: ANNUAL_LEAVE_TABLE_HEADER_GRADIENT }}>
-                    <th className={annualLeaveTableThClass}>MNV</th>
-                    <th className={annualLeaveTableThClass}>MVT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRows.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={14}
-                        className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400"
-                      >
-                        {t("annualLeave.noData")}
-                      </td>
-                    </tr>
-                  ) : (
-                    tablePagination.pagedItems.map((row, localIdx) => (
-                      <AnnualLeaveManagerTableRow
-                        key={row.id}
-                        row={row}
-                        index={tablePagination.rowIndexOffset + localIdx}
-                        year={year}
-                        throughDateKey={detailThroughDateKey}
-                      />
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        <div className="annual-leave-pagination shrink-0">
-          <HrTablePagination
-            rangeStart={tablePagination.rangeStart}
-            rangeEnd={tablePagination.rangeEnd}
-            totalItems={tablePagination.totalItems}
-            page={tablePagination.page}
-            totalPages={tablePagination.totalPages}
-            pageNumbers={tablePagination.pageNumbers}
-            pageSize={tablePagination.pageSize}
-            onPageChange={tablePagination.setPage}
-            onPageSizeChange={tablePagination.setPageSize}
+          <AnnualLeaveManagerTablePanel
+            rows={rows}
+            monthlyByEmpKey={monthlyByEmpKey}
+            search={deferredSearch}
+            deptFilter={deferredDeptFilter}
+            year={year}
+            monthColumnLabels={monthColumnLabels}
+            detailThroughDateKey={detailThroughDateKey}
+            filterPending={filterPending}
+            t={t}
           />
-        </div>
+        )}
       </div>
     </AttendanceHrPageShell>
   );

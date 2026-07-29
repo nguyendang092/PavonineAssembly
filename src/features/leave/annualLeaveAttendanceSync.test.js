@@ -100,8 +100,10 @@ describe("applyAnnualLeaveDeductionDelta", () => {
     expect(mockUpdate).toHaveBeenCalledWith(
       "annualLeave/2026/emp_12",
       expect.objectContaining({
-        [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 2,
-        [ANNUAL_LEAVE_EMP.BALANCE]: 10,
+        [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 0,
+        [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: 1,
+        [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 1,
+        [ANNUAL_LEAVE_EMP.BALANCE]: 11,
       }),
     );
   });

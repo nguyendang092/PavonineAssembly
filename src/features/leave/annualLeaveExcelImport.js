@@ -1,7 +1,16 @@
 import * as XLSX from "@e965/xlsx";
 import { annualLeaveFirebaseKeyForMnv } from "./annualLeaveEmpKey";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
-import { computeAnnualLeaveTotals, parseAnnualLeaveNumber } from "./annualLeaveCalculated";
+import {
+  computeAnnualLeaveTotals,
+  parseAnnualLeaveNumber,
+  resolveAnnualLeaveCurrentYear,
+} from "./annualLeaveCalculated";
+import { sumAnnualLeaveMonthlyUsageValues } from "./annualLeaveDerived";
+import {
+  ANNUAL_LEAVE_EXCEL_COL,
+  isAnnualLeaveExcelMonthHeader,
+} from "./annualLeaveExcelTemplate";
 
 function trimCell(value) {
   return value === undefined || value === null ? "" : String(value).trim();
@@ -69,9 +78,9 @@ function parseExcelDate(value, workbook) {
       const day = +dmyText[1];
       const mon = monthNames[dmyText[2].toLowerCase()];
       if (mon) {
-        let year = +dmyText[3];
-        if (year < 100) year = year >= 70 ? 1900 + year : 2000 + year;
-        return fmt(year, mon, day);
+        let yr = +dmyText[3];
+        if (yr < 100) yr = yr >= 70 ? 1900 + yr : 2000 + yr;
+        return fmt(yr, mon, day);
       }
     }
   }
@@ -79,65 +88,141 @@ function parseExcelDate(value, workbook) {
   return "";
 }
 
-function findAnnualLeaveHeaderLayout(rows) {
-  const scanMax = Math.min(rows.length, 8);
+function resolveEmplCodeColumns(norms) {
+  const emplIdx = norms.findIndex((h) => h.includes("empl") && h.includes("code"));
+  if (emplIdx >= 0) {
+    return { mnvPrefix: emplIdx, mnvSuffix: emplIdx + 1 };
+  }
+  const mnvIdx = norms.findIndex((h) => h === "mnv");
+  const mvtIdx = norms.findIndex((h) => h === "mvt");
+  if (mnvIdx >= 0) {
+    return { mnvPrefix: mnvIdx, mnvSuffix: mvtIdx >= 0 ? mvtIdx : mnvIdx + 1 };
+  }
+  const codeIdx = norms.findIndex((h) => h.includes("code"));
+  if (codeIdx >= 0) {
+    return { mnvPrefix: codeIdx, mnvSuffix: codeIdx + 1 };
+  }
+  return { mnvPrefix: -1, mnvSuffix: -1 };
+}
+
+function findColumnByNorms(norms, matchers) {
+  for (const match of matchers) {
+    const idx = norms.findIndex(match);
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function isLegacyBonusHeader(norm) {
+  return norm.includes("bonus") && norm.includes("environment");
+}
+
+function isLegacyCompensatoryHeader(norm) {
+  return norm.includes("compensatory") || norm.includes("nghi bu");
+}
+
+function findMonthColumnIndices(headerNorms, year) {
+  if (!year) return [];
+
+  const indices = [];
+  headerNorms.forEach((norm, idx) => {
+    if (isAnnualLeaveExcelMonthHeader(norm, year)) indices.push(idx);
+  });
+  if (indices.length === 12) return indices;
+
+  const balanceIdx = headerNorms.findIndex(
+    (h) => h === "balance" || h.includes("ton phep"),
+  );
+  if (balanceIdx >= 0) {
+    return Array.from(
+      { length: 12 },
+      (_, i) => balanceIdx + 1 + i,
+    );
+  }
+
+  return indices;
+}
+
+function parseAnnualLeaveExcelMonthCell(value) {
+  const text = trimCell(value);
+  if (!text || text === "-") return 0;
+  return parseAnnualLeaveNumber(value);
+}
+
+export function readMonthlyLeaveUsageFromRow(row, monthIndices) {
+  if (!Array.isArray(monthIndices) || monthIndices.length !== 12) return null;
+  return monthIndices.map((idx) => parseAnnualLeaveExcelMonthCell(row[idx]));
+}
+
+function parseOptionalAnnualLeaveNumber(row, colIndex) {
+  if (colIndex < 0) return null;
+  const text = trimCell(row[colIndex]);
+  if (!text || text === "-") return null;
+  return parseAnnualLeaveNumber(row[colIndex]);
+}
+
+function findAnnualLeaveHeaderLayout(rows, year = null) {
+  const scanMax = Math.min(rows.length, 10);
   for (let r = 0; r < scanMax; r++) {
     const row = rows[r] || [];
     const norms = row.map((c) => normalizeHeader(c));
-    const fullNameIdx = norms.findIndex(
-      (h) => h.includes("full name") || h === "ho va ten" || h.includes("họ tên"),
-    );
+    const fullNameIdx = findColumnByNorms(norms, [
+      (h) => h.includes("full name"),
+      (h) => h === "ho va ten",
+      (h) => h.includes("ho ten"),
+    ]);
     if (fullNameIdx < 0) continue;
 
-    const col = {
-      no: norms.findIndex((h) => h === "no" || h === "stt"),
-      mnvPrefix: -1,
-      mnvSuffix: -1,
-      fullName: fullNameIdx,
-      dateOfBirth: norms.findIndex(
-        (h) => h.includes("date of birth") || h.includes("ngay sinh"),
-      ),
-      subDepartment: norms.findIndex(
-        (h) =>
-          h.includes("sub-department") ||
-          h.includes("sub department") ||
-          h.includes("bo phan"),
-      ),
-      startWorkingDate: norms.findIndex(
-        (h) => h.includes("start working") || h.includes("ngay vao"),
-      ),
-      annualLeave: norms.findIndex(
-        (h) =>
-          h.includes("annual leave in current") ||
-          (h.includes("annual leave") && h.includes("current")) ||
-          h.includes("phep nam"),
-      ),
-      bonusEnv: norms.findIndex(
-        (h) => h.includes("bonus") && h.includes("environment"),
-      ),
-      compensatory: norms.findIndex(
-        (h) => h.includes("compensatory") || h.includes("nghi bu"),
-      ),
-      totalLeave: norms.findIndex((h) => h.includes("total annual leave")),
-      used: norms.findIndex(
-        (h) => h.includes("annual leave used") || h.includes("phep da dung"),
-      ),
-      balance: norms.findIndex((h) => h === "balance" || h.includes("ton phep")),
-    };
-
-    const emplIdx = norms.findIndex((h) => h.includes("empl") && h.includes("code"));
-    if (emplIdx >= 0) {
-      col.mnvPrefix = emplIdx;
-      col.mnvSuffix = emplIdx + 1;
-    } else {
-      const codeIdx = norms.findIndex((h) => h.includes("code") || h === "mnv");
-      if (codeIdx >= 0) {
-        col.mnvPrefix = codeIdx;
-        col.mnvSuffix = codeIdx + 1;
+    const codeCols = resolveEmplCodeColumns(norms);
+    let dataStartRow = r + 1;
+    const subRow = rows[r + 1] || [];
+    const subNorms = subRow.map((c) => normalizeHeader(c));
+    if (subNorms.includes("mnv") && subNorms.includes("mvt")) {
+      dataStartRow = r + 2;
+      if (codeCols.mnvPrefix < 0) {
+        codeCols.mnvPrefix = subNorms.indexOf("mnv");
+        codeCols.mnvSuffix = subNorms.indexOf("mvt");
       }
     }
 
-    return { headerRowIndex: r, col };
+    const col = {
+      no: findColumnByNorms(norms, [(h) => h === "no", (h) => h === "stt"]),
+      ...codeCols,
+      fullName: fullNameIdx,
+      dateOfBirth: findColumnByNorms(norms, [
+        (h) => h.includes("date of birth"),
+        (h) => h.includes("ngay sinh"),
+      ]),
+      subDepartment: findColumnByNorms(norms, [
+        (h) => h.includes("sub-department"),
+        (h) => h.includes("sub department"),
+        (h) => h.includes("bo phan"),
+      ]),
+      startWorkingDate: findColumnByNorms(norms, [
+        (h) => h.includes("start working"),
+        (h) => h.includes("ngay vao"),
+      ]),
+      annualLeave: findColumnByNorms(norms, [
+        (h) => h.includes("annual leave in current"),
+        (h) => h.includes("annual leave in current year"),
+        (h) =>
+          h.includes("annual leave") &&
+          h.includes("current") &&
+          !h.includes("used"),
+        (h) => h.includes("phep nam"),
+      ]),
+      used: findColumnByNorms(norms, [
+        (h) => h.includes("annual leave used"),
+        (h) => h.includes("phep da dung"),
+      ]),
+      balance: findColumnByNorms(norms, [
+        (h) => h === "balance",
+        (h) => h.includes("ton phep"),
+      ]),
+      monthIndices: findMonthColumnIndices(norms, year),
+    };
+
+    return { headerRowIndex: r, dataStartRow, col, year };
   }
   return null;
 }
@@ -146,11 +231,19 @@ function rowIsEmpty(cells) {
   return !cells.some((c) => trimCell(c) !== "");
 }
 
+/** Phép gốc từ Excel — thâm niên được cộng khi hiển thị. */
+export function resolveImportedAnnualLeaveBase(importedValue) {
+  return parseAnnualLeaveNumber(importedValue);
+}
+
 /**
- * Đọc file Excel phép năm — sheet đầu tiên, header như form HR.
+ * Đọc file Excel phép năm — template mới (2 hàng header, 12 cột tháng read-only).
+ * @param {File} file
+ * @param {{ year?: number|null }} [options]
  * @returns {Promise<{ records: object[], errors: string[] }>}
  */
-export async function parseAnnualLeaveExcelFile(file) {
+export async function parseAnnualLeaveExcelFile(file, options = {}) {
+  const { year = null } = options;
   const errors = [];
   const data = await file.arrayBuffer();
   const workbook = XLSX.read(data, { type: "array", cellDates: false });
@@ -161,28 +254,32 @@ export async function parseAnnualLeaveExcelFile(file) {
 
   const sheet = workbook.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-  const layout = findAnnualLeaveHeaderLayout(rows);
+  const layout = findAnnualLeaveHeaderLayout(rows, year);
   if (!layout) {
     return {
       records: [],
       errors: [
-        "Không nhận diện được header (cần cột Full Name / ANNUAL LEAVE…).",
+        "Không nhận diện được header template mới (cần cột Full Name, ANNUAL LEAVE IN CURRENT YEAR…).",
       ],
     };
   }
 
-  const { headerRowIndex, col } = layout;
+  const { dataStartRow, col } = layout;
   const records = [];
 
-  for (let i = headerRowIndex + 1; i < rows.length; i++) {
+  for (let i = dataStartRow; i < rows.length; i++) {
     const row = rows[i] || [];
     if (rowIsEmpty(row)) continue;
 
+    const headerNorms = (rows[layout.headerRowIndex] || []).map((c) =>
+      normalizeHeader(c),
+    );
+    const hasLegacyBonus = headerNorms.some(isLegacyBonusHeader);
+    const hasLegacyComp = headerNorms.some(isLegacyCompensatoryHeader);
+
     const fullName = trimCell(row[col.fullName]);
-    const mnvPrefix =
-      col.mnvPrefix >= 0 ? trimCell(row[col.mnvPrefix]) : "";
-    const mnvSuffix =
-      col.mnvSuffix >= 0 ? trimCell(row[col.mnvSuffix]) : "";
+    const mnvPrefix = col.mnvPrefix >= 0 ? trimCell(row[col.mnvPrefix]) : "";
+    const mnvSuffix = col.mnvSuffix >= 0 ? trimCell(row[col.mnvSuffix]) : "";
     if (!fullName && !mnvPrefix) continue;
 
     const mnvCombined = `${mnvPrefix}${mnvSuffix}`.replace(/\s+/g, "");
@@ -193,6 +290,20 @@ export async function parseAnnualLeaveExcelFile(file) {
       );
       continue;
     }
+
+    const startWorkingDate =
+      col.startWorkingDate >= 0
+        ? parseExcelDate(row[col.startWorkingDate], workbook)
+        : "";
+
+    const monthValues = readMonthlyLeaveUsageFromRow(row, col.monthIndices);
+    const monthlyUsed = sumAnnualLeaveMonthlyUsageValues(monthValues);
+
+    const importedAnnual = parseOptionalAnnualLeaveNumber(row, col.annualLeave);
+    const importedUsed = parseOptionalAnnualLeaveNumber(row, col.used);
+
+    const attendanceUsed =
+      monthlyUsed != null ? monthlyUsed : (importedUsed ?? 0);
 
     const base = {
       id: firebaseKey,
@@ -205,31 +316,45 @@ export async function parseAnnualLeaveExcelFile(file) {
           : "",
       [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]:
         col.subDepartment >= 0 ? trimCell(row[col.subDepartment]) : "",
-      [ANNUAL_LEAVE_EMP.START_WORKING_DATE]:
-        col.startWorkingDate >= 0
-          ? parseExcelDate(row[col.startWorkingDate], workbook)
-          : "",
-      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]:
-        col.annualLeave >= 0
-          ? parseAnnualLeaveNumber(row[col.annualLeave])
-          : 0,
-      [ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV]:
-        col.bonusEnv >= 0
-          ? parseAnnualLeaveNumber(row[col.bonusEnv])
-          : 0,
-      [ANNUAL_LEAVE_EMP.COMPENSATORY_DAY_OFF]:
-        col.compensatory >= 0
-          ? parseAnnualLeaveNumber(row[col.compensatory])
-          : 0,
+      [ANNUAL_LEAVE_EMP.START_WORKING_DATE]: startWorkingDate,
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 0,
+      [ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV]: 0,
+      [ANNUAL_LEAVE_EMP.COMPENSATORY_DAY_OFF]: 0,
     };
 
-    const hrUsed =
-      col.used >= 0 ? parseAnnualLeaveNumber(row[col.used]) : 0;
-    base[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED] = hrUsed;
-    base[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED] = 0;
-    base[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED] = hrUsed;
+    if (monthValues) {
+      base[ANNUAL_LEAVE_EMP.MONTHLY_LEAVE_USAGE] = monthValues;
+    }
 
-    const totals = computeAnnualLeaveTotals(base);
+    if (year != null && startWorkingDate) {
+      base[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR] =
+        resolveAnnualLeaveCurrentYear(base, year);
+    } else {
+      base[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR] = importedAnnual ?? 0;
+    }
+
+    if (hasLegacyBonus) {
+      const bonusIdx = headerNorms.findIndex(isLegacyBonusHeader);
+      if (bonusIdx >= 0) {
+        base[ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV] = parseAnnualLeaveNumber(
+          row[bonusIdx],
+        );
+      }
+    }
+    if (hasLegacyComp) {
+      const compIdx = headerNorms.findIndex(isLegacyCompensatoryHeader);
+      if (compIdx >= 0) {
+        base[ANNUAL_LEAVE_EMP.COMPENSATORY_DAY_OFF] = parseAnnualLeaveNumber(
+          row[compIdx],
+        );
+      }
+    }
+
+    base[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED] = 0;
+    base[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED] = attendanceUsed;
+    base[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED] = attendanceUsed;
+
+    const totals = computeAnnualLeaveTotals(base, year);
     records.push({
       ...base,
       ...totals,
@@ -243,3 +368,11 @@ export async function parseAnnualLeaveExcelFile(file) {
 
   return { records, errors };
 }
+
+export {
+  findAnnualLeaveHeaderLayout,
+  normalizeHeader,
+  isAnnualLeaveExcelMonthHeader,
+  findMonthColumnIndices,
+  ANNUAL_LEAVE_EXCEL_COL,
+};

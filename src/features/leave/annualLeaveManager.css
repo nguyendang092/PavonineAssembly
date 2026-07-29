@@ -54,7 +54,166 @@
 }
 
 .annual-leave-table {
-  min-width: 72rem;
+  --al-w-0: 2.5rem;
+  --al-w-1: 4rem;
+  --al-w-2: 3rem;
+  --al-w-3: 17rem;
+  --al-w-4: 5.5rem;
+  --al-w-5: 10rem;
+  --al-w-6: 7rem;
+  --al-w-7: 4.75rem;
+  --al-w-8: 4.75rem;
+  --al-w-9: 4.75rem;
+  --al-left-0: 0px;
+  --al-left-1: var(--al-w-0);
+  --al-left-2: calc(var(--al-w-0) + var(--al-w-1));
+  --al-left-3: calc(var(--al-w-0) + var(--al-w-1) + var(--al-w-2));
+  --al-left-4: calc(var(--al-left-3) + var(--al-w-3));
+  --al-left-5: calc(var(--al-left-4) + var(--al-w-4));
+  --al-left-6: calc(var(--al-left-5) + var(--al-w-5));
+  --al-left-7: calc(var(--al-left-6) + var(--al-w-6));
+  --al-left-8: calc(var(--al-left-7) + var(--al-w-7));
+  --al-left-9: calc(var(--al-left-8) + var(--al-w-8));
+  width: max-content;
+  min-width: 100%;
+}
+
+.annual-leave-sticky-col {
+  position: sticky;
+  z-index: 12;
+}
+
+.annual-leave-table thead .annual-leave-sticky-col {
+  z-index: 24;
+}
+
+.annual-leave-sticky-col-header {
+  background: #3b82f6;
+}
+
+.annual-leave-sticky-col-0 {
+  left: var(--al-left-0);
+  width: var(--al-w-0);
+  min-width: var(--al-w-0);
+  max-width: var(--al-w-0);
+}
+
+.annual-leave-sticky-col-1 {
+  left: var(--al-left-1);
+  width: var(--al-w-1);
+  min-width: var(--al-w-1);
+  max-width: var(--al-w-1);
+}
+
+.annual-leave-sticky-col-2 {
+  left: var(--al-left-2);
+  width: var(--al-w-2);
+  min-width: var(--al-w-2);
+  max-width: var(--al-w-2);
+}
+
+.annual-leave-sticky-col-3 {
+  left: var(--al-left-3);
+  width: var(--al-w-3);
+  min-width: var(--al-w-3);
+  max-width: var(--al-w-3);
+}
+
+.annual-leave-sticky-col-4 {
+  left: var(--al-left-4);
+  width: var(--al-w-4);
+  min-width: var(--al-w-4);
+  max-width: var(--al-w-4);
+}
+
+.annual-leave-sticky-col-5 {
+  left: var(--al-left-5);
+  width: var(--al-w-5);
+  min-width: var(--al-w-5);
+  max-width: var(--al-w-5);
+}
+
+.annual-leave-sticky-col-6 {
+  left: var(--al-left-6);
+  width: var(--al-w-6);
+  min-width: var(--al-w-6);
+  max-width: var(--al-w-6);
+}
+
+.annual-leave-sticky-col-7 {
+  left: var(--al-left-7);
+  width: var(--al-w-7);
+  min-width: var(--al-w-7);
+  max-width: var(--al-w-7);
+}
+
+.annual-leave-sticky-col-8 {
+  left: var(--al-left-8);
+  width: var(--al-w-8);
+  min-width: var(--al-w-8);
+  max-width: var(--al-w-8);
+}
+
+.annual-leave-sticky-col-9 {
+  left: var(--al-left-9);
+  width: var(--al-w-9);
+  min-width: var(--al-w-9);
+  max-width: var(--al-w-9);
+}
+
+.annual-leave-sticky-col-edge::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -1px;
+  bottom: 0;
+  width: 0.375rem;
+  pointer-events: none;
+  box-shadow: 4px 0 8px rgb(15 23 42 / 0.12);
+}
+
+.annual-leave-sticky-bg-even {
+  background-color: rgb(219 234 254);
+}
+
+.annual-leave-sticky-bg-odd {
+  background-color: #fff;
+}
+
+.annual-leave-table tbody tr:hover .annual-leave-sticky-bg-even,
+.annual-leave-table tbody tr:hover .annual-leave-sticky-bg-odd {
+  background-color: rgb(191 219 254);
+}
+
+.dark .annual-leave-sticky-bg-even {
+  background-color: rgb(30 41 59);
+}
+
+.dark .annual-leave-sticky-bg-odd {
+  background-color: rgb(15 23 42);
+}
+
+.dark .annual-leave-table tbody tr:hover .annual-leave-sticky-bg-even,
+.dark .annual-leave-table tbody tr:hover .annual-leave-sticky-bg-odd {
+  background-color: rgb(51 65 85);
+}
+
+.dark .annual-leave-sticky-col-header {
+  background: #2563eb;
+}
+
+.dark .annual-leave-sticky-col-edge::after {
+  box-shadow: 4px 0 10px rgb(0 0 0 / 0.35);
+}
+
+col.annual-leave-col-month {
+  width: 4.25rem;
+  min-width: 4.25rem;
+}
+
+.annual-leave-table tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2rem;
 }
 
 .annual-leave-table th,
@@ -63,20 +222,60 @@
   text-overflow: ellipsis;
 }
 
-col.annual-leave-col-no {
-  width: 3%;
+.annual-leave-table th.annual-leave-sticky-col-3,
+.annual-leave-table th.annual-leave-sticky-col-5,
+.annual-leave-table tbody td.annual-leave-sticky-col-3,
+.annual-leave-table tbody td.annual-leave-sticky-col-5 {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
 }
 
-col.annual-leave-col-code {
-  width: 4%;
+col.annual-leave-col-no {
+  width: var(--al-w-0);
+}
+
+col.annual-leave-sticky-col-1 {
+  width: var(--al-w-1);
+}
+
+col.annual-leave-sticky-col-2 {
+  width: var(--al-w-2);
 }
 
 col.annual-leave-name {
-  width: 14%;
+  width: var(--al-w-3);
+}
+
+col.annual-leave-sticky-col-4 {
+  width: var(--al-w-4);
+}
+
+col.annual-leave-sticky-col-5 {
+  width: var(--al-w-5);
+}
+
+col.annual-leave-sticky-col-6 {
+  width: var(--al-w-6);
+}
+
+col.annual-leave-sticky-col-7 {
+  width: var(--al-w-7);
+}
+
+col.annual-leave-sticky-col-8 {
+  width: var(--al-w-8);
+}
+
+col.annual-leave-sticky-col-9 {
+  width: var(--al-w-9);
 }
 
 col.annual-leave-col-detail {
-  width: 4%;
+  width: 3.5rem;
+  min-width: 3.5rem;
 }
 
 .annual-leave-inline-detail-btn--manager {

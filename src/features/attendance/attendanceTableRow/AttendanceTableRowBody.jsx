@@ -16,6 +16,8 @@ import {
   formatPayrollTableTotalDayGcCellFromEmp,
   formatPayrollTableTotalNightGcCellFromEmp,
 } from "@/features/payroll/payrollTableOtCells";
+import { isPayrollMonthDayCellBeforeJoinWithoutAttendance } from "@/features/payroll/payrollMonthlyRuleSummary";
+import { pickPayrollEmployeeJoinDate } from "@/features/payroll/payrollEmployeeFields";
 import { employeeRegimeWorkingHoursFlags } from "../employeeRegime";
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
 import {
@@ -76,6 +78,14 @@ function AttendanceTableRow({
   annualLeaveAttendanceRootPath = "attendance",
 }) {
   const isPayroll = tableVariant === "payroll";
+  const beforeJoinPayroll =
+    isPayroll &&
+    attendanceDateKey &&
+    isPayrollMonthDayCellBeforeJoinWithoutAttendance(
+      attendanceDateKey,
+      pickPayrollEmployeeJoinDate(emp),
+      emp,
+    );
   const payrollOffLike =
     isOffDay || isHolidayDay || (isCompensatoryDay && !isKoreanAttendance);
   const strictOffDay = isOffDay || (isCompensatoryDay && !isKoreanAttendance);
@@ -376,7 +386,9 @@ function AttendanceTableRow({
           "Giờ vào dạng HH:MM — chỉnh sửa qua nút Sửa khi được phép.",
         )}
       >
-        {timeInCol ? (
+        {beforeJoinPayroll ? (
+          <span> </span>
+        ) : timeInCol ? (
           <span
             className={
               isPayroll
@@ -431,7 +443,9 @@ function AttendanceTableRow({
                 : "text-red-600 font-bold text-xs md:text-base"
             }
           >
-            {payrollDash(dayFields.timeOut, isPayroll)}
+            {beforeJoinPayroll && isPayroll
+              ? " "
+              : payrollDash(dayFields.timeOut, isPayroll)}
           </span>
         </Cell>
       ) : null}
@@ -446,7 +460,9 @@ function AttendanceTableRow({
           "Loại phép / trạng thái chấm công — chỉnh sửa qua nút Sửa khi được phép.",
         )}
       >
-        {leaveTypeCol ? (
+        {beforeJoinPayroll ? (
+          <span> </span>
+        ) : leaveTypeCol ? (
           <span
             className={
               isPayroll
@@ -497,7 +513,9 @@ function AttendanceTableRow({
           `hidden md:table-cell px-px md:px-0.5 py-px ${payrollTimeShiftFont} text-center min-w-0`,
         )}
       >
-        {caLamViecTrimmed ? (
+        {beforeJoinPayroll ? (
+          <span> </span>
+        ) : caLamViecTrimmed ? (
           <span
             className={
               isPayroll
@@ -633,17 +651,19 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-amber-900 dark:text-amber-100">
-              {formatPayrollTableWorkingHoursCell(
-                dayFields.timeIn,
-                dayFields.timeOut,
-                payrollOffLike,
-                dayFields.shiftCode,
-                dayFields.leaveType,
-                includeTapVuInWorkingHours,
-                includeThaiSanInWorkingHours,
-                includeTaiXeInWorkingHours,
-                includeTaiXeTongInWorkingHours,
-              )}
+              {beforeJoinPayroll
+                ? " "
+                : formatPayrollTableWorkingHoursCell(
+                    dayFields.timeIn,
+                    dayFields.timeOut,
+                    payrollOffLike,
+                    dayFields.shiftCode,
+                    dayFields.leaveType,
+                    includeTapVuInWorkingHours,
+                    includeThaiSanInWorkingHours,
+                    includeTaiXeInWorkingHours,
+                    includeTaiXeTongInWorkingHours,
+                  )}
             </span>
           </Cell>
           <Cell
@@ -661,10 +681,12 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-orange-900 dark:text-orange-100">
-              {formatPayrollTableDayShiftOvertimeCellFromEmp(
-                emp,
-                payrollDayCtx,
-              )}
+              {beforeJoinPayroll
+                ? " "
+                : formatPayrollTableDayShiftOvertimeCellFromEmp(
+                    emp,
+                    payrollDayCtx,
+                  )}
             </span>
           </Cell>
           <Cell
@@ -679,7 +701,9 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-violet-900 dark:text-violet-100">
-              {formatPayrollTableOffDayTcCellFromEmp(emp, payrollDayCtx)}
+              {beforeJoinPayroll
+                ? " "
+                : formatPayrollTableOffDayTcCellFromEmp(emp, payrollDayCtx)}
             </span>
           </Cell>
           <Cell
@@ -697,10 +721,12 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-green-950 dark:text-green-100">
-              {formatPayrollTableHolidayDayWorkingCellFromEmp(
-                emp,
-                payrollDayCtx,
-              )}
+              {beforeJoinPayroll
+                ? " "
+                : formatPayrollTableHolidayDayWorkingCellFromEmp(
+                    emp,
+                    payrollDayCtx,
+                  )}
             </span>
           </Cell>
           <Cell
@@ -715,7 +741,9 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-sky-950 dark:text-sky-100">
-              {formatPayrollTableTotalDayGcCellFromEmp(emp, payrollDayCtx)}
+              {beforeJoinPayroll
+                ? " "
+                : formatPayrollTableTotalDayGcCellFromEmp(emp, payrollDayCtx)}
             </span>
           </Cell>
           <Cell
@@ -733,10 +761,12 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-teal-900 dark:text-teal-100">
-              {formatPayrollTableNightShiftWorkingCellFromEmp(
-                emp,
-                payrollDayCtx,
-              )}
+              {beforeJoinPayroll
+                ? " "
+                : formatPayrollTableNightShiftWorkingCellFromEmp(
+                    emp,
+                    payrollDayCtx,
+                  )}
             </span>
           </Cell>
           <Cell
@@ -754,10 +784,12 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-fuchsia-900 dark:text-fuchsia-100">
-              {formatPayrollTableNightShiftOvertimeCellFromEmp(
-                emp,
-                payrollDayCtx,
-              )}
+              {beforeJoinPayroll
+                ? " "
+                : formatPayrollTableNightShiftOvertimeCellFromEmp(
+                    emp,
+                    payrollDayCtx,
+                  )}
             </span>
           </Cell>
           <Cell
@@ -775,10 +807,12 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-emerald-900 dark:text-emerald-100">
-              {formatPayrollTableNightShiftOffDayWorkingCellFromEmp(
-                emp,
-                payrollDayCtx,
-              )}
+              {beforeJoinPayroll
+                ? " "
+                : formatPayrollTableNightShiftOffDayWorkingCellFromEmp(
+                    emp,
+                    payrollDayCtx,
+                  )}
             </span>
           </Cell>
           <Cell
@@ -796,10 +830,12 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-lime-950 dark:text-lime-100">
-              {formatPayrollTableHolidayNightWorkingCellFromEmp(
-                emp,
-                payrollDayCtx,
-              )}
+              {beforeJoinPayroll
+                ? " "
+                : formatPayrollTableHolidayNightWorkingCellFromEmp(
+                    emp,
+                    payrollDayCtx,
+                  )}
             </span>
           </Cell>
           <Cell
@@ -814,7 +850,9 @@ function AttendanceTableRow({
             )}
           >
             <span className="font-bold tabular-nums text-indigo-950 dark:text-indigo-100">
-              {formatPayrollTableTotalNightGcCellFromEmp(emp, payrollDayCtx)}
+              {beforeJoinPayroll
+                ? " "
+                : formatPayrollTableTotalNightGcCellFromEmp(emp, payrollDayCtx)}
             </span>
           </Cell>
         </>

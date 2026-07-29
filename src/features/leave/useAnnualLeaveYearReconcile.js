@@ -20,10 +20,13 @@ export function useAnnualLeaveYearReconcile({
   enabled = true,
 }) {
   const persistTimerRef = useRef(null);
+  const skipNextPersistRef = useRef(true);
 
   useEffect(() => {
     if (!enabled || shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) return;
     if (!year || !Number.isFinite(Number(year))) return;
+
+    skipNextPersistRef.current = true;
 
     const runPersist = () => {
       const attendanceOverride = getAttendanceYearSnapshot(
@@ -40,9 +43,11 @@ export function useAnnualLeaveYearReconcile({
       });
     };
 
-    runPersist();
-
     const schedulePersist = () => {
+      if (skipNextPersistRef.current) {
+        skipNextPersistRef.current = false;
+        return;
+      }
       clearTimeout(persistTimerRef.current);
       persistTimerRef.current = setTimeout(runPersist, PERSIST_DEBOUNCE_MS);
     };

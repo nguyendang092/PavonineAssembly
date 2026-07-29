@@ -703,9 +703,11 @@ function buildPayrollMonthEmployeeDayCells({ monthDayMeta, rep, rowId }) {
       };
     }
     const emp = resolvePayrollMonthDayEmployee(chunk, rowId, rep);
+    const joinDate =
+      pickPayrollEmployeeJoinDate(rep) || pickPayrollEmployeeJoinDate(emp);
     const beforeJoin = isPayrollMonthDayCellBeforeJoinWithoutAttendance(
       dateKey,
-      pickPayrollEmployeeJoinDate(rep),
+      joinDate,
       emp,
     );
     if (beforeJoin) {

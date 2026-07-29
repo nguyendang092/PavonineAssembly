@@ -922,6 +922,7 @@ export default function PayrollSalaryCalculator() {
                         isOffDay={isOffDay}
                         isHolidayDay={isHolidayDay}
                         isCompensatoryDay={isCompensatoryDay}
+                        attendanceDateKey={selectedDate}
                         annualLeaveBalanceByMnv={annualLeaveBalanceByMnv}
                         annualLeaveYear={annualLeaveYear}
                         annualLeaveYearData={annualLeaveYearData}
@@ -971,6 +972,7 @@ export default function PayrollSalaryCalculator() {
                       isOffDay={isOffDay}
                       isHolidayDay={isHolidayDay}
                       isCompensatoryDay={isCompensatoryDay}
+                      attendanceDateKey={selectedDate}
                       annualLeaveBalanceByMnv={annualLeaveBalanceByMnv}
                       annualLeaveYear={annualLeaveYear}
                       annualLeaveYearData={annualLeaveYearData}

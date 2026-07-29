@@ -5,7 +5,10 @@ import {
   formatAnnualLeaveDisplayDate,
 } from "./annualLeaveCalculated";
 import AnnualLeaveUsageDetailTrigger from "./AnnualLeaveUsageDetailTrigger";
-import { annualLeaveTableRowClass } from "./annualLeaveTableStyles";
+import {
+  annualLeaveStickyColClass,
+  annualLeaveTableRowClass,
+} from "./annualLeaveTableStyles";
 
 const tdNum =
   "px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold tabular-nums text-gray-700 dark:text-slate-200";
@@ -15,62 +18,57 @@ function AnnualLeaveManagerTableRow({
   index,
   year,
   throughDateKey,
+  monthValues = [],
 }) {
+  const sticky = (colIndex) =>
+    annualLeaveStickyColClass(colIndex, { rowIndex: index });
+
   return (
     <tr className={annualLeaveTableRowClass(index)}>
-      <td className="px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-bold text-gray-700 dark:text-slate-200">
+      <td className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-bold text-gray-700 dark:text-slate-200 ${sticky(0)}`}>
         {row.rowNo ?? index + 1}
       </td>
-      <td className="px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-bold text-blue-600 whitespace-nowrap dark:text-blue-400">
+      <td className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-bold text-blue-600 whitespace-nowrap dark:text-blue-400 ${sticky(1)}`}>
         {row[ANNUAL_LEAVE_EMP.MNV_PREFIX]}
       </td>
-      <td className="px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-gray-700 dark:text-slate-200">
+      <td className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-gray-700 dark:text-slate-200 ${sticky(2)}`}>
         {row[ANNUAL_LEAVE_EMP.MNV_SUFFIX]}
       </td>
       <td
-        className="px-1 md:px-2 py-px text-[11px] md:text-sm text-left md:text-center font-bold text-gray-800 leading-tight dark:text-slate-100"
-        title={String(row[ANNUAL_LEAVE_EMP.FULL_NAME] ?? "")}
+        className={`px-1 md:px-2 py-px text-[11px] md:text-sm text-center font-bold text-gray-800 leading-tight dark:text-slate-100 ${sticky(3)}`}
       >
         {row[ANNUAL_LEAVE_EMP.FULL_NAME]}
       </td>
-      <td className={tdNum}>
+      <td className={`${tdNum} ${sticky(4)}`}>
         {formatAnnualLeaveDisplayDate(row[ANNUAL_LEAVE_EMP.DATE_OF_BIRTH])}
       </td>
       <td
-        className="px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-gray-700 dark:text-slate-200"
-        title={String(row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ?? "")}
+        className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-gray-700 dark:text-slate-200 ${sticky(5)}`}
       >
-        <span className="block min-w-0 truncate">
-          {row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]}
-        </span>
+        {row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]}
       </td>
-      <td className={tdNum}>
+      <td className={`${tdNum} ${sticky(6)}`}>
         {formatAnnualLeaveDisplayDate(row[ANNUAL_LEAVE_EMP.START_WORKING_DATE], {
           fullYear: true,
         })}
       </td>
-      <td className={tdNum}>
+      <td className={`${tdNum} ${sticky(7)}`}>
         {row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]}
       </td>
-      <td className="px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-gray-500 tabular-nums dark:text-slate-400">
-        {row[ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV]
-          ? row[ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV]
-          : "—"}
-      </td>
-      <td className="px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-gray-500 tabular-nums dark:text-slate-400">
-        {row[ANNUAL_LEAVE_EMP.COMPENSATORY_DAY_OFF]
-          ? row[ANNUAL_LEAVE_EMP.COMPENSATORY_DAY_OFF]
-          : "—"}
-      </td>
-      <td className={`${tdNum} font-bold`}>
-        {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE])}
-      </td>
-      <td className={`${tdNum} font-bold text-sky-700 dark:text-sky-300`}>
+      <td className={`${tdNum} font-bold text-sky-700 dark:text-sky-300 ${sticky(8)}`}>
         {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED])}
       </td>
-      <td className={`${tdNum} font-bold`}>
+      <td className={`${tdNum} font-bold ${sticky(9)}`}>
         {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.BALANCE])}
       </td>
+      {monthValues.map((value, monthIdx) => (
+        <td
+          key={monthIdx}
+          className={`${tdNum} min-w-[4.25rem] whitespace-nowrap${value > 0 ? " text-violet-700 dark:text-violet-300" : " text-gray-400 dark:text-slate-500"}`}
+        >
+          {value > 0 ? formatAnnualLeaveDecimal(value) : "—"}
+        </td>
+      ))}
       <td className="px-1 md:px-1.5 py-px text-center">
         <div className="flex items-center justify-center">
           <AnnualLeaveUsageDetailTrigger
@@ -85,4 +83,14 @@ function AnnualLeaveManagerTableRow({
   );
 }
 
-export default memo(AnnualLeaveManagerTableRow);
+function areAnnualLeaveManagerTableRowPropsEqual(prev, next) {
+  return (
+    prev.row === next.row &&
+    prev.index === next.index &&
+    prev.year === next.year &&
+    prev.throughDateKey === next.throughDateKey &&
+    prev.monthValues === next.monthValues
+  );
+}
+
+export default memo(AnnualLeaveManagerTableRow, areAnnualLeaveManagerTableRowPropsEqual);

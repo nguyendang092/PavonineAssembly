@@ -3,6 +3,7 @@ import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import { buildLiveAnnualLeaveBalanceByMnv } from "./annualLeaveDerived";
 import {
   buildAttendanceAnnualLeaveDeductionsByMnv,
+  buildAttendanceAnnualLeaveDerivedMaps,
   buildAttendanceAnnualLeaveUsageDetailByEmpKey,
   buildAttendanceAnnualLeaveUsageDetailForEmpKey,
   createEmptyAnnualLeaveUsageDetail,
@@ -139,6 +140,19 @@ describe("annualLeaveBalanceLookup", () => {
     expect(attendanceAnnualLeaveDeductionForLoaiPhep("PN")).toBe(1);
     expect(attendanceAnnualLeaveDeductionForLoaiPhep("1/2PN")).toBe(0.5);
     expect(attendanceAnnualLeaveDeductionForLoaiPhep("Phép ốm")).toBe(0);
+  });
+
+  it("buildAttendanceAnnualLeaveDerivedMaps returns yearly and monthly totals in one scan", () => {
+    const data = {
+      "2026-06-03": { emp_X: { mnv: "X", loaiPhep: "Phép năm" } },
+      "2026-06-10": { emp_X: { mnv: "X", loaiPhep: "1/2PN" } },
+      "2026-07-05": { emp_X: { mnv: "X", loaiPhep: "PN" } },
+    };
+    const { deductionsByEmpKey, attendanceMonthlyByEmpKey } =
+      buildAttendanceAnnualLeaveDerivedMaps(data, 2026);
+    expect(deductionsByEmpKey.emp_X).toBe(2.5);
+    expect(attendanceMonthlyByEmpKey.emp_X[5]).toBe(1.5);
+    expect(attendanceMonthlyByEmpKey.emp_X[6]).toBe(1);
   });
 
   it("builds monthly PN usage detail by emp key", () => {

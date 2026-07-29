@@ -114,6 +114,94 @@ export function buildAttendanceAnnualLeaveDeductionsByMnv(
   return map;
 }
 
+function ensureAttendanceMonthlyTotalsRow(map, empKey) {
+  if (!map[empKey]) {
+    map[empKey] = Array.from({ length: 12 }, () => 0);
+  }
+  return map[empKey];
+}
+
+function addAttendanceMonthlyTotal(monthRow, monthIndex, deduction) {
+  if (monthIndex < 0 || monthIndex > 11) return;
+  monthRow[monthIndex] = roundAnnualLeaveHours(monthRow[monthIndex] + deduction);
+}
+
+/**
+ * Một lần quét điểm danh — tổng năm + mảng 12 tháng (nhẹ hơn build usage detail đầy đủ).
+ * @returns {{ deductionsByEmpKey: Record<string, number>, attendanceMonthlyByEmpKey: Record<string, number[]> }}
+ */
+export function buildAttendanceAnnualLeaveDerivedMaps(
+  attendanceRootData,
+  year,
+  filterOrYearMonth = null,
+) {
+  const { yearMonthPrefix = null, throughDateKey = null } =
+    normalizeAttendanceLeaveDeductionFilter(filterOrYearMonth);
+
+  const deductionsByEmpKey = {};
+  const attendanceMonthlyByEmpKey = {};
+  if (!attendanceRootData || typeof attendanceRootData !== "object") {
+    return { deductionsByEmpKey, attendanceMonthlyByEmpKey };
+  }
+
+  const yearPrefix = `${year}-`;
+  const monthPrefix =
+    yearMonthPrefix &&
+    String(yearMonthPrefix).startsWith(yearPrefix) &&
+    /^\d{4}-\d{2}$/.test(String(yearMonthPrefix))
+      ? `${yearMonthPrefix}-`
+      : null;
+  const through =
+    throughDateKey &&
+    String(throughDateKey).startsWith(yearPrefix) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(String(throughDateKey))
+      ? String(throughDateKey)
+      : null;
+
+  for (const [dateKey, dayData] of Object.entries(attendanceRootData)) {
+    if (!dateKey.startsWith(yearPrefix)) continue;
+    if (monthPrefix && !dateKey.startsWith(monthPrefix)) continue;
+    if (through && dateKey > through) continue;
+
+    const counted = isAttendanceDateCountedForAnnualLeave(dateKey, year);
+    const displayOnly = isAttendanceDateDisplayOnlyForAnnualLeave(dateKey, year);
+    if (!counted && !displayOnly) continue;
+    if (!dayData || typeof dayData !== "object") continue;
+
+    const monthIndex = Number(dateKey.slice(5, 7)) - 1;
+
+    for (const [empKey, rawEmp] of Object.entries(dayData)) {
+      if (isAttendanceDayMetaKey(empKey)) continue;
+      if (!rawEmp || typeof rawEmp !== "object") continue;
+
+      const mnvKey = attendanceMnvKeyFromDayRecord(empKey, rawEmp);
+      if (!mnvKey) continue;
+
+      const deduction = attendanceAnnualLeaveDeductionForLoaiPhep(
+        attendanceEffectiveLoaiPhepFromRaw(rawEmp),
+      );
+      if (deduction === 0) continue;
+
+      const firebaseKey = annualLeaveEmpFirebaseKey(mnvKey);
+      if (!firebaseKey) continue;
+
+      const monthRow = ensureAttendanceMonthlyTotalsRow(
+        attendanceMonthlyByEmpKey,
+        firebaseKey,
+      );
+      addAttendanceMonthlyTotal(monthRow, monthIndex, deduction);
+
+      if (displayOnly) continue;
+
+      deductionsByEmpKey[firebaseKey] = roundAnnualLeaveHours(
+        (deductionsByEmpKey[firebaseKey] ?? 0) + deduction,
+      );
+    }
+  }
+
+  return { deductionsByEmpKey, attendanceMonthlyByEmpKey };
+}
+
 function emptyAnnualLeaveUsageMonth(yearMonth, { displayOnly = false } = {}) {
   return {
     yearMonth,

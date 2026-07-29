@@ -1,10 +1,15 @@
 import { get, ref, update } from "@/services/firebase";
 import {
-  buildAttendanceAnnualLeaveDeductionsByMnv,
+  buildAttendanceAnnualLeaveDerivedMaps,
   attendanceAnnualLeaveDeductionForLoaiPhep,
   attendanceEffectiveLoaiPhepFromRaw,
 } from "./annualLeaveBalanceLookup";
-import { computeLiveAnnualLeaveState } from "./annualLeaveDerived";
+import {
+  computeLiveAnnualLeaveState,
+  resolveEffectiveMonthlyLeaveUsage,
+  resolveStoredMonthlyLeaveUsage,
+  sumAnnualLeaveMonthlyUsageValues,
+} from "./annualLeaveDerived";
 import {
   indexAnnualLeaveYearByEmpKey,
   resolveAnnualLeaveEmpFirebaseKey,
@@ -88,10 +93,8 @@ export async function persistAnnualLeaveYearFromAttendance(
     attendanceRootData = rootSnap.val();
   }
 
-  const deductionsByEmpKey = buildAttendanceAnnualLeaveDeductionsByMnv(
-    attendanceRootData,
-    year,
-  );
+  const { deductionsByEmpKey, attendanceMonthlyByEmpKey } =
+    buildAttendanceAnnualLeaveDerivedMaps(attendanceRootData, year);
 
   let yearSnap = await get(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`));
   let yearData = yearSnap.val();
@@ -113,8 +116,23 @@ export async function persistAnnualLeaveYearFromAttendance(
   let anyApplied = false;
 
   for (const [empKey, { raw }] of Object.entries(indexed)) {
-    const liveAttendanceUsed = deductionsByEmpKey[empKey] ?? 0;
-    const state = computeLiveAnnualLeaveState(raw, liveAttendanceUsed);
+    const storedMonthly = resolveStoredMonthlyLeaveUsage(raw);
+    const monthValues = resolveEffectiveMonthlyLeaveUsage(
+      raw,
+      null,
+      year,
+      attendanceMonthlyByEmpKey[empKey],
+    );
+    const monthlySum = sumAnnualLeaveMonthlyUsageValues(monthValues);
+    const hasStored = storedMonthly != null;
+    const hasAttendanceMonthly = attendanceMonthlyByEmpKey[empKey] != null;
+    const usedFromMonthlySum =
+      hasStored || hasAttendanceMonthly ? monthlySum : null;
+    const liveAttendanceUsed =
+      usedFromMonthlySum ?? (deductionsByEmpKey[empKey] ?? 0);
+    const state = computeLiveAnnualLeaveState(raw, liveAttendanceUsed, year, {
+      usedFromMonthlySum,
+    });
 
     if (!needsPersistUpdate(raw, state)) continue;
 

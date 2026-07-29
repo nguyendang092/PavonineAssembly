@@ -18,6 +18,8 @@ export const ANNUAL_LEAVE_EMP = {
   /** Phép đã dùng tính từ điểm danh (PN/1/2PN) cả năm. */
   ATTENDANCE_ANNUAL_LEAVE_USED: "attendanceAnnualLeaveUsed",
   BALANCE: "balance",
+  /** Phép đã dùng theo 12 tháng (upload Excel / override hiển thị). */
+  MONTHLY_LEAVE_USAGE: "monthlyLeaveUsage",
 };
 
 export const ANNUAL_LEAVE_META_KEY = "_meta";

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { ANNUAL_LEAVE_EMP, annualLeaveAttendanceCountStartDate, ANNUAL_LEAVE_MANAGER_MIN_YEAR } from "./annualLeaveFields";
+import { ANNUAL_LEAVE_EMP, ANNUAL_LEAVE_MANAGER_MIN_YEAR } from "./annualLeaveFields";
 import {
   formatAnnualLeaveDecimal,
   parseAnnualLeaveNumber,
@@ -486,7 +486,17 @@ export default function AnnualLeaveUsageDetailModal({
 
   const displayRow = useMemo(() => {
     if (!yearRowRaw) return row;
-    const totals = computeAnnualLeaveTotals(yearRowRaw);
+    const totals = computeAnnualLeaveTotals(yearRowRaw, selectedYear);
+    const sameAsOpenYear = Number(selectedYear) === Number(year);
+    const usedFromRow =
+      sameAsOpenYear && row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED] != null
+        ? parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED])
+        : null;
+    const balanceFromRow =
+      sameAsOpenYear && row[ANNUAL_LEAVE_EMP.BALANCE] != null
+        ? parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.BALANCE])
+        : null;
+
     return {
       ...row,
       [ANNUAL_LEAVE_EMP.FULL_NAME]:
@@ -496,11 +506,14 @@ export default function AnnualLeaveUsageDetailModal({
         row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT],
       [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]:
         totals[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
-      [ANNUAL_LEAVE_EMP.BALANCE]: totals[ANNUAL_LEAVE_EMP.BALANCE],
+      [ANNUAL_LEAVE_EMP.BALANCE]:
+        balanceFromRow ?? totals[ANNUAL_LEAVE_EMP.BALANCE],
       [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]:
-        totals[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED],
+        usedFromRow ??
+        parseAnnualLeaveNumber(yearRowRaw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]) ??
+        parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]),
     };
-  }, [row, yearRowRaw]);
+  }, [row, yearRowRaw, selectedYear, year]);
 
   useEffect(() => {
     if (!open) return;
@@ -584,16 +597,16 @@ export default function AnnualLeaveUsageDetailModal({
   const totalAnnualLeave = parseAnnualLeaveNumber(
     displayRow[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
   );
-  const attendanceLeaveUsed = parseAnnualLeaveNumber(yearDetail?.totalDeduction ?? 0);
-  const availableAnnualLeave = Math.max(0, totalAnnualLeave - attendanceLeaveUsed);
-
-  const attendanceCountStartMonth = Number(
-    annualLeaveAttendanceCountStartDate(selectedYear)?.slice(5, 7) ?? 6,
+  const annualLeaveUsed = parseAnnualLeaveNumber(
+    displayRow[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED],
+  );
+  const availableAnnualLeave = parseAnnualLeaveNumber(
+    displayRow[ANNUAL_LEAVE_EMP.BALANCE],
   );
 
   const totalSummary = formatSummaryDayCount(totalAnnualLeave, t);
   const usedSummary = {
-    display: formatAnnualLeaveDecimal(attendanceLeaveUsed),
+    display: formatAnnualLeaveDecimal(annualLeaveUsed),
     unit: t("annualLeave.dayUnit", { defaultValue: "Ngày" }),
   };
   const availableSummary = {
@@ -603,7 +616,7 @@ export default function AnnualLeaveUsageDetailModal({
 
   const totalLeaveCap = totalAnnualLeave > 0 ? totalAnnualLeave : 1;
   const totalProgress = totalAnnualLeave > 0 ? 100 : 0;
-  const usedProgress = (attendanceLeaveUsed / totalLeaveCap) * 100;
+  const usedProgress = (annualLeaveUsed / totalLeaveCap) * 100;
   const availableProgress = (availableAnnualLeave / totalLeaveCap) * 100;
 
   const scrollToHistory = () => {
@@ -753,8 +766,7 @@ export default function AnnualLeaveUsageDetailModal({
                 unit={usedSummary.unit}
                 sub={t("annualLeave.annualLeaveUsedClickHint", {
                   defaultValue:
-                    "Tính từ điểm danh từ tháng {{month}} · Bấm xem danh sách",
-                  month: attendanceCountStartMonth,
+                    "Theo cột ANNUAL LEAVE USED · Bấm xem danh sách",
                 })}
                 progress={usedProgress}
                 clickable
@@ -769,7 +781,7 @@ export default function AnnualLeaveUsageDetailModal({
                 value={availableSummary.display}
                 unit={availableSummary.unit}
                 sub={t("annualLeave.availableAnnualLeaveSub", {
-                  defaultValue: "Tổng phép năm trừ đã sử dụng",
+                  defaultValue: "Theo cột BALANCE trên bảng phép năm",
                 })}
                 progress={availableProgress}
               />

@@ -2,6 +2,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { shouldSkipAnnualLeaveForAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 import {
   buildAttendanceAnnualLeaveDeductionsByMnv,
+  buildAttendanceAnnualLeaveDerivedMaps,
   buildAttendanceAnnualLeaveUsageDetailByEmpKey,
 } from "./annualLeaveBalanceLookup";
 import { buildLiveAnnualLeaveBalanceByMnv } from "./annualLeaveDerived";
@@ -114,25 +115,32 @@ export function useAnnualLeaveLiveData(
     return null;
   }, [throughDateKey, yearMonthPrefix]);
 
-  const deductionsByEmpKey = useMemo(
-    () =>
-      skipAttendance
-        ? {}
-        : buildAttendanceAnnualLeaveDeductionsByMnv(
-            attendanceRoot,
-            year,
-            deductionFilter,
-          ),
-    [attendanceRoot, year, deductionFilter, skipAttendance],
-  );
+  const attendanceDerived = useMemo(() => {
+    if (skipAttendance) {
+      return {
+        deductionsByEmpKey: {},
+        attendanceMonthlyByEmpKey: {},
+      };
+    }
+    if (includeUsageDetail) {
+      return {
+        deductionsByEmpKey: buildAttendanceAnnualLeaveDeductionsByMnv(
+          attendanceRoot,
+          year,
+          deductionFilter,
+        ),
+        attendanceMonthlyByEmpKey: {},
+      };
+    }
+    return buildAttendanceAnnualLeaveDerivedMaps(
+      attendanceRoot,
+      year,
+      deductionFilter,
+    );
+  }, [attendanceRoot, year, deductionFilter, skipAttendance, includeUsageDetail]);
 
-  const balanceByMnv = useMemo(
-    () =>
-      skipAttendance || !includeBalanceMap
-        ? {}
-        : buildLiveAnnualLeaveBalanceByMnv(yearData, deductionsByEmpKey),
-    [yearData, deductionsByEmpKey, skipAttendance, includeBalanceMap],
-  );
+  const deductionsByEmpKey = attendanceDerived.deductionsByEmpKey;
+  const attendanceMonthlyByEmpKey = attendanceDerived.attendanceMonthlyByEmpKey;
 
   const usageDetailByEmpKey = useMemo(
     () =>
@@ -152,12 +160,35 @@ export function useAnnualLeaveLiveData(
     ],
   );
 
+  const balanceByMnv = useMemo(
+    () =>
+      skipAttendance || !includeBalanceMap
+        ? {}
+        : buildLiveAnnualLeaveBalanceByMnv(
+            yearData,
+            deductionsByEmpKey,
+            year,
+            usageDetailByEmpKey,
+            attendanceMonthlyByEmpKey,
+          ),
+    [
+      yearData,
+      deductionsByEmpKey,
+      skipAttendance,
+      includeBalanceMap,
+      year,
+      usageDetailByEmpKey,
+      attendanceMonthlyByEmpKey,
+    ],
+  );
+
   const loading = !yearReady || (!skipAttendance && !attendanceReady);
 
   return {
     yearData,
     attendanceRoot: skipAttendance ? null : attendanceRoot,
     deductionsByEmpKey,
+    attendanceMonthlyByEmpKey,
     balanceByMnv,
     usageDetailByEmpKey,
     loading,

@@ -127,18 +127,20 @@ function AnnualLeaveUsageDetailTrigger({
           />
         </svg>
       </button>
-      <AnnualLeaveUsageDetailModal
-        open={open}
-        onClose={() => setOpen(false)}
-        row={row}
-        detail={detail}
-        year={year}
-        t={t}
-        loading={detailLoading}
-        empKey={empKey}
-        attendanceRootPath={attendanceRootPath}
-        throughDateKey={throughDateKey}
-      />
+      {open ? (
+        <AnnualLeaveUsageDetailModal
+          open={open}
+          onClose={() => setOpen(false)}
+          row={row}
+          detail={detail}
+          year={year}
+          t={t}
+          loading={detailLoading}
+          empKey={empKey}
+          attendanceRootPath={attendanceRootPath}
+          throughDateKey={throughDateKey}
+        />
+      ) : null}
     </>
   );
 }
