@@ -689,10 +689,8 @@ const vi = {
     viewChart: "Xem biểu đồ",
     chartTotalTitle: "Biểu đồ tổng — {{month}}",
     chartDailyTitle: "Biểu đồ theo ngày — {{month}}",
-    chartTotalSubtitle:
-      "So sánh số lượng đạt / NG và hiệu suất theo công đoạn",
-    chartDailySubtitle:
-      "Xu hướng số lượng và lỗi theo từng ngày trong tháng",
+    chartTotalSubtitle: "So sánh số lượng đạt / NG và hiệu suất theo công đoạn",
+    chartDailySubtitle: "Xu hướng số lượng và lỗi theo từng ngày trong tháng",
     chartProcessQtyTitle: "Số lượng theo công đoạn",
     chartDailyQtyTitle: "Số lượng theo ngày",
     chartTopDefectsTitle: "Phân tích lỗi chi tiết",
@@ -717,8 +715,7 @@ const vi = {
     chartNgRateTrendTitle: "Tỷ lệ NG theo ngày",
     chartNgRateTrendHint: "Theo dõi biến động tỷ lệ NG hàng ngày",
     chartDefectByProcessTitle: "Lỗi theo công đoạn (Top 5 loại)",
-    chartDefectByProcessHint:
-      "Phân bổ các loại lỗi chính trên từng công đoạn",
+    chartDefectByProcessHint: "Phân bổ các loại lỗi chính trên từng công đoạn",
     chartTopDefectsHint: "Top loại lỗi theo số lượng và tỷ trọng (%)",
     addBoard: "Thêm bảng",
     removeBoard: "Xóa bảng",

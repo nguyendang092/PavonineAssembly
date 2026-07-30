@@ -91,13 +91,14 @@ describe("annualLeaveDerived", () => {
   });
 
   it("buildAnnualLeaveMonthlyUsageByEmpKey maps 12 months from attendance", () => {
-    const { yearMonths, monthlyByEmpKey } = buildAnnualLeaveMonthlyUsageByEmpKey(
-      2026,
-      {},
-      {
-        emp_X: [0, 0, 0, 0, 0, 1, 0.5, 0, 0, 0, 0, 0],
-      },
-    );
+    const { yearMonths, monthlyByEmpKey } =
+      buildAnnualLeaveMonthlyUsageByEmpKey(
+        2026,
+        {},
+        {
+          emp_X: [0, 0, 0, 0, 0, 1, 0.5, 0, 0, 0, 0, 0],
+        },
+      );
     expect(yearMonths).toHaveLength(12);
     expect(monthlyByEmpKey.emp_X[5]).toBe(1);
     expect(monthlyByEmpKey.emp_X[6]).toBe(0.5);

@@ -167,7 +167,8 @@ const ko = {
   },
   annualLeave: {
     title: "연차 관리",
-    subtitle: "HR 양식에 따라 연차를 관리합니다. Excel 업로드는 파일에 있는 사원만 갱신합니다. 전체를 새로 올리려면 먼저 데이터를 삭제하세요.",
+    subtitle:
+      "HR 양식에 따라 연차를 관리합니다. Excel 업로드는 파일에 있는 사원만 갱신합니다. 전체를 새로 올리려면 먼저 데이터를 삭제하세요.",
     year: "연도",
     searchPlaceholder: "이름 / 사번 검색…",
     allDepartments: "전체 부서",
@@ -190,8 +191,7 @@ const ko = {
     exportError: "Excel보내기 실패.",
     lastUpdated: "최종 업데이트",
     linkToAttendanceListShort: "출석 체크",
-    noUsageDetail:
-      "이번 달 출석에서 PN / 1/2 PN 일자가 없습니다.",
+    noUsageDetail: "이번 달 출석에서 PN / 1/2 PN 일자가 없습니다.",
     detailViewYear: "연도별 데이터",
     usageDetailLoading: "데이터를 불러오는 중...",
     usageDetailTitle: "연차 상세",
@@ -202,8 +202,7 @@ const ko = {
     totalAnnualLeaveSub: "연차 표 기준",
     annualLeaveUsed: "사용한 연차",
     annualLeaveUsedSub: "근태 기준 ({{month}}월부터)",
-    annualLeaveUsedClickHint:
-      "근태 기준 ({{month}}월부터) · 목록 보기",
+    annualLeaveUsedClickHint: "근태 기준 ({{month}}월부터) · 목록 보기",
     subDepartmentShort: "BP",
     usedDaysPopupKicker: "사용한 연차",
     usedDaysAllMonthsInYear: "{{year}}년 전체",
@@ -251,8 +250,7 @@ const ko = {
     actionsMenu: "기능",
     recalculate: "출석에서 재계산",
     recalculating: "재계산 중…",
-    recalculateSuccess:
-      "출석 데이터로 연차 {{count}}건을 업데이트했습니다.",
+    recalculateSuccess: "출석 데이터로 연차 {{count}}건을 업데이트했습니다.",
     recalculateError: "연차를 다시 계산할 수 없습니다.",
     detailColumn: "상세",
     workHoursPopupKicker: "근태",
@@ -604,8 +602,7 @@ const ko = {
   },
   s90dReport: {
     pageTitle: "S90D 생산실적 보고",
-    pageSubtitle:
-      "공정 탭에서 입력하면 일별·종합 탭이 자동 집계됩니다",
+    pageSubtitle: "공정 탭에서 입력하면 일별·종합 탭이 자동 집계됩니다",
     tabsLabel: "S90D 보고서 유형",
     tabDaily: "일별",
     tabTotal: "종합",
@@ -648,8 +645,7 @@ const ko = {
     importSuccess: "✅ Excel {{count}}행 가져옴",
     importEmpty: "❌ 유효한 Excel 데이터 행 없음",
     importFailed: "❌ Excel 파일을 읽을 수 없음 — 형식 확인",
-    processSaveHint:
-      "입력 후 저장 — 이 버튼을 눌러야 Firebase에 기록됩니다.",
+    processSaveHint: "입력 후 저장 — 이 버튼을 눌러야 Firebase에 기록됩니다.",
     processDateFilter: "일자 선택",
     processPrevDay: "이전 날",
     processNextDay: "다음 날",
@@ -1254,8 +1250,7 @@ const ko = {
     dashboardKpiAbsentShort: "결근",
     dashboardInsightWarn:
       "정시 출근 {{onTimePct}}%. 무단 결근 {{absent}}명 모니터링 필요.",
-    dashboardInsightTenure:
-      "6개월 이상 근속 {{pct}}%; 평균 근속 {{years}}년.",
+    dashboardInsightTenure: "6개월 이상 근속 {{pct}}%; 평균 근속 {{years}}년.",
     dashboardMorningChart: "오전 출근 분포",
     dashboardDeptWatch: "모니터링 부서",
     dashboardDeptWatchSort: "정시율 낮은 순",
@@ -1421,14 +1416,12 @@ const ko = {
     dayOffMultiModalHint: "유형 선택, 날짜 추가, 저장.",
     dayOffMultiAddDate: "추가",
     dayOffMultiAddCurrent: "현재 보는 날 추가 ({{date}})",
-    dayOffMultiEmpty:
-      "날짜 없음 — 유형 선택 후 위에서 추가하세요.",
+    dayOffMultiEmpty: "날짜 없음 — 유형 선택 후 위에서 추가하세요.",
     dayOffMultiRemove: "제거",
     dayOffMultiCancel: "취소",
     dayOffMultiSave: "저장",
     dayOffMultiSaving: "저장 중…",
-    dayOffMultiLoadingList:
-      "이번 달 휴무·공휴·대체휴가 불러오는 중…",
+    dayOffMultiLoadingList: "이번 달 휴무·공휴·대체휴가 불러오는 중…",
     dayOffToggleHint:
       "휴무일: 주간 GC는 휴무 연장 열, 근무시간 «-». 야간은 야간 열.",
     dayOffHolidayDropdownTrigger: "휴무일 / 공휴일 / 대체휴가",
@@ -1526,8 +1519,7 @@ const ko = {
     attendanceDateLabel: "출근일",
     viewOnlyAttendanceHint: "보기 전용 — 수정·저장할 수 없습니다.",
     restrictedEditManagerHint: "휴가·조·직원 유형만 수정.",
-    restrictedEditManagerHintWithLunchOt:
-      "휴가·조·직원 유형·점심 연장만 수정.",
+    restrictedEditManagerHintWithLunchOt: "휴가·조·직원 유형·점심 연장만 수정.",
     addEmployee: "신규 직원 추가",
     employeeRegimeField: "직원 유형",
     employeeRegimePlaceholder: "— 선택 —",
@@ -1622,8 +1614,7 @@ const ko = {
   },
   salaryCalc: {
     pageTitle: "근무시간 보기",
-    pageSubtitle:
-      "해당 일 출근 데이터를 바탕으로 근무시간을 표시합니다.",
+    pageSubtitle: "해당 일 출근 데이터를 바탕으로 근무시간을 표시합니다.",
     tableSectionHint:
       "급여 참고용 표. 휴무일 주간 근무는 휴무일 연장 열에 환산됩니다.",
     table: {
@@ -1687,8 +1678,7 @@ const ko = {
     koreanMonthlyTimesheetEmpty:
       "이 달에 Korean Timesheet 출석 데이터가 없습니다.",
     monthlyGridMenu: "근무시간 보기",
-    monthlyGridMenuHint:
-      "월간 출근표 또는 월간 출·퇴근 시간표를 엽니다.",
+    monthlyGridMenuHint: "월간 출근표 또는 월간 출·퇴근 시간표를 엽니다.",
     monthlyGridMenuHead: "보기 종류 선택",
     monthlyGridMenuTimesheetDesc: "근무·휴가·연장 계수",
     monthlyGridMenuTimeInOutDesc: "일별 출·퇴근 시간",
@@ -1730,8 +1720,7 @@ const ko = {
     monthlyTimesheetLoading: "데이터를 불러오는 중...",
     monthlyTimesheetLoadingMore: "데이터를 불러오는 중...",
     monthlyTimesheetRendering: "표 업데이트 중…",
-    monthlyTimesheetSummariesProgress:
-      "월 집계 계산 중… ({{done}}/{{total}})",
+    monthlyTimesheetSummariesProgress: "월 집계 계산 중… ({{done}}/{{total}})",
     dayDataLoading: "데이터를 불러오는 중...",
     dayDataRendering: "표 업데이트 중…",
     annualLeaveBalanceFetch: "연차 조회",

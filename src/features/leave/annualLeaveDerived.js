@@ -24,7 +24,10 @@ export function resolveAnnualLeaveMonthUsageValue(monthDetail) {
   return visual > 0 ? roundAnnualLeaveHours(visual) : 0;
 }
 
-export function buildAttendanceMonthlyValuesFromUsageDetail(detail, yearMonths) {
+export function buildAttendanceMonthlyValuesFromUsageDetail(
+  detail,
+  yearMonths,
+) {
   const monthMap = {};
   const list = Array.isArray(detail?.months)
     ? detail.months
@@ -114,7 +117,9 @@ export function buildAnnualLeaveMonthlyUsageByEmpKey(
 export function resolveStoredMonthlyLeaveUsage(raw) {
   const stored = raw?.[ANNUAL_LEAVE_EMP.MONTHLY_LEAVE_USAGE];
   if (!Array.isArray(stored) || stored.length !== 12) return null;
-  return stored.map((value) => roundAnnualLeaveHours(parseAnnualLeaveNumber(value)));
+  return stored.map((value) =>
+    roundAnnualLeaveHours(parseAnnualLeaveNumber(value)),
+  );
 }
 
 /** Map `emp_{mnv}` → mảng 12 phép/tháng từ Firebase (nếu có). */
@@ -205,8 +210,12 @@ export function computeLiveAnnualLeaveState(
     balance: totals[ANNUAL_LEAVE_EMP.BALANCE],
     annualLeaveCurrentYear:
       year != null
-        ? resolveAnnualLeaveCurrentYear(raw, year, { monthWorkSummaryByYearMonth })
-        : parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]),
+        ? resolveAnnualLeaveCurrentYear(raw, year, {
+            monthWorkSummaryByYearMonth,
+          })
+        : parseAnnualLeaveNumber(
+            raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
+          ),
   };
 }
 
@@ -261,8 +270,7 @@ export function buildLiveAnnualLeaveBalanceByMnv(
     const hasUsageDetail = usageDetailByEmpKey[empKey] != null;
     const usedFromMonthlySum =
       hasStored || hasAttendanceMonthly || hasUsageDetail ? monthlySum : null;
-    const liveAtt =
-      usedFromMonthlySum ?? (deductionsByEmpKey[empKey] ?? 0);
+    const liveAtt = usedFromMonthlySum ?? deductionsByEmpKey[empKey] ?? 0;
     const { balance } = computeLiveAnnualLeaveState(raw, liveAtt, year, {
       usedFromMonthlySum,
       monthWorkSummaryByYearMonth: monthWorkSummaryByEmpKey[empKey] ?? null,
@@ -283,8 +291,7 @@ export function normalizeAnnualLeaveRowLive(
   monthWorkSummaryByYearMonth = null,
 ) {
   if (!raw || typeof raw !== "object") return null;
-  const empKey =
-    resolveAnnualLeaveEmpFirebaseKey({ recordId: id, raw }) || id;
+  const empKey = resolveAnnualLeaveEmpFirebaseKey({ recordId: id, raw }) || id;
   const liveAtt = deductionsByEmpKey[empKey] ?? 0;
   const resolvedMonthValues =
     monthValues ?? resolveStoredMonthlyLeaveUsage(raw);

@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import HrTablePagination from "@/components/ui/HrTablePagination";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import AnnualLeaveManagerTableRow from "./AnnualLeaveManagerTableRow";
@@ -11,23 +12,42 @@ import {
 const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
 
 function AnnualLeaveManagerTablePanel({
-  filteredRows,
+  filteredEntries,
   monthlyByEmpKey,
   year,
   monthColumnLabels,
   detailThroughDateKey,
   filterPending = false,
-  t,
+  attendanceEnhancing = false,
+  normalizeEntryRow,
 }) {
-  const tablePagination = useHrTablePagination(filteredRows, {
-    resetDeps: [year, filteredRows.length],
+  const { t } = useTranslation();
+  const tablePagination = useHrTablePagination(filteredEntries, {
+    resetDeps: [year, filteredEntries.length],
   });
+
+  const pagedLiveRows = useMemo(
+    () =>
+      tablePagination.pagedItems.map((entry, localIdx) => ({
+        entry,
+        row: normalizeEntryRow(entry),
+        index: tablePagination.rowIndexOffset + localIdx,
+      })),
+    [
+      tablePagination.pagedItems,
+      tablePagination.rowIndexOffset,
+      normalizeEntryRow,
+      monthlyByEmpKey,
+    ],
+  );
+
+  const tableBusy = filterPending || attendanceEnhancing;
 
   return (
     <>
       <div
         className={`annual-leave-table-compact min-h-0 w-full max-w-none flex-1 rounded-md bg-white shadow-sm transition-opacity duration-150 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700${
-          filterPending ? " opacity-80" : ""
+          tableBusy ? " opacity-80" : ""
         }`}
       >
         <div className="annual-leave-table-scroll w-full min-w-0 max-w-full">
@@ -130,7 +150,7 @@ function AnnualLeaveManagerTablePanel({
               </tr>
             </thead>
             <tbody>
-              {filteredRows.length === 0 ? (
+              {filteredEntries.length === 0 ? (
                 <tr>
                   <td
                     colSpan={23}
@@ -140,14 +160,14 @@ function AnnualLeaveManagerTablePanel({
                   </td>
                 </tr>
               ) : (
-                tablePagination.pagedItems.map((row, localIdx) => (
+                pagedLiveRows.map(({ entry, row, index }) => (
                   <AnnualLeaveManagerTableRow
-                    key={row.id}
+                    key={entry.id}
                     row={row}
-                    index={tablePagination.rowIndexOffset + localIdx}
+                    index={index}
                     year={year}
                     throughDateKey={detailThroughDateKey}
-                    monthValues={monthlyByEmpKey[row.id] ?? EMPTY_MONTH_VALUES}
+                    monthValues={monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES}
                   />
                 ))
               )}
@@ -175,13 +195,14 @@ function AnnualLeaveManagerTablePanel({
 
 function areTablePanelPropsEqual(prev, next) {
   return (
-    prev.filteredRows === next.filteredRows &&
+    prev.filteredEntries === next.filteredEntries &&
     prev.monthlyByEmpKey === next.monthlyByEmpKey &&
     prev.year === next.year &&
     prev.monthColumnLabels === next.monthColumnLabels &&
     prev.detailThroughDateKey === next.detailThroughDateKey &&
     prev.filterPending === next.filterPending &&
-    prev.t === next.t
+    prev.attendanceEnhancing === next.attendanceEnhancing &&
+    prev.normalizeEntryRow === next.normalizeEntryRow
   );
 }
 

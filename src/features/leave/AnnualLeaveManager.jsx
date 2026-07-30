@@ -7,7 +7,6 @@ import {
   useDeferredValue,
   startTransition,
 } from "react";
-import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/contexts/UserContext";
@@ -16,33 +15,23 @@ import { db, ref, remove, update } from "@/services/firebase";
 import AlertMessage from "@/components/ui/AlertMessage";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import {
-  filterAnnualLeaveManagerRows,
-  listAnnualLeaveManagerDepartments,
+  buildAnnualLeaveManagerRowCatalog,
+  filterAnnualLeaveManagerEntries,
 } from "./annualLeaveManagerFilter";
-import AnnualLeaveManagerTablePanel from "./AnnualLeaveManagerTablePanel";
-import {
-  ANNUAL_LEAVE_MANAGER_MIN_YEAR,
-} from "./annualLeaveFields";
-import { formatAnnualLeaveMonthColumnLabel } from "./annualLeaveCalculated";
-import {
-  buildAnnualLeaveMonthlyUsageByEmpKey,
-  buildStoredMonthlyLeaveUsageByEmpKey,
-  normalizeAnnualLeaveRowLive,
-} from "./annualLeaveDerived";
+import AnnualLeaveManagerActionsMenu from "./AnnualLeaveManagerActionsMenu";
+import AnnualLeaveManagerTableSection from "./AnnualLeaveManagerTableSection";
+import AnnualLeaveManagerToolbar from "./AnnualLeaveManagerToolbar";
+import { ANNUAL_LEAVE_MANAGER_MIN_YEAR } from "./annualLeaveFields";
 import { parseAnnualLeaveExcelFile } from "./annualLeaveExcelImport";
 import { exportAnnualLeaveExcel } from "./annualLeaveExcelExport";
-import { useAnnualLeaveLiveData } from "./useAnnualLeaveLiveData";
-import { useAnnualLeaveYearReconcile } from "./useAnnualLeaveYearReconcile";
+import { useAnnualLeaveYearData } from "./useAnnualLeaveYearData";
 import { persistAnnualLeaveYearFromAttendance } from "./annualLeaveAttendanceSync";
-import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
 import {
   annualLeaveYearRefPath,
   buildAnnualLeaveMergeUploadUpdates,
 } from "./annualLeaveYearDataOps";
 import { attendanceListDateForAnnualLeaveYear } from "./annualLeaveCrossLinks";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
-import { useAttendanceFilterDropdownPlacement } from "@/features/attendance/useAttendanceToolbarDropdownPlacement";
-import { useCloseDropdownOnScroll } from "@/features/attendance/useCloseDropdownOnScroll";
 import "@/features/attendance/attendanceToolbarFocus.css";
 import "@/features/attendance/hrPageCompact.css";
 import "./annualLeaveManager.css";
@@ -54,37 +43,21 @@ function currentYear() {
 function clampAnnualLeaveManagerYear(value) {
   const y = Number(value);
   const max = Math.max(currentYear(), ANNUAL_LEAVE_MANAGER_MIN_YEAR) + 2;
-  if (!Number.isFinite(y)) return Math.max(currentYear(), ANNUAL_LEAVE_MANAGER_MIN_YEAR);
+  if (!Number.isFinite(y))
+    return Math.max(currentYear(), ANNUAL_LEAVE_MANAGER_MIN_YEAR);
   return Math.min(Math.max(y, ANNUAL_LEAVE_MANAGER_MIN_YEAR), max);
 }
 
-function listAnnualLeaveManagerYearOptions() {
-  const max = Math.max(currentYear(), ANNUAL_LEAVE_MANAGER_MIN_YEAR) + 2;
-  return Array.from(
-    { length: max - ANNUAL_LEAVE_MANAGER_MIN_YEAR + 1 },
-    (_, i) => ANNUAL_LEAVE_MANAGER_MIN_YEAR + i,
-  );
-}
-
-function normalizeAnnualLeaveRow(
-  id,
-  raw,
-  deductionsByMnv,
-  year,
-  monthValues,
-  monthWorkSummaryByYearMonth = null,
-) {
-  return normalizeAnnualLeaveRowLive(
-    id,
-    raw,
-    deductionsByMnv,
-    year,
-    monthValues,
-    monthWorkSummaryByYearMonth,
-  );
-}
-
-const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
+const YEAR_OPTIONS = Array.from(
+  {
+    length:
+      Math.max(currentYear(), ANNUAL_LEAVE_MANAGER_MIN_YEAR) +
+      2 -
+      ANNUAL_LEAVE_MANAGER_MIN_YEAR +
+      1,
+  },
+  (_, i) => ANNUAL_LEAVE_MANAGER_MIN_YEAR + i,
+);
 
 export default function AnnualLeaveManager() {
   const { t } = useTranslation();
@@ -102,33 +75,12 @@ export default function AnnualLeaveManager() {
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [actionsOpen, setActionsOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const exportRef = useRef(null);
   const actionsAnchorRef = useRef(null);
   const actionsPanelRef = useRef(null);
-  const actionsPlacement = useAttendanceFilterDropdownPlacement(
-    actionsOpen,
-    actionsAnchorRef,
-  );
-
-  const closeActionsMenu = useCallback(() => setActionsOpen(false), []);
-  useCloseDropdownOnScroll(actionsOpen, actionsPanelRef, closeActionsMenu);
 
   const canManage = canManageAnnualLeave(user, userRole);
-
-  const { yearData, deductionsByEmpKey, attendanceMonthlyByEmpKey, monthWorkSummaryByEmpKey, loading } =
-    useAnnualLeaveLiveData(year, {
-      includeUsageDetail: false,
-      includeBalanceMap: false,
-      includeAttendance: true,
-      includeJoinMonthAccrual: true,
-      includePayrollMonthAccrual: true,
-    });
-
-  useAnnualLeaveYearReconcile({
-    attendanceRootPath: "attendance",
-    year,
-    userEmail: user?.email ?? "",
-    enabled: false,
-  });
+  const { yearData, yearLoading } = useAnnualLeaveYearData(year);
 
   useEffect(() => {
     const raw = searchParams.get("year");
@@ -140,128 +92,56 @@ export default function AnnualLeaveManager() {
     }
   }, [searchParams, setSearchParams]);
 
-  const deferredYearData = useDeferredValue(yearData);
-  const deferredDeductionsByEmpKey = useDeferredValue(deductionsByEmpKey);
-  const deferredAttendanceMonthlyByEmpKey = useDeferredValue(
-    attendanceMonthlyByEmpKey,
-  );
-  const deferredMonthWorkSummaryByEmpKey = useDeferredValue(
-    monthWorkSummaryByEmpKey,
-  );
+  useEffect(() => {
+    setSearch("");
+    setDeptFilter("");
+  }, [year]);
 
-  const storedMonthlyByEmpKey = useMemo(
-    () => buildStoredMonthlyLeaveUsageByEmpKey(deferredYearData),
-    [deferredYearData],
+  const rowCatalog = useMemo(
+    () => buildAnnualLeaveManagerRowCatalog(yearData),
+    [yearData],
   );
-
-  const { yearMonths, monthlyByEmpKey } = useMemo(
-    () =>
-      buildAnnualLeaveMonthlyUsageByEmpKey(
-        year,
-        storedMonthlyByEmpKey,
-        deferredAttendanceMonthlyByEmpKey,
-      ),
-    [deferredAttendanceMonthlyByEmpKey, year, storedMonthlyByEmpKey],
-  );
-
-  const rows = useMemo(() => {
-    const list = [];
-    if (deferredYearData && typeof deferredYearData === "object") {
-      const indexed = indexAnnualLeaveYearByEmpKey(deferredYearData);
-      for (const [empKey, { raw }] of Object.entries(indexed)) {
-        const row = normalizeAnnualLeaveRow(
-          empKey,
-          raw,
-          deferredDeductionsByEmpKey,
-          year,
-          monthlyByEmpKey[empKey] ?? EMPTY_MONTH_VALUES,
-          deferredMonthWorkSummaryByEmpKey[empKey] ?? null,
-        );
-        if (row) list.push(row);
-      }
-    }
-    list.sort((a, b) => {
-      const na = Number(a.rowNo);
-      const nb = Number(b.rowNo);
-      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-      return String(a.rowNo ?? "").localeCompare(
-        String(b.rowNo ?? ""),
-        undefined,
-        { numeric: true },
-      );
-    });
-    return list;
-  }, [deferredYearData, deferredDeductionsByEmpKey, monthlyByEmpKey, deferredMonthWorkSummaryByEmpKey, year]);
+  const { entries, deptIndex, departments } = rowCatalog;
 
   const deferredSearch = useDeferredValue(search);
   const deferredDeptFilter = useDeferredValue(deptFilter);
   const filterPending =
     search !== deferredSearch || deptFilter !== deferredDeptFilter;
 
+  const filteredEntries = useMemo(
+    () =>
+      filterAnnualLeaveManagerEntries(
+        entries,
+        {
+          search: deferredSearch,
+          deptFilter: deferredDeptFilter,
+        },
+        deptIndex,
+      ),
+    [entries, deferredSearch, deferredDeptFilter, deptIndex],
+  );
+
+  const displayRowCount = filteredEntries.length;
   const detailThroughDateKey = useMemo(
     () => attendanceListDateForAnnualLeaveYear(year),
     [year],
   );
 
-  const monthColumnLabels = useMemo(
-    () => yearMonths.map(formatAnnualLeaveMonthColumnLabel),
-    [yearMonths],
+  const handleYearChange = useCallback(
+    (event) => {
+      const y = Number(event.target.value);
+      setYear(y);
+      setSearchParams({ year: String(y) }, { replace: true });
+    },
+    [setSearchParams],
   );
-
-  useEffect(() => {
-    if (!actionsOpen) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") setActionsOpen(false);
-    };
-    const onClickOutside = (event) => {
-      if (event.button != null && event.button !== 0) return;
-      const raw = event.target;
-      const target =
-        raw instanceof Element
-          ? raw
-          : raw instanceof Node && raw.parentElement
-            ? raw.parentElement
-            : null;
-      if (!target) return;
-      if (
-        actionsAnchorRef.current?.contains(target) ||
-        actionsPanelRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setActionsOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    document.addEventListener("click", onClickOutside);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.removeEventListener("click", onClickOutside);
-    };
-  }, [actionsOpen]);
-
-  const filteredRows = useMemo(
-    () =>
-      filterAnnualLeaveManagerRows(rows, {
-        search: deferredSearch,
-        deptFilter: deferredDeptFilter,
-      }),
-    [rows, deferredSearch, deferredDeptFilter],
-  );
-
-  const departments = useMemo(
-    () => listAnnualLeaveManagerDepartments(rows),
-    [rows],
-  );
-
-  const displayRowCount = filteredRows.length;
 
   const handleSearchChange = useCallback((event) => {
     startTransition(() => setSearch(event.target.value));
   }, []);
 
   const handleDeptFilterChange = useCallback((event) => {
-    const value = event.target.value;
-    startTransition(() => setDeptFilter(value));
+    setDeptFilter(event.target.value);
   }, []);
 
   const handleRecalculate = useCallback(async () => {
@@ -285,9 +165,11 @@ export default function AnnualLeaveManager() {
       setAlert({
         show: true,
         type: "error",
-        message: err?.message || t("annualLeave.recalculateError", {
-          defaultValue: "Không thể tính lại phép năm.",
-        }),
+        message:
+          err?.message ||
+          t("annualLeave.recalculateError", {
+            defaultValue: "Không thể tính lại phép năm.",
+          }),
       });
     } finally {
       setSyncing(false);
@@ -302,7 +184,9 @@ export default function AnnualLeaveManager() {
 
       setUploading(true);
       try {
-        const { records, errors } = await parseAnnualLeaveExcelFile(file, { year });
+        const { records, errors } = await parseAnnualLeaveExcelFile(file, {
+          year,
+        });
         if (errors.length > 0 && records.length === 0) {
           setAlert({ show: true, type: "error", message: errors.join(" ") });
           return;
@@ -351,7 +235,7 @@ export default function AnnualLeaveManager() {
 
   const handleDeleteYearData = useCallback(async () => {
     if (!canManage || deleting) return;
-    const employeeCount = rows.length;
+    const employeeCount = entries.length;
     const confirmed = window.confirm(
       t("annualLeave.deleteYearDataConfirm", {
         year,
@@ -381,14 +265,16 @@ export default function AnnualLeaveManager() {
     } finally {
       setDeleting(false);
     }
-  }, [canManage, deleting, rows.length, t, year]);
+  }, [canManage, deleting, entries.length, t, year]);
 
   const handleExport = useCallback(async () => {
     try {
-      const exportRows = filterAnnualLeaveManagerRows(rows, {
-        search,
-        deptFilter,
-      });
+      const exportRows =
+        exportRef.current?.getExportRows({ search, deptFilter }) ?? [];
+      if (!exportRows.length) return;
+      const monthColumnLabels =
+        exportRef.current?.getMonthColumnLabels?.() ?? [];
+      const monthlyByEmpKey = exportRef.current?.getMonthlyByEmpKey?.() ?? {};
       const buffer = await exportAnnualLeaveExcel(exportRows, year, {
         monthColumnLabels,
         monthlyByEmpKey,
@@ -409,9 +295,7 @@ export default function AnnualLeaveManager() {
         message: err?.message || t("annualLeave.exportError"),
       });
     }
-  }, [rows, search, deptFilter, year, t, monthColumnLabels, monthlyByEmpKey]);
-
-  const yearOptions = useMemo(() => listAnnualLeaveManagerYearOptions(), []);
+  }, [search, deptFilter, year, t]);
 
   if (!user) {
     return (
@@ -446,215 +330,56 @@ export default function AnnualLeaveManager() {
           onClose={() => setAlert((a) => ({ ...a, show: false }))}
         />
 
-        <div className="attendance-toolbar-controls sticky top-0 z-30 mb-1 flex shrink-0 flex-col gap-1 border-b border-slate-200/90 bg-white px-1.5 py-1 shadow-sm sm:mb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2 md:px-2 dark:border-slate-700/90 dark:bg-slate-900">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-            <label className="flex h-7 items-center gap-1">
-              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400">
-                {t("annualLeave.year")}
-              </span>
-              <select
-                className="h-8 min-w-[4.5rem] rounded-md border bg-white px-2 text-sm font-semibold text-blue-800 focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300"
-                value={year}
-                onChange={(e) => {
-                  const y = Number(e.target.value);
-                  setYear(y);
-                  setSearchParams({ year: String(y) }, { replace: true });
-                }}
-              >
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <input
-              type="search"
-              placeholder={t("annualLeave.searchPlaceholder")}
-              className="h-8 w-full min-w-0 rounded-md border px-2 text-sm focus:ring-2 focus:ring-blue-200 sm:w-44 dark:border-slate-600 dark:bg-slate-900"
-              value={search}
-              onChange={handleSearchChange}
+        <AnnualLeaveManagerToolbar
+          t={t}
+          year={year}
+          yearOptions={YEAR_OPTIONS}
+          search={search}
+          deptFilter={deptFilter}
+          departments={departments}
+          displayRowCount={displayRowCount}
+          filterPending={filterPending}
+          onYearChange={handleYearChange}
+          onSearchChange={handleSearchChange}
+          onDeptFilterChange={handleDeptFilterChange}
+          actionsSlot={
+            <AnnualLeaveManagerActionsMenu
+              t={t}
+              canManage={canManage}
+              actionsOpen={actionsOpen}
+              setActionsOpen={setActionsOpen}
+              actionsAnchorRef={actionsAnchorRef}
+              actionsPanelRef={actionsPanelRef}
+              fileInputRef={fileInputRef}
+              syncing={syncing}
+              uploading={uploading}
+              deleting={deleting}
+              hasEntries={entries.length > 0}
+              onRecalculate={handleRecalculate}
+              onUpload={handleUpload}
+              onDelete={() => void handleDeleteYearData()}
+              onExport={() => void handleExport()}
             />
+          }
+        />
 
-            <select
-              className="h-8 max-w-full rounded-md border bg-white px-2 text-xs font-medium dark:border-slate-600 dark:bg-slate-900 sm:max-w-[11rem]"
-              value={deptFilter}
-              onChange={handleDeptFilterChange}
-            >
-              <option value="">{t("annualLeave.allDepartments")}</option>
-              {departments.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
+        <PayrollMonthGridLoadingOverlay active={yearLoading} mode="viewport" />
 
-          <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto">
-            <span className="inline-flex h-8 items-center rounded-md border border-blue-200/80 bg-blue-50 px-2 text-xs font-semibold text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200">
-              {t("annualLeave.rowCount", { count: displayRowCount })}
-            </span>
-
-            <div className="relative shrink-0">
-              <button
-                ref={actionsAnchorRef}
-                type="button"
-                className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-[#1a73e8] px-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#1557b0] sm:text-sm"
-                onClick={() => setActionsOpen((open) => !open)}
-                aria-expanded={actionsOpen}
-                aria-haspopup="menu"
-              >
-                <span aria-hidden>⚙️</span>
-                {t("annualLeave.actionsMenu", { defaultValue: "Chức năng" })}
-                <span className="text-[10px] opacity-90" aria-hidden>
-                  {actionsOpen ? "▲" : "▼"}
-                </span>
-              </button>
-
-              {actionsOpen && actionsPlacement
-                ? createPortal(
-                    <div
-                      ref={actionsPanelRef}
-                      role="menu"
-                      className="attendance-tools-dropdown attendance-toolbar-controls fixed flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
-                      style={{
-                        zIndex: "var(--z-navbar-dropdown, 110)",
-                        top: actionsPlacement.top,
-                        left: actionsPlacement.left,
-                        width: actionsPlacement.width,
-                        maxHeight: actionsPlacement.maxHeight,
-                        minHeight: Math.min(actionsPlacement.maxHeight, 420),
-                      }}
-                    >
-                      <div className="shrink-0 border-b border-[#1557b0] bg-[#1a73e8] px-4 py-2 text-sm font-bold text-white">
-                        {t("annualLeave.actionsMenu", {
-                          defaultValue: "Chức năng",
-                        })}
-                      </div>
-                      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
-                        {canManage ? (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            disabled={syncing}
-                            className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-gray-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
-                            onClick={() => {
-                              setActionsOpen(false);
-                              handleRecalculate();
-                            }}
-                          >
-                            <span className="shrink-0 text-lg" aria-hidden>
-                              🔄
-                            </span>
-                            <span className="text-sm font-semibold">
-                              {syncing
-                                ? t("annualLeave.recalculating", {
-                                    defaultValue: "Đang tính lại…",
-                                  })
-                                : t("annualLeave.recalculate", {
-                                    defaultValue: "Tính lại từ điểm danh",
-                                  })}
-                            </span>
-                          </button>
-                        ) : null}
-
-                        {canManage ? (
-                          <>
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              accept=".xlsx,.xls"
-                              className="hidden"
-                              onChange={(e) => {
-                                setActionsOpen(false);
-                                handleUpload(e);
-                              }}
-                            />
-                            <button
-                              type="button"
-                              role="menuitem"
-                              disabled={uploading}
-                              className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-gray-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
-                              onClick={() => fileInputRef.current?.click()}
-                            >
-                              <span className="shrink-0 text-lg" aria-hidden>
-                                📤
-                              </span>
-                              <span className="text-sm font-semibold">
-                                {uploading
-                                  ? t("annualLeave.uploading")
-                                  : t("annualLeave.uploadExcel")}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              disabled={deleting || rows.length === 0}
-                              className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-950/40"
-                              onClick={() => {
-                                setActionsOpen(false);
-                                void handleDeleteYearData();
-                              }}
-                            >
-                              <span className="shrink-0 text-lg" aria-hidden>
-                                🗑️
-                              </span>
-                              <span className="text-sm font-semibold">
-                                {deleting
-                                  ? t("annualLeave.deletingYearData", {
-                                      defaultValue: "Đang xóa…",
-                                    })
-                                  : t("annualLeave.deleteYearData", {
-                                      defaultValue: "Xóa dữ liệu phép năm",
-                                    })}
-                              </span>
-                            </button>
-                          </>
-                        ) : null}
-
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-gray-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
-                          onClick={() => {
-                            setActionsOpen(false);
-                            handleExport();
-                          }}
-                          disabled={rows.length === 0}
-                        >
-                          <span className="shrink-0 text-lg" aria-hidden>
-                            📥
-                          </span>
-                          <span className="text-sm font-semibold">
-                            {t("annualLeave.exportExcel")}
-                          </span>
-                        </button>
-                      </div>
-                    </div>,
-                    document.body,
-                  )
-                : null}
-            </div>
-          </div>
-        </div>
-
-        <PayrollMonthGridLoadingOverlay active={loading} mode="viewport" />
-
-        {loading ? (
+        {yearLoading ? (
           <div
             className="annual-leave-table-compact min-h-0 flex-1"
             aria-hidden="true"
           />
         ) : (
-          <AnnualLeaveManagerTablePanel
-            filteredRows={filteredRows}
-            monthlyByEmpKey={monthlyByEmpKey}
+          <AnnualLeaveManagerTableSection
             year={year}
-            monthColumnLabels={monthColumnLabels}
+            yearData={yearData}
+            entries={entries}
+            deptIndex={deptIndex}
+            filteredEntries={filteredEntries}
             detailThroughDateKey={detailThroughDateKey}
             filterPending={filterPending}
-            t={t}
+            exportRef={exportRef}
           />
         )}
       </div>

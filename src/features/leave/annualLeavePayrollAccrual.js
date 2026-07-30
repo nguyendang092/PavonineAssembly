@@ -106,7 +106,11 @@ function buildDayChunkMapForYearMonths(
   yearMonths,
 ) {
   const map = new Map();
-  if (!attendanceRoot || typeof attendanceRoot !== "object" || !yearMonths?.size) {
+  if (
+    !attendanceRoot ||
+    typeof attendanceRoot !== "object" ||
+    !yearMonths?.size
+  ) {
     return map;
   }
 
@@ -189,10 +193,7 @@ export function buildAnnualLeaveMonthWorkSummaryByEmpKey(
   attendanceRoot,
   year,
   yearData,
-  {
-    attendanceRootPath = "attendance",
-    asOfDateKey = null,
-  } = {},
+  { attendanceRootPath = "attendance", asOfDateKey = null } = {},
 ) {
   const map = {};
   if (!attendanceRoot || !yearData || typeof yearData !== "object") return map;

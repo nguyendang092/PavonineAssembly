@@ -284,6 +284,21 @@ export function listAnnualLeaveCalendarYearMonths(year) {
   );
 }
 
+const monthColumnLabelCache = new Map();
+
+/** Header cột tháng bảng phép năm — cache theo năm. */
+export function listAnnualLeaveManagerMonthColumnLabels(year) {
+  const y = Number(year);
+  if (!Number.isFinite(y)) return [];
+  if (!monthColumnLabelCache.has(y)) {
+    monthColumnLabelCache.set(
+      y,
+      listAnnualLeaveCalendarYearMonths(y).map(formatAnnualLeaveMonthColumnLabel),
+    );
+  }
+  return monthColumnLabelCache.get(y);
+}
+
 /** `2026-01` → `Jan-26` (header cột bảng phép năm). */
 export function formatAnnualLeaveMonthColumnLabel(yearMonth) {
   if (!yearMonth || !/^\d{4}-\d{2}$/.test(String(yearMonth))) {
