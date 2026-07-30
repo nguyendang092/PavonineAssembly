@@ -17,7 +17,7 @@ export const PAYROLL_EMP = {
   TIME_IN: "gioVao",
   TIME_OUT: "gioRa",
   LUNCH_OT_HOURS: "tangCaTrua",
-  /** Phút TC tài xế nhập thủ công — cộng vào TC ca ngày (block 30 phút). */
+  /** Phút TC tài xế nhập thủ công — quy đổi tỷ lệ phút/60, cộng vào TC ca ngày. */
   DRIVER_OT_MINUTES: "tangCaTaiXePhut",
   SHIFT: "caLamViec",
   LEAVE_TYPE: "loaiPhep",

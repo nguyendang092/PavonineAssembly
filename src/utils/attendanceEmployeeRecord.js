@@ -610,7 +610,7 @@ export function buildEmployeeAttendanceDayDocument({
       if (!s) return null;
       const n = Number(s);
       if (!Number.isFinite(n) || n < 0) return undefined;
-      return Math.min(Math.floor(n), 720);
+      return Math.floor(n);
     })(),
     [ATTENDANCE_EMP.MVT]: attendanceDayNonWipingOptionalStringFromForm(
       form,

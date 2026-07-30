@@ -469,7 +469,7 @@ describe("chế độ Tài xế / Tài xế tổng", () => {
     ).toBe(2);
   });
 
-  it("TC tài xế — phút nhập thủ công cộng vào TC ca ngày (block 30 phút)", () => {
+  it("TC tài xế — phút nhập thủ công cộng vào TC ca ngày (tỷ lệ phút/60)", () => {
     expect(
       getPayrollDayOvertimeHoursNumeric(
         "07:00",
@@ -488,6 +488,24 @@ describe("chế độ Tài xế / Tài xế tổng", () => {
         90,
       ),
     ).toBe(1.5);
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "07:00",
+        "19:00",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        undefined,
+        {},
+        20,
+      ),
+    ).toBe(0.33);
     expect(
       getPayrollDayOvertimeHoursNumeric(
         "07:00",

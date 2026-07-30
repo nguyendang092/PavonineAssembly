@@ -1187,19 +1187,18 @@ export function parseLunchOtHours(value) {
   return LUNCH_OT_HOUR_OPTIONS.includes(n) ? n : 0;
 }
 
-/** Phút TC tài xế nhập trên form (`tangCaTaiXePhut`) — tối đa 720 phút (12h). */
+/** Phút TC tài xế nhập trên form (`tangCaTaiXePhut`) — số nguyên dương, không giới hạn trần. */
 export function parseDriverOtMinutes(value) {
   if (value === null || value === undefined || value === "") return 0;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return 0;
-  return Math.min(Math.floor(n), 720);
+  return Math.floor(n);
 }
 
-/** Quy đổi phút TC tài xế → giờ TC (block 30 phút, đồng bộ TC từ giờ ra). */
+/** Quy đổi phút TC tài xế → giờ TC (tỷ lệ phút/60, làm tròn 0.01h — VD 20 phút → 0.33). */
 export function driverOtMinutesToOvertimeHours(minutes) {
   if (!Number.isFinite(minutes) || minutes <= 0) return 0;
-  const blocks = Math.floor(minutes / 30);
-  return blocks * 0.5;
+  return roundHoursToHundredths(minutes / 60);
 }
 
 function resolveDriverOtHoursForPayroll(
