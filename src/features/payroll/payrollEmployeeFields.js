@@ -17,6 +17,8 @@ export const PAYROLL_EMP = {
   TIME_IN: "gioVao",
   TIME_OUT: "gioRa",
   LUNCH_OT_HOURS: "tangCaTrua",
+  /** Phút TC tài xế nhập thủ công — cộng vào TC ca ngày (block 30 phút). */
+  DRIVER_OT_MINUTES: "tangCaTaiXePhut",
   SHIFT: "caLamViec",
   LEAVE_TYPE: "loaiPhep",
   COMP_LEAVE_ALLOWED: "duocNghiBu",
@@ -40,6 +42,7 @@ export const PAYROLL_EMP = {
  *   payrollEarlyOtPaperwork: boolean | undefined,
  *   payrollLateOtExcluded: boolean | undefined,
  *   lunchOtHours?: unknown,
+ *   driverOtMinutes?: unknown,
  *   includeTapVuInWorkingHours?: boolean,
  *   includeThaiSanInWorkingHours?: boolean,
  *   includeTaiXeInWorkingHours?: boolean,

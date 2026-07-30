@@ -79,6 +79,15 @@ function AttendanceToolbarSearchCluster() {
     showAnnualLeaveBalanceToggle,
   } = useAttendanceListToolbarBranch();
 
+  const buCongPanel = (
+    <AttendanceBuCongNotificationPanel
+      buCongEmployees={buCongEmployees}
+      handleExportBuCongExcel={handleExportBuCongExcel}
+      tl={tl}
+      t={t}
+    />
+  );
+
   return (
     <AttendanceSearchActionsBar
       searchTerm={searchTerm}
@@ -114,20 +123,10 @@ function AttendanceToolbarSearchCluster() {
                   defaultValue: "Lấy phép năm",
                 })}
           </button>
-          <AttendanceBuCongNotificationPanel
-            buCongEmployees={buCongEmployees}
-            handleExportBuCongExcel={handleExportBuCongExcel}
-            tl={tl}
-            t={t}
-          />
+          {buCongPanel}
         </>
       ) : (
-        <AttendanceBuCongNotificationPanel
-          buCongEmployees={buCongEmployees}
-          handleExportBuCongExcel={handleExportBuCongExcel}
-          tl={tl}
-          t={t}
-        />
+        buCongPanel
       )}
 
       <AttendanceListFilterMenus

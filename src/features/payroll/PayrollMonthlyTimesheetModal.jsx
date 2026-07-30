@@ -1247,7 +1247,7 @@ export default function PayrollMonthlyTimesheetModal({
   } = usePayrollMonthDayChunks({
     monthKeys: monthRange.keys,
     attendanceRootPath,
-    liveEnabled: open,
+    liveEnabled: false,
     tlPage,
     emptyMessageKey: isKoreanTimesheetSource
       ? "koreanMonthlyTimesheetEmpty"

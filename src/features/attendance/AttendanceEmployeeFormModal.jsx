@@ -109,6 +109,7 @@ const EMPTY_EMPLOYEE_FORM = {
   [ATTENDANCE_EMP.LEAVE_TYPE]: "",
   [ATTENDANCE_EMP.TIME_OUT]: "",
   [ATTENDANCE_EMP.LUNCH_OT_HOURS]: "",
+  [ATTENDANCE_EMP.DRIVER_OT_MINUTES]: "",
   [ATTENDANCE_EMP.SHIFT]: "",
   [ATTENDANCE_EMP.COMP_LEAVE_ALLOWED]: "",
   /** Firebase: `attendance/{ngày}/{key}/boPhanChuaDung` — `"YES"` = sai bộ phận. */
@@ -273,6 +274,9 @@ export default function AttendanceEmployeeFormModal({
   }, [open, formInitKey]);
 
   const employeeRegimeSelectValue = getEmployeeRegimeSelectValue(form);
+  const showDriverOtMinutesField =
+    employeeRegimeSelectValue === EMPLOYEE_REGIME.TAIXE ||
+    employeeRegimeSelectValue === EMPLOYEE_REGIME.TAIXETONG;
 
   const handleEmployeeRegimeChange = useCallback((e) => {
     const flags = employeeRegimeFlagsFromSelectValue(e.target.value);
@@ -388,6 +392,7 @@ export default function AttendanceEmployeeFormModal({
     form[ATTENDANCE_EMP.TIME_IN],
     form[ATTENDANCE_EMP.TIME_OUT],
     form[ATTENDANCE_EMP.LUNCH_OT_HOURS],
+    form[ATTENDANCE_EMP.DRIVER_OT_MINUTES],
     form[ATTENDANCE_EMP.SHIFT],
     attendanceDayCtx,
   ]);
@@ -968,7 +973,11 @@ export default function AttendanceEmployeeFormModal({
               </div>
             </div>
           </div>
-          <div className="grid min-w-0 grid-cols-1 gap-1.5 sm:col-span-2 sm:grid-cols-2 sm:gap-3">
+          <div
+            className={`grid min-w-0 grid-cols-1 gap-1.5 sm:col-span-2 sm:gap-3 ${
+              showDriverOtMinutesField ? "sm:grid-cols-3" : "sm:grid-cols-2"
+            }`}
+          >
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("lunchOvertimeHours", "Thời gian tăng ca trưa")}
@@ -992,6 +1001,29 @@ export default function AttendanceEmployeeFormModal({
                 ))}
               </select>
             </div>
+            {showDriverOtMinutesField ? (
+              <div className="min-w-0">
+                <label className={employeeModalLabelClass}>
+                  {tl("driverOvertimeMinutes", "Thời gian tăng ca tài xế (phút)")}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name={ATTENDANCE_EMP.DRIVER_OT_MINUTES}
+                  value={
+                    form[ATTENDANCE_EMP.DRIVER_OT_MINUTES] === "" ||
+                    form[ATTENDANCE_EMP.DRIVER_OT_MINUTES] == null
+                      ? ""
+                      : String(form[ATTENDANCE_EMP.DRIVER_OT_MINUTES])
+                  }
+                  onChange={handleChange}
+                  disabled={fieldsLocked}
+                  placeholder={tl("driverOvertimeMinutesPlaceholder", "VD: 60")}
+                  className={employeeModalFieldClass}
+                />
+              </div>
+            ) : null}
             <div className="min-w-0">
               <label className={employeeModalLabelClass}>
                 {tl("leaveTypeColumn", "Loại phép")}

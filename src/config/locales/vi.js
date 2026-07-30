@@ -1525,6 +1525,8 @@ const vi = {
     clearTimeIn: "Xóa giờ vào",
     lunchOvertimeHours: "Thời gian tăng ca trưa",
     lunchOvertimePlaceholder: "— Không chọn —",
+    driverOvertimeMinutes: "Thời gian tăng ca tài xế (phút)",
+    driverOvertimeMinutesPlaceholder: "VD: 60",
     leaveTypePlaceholder: "— Không chọn —",
     leaveTypeCurrentValue: "(giá trị hiện tại)",
     loaiPhepModalHint: "Chọn loại phép (PN, PO, TS …)",

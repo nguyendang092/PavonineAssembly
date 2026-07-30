@@ -468,6 +468,63 @@ describe("chế độ Tài xế / Tài xế tổng", () => {
       ),
     ).toBe(2);
   });
+
+  it("TC tài xế — phút nhập thủ công cộng vào TC ca ngày (block 30 phút)", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "07:00",
+        "19:00",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        undefined,
+        {},
+        90,
+      ),
+    ).toBe(1.5);
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "07:00",
+        "21:00",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        undefined,
+        {},
+        60,
+      ),
+    ).toBe(3);
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "07:00",
+        "",
+        false,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        {},
+        60,
+      ),
+    ).toBe(null);
+  });
 });
 
 describe("getEarlyPaperworkOvertimeHours", () => {

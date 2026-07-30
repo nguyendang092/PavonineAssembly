@@ -107,10 +107,6 @@ export function getAttendanceGridColumnStart(
   return ATTENDANCE_GRID_COL[key];
 }
 
-export function attendanceGridCellStyle(isGrid, col) {
-  return isGrid && col != null ? { gridColumnStart: col } : undefined;
-}
-
 /** Bảng HTML: luôn render đủ cột + cuộn ngang — tránh lệch colgroup khi ẩn `td`. */
 export function cellClsForAttendanceTable(s) {
   return s
@@ -224,21 +220,4 @@ export function getAttendanceColWidthPercents(
     result = normalizePercents(copy);
   }
   return result;
-}
-
-/** Chuỗi grid-template-columns — header + hàng virtual dùng chung. */
-export function getAttendanceGridTemplateColumns(
-  showRowModalActions,
-  columnPlan = "full",
-  tableVariant = "attendance",
-  layoutOptions = {},
-) {
-  return getAttendanceColWidthPercents(
-    showRowModalActions,
-    columnPlan,
-    tableVariant,
-    layoutOptions,
-  )
-    .map((w) => `${w}%`)
-    .join(" ");
 }

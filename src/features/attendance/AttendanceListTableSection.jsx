@@ -1,11 +1,7 @@
-import React, { memo, useEffect, useMemo, useRef } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import React, { memo, useMemo } from "react";
 import AttendanceTableRow, {
   AttendanceTableColgroup,
   AttendanceTableThead,
-  ATTENDANCE_VIRTUAL_THRESHOLD,
-  AttendanceVirtualHeader,
-  getAttendanceGridTemplateColumns,
 } from "./attendanceTableRow";
 import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
 import { isSeasonalAttendanceRoot, isKoreanAttendanceRoot } from "./attendanceSeasonalStt";
@@ -55,40 +51,6 @@ function AttendanceListTableSection({
     attendanceRootPath,
     throughDateKey: selectedDate,
   });
-
-  const shouldVirtualizeTable =
-    deferredFilteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
-
-  const tableScrollParentRef = useRef(null);
-
-  const attendanceGridTemplateColumns = useMemo(
-    () =>
-      getAttendanceGridTemplateColumns(
-        showRowModalActions,
-        columnPlan,
-        "attendance",
-        attendanceLayoutOptions,
-      ),
-    [showRowModalActions, columnPlan, attendanceLayoutOptions],
-  );
-
-  const rowVirtualizer = useVirtualizer({
-    count: shouldVirtualizeTable ? deferredFilteredEmployees.length : 0,
-    getScrollElement: () => tableScrollParentRef.current,
-    estimateSize: () => 32,
-    overscan: 12,
-  });
-
-  useEffect(() => {
-    if (!shouldVirtualizeTable) return;
-    rowVirtualizer.measure();
-  }, [
-    shouldVirtualizeTable,
-    deferredFilteredEmployees.length,
-    columnPlan,
-    showRowModalActions,
-    rowVirtualizer,
-  ]);
 
   const canEditByEmpId = useMemo(() => {
     const map = new Map();
@@ -145,62 +107,6 @@ function AttendanceListTableSection({
     columnPlan === "minimal"
       ? "overflow-x-hidden"
       : "overflow-x-auto overscroll-x-contain";
-
-  if (shouldVirtualizeTable) {
-    return (
-      <div className={`min-w-0 w-full max-w-none bg-white attendance-table-compact ${outerScrollClass}`}>
-        <div
-          ref={tableScrollParentRef}
-          className="attendance-table-scroll max-h-[min(88vh,920px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain"
-        >
-          <div
-            className={`w-full max-w-none ${attendanceTableMinWidthClass}`}
-            role="table"
-          >
-            <AttendanceVirtualHeader
-              tl={tl}
-              showRowModalActions={showRowModalActions}
-              gridTemplateColumns={attendanceGridTemplateColumns}
-              canDeleteRow={canDeleteDayRecord}
-              columnPlan={columnPlan}
-              tableVariant="attendance"
-            />
-            <div
-              role="rowgroup"
-              className="w-full"
-              style={{
-                position: "relative",
-                height: `${rowVirtualizer.getTotalSize()}px`,
-              }}
-            >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const emp = deferredFilteredEmployees[virtualRow.index];
-                const idx = rowIndexOffset + virtualRow.index;
-                const rowKey = emp.id ?? emp.mnv ?? `row-${idx}`;
-                const annualLeaveBalance = getDisplayAnnualLeaveBalanceForAttendance(
-                  emp,
-                  annualLeaveBalanceByMnv,
-                );
-                return (
-                  <AttendanceTableRow
-                    key={rowKey}
-                    emp={emp}
-                    idx={idx}
-                    virtualRow={virtualRow}
-                    canEdit={canEditByEmpId.get(rowKey) ?? false}
-                    measureElementRef={rowVirtualizer.measureElement}
-                    gridTemplateColumns={attendanceGridTemplateColumns}
-                    annualLeaveBalance={annualLeaveBalance}
-                    {...sharedRowProps}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-w-0 w-full max-w-none bg-white attendance-table-compact ${outerScrollClass}`}>

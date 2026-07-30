@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, memo, useDeferredValue } from "react";
 import { useTranslation } from "react-i18next";
 import NotificationBell from "@/components/ui/NotificationBell";
 import { db, ref, get } from "@/services/firebase";
@@ -216,11 +216,12 @@ async function computeKhongPhepStreakRows({
  * liên tiếp từ ≥2 ngày (tính cả ngày điểm danh đang chọn). Chủ nhật bị bỏ qua
  * khi lùi ngày (không ngắt chuỗi giữa thứ Bảy và thứ Hai).
  */
-export default function SeasonalKpStreakNotification({
+export default memo(function SeasonalKpStreakNotification({
   filteredEmployees,
   selectedDate,
   attendanceRootPath,
 }) {
+  const deferredFilteredEmployees = useDeferredValue(filteredEmployees);
   const { t } = useTranslation();
   const tl = useCallback(
     (key, defaultValue, options = {}) =>
@@ -231,37 +232,39 @@ export default function SeasonalKpStreakNotification({
   const [loading, setLoading] = useState(true);
   const requestGen = useRef(0);
   const sttRankByKey = useMemo(
-    () => buildCompareSttRankMap(filteredEmployees, true),
-    [filteredEmployees],
+    () => buildCompareSttRankMap(deferredFilteredEmployees, true),
+    [deferredFilteredEmployees],
   );
 
   useEffect(() => {
     const gen = ++requestGen.current;
     let cancelled = false;
-
-    (async () => {
-      setLoading(true);
-      setRows([]);
-      try {
-        const next = await computeKhongPhepStreakRows({
-          attendanceRootPath,
-          selectedDate,
-          filteredEmployees,
-        });
-        if (cancelled || gen !== requestGen.current) return;
-        setRows(next);
-      } catch {
-        if (cancelled || gen !== requestGen.current) return;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setLoading(true);
         setRows([]);
-      } finally {
-        if (!cancelled && gen === requestGen.current) setLoading(false);
-      }
-    })();
+        try {
+          const next = await computeKhongPhepStreakRows({
+            attendanceRootPath,
+            selectedDate,
+            filteredEmployees: deferredFilteredEmployees,
+          });
+          if (cancelled || gen !== requestGen.current) return;
+          setRows(next);
+        } catch {
+          if (cancelled || gen !== requestGen.current) return;
+          setRows([]);
+        } finally {
+          if (!cancelled && gen === requestGen.current) setLoading(false);
+        }
+      })();
+    }, 350);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [filteredEmployees, selectedDate, attendanceRootPath]);
+  }, [deferredFilteredEmployees, selectedDate, attendanceRootPath]);
 
   const title = tl(
     "seasonalKpStreakTitle",
@@ -387,4 +390,4 @@ export default function SeasonalKpStreakNotification({
       </NotificationBell>
     </div>
   );
-}
+});

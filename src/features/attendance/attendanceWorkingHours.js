@@ -57,6 +57,7 @@ export {
  * **Chế độ Tài xế / Tài xế tổng** (`includeTaiXeInWorkingHours` / `includeTaiXeTongInWorkingHours`, chỉ **ca ngày**):
  * GC liên tục **07:00–19:00** (chấm trước 07:00 → mốc vào **07:00**), **tối đa 8 giờ**; sau **19:00** → TC block 30 phút
  * (chỉ khi giờ ra sau **19:30**), cùng cơ chế ca ngày thường nhưng mốc **19:00**.
+ * **Tài xế tổng:** **Thứ 2** = ngày off (TC off ×2.0); **Chủ nhật** = ngày thường (không gộp hệ số CN).
  * Ca đêm không đổi.
  *
  * **Tách khỏi thống kê combo** (`getAttendanceComboFlags` trong `attendanceComboStats.js`): GC/TC và
@@ -167,9 +168,17 @@ export function shouldUseKoreanNbSundayEveningOtRule({
   koreanTimesheetRules = false,
   isCompensatoryDay = false,
   dateKey = null,
+  includeTaiXeTongInWorkingHours = false,
 } = {}) {
   if (!koreanTimesheetRules) return false;
   if (isCompensatoryDay) return false;
+  if (
+    includeTaiXeTongInWorkingHours === true ||
+    String(includeTaiXeTongInWorkingHours ?? "").trim().toUpperCase() === "YES"
+  ) {
+    const pd = parseLocalDateKey(String(dateKey ?? ""));
+    if (pd && pd.getDay() === 0) return false;
+  }
   return isSundayDateKeyForKoreanOt(dateKey);
 }
 
@@ -812,6 +821,7 @@ export function formatPayrollTableOffDayTcCell(
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
   otOptions = {},
+  driverOtMinutes = undefined,
 ) {
   if (
     hasPayrollLeaveType(
@@ -843,6 +853,7 @@ export function formatPayrollTableOffDayTcCell(
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
     otOptions,
+    driverOtMinutes,
   );
   return payrollHoursCellDisplay(
     merged == null ? PAYROLL_CELL_DASH : String(merged),
@@ -865,6 +876,8 @@ export function formatPayrollTableHolidayDayWorkingCell(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
+  otOptions = {},
+  driverOtMinutes = undefined,
 ) {
   if (
     hasPayrollLeaveType(
@@ -892,6 +905,8 @@ export function formatPayrollTableHolidayDayWorkingCell(
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
+    otOptions,
+    driverOtMinutes,
   );
   return payrollHoursCellDisplay(
     merged == null ? PAYROLL_CELL_DASH : String(merged),
@@ -1172,6 +1187,40 @@ export function parseLunchOtHours(value) {
   return LUNCH_OT_HOUR_OPTIONS.includes(n) ? n : 0;
 }
 
+/** Phút TC tài xế nhập trên form (`tangCaTaiXePhut`) — tối đa 720 phút (12h). */
+export function parseDriverOtMinutes(value) {
+  if (value === null || value === undefined || value === "") return 0;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(Math.floor(n), 720);
+}
+
+/** Quy đổi phút TC tài xế → giờ TC (block 30 phút, đồng bộ TC từ giờ ra). */
+export function driverOtMinutesToOvertimeHours(minutes) {
+  if (!Number.isFinite(minutes) || minutes <= 0) return 0;
+  const blocks = Math.floor(minutes / 30);
+  return blocks * 0.5;
+}
+
+function resolveDriverOtHoursForPayroll(
+  driverOtMinutes,
+  shiftCode,
+  includeTaiXeInWorkingHours,
+  includeTaiXeTongInWorkingHours,
+) {
+  if (isNightShiftCaLamViec(shiftCode)) return 0;
+  if (
+    !useTaiXeDayShiftRules(
+      shiftCode,
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
+    )
+  ) {
+    return 0;
+  }
+  return driverOtMinutesToOvertimeHours(parseDriverOtMinutes(driverOtMinutes));
+}
+
 /**
  * Giờ TC khối ngày (cột «Giờ TC»): tăng ca sau 17:30 + (tùy chọn) TC sớm khi có giấy và vào ≤ 06:40.
  * Ca ngày: **bắt buộc có giờ ra hợp lệ** mới tính TC (kể cả phần giấy sớm) — tránh có TC khi chưa chấm giờ ra.
@@ -1180,6 +1229,7 @@ export function parseLunchOtHours(value) {
  * @param {unknown} [includeTapVuInWorkingHours]
  * @param {unknown} [includeThaiSanInWorkingHours]
  * @param {unknown} [lunchOtHours] — giờ TC trưa (0.5 / 0.833 / 1 / 1.5 / 2); cộng vào TC off / GC lễ khi gộp.
+ * @param {unknown} [driverOtMinutes] — phút TC tài xế nhập thủ công; chỉ áp dụng chế độ Tài xế / Tài xế tổng.
  * @returns {number | null} null nếu không đọc được giờ ra (ca ngày / ca đêm).
  */
 export function getPayrollDayOvertimeHoursNumeric(
@@ -1196,6 +1246,7 @@ export function getPayrollDayOvertimeHoursNumeric(
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
   otOptions = {},
+  driverOtMinutes = undefined,
 ) {
   if (isNightShiftCaLamViec(shiftCode)) {
     return 0;
@@ -1213,8 +1264,24 @@ export function getPayrollDayOvertimeHoursNumeric(
     includeTaiXeTongInWorkingHours,
     otOptions,
   );
+  const parsedLunchOtHours = parseLunchOtHours(lunchOtHours);
+  const driverOtHours = resolveDriverOtHoursForPayroll(
+    driverOtMinutes,
+    shiftCode,
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
+  );
+  const roundFn = useKoreanEveningOt
+    ? roundHoursToHundredths
+    : roundHoursToTenths;
   if (eveningOtHoursRaw == null) {
-    return null;
+    if (driverOtHours <= 0 && parsedLunchOtHours <= 0) return null;
+    const earlyOtHours = getEarlyPaperworkOvertimeHours(
+      timeIn,
+      payrollEarlyOtPaperwork,
+      shiftCode,
+    );
+    return roundFn(earlyOtHours) + parsedLunchOtHours + driverOtHours;
   }
   const eveningOtHours =
     payrollLateOtExcluded === true ? 0 : eveningOtHoursRaw;
@@ -1223,13 +1290,9 @@ export function getPayrollDayOvertimeHoursNumeric(
     payrollEarlyOtPaperwork,
     shiftCode,
   );
-  const parsedLunchOtHours = parseLunchOtHours(lunchOtHours);
-  const roundFn = useKoreanEveningOt
-    ? roundHoursToHundredths
-    : roundHoursToTenths;
   const paperOtHours = roundFn(eveningOtHours + earlyOtHours);
 
-  return paperOtHours + parsedLunchOtHours;
+  return paperOtHours + parsedLunchOtHours + driverOtHours;
 }
 
 /**
@@ -1251,6 +1314,7 @@ export function getPayrollDayShiftOffHolidayMergedHoursNumeric(
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
   otOptions = {},
+  driverOtMinutes = undefined,
 ) {
   const halfPn = isHalfPnLeaveType(leaveType);
   if (
@@ -1299,6 +1363,7 @@ export function getPayrollDayShiftOffHolidayMergedHoursNumeric(
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
     otOptions,
+    driverOtMinutes,
   );
   if (h == null && n == null) return null;
   const regularHours = h == null ? 0 : h;
@@ -1325,6 +1390,7 @@ export function formatPayrollTableDayShiftOvertimeCell(
   isCompensatoryDay = false,
   lunchOtHours = undefined,
   otOptions = {},
+  driverOtMinutes = undefined,
 ) {
   const strictOff = isOffDay || isCompensatoryDay;
   if (isNightShiftCaLamViec(shiftCode)) {
@@ -1347,6 +1413,7 @@ export function formatPayrollTableDayShiftOvertimeCell(
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
     otOptions,
+    driverOtMinutes,
   );
   if (n == null) return PAYROLL_CELL_DASH;
   if (n === 0) return PAYROLL_CELL_DASH;
@@ -1373,6 +1440,7 @@ function payrollTotalDayGcNumeric(
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
   otOptions = {},
+  driverOtMinutes = undefined,
 ) {
   if (
     hasPayrollLeaveType(
@@ -1407,6 +1475,7 @@ function payrollTotalDayGcNumeric(
           includeTaiXeTongInWorkingHours,
           lunchOtHours,
           otOptions,
+          driverOtMinutes,
         );
         const overtimeHours = n == null ? 0 : n;
         return regularHours + overtimeHours;
@@ -1426,6 +1495,7 @@ function payrollTotalDayGcNumeric(
         includeTaiXeTongInWorkingHours,
         lunchOtHours,
         otOptions,
+        driverOtMinutes,
       );
       return merged == null ? 0 : merged;
     }
@@ -1465,6 +1535,7 @@ function payrollTotalDayGcNumeric(
         includeTaiXeTongInWorkingHours,
         lunchOtHours,
         otOptions,
+        driverOtMinutes,
       );
       overtimeHours = n == null ? 0 : n;
     }
@@ -1487,6 +1558,7 @@ function payrollTotalDayGcNumeric(
       includeTaiXeTongInWorkingHours,
       lunchOtHours,
       otOptions,
+      driverOtMinutes,
     );
     return merged == null ? 0 : merged;
   }
@@ -1508,6 +1580,7 @@ export function formatPayrollTableTotalDayGcCell(
   includeTaiXeTongInWorkingHours = false,
   lunchOtHours = undefined,
   otOptions = {},
+  driverOtMinutes = undefined,
 ) {
   const sum = payrollTotalDayGcNumeric(
     timeIn,
@@ -1524,6 +1597,7 @@ export function formatPayrollTableTotalDayGcCell(
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
     otOptions,
+    driverOtMinutes,
   );
   if (sum === 0) return PAYROLL_CELL_DASH;
   return payrollHoursCellDisplay(String(sum));

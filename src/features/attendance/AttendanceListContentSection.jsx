@@ -1,4 +1,4 @@
-import React, { memo, lazy, Suspense, useCallback, useMemo } from "react";
+import React, { memo, lazy, Suspense, useCallback } from "react";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import HrTablePagination from "@/components/ui/HrTablePagination";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
@@ -6,7 +6,6 @@ import AttendanceEmployeeFormModal from "./AttendanceEmployeeFormModal";
 import AttendanceOffDaysModal from "./AttendanceOffDaysModal";
 import AttendanceListTableSection from "./AttendanceListTableSection";
 import AttendanceListSummary from "./AttendanceListSummary";
-import { ATTENDANCE_VIRTUAL_THRESHOLD } from "./attendanceTableRow";
 import {
   useAttendanceListContentBranch,
   useAttendanceListComboBranch,
@@ -59,28 +58,12 @@ function AttendanceListContentSection() {
 
   const { searchTerm } = useAttendanceListSearchBranch();
 
-  const shouldVirtualizeTable =
-    deferredFilteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
-
   const tablePagination = useHrTablePagination(deferredFilteredEmployees, {
     resetDeps: [selectedDate, searchTerm, deferredFilteredEmployees.length],
   });
 
-  const tableEmployees = useMemo(
-    () =>
-      shouldVirtualizeTable
-        ? deferredFilteredEmployees
-        : tablePagination.pagedItems,
-    [
-      shouldVirtualizeTable,
-      deferredFilteredEmployees,
-      tablePagination.pagedItems,
-    ],
-  );
-
-  const tableRowIndexOffset = shouldVirtualizeTable
-    ? 0
-    : tablePagination.rowIndexOffset;
+  const tableEmployees = tablePagination.pagedItems;
+  const tableRowIndexOffset = tablePagination.rowIndexOffset;
 
   const {
     comboProductionDeptCatalog,
@@ -211,19 +194,17 @@ function AttendanceListContentSection() {
         annualLeaveBalanceEnabled={annualLeaveBalanceEnabled}
       />
 
-      {shouldVirtualizeTable ? null : (
-        <HrTablePagination
-          rangeStart={tablePagination.rangeStart}
-          rangeEnd={tablePagination.rangeEnd}
-          totalItems={tablePagination.totalItems}
-          page={tablePagination.page}
-          totalPages={tablePagination.totalPages}
-          pageNumbers={tablePagination.pageNumbers}
-          pageSize={tablePagination.pageSize}
-          onPageChange={tablePagination.setPage}
-          onPageSizeChange={tablePagination.setPageSize}
-        />
-      )}
+      <HrTablePagination
+        rangeStart={tablePagination.rangeStart}
+        rangeEnd={tablePagination.rangeEnd}
+        totalItems={tablePagination.totalItems}
+        page={tablePagination.page}
+        totalPages={tablePagination.totalPages}
+        pageNumbers={tablePagination.pageNumbers}
+        pageSize={tablePagination.pageSize}
+        onPageChange={tablePagination.setPage}
+        onPageSizeChange={tablePagination.setPageSize}
+      />
 
       <AttendanceListSummary
         deferredFilteredEmployees={deferredFilteredEmployees}

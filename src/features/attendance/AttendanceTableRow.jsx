@@ -5,13 +5,9 @@
  */
 export {
   default,
-  ATTENDANCE_VIRTUAL_THRESHOLD,
   getAttendanceGridColumnStart,
   cellClsForAttendanceTable,
   getAttendanceColWidthPercents,
-  getAttendanceGridTemplateColumns,
   AttendanceTableColgroup,
-  AttendanceVirtualHeader,
   AttendanceTableThead,
 } from "./attendanceTableRow/index.js";
-

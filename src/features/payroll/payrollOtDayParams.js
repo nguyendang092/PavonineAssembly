@@ -1,6 +1,7 @@
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 import { resolveEffectivePayrollEarlyOtPaperwork } from "@/features/payroll/payrollEarlyOtMeta";
+import { resolveTaiXeTongEffectiveIsOffDay } from "@/features/payroll/taiXeTongPayrollDay";
 
 /**
  * Tham số ngày cho tính TC / hệ số lương — một nguồn từ dòng NV + ngữ cảnh ngày.
@@ -12,19 +13,26 @@ import { resolveEffectivePayrollEarlyOtPaperwork } from "@/features/payroll/payr
  */
 export function payrollOtDayParamsFromEmp(emp, dayCtx) {
   const flags = employeeRegimeWorkingHoursFlags(emp);
+  const dateKey = dayCtx.dateKey ?? null;
+  const isOffDay = resolveTaiXeTongEffectiveIsOffDay({
+    includeTaiXeTongInWorkingHours: flags.includeTaiXeTongInWorkingHours,
+    dateKey,
+    isOffDay: dayCtx.isOffDay ?? false,
+  });
   return {
     timeIn: emp[PAYROLL_EMP.TIME_IN],
     timeOut: emp[PAYROLL_EMP.TIME_OUT],
-    isOffDay: dayCtx.isOffDay ?? false,
+    isOffDay,
     isHolidayDay: dayCtx.isHolidayDay ?? false,
     isCompensatoryDay: dayCtx.isCompensatoryDay ?? false,
-    dateKey: dayCtx.dateKey ?? null,
+    dateKey,
     koreanTimesheetRules: dayCtx.koreanTimesheetRules === true,
     shiftCode: emp[PAYROLL_EMP.SHIFT],
     leaveType: emp[PAYROLL_EMP.LEAVE_TYPE],
     payrollEarlyOtPaperwork: resolveEffectivePayrollEarlyOtPaperwork(emp),
     payrollLateOtExcluded: emp[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED],
     lunchOtHours: emp[PAYROLL_EMP.LUNCH_OT_HOURS],
+    driverOtMinutes: emp[PAYROLL_EMP.DRIVER_OT_MINUTES],
     ...flags,
   };
 }
@@ -35,6 +43,7 @@ export function payrollDayOvertimeOptionsFromParams(p) {
     koreanTimesheetRules: p?.koreanTimesheetRules === true,
     isCompensatoryDay: p?.isCompensatoryDay === true,
     dateKey: p?.dateKey ?? null,
+    includeTaiXeTongInWorkingHours: p?.includeTaiXeTongInWorkingHours === true,
   };
 }
 

@@ -3,6 +3,7 @@ import {
   getAttendanceLeaveTypeRaw,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
+import { resolveTaiXeTongEffectiveIsOffDay } from "@/features/payroll/taiXeTongPayrollDay";
 import {
   effectivePayrollEarlyOtPaperwork,
   getNightShiftPayrollOvertimeHours,
@@ -195,14 +196,25 @@ export function employeeHasPayrollOvertimeHours(emp, dayCtx = {}) {
   const timeOut = emp.gioRa;
   const shiftCode = emp.caLamViec;
   const lunchOtHours = emp.tangCaTrua;
+  const driverOtMinutes = emp.tangCaTaiXePhut;
   const payrollEarlyOtPaperwork = effectivePayrollEarlyOtPaperwork(
     timeIn,
     shiftCode,
     emp.payrollEarlyOtPaperwork,
   );
   const payrollLateOtExcluded = emp.payrollLateOtExcluded;
-  const otOptions = payrollDayOvertimeOptionsFromDayCtx(dayCtx);
-  const strictOffDay = payrollStrictOffFromDayCtx(dayCtx);
+  const effectiveIsOffDay = resolveTaiXeTongEffectiveIsOffDay({
+    includeTaiXeTongInWorkingHours: flags.includeTaiXeTongInWorkingHours,
+    dateKey: dayCtx.dateKey,
+    isOffDay: dayCtx.isOffDay,
+  });
+  const otOptions = {
+    ...payrollDayOvertimeOptionsFromDayCtx(dayCtx),
+    includeTaiXeTongInWorkingHours: flags.includeTaiXeTongInWorkingHours,
+  };
+  const strictOffDay =
+    effectiveIsOffDay ||
+    (Boolean(dayCtx.isCompensatoryDay) && dayCtx.koreanTimesheetRules !== true);
   const isHolidayDay = Boolean(dayCtx.isHolidayDay);
 
   if (isNightShiftCaLamViec(shiftCode)) {
@@ -230,6 +242,7 @@ export function employeeHasPayrollOvertimeHours(emp, dayCtx = {}) {
     flags.includeTaiXeTongInWorkingHours,
     lunchOtHours,
     otOptions,
+    driverOtMinutes,
   );
   return dayOt != null && dayOt > 0;
 }

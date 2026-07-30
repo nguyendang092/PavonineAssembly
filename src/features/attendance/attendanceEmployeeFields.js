@@ -37,6 +37,7 @@ export const ATTENDANCE_ANNUAL_LEAVE_SYNCED_USED = "_annualLeaveSyncedUsed";
  *   shiftCode: unknown,
  *   leaveType: unknown,
  *   lunchOtHours?: unknown,
+ *   driverOtMinutes?: unknown,
  *   compLeaveAllowed?: unknown,
  *   deptWrongFlag?: unknown,
  * }} AttendanceDayFields
@@ -51,6 +52,7 @@ export function pickAttendanceEmployeeDayFields(record) {
       shiftCode: undefined,
       leaveType: undefined,
       lunchOtHours: undefined,
+      driverOtMinutes: undefined,
       compLeaveAllowed: undefined,
       deptWrongFlag: undefined,
     };
@@ -61,6 +63,7 @@ export function pickAttendanceEmployeeDayFields(record) {
     shiftCode: record[ATTENDANCE_EMP.SHIFT],
     leaveType: record[ATTENDANCE_EMP.LEAVE_TYPE],
     lunchOtHours: record[ATTENDANCE_EMP.LUNCH_OT_HOURS],
+    driverOtMinutes: record[ATTENDANCE_EMP.DRIVER_OT_MINUTES],
     compLeaveAllowed: record[ATTENDANCE_EMP.COMP_LEAVE_ALLOWED],
     deptWrongFlag: record[ATTENDANCE_EMP.DEPT_WRONG_FLAG],
   };

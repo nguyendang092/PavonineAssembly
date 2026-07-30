@@ -19,6 +19,7 @@ import {
 import { isPayrollMonthDayCellBeforeJoinWithoutAttendance } from "@/features/payroll/payrollMonthlyRuleSummary";
 import { pickPayrollEmployeeJoinDate } from "@/features/payroll/payrollEmployeeFields";
 import { employeeRegimeWorkingHoursFlags } from "../employeeRegime";
+import { resolveTaiXeTongEffectiveIsOffDay } from "@/features/payroll/taiXeTongPayrollDay";
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
 import {
   attendanceRowCheckHighlightClassName,
@@ -40,10 +41,8 @@ import { payrollDash } from "./payrollDash";
 import { PAYROLL_EMPTY_CELL, ATTENDANCE_EMPTY_CELL } from "./constants";
 import {
   getAttendanceGridColumnStart,
-  attendanceGridCellStyle,
   cellClsForAttendanceTable,
 } from "./gridLayout";
-import { cellClsForGrid } from "./cellClassNames";
 import { formatAnnualLeaveDecimal } from "@/features/leave/annualLeaveCalculated";
 import { getDisplayAnnualLeaveBalanceForAttendance } from "@/features/leave/annualLeaveBalanceLookup";
 import AnnualLeaveUsageDetailTrigger from "@/features/leave/AnnualLeaveUsageDetailTrigger";
@@ -52,7 +51,6 @@ import { propsAreEqual } from "./propsAreEqual";
 function AttendanceTableRow({
   emp,
   idx,
-  virtualRow,
   showRowModalActions,
   columnPlan = "full",
   user,
@@ -62,8 +60,6 @@ function AttendanceTableRow({
   onEdit,
   onDelete,
   canDeleteRow = true,
-  measureElementRef,
-  gridTemplateColumns,
   isOffDay = false,
   isHolidayDay = false,
   isCompensatoryDay = false,
@@ -87,28 +83,35 @@ function AttendanceTableRow({
       pickPayrollEmployeeJoinDate(emp),
       emp,
     );
-  const payrollOffLike =
-    isOffDay || isHolidayDay || (isCompensatoryDay && !isKoreanAttendance);
-  const strictOffDay = isOffDay || (isCompensatoryDay && !isKoreanAttendance);
-  const payrollDayCtx = {
-    isOffDay,
-    isHolidayDay,
-    isCompensatoryDay,
-    koreanTimesheetRules: isKoreanAttendance,
-    dateKey: attendanceDateKey,
-  };
   const {
     includeTapVuInWorkingHours,
     includeThaiSanInWorkingHours,
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
   } = employeeRegimeWorkingHoursFlags(emp);
+  const effectiveIsOffDay = resolveTaiXeTongEffectiveIsOffDay({
+    includeTaiXeTongInWorkingHours,
+    dateKey: attendanceDateKey,
+    isOffDay,
+  });
+  const payrollOffLike =
+    effectiveIsOffDay ||
+    isHolidayDay ||
+    (isCompensatoryDay && !isKoreanAttendance);
+  const strictOffDay =
+    effectiveIsOffDay || (isCompensatoryDay && !isKoreanAttendance);
+  const payrollDayCtx = {
+    isOffDay: effectiveIsOffDay,
+    isHolidayDay,
+    isCompensatoryDay,
+    koreanTimesheetRules: isKoreanAttendance,
+    dateKey: attendanceDateKey,
+  };
   const isMinimal = columnPlan === "minimal";
   /** Giờ vào/ra + ca — cùng cỡ ô dữ liệu với Điểm danh */
   const payrollTimeShiftFont = isMinimal
     ? "text-[10px] md:text-sm"
     : "text-[11px] md:text-sm";
-  const isGrid = virtualRow != null;
   const showJoinWorkStatusDeptBlock = columnPlan === "full";
   const showDeptColumn = columnPlan === "full" || columnPlan === "compact";
   const showAnnualLeaveColumn =
@@ -119,14 +122,7 @@ function AttendanceTableRow({
       showRowModalActions,
       tableVariant,
     ) != null;
-  const Row = isGrid ? "div" : "tr";
-  const Cell = isGrid ? "div" : "td";
-  const cellCls = (s) => {
-    const base = isGrid
-      ? cellClsForGrid(true, s, isMinimal)
-      : cellClsForAttendanceTable(s);
-    return `${base} h-9 leading-none`;
-  };
+  const cellCls = (cls) => `${cellClsForAttendanceTable(cls)} h-9 leading-none`;
 
   const showDeptWrongFlag = !isPayroll && isBoPhanChuaDung(emp.boPhanChuaDung);
   const deptWrongFlagHint = tl("boPhanChuaDungFlag", "Bộ phận chưa đúng");
@@ -187,28 +183,8 @@ function AttendanceTableRow({
       ? String(dayFields.shiftCode).trim()
       : "";
 
-  const rowStyle = isGrid
-    ? {
-        display: "grid",
-        gridTemplateColumns,
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        boxSizing: "border-box",
-        height: `${virtualRow.size}px`,
-        minHeight: "36px",
-        transform: `translateY(${virtualRow.start}px)`,
-        alignItems: "center",
-      }
-    : undefined;
-
   return (
-    <Row
-      ref={measureElementRef}
-      data-index={virtualRow != null ? virtualRow.index : undefined}
-      style={rowStyle}
-      role={isGrid ? "row" : undefined}
+    <tr
       className={`h-9 transition-colors border-b border-slate-100 dark:border-slate-700/40 ${
         rowCheckHighlightClass
           ? rowCheckHighlightClass
@@ -216,39 +192,31 @@ function AttendanceTableRow({
       }`}
     >
       {!isMinimal ? (
-        <Cell
-          role={isGrid ? "cell" : undefined}
-          style={attendanceGridCellStyle(isGrid, gcs("stt"))}
+        <td
           className={cellCls(
             "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center font-bold text-gray-700",
           )}
         >
           {resolveAttendanceDisplayStt(emp, idx + 1, isSeasonalAttendance)}
-        </Cell>
+        </td>
       ) : null}
-      <Cell
-        role={isGrid ? "cell" : undefined}
-        style={attendanceGridCellStyle(isGrid, gcs("mnv"))}
+      <td
         className={cellCls(
           `${isMinimal ? "px-0.5" : "px-1"} md:px-1.5 py-px ${isMinimal ? "text-[10px]" : "text-[11px]"} md:text-sm text-center font-bold text-blue-600 whitespace-nowrap`,
         )}
       >
         {payrollDash(emp.mnv, isPayroll)}
-      </Cell>
+      </td>
       {!isMinimal ? (
-        <Cell
-          role={isGrid ? "cell" : undefined}
-          style={attendanceGridCellStyle(isGrid, gcs("mvt"))}
+        <td
           className={cellCls(
             "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-semibold text-gray-700",
           )}
         >
           {payrollDash(emp.mvt, isPayroll)}
-        </Cell>
+        </td>
       ) : null}
-      <Cell
-        role={isGrid ? "cell" : undefined}
-        style={attendanceGridCellStyle(isGrid, gcs("fullName"))}
+      <td
         className={cellCls(
           `${isMinimal ? "px-0.5" : "px-1"} md:px-2 py-px ${
             isMinimal
@@ -261,11 +229,9 @@ function AttendanceTableRow({
         title={String(payrollDash(emp.hoVaTen, isPayroll) ?? "")}
       >
         {payrollDash(emp.hoVaTen, isPayroll)}
-      </Cell>
+      </td>
       {!isMinimal ? (
-        <Cell
-          role={isGrid ? "cell" : undefined}
-          style={attendanceGridCellStyle(isGrid, gcs("gender"))}
+        <td
           className={cellCls(
             "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center",
           )}
@@ -294,43 +260,35 @@ function AttendanceTableRow({
                 : payrollDash(emp.gioiTinh, isPayroll)}
             </span>
           )}
-        </Cell>
+        </td>
       ) : null}
       {showJoinWorkStatusDeptBlock ? (
         <>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("joinDate"))}
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-semibold text-gray-700",
             )}
           >
             {payrollDash(emp.ngayVaoLam, isPayroll)}
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("workStatus"))}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-semibold tabular-nums text-gray-700 whitespace-nowrap",
             )}
           >
             {payrollDash(emp.ngayHopDong, isPayroll)}
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("deptCode"))}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-bold text-gray-700 whitespace-nowrap",
             )}
           >
             {payrollDash(emp.maBoPhan, isPayroll)}
-          </Cell>
+          </td>
         </>
       ) : null}
       {showDeptColumn ? (
-        <Cell
-          role={isGrid ? "cell" : undefined}
-          style={attendanceGridCellStyle(isGrid, gcs("dept"))}
+        <td
           className={cellCls(
             isKoreanAttendance
               ? `relative hidden md:table-cell px-1.5 md:px-2 py-px text-sm text-center font-semibold text-gray-700 whitespace-nowrap${showDeptWrongFlag ? " pr-4" : ""}`
@@ -350,12 +308,10 @@ function AttendanceTableRow({
             {deptLabel}
           </span>
           {deptWrongFlagEl}
-        </Cell>
+        </td>
       ) : null}
       {showAnnualLeaveColumn ? (
-        <Cell
-          role={isGrid ? "cell" : undefined}
-          style={attendanceGridCellStyle(isGrid, gcs("annualLeaveBalance"))}
+        <td
           className={cellCls(
             "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-semibold tabular-nums text-gray-700 dark:text-slate-200",
           )}
@@ -374,11 +330,9 @@ function AttendanceTableRow({
               throughDateKey={annualLeaveThroughDateKey}
             />
           </span>
-        </Cell>
+        </td>
       ) : null}
-      <Cell
-        role={isGrid ? "cell" : undefined}
-        style={attendanceGridCellStyle(isGrid, gcs("timeIn"))}
+      <td
         className={cellCls(
           `min-w-0 ${isMinimal ? "px-0.5" : "px-1"} md:px-1.5 py-px ${payrollTimeShiftFont} text-center`,
         )}
@@ -428,11 +382,9 @@ function AttendanceTableRow({
         ) : (
           <span className="text-gray-400 italic">{PAYROLL_EMPTY_CELL}</span>
         )}
-      </Cell>
+      </td>
       {!isMinimal ? (
-        <Cell
-          role={isGrid ? "cell" : undefined}
-          style={attendanceGridCellStyle(isGrid, gcs("timeOut"))}
+        <td
           className={cellCls(
             `hidden md:table-cell px-1 md:px-1.5 py-px ${payrollTimeShiftFont} text-center min-w-0`,
           )}
@@ -448,11 +400,9 @@ function AttendanceTableRow({
               ? " "
               : payrollDash(dayFields.timeOut, isPayroll)}
           </span>
-        </Cell>
+        </td>
       ) : null}
-      <Cell
-        role={isGrid ? "cell" : undefined}
-        style={attendanceGridCellStyle(isGrid, gcs("leaveType"))}
+      <td
         className={cellCls(
           `min-w-0 ${isMinimal ? "px-0.5" : "px-1"} md:px-1.5 py-px ${payrollTimeShiftFont} text-center`,
         )}
@@ -506,10 +456,8 @@ function AttendanceTableRow({
         ) : (
           <span className="text-gray-400 italic">{PAYROLL_EMPTY_CELL}</span>
         )}
-      </Cell>
-      <Cell
-        role={isGrid ? "cell" : undefined}
-        style={attendanceGridCellStyle(isGrid, gcs("shift"))}
+      </td>
+      <td
         className={cellCls(
           `hidden md:table-cell px-px md:px-0.5 py-px ${payrollTimeShiftFont} text-center min-w-0`,
         )}
@@ -557,11 +505,9 @@ function AttendanceTableRow({
             {isPayroll ? PAYROLL_EMPTY_CELL : "--"}
           </span>
         )}
-      </Cell>
+      </td>
       {!isPayroll && !isMinimal ? (
-        <Cell
-          role={isGrid ? "cell" : undefined}
-          style={attendanceGridCellStyle(isGrid, gcs("offDay"))}
+        <td
           className={cellCls(
             "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 font-bold text-slate-800 dark:text-slate-100",
           )}
@@ -575,14 +521,12 @@ function AttendanceTableRow({
             isMinimal={isMinimal}
             payrollTimeShiftFont={payrollTimeShiftFont}
             kind="off"
-            active={isOffDay}
+            active={isPayroll ? effectiveIsOffDay : isOffDay}
           />
-        </Cell>
+        </td>
       ) : null}
       {!isPayroll && !isMinimal ? (
-        <Cell
-          role={isGrid ? "cell" : undefined}
-          style={attendanceGridCellStyle(isGrid, gcs("holidayDay"))}
+        <td
           className={cellCls(
             "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 font-bold text-slate-800 dark:text-slate-100",
           )}
@@ -598,13 +542,11 @@ function AttendanceTableRow({
             kind="holiday"
             active={isHolidayDay}
           />
-        </Cell>
+        </td>
       ) : null}
       {isPayroll && !isMinimal ? (
         <>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("offDay"))}
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 font-bold text-slate-800 dark:text-slate-100",
             )}
@@ -618,12 +560,10 @@ function AttendanceTableRow({
               isMinimal={isMinimal}
               payrollTimeShiftFont={payrollTimeShiftFont}
               kind="off"
-              active={isOffDay}
+              active={isPayroll ? effectiveIsOffDay : isOffDay}
             />
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("holidayDay"))}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 font-bold text-slate-800 dark:text-slate-100",
             )}
@@ -639,10 +579,8 @@ function AttendanceTableRow({
               kind="holiday"
               active={isHolidayDay}
             />
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("workingHours"))}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-amber-50/90 dark:bg-amber-950/25",
             )}
@@ -666,13 +604,8 @@ function AttendanceTableRow({
                     includeTaiXeTongInWorkingHours,
                   )}
             </span>
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(
-              isGrid,
-              gcs("dayShiftOvertimeHours"),
-            )}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-orange-50/90 dark:bg-orange-950/25",
             )}
@@ -689,10 +622,8 @@ function AttendanceTableRow({
                     payrollDayCtx,
                   )}
             </span>
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("offDayOvertimeHours"))}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-violet-50/90 dark:bg-violet-950/25",
             )}
@@ -706,13 +637,8 @@ function AttendanceTableRow({
                 ? " "
                 : formatPayrollTableOffDayTcCellFromEmp(emp, payrollDayCtx)}
             </span>
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(
-              isGrid,
-              gcs("holidayDayWorkingHours"),
-            )}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-green-100/90 dark:bg-green-950/30",
             )}
@@ -729,10 +655,8 @@ function AttendanceTableRow({
                     payrollDayCtx,
                   )}
             </span>
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("payrollTotalGcDay"))}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-sky-100/90 dark:bg-sky-950/30",
             )}
@@ -746,13 +670,8 @@ function AttendanceTableRow({
                 ? " "
                 : formatPayrollTableTotalDayGcCellFromEmp(emp, payrollDayCtx)}
             </span>
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(
-              isGrid,
-              gcs("nightShiftWorkingHours"),
-            )}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-teal-50/90 dark:bg-teal-950/25",
             )}
@@ -769,13 +688,8 @@ function AttendanceTableRow({
                     payrollDayCtx,
                   )}
             </span>
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(
-              isGrid,
-              gcs("nightShiftOvertimeHours"),
-            )}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-fuchsia-50/90 dark:bg-fuchsia-950/25",
             )}
@@ -792,13 +706,8 @@ function AttendanceTableRow({
                     payrollDayCtx,
                   )}
             </span>
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(
-              isGrid,
-              gcs("nightShiftOffDayWorkingHours"),
-            )}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-emerald-50/90 dark:bg-emerald-950/25",
             )}
@@ -815,13 +724,8 @@ function AttendanceTableRow({
                     payrollDayCtx,
                   )}
             </span>
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(
-              isGrid,
-              gcs("holidayNightWorkingHours"),
-            )}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-lime-100/90 dark:bg-lime-950/35",
             )}
@@ -838,10 +742,8 @@ function AttendanceTableRow({
                     payrollDayCtx,
                   )}
             </span>
-          </Cell>
-          <Cell
-            role={isGrid ? "cell" : undefined}
-            style={attendanceGridCellStyle(isGrid, gcs("payrollTotalGcNight"))}
+          </td>
+          <td
             className={cellCls(
               "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-indigo-100/90 dark:bg-indigo-950/30",
             )}
@@ -855,13 +757,11 @@ function AttendanceTableRow({
                 ? " "
                 : formatPayrollTableTotalNightGcCellFromEmp(emp, payrollDayCtx)}
             </span>
-          </Cell>
+          </td>
         </>
       ) : null}
       {showRowModalActions && (
-        <Cell
-          role={isGrid ? "cell" : undefined}
-          style={attendanceGridCellStyle(isGrid, gcs("actions"))}
+        <td
           className={cellCls(
             `${isMinimal ? "px-0" : "px-1"} md:px-1 text-center min-w-0 hidden md:table-cell`,
           )}
@@ -892,9 +792,9 @@ function AttendanceTableRow({
               {isPayroll ? PAYROLL_EMPTY_CELL : "—"}
             </span>
           )}
-        </Cell>
+        </td>
       )}
-    </Row>
+    </tr>
   );
 }
 

@@ -201,6 +201,7 @@ const ATTENDANCE_EXTRA_KEYS = [
   ATTENDANCE_EMP.LEAVE_TYPE,
   ATTENDANCE_EMP.TIME_OUT,
   ATTENDANCE_EMP.LUNCH_OT_HOURS,
+  ATTENDANCE_EMP.DRIVER_OT_MINUTES,
   ATTENDANCE_EMP.SHIFT,
   "includeTapVuInWorkingHours",
   "includeThaiSanInWorkingHours",
@@ -225,6 +226,7 @@ export const ATTENDANCE_DAY_FORM_KEYS = Object.freeze([
   ATTENDANCE_EMP.LEAVE_TYPE,
   ATTENDANCE_EMP.TIME_OUT,
   ATTENDANCE_EMP.LUNCH_OT_HOURS,
+  ATTENDANCE_EMP.DRIVER_OT_MINUTES,
   ATTENDANCE_EMP.SHIFT,
   ATTENDANCE_EMP.COMP_LEAVE_ALLOWED,
   ATTENDANCE_EMP.DEPT_WRONG_FLAG,
@@ -259,6 +261,7 @@ export const ATTENDANCE_DAY_UI_ROW_KEYS = Object.freeze([
   ATTENDANCE_EMP.LEAVE_TYPE,
   ATTENDANCE_EMP.TIME_OUT,
   ATTENDANCE_EMP.LUNCH_OT_HOURS,
+  ATTENDANCE_EMP.DRIVER_OT_MINUTES,
   ATTENDANCE_EMP.SHIFT,
   ATTENDANCE_EMP.COMP_LEAVE_ALLOWED,
   ATTENDANCE_EMP.DEPT_WRONG_FLAG,
@@ -593,6 +596,21 @@ export function buildEmployeeAttendanceDayDocument({
       const n = Number(s);
       if (!Number.isFinite(n) || !LUNCH_OT_HOUR_OPTIONS.includes(n)) return undefined;
       return n;
+    })(),
+    [ATTENDANCE_EMP.DRIVER_OT_MINUTES]: (() => {
+      if (
+        !Object.prototype.hasOwnProperty.call(
+          form,
+          ATTENDANCE_EMP.DRIVER_OT_MINUTES,
+        )
+      ) {
+        return undefined;
+      }
+      const s = String(form[ATTENDANCE_EMP.DRIVER_OT_MINUTES] ?? "").trim();
+      if (!s) return null;
+      const n = Number(s);
+      if (!Number.isFinite(n) || n < 0) return undefined;
+      return Math.min(Math.floor(n), 720);
     })(),
     [ATTENDANCE_EMP.MVT]: attendanceDayNonWipingOptionalStringFromForm(
       form,

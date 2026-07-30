@@ -23,6 +23,10 @@ import {
 import { isDuocNghiBuExplicitlyNo } from "@/features/attendance/attendanceDayMeta";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
 import { payrollOtDayParamsFromMonthChunkEmp, payrollDayOvertimeOptionsFromParams, payrollMonthCompensatoryUsesOffSplit } from "@/features/payroll/payrollOtDayParams";
+import {
+  resolveTaiXeTongEffectiveIsOffDay,
+  shouldUsePayrollMonthSundayMergedRules,
+} from "@/features/payroll/taiXeTongPayrollDay";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
@@ -80,6 +84,7 @@ function payrollMonthSundayMergedCoefficientLines(p) {
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
     payrollDayOvertimeOptionsFromParams(p),
+    p.driverOtMinutes,
   );
   if (m != null && m > 0) {
     lines.push({ coeff: 2.0, hours: m, key: "sun20" });
@@ -141,6 +146,7 @@ function payrollMonthCompensatoryMergedTotalHours(p) {
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
     payrollDayOvertimeOptionsFromParams(p),
+    p.driverOtMinutes,
   );
 }
 
@@ -259,7 +265,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     return payrollMonthCompensatoryOtCoefficientLines(p);
   }
 
-  if (isPayrollMonthSundayDateKey(dateKey)) {
+  if (shouldUsePayrollMonthSundayMergedRules(p)) {
     return payrollMonthSundayMergedCoefficientLines(p);
   }
 
@@ -339,6 +345,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     includeTaiXeTongInWorkingHours,
     lunchOtHours,
     payrollDayOvertimeOptionsFromParams(p),
+    p.driverOtMinutes,
   );
   if (sum15 != null && sum15 > 0) {
     lines.push({ coeff: 1.5, hours: sum15, key: "d15" });
@@ -409,6 +416,11 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
   } = employeeRegimeWorkingHoursFlags(emp);
+  const effectiveIsOffDay = resolveTaiXeTongEffectiveIsOffDay({
+    includeTaiXeTongInWorkingHours,
+    dateKey: ch?.dateKey,
+    isOffDay: ch?.isOffDay,
+  });
 
   if (
     isAttendanceActualLeaveType(leaveRaw, {
@@ -458,7 +470,7 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     const night = isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT]);
     if (
       night ||
-      ch.isOffDay ||
+      effectiveIsOffDay ||
       ch.isHolidayDay ||
       payrollMonthCompensatoryUsesOffSplit(ch)
     ) {
@@ -489,14 +501,17 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
     if (nbHours != null) return { kind: "hours", hours: nbHours };
     return { kind: "dash" };
   }
-  if (isPayrollMonthSundayDateKey(ch?.dateKey)) {
+  if (shouldUsePayrollMonthSundayMergedRules({
+    includeTaiXeTongInWorkingHours,
+    dateKey: ch?.dateKey,
+  })) {
     return { kind: "dash" };
   }
   if (night) {
     const nightGc = getPayrollMonthNightShiftGcHoursForMainRow(emp, ch);
     if (nightGc != null) return { kind: "hours", hours: nightGc };
   }
-  if (ch.isOffDay || ch.isHolidayDay) {
+  if (effectiveIsOffDay || ch.isHolidayDay) {
     return { kind: "dash" };
   }
   const h = getAttendanceWorkingHoursHours(
@@ -528,11 +543,24 @@ export function getPayrollMonthlyCoeffHoursMap(p) {
 }
 
 /** Hệ số dòng GC ca đêm (trước khi chuyển giờ lên dòng chính lưới). */
-export function payrollMonthNightShiftGcCoeffForMainRowDisplay(ch) {
+export function payrollMonthNightShiftGcCoeffForMainRowDisplay(ch, emp) {
   if (payrollMonthCompensatoryUsesOffSplit(ch)) return null;
-  if (isPayrollMonthSundayDateKey(ch?.dateKey)) return null;
+  const flags = emp ? employeeRegimeWorkingHoursFlags(emp) : {};
+  if (
+    shouldUsePayrollMonthSundayMergedRules({
+      includeTaiXeTongInWorkingHours: flags.includeTaiXeTongInWorkingHours,
+      dateKey: ch?.dateKey,
+    })
+  ) {
+    return null;
+  }
   if (ch?.isHolidayDay) return 3.9;
-  if (ch?.isOffDay) return 2.7;
+  const effectiveIsOffDay = resolveTaiXeTongEffectiveIsOffDay({
+    includeTaiXeTongInWorkingHours: flags.includeTaiXeTongInWorkingHours,
+    dateKey: ch?.dateKey,
+    isOffDay: ch?.isOffDay,
+  });
+  if (effectiveIsOffDay) return 2.7;
   return 0.3;
 }
 
@@ -548,7 +576,7 @@ export function isPayrollMonthNightShiftEmployee(emp) {
 /** GC ca đêm chuyển lên dòng chính (không gồm ngày nghỉ bù — đã có logic riêng). */
 export function getPayrollMonthNightShiftGcHoursForMainRow(emp, ch) {
   if (!isPayrollMonthNightShiftEmployee(emp)) return null;
-  const gcCoeff = payrollMonthNightShiftGcCoeffForMainRowDisplay(ch);
+  const gcCoeff = payrollMonthNightShiftGcCoeffForMainRowDisplay(ch, emp);
   if (gcCoeff == null) return null;
   const coeffMap = getPayrollMonthlyCoeffHoursMap(
     payrollOtDayParamsFromMonthChunkEmp(emp, ch),
@@ -564,7 +592,7 @@ export function payrollMonthNightShiftShiftBadgeCoeff(ch, main) {
     if (main?.kind === "hours" && main.hours > 0) return 0.3;
     return null;
   }
-  return payrollMonthNightShiftGcCoeffForMainRowDisplay(ch);
+  return payrollMonthNightShiftGcCoeffForMainRowDisplay(ch, null);
 }
 
 export function shouldPayrollMonthNightShiftShowShiftBadgeOnCoeff({
@@ -577,7 +605,15 @@ export function shouldPayrollMonthNightShiftShowShiftBadgeOnCoeff({
   if (!emp || sr.coeff == null || !isPayrollMonthNightShiftEmployee(emp)) {
     return false;
   }
-  if (isPayrollMonthSundayDateKey(ch?.dateKey)) return false;
+  if (
+    shouldUsePayrollMonthSundayMergedRules({
+      includeTaiXeTongInWorkingHours: employeeRegimeWorkingHoursFlags(emp)
+        .includeTaiXeTongInWorkingHours,
+      dateKey: ch?.dateKey,
+    })
+  ) {
+    return false;
+  }
   const badgeCoeff = payrollMonthNightShiftShiftBadgeCoeff(ch, main);
   if (badgeCoeff == null || sr.coeff !== badgeCoeff) return false;
   if (payrollMonthCompensatoryUsesOffSplit(ch)) return true;
@@ -615,7 +651,7 @@ export function formatPayrollMonthlyCoeffSubrowDayCell({
 /** Tránh cộng trùng GC ca đêm khi tổng hợp tháng (giờ đã lên dòng chính). */
 export function payrollMonthNightShiftGcHoursMovedToMain(emp, ch, coeffMap) {
   if (!isPayrollMonthNightShiftEmployee(emp)) return 0;
-  const gcCoeff = payrollMonthNightShiftGcCoeffForMainRowDisplay(ch);
+  const gcCoeff = payrollMonthNightShiftGcCoeffForMainRowDisplay(ch, emp);
   if (gcCoeff == null) return 0;
   const h = coeffMap?.get(gcCoeff);
   return Number.isFinite(h) && h > 0 ? h : 0;

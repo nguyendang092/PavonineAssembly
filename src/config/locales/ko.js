@@ -1531,6 +1531,8 @@ const ko = {
     clearTimeIn: "출근 지우기",
     lunchOvertimeHours: "점심 연장 시간",
     lunchOvertimePlaceholder: "— 선택 안 함 —",
+    driverOvertimeMinutes: "운전사 연장 시간 (분)",
+    driverOvertimeMinutesPlaceholder: "예: 60",
     leaveTypePlaceholder: "— 선택 안 함 —",
     leaveTypeCurrentValue: "(현재 값)",
     loaiPhepModalHint: "휴가 유형 선택 (PN, PO, TS …)",

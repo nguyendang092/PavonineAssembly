@@ -6,14 +6,9 @@ import React from "react";
 import AttendanceTableRow, {
   AttendanceTableColgroup,
   AttendanceTableThead,
-  AttendanceVirtualHeader,
 } from "@/features/attendance/attendanceTableRow";
 
 const PAYROLL = { tableVariant: "payroll" };
-
-export function PayrollSalaryVirtualHeader(props) {
-  return <AttendanceVirtualHeader {...props} {...PAYROLL} />;
-}
 
 export function PayrollSalaryTableColgroup(props) {
   return <AttendanceTableColgroup {...props} {...PAYROLL} />;

@@ -46,6 +46,7 @@ export function formatPayrollTableDayShiftOvertimeCellFromEmp(
     payrollMonthCompensatoryUsesOffSplit(p) ? p.isCompensatoryDay : false,
     p.lunchOtHours,
     payrollDayOvertimeOptionsFromParams(p),
+    p.driverOtMinutes,
   );
 }
 
@@ -66,6 +67,7 @@ export function formatPayrollTableOffDayTcCellFromEmp(emp, dayCtx, maps) {
     p.includeTaiXeTongInWorkingHours,
     p.lunchOtHours,
     payrollDayOvertimeOptionsFromParams(p),
+    p.driverOtMinutes,
   );
 }
 
@@ -89,6 +91,8 @@ export function formatPayrollTableHolidayDayWorkingCellFromEmp(
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
     p.lunchOtHours,
+    payrollDayOvertimeOptionsFromParams(p),
+    p.driverOtMinutes,
   );
 }
 
@@ -110,6 +114,7 @@ export function formatPayrollTableTotalDayGcCellFromEmp(emp, dayCtx, maps) {
     p.includeTaiXeTongInWorkingHours,
     p.lunchOtHours,
     payrollDayOvertimeOptionsFromParams(p),
+    p.driverOtMinutes,
   );
 }
 

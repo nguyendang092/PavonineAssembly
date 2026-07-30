@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUser } from "@/contexts/UserContext";
 import {
   canConfirmOtPaperwork,
@@ -27,14 +26,9 @@ import {
   pickPayrollEmployeeDayFields,
 } from "@/features/payroll/payrollEmployeeFields";
 import { payrollTableWrapperMinWidthClass } from "@/features/payroll/payrollTableLayout";
-import {
-  ATTENDANCE_VIRTUAL_THRESHOLD,
-  getAttendanceGridTemplateColumns,
-} from "@/features/attendance/attendanceTableRow";
 import PayrollSalaryTableRow, {
   PayrollSalaryTableColgroup,
   PayrollSalaryTableThead,
-  PayrollSalaryVirtualHeader,
 } from "@/features/payroll/payrollSalaryTableUi";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
 import {
@@ -332,16 +326,20 @@ export default function PayrollSalaryCalculator() {
     [mergeOtPaperworkMeta],
   );
 
-  const employeesForPayroll = useMemo(() => {
-    const next = reconcilePayrollEmployeesFromBase(
-      payrollEmployeesRef.current,
-      employees,
-      earlyOtMap,
-      lateOtExcludedMap,
-    );
-    payrollEmployeesRef.current = next;
-    return next;
-  }, [employees, earlyOtMap, lateOtExcludedMap]);
+  const employeesForPayroll = useMemo(
+    () =>
+      reconcilePayrollEmployeesFromBase(
+        payrollEmployeesRef.current,
+        employees,
+        earlyOtMap,
+        lateOtExcludedMap,
+      ),
+    [employees, earlyOtMap, lateOtExcludedMap],
+  );
+
+  useEffect(() => {
+    payrollEmployeesRef.current = employeesForPayroll;
+  }, [employeesForPayroll]);
 
   /** Manager chỉ xác nhận TC trong bộ phận; Admin/HR toàn công ty. */
   const otPaperworkScopeEmployees = useMemo(() => {
@@ -612,17 +610,7 @@ export default function PayrollSalaryCalculator() {
   });
 
   const pagedEmployees = tablePagination.pagedItems;
-  const rowIndexOffset = tablePagination.rowIndexOffset;
-
-  const shouldVirtualizeTable =
-    filteredEmployees.length > ATTENDANCE_VIRTUAL_THRESHOLD;
-
-  const tableEmployees = useMemo(
-    () => (shouldVirtualizeTable ? filteredEmployees : pagedEmployees),
-    [shouldVirtualizeTable, filteredEmployees, pagedEmployees],
-  );
-
-  const tableRowIndexOffset = shouldVirtualizeTable ? 0 : rowIndexOffset;
+  const tableRowIndexOffset = tablePagination.rowIndexOffset;
 
   const departments = useMemo(() => {
     const set = new Set();
@@ -680,24 +668,6 @@ export default function PayrollSalaryCalculator() {
   );
 
   const columnPlan = useAttendanceColumnPlan();
-  const attendanceGridTemplateColumns = useMemo(
-    () =>
-      getAttendanceGridTemplateColumns(
-        showRowModalActions,
-        columnPlan,
-        "payroll",
-      ),
-    [showRowModalActions, columnPlan],
-  );
-
-  const tableScrollParentRef = useRef(null);
-
-  const rowVirtualizer = useVirtualizer({
-    count: shouldVirtualizeTable ? filteredEmployees.length : 0,
-    getScrollElement: () => tableScrollParentRef.current,
-    estimateSize: () => 34,
-    overscan: 12,
-  });
 
   const payrollExportSheetTitle = useMemo(() => {
     const dateStr = new Date(selectedDate).toLocaleDateString(displayLocale);
@@ -912,142 +882,70 @@ export default function PayrollSalaryCalculator() {
             active={isSearchStale && !isDayLoading}
             message={tlPage("dayDataRendering", "Đang cập nhật bảng…")}
           />
-          {shouldVirtualizeTable ? (
-            <div
-              ref={tableScrollParentRef}
-              className="payroll-salary-table-scroll max-h-[min(88vh,920px)] w-full min-w-0 max-w-full overflow-y-auto overflow-x-auto overscroll-x-contain"
+          <div className="payroll-salary-table-scroll min-w-0 w-full max-w-full overflow-x-auto overscroll-x-contain">
+            <table
+              className={`w-full max-w-none table-fixed border-collapse ${payrollTableWrapperMinWidthClass(columnPlan, showRowModalActions)}`}
             >
-              <div
-                className={`w-full max-w-none ${payrollTableWrapperMinWidthClass(columnPlan, showRowModalActions)}`}
-                role="table"
-              >
-                <PayrollSalaryVirtualHeader
-                  tl={tlTable}
-                  showRowModalActions={showRowModalActions}
-                  gridTemplateColumns={attendanceGridTemplateColumns}
-                  canDeleteRow={false}
-                  columnPlan={columnPlan}
-                />
-                <div
-                  role="rowgroup"
-                  className="w-full"
-                  style={{
-                    position: "relative",
-                    height: `${rowVirtualizer.getTotalSize()}px`,
-                  }}
-                >
-                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const emp = tableEmployees[virtualRow.index];
-                    const idx = tableRowIndexOffset + virtualRow.index;
-                    const annualLeaveBalance =
-                      getDisplayAnnualLeaveBalanceForAttendance(
-                        emp,
-                        annualLeaveBalanceByMnv,
-                      );
-                    return (
-                      <PayrollSalaryTableRow
-                        key={emp.id}
-                        emp={emp}
-                        idx={idx}
-                        virtualRow={virtualRow}
-                        showRowModalActions={showRowModalActions}
-                        user={user}
-                        canEdit={canEditEmployeeRow(emp)}
-                        tl={tlTable}
-                        t={t}
-                        onEdit={handleOpenEditEmployee}
-                        onDelete={noop}
-                        canDeleteRow={false}
-                        measureElementRef={rowVirtualizer.measureElement}
-                        gridTemplateColumns={attendanceGridTemplateColumns}
-                        columnPlan={columnPlan}
-                        isOffDay={isOffDay}
-                        isHolidayDay={isHolidayDay}
-                        isCompensatoryDay={isCompensatoryDay}
-                        attendanceDateKey={selectedDate}
-                        annualLeaveBalance={annualLeaveBalance}
-                        annualLeaveYear={annualLeaveYear}
-                        annualLeaveYearData={annualLeaveYearData}
-                        annualLeaveThroughDateKey={selectedDate}
-                        annualLeaveAttendanceRootPath="attendance"
-                      />
+              <PayrollSalaryTableColgroup
+                showRowModalActions={showRowModalActions}
+                columnPlan={columnPlan}
+              />
+              <PayrollSalaryTableThead
+                tl={tlTable}
+                showRowModalActions={showRowModalActions}
+                stickyHeader={true}
+                canDeleteRow={false}
+                columnPlan={columnPlan}
+              />
+              <tbody>
+                {pagedEmployees.map((emp, localIdx) => {
+                  const annualLeaveBalance =
+                    getDisplayAnnualLeaveBalanceForAttendance(
+                      emp,
+                      annualLeaveBalanceByMnv,
                     );
-                  })}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div
-              ref={tableScrollParentRef}
-              className="payroll-salary-table-scroll min-w-0 w-full max-w-full overflow-x-auto overscroll-x-contain"
-            >
-              <table
-                className={`w-full max-w-none table-fixed border-collapse ${payrollTableWrapperMinWidthClass(columnPlan, showRowModalActions)}`}
-              >
-                <PayrollSalaryTableColgroup
-                  showRowModalActions={showRowModalActions}
-                  columnPlan={columnPlan}
-                />
-                <PayrollSalaryTableThead
-                  tl={tlTable}
-                  showRowModalActions={showRowModalActions}
-                  stickyHeader={true}
-                  canDeleteRow={false}
-                  columnPlan={columnPlan}
-                />
-                <tbody>
-                  {tableEmployees.map((emp, localIdx) => {
-                    const annualLeaveBalance =
-                      getDisplayAnnualLeaveBalanceForAttendance(
-                        emp,
-                        annualLeaveBalanceByMnv,
-                      );
-                    return (
-                      <PayrollSalaryTableRow
-                        key={emp.id}
-                        emp={emp}
-                        idx={tableRowIndexOffset + localIdx}
-                        virtualRow={undefined}
-                        showRowModalActions={showRowModalActions}
-                        user={user}
-                        canEdit={canEditEmployeeRow(emp)}
-                        tl={tlTable}
-                        t={t}
-                        onEdit={handleOpenEditEmployee}
-                        onDelete={noop}
-                        canDeleteRow={false}
-                        columnPlan={columnPlan}
-                        isOffDay={isOffDay}
-                        isHolidayDay={isHolidayDay}
-                        isCompensatoryDay={isCompensatoryDay}
-                        attendanceDateKey={selectedDate}
-                        annualLeaveBalance={annualLeaveBalance}
-                        annualLeaveYear={annualLeaveYear}
-                        annualLeaveYearData={annualLeaveYearData}
-                        annualLeaveThroughDateKey={selectedDate}
-                        annualLeaveAttendanceRootPath="attendance"
-                      />
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  return (
+                    <PayrollSalaryTableRow
+                      key={emp.id}
+                      emp={emp}
+                      idx={tableRowIndexOffset + localIdx}
+                      showRowModalActions={showRowModalActions}
+                      user={user}
+                      canEdit={canEditEmployeeRow(emp)}
+                      tl={tlTable}
+                      t={t}
+                      onEdit={handleOpenEditEmployee}
+                      onDelete={noop}
+                      canDeleteRow={false}
+                      columnPlan={columnPlan}
+                      isOffDay={isOffDay}
+                      isHolidayDay={isHolidayDay}
+                      isCompensatoryDay={isCompensatoryDay}
+                      attendanceDateKey={selectedDate}
+                      annualLeaveBalance={annualLeaveBalance}
+                      annualLeaveYear={annualLeaveYear}
+                      annualLeaveYearData={annualLeaveYearData}
+                      annualLeaveThroughDateKey={selectedDate}
+                      annualLeaveAttendanceRootPath="attendance"
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {shouldVirtualizeTable ? null : (
-          <HrTablePagination
-            rangeStart={tablePagination.rangeStart}
-            rangeEnd={tablePagination.rangeEnd}
-            totalItems={tablePagination.totalItems}
-            page={tablePagination.page}
-            totalPages={tablePagination.totalPages}
-            pageNumbers={tablePagination.pageNumbers}
-            pageSize={tablePagination.pageSize}
-            onPageChange={tablePagination.setPage}
-            onPageSizeChange={tablePagination.setPageSize}
-          />
-        )}
+        <HrTablePagination
+          rangeStart={tablePagination.rangeStart}
+          rangeEnd={tablePagination.rangeEnd}
+          totalItems={tablePagination.totalItems}
+          page={tablePagination.page}
+          totalPages={tablePagination.totalPages}
+          pageNumbers={tablePagination.pageNumbers}
+          pageSize={tablePagination.pageSize}
+          onPageChange={tablePagination.setPage}
+          onPageSizeChange={tablePagination.setPageSize}
+        />
       </div>
 
       <AttendanceEmployeeFormModal
