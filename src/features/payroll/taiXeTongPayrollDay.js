@@ -20,7 +20,8 @@ export function isSundayDateKey(dateKey) {
 }
 
 /**
- * Tài xế tổng — **Thứ 2** luôn là ngày off (TC off ×2.0), kể cả lịch công ty không đánh off.
+ * Tài xế tổng — **Thứ 2** luôn là ngày off (TC off ×2.0); **Chủ nhật** luôn ngày thường
+ * (bỏ cờ off lịch công ty nếu có).
  */
 export function resolveTaiXeTongEffectiveIsOffDay({
   includeTaiXeTongInWorkingHours = false,
@@ -30,6 +31,7 @@ export function resolveTaiXeTongEffectiveIsOffDay({
   if (!isTaiXeTongRegime(includeTaiXeTongInWorkingHours)) {
     return Boolean(isOffDay);
   }
+  if (isSundayDateKey(dateKey)) return false;
   if (isMondayDateKey(dateKey)) return true;
   return Boolean(isOffDay);
 }

@@ -962,6 +962,8 @@ export default function PayrollSalaryCalculator() {
         userDepartments={userDepartments}
         onAlert={setAlert}
         dayIsCompensatory={isCompensatoryDay}
+        dayIsOffDay={isOffDay}
+        dayIsHolidayDay={isHolidayDay}
       />
 
       <PayrollRangeExcelExportModal

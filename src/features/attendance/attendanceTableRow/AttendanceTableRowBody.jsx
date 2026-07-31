@@ -521,7 +521,7 @@ function AttendanceTableRow({
             isMinimal={isMinimal}
             payrollTimeShiftFont={payrollTimeShiftFont}
             kind="off"
-            active={isPayroll ? effectiveIsOffDay : isOffDay}
+            active={effectiveIsOffDay}
           />
         </td>
       ) : null}
@@ -560,7 +560,7 @@ function AttendanceTableRow({
               isMinimal={isMinimal}
               payrollTimeShiftFont={payrollTimeShiftFont}
               kind="off"
-              active={isPayroll ? effectiveIsOffDay : isOffDay}
+              active={effectiveIsOffDay}
             />
           </td>
           <td

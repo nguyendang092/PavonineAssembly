@@ -111,6 +111,8 @@ function AttendanceListContentSection() {
         attendanceRootPath={attendanceRootPath}
         onAlert={setAlert}
         dayIsCompensatory={isCompensatoryDay}
+        dayIsOffDay={isOffDay}
+        dayIsHolidayDay={isHolidayDay}
       />
 
       <AttendanceOffDaysModal

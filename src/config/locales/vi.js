@@ -1202,6 +1202,7 @@ const vi = {
     sidebarFooter: "Hệ thống quản lý",
     sidebarAria: "Menu nhân sự",
     sidebarAttendance: "Điểm danh",
+    sidebarSeasonal: "Thời vụ",
     sidebarKoreanTimesheet: "Korean Timesheet",
     sidebarKoreanTimesheetDisabled: "Chỉ HR mới được quyền truy cập",
     sidebarStatistics: "Thống kê",

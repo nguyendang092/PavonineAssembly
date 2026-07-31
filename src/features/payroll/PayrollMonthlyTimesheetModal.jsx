@@ -2345,6 +2345,12 @@ export default function PayrollMonthlyTimesheetModal({
           dayCellFormDate &&
           chunkByDate.get(dayCellFormDate)?.isCompensatoryDay,
         )}
+        dayIsOffDay={Boolean(
+          dayCellFormDate && chunkByDate.get(dayCellFormDate)?.isOffDay,
+        )}
+        dayIsHolidayDay={Boolean(
+          dayCellFormDate && chunkByDate.get(dayCellFormDate)?.isHolidayDay,
+        )}
       />
     </>,
     document.body,

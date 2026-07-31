@@ -1205,6 +1205,7 @@ const ko = {
     sidebarFooter: "관리 시스템",
     sidebarAria: "인사 메뉴",
     sidebarAttendance: "출석",
+    sidebarSeasonal: "임시직",
     sidebarKoreanTimesheet: "Korean Timesheet",
     sidebarKoreanTimesheetDisabled: "Admin 또는 HR만 접근할 수 있습니다",
     sidebarStatistics: "통계",

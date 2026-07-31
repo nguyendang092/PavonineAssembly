@@ -215,14 +215,19 @@ export function getPayrollMonthlyCoefficientLines(p) {
     leaveType,
     dateKey = null,
   } = p;
-  const strictOffDay =
-    isOffDay || payrollMonthCompensatoryUsesOffSplit(p);
   const {
     includeTapVuInWorkingHours,
     includeThaiSanInWorkingHours,
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
   } = resolvePayrollMonthlyRegimeFlags(p);
+  const effectiveIsOffDay = resolveTaiXeTongEffectiveIsOffDay({
+    includeTaiXeTongInWorkingHours,
+    dateKey,
+    isOffDay,
+  });
+  const strictOffDay =
+    effectiveIsOffDay || payrollMonthCompensatoryUsesOffSplit(p);
   const night = isNightShiftCaLamViec(shiftCode);
   const lines = [];
 
@@ -269,7 +274,7 @@ export function getPayrollMonthlyCoefficientLines(p) {
     return payrollMonthSundayMergedCoefficientLines(p);
   }
 
-  if (isOffDay) {
+  if (effectiveIsOffDay) {
     if (night) {
       const m = getNightShiftPayrollOffHolidayMergedHoursNumeric(
         timeIn,

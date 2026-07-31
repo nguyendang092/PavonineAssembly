@@ -1008,6 +1008,10 @@ export default function PayrollMonthlyTimeInOutModal({
         dayIsCompensatory={
           chunkByDateLive.get(dayCellFormDate)?.isCompensatoryDay ?? false
         }
+        dayIsOffDay={chunkByDateLive.get(dayCellFormDate)?.isOffDay ?? false}
+        dayIsHolidayDay={
+          chunkByDateLive.get(dayCellFormDate)?.isHolidayDay ?? false
+        }
       />
     </>,
     document.body,

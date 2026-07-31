@@ -11,7 +11,7 @@ import {
 } from "./annualLeaveTableStyles";
 
 const tdNum =
-  "px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold tabular-nums text-gray-700 dark:text-slate-200";
+  "px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold tabular-nums text-black dark:text-slate-200";
 
 function hasAnnualLeaveMonthUsage(value) {
   const n = Number(value);
@@ -30,17 +30,17 @@ function AnnualLeaveManagerTableRow({
 
   return (
     <tr className={annualLeaveTableRowClass(index)}>
-      <td className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-bold text-gray-700 dark:text-slate-200 ${sticky(0)}`}>
+      <td className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-bold text-black dark:text-slate-200 ${sticky(0)}`}>
         {row.rowNo ?? index + 1}
       </td>
-      <td className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-bold text-blue-600 whitespace-nowrap dark:text-blue-400 ${sticky(1)}`}>
+      <td className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-bold text-black whitespace-nowrap dark:text-slate-200 ${sticky(1)}`}>
         {row[ANNUAL_LEAVE_EMP.MNV_PREFIX]}
       </td>
-      <td className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-gray-700 dark:text-slate-200 ${sticky(2)}`}>
+      <td className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-black dark:text-slate-200 ${sticky(2)}`}>
         {row[ANNUAL_LEAVE_EMP.MNV_SUFFIX]}
       </td>
       <td
-        className={`px-1 md:px-2 py-px text-[11px] md:text-sm text-center font-bold text-gray-800 leading-tight dark:text-slate-100 ${sticky(3)}`}
+        className={`px-1 md:px-2 py-px text-[11px] md:text-sm text-center font-bold text-black leading-tight dark:text-slate-100 ${sticky(3)}`}
       >
         {row[ANNUAL_LEAVE_EMP.FULL_NAME]}
       </td>
@@ -48,7 +48,7 @@ function AnnualLeaveManagerTableRow({
         {formatAnnualLeaveDisplayDate(row[ANNUAL_LEAVE_EMP.DATE_OF_BIRTH])}
       </td>
       <td
-        className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-gray-700 dark:text-slate-200 ${sticky(5)}`}
+        className={`px-1 md:px-1.5 py-px text-[11px] md:text-sm text-center font-semibold text-black dark:text-slate-200 ${sticky(5)}`}
       >
         {row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]}
       </td>
@@ -60,7 +60,7 @@ function AnnualLeaveManagerTableRow({
       <td className={`${tdNum} ${sticky(7)}`}>
         {row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]}
       </td>
-      <td className={`${tdNum} font-bold text-sky-700 dark:text-sky-300 ${sticky(8)}`}>
+      <td className={`${tdNum} font-bold ${sticky(8)}`}>
         {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED])}
       </td>
       <td className={`${tdNum} font-bold ${sticky(9)}`}>
@@ -71,7 +71,7 @@ function AnnualLeaveManagerTableRow({
           key={monthIdx}
           className={`${tdNum} annual-leave-month-cell min-w-[4.25rem] whitespace-nowrap${
             hasAnnualLeaveMonthUsage(value)
-              ? " annual-leave-month-cell-used text-violet-700 dark:text-violet-300"
+              ? " annual-leave-month-cell-used"
               : ""
           }`}
         >

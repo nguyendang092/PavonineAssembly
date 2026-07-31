@@ -209,7 +209,7 @@
   font-size: 1.0625rem;
   font-weight: 800;
   line-height: 1.15;
-  color: #0f766e;
+  color: #000;
   font-variant-numeric: tabular-nums;
 }
 
@@ -235,7 +235,7 @@
   font-size: 0.9375rem;
   font-weight: 800;
   line-height: 1.15;
-  color: #0f766e;
+  color: #000;
   text-align: center;
   text-align-last: center;
   cursor: pointer;
@@ -273,7 +273,7 @@
 }
 
 .dark .al-used-days-empty {
-  color: #64748b;
+  color: #000;
 }
 
 .al-used-days-table-wrap {
@@ -312,7 +312,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: left;
-  color: #64748b;
+  color: #000;
   border-bottom: 1px solid rgb(226 232 240);
 }
 
@@ -334,7 +334,7 @@
 .al-used-days-table td {
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid rgb(241 245 249);
-  color: #0f172a;
+  color: #000;
   vertical-align: middle;
 }
 
@@ -367,7 +367,7 @@
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #0f766e;
+  color: #000;
   background: rgb(240 253 250);
   border-bottom: 1px solid rgb(204 251 241);
 }

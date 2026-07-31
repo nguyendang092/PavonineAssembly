@@ -172,7 +172,7 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1.5rem 0;
-  color: #64748b;
+  color: #000;
   font-size: 0.8125rem;
   font-weight: 600;
 }
@@ -360,7 +360,7 @@
   height: 2rem;
   border-radius: 0.5rem;
   background: rgb(240 253 250);
-  color: #0f766e;
+  color: #000;
 }
 
 .al-day-detail-info-icon svg {
@@ -387,7 +387,7 @@
 }
 
 .dark .al-day-detail-info-label {
-  color: #64748b;
+  color: #000;
 }
 
 .al-day-detail-info-value {
@@ -395,7 +395,7 @@
   margin-top: 0.1rem;
   font-size: 0.9375rem;
   font-weight: 800;
-  color: #0f172a;
+  color: #000;
   font-variant-numeric: tabular-nums;
 }
 
@@ -441,7 +441,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.4;
-  color: #b45309;
+  color: #000;
 }
 
 .dark .al-day-detail-missing {

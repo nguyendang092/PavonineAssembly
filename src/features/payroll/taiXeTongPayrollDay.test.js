@@ -49,6 +49,13 @@ describe("taiXeTongPayrollDay", () => {
         dateKey: "2026-06-07",
       }),
     ).toBe(false);
+    expect(
+      resolveTaiXeTongEffectiveIsOffDay({
+        includeTaiXeTongInWorkingHours: true,
+        dateKey: "2026-06-07",
+        isOffDay: true,
+      }),
+    ).toBe(false);
   });
 });
 
@@ -72,9 +79,10 @@ describe("getPayrollMonthlyCoefficientLines — Tài xế tổng", () => {
 
   it("Chủ nhật — tách ×1.5 như ngày thường", () => {
     const p = payrollOtDayParamsFromEmp(taiXeTongEmp, {
-      isOffDay: false,
+      isOffDay: true,
       dateKey: "2026-06-07",
     });
+    expect(p.isOffDay).toBe(false);
     const lines = getPayrollMonthlyCoefficientLines(p);
     expect(lines.some((ln) => ln.coeff === 2.0)).toBe(false);
     expect(lines.some((ln) => ln.coeff === 1.5 && ln.hours > 0)).toBe(true);

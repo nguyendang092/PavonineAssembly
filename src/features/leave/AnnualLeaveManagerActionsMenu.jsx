@@ -101,7 +101,7 @@ function AnnualLeaveManagerActionsMenu({
                     type="button"
                     role="menuitem"
                     disabled={syncing}
-                    className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-gray-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-black transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
                     onClick={() => {
                       setActionsOpen(false);
                       onRecalculate();
@@ -138,7 +138,7 @@ function AnnualLeaveManagerActionsMenu({
                       type="button"
                       role="menuitem"
                       disabled={uploading}
-                      className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-gray-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
+                      className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-black transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <span className="shrink-0 text-lg" aria-hidden>
@@ -179,7 +179,7 @@ function AnnualLeaveManagerActionsMenu({
                 <button
                   type="button"
                   role="menuitem"
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-gray-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-black transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
                   onClick={() => {
                     setActionsOpen(false);
                     onExport();

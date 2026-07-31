@@ -303,7 +303,7 @@ export default function AnnualLeaveManager() {
         contextDate={attendanceListDateForAnnualLeaveYear(year)}
       >
         <div className="annual-leave-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="text-sm text-black dark:text-slate-300">
             {t("annualLeave.pleaseLogin")}
           </p>
         </div>
@@ -318,7 +318,7 @@ export default function AnnualLeaveManager() {
       <div className="annual-leave-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
         <div className="mb-1 shrink-0">
           <div className="w-full border-t-4 border-blue-600 bg-white px-2 py-0.5 shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-            <h1 className="text-sm font-bold uppercase leading-snug tracking-wide text-[#1e293b] md:text-base dark:text-slate-100">
+            <h1 className="text-sm font-bold uppercase leading-snug tracking-wide text-black md:text-base dark:text-slate-100">
               {t("annualLeave.title")}
             </h1>
           </div>

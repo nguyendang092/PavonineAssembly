@@ -153,6 +153,8 @@ export default function AttendanceEmployeeFormModal({
   attendanceRootPath = "attendance",
   /** Ngày đang sửa có cờ nghỉ bù trong OFF/Lễ/Nghỉ bù — mặc định «Có»; không cờ thì khóa «Không». */
   dayIsCompensatory = false,
+  dayIsOffDay = false,
+  dayIsHolidayDay = false,
   /** Chỉ xem — không cho sửa / lưu (vd. manager xem từ lưới tháng bảng lương). */
   readOnly = false,
 }) {
@@ -341,8 +343,13 @@ export default function AttendanceEmployeeFormModal({
   }, [form[ATTENDANCE_EMP.LEAVE_TYPE]]);
 
   const attendanceDayCtx = useMemo(
-    () => ({ isCompensatoryDay: dayIsCompensatory }),
-    [dayIsCompensatory],
+    () => ({
+      isOffDay: dayIsOffDay,
+      isHolidayDay: dayIsHolidayDay,
+      isCompensatoryDay: dayIsCompensatory,
+      dateKey: selectedDate,
+    }),
+    [dayIsOffDay, dayIsHolidayDay, dayIsCompensatory, selectedDate],
   );
 
   const formHasOvertimeHours = useMemo(

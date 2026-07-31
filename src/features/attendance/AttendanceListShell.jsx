@@ -49,18 +49,19 @@ const ICONS = {
       <path d="M8 14h2M14 14h2M8 17h6" />
     </svg>
   ),
-  personnel: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-      <circle cx="9" cy="8" r="3" />
-      <circle cx="17" cy="10" r="2.5" />
-      <path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M14 19c0-2.2 1.8-4 4-4" />
-    </svg>
-  ),
   koreanTimesheet: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
       <rect x="3" y="4" width="18" height="17" rx="2" />
       <path d="M3 9h18M8 2v4M16 2v4" />
       <path d="M7 13h3M14 13h3M7 17h10" />
+    </svg>
+  ),
+  seasonal: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+      <circle cx="3" cy="6" r="1" fill="currentColor" stroke="none" />
+      <circle cx="3" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="3" cy="18" r="1" fill="currentColor" stroke="none" />
     </svg>
   ),
   dashboard: (
@@ -125,9 +126,11 @@ function AttendanceListShell({
   }, [contextDate]);
 
   const isAttendanceActive =
-    pathname === "/attendance-list" ||
+    pathname === "/attendance-list" || pathname.startsWith("/attendance-list");
+
+  const isSeasonalActive =
     pathname === "/seasonal-staff-attendance" ||
-    pathname.startsWith("/attendance-list");
+    pathname.startsWith("/seasonal-staff-attendance");
 
   const isKoreanTimesheetActive =
     pathname === "/korean-timesheet" ||
@@ -143,10 +146,6 @@ function AttendanceListShell({
   const isDashboardActive =
     pathname === "/attendance-dashboard" ||
     pathname.startsWith("/attendance-dashboard");
-
-  const isPersonnelActive =
-    pathname === "/user-department" ||
-    pathname.startsWith("/user-department");
 
   const itemClass = (active, tone) =>
     `attendance-with-sidebar__item attendance-with-sidebar__item--${tone}${
@@ -199,6 +198,17 @@ function AttendanceListShell({
               tone="blue"
               icon={ICONS.attendance}
               label={t("attendanceList.sidebarAttendance", "Điểm danh")}
+            />
+          </Link>
+
+          <Link
+            to={`/seasonal-staff-attendance?date=${encodeURIComponent(dateKey)}`}
+            className={itemClass(isSeasonalActive, "teal")}
+          >
+            <SidebarItemContent
+              tone="teal"
+              icon={ICONS.seasonal}
+              label={t("attendanceList.sidebarSeasonal", "Thời vụ")}
             />
           </Link>
 
@@ -294,16 +304,6 @@ function AttendanceListShell({
             </span>
           )}
 
-          <Link
-            to="/user-department"
-            className={itemClass(isPersonnelActive, "rose")}
-          >
-            <SidebarItemContent
-              tone="rose"
-              icon={ICONS.personnel}
-              label={t("attendanceList.sidebarPersonnel", "Nhân sự")}
-            />
-          </Link>
         </nav>
 
         <div className="attendance-with-sidebar__footer">
