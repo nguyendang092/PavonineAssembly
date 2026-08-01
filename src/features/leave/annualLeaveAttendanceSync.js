@@ -22,7 +22,7 @@ import {
   ANNUAL_LEAVE_META_KEY,
   ANNUAL_LEAVE_RTDB_ROOT,
 } from "./annualLeaveFields";
-import { parseAnnualLeaveNumber } from "./annualLeaveCalculated";
+import { parseAnnualLeaveNumber, parseAnnualLeaveAdjustment } from "./annualLeaveCalculated";
 
 /** Chuyển bản ghi legacy sang khóa `emp_{mnv}` trên Firebase. */
 export async function migrateAnnualLeaveYearToEmpKeys(db, year, yearData) {
@@ -125,23 +125,10 @@ export async function persistAnnualLeaveYearFromAttendance(
   let anyApplied = false;
 
   for (const [empKey, { raw }] of Object.entries(indexed)) {
-    const storedMonthly = resolveStoredMonthlyLeaveUsage(raw);
-    const monthValues = resolveEffectiveMonthlyLeaveUsage(
-      raw,
-      null,
-      year,
-      attendanceMonthlyByEmpKey[empKey],
-    );
-    const monthlySum = sumAnnualLeaveMonthlyUsageValues(monthValues);
-    const hasStored = storedMonthly != null;
-    const hasAttendanceMonthly = attendanceMonthlyByEmpKey[empKey] != null;
-    const usedFromMonthlySum =
-      hasStored || hasAttendanceMonthly ? monthlySum : null;
-    const liveAttendanceUsed =
-      usedFromMonthlySum ?? (deductionsByEmpKey[empKey] ?? 0);
-    const state = computeLiveAnnualLeaveState(raw, liveAttendanceUsed, year, {
-      usedFromMonthlySum,
-      monthWorkSummaryByYearMonth: monthWorkSummaryByEmpKey[empKey] ?? null,
+    const state = computePersistStateForRaw(raw, empKey, year, {
+      deductionsByEmpKey,
+      attendanceMonthlyByEmpKey,
+      monthWorkSummaryByEmpKey,
     });
 
     if (!needsPersistUpdate(raw, state)) continue;
@@ -171,6 +158,84 @@ export async function persistAnnualLeaveYearFromAttendance(
   }
 
   return { results, appliedCount: results.length };
+}
+
+function computePersistStateForRaw(
+  raw,
+  empKey,
+  year,
+  {
+    deductionsByEmpKey = {},
+    attendanceMonthlyByEmpKey = {},
+    monthWorkSummaryByEmpKey = {},
+  },
+) {
+  const storedMonthly = resolveStoredMonthlyLeaveUsage(raw);
+  const monthValues = resolveEffectiveMonthlyLeaveUsage(
+    raw,
+    null,
+    year,
+    attendanceMonthlyByEmpKey[empKey],
+  );
+  const monthlySum = sumAnnualLeaveMonthlyUsageValues(monthValues);
+  const hasStored = storedMonthly != null;
+  const hasAttendanceMonthly = attendanceMonthlyByEmpKey[empKey] != null;
+  const usedFromMonthlySum =
+    hasStored || hasAttendanceMonthly ? monthlySum : null;
+  const liveAttendanceUsed =
+    usedFromMonthlySum ?? (deductionsByEmpKey[empKey] ?? 0);
+  return computeLiveAnnualLeaveState(raw, liveAttendanceUsed, year, {
+    usedFromMonthlySum,
+    monthWorkSummaryByYearMonth: monthWorkSummaryByEmpKey[empKey] ?? null,
+  });
+}
+
+/**
+ * Lưu điều chỉnh phép năm + tính lại và ghi đầy đủ used/total/balance lên Firebase.
+ */
+export async function persistAnnualLeaveEmployeeAdjustment(
+  db,
+  {
+    year,
+    empKey,
+    raw,
+    adjustment,
+    deductionsByEmpKey = {},
+    attendanceMonthlyByEmpKey = {},
+    monthWorkSummaryByEmpKey = {},
+    updatedBy = "",
+  },
+) {
+  if (!empKey || !raw || typeof raw !== "object") {
+    return { applied: false };
+  }
+
+  const parsedAdj = parseAnnualLeaveAdjustment(adjustment);
+  const updatedRaw = {
+    ...raw,
+    id: empKey,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]:
+      parsedAdj === 0 ? null : parsedAdj,
+  };
+  const state = computePersistStateForRaw(updatedRaw, empKey, year, {
+    deductionsByEmpKey,
+    attendanceMonthlyByEmpKey,
+    monthWorkSummaryByEmpKey,
+  });
+
+  await update(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${empKey}`), {
+    id: empKey,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]:
+      parsedAdj === 0 ? null : parsedAdj,
+    [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: state.hrUsed,
+    [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: state.attendanceUsed,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: state.used,
+    [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: state.totalAnnualLeave,
+    [ANNUAL_LEAVE_EMP.BALANCE]: state.balance,
+  });
+
+  await touchAnnualLeaveYearMeta(db, year, updatedBy);
+  return { applied: true, state };
 }
 
 function annualLeaveDeductionDelta(oldLoaiPhep, newLoaiPhep) {

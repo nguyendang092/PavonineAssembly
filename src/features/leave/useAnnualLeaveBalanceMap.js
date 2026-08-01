@@ -13,6 +13,7 @@ export function useAnnualLeaveBalanceMap(year, options = {}) {
     includeUsageDetail: false,
     includeBalanceMap: true,
     includeAttendance: true,
+    includePayrollMonthAccrual: true,
     ...rest,
   });
 

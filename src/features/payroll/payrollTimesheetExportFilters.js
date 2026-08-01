@@ -4,6 +4,7 @@ import {
 } from "@/features/payroll/attendanceDayPresenceFilters";
 import { filterPayrollEmployeesByDepartments } from "@/features/payroll/payrollExportDepartmentFilter";
 import { resolveEffectivePayrollEarlyOtPaperwork } from "@/features/payroll/payrollEarlyOtMeta";
+import { resolveEffectivePayrollNightOtPaperwork } from "@/features/payroll/payrollNightOtMeta";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 import {
   needsPayrollMonthTimesheetPresenceFlags,
@@ -22,7 +23,7 @@ export const PAYROLL_TIMESHEET_EXPORT_FILTER_DEFAULTS = Object.freeze({
 
 function payrollEmployeeForDayPresenceFlags(
   emp,
-  { earlyOtPaperworkById = {}, lateOtExcludedById = {} } = {},
+  { earlyOtPaperworkById = {}, lateOtExcludedById = {}, nightOtPaperworkById = {} } = {},
 ) {
   return {
     ...emp,
@@ -34,6 +35,11 @@ function payrollEmployeeForDayPresenceFlags(
     [PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED]:
       emp[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED] ??
       lateOtExcludedById?.[emp?.id],
+    [PAYROLL_EMP.PAYROLL_NIGHT_OT_PAPERWORK]:
+      resolveEffectivePayrollNightOtPaperwork(
+        emp,
+        nightOtPaperworkById?.[emp?.id],
+      ),
   };
 }
 
@@ -65,6 +71,7 @@ export function filterPayrollEmployeesForTimesheetExport(
     dayCtx = {},
     earlyOtPaperworkById = {},
     lateOtExcludedById = {},
+    nightOtPaperworkById = {},
   } = {},
 ) {
   const q = String(searchTerm ?? "").trim().toLowerCase();
@@ -83,6 +90,7 @@ export function filterPayrollEmployeesForTimesheetExport(
     const empForFlags = payrollEmployeeForDayPresenceFlags(emp, {
       earlyOtPaperworkById,
       lateOtExcludedById,
+      nightOtPaperworkById,
     });
 
     if (

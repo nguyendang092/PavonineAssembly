@@ -70,7 +70,7 @@ export const workforcePayrollSharedVi = {
   nightShiftOvertimeHours: "Giờ công tăng ca ca đêm (×1.5)",
   nightShiftOvertimeHoursHint: "Ca đêm: sau 05:00, 30' = 0,5h. Off/lễ: gộp GC đêm.",
   nightShiftOffDayWorkingHours: "Giờ công ca đêm ngày OFF (X2.7)",
-  nightShiftOffDayWorkingHoursHint: "Off + ca đêm: GC+TC gộp; TC đêm «-».",
+  nightShiftOffDayWorkingHoursHint: "Ngày off + ca đêm S2: GC+TC gộp. Ngày thường đã xác nhận TC đêm (vào 22:00–05:00): giờ khung 22:00–06:00, tối đa 8h.",
   payrollHolidayNightWorkingHoursHint: "Lễ + ca đêm: GC+TC gộp; TC/GC đêm «-».",
 };
 

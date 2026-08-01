@@ -19,8 +19,18 @@ export function isSundayDateKey(dateKey) {
   return Boolean(pd && pd.getDay() === 0);
 }
 
+export function isSaturdayDateKey(dateKey) {
+  const pd = parseLocalDateKey(String(dateKey ?? ""));
+  return Boolean(pd && pd.getDay() === 6);
+}
+
+/** Thứ 7 / Chủ nhật — Tài xế tổng luôn tính như ngày thường (bỏ cờ off lịch). */
+export function isTaiXeTongWeekendNormalWeekday(dateKey) {
+  return isSundayDateKey(dateKey) || isSaturdayDateKey(dateKey);
+}
+
 /**
- * Tài xế tổng — **Thứ 2** luôn là ngày off (TC off ×2.0); **Chủ nhật** luôn ngày thường
+ * Tài xế tổng — **Thứ 2** luôn là ngày off (TC off ×2.0); **Thứ 7 & Chủ nhật** luôn ngày thường
  * (bỏ cờ off lịch công ty nếu có).
  */
 export function resolveTaiXeTongEffectiveIsOffDay({
@@ -31,20 +41,21 @@ export function resolveTaiXeTongEffectiveIsOffDay({
   if (!isTaiXeTongRegime(includeTaiXeTongInWorkingHours)) {
     return Boolean(isOffDay);
   }
-  if (isSundayDateKey(dateKey)) return false;
+  if (isTaiXeTongWeekendNormalWeekday(dateKey)) return false;
   if (isMondayDateKey(dateKey)) return true;
   return Boolean(isOffDay);
 }
 
 /**
- * Tài xế tổng — **Chủ nhật** tính như ngày thường (không gộp hệ số Chủ nhật).
+ * Tài xế tổng — **Thứ 7 & Chủ nhật** tính như ngày thường (không gộp hệ số cuối tuần).
  */
 export function shouldTaiXeTongTreatSundayAsNormalWeekday({
   includeTaiXeTongInWorkingHours = false,
   dateKey = null,
 } = {}) {
   return (
-    isTaiXeTongRegime(includeTaiXeTongInWorkingHours) && isSundayDateKey(dateKey)
+    isTaiXeTongRegime(includeTaiXeTongInWorkingHours) &&
+    isTaiXeTongWeekendNormalWeekday(dateKey)
   );
 }
 

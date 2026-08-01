@@ -1,4 +1,8 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useUser } from "@/contexts/UserContext";
+import { canManageAnnualLeave } from "@/config/authRoles";
+import { db } from "@/services/firebase";
 import { listAnnualLeaveManagerMonthColumnLabels } from "./annualLeaveCalculated";
 import {
   buildAnnualLeaveMonthlyUsageByEmpKey,
@@ -6,9 +10,9 @@ import {
   normalizeAnnualLeaveRowLive,
 } from "./annualLeaveDerived";
 import { filterAnnualLeaveManagerEntries } from "./annualLeaveManagerFilter";
+import { persistAnnualLeaveEmployeeAdjustment } from "./annualLeaveAttendanceSync";
 import { useAnnualLeaveAttendanceEnhancement } from "./useAnnualLeaveAttendanceEnhancement";
 import AnnualLeaveManagerTablePanel from "./AnnualLeaveManagerTablePanel";
-
 const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
 
 function AnnualLeaveManagerTableSection({
@@ -20,7 +24,14 @@ function AnnualLeaveManagerTableSection({
   detailThroughDateKey,
   filterPending,
   exportRef,
+  canManage = false,
+  onAdjustmentSaved,
+  onAdjustmentSaveError,
 }) {
+  const { t } = useTranslation();
+  const { user, userRole } = useUser();
+  const canManageLeave = canManage || canManageAnnualLeave(user, userRole);
+  const [adjustmentSavingId, setAdjustmentSavingId] = useState("");
   const {
     deductionsByEmpKey,
     attendanceMonthlyByEmpKey,
@@ -28,6 +39,7 @@ function AnnualLeaveManagerTableSection({
     attendanceEnhancing,
   } = useAnnualLeaveAttendanceEnhancement(year, yearData, {
     includePayrollMonthAccrual: true,
+    throughDateKey: detailThroughDateKey,
   });
 
   const storedMonthlyByEmpKey = useMemo(
@@ -89,6 +101,46 @@ function AnnualLeaveManagerTableSection({
     };
   }, [deptIndex, entries, exportRef, monthColumnLabels, normalizeEntryRow]);
 
+  const handleAdjustmentSave = useCallback(
+    async (empKey, adjustment, raw) => {
+      if (!canManageLeave || !empKey || !raw) return;
+      setAdjustmentSavingId(empKey);
+      try {
+        await persistAnnualLeaveEmployeeAdjustment(db, {
+          year,
+          empKey,
+          raw,
+          adjustment,
+          deductionsByEmpKey,
+          attendanceMonthlyByEmpKey,
+          monthWorkSummaryByEmpKey,
+          updatedBy: user?.email ?? "",
+        });
+        onAdjustmentSaved?.();
+      } catch (err) {
+        onAdjustmentSaveError?.(
+          err,
+          t("annualLeave.adjustmentSaveError", {
+            defaultValue: "Không lưu được điều chỉnh phép năm.",
+          }),
+        );
+      } finally {
+        setAdjustmentSavingId("");
+      }
+    },
+    [
+      canManageLeave,
+      year,
+      user?.email,
+      deductionsByEmpKey,
+      attendanceMonthlyByEmpKey,
+      monthWorkSummaryByEmpKey,
+      onAdjustmentSaved,
+      onAdjustmentSaveError,
+      t,
+    ],
+  );
+
   return (
     <AnnualLeaveManagerTablePanel
       filteredEntries={filteredEntries}
@@ -99,6 +151,9 @@ function AnnualLeaveManagerTableSection({
       filterPending={filterPending}
       attendanceEnhancing={attendanceEnhancing}
       normalizeEntryRow={normalizeEntryRow}
+      canManage={canManageLeave}
+      adjustmentSavingId={adjustmentSavingId}
+      onAdjustmentSave={handleAdjustmentSave}
     />
   );
 }

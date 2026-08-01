@@ -254,6 +254,12 @@ const vi = {
     recalculateSuccess: "Đã cập nhật {{count}} bản ghi phép năm từ điểm danh.",
     recalculateError: "Không thể tính lại phép năm.",
     detailColumn: "DETAIL",
+    adjustmentColumn: "ADJUST",
+    adjustmentHint: "Nhập +1 hoặc -1 để cộng/trừ vào cột ANNUAL LEAVE IN CURRENT YEAR.",
+    adjustmentSave: "Lưu",
+    adjustmentCancel: "Hủy",
+    adjustmentSaveSuccess: "Đã lưu điều chỉnh phép năm.",
+    adjustmentSaveError: "Không lưu được điều chỉnh phép năm.",
     workHoursPopupKicker: "Chấm công",
     workHoursPopupYear: "Năm {{year}}",
     workHoursPopupLoading: "Đang tải dữ liệu chấm công…",
@@ -1838,6 +1844,16 @@ const vi = {
     lateOtPaperworkButton: "Không TC >17:30",
     lateOtPaperworkHint:
       "Đánh dấu những nhân viên ra sau 17:30 nhưng KHÔNG tính tăng ca.",
+    nightOtPaperworkButton: "Xác nhận tăng ca đêm",
+    nightOtPaperworkHint:
+      "Giờ vào 22:00–05:00 → hệ số tăng ca ×2.7 (ngày thường).",
+    nightOtModalDescription:
+      "Giờ vào từ 22:00 đến 05:00 — khi tick xác nhận, giờ trong khung 22:00–06:00 được tính hệ số tăng ca ×2.7 (ngày thường).",
+    nightOtModalSave: "Lưu",
+    nightOtModalSelectAll: "Chọn tất cả",
+    nightOtModalDeselectAll: "Bỏ chọn tất cả",
+    nightOtSaveError:
+      "Không lưu được xác nhận tăng ca đêm. Kiểm tra kết nối hoặc quyền ghi.",
     earlyOtSaveError:
       "Không lưu được giấy tăng ca lên Firebase. Kiểm tra kết nối hoặc quyền ghi.",
     lateOtSaveError:

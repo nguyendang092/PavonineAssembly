@@ -57,7 +57,7 @@ export {
  * **Chế độ Tài xế / Tài xế tổng** (`includeTaiXeInWorkingHours` / `includeTaiXeTongInWorkingHours`, chỉ **ca ngày**):
  * GC liên tục **07:00–19:00** (chấm trước 07:00 → mốc vào **07:00**), **tối đa 8 giờ**; sau **19:00** → TC block 30 phút
  * (chỉ khi giờ ra sau **19:30**), cùng cơ chế ca ngày thường nhưng mốc **19:00**.
- * **Tài xế tổng:** **Thứ 2** = ngày off (TC off ×2.0); **Chủ nhật** = ngày thường (không gộp hệ số CN).
+ * **Tài xế tổng:** **Thứ 2** = ngày off (TC off ×2.0); **Thứ 7 & Chủ nhật** = ngày thường (không gộp hệ số CN).
  * Ca đêm không đổi.
  *
  * **Tách khỏi thống kê combo** (`getAttendanceComboFlags` trong `attendanceComboStats.js`): GC/TC và
@@ -177,7 +177,7 @@ export function shouldUseKoreanNbSundayEveningOtRule({
     String(includeTaiXeTongInWorkingHours ?? "").trim().toUpperCase() === "YES"
   ) {
     const pd = parseLocalDateKey(String(dateKey ?? ""));
-    if (pd && pd.getDay() === 0) return false;
+    if (pd && (pd.getDay() === 0 || pd.getDay() === 6)) return false;
   }
   return isSundayDateKeyForKoreanOt(dateKey);
 }
@@ -313,29 +313,64 @@ export function getNightShiftPayrollRegularHoursAndOtMinutes(
 }
 
 /**
+ * Giờ trong khung 22:00–06:00 (ngày hôm sau), tối đa 8h — dùng xác nhận TC đêm ×2.7.
+ * Vào buổi tối (≥22:00): 22:00→24:00 + (nếu qua đêm) 00:00→06:00.
+ * Vào sáng sớm (≤06:00): từ giờ vào thực tế → min(giờ ra, 06:00).
+ * @returns {number}
+ */
+export function getPayrollNightOtWindowHours22To06(timeIn, timeOut) {
+  const a = parseHHMMToMinutes(timeIn);
+  const b = parseHHMMToMinutes(timeOut);
+  if (a == null || b == null) return 0;
+
+  const WIN_EVE_START = 22 * 60;
+  const WIN_MOR_END = 6 * 60;
+  const nextDay = b <= a;
+
+  let minutes = 0;
+
+  if (a >= WIN_EVE_START) {
+    const eveEnd = nextDay ? MINUTES_PER_DAY : Math.min(b, MINUTES_PER_DAY);
+    minutes += Math.max(0, eveEnd - a);
+    if (nextDay) {
+      minutes += Math.max(0, Math.min(b, WIN_MOR_END));
+    }
+  } else if (a <= WIN_MOR_END) {
+    const outMin = nextDay ? b : Math.min(b, WIN_MOR_END);
+    minutes += Math.max(0, outMin - a);
+  }
+
+  if (minutes <= 0) return 0;
+
+  const hours = roundHoursToTenths(minutes / 60);
+  return Math.min(MAX_REGULAR_WORKING_HOURS, hours);
+}
+
+/**
+ * Giờ hiển thị cột ×2.7 khi đã xác nhận TC đêm — ngày thường, khung 22:00–06:00 (tối đa 8h).
+ * @returns {number | null}
+ */
+export function resolvePayrollNightOtPaperworkHours(
+  timeIn,
+  timeOut,
+  payrollNightOtPaperwork,
+  { payrollOffLike = false, isHolidayDay = false } = {},
+) {
+  if (payrollNightOtPaperwork !== true) return null;
+  if (payrollOffLike || isHolidayDay) return null;
+  if (!isNightOtPaperworkEligible(timeIn)) return null;
+  const h = getPayrollNightOtWindowHours22To06(timeIn, timeOut);
+  return h > 0 ? h : null;
+}
+
+/**
  * Tổng GC ca đêm (lưới tháng): ca **S2**, giao [giờ vào, giờ ra] với khung **22:00–06:00**
  * (ngày hôm sau), tối đa **8h** — vd. ra 05:00 = 7h, ra 06:00 = 8h.
  * @returns {number} 0 nếu không phải ca đêm hoặc không có giao với khung.
  */
 export function getNightShiftTotalWindowHours22To05(timeIn, timeOut, shiftCode) {
   if (!isNightShiftCaLamViec(shiftCode)) return 0;
-  const a = parseHHMMToMinutes(timeIn);
-  const b = parseHHMMToMinutes(timeOut);
-  if (a == null || b == null) return 0;
-
-  const T0 = a;
-  const T1 = b <= a ? MINUTES_PER_DAY + b : b;
-  if (T1 <= T0) return 0;
-
-  const winStart = NIGHT_SHIFT_MONTHLY_WINDOW_START_MIN;
-  const winEnd = MINUTES_PER_DAY + NIGHT_SHIFT_MONTHLY_WINDOW_END_MIN;
-  const start = Math.max(T0, winStart);
-  const end = Math.min(T1, winEnd);
-  const minutes = Math.max(0, end - start);
-  if (minutes <= 0) return 0;
-
-  const hours = roundHoursToTenths(minutes / 60);
-  return Math.min(MAX_REGULAR_WORKING_HOURS, hours);
+  return getPayrollNightOtWindowHours22To06(timeIn, timeOut);
 }
 
 /** TC ca đêm: sau mốc 05:00, floor(phút / 30) × 0.5 — giống block 30 phút. */
@@ -962,6 +997,8 @@ export function formatPayrollTableNightShiftWorkingCell(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   payrollEarlyOtPaperwork = undefined,
+  payrollNightOtPaperwork = undefined,
+  isHolidayDay = false,
 ) {
   if (
     hasPayrollLeaveType(
@@ -984,7 +1021,7 @@ export function formatPayrollTableNightShiftWorkingCell(
 }
 
 /**
- * Cột «GC ca đêm ngày off» — chỉ **Ngày off** (OFF), không phải lễ.
+ * Cột «GC ca đêm ngày off (×2.7)» — ngày off + ca đêm S2, hoặc ngày thường đã xác nhận TC đêm (22:00–06:00).
  * Ngày lễ + ca đêm: «-» — GC nằm ở **Giờ công ca đêm ngày lễ**.
  */
 export function formatPayrollTableNightShiftOffDayWorkingCell(
@@ -998,6 +1035,8 @@ export function formatPayrollTableNightShiftOffDayWorkingCell(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   payrollEarlyOtPaperwork = undefined,
+  payrollNightOtPaperwork = undefined,
+  isHolidayDay = false,
 ) {
   if (
     hasPayrollLeaveType(
@@ -1007,6 +1046,17 @@ export function formatPayrollTableNightShiftOffDayWorkingCell(
     )
   )
     return PAYROLL_CELL_DASH;
+
+  const nightOtHours = resolvePayrollNightOtPaperworkHours(
+    timeIn,
+    timeOut,
+    payrollNightOtPaperwork,
+    { payrollOffLike: isStrictOffDay, isHolidayDay },
+  );
+  if (nightOtHours != null) {
+    return payrollHoursCellDisplay(String(nightOtHours));
+  }
+
   if (!isNightShiftCaLamViec(shiftCode)) return PAYROLL_CELL_DASH;
   if (!isStrictOffDay) return PAYROLL_CELL_DASH;
   const merged = getNightShiftPayrollOffHolidayMergedHoursNumeric(
@@ -1032,6 +1082,8 @@ export function formatPayrollTableNightShiftOvertimeCell(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   payrollEarlyOtPaperwork = undefined,
+  payrollNightOtPaperwork = undefined,
+  isHolidayDay = false,
 ) {
   if (
     hasPayrollLeaveType(
@@ -1103,6 +1155,19 @@ export function isEarlyArrivalForNightShiftPaperworkOvertime(timeIn, shiftCode) 
   return (
     a >= NIGHT_SHIFT_EARLY_PAPERWORK_MIN_IN_MIN &&
     a <= NIGHT_SHIFT_OFFICIAL_START_MIN
+  );
+}
+
+/** Popup xác nhận TC đêm — giờ vào từ 22:00 đến 05:00 (mọi ca). */
+export const NIGHT_OT_PAPERWORK_ENTRY_START_MIN = 22 * 60;
+export const NIGHT_OT_PAPERWORK_ENTRY_END_MIN = 5 * 60;
+
+export function isNightOtPaperworkEligible(timeIn) {
+  const a = parseHHMMToMinutes(timeIn);
+  if (a == null) return false;
+  return (
+    a >= NIGHT_OT_PAPERWORK_ENTRY_START_MIN ||
+    a <= NIGHT_OT_PAPERWORK_ENTRY_END_MIN
   );
 }
 
@@ -1614,6 +1679,8 @@ export function formatPayrollTableTotalNightGcCell(
   includeTaiXeInWorkingHours = false,
   includeTaiXeTongInWorkingHours = false,
   payrollEarlyOtPaperwork = undefined,
+  payrollNightOtPaperwork = undefined,
+  isHolidayDay = false,
 ) {
   if (
     hasPayrollLeaveType(
@@ -1623,6 +1690,7 @@ export function formatPayrollTableTotalNightGcCell(
     )
   )
     return PAYROLL_CELL_DASH;
+
   if (!isNightShiftCaLamViec(shiftCode)) return PAYROLL_CELL_DASH;
   if (payrollOffLike) {
     const merged = getNightShiftPayrollOffHolidayMergedHoursNumeric(

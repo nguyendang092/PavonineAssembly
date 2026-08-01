@@ -85,6 +85,16 @@ describe("isPayrollSaturdayOffWorkDay", () => {
       }),
     ).toBe(false);
   });
+
+  it("Tài xế tổng — Thứ 7 OFF lịch không thuộc SAT.S", () => {
+    expect(
+      isPayrollSaturdayOffWorkDay(
+        SAT_OFF_KEY,
+        { isOffDay: true, isHolidayDay: false },
+        { includeTaiXeTongInWorkingHours: "YES" },
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("buildMonthlyRuleSummary — SAT.S thứ Bảy OFF", () => {

@@ -20,8 +20,13 @@ function AnnualLeaveManagerTablePanel({
   filterPending = false,
   attendanceEnhancing = false,
   normalizeEntryRow,
+  canManage = false,
+  adjustmentSavingId = "",
+  onAdjustmentSave,
 }) {
   const { t } = useTranslation();
+  const tableColCount =
+    10 + monthColumnLabels.length + 1 + (canManage ? 1 : 0);
   const tablePagination = useHrTablePagination(filteredEntries, {
     resetDeps: [year, filteredEntries.length],
   });
@@ -37,7 +42,6 @@ function AnnualLeaveManagerTablePanel({
       tablePagination.pagedItems,
       tablePagination.rowIndexOffset,
       normalizeEntryRow,
-      monthlyByEmpKey,
     ],
   );
 
@@ -66,6 +70,7 @@ function AnnualLeaveManagerTablePanel({
               {monthColumnLabels.map((label) => (
                 <col key={label} className="annual-leave-col-month" />
               ))}
+              {canManage ? <col className="annual-leave-col-adjust" /> : null}
               <col className="annual-leave-col-detail" />
             </colgroup>
             <thead className="sticky top-0 z-20">
@@ -130,6 +135,13 @@ function AnnualLeaveManagerTablePanel({
                     {label}
                   </th>
                 ))}
+                {canManage ? (
+                  <th rowSpan={2} className={annualLeaveTableThClass}>
+                    {t("annualLeave.adjustmentColumn", {
+                      defaultValue: "ADJUST",
+                    })}
+                  </th>
+                ) : null}
                 <th rowSpan={2} className={annualLeaveTableThClass}>
                   {t("annualLeave.detailColumn", {
                     defaultValue: "DETAIL",
@@ -153,7 +165,7 @@ function AnnualLeaveManagerTablePanel({
               {filteredEntries.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={23}
+                    colSpan={tableColCount}
                     className="px-4 py-10 text-center text-sm text-black dark:text-slate-400"
                   >
                     {t("annualLeave.noData")}
@@ -164,10 +176,14 @@ function AnnualLeaveManagerTablePanel({
                   <AnnualLeaveManagerTableRow
                     key={entry.id}
                     row={row}
+                    raw={entry._raw}
                     index={index}
                     year={year}
                     throughDateKey={detailThroughDateKey}
                     monthValues={monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES}
+                    canManage={canManage}
+                    adjustmentSaving={adjustmentSavingId === entry.id}
+                    onAdjustmentSave={onAdjustmentSave}
                   />
                 ))
               )}
@@ -202,7 +218,10 @@ function areTablePanelPropsEqual(prev, next) {
     prev.detailThroughDateKey === next.detailThroughDateKey &&
     prev.filterPending === next.filterPending &&
     prev.attendanceEnhancing === next.attendanceEnhancing &&
-    prev.normalizeEntryRow === next.normalizeEntryRow
+    prev.normalizeEntryRow === next.normalizeEntryRow &&
+    prev.canManage === next.canManage &&
+    prev.adjustmentSavingId === next.adjustmentSavingId &&
+    prev.onAdjustmentSave === next.onAdjustmentSave
   );
 }
 

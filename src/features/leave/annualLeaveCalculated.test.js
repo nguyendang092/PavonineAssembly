@@ -4,7 +4,6 @@ import {
   completedYearsFromStartWorkingDate,
   computeAnnualLeaveTotals,
   formatAnnualLeaveMonthColumnLabel,
-  isCalendarMonthCompleteBeforeAsOf,
   isStartWorkingDateInCalendarMonth,
   isStartWorkingDateInCalendarYear,
   listAnnualLeaveCalendarYearMonths,
@@ -54,11 +53,14 @@ describe("formatAnnualLeaveMonthColumnLabel", () => {
 });
 
 describe("annualLeaveTenureBonusDays", () => {
-  it("returns +1 at 5 years and +2 at 10 years", () => {
+  it("returns +1 per each completed 5-year block from 5 years onward", () => {
     expect(annualLeaveTenureBonusDays(4)).toBe(0);
     expect(annualLeaveTenureBonusDays(5)).toBe(1);
     expect(annualLeaveTenureBonusDays(9)).toBe(1);
     expect(annualLeaveTenureBonusDays(10)).toBe(2);
+    expect(annualLeaveTenureBonusDays(14)).toBe(2);
+    expect(annualLeaveTenureBonusDays(15)).toBe(3);
+    expect(annualLeaveTenureBonusDays(20)).toBe(4);
   });
 });
 
@@ -93,24 +95,16 @@ describe("isStartWorkingDateInCalendarMonth", () => {
   });
 });
 
-describe("isCalendarMonthCompleteBeforeAsOf", () => {
-  it("requires the calendar month to end before as-of date", () => {
-    expect(isCalendarMonthCompleteBeforeAsOf(2026, 1, "2026-03-01")).toBe(true);
-    expect(isCalendarMonthCompleteBeforeAsOf(2026, 2, "2026-03-01")).toBe(false);
-    expect(isCalendarMonthCompleteBeforeAsOf(2026, 2, "2026-04-01")).toBe(true);
-  });
-});
-
 describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("returns 0 without payroll for new joiners in the current year", () => {
+  it("auto-accrues months after join month without payroll (join month still needs ½)", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 24));
 
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026)).toBe(0);
+    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026)).toBe(4);
     expect(resolveAnnualLeaveMonthlyAccrualDays("2026-08-01", 2026)).toBe(0);
   });
 
@@ -121,7 +115,7 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     expect(resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026)).toBe(7);
   });
 
-  it("applies half-day rule only for new joiners in the current year", () => {
+  it("applies half-day rule only on join month for new joiners in the current year", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 24));
 
@@ -142,6 +136,17 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
         "2026-06": { workDays: 11, standardWorkDays: 20 },
         "2026-07": { workDays: 11, standardWorkDays: 20 },
       }),
+    ).toBe(5);
+  });
+
+  it("post-join months accrue +1 even when payroll fails ½ on those months", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 24));
+
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026, {
+        "2026-04": { workDays: 4, standardWorkDays: 20 },
+      }),
     ).toBe(4);
   });
 
@@ -156,21 +161,21 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     ).toBe(1);
   });
 
-  it("join 25-Jun-2026 — thiếu ½ ngày công thì 0; đủ thì +1 kể cả tháng hiện tại", () => {
+  it("join 25-Jun-2026 — chỉ tháng vào làm cần ½; tháng sau +1 mặc định", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 29));
 
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026)).toBe(0);
+    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026)).toBe(1);
     expect(
       resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026, {
         "2026-06": { workDays: 4, standardWorkDays: 27 },
       }),
-    ).toBe(0);
+    ).toBe(1);
     expect(
       resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026, {
         "2026-06": { workDays: 14, standardWorkDays: 27 },
       }),
-    ).toBe(1);
+    ).toBe(2);
     expect(
       resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026, {
         "2026-06": { workDays: 4, standardWorkDays: 27 },
@@ -207,6 +212,18 @@ describe("resolveAnnualLeaveCurrentYear", () => {
       [ANNUAL_LEAVE_EMP.START_WORKING_DATE]: "",
     };
     expect(resolveAnnualLeaveCurrentYear(row, 2026)).toBe(12);
+  });
+
+  it("applies manual adjustment (+/-) to current year", () => {
+    const row = {
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 12,
+      [ANNUAL_LEAVE_EMP.START_WORKING_DATE]: "",
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]: -1,
+    };
+    expect(resolveAnnualLeaveCurrentYear(row, 2026)).toBe(11);
+
+    row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT] = 1;
+    expect(resolveAnnualLeaveCurrentYear(row, 2026)).toBe(13);
   });
 
   it("adds monthly accrual and tenure bonus", () => {

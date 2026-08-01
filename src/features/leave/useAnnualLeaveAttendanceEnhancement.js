@@ -120,6 +120,7 @@ export function useAnnualLeaveAttendanceEnhancement(
 
   const monthWorkSummaryByEmpKey = useMemo(() => {
     if (
+      skipPayrollMonthAccrual ||
       skipAttendance ||
       !attendanceUiReady ||
       !yearData ||
@@ -134,6 +135,7 @@ export function useAnnualLeaveAttendanceEnhancement(
       { attendanceRootPath },
     );
   }, [
+    skipPayrollMonthAccrual,
     attendanceUiReady,
     payrollRootForMonthAccrual,
     year,

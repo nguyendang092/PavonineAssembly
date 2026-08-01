@@ -367,6 +367,49 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     expect(coeffHours(lines, 0.3)).toBe(7);
     expect(coeffHours(lines, 1.5)).toBe(1);
 
+    const linesNightOt = getPayrollMonthlyCoefficientLines({
+      timeIn: "22:00",
+      timeOut: "06:00",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S2",
+      payrollNightOtPaperwork: true,
+    });
+    expect(coeffHours(linesNightOt, 2.7)).toBe(8);
+    expect(coeffHours(linesNightOt, 0.3)).toBe(0);
+    expect(coeffHours(linesNightOt, 1.5)).toBe(0);
+
+    const linesNightOtS1 = getPayrollMonthlyCoefficientLines({
+      timeIn: "22:00",
+      timeOut: "06:00",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollNightOtPaperwork: true,
+    });
+    expect(coeffHours(linesNightOtS1, 2.7)).toBe(8);
+
+    const linesNightOtEarly = getPayrollMonthlyCoefficientLines({
+      timeIn: "04:00",
+      timeOut: "06:00",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollNightOtPaperwork: true,
+    });
+    expect(coeffHours(linesNightOtEarly, 2.7)).toBe(2);
+
+    const linesDayPlusNightOt = getPayrollMonthlyCoefficientLines({
+      timeIn: "04:00",
+      timeOut: "18:00",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollNightOtPaperwork: true,
+    });
+    expect(coeffHours(linesDayPlusNightOt, 2.7)).toBe(2);
+    expect(coeffHours(linesDayPlusNightOt, 1.5)).toBeGreaterThan(0);
+
     const coeffMap = getPayrollMonthlyCoeffHoursMap({
       timeIn: "22:00",
       timeOut: "06:00",

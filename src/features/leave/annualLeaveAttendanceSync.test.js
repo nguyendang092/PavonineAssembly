@@ -1,6 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
-import { applyAnnualLeaveDeductionDelta } from "./annualLeaveAttendanceSync";
+import {
+  applyAnnualLeaveDeductionDelta,
+  persistAnnualLeaveEmployeeAdjustment,
+} from "./annualLeaveAttendanceSync";
 
 const mockGet = vi.fn();
 const mockUpdate = vi.fn();
@@ -148,6 +151,84 @@ describe("applyAnnualLeaveDeductionDelta", () => {
         [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: 0,
         [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 2,
         [ANNUAL_LEAVE_EMP.BALANCE]: 10,
+      }),
+    );
+  });
+});
+
+describe("persistAnnualLeaveEmployeeAdjustment", () => {
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockUpdate.mockReset();
+    mockGet.mockImplementation((path) => {
+      if (path === "annualLeave/2026/_meta") {
+        return Promise.resolve({ exists: () => true, val: () => ({}) });
+      }
+      return Promise.resolve({ exists: () => false, val: () => null });
+    });
+  });
+
+  it("writes adjustment and full annual leave totals to Firebase", async () => {
+    const raw = {
+      [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "PAVO1",
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 12,
+      [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 2,
+      [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: 1,
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 3,
+      [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: 12,
+      [ANNUAL_LEAVE_EMP.BALANCE]: 9,
+    };
+
+    const result = await persistAnnualLeaveEmployeeAdjustment({}, {
+      year: 2026,
+      empKey: "emp_PAVO1",
+      raw,
+      adjustment: 1,
+      deductionsByEmpKey: { emp_PAVO1: 1 },
+      updatedBy: "hr@test.com",
+    });
+
+    expect(result.applied).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith(
+      "annualLeave/2026/emp_PAVO1",
+      expect.objectContaining({
+        id: "emp_PAVO1",
+        [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]: 1,
+        [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 2,
+        [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: 1,
+        [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 3,
+        [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: 13,
+        [ANNUAL_LEAVE_EMP.BALANCE]: 10,
+      }),
+    );
+    expect(mockUpdate).toHaveBeenCalledWith(
+      "annualLeave/2026/_meta",
+      expect.objectContaining({
+        updatedAt: expect.any(String),
+        updatedBy: "hr@test.com",
+      }),
+    );
+  });
+
+  it("clears adjustment field when value is zero", async () => {
+    const raw = {
+      [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "PAVO1",
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 12,
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]: 1,
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 0,
+    };
+
+    await persistAnnualLeaveEmployeeAdjustment({}, {
+      year: 2026,
+      empKey: "emp_PAVO1",
+      raw,
+      adjustment: 0,
+    });
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      "annualLeave/2026/emp_PAVO1",
+      expect.objectContaining({
+        [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]: null,
       }),
     );
   });

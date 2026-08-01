@@ -5,6 +5,7 @@ import {
   formatAnnualLeaveDisplayDate,
 } from "./annualLeaveCalculated";
 import AnnualLeaveUsageDetailTrigger from "./AnnualLeaveUsageDetailTrigger";
+import AnnualLeaveAdjustmentCell from "./AnnualLeaveAdjustmentCell";
 import {
   annualLeaveStickyColClass,
   annualLeaveTableRowClass,
@@ -20,10 +21,14 @@ function hasAnnualLeaveMonthUsage(value) {
 
 function AnnualLeaveManagerTableRow({
   row,
+  raw,
   index,
   year,
   throughDateKey,
   monthValues = [],
+  canManage = false,
+  adjustmentSaving = false,
+  onAdjustmentSave,
 }) {
   const sticky = (colIndex) =>
     annualLeaveStickyColClass(colIndex, { rowIndex: index });
@@ -84,6 +89,16 @@ function AnnualLeaveManagerTableRow({
           )}
         </td>
       ))}
+      {canManage ? (
+        <td className="px-1 md:px-1.5 py-px text-center">
+          <AnnualLeaveAdjustmentCell
+            row={row}
+            raw={raw}
+            saving={adjustmentSaving}
+            onSave={onAdjustmentSave}
+          />
+        </td>
+      ) : null}
       <td className="px-1 md:px-1.5 py-px text-center">
         <div className="flex items-center justify-center">
           <AnnualLeaveUsageDetailTrigger
@@ -101,10 +116,14 @@ function AnnualLeaveManagerTableRow({
 function areAnnualLeaveManagerTableRowPropsEqual(prev, next) {
   return (
     prev.row === next.row &&
+    prev.raw === next.raw &&
     prev.index === next.index &&
     prev.year === next.year &&
     prev.throughDateKey === next.throughDateKey &&
-    prev.monthValues === next.monthValues
+    prev.monthValues === next.monthValues &&
+    prev.canManage === next.canManage &&
+    prev.adjustmentSaving === next.adjustmentSaving &&
+    prev.onAdjustmentSave === next.onAdjustmentSave
   );
 }
 

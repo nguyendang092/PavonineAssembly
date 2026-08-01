@@ -30,19 +30,15 @@ export function useAnnualLeaveLiveData(
     includeBalanceMap = true,
     includeAttendance = true,
     includePayrollMonthAccrual = false,
-    /** @deprecated Dùng `includePayrollMonthAccrual`. */
-    includeJoinMonthAccrual = false,
   } = {},
 ) {
-  const includePayrollAccrual =
-    includePayrollMonthAccrual || includeJoinMonthAccrual;
+  const skipPayrollMonthAccrual =
+    !enabled ||
+    !includePayrollMonthAccrual ||
+    shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
   const skipAttendance =
     !enabled ||
     !includeAttendance ||
-    shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
-  const skipPayrollMonthAccrual =
-    !enabled ||
-    !includePayrollAccrual ||
     shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
 
   const { data: yearData, ready: yearReady } = useAnnualLeaveYearExternal(
@@ -127,25 +123,43 @@ export function useAnnualLeaveLiveData(
   const attendanceMonthlyByEmpKey = attendanceDerived.attendanceMonthlyByEmpKey;
 
   const monthWorkSummaryByEmpKey = useMemo(() => {
-    if (!yearData || !payrollRootForMonthAccrual) return {};
+    if (
+      skipPayrollMonthAccrual ||
+      !yearData ||
+      !payrollRootForMonthAccrual
+    ) {
+      return {};
+    }
     return buildAnnualLeaveMonthWorkSummaryByEmpKey(
       payrollRootForMonthAccrual,
       year,
       yearData,
       { attendanceRootPath },
     );
-  }, [payrollRootForMonthAccrual, year, yearData, attendanceRootPath]);
+  }, [
+    skipPayrollMonthAccrual,
+    payrollRootForMonthAccrual,
+    year,
+    yearData,
+    attendanceRootPath,
+  ]);
 
   const usageDetailByEmpKey = useMemo(
     () =>
-      skipAttendance || !includeUsageDetail
+      skipAttendance || !includeUsageDetail || !attendanceRootForDerived
         ? {}
         : buildAttendanceAnnualLeaveUsageDetailByEmpKey(
-            attendanceRoot,
+            attendanceRootForDerived,
             year,
             deductionFilter,
           ),
-    [attendanceRoot, year, deductionFilter, skipAttendance, includeUsageDetail],
+    [
+      attendanceRootForDerived,
+      year,
+      deductionFilter,
+      skipAttendance,
+      includeUsageDetail,
+    ],
   );
 
   const balanceByMnv = useMemo(
@@ -176,7 +190,7 @@ export function useAnnualLeaveLiveData(
   const attendanceEnhancing = !skipAttendance && !attendanceReady;
   const payrollEnhancing =
     skipAttendance &&
-    includePayrollAccrual &&
+    includePayrollMonthAccrual &&
     accrualYearMonths.length > 0 &&
     !payrollMonthAttendanceReady;
   const loading = yearLoading || attendanceEnhancing || payrollEnhancing;

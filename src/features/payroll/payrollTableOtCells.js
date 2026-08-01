@@ -136,6 +136,8 @@ export function formatPayrollTableNightShiftWorkingCellFromEmp(
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
     p.payrollEarlyOtPaperwork,
+    p.payrollNightOtPaperwork,
+    p.isHolidayDay,
   );
 }
 
@@ -157,10 +159,12 @@ export function formatPayrollTableNightShiftOvertimeCellFromEmp(
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
     p.payrollEarlyOtPaperwork,
+    p.payrollNightOtPaperwork,
+    p.isHolidayDay,
   );
 }
 
-/** GC ca đêm ngày off — GC + TC gộp. */
+/** GC ca đêm ngày off / TC đêm ×2.7 (ngày thường có giấy). */
 export function formatPayrollTableNightShiftOffDayWorkingCellFromEmp(
   emp,
   dayCtx,
@@ -178,6 +182,8 @@ export function formatPayrollTableNightShiftOffDayWorkingCellFromEmp(
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
     p.payrollEarlyOtPaperwork,
+    p.payrollNightOtPaperwork,
+    p.isHolidayDay,
   );
 }
 
@@ -216,5 +222,7 @@ export function formatPayrollTableTotalNightGcCellFromEmp(emp, dayCtx, maps) {
     p.includeTaiXeInWorkingHours,
     p.includeTaiXeTongInWorkingHours,
     p.payrollEarlyOtPaperwork,
+    p.payrollNightOtPaperwork,
+    p.isHolidayDay,
   );
 }

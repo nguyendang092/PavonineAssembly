@@ -9,6 +9,8 @@ export const ANNUAL_LEAVE_EMP = {
   SUB_DEPARTMENT: "subDepartment",
   START_WORKING_DATE: "startWorkingDate",
   ANNUAL_LEAVE_CURRENT_YEAR: "annualLeaveCurrentYear",
+  /** HR/Admin — cộng/trừ thêm vào phép năm hiện tại (vd. +1 / -1). */
+  ANNUAL_LEAVE_ADJUSTMENT: "annualLeaveAdjustment",
   BONUS_ANNUAL_LEAVE_ENV: "bonusAnnualLeaveEnv",
   COMPENSATORY_DAY_OFF: "compensatoryDayOff",
   TOTAL_ANNUAL_LEAVE: "totalAnnualLeave",

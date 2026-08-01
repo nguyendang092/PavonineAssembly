@@ -6,7 +6,7 @@ import {
   payrollMonthlyJoinMonthMeetsAnnualLeaveAccrual,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
-  buildAnnualLeaveJoinMonthWorkSummary,
+  buildAnnualLeaveMonthWorkSummary,
   listCalendarDateKeysForYearMonth,
 } from "./annualLeavePayrollAccrual";
 import { monthMeetsHalfStandardWorkDays } from "./annualLeaveCalculated";
@@ -18,7 +18,7 @@ describe("listCalendarDateKeysForYearMonth", () => {
   });
 });
 
-describe("buildAnnualLeaveJoinMonthWorkSummary", () => {
+describe("buildAnnualLeaveMonthWorkSummary", () => {
   it("uses payroll monthly totals for join month", () => {
     const dayChunkMap = new Map();
     for (const dateKey of listCalendarDateKeysForYearMonth("2026-03")) {
@@ -34,7 +34,7 @@ describe("buildAnnualLeaveJoinMonthWorkSummary", () => {
       if (chunk) dayChunkMap.set(dateKey, chunk);
     }
 
-    const summary = buildAnnualLeaveJoinMonthWorkSummary(
+    const summary = buildAnnualLeaveMonthWorkSummary(
       dayChunkMap,
       "2026-03",
       "emp_100",
@@ -72,7 +72,7 @@ describe("buildAnnualLeaveJoinMonthWorkSummary", () => {
       if (chunk) dayChunkMap.set(dateKey, chunk);
     }
 
-    const summary = buildAnnualLeaveJoinMonthWorkSummary(
+    const summary = buildAnnualLeaveMonthWorkSummary(
       dayChunkMap,
       "2026-06",
       "emp_100",

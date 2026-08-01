@@ -170,6 +170,7 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     dateKey = null,
     earlyOtPaperworkById = {},
     lateOtExcludedById = {},
+    nightOtPaperworkById = {},
   } = ctx;
   const offLike =
     isPayrollOffLikeDay !== undefined
@@ -186,7 +187,11 @@ export function payrollEmployeeRowValues(emp, idx, ctx) {
     koreanTimesheetRules,
     dateKey,
   };
-  const otMaps = { earlyOtPaperworkById, lateOtExcludedById };
+  const otMaps = {
+    earlyOtPaperworkById,
+    lateOtExcludedById,
+    nightOtPaperworkById,
+  };
   const {
     includeTapVuInWorkingHours,
     includeThaiSanInWorkingHours,
@@ -397,6 +402,7 @@ export async function buildPayrollSalaryExcelWorkbook({
   sheetTitle,
   earlyOtPaperworkById = {},
   lateOtExcludedById = {},
+  nightOtPaperworkById = {},
 }) {
   const { workbook, worksheet } = createPayrollSalaryWorksheetBase(
     tlTable,
@@ -413,6 +419,7 @@ export async function buildPayrollSalaryExcelWorkbook({
     dateKey: selectedDate,
     earlyOtPaperworkById,
     lateOtExcludedById,
+    nightOtPaperworkById,
   };
   employees.forEach((emp, idx) => {
     appendPayrollWorksheetDataRow(worksheet, day, month, year, emp, idx, ctx);
@@ -447,6 +454,7 @@ export async function buildPayrollSalaryExcelWorkbookMultiDay({
       dateKey: chunk.dateKey,
       earlyOtPaperworkById: chunk.earlyOtPaperworkById || {},
       lateOtExcludedById: chunk.lateOtExcludedById || {},
+      nightOtPaperworkById: chunk.nightOtPaperworkById || {},
     };
     const { day, month, year } = getPayrollExcelDateParts(chunk.dateKey);
     chunk.employees.forEach((emp, idx) => {

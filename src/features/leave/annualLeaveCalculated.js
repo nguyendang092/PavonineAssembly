@@ -14,6 +14,15 @@ export function roundAnnualLeaveHours(n) {
   return Math.round(x * 100 + 1e-9) / 100;
 }
 
+/** Điều chỉnh thủ công phép năm hiện tại — HR/Admin (+1 / -1 …). */
+export function parseAnnualLeaveAdjustment(value) {
+  return roundAnnualLeaveHours(parseAnnualLeaveNumber(value));
+}
+
+export function resolveAnnualLeaveAdjustment(row) {
+  return parseAnnualLeaveAdjustment(row?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]);
+}
+
 function parseAnnualLeaveIsoDate(value) {
   if (!value || typeof value !== "string") return null;
   const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -55,11 +64,10 @@ export function completedYearsFromStartWorkingDate(
   return Math.max(0, years);
 }
 
-/** Phép cộng thêm theo thâm niên: ≥5 năm +1, ≥10 năm +2. */
+/** Phép cộng thêm theo thâm niên: mỗi trọn 5 năm +1 (5→+1, 10→+2, 15→+3, …). */
 export function annualLeaveTenureBonusDays(completedYears) {
   if (completedYears == null || !Number.isFinite(completedYears)) return 0;
-  if (completedYears >= 10) return 2;
-  if (completedYears >= 5) return 1;
+  if (completedYears >= 5) return Math.floor(completedYears / 5);
   return 0;
 }
 
@@ -110,17 +118,6 @@ export function monthMeetsHalfStandardWorkDays(summary) {
   return work >= standard / 2;
 }
 
-/** Tháng lịch `monthIndex` (0 = Jan) đã kết thúc trước ngày chốt `asOfDateKey`. */
-export function isCalendarMonthCompleteBeforeAsOf(year, monthIndex, asOfDateKey) {
-  const asOf = parseAnnualLeaveIsoDate(asOfDateKey);
-  const y = Number(year);
-  const m = Number(monthIndex);
-  if (!asOf || !Number.isFinite(y) || !Number.isFinite(m)) return false;
-  if (asOf.getFullYear() > y) return true;
-  if (asOf.getFullYear() < y) return false;
-  return asOf.getMonth() > m;
-}
-
 /** Khoảng tháng 0-based (Jan=0) tính +1 phép trong năm `year`. */
 export function resolveAnnualLeaveAccrualMonthRange(
   startWorkingDate,
@@ -165,7 +162,9 @@ function resolveMonthWorkSummaryForAccrual(
 /**
  * Số tháng +1 phép trong năm.
  * - NV vào làm trước năm `year`: +1/tháng trong kỳ (kể cả tháng hiện tại).
- * - NV vào làm trong năm `year`: mỗi tháng cần đủ điều kiện lưới tháng giờ công.
+ * - NV vào làm trong năm `year`:
+ *   • Chỉ tháng có ngày vào làm: kiểm ≥ ½ «Ngày thực tế làm việc» (vào giữa/cuối/đầu tháng).
+ *   • Mọi tháng sau tháng vào làm: +1 mặc định như NV năm cũ (kể cả tháng hiện tại).
  * @param {Record<string, { workDays?: number, standardWorkDays?: number }> | null | undefined} monthWorkSummaryByYearMonth
  */
 export function resolveAnnualLeaveMonthlyAccrualDays(
@@ -188,6 +187,17 @@ export function resolveAnnualLeaveMonthlyAccrualDays(
     monthIndex += 1
   ) {
     if (requiresPayrollHalfDayCheck) {
+      const isJoinMonth = isStartWorkingDateInCalendarMonth(
+        startWorkingDate,
+        y,
+        monthIndex,
+      );
+
+      if (!isJoinMonth) {
+        accrual += 1;
+        continue;
+      }
+
       const summary = resolveMonthWorkSummaryForAccrual(
         monthWorkSummaryByYearMonth,
         y,
@@ -209,10 +219,12 @@ export function resolveAnnualLeaveCurrentYear(
   year,
   { monthWorkSummaryByYearMonth = null } = {},
 ) {
+  const adjustment = resolveAnnualLeaveAdjustment(row);
   const startDate = row?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE];
   if (!startDate) {
-    return parseAnnualLeaveNumber(
-      row?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
+    return roundAnnualLeaveHours(
+      parseAnnualLeaveNumber(row?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]) +
+        adjustment,
     );
   }
 
@@ -222,7 +234,7 @@ export function resolveAnnualLeaveCurrentYear(
     monthWorkSummaryByYearMonth,
   );
   const tenureBonus = resolveAnnualLeaveTenureBonus(startDate, year);
-  return roundAnnualLeaveHours(monthlyAccrual + tenureBonus);
+  return roundAnnualLeaveHours(monthlyAccrual + tenureBonus + adjustment);
 }
 
 /** Tổng phép & tồn — luôn tính lại khi import / hiển thị. */

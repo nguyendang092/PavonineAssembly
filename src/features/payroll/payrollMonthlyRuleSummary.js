@@ -28,6 +28,8 @@ import {
 } from "@/features/attendance/attendanceWorkingHours";
 import { attendanceAnnualLeaveDeductionForLoaiPhep } from "@/features/leave/annualLeaveBalanceLookup";
 import { normalizeDateForHtmlInput } from "@/utils/attendanceEmployeeRecord";
+import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
+import { resolveTaiXeTongEffectiveIsOffDay } from "@/features/payroll/taiXeTongPayrollDay";
 import { parseLocalDateKey } from "@/utils/dateKey";
 import { resolvePayrollMonthDayEmployee } from "@/features/payroll/payrollMonthlyGridData";
 
@@ -150,13 +152,25 @@ export function countMonthlyStandardWorkDays(monthKeys) {
 
 /**
  * Thứ Bảy được đánh dấu «Ngày off» (không phải lễ / nghỉ bù) — khối SAT.S.
+ * Tài xế tổng: Thứ 7 như ngày thường → không thuộc SAT.S off.
  * @param {string} dateKey
- * @param {{ isOffDay?: boolean, isHolidayDay?: boolean } | null | undefined} ch
+ * @param {{ isOffDay?: boolean, isHolidayDay?: boolean, dateKey?: string } | null | undefined} ch
+ * @param {object | null | undefined} [emp]
  */
-export function isPayrollSaturdayOffWorkDay(dateKey, ch) {
+export function isPayrollSaturdayOffWorkDay(dateKey, ch, emp = null) {
   if (!ch?.isOffDay || ch.isHolidayDay) return false;
   const pd = parseLocalDateKey(dateKey);
-  return Boolean(pd && pd.getDay() === 6);
+  if (!pd || pd.getDay() !== 6) return false;
+  if (emp) {
+    const flags = employeeRegimeWorkingHoursFlags(emp);
+    const effectiveOff = resolveTaiXeTongEffectiveIsOffDay({
+      includeTaiXeTongInWorkingHours: flags.includeTaiXeTongInWorkingHours,
+      dateKey: dateKey ?? ch?.dateKey ?? null,
+      isOffDay: ch.isOffDay,
+    });
+    if (!effectiveOff) return false;
+  }
+  return true;
 }
 
 function leaveUnitsByCode(leaveShort, code) {
@@ -327,7 +341,7 @@ export function buildMonthlyRuleSummary(
    * cột SAT.S (×2.7): thêm bản sao giờ khi ca đêm S2.
    */
   const addSaturdaySatOverlay = (out, coeffMap, dateKey, ch, emp) => {
-    if (!isPayrollSaturdayOffWorkDay(dateKey, ch)) return;
+    if (!isPayrollSaturdayOffWorkDay(dateKey, ch, emp)) return;
     if (!isNightShiftCaLamViec(emp?.caLamViec)) return;
     const h27 = Number(coeffMap.get(2.7) || 0);
     if (h27 > 0) out.sats27 += h27;
@@ -404,7 +418,7 @@ export function buildMonthlyRuleSummary(
       return;
     }
 
-    const saturdayOff = isPayrollSaturdayOffWorkDay(dateKey, ch);
+    const saturdayOff = isPayrollSaturdayOffWorkDay(dateKey, ch, emp);
     const main = getPayrollMonthlyMainRowCell(emp, ch);
     const coeffMap = getPayrollMonthlyCoeffHoursMap(
       payrollOtDayParamsFromMonthChunkEmp(emp, ch),

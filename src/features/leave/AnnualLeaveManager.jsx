@@ -176,6 +176,27 @@ export default function AnnualLeaveManager() {
     }
   }, [canManage, syncing, year, user?.email, t]);
 
+  const handleAdjustmentSaved = useCallback(() => {
+    setAlert({
+      show: true,
+      type: "success",
+      message: t("annualLeave.adjustmentSaveSuccess", {
+        defaultValue: "Đã lưu điều chỉnh phép năm.",
+      }),
+    });
+  }, [t]);
+
+  const handleAdjustmentSaveError = useCallback(
+    (err, fallbackMessage) => {
+      setAlert({
+        show: true,
+        type: "error",
+        message: err?.message || fallbackMessage,
+      });
+    },
+    [],
+  );
+
   const handleUpload = useCallback(
     async (e) => {
       const file = e.target.files?.[0];
@@ -380,6 +401,9 @@ export default function AnnualLeaveManager() {
             detailThroughDateKey={detailThroughDateKey}
             filterPending={filterPending}
             exportRef={exportRef}
+            canManage={canManage}
+            onAdjustmentSaved={handleAdjustmentSaved}
+            onAdjustmentSaveError={handleAdjustmentSaveError}
           />
         )}
       </div>

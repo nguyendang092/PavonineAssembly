@@ -7,6 +7,8 @@ import {
   getPayrollDayOvertimeHoursNumeric,
   getPayrollDayShiftOffHolidayMergedHoursNumeric,
   getPayrollHalfDayLeaveWorkedHours,
+  getPayrollNightOtWindowHours22To06,
+  isNightOtPaperworkEligible,
   isNightShiftCaLamViec,
   roundHoursToHundredths,
   roundHoursToTenths,
@@ -195,6 +197,7 @@ function payrollMonthCompensatoryOtCoefficientLines(p) {
  *   shiftCode: unknown,
  *   payrollEarlyOtPaperwork: boolean | undefined,
  *   payrollLateOtExcluded: boolean | undefined,
+ *   payrollNightOtPaperwork: boolean | undefined,
  *   lunchOtHours?: unknown,
  *   leaveType?: unknown,
  *   dateKey?: string | null,
@@ -206,11 +209,13 @@ export function getPayrollMonthlyCoefficientLines(p) {
     timeIn,
     timeOut,
     isOffDay,
+    calendarIsOffDay,
     isHolidayDay,
     isCompensatoryDay = false,
     shiftCode,
     payrollEarlyOtPaperwork,
     payrollLateOtExcluded,
+    payrollNightOtPaperwork,
     lunchOtHours,
     leaveType,
     dateKey = null,
@@ -221,10 +226,12 @@ export function getPayrollMonthlyCoefficientLines(p) {
     includeTaiXeInWorkingHours,
     includeTaiXeTongInWorkingHours,
   } = resolvePayrollMonthlyRegimeFlags(p);
+  const calendarOff =
+    calendarIsOffDay !== undefined ? calendarIsOffDay : isOffDay;
   const effectiveIsOffDay = resolveTaiXeTongEffectiveIsOffDay({
     includeTaiXeTongInWorkingHours,
     dateKey,
-    isOffDay,
+    isOffDay: calendarOff,
   });
   const strictOffDay =
     effectiveIsOffDay || payrollMonthCompensatoryUsesOffSplit(p);
@@ -309,7 +316,20 @@ export function getPayrollMonthlyCoefficientLines(p) {
     return lines;
   }
 
-  if (night) {
+  if (
+    payrollNightOtPaperwork === true &&
+    isNightOtPaperworkEligible(timeIn)
+  ) {
+    const m27 = getPayrollNightOtWindowHours22To06(timeIn, timeOut);
+    if (Number.isFinite(m27) && m27 > 0) {
+      lines.push({ coeff: 2.7, hours: m27, key: "nt27pw" });
+    }
+  }
+
+  const skipNightShiftRegularCoeffs =
+    payrollNightOtPaperwork === true && isNightOtPaperworkEligible(timeIn);
+
+  if (night && !skipNightShiftRegularCoeffs) {
     const parts = getNightShiftPayrollRegularHoursAndOtMinutes(
       timeIn,
       timeOut,

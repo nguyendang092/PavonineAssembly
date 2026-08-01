@@ -17,7 +17,7 @@ import {
   formatPayrollTableTotalNightGcCellFromEmp,
 } from "@/features/payroll/payrollTableOtCells";
 import { isPayrollMonthDayCellBeforeJoinWithoutAttendance } from "@/features/payroll/payrollMonthlyRuleSummary";
-import { pickPayrollEmployeeJoinDate } from "@/features/payroll/payrollEmployeeFields";
+import { pickPayrollEmployeeDayFields, pickPayrollEmployeeJoinDate } from "@/features/payroll/payrollEmployeeFields";
 import { employeeRegimeWorkingHoursFlags } from "../employeeRegime";
 import { resolveTaiXeTongEffectiveIsOffDay } from "@/features/payroll/taiXeTongPayrollDay";
 import AttendanceOffHolidayCellContent from "./AttendanceOffHolidayCellContent";
@@ -101,7 +101,7 @@ function AttendanceTableRow({
   const strictOffDay =
     effectiveIsOffDay || (isCompensatoryDay && !isKoreanAttendance);
   const payrollDayCtx = {
-    isOffDay: effectiveIsOffDay,
+    isOffDay,
     isHolidayDay,
     isCompensatoryDay,
     koreanTimesheetRules: isKoreanAttendance,
@@ -157,7 +157,9 @@ function AttendanceTableRow({
       tableVariant,
     );
 
-  const dayFields = pickAttendanceEmployeeDayFields(emp);
+  const dayFields = isPayroll
+    ? pickPayrollEmployeeDayFields(emp)
+    : pickAttendanceEmployeeDayFields(emp);
 
   const gioVaoTrimmed =
     dayFields.timeIn != null && String(dayFields.timeIn).trim() !== ""
@@ -709,11 +711,11 @@ function AttendanceTableRow({
           </td>
           <td
             className={cellCls(
-              "hidden md:table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-emerald-50/90 dark:bg-emerald-950/25",
+              "table-cell px-1 md:px-1.5 py-px text-xs md:text-sm text-center min-w-0 bg-emerald-50/90 dark:bg-emerald-950/25",
             )}
             title={tl(
               "nightShiftOffDayWorkingHoursHint",
-              "Khi «Ngày off» và ca đêm: GC + TC ca đêm gộp (cùng quy tắc mốc 05:00 như ngày thường); cột TC ca đêm «-». Ngày không off thì trống.",
+              "Ngày off + ca đêm S2: GC+TC gộp. Ngày thường đã xác nhận TC đêm (vào 22:00–05:00): giờ khung 22:00–06:00, tối đa 8h.",
             )}
           >
             <span className="font-bold tabular-nums text-emerald-900 dark:text-emerald-100">

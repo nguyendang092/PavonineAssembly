@@ -44,10 +44,12 @@ function PayrollToolsMenu({
   onOpenMonthlyTimeInOut,
   onOpenEarlyOt,
   onOpenLateOt,
+  onOpenNightOt,
   onExportOneDay,
   onExportRange,
   showEarlyOtAction,
   showLateOtAction,
+  showNightOtAction = false,
   showMonthlyTimeInOut = true,
 }) {
   const [open, setOpen] = useState(false);
@@ -157,7 +159,7 @@ function PayrollToolsMenu({
                   />
                 ) : null}
 
-                {showEarlyOtAction || showLateOtAction ? (
+                {showEarlyOtAction || showLateOtAction || showNightOtAction ? (
                   <ToolsMenuSection
                     label={t("attendanceList.toolsSectionActions", {
                       defaultValue: "Chức năng",
@@ -189,6 +191,23 @@ function PayrollToolsMenu({
                     onClick={() => {
                       close();
                       onOpenLateOt();
+                    }}
+                  />
+                ) : null}
+                {showNightOtAction ? (
+                  <ToolsMenuItem
+                    icon="🌙"
+                    title={tlPage(
+                      "nightOtPaperworkButton",
+                      "Xác nhận tăng ca đêm",
+                    )}
+                    hint={tlPage(
+                      "nightOtPaperworkHint",
+                      "Giờ vào 22:00–05:00 → hệ số tăng ca ×2.7 (ngày thường).",
+                    )}
+                    onClick={() => {
+                      close();
+                      onOpenNightOt?.();
                     }}
                   />
                 ) : null}

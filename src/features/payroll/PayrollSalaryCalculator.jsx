@@ -40,8 +40,10 @@ import {
   ATTENDANCE_DAY_META_KEY,
   ATTENDANCE_DAY_META_EARLY_OT_KEY,
   ATTENDANCE_DAY_META_LATE_OT_KEY,
+  ATTENDANCE_DAY_META_NIGHT_OT_KEY,
   normalizeEarlyOtPaperworkMap,
   normalizeLateOtPaperworkMap,
+  normalizeNightOtPaperworkMap,
 } from "@/features/attendance/attendanceDayMeta";
 import AlertMessage from "@/components/ui/AlertMessage";
 import HrTablePagination from "@/components/ui/HrTablePagination";
@@ -57,6 +59,7 @@ import { filterPayrollEmployeesForTimesheetExport } from "@/features/payroll/pay
 import {
   getOvertimeHoursFromGioRa,
   isEarlyArrivalForPaperworkOvertime,
+  isNightOtPaperworkEligible,
   isNightShiftCaLamViec,
 } from "@/features/attendance/attendanceWorkingHours";
 import PayrollEarlyOvertimePaperworkModal from "@/features/payroll/PayrollEarlyOvertimePaperworkModal";
@@ -163,6 +166,7 @@ export default function PayrollSalaryCalculator() {
   const [employees, setEmployees] = useState([]);
   const [earlyOtMap, setEarlyOtMap] = useState({});
   const [lateOtExcludedMap, setLateOtExcludedMap] = useState({});
+  const [nightOtMap, setNightOtMap] = useState({});
   const [earlyOtModalOpen, setEarlyOtModalOpen] = useState(false);
   const [earlyOtSuppressed, setEarlyOtSuppressed] = useState(false);
   const [earlyOtSessionSuppressed, setEarlyOtSessionSuppressed] = useState(false);
@@ -170,6 +174,8 @@ export default function PayrollSalaryCalculator() {
   const [earlyOtModalMode, setEarlyOtModalMode] = useState("pending");
   const [earlyOtSaving, setEarlyOtSaving] = useState(false);
   const [lateOtModalOpen, setLateOtModalOpen] = useState(false);
+  const [nightOtModalOpen, setNightOtModalOpen] = useState(false);
+  const [nightOtSaving, setNightOtSaving] = useState(false);
   const [lateOtModalMode, setLateOtModalMode] = useState("pending");
   const [lateOtSaving, setLateOtSaving] = useState(false);
   const [rangeExportModalOpen, setRangeExportModalOpen] = useState(false);
@@ -259,6 +265,11 @@ export default function PayrollSalaryCalculator() {
             ? prev
             : parsed.lateOtExcludedById,
         );
+        setNightOtMap((prev) =>
+          shallowStringRecordEqual(prev, parsed.nightOtPaperworkById)
+            ? prev
+            : parsed.nightOtPaperworkById,
+        );
         setEmployees((prevBase) => {
           if (
             parsed.baseEmployees === prevBase ||
@@ -281,6 +292,7 @@ export default function PayrollSalaryCalculator() {
     setEarlyOtModalOpen(false);
     setLateOtModalMode("pending");
     setLateOtModalOpen(false);
+    setNightOtModalOpen(false);
   }, [selectedDate]);
 
   useEffect(() => {
@@ -326,6 +338,16 @@ export default function PayrollSalaryCalculator() {
     [mergeOtPaperworkMeta],
   );
 
+  const mergeNightOt = useCallback(
+    (updates) =>
+      mergeOtPaperworkMeta(
+        ATTENDANCE_DAY_META_NIGHT_OT_KEY,
+        normalizeNightOtPaperworkMap,
+        updates,
+      ),
+    [mergeOtPaperworkMeta],
+  );
+
   const employeesForPayroll = useMemo(
     () =>
       reconcilePayrollEmployeesFromBase(
@@ -333,8 +355,9 @@ export default function PayrollSalaryCalculator() {
         employees,
         earlyOtMap,
         lateOtExcludedMap,
+        nightOtMap,
       ),
-    [employees, earlyOtMap, lateOtExcludedMap],
+    [employees, earlyOtMap, lateOtExcludedMap, nightOtMap],
   );
 
   useEffect(() => {
@@ -394,6 +417,23 @@ export default function PayrollSalaryCalculator() {
   const pendingLateOtEmployees = useMemo(
     () => lateOtEligibleEmployees.filter((e) => !(e.id in lateOtExcludedMap)),
     [lateOtEligibleEmployees, lateOtExcludedMap],
+  );
+
+  /** Giờ vào 22:00–05:00 — xác nhận hệ số ×2.7. */
+  const nightOtEligibleEmployees = useMemo(
+    () =>
+      sortEmployeesAscForPopup(
+        otPaperworkScopeEmployees.filter((e) => {
+          const { timeIn } = pickPayrollEmployeeDayFields(e);
+          return isNightOtPaperworkEligible(timeIn);
+        }),
+      ),
+    [otPaperworkScopeEmployees],
+  );
+
+  const nightOtInitialChecked = useCallback(
+    (id) => !!nightOtMap[id],
+    [nightOtMap],
   );
 
   const lateOtModalRows = useMemo(() => {
@@ -460,6 +500,44 @@ export default function PayrollSalaryCalculator() {
     setLateOtModalMode(mode);
     setLateOtModalOpen(true);
   }, []);
+
+  const openNightOtModal = useCallback(() => {
+    setNightOtModalOpen(true);
+  }, []);
+
+  const handleNightOtSave = useCallback(
+    async (updates) => {
+      if (!canConfirmOt) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "otPaperworkSaveForbidden",
+            "Chỉ Admin / HR / quản lý bộ phận được xác nhận tăng ca.",
+          ),
+        });
+        return;
+      }
+      setNightOtSaving(true);
+      try {
+        await mergeNightOt(filterOtPaperworkUpdates(updates));
+        setNightOtModalOpen(false);
+      } catch (err) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: tlPage(
+            "nightOtSaveError",
+            "Không lưu được xác nhận tăng ca đêm. Kiểm tra kết nối hoặc quyền ghi.",
+            { error: err?.message || String(err) },
+          ),
+        });
+      } finally {
+        setNightOtSaving(false);
+      }
+    },
+    [canConfirmOt, filterOtPaperworkUpdates, mergeNightOt, tlPage],
+  );
 
   const handleEarlyOtSave = useCallback(
     async (updates, { suppressSession } = {}) => {
@@ -572,6 +650,7 @@ export default function PayrollSalaryCalculator() {
         },
         earlyOtPaperworkById: earlyOtMap,
         lateOtExcludedById: lateOtExcludedMap,
+        nightOtPaperworkById: nightOtMap,
       }),
     [
       departmentFilter,
@@ -580,6 +659,7 @@ export default function PayrollSalaryCalculator() {
       isHolidayDay,
       isOffDay,
       lateOtExcludedMap,
+      nightOtMap,
       leaveTypeFilter,
       normalizeDepartment,
       overtimeFilter,
@@ -704,6 +784,7 @@ export default function PayrollSalaryCalculator() {
             isCompensatoryDay,
             earlyOtPaperworkById: earlyOtMap,
             lateOtExcludedById: lateOtExcludedMap,
+            nightOtPaperworkById: nightOtMap,
           },
           toolbarFilters: {
             searchTerm,
@@ -751,6 +832,7 @@ export default function PayrollSalaryCalculator() {
       isCompensatoryDay,
       earlyOtMap,
       lateOtExcludedMap,
+      nightOtMap,
       normalizeDepartment,
       payrollExportSheetTitle,
       searchTerm,
@@ -859,6 +941,7 @@ export default function PayrollSalaryCalculator() {
               onOpenMonthlyTimeInOut={() => setMonthlyTimeInOutOpen(true)}
               onOpenEarlyOt={() => openEarlyOtModal("all")}
               onOpenLateOt={() => openLateOtModal("all")}
+              onOpenNightOt={openNightOtModal}
               onExportOneDay={() => {
                 setExportModalMode("single");
                 setRangeExportModalOpen(true);
@@ -869,6 +952,7 @@ export default function PayrollSalaryCalculator() {
               }}
               showEarlyOtAction={earlyOtEligibleEmployees.length > 0}
               showLateOtAction={lateOtEligibleEmployees.length > 0}
+              showNightOtAction
             />
           </div>
         </div>
@@ -1123,6 +1207,36 @@ export default function PayrollSalaryCalculator() {
         skipAllLabel={tlPage("lateOtModalDeselectAll", "Bỏ chọn tất cả")}
         timeLabel={tlPage("timeOutShortLabel", "Ra")}
         timeField="gioRa"
+        searchPlaceholder={tlPage(
+          "paperworkModalSearchPlaceholder",
+          "Lọc theo tên / MNV / bộ phận",
+        )}
+        departmentPlaceholder={tlPage(
+          "paperworkModalDepartmentPlaceholder",
+          "Tất cả bộ phận",
+        )}
+        readOnly={!canConfirmOt}
+        viewOnlyHint={tlPage(
+          "otPaperworkViewOnlyHint",
+          "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
+        )}
+      />
+
+      <PayrollEarlyOvertimePaperworkModal
+        open={nightOtModalOpen}
+        rows={nightOtEligibleEmployees}
+        initialChecked={nightOtInitialChecked}
+        onDismiss={() => setNightOtModalOpen(false)}
+        onSave={handleNightOtSave}
+        saving={nightOtSaving}
+        title={tlPage("nightOtPaperworkButton", "Xác nhận tăng ca đêm")}
+        description={tlPage(
+          "nightOtModalDescription",
+          "Giờ vào từ 22:00 đến 05:00 — khi tick xác nhận, giờ trong khung 22:00–06:00 được tính hệ số tăng ca ×2.7 (ngày thường).",
+        )}
+        saveLabel={tlPage("nightOtModalSave", "Lưu")}
+        selectAllLabel={tlPage("nightOtModalSelectAll", "Chọn tất cả")}
+        skipAllLabel={tlPage("nightOtModalDeselectAll", "Bỏ chọn tất cả")}
         searchPlaceholder={tlPage(
           "paperworkModalSearchPlaceholder",
           "Lọc theo tên / MNV / bộ phận",

@@ -1,6 +1,7 @@
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 import { resolveEffectivePayrollEarlyOtPaperwork } from "@/features/payroll/payrollEarlyOtMeta";
+import { resolveEffectivePayrollNightOtPaperwork } from "@/features/payroll/payrollNightOtMeta";
 import { resolveTaiXeTongEffectiveIsOffDay } from "@/features/payroll/taiXeTongPayrollDay";
 
 /**
@@ -14,14 +15,16 @@ import { resolveTaiXeTongEffectiveIsOffDay } from "@/features/payroll/taiXeTongP
 export function payrollOtDayParamsFromEmp(emp, dayCtx) {
   const flags = employeeRegimeWorkingHoursFlags(emp);
   const dateKey = dayCtx.dateKey ?? null;
+  const calendarIsOffDay = dayCtx.isOffDay ?? false;
   const isOffDay = resolveTaiXeTongEffectiveIsOffDay({
     includeTaiXeTongInWorkingHours: flags.includeTaiXeTongInWorkingHours,
     dateKey,
-    isOffDay: dayCtx.isOffDay ?? false,
+    isOffDay: calendarIsOffDay,
   });
   return {
     timeIn: emp[PAYROLL_EMP.TIME_IN],
     timeOut: emp[PAYROLL_EMP.TIME_OUT],
+    calendarIsOffDay,
     isOffDay,
     isHolidayDay: dayCtx.isHolidayDay ?? false,
     isCompensatoryDay: dayCtx.isCompensatoryDay ?? false,
@@ -31,6 +34,7 @@ export function payrollOtDayParamsFromEmp(emp, dayCtx) {
     leaveType: emp[PAYROLL_EMP.LEAVE_TYPE],
     payrollEarlyOtPaperwork: resolveEffectivePayrollEarlyOtPaperwork(emp),
     payrollLateOtExcluded: emp[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED],
+    payrollNightOtPaperwork: resolveEffectivePayrollNightOtPaperwork(emp),
     lunchOtHours: emp[PAYROLL_EMP.LUNCH_OT_HOURS],
     driverOtMinutes: emp[PAYROLL_EMP.DRIVER_OT_MINUTES],
     ...flags,
@@ -39,11 +43,12 @@ export function payrollOtDayParamsFromEmp(emp, dayCtx) {
 
 /** Tuỳ chọn TC — Korean Timesheet, ngày NB, Chủ nhật. */
 export function payrollDayOvertimeOptionsFromParams(p) {
+  const flags = employeeRegimeWorkingHoursFlags(p);
   return {
     koreanTimesheetRules: p?.koreanTimesheetRules === true,
     isCompensatoryDay: p?.isCompensatoryDay === true,
     dateKey: p?.dateKey ?? null,
-    includeTaiXeTongInWorkingHours: p?.includeTaiXeTongInWorkingHours === true,
+    includeTaiXeTongInWorkingHours: flags.includeTaiXeTongInWorkingHours,
   };
 }
 
@@ -70,7 +75,7 @@ export function payrollOffLikeFromParams(p) {
 export function payrollOtDayParamsFromEmpWithMaps(
   emp,
   dayCtx,
-  { earlyOtPaperworkById = {}, lateOtExcludedById = {} } = {},
+  { earlyOtPaperworkById = {}, lateOtExcludedById = {}, nightOtPaperworkById = {} } = {},
 ) {
   return payrollOtDayParamsFromEmp(
     {
@@ -83,6 +88,11 @@ export function payrollOtDayParamsFromEmpWithMaps(
       [PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED]:
         emp[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED] ??
         lateOtExcludedById[emp.id],
+      [PAYROLL_EMP.PAYROLL_NIGHT_OT_PAPERWORK]:
+        resolveEffectivePayrollNightOtPaperwork(
+          emp,
+          nightOtPaperworkById[emp.id],
+        ),
     },
     dayCtx,
   );
@@ -105,5 +115,6 @@ export function payrollOtDayParamsFromMonthChunkEmp(emp, monthDayChunk) {
   return payrollOtDayParamsFromEmpWithMaps(emp, monthDayChunk, {
     earlyOtPaperworkById: monthDayChunk.earlyOtPaperworkById,
     lateOtExcludedById: monthDayChunk.lateOtExcludedById,
+    nightOtPaperworkById: monthDayChunk.nightOtPaperworkById,
   });
 }

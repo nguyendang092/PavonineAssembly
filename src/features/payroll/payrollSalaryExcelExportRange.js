@@ -36,6 +36,7 @@ function buildDayMetaFromParsed(parsed, koreanTimesheetRules) {
     isCompensatoryDay,
     earlyOtPaperworkById: parsed.earlyOtPaperworkById || {},
     lateOtExcludedById: parsed.lateOtExcludedById || {},
+    nightOtPaperworkById: parsed.nightOtPaperworkById || {},
   };
 }
 
@@ -112,6 +113,7 @@ function filterDayEmployeesForExport(
     },
     earlyOtPaperworkById: dayMeta.earlyOtPaperworkById,
     lateOtExcludedById: dayMeta.lateOtExcludedById,
+    nightOtPaperworkById: dayMeta.nightOtPaperworkById,
   });
 }
 
@@ -182,6 +184,7 @@ export async function executePayrollSalaryExcelExportRange({
         isCompensatoryDay: false,
         earlyOtPaperworkById: {},
         lateOtExcludedById: {},
+        nightOtPaperworkById: {},
       },
       koreanTimesheetRules,
     );
@@ -203,6 +206,7 @@ export async function executePayrollSalaryExcelExportRange({
         }),
         earlyOtPaperworkById: currentDayMeta.earlyOtPaperworkById || {},
         lateOtExcludedById: currentDayMeta.lateOtExcludedById || {},
+        nightOtPaperworkById: currentDayMeta.nightOtPaperworkById || {},
       };
     } else {
       const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
@@ -257,6 +261,7 @@ export async function executePayrollSalaryExcelExportRange({
       sheetTitle,
       earlyOtPaperworkById: dayMeta.earlyOtPaperworkById,
       lateOtExcludedById: dayMeta.lateOtExcludedById,
+      nightOtPaperworkById: dayMeta.nightOtPaperworkById,
       filename: `${filenamePrefix}_${dateKey}${deptSuffix}.xlsx`,
     });
 
@@ -287,6 +292,7 @@ export async function executePayrollSalaryExcelExportRange({
         isCompensatoryDay: currentDayMeta.isCompensatoryDay,
         earlyOtPaperworkById: currentDayMeta.earlyOtPaperworkById || {},
         lateOtExcludedById: currentDayMeta.lateOtExcludedById || {},
+        nightOtPaperworkById: currentDayMeta.nightOtPaperworkById || {},
       };
     } else {
       const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));

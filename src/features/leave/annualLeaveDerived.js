@@ -6,6 +6,7 @@ import {
 import {
   computeAnnualLeaveTotals,
   listAnnualLeaveCalendarYearMonths,
+  parseAnnualLeaveAdjustment,
   parseAnnualLeaveNumber,
   resolveAnnualLeaveCurrentYear,
   roundAnnualLeaveHours,
@@ -225,23 +226,6 @@ function assignBalanceEmpKey(map, empKey, balance) {
 }
 
 /**
- * Map `emp_{mnv}` → BALANCE đã lưu trên Firebase (không quét điểm danh).
- */
-export function buildStoredAnnualLeaveBalanceByMnv(yearData) {
-  const map = {};
-  if (!yearData || typeof yearData !== "object") return map;
-
-  const indexed = indexAnnualLeaveYearByEmpKey(yearData);
-  for (const [empKey, { raw }] of Object.entries(indexed)) {
-    const balance = parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.BALANCE]);
-    if (Number.isFinite(balance)) {
-      assignBalanceEmpKey(map, empKey, balance);
-    }
-  }
-  return map;
-}
-
-/**
  * Map `emp_{mnv}` → BALANCE tính live (HR + quét điểm danh).
  */
 export function buildLiveAnnualLeaveBalanceByMnv(
@@ -313,5 +297,8 @@ export function normalizeAnnualLeaveRowLive(
     [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: state.annualLeaveCurrentYear,
     [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: state.totalAnnualLeave,
     [ANNUAL_LEAVE_EMP.BALANCE]: state.balance,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]: parseAnnualLeaveAdjustment(
+      raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT],
+    ),
   };
 }

@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   formatPayrollTableDayShiftOvertimeCell,
+  formatPayrollTableNightShiftOffDayWorkingCell,
   formatPayrollTableNightShiftOvertimeCell,
   formatPayrollTableTotalDayGcCell,
   formatPayrollTableWorkingHoursCell,
   getPayrollHalfDayLeaveWorkedHours,
   getNightShiftEarlyPaperworkOvertimeHours,
   getNightShiftPayrollOffHolidayMergedHoursNumeric,
+  getPayrollNightOtWindowHours22To06,
   getNightShiftPayrollOvertimeHours,
   getNightShiftPayrollRegularHoursAndOtMinutes,
   getKoreanTimesheetEveningOvertimeHoursFromGioRa,
@@ -20,6 +22,7 @@ import {
   isEarlyArrivalFor0600PaperworkOvertime,
   isEarlyArrivalForNightShiftPaperworkOvertime,
   isEarlyArrivalForPaperworkOvertime,
+  isNightOtPaperworkEligible,
   isNightShiftCaLamViec,
 } from "@/features/attendance/attendanceWorkingHours";
 
@@ -755,6 +758,74 @@ describe("ca đêm — TC trước 18:40 (giấy xác nhận)", () => {
       false,
     );
     expect(isEarlyArrivalForPaperworkOvertime("18:40", ca)).toBe(true);
+  });
+
+  it("TC đêm ×2.7 — giờ vào 22:00–05:00 (mọi ca)", () => {
+    expect(isNightOtPaperworkEligible("22:00")).toBe(true);
+    expect(isNightOtPaperworkEligible("23:30")).toBe(true);
+    expect(isNightOtPaperworkEligible("04:30")).toBe(true);
+    expect(isNightOtPaperworkEligible("05:00")).toBe(true);
+    expect(isNightOtPaperworkEligible("05:30")).toBe(false);
+    expect(isNightOtPaperworkEligible("18:40")).toBe(false);
+  });
+
+  it("khung 22:00–06:00 — tăng theo giờ, tối đa 8h", () => {
+    expect(getPayrollNightOtWindowHours22To06("22:00", "23:00")).toBe(1);
+    expect(getPayrollNightOtWindowHours22To06("22:00", "06:00")).toBe(8);
+    expect(getPayrollNightOtWindowHours22To06("23:30", "06:00")).toBe(6.5);
+    expect(getPayrollNightOtWindowHours22To06("04:00", "06:00")).toBe(2);
+    expect(getPayrollNightOtWindowHours22To06("04:00", "14:00")).toBe(2);
+  });
+
+  it("cột GC ca đêm off ×2.7 — hiển thị sau xác nhận TC đêm (ngày thường)", () => {
+    expect(
+      formatPayrollTableNightShiftOffDayWorkingCell(
+        "22:00",
+        "23:00",
+        false,
+        "S1",
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        true,
+        false,
+      ),
+    ).toBe("1");
+    expect(
+      formatPayrollTableNightShiftOffDayWorkingCell(
+        "22:00",
+        "06:00",
+        false,
+        "S1",
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        true,
+        false,
+      ),
+    ).toBe("8");
+    expect(
+      formatPayrollTableNightShiftOffDayWorkingCell(
+        "22:00",
+        "06:00",
+        false,
+        "S1",
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        undefined,
+        false,
+      ),
+    ).toBe("-");
   });
 
   it("15:40–17:00 đủ điều kiện popup (vào sớm trước 18:40)", () => {

@@ -26,6 +26,11 @@ export const ATTENDANCE_DAY_META_KEY = "_meta";
 export const ATTENDANCE_DAY_META_EARLY_OT_KEY = "earlyOtPaperwork";
 /** Bảng lương: map employeeId -> có giấy đăng ký tăng ca sau 17:30. */
 export const ATTENDANCE_DAY_META_LATE_OT_KEY = "lateOtPaperwork";
+/**
+ * Bảng lương: map employeeId → xác nhận tăng ca đêm (giờ vào 22:00–05:00, hệ số ×2.7).
+ * Lưu tại `attendance/{ngày}/_meta.nightOtPaperwork`.
+ */
+export const ATTENDANCE_DAY_META_NIGHT_OT_KEY = "nightOtPaperwork";
 
 /** @param {unknown} raw */
 function normalizeBooleanRecordMap(raw) {
@@ -49,6 +54,11 @@ export function normalizeLateOtPaperworkMap(raw) {
   return normalizeBooleanRecordMap(raw);
 }
 
+/** @param {unknown} raw */
+export function normalizeNightOtPaperworkMap(raw) {
+  return normalizeBooleanRecordMap(raw);
+}
+
 /**
  * @param {Record<string, unknown> | null | undefined} rawData — snapshot `attendance/{ngày}`.
  * @returns {Record<string, boolean>}
@@ -69,6 +79,17 @@ export function getLateOtPaperworkFromRaw(rawData) {
   const m = rawData[ATTENDANCE_DAY_META_KEY];
   if (!m || typeof m !== "object") return {};
   return normalizeLateOtPaperworkMap(m[ATTENDANCE_DAY_META_LATE_OT_KEY]);
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} rawData — snapshot `attendance/{ngày}`.
+ * @returns {Record<string, boolean>}
+ */
+export function getNightOtPaperworkFromRaw(rawData) {
+  if (!rawData || typeof rawData !== "object") return {};
+  const m = rawData[ATTENDANCE_DAY_META_KEY];
+  if (!m || typeof m !== "object") return {};
+  return normalizeNightOtPaperworkMap(m[ATTENDANCE_DAY_META_NIGHT_OT_KEY]);
 }
 
 /** Bỏ qua khi gộp danh sách nhân viên từ snapshot ngày. */

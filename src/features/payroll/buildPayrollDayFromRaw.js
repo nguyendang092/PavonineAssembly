@@ -9,12 +9,17 @@ import {
   getIsCompensatoryDayFromRaw,
   getIsHolidayDayFromRaw,
   getLateOtPaperworkFromRaw,
+  getNightOtPaperworkFromRaw,
   getIsOffDayFromRaw,
 } from "@/features/attendance/attendanceDayMeta";
 import {
   resolveEffectivePayrollEarlyOtPaperwork,
   sanitizeEarlyOtPaperworkById,
 } from "@/features/payroll/payrollEarlyOtMeta";
+import {
+  resolveEffectivePayrollNightOtPaperwork,
+  sanitizeNightOtPaperworkById,
+} from "@/features/payroll/payrollNightOtMeta";
 
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 
@@ -87,6 +92,7 @@ const PAYROLL_MONTH_SLIM_KEYS = [
   "includeTsNvInWorkingHours",
   PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK,
   PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED,
+  PAYROLL_EMP.PAYROLL_NIGHT_OT_PAPERWORK,
 ];
 
 function shallowStringRecordEqual(a, b) {
@@ -106,6 +112,7 @@ export function reconcilePayrollEmployeesFromBase(
   baseEmployees,
   earlyOtPaperworkById,
   lateOtExcludedById,
+  nightOtPaperworkById = {},
 ) {
   const prevById = new Map();
   for (const row of prevRows || []) {
@@ -118,17 +125,23 @@ export function reconcilePayrollEmployeesFromBase(
       earlyOtPaperworkById[e.id],
     );
     const payrollLateOtExcluded = lateOtExcludedById[e.id];
+    const payrollNightOtPaperwork = resolveEffectivePayrollNightOtPaperwork(
+      e,
+      nightOtPaperworkById[e.id],
+    );
     const candidate = {
       ...e,
       [PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK]: payrollEarlyOtPaperwork,
       [PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED]: payrollLateOtExcluded,
+      [PAYROLL_EMP.PAYROLL_NIGHT_OT_PAPERWORK]: payrollNightOtPaperwork,
     };
     const prior = prevById.get(e.id);
     if (
       prior &&
       attendanceDayRowSnapshotEqual(prior, candidate) &&
       prior[PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK] === payrollEarlyOtPaperwork &&
-      prior[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED] === payrollLateOtExcluded
+      prior[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED] === payrollLateOtExcluded &&
+      prior[PAYROLL_EMP.PAYROLL_NIGHT_OT_PAPERWORK] === payrollNightOtPaperwork
     ) {
       return prior;
     }
@@ -244,6 +257,11 @@ export function buildPayrollMonthDayCellFormRecord({
     ),
     [PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED]:
       chunk?.lateOtExcludedById?.[attendanceKey],
+    [PAYROLL_EMP.PAYROLL_NIGHT_OT_PAPERWORK]:
+      resolveEffectivePayrollNightOtPaperwork(
+        baseEmp,
+        chunk?.nightOtPaperworkById?.[attendanceKey],
+      ),
   };
 }
 
@@ -268,6 +286,7 @@ export function parsePayrollDayFromAttendanceRaw(
       isPayrollOffLikeDay: false,
       earlyOtPaperworkById: {},
       lateOtExcludedById: {},
+      nightOtPaperworkById: {},
     };
   }
   const isOffDay = getIsOffDayFromRaw(raw);
@@ -281,11 +300,16 @@ export function parsePayrollDayFromAttendanceRaw(
     baseEmployees,
   );
   const lateOtExcludedById = getLateOtPaperworkFromRaw(raw);
+  const nightOtPaperworkById = sanitizeNightOtPaperworkById(
+    getNightOtPaperworkFromRaw(raw),
+    baseEmployees,
+  );
   const payrollEmployees = reconcilePayrollEmployeesFromBase(
     prevPayrollEmployees,
     baseEmployees,
     earlyOtPaperworkById,
     lateOtExcludedById,
+    nightOtPaperworkById,
   );
   return {
     baseEmployees,
@@ -297,6 +321,7 @@ export function parsePayrollDayFromAttendanceRaw(
       isOffDay || isHolidayDay || isCompensatoryDay,
     earlyOtPaperworkById,
     lateOtExcludedById,
+    nightOtPaperworkById,
   };
 }
 
@@ -343,5 +368,6 @@ export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
     isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
     earlyOtPaperworkById: parsed.earlyOtPaperworkById,
     lateOtExcludedById: parsed.lateOtExcludedById,
+    nightOtPaperworkById: parsed.nightOtPaperworkById,
   };
 }

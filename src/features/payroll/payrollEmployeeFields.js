@@ -25,6 +25,7 @@ export const PAYROLL_EMP = {
   /** Cờ payroll trên dòng (từ `_meta` hoặc merge) — không phải khóa RTDB trên bản ghi NV. */
   PAYROLL_EARLY_OT_PAPERWORK: "payrollEarlyOtPaperwork",
   PAYROLL_LATE_OT_EXCLUDED: "payrollLateOtExcluded",
+  PAYROLL_NIGHT_OT_PAPERWORK: "payrollNightOtPaperwork",
 };
 
 /**
@@ -41,6 +42,7 @@ export const PAYROLL_EMP = {
  *   isCompensatoryDay?: boolean,
  *   payrollEarlyOtPaperwork: boolean | undefined,
  *   payrollLateOtExcluded: boolean | undefined,
+ *   payrollNightOtPaperwork: boolean | undefined,
  *   lunchOtHours?: unknown,
  *   driverOtMinutes?: unknown,
  *   includeTapVuInWorkingHours?: boolean,
@@ -57,6 +59,7 @@ export function pickPayrollEmployeeDayFields(record) {
     payrollEarlyOtPaperwork:
       record?.[PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK],
     payrollLateOtExcluded: record?.[PAYROLL_EMP.PAYROLL_LATE_OT_EXCLUDED],
+    payrollNightOtPaperwork: record?.[PAYROLL_EMP.PAYROLL_NIGHT_OT_PAPERWORK],
   };
 }
 
