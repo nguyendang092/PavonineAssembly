@@ -768,6 +768,21 @@ export default function PayrollSalaryCalculator() {
     tlPage,
   ]);
 
+  const otPaperworkDateLabel = useMemo(() => {
+    const date = new Date(`${selectedDate}T12:00:00`);
+    return date.toLocaleDateString(displayLocale, {
+      weekday: "long",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  }, [selectedDate, displayLocale]);
+
+  const otPaperworkDateCaption = tlPage(
+    "paperworkModalDateCaption",
+    "Ngày chấm công",
+  );
+
   const handleExportPayrollExcelFromModal = useCallback(
     async (rangeFrom, rangeTo, selectedDepartments) => {
       setRangeExportBusy(true);
@@ -1163,10 +1178,14 @@ export default function PayrollSalaryCalculator() {
         onSave={handleEarlyOtSave}
         saving={earlyOtSaving}
         title={tlPage("earlyOtModalTitle", "Xác nhận đăng ký tăng ca")}
+        dateLabel={otPaperworkDateLabel}
+        dateCaption={otPaperworkDateCaption}
         description={tlPage(
           "earlyOtModalDescription",
-          "Trước 06:00 → 2h (05:40–06:40 + 06:40–07:40); từ 06:00 → 06:40–07:40 (1h). Ca đêm: TC sớm 17:40–18:40 + 18:40–19:40 (max 2h); GC 19:40–05:00 (8h).",
+          "Ca ngày — vào ≤ 06:40\n• Trước 06:00: 2h (05:40–06:40 + 06:40–07:40)\n• Từ 06:00: 1h (06:40–07:40)\n\nCa đêm\n• TC sớm: 17:40–18:40 + 18:40–19:40 (tối đa 2h)\n• GC: 19:40 → 05:00 (8h)",
         )}
+        rulesAside
+        rulesTitle={tlPage("earlyOtModalRulesTitle", "Quy tắc tính giờ")}
         saveLabel={tlPage("earlyOtModalSave", "Lưu")}
         selectAllLabel={tlPage("earlyOtModalSelectAll", "Chọn tất cả")}
         skipAllLabel={tlPage("earlyOtModalDeselectAll", "Bỏ chọn tất cả")}
@@ -1198,6 +1217,8 @@ export default function PayrollSalaryCalculator() {
         onSave={handleLateOtSave}
         saving={lateOtSaving}
         title={tlPage("lateOtModalTitle", "Xác nhận không tăng ca sau 17:30")}
+        dateLabel={otPaperworkDateLabel}
+        dateCaption={otPaperworkDateCaption}
         description={tlPage(
           "lateOtModalDescription",
           "Mặc định nhân viên có giờ ra sau 17:30 (ca ngày) vẫn được tính tăng ca. Hãy tick những người KHÔNG tính tăng ca.",
@@ -1230,6 +1251,8 @@ export default function PayrollSalaryCalculator() {
         onSave={handleNightOtSave}
         saving={nightOtSaving}
         title={tlPage("nightOtPaperworkButton", "Xác nhận tăng ca đêm")}
+        dateLabel={otPaperworkDateLabel}
+        dateCaption={otPaperworkDateCaption}
         description={tlPage(
           "nightOtModalDescription",
           "Giờ vào từ 22:00 đến 05:00 — khi tick xác nhận, giờ trong khung 22:00–06:00 được tính hệ số tăng ca ×2.7 (ngày thường).",

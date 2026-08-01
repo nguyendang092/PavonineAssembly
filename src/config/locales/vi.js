@@ -1864,7 +1864,8 @@ const vi = {
       "Chỉ Admin / HR / quản lý bộ phận được xác nhận tăng ca.",
     earlyOtModalTitle: "Xác nhận đăng ký tăng ca",
     earlyOtModalDescription:
-      "Ca ngày ≤ 06:40: trước 06:00 → 2h (05:40–06:40 + 06:40–07:40); từ 06:00 → 06:40–07:40 (1h). Ca đêm: TC sớm 17:40–18:40 + 18:40–19:40 (max 2h); GC từ 19:40 → 05:00 (8h).",
+      "Ca ngày — vào ≤ 06:40\n• Trước 06:00: 2h (05:40–06:40 + 06:40–07:40)\n• Từ 06:00: 1h (06:40–07:40)\n\nCa đêm\n• TC sớm: 17:40–18:40 + 18:40–19:40 (tối đa 2h)\n• GC: 19:40 → 05:00 (8h)",
+    earlyOtModalRulesTitle: "Quy tắc tính giờ",
     earlyOtModalSave: "Lưu",
     earlyOtModalSelectAll: "Chọn tất cả",
     earlyOtModalDeselectAll: "Bỏ chọn tất cả",
@@ -1877,6 +1878,7 @@ const vi = {
     lateOtModalDeselectAll: "Bỏ chọn tất cả",
     lateOtModalSkipAll: "Tất cả đều có tăng ca",
     timeOutShortLabel: "Ra",
+    paperworkModalDateCaption: "Ngày chấm công",
     paperworkModalSearchPlaceholder:
       workforceSearchUiVi.searchFilterPlaceholder,
     paperworkModalDepartmentPlaceholder: workforceSearchUiVi.deptAll,

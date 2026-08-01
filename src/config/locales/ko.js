@@ -1850,7 +1850,8 @@ const ko = {
       "Admin / HR / 부서 관리자만 연장근무를 확인할 수 있습니다.",
     earlyOtModalTitle: "조기 연장근무 확인",
     earlyOtModalDescription:
-      "06:40 이전 출근(주간): 05:40 이전 → 05:40–06:40; 05:40 이후 → 06:40–07:40 (한 구간, 0.1h).",
+      "주간 — 출근 ≤ 06:40\n• 06:00 이전: 2h (05:40–06:40 + 06:40–07:40)\n• 06:00 이후: 1h (06:40–07:40)\n\n야간\n• 조기 연장: 17:40–18:40 + 18:40–19:40 (최대 2h)\n• 근무: 19:40 → 05:00 (8h)",
+    earlyOtModalRulesTitle: "근무 시간 규칙",
     earlyOtModalSave: "저장",
     earlyOtModalSelectAll: "전체 선택",
     earlyOtModalDeselectAll: "전체 해제",
@@ -1863,6 +1864,7 @@ const ko = {
     lateOtModalDeselectAll: "전체 해제",
     lateOtModalSkipAll: "모두 연장근무 해당",
     timeOutShortLabel: "퇴근",
+    paperworkModalDateCaption: "근태 일자",
     paperworkModalSearchPlaceholder:
       workforceSearchUiKo.searchFilterPlaceholder,
     paperworkModalDepartmentPlaceholder: workforceSearchUiKo.deptAll,
