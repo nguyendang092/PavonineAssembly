@@ -10,9 +10,7 @@ import {
   resolveStoredMonthlyLeaveUsage,
   sumAnnualLeaveMonthlyUsageValues,
 } from "./annualLeaveDerived";
-import {
-  buildAnnualLeaveMonthWorkSummaryByEmpKey,
-} from "./annualLeavePayrollAccrual";
+import { buildAnnualLeaveMonthWorkSummaryByEmpKey } from "./annualLeavePayrollAccrual";
 import {
   indexAnnualLeaveYearByEmpKey,
   resolveAnnualLeaveEmpFirebaseKey,
@@ -22,7 +20,10 @@ import {
   ANNUAL_LEAVE_META_KEY,
   ANNUAL_LEAVE_RTDB_ROOT,
 } from "./annualLeaveFields";
-import { parseAnnualLeaveNumber, parseAnnualLeaveAdjustment } from "./annualLeaveCalculated";
+import {
+  parseAnnualLeaveNumber,
+  parseAnnualLeaveAdjustment,
+} from "./annualLeaveCalculated";
 
 /** Chuyển bản ghi legacy sang khóa `emp_{mnv}` trên Firebase. */
 export async function migrateAnnualLeaveYearToEmpKeys(db, year, yearData) {
@@ -49,11 +50,15 @@ export async function migrateAnnualLeaveYearToEmpKeys(db, year, yearData) {
 }
 
 function needsPersistUpdate(raw, state) {
-  const prevUsed = parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]);
+  const prevUsed = parseAnnualLeaveNumber(
+    raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED],
+  );
   const prevAttendance = parseAnnualLeaveNumber(
     raw[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED],
   );
-  const prevHr = parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]);
+  const prevHr = parseAnnualLeaveNumber(
+    raw[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED],
+  );
   const prevBalance = parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.BALANCE]);
 
   return (
@@ -183,7 +188,7 @@ function computePersistStateForRaw(
   const usedFromMonthlySum =
     hasStored || hasAttendanceMonthly ? monthlySum : null;
   const liveAttendanceUsed =
-    usedFromMonthlySum ?? (deductionsByEmpKey[empKey] ?? 0);
+    usedFromMonthlySum ?? deductionsByEmpKey[empKey] ?? 0;
   return computeLiveAnnualLeaveState(raw, liveAttendanceUsed, year, {
     usedFromMonthlySum,
     monthWorkSummaryByYearMonth: monthWorkSummaryByEmpKey[empKey] ?? null,

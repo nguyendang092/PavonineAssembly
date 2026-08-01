@@ -8,6 +8,7 @@ import {
   annualLeaveStickyColClass,
   annualLeaveTableThClass,
 } from "./annualLeaveTableStyles";
+import { filterAnnualLeaveManagerMonthValues } from "./annualLeaveManagerMonthFilter";
 
 const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
 
@@ -15,6 +16,7 @@ function AnnualLeaveManagerTablePanel({
   filteredEntries,
   monthlyByEmpKey,
   year,
+  monthFilter = "",
   monthColumnLabels,
   detailThroughDateKey,
   filterPending = false,
@@ -28,7 +30,7 @@ function AnnualLeaveManagerTablePanel({
   const tableColCount =
     10 + monthColumnLabels.length + 1 + (canManage ? 1 : 0);
   const tablePagination = useHrTablePagination(filteredEntries, {
-    resetDeps: [year, filteredEntries.length],
+    resetDeps: [year, monthFilter, filteredEntries.length],
   });
 
   const pagedLiveRows = useMemo(
@@ -122,7 +124,7 @@ function AnnualLeaveManagerTablePanel({
                 </th>
                 <th
                   rowSpan={2}
-                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(9, { header: true })}`}
+                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(9, { header: true })} annual-leave-balance-col-header`}
                 >
                   BALANCE
                 </th>
@@ -180,7 +182,10 @@ function AnnualLeaveManagerTablePanel({
                     index={index}
                     year={year}
                     throughDateKey={detailThroughDateKey}
-                    monthValues={monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES}
+                    monthValues={filterAnnualLeaveManagerMonthValues(
+                      monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES,
+                      monthFilter,
+                    )}
                     canManage={canManage}
                     adjustmentSaving={adjustmentSavingId === entry.id}
                     onAdjustmentSave={onAdjustmentSave}
@@ -214,6 +219,7 @@ function areTablePanelPropsEqual(prev, next) {
     prev.filteredEntries === next.filteredEntries &&
     prev.monthlyByEmpKey === next.monthlyByEmpKey &&
     prev.year === next.year &&
+    prev.monthFilter === next.monthFilter &&
     prev.monthColumnLabels === next.monthColumnLabels &&
     prev.detailThroughDateKey === next.detailThroughDateKey &&
     prev.filterPending === next.filterPending &&

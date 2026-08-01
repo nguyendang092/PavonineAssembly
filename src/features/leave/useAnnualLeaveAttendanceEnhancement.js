@@ -36,8 +36,7 @@ export function useAnnualLeaveAttendanceEnhancement(
   } = {},
 ) {
   const skipAttendance =
-    !enabled ||
-    shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
+    !enabled || shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
   const skipPayrollMonthAccrual =
     !enabled ||
     !includePayrollMonthAccrual ||
@@ -98,11 +97,7 @@ export function useAnnualLeaveAttendanceEnhancement(
   }, [skipAttendance, attendanceReady]);
 
   const attendanceDerived = useMemo(() => {
-    if (
-      skipAttendance ||
-      !attendanceUiReady ||
-      !attendanceRootForDerived
-    ) {
+    if (skipAttendance || !attendanceUiReady || !attendanceRootForDerived) {
       return EMPTY_DERIVED;
     }
     return buildAttendanceAnnualLeaveDerivedMaps(

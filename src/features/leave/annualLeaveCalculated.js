@@ -1,4 +1,7 @@
-import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
+import {
+  ANNUAL_LEAVE_EMP,
+  annualLeaveMonthUsesPayrollHalfAccrualRule,
+} from "./annualLeaveFields";
 
 export function parseAnnualLeaveNumber(value) {
   if (value === null || value === undefined || value === "") return 0;
@@ -20,7 +23,9 @@ export function parseAnnualLeaveAdjustment(value) {
 }
 
 export function resolveAnnualLeaveAdjustment(row) {
-  return parseAnnualLeaveAdjustment(row?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]);
+  return parseAnnualLeaveAdjustment(
+    row?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT],
+  );
 }
 
 function parseAnnualLeaveIsoDate(value) {
@@ -71,8 +76,12 @@ export function annualLeaveTenureBonusDays(completedYears) {
   return 0;
 }
 
-export function resolveAnnualLeaveTenureBonus(startWorkingDate, year) {
-  const asOf = resolveAnnualLeaveTenureAsOfDateKey(year);
+export function resolveAnnualLeaveTenureBonus(
+  startWorkingDate,
+  year,
+  asOfDateKey = null,
+) {
+  const asOf = asOfDateKey ?? resolveAnnualLeaveTenureAsOfDateKey(year);
   if (!asOf) return 0;
   const completed = completedYearsFromStartWorkingDate(startWorkingDate, asOf);
   return annualLeaveTenureBonusDays(completed);
@@ -105,8 +114,8 @@ export function isStartWorkingDateInCalendarYear(startWorkingDate, year) {
 }
 
 /**
- * Tháng vào làm (NV vào làm trong năm hiện tại): +1 phép khi (từ lưới tháng giờ công, khối TỔNG)
- * «Tổng ngày công (gồm ngày nghỉ có lương)» ≥ ½ «Ngày thực tế làm việc».
+ * +1 phép/tháng khi «Tổng ngày công (gồm ngày nghỉ có lương)» ≥ ½ «Ngày thực tế làm việc»
+ * (khối TỔNG lưới giờ công tháng).
  * @param {{ workDays?: number, standardWorkDays?: number } | null | undefined} summary
  */
 export function monthMeetsHalfStandardWorkDays(summary) {
@@ -134,13 +143,11 @@ export function resolveAnnualLeaveAccrualMonthRange(
   if (asOfDate.getTime() < join.getTime()) return null;
 
   const yearStart = parseAnnualLeaveIsoDate(`${y}-01-01`);
-  const periodStart =
-    join.getTime() > yearStart.getTime() ? join : yearStart;
+  const periodStart = join.getTime() > yearStart.getTime() ? join : yearStart;
 
   if (periodStart.getFullYear() > y || asOfDate.getFullYear() < y) return null;
 
-  const startMonth =
-    periodStart.getFullYear() < y ? 0 : periodStart.getMonth();
+  const startMonth = periodStart.getFullYear() < y ? 0 : periodStart.getMonth();
   const endMonth = asOfDate.getFullYear() > y ? 11 : asOfDate.getMonth();
 
   if (endMonth < startMonth) return null;
@@ -152,7 +159,10 @@ function resolveMonthWorkSummaryForAccrual(
   year,
   monthIndex,
 ) {
-  if (!monthWorkSummaryByYearMonth || typeof monthWorkSummaryByYearMonth !== "object") {
+  if (
+    !monthWorkSummaryByYearMonth ||
+    typeof monthWorkSummaryByYearMonth !== "object"
+  ) {
     return null;
   }
   const yearMonth = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
@@ -161,43 +171,53 @@ function resolveMonthWorkSummaryForAccrual(
 
 /**
  * Số tháng +1 phép trong năm.
- * - NV vào làm trước năm `year`: +1/tháng trong kỳ (kể cả tháng hiện tại).
- * - NV vào làm trong năm `year`:
- *   • Chỉ tháng có ngày vào làm: kiểm ≥ ½ «Ngày thực tế làm việc» (vào giữa/cuối/đầu tháng).
- *   • Mọi tháng sau tháng vào làm: +1 mặc định như NV năm cũ (kể cả tháng hiện tại).
+ * - Từ `2026-06` (và mọi tháng năm ≥ 2027): mọi NV kiểm ≥ ½ ngày thực tế làm việc — không auto +1.
+ * - Trước `2026-06` trong năm 2026: quy tắc cũ (NV cũ auto +1; NV mới chỉ tháng vào làm cần ½).
  * @param {Record<string, { workDays?: number, standardWorkDays?: number }> | null | undefined} monthWorkSummaryByYearMonth
  */
 export function resolveAnnualLeaveMonthlyAccrualDays(
   startWorkingDate,
   year,
   monthWorkSummaryByYearMonth = null,
+  asOfDateKey = null,
 ) {
-  const range = resolveAnnualLeaveAccrualMonthRange(startWorkingDate, year);
+  const range = resolveAnnualLeaveAccrualMonthRange(
+    startWorkingDate,
+    year,
+    asOfDateKey,
+  );
   if (!range) return 0;
 
   const y = Number(year);
-  const requiresPayrollHalfDayCheck = isStartWorkingDateInCalendarYear(
-    startWorkingDate,
-    y,
-  );
+  const newJoinerInYear = isStartWorkingDateInCalendarYear(startWorkingDate, y);
   let accrual = 0;
   for (
     let monthIndex = range.startMonth;
     monthIndex <= range.endMonth;
     monthIndex += 1
   ) {
-    if (requiresPayrollHalfDayCheck) {
+    if (annualLeaveMonthUsesPayrollHalfAccrualRule(y, monthIndex)) {
+      const summary = resolveMonthWorkSummaryForAccrual(
+        monthWorkSummaryByYearMonth,
+        y,
+        monthIndex,
+      );
+      if (monthMeetsHalfStandardWorkDays(summary)) {
+        accrual += 1;
+      }
+      continue;
+    }
+
+    if (newJoinerInYear) {
       const isJoinMonth = isStartWorkingDateInCalendarMonth(
         startWorkingDate,
         y,
         monthIndex,
       );
-
       if (!isJoinMonth) {
         accrual += 1;
         continue;
       }
-
       const summary = resolveMonthWorkSummaryForAccrual(
         monthWorkSummaryByYearMonth,
         y,
@@ -217,14 +237,15 @@ export function resolveAnnualLeaveMonthlyAccrualDays(
 export function resolveAnnualLeaveCurrentYear(
   row,
   year,
-  { monthWorkSummaryByYearMonth = null } = {},
+  { monthWorkSummaryByYearMonth = null, asOfDateKey = null } = {},
 ) {
   const adjustment = resolveAnnualLeaveAdjustment(row);
   const startDate = row?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE];
   if (!startDate) {
     return roundAnnualLeaveHours(
-      parseAnnualLeaveNumber(row?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]) +
-        adjustment,
+      parseAnnualLeaveNumber(
+        row?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
+      ) + adjustment,
     );
   }
 
@@ -232,8 +253,13 @@ export function resolveAnnualLeaveCurrentYear(
     startDate,
     year,
     monthWorkSummaryByYearMonth,
+    asOfDateKey,
   );
-  const tenureBonus = resolveAnnualLeaveTenureBonus(startDate, year);
+  const tenureBonus = resolveAnnualLeaveTenureBonus(
+    startDate,
+    year,
+    asOfDateKey,
+  );
   return roundAnnualLeaveHours(monthlyAccrual + tenureBonus + adjustment);
 }
 
@@ -241,11 +267,14 @@ export function resolveAnnualLeaveCurrentYear(
 export function computeAnnualLeaveTotals(
   row,
   year = null,
-  { monthWorkSummaryByYearMonth = null } = {},
+  { monthWorkSummaryByYearMonth = null, asOfDateKey = null } = {},
 ) {
   const annual =
     year != null
-      ? resolveAnnualLeaveCurrentYear(row, year, { monthWorkSummaryByYearMonth })
+      ? resolveAnnualLeaveCurrentYear(row, year, {
+          monthWorkSummaryByYearMonth,
+          asOfDateKey,
+        })
       : parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]);
   const bonus = parseAnnualLeaveNumber(
     row[ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV],
@@ -291,8 +320,9 @@ const MONTH_LABELS = [
 export function listAnnualLeaveCalendarYearMonths(year) {
   const y = Number(year);
   if (!Number.isFinite(y)) return [];
-  return Array.from({ length: 12 }, (_, i) =>
-    `${y}-${String(i + 1).padStart(2, "0")}`,
+  return Array.from(
+    { length: 12 },
+    (_, i) => `${y}-${String(i + 1).padStart(2, "0")}`,
   );
 }
 
@@ -305,7 +335,9 @@ export function listAnnualLeaveManagerMonthColumnLabels(year) {
   if (!monthColumnLabelCache.has(y)) {
     monthColumnLabelCache.set(
       y,
-      listAnnualLeaveCalendarYearMonths(y).map(formatAnnualLeaveMonthColumnLabel),
+      listAnnualLeaveCalendarYearMonths(y).map(
+        formatAnnualLeaveMonthColumnLabel,
+      ),
     );
   }
   return monthColumnLabelCache.get(y);

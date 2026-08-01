@@ -22,6 +22,11 @@ import AnnualLeaveManagerActionsMenu from "./AnnualLeaveManagerActionsMenu";
 import AnnualLeaveManagerTableSection from "./AnnualLeaveManagerTableSection";
 import AnnualLeaveManagerToolbar from "./AnnualLeaveManagerToolbar";
 import { ANNUAL_LEAVE_MANAGER_MIN_YEAR } from "./annualLeaveFields";
+import {
+  ANNUAL_LEAVE_MANAGER_MONTH_VALUES,
+  parseAnnualLeaveManagerMonthFilter,
+  resolveAnnualLeaveManagerThroughDateKey,
+} from "./annualLeaveManagerMonthFilter";
 import { parseAnnualLeaveExcelFile } from "./annualLeaveExcelImport";
 import { exportAnnualLeaveExcel } from "./annualLeaveExcelExport";
 import { useAnnualLeaveYearData } from "./useAnnualLeaveYearData";
@@ -30,7 +35,6 @@ import {
   annualLeaveYearRefPath,
   buildAnnualLeaveMergeUploadUpdates,
 } from "./annualLeaveYearDataOps";
-import { attendanceListDateForAnnualLeaveYear } from "./annualLeaveCrossLinks";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
 import "@/features/attendance/attendanceToolbarFocus.css";
 import "@/features/attendance/hrPageCompact.css";
@@ -64,9 +68,13 @@ export default function AnnualLeaveManager() {
   const { user, userRole } = useUser();
   const [searchParams, setSearchParams] = useSearchParams();
   const yearFromUrl = Number(searchParams.get("year"));
+  const monthFromUrl = parseAnnualLeaveManagerMonthFilter(
+    searchParams.get("month"),
+  );
   const [year, setYear] = useState(() =>
     clampAnnualLeaveManagerYear(yearFromUrl),
   );
+  const [monthFilter, setMonthFilter] = useState(monthFromUrl);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -83,12 +91,27 @@ export default function AnnualLeaveManager() {
   const { yearData, yearLoading } = useAnnualLeaveYearData(year);
 
   useEffect(() => {
-    const raw = searchParams.get("year");
-    if (!raw) return;
-    const y = clampAnnualLeaveManagerYear(Number(raw));
-    setYear(y);
-    if (String(y) !== raw) {
-      setSearchParams({ year: String(y) }, { replace: true });
+    const rawYear = searchParams.get("year");
+    if (!rawYear) return;
+
+    const nextYear = clampAnnualLeaveManagerYear(Number(rawYear));
+    const nextMonth = parseAnnualLeaveManagerMonthFilter(
+      searchParams.get("month"),
+    );
+
+    setYear(nextYear);
+    setMonthFilter(nextMonth);
+
+    const params = { year: String(nextYear) };
+    if (nextMonth) params.month = nextMonth;
+
+    const urlMonth = searchParams.get("month") ?? "";
+    const needsReplace =
+      String(nextYear) !== rawYear ||
+      nextMonth !== parseAnnualLeaveManagerMonthFilter(urlMonth);
+
+    if (needsReplace) {
+      setSearchParams(params, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
@@ -123,17 +146,37 @@ export default function AnnualLeaveManager() {
 
   const displayRowCount = filteredEntries.length;
   const detailThroughDateKey = useMemo(
-    () => attendanceListDateForAnnualLeaveYear(year),
-    [year],
+    () => resolveAnnualLeaveManagerThroughDateKey(year, monthFilter),
+    [year, monthFilter],
+  );
+
+  const syncSearchParams = useCallback(
+    (nextYear, nextMonthFilter) => {
+      const params = { year: String(nextYear) };
+      const month = parseAnnualLeaveManagerMonthFilter(nextMonthFilter);
+      if (month) params.month = month;
+      setSearchParams(params, { replace: true });
+    },
+    [setSearchParams],
   );
 
   const handleYearChange = useCallback(
     (event) => {
       const y = Number(event.target.value);
       setYear(y);
-      setSearchParams({ year: String(y) }, { replace: true });
+      setMonthFilter("");
+      syncSearchParams(y, "");
     },
-    [setSearchParams],
+    [syncSearchParams],
+  );
+
+  const handleMonthFilterChange = useCallback(
+    (event) => {
+      const nextMonth = parseAnnualLeaveManagerMonthFilter(event.target.value);
+      setMonthFilter(nextMonth);
+      syncSearchParams(year, nextMonth);
+    },
+    [syncSearchParams, year],
   );
 
   const handleSearchChange = useCallback((event) => {
@@ -186,16 +229,13 @@ export default function AnnualLeaveManager() {
     });
   }, [t]);
 
-  const handleAdjustmentSaveError = useCallback(
-    (err, fallbackMessage) => {
-      setAlert({
-        show: true,
-        type: "error",
-        message: err?.message || fallbackMessage,
-      });
-    },
-    [],
-  );
+  const handleAdjustmentSaveError = useCallback((err, fallbackMessage) => {
+    setAlert({
+      show: true,
+      type: "error",
+      message: err?.message || fallbackMessage,
+    });
+  }, []);
 
   const handleUpload = useCallback(
     async (e) => {
@@ -321,7 +361,7 @@ export default function AnnualLeaveManager() {
   if (!user) {
     return (
       <AttendanceHrPageShell
-        contextDate={attendanceListDateForAnnualLeaveYear(year)}
+        contextDate={resolveAnnualLeaveManagerThroughDateKey(year, monthFilter)}
       >
         <div className="annual-leave-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
           <p className="text-sm text-black dark:text-slate-300">
@@ -334,7 +374,7 @@ export default function AnnualLeaveManager() {
 
   return (
     <AttendanceHrPageShell
-      contextDate={attendanceListDateForAnnualLeaveYear(year)}
+      contextDate={resolveAnnualLeaveManagerThroughDateKey(year, monthFilter)}
     >
       <div className="annual-leave-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
         <div className="mb-1 shrink-0">
@@ -355,12 +395,15 @@ export default function AnnualLeaveManager() {
           t={t}
           year={year}
           yearOptions={YEAR_OPTIONS}
+          monthFilter={monthFilter}
+          monthOptions={ANNUAL_LEAVE_MANAGER_MONTH_VALUES}
           search={search}
           deptFilter={deptFilter}
           departments={departments}
           displayRowCount={displayRowCount}
           filterPending={filterPending}
           onYearChange={handleYearChange}
+          onMonthFilterChange={handleMonthFilterChange}
           onSearchChange={handleSearchChange}
           onDeptFilterChange={handleDeptFilterChange}
           actionsSlot={
@@ -394,6 +437,7 @@ export default function AnnualLeaveManager() {
         ) : (
           <AnnualLeaveManagerTableSection
             year={year}
+            monthFilter={monthFilter}
             yearData={yearData}
             entries={entries}
             deptIndex={deptIndex}

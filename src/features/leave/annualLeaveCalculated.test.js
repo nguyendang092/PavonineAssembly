@@ -15,7 +15,13 @@ import {
 } from "./annualLeaveCalculated";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 
-function accrualMonthMap(year, startMonth, endMonth, workDays, standardWorkDays = 22) {
+function accrualMonthMap(
+  year,
+  startMonth,
+  endMonth,
+  workDays,
+  standardWorkDays = 22,
+) {
   const map = {};
   for (let m = startMonth; m <= endMonth; m += 1) {
     map[`${year}-${String(m + 1).padStart(2, "0")}`] = {
@@ -66,23 +72,23 @@ describe("annualLeaveTenureBonusDays", () => {
 
 describe("completedYearsFromStartWorkingDate", () => {
   it("counts full years after join anniversary", () => {
-    expect(
-      completedYearsFromStartWorkingDate("2016-06-15", "2026-06-14"),
-    ).toBe(9);
-    expect(
-      completedYearsFromStartWorkingDate("2016-06-15", "2026-06-15"),
-    ).toBe(10);
+    expect(completedYearsFromStartWorkingDate("2016-06-15", "2026-06-14")).toBe(
+      9,
+    );
+    expect(completedYearsFromStartWorkingDate("2016-06-15", "2026-06-15")).toBe(
+      10,
+    );
   });
 });
 
 describe("monthMeetsHalfStandardWorkDays", () => {
   it("requires actual work days at least half of standard", () => {
-    expect(monthMeetsHalfStandardWorkDays({ workDays: 11, standardWorkDays: 22 })).toBe(
-      true,
-    );
-    expect(monthMeetsHalfStandardWorkDays({ workDays: 10, standardWorkDays: 22 })).toBe(
-      false,
-    );
+    expect(
+      monthMeetsHalfStandardWorkDays({ workDays: 11, standardWorkDays: 22 }),
+    ).toBe(true);
+    expect(
+      monthMeetsHalfStandardWorkDays({ workDays: 10, standardWorkDays: 22 }),
+    ).toBe(false);
     expect(monthMeetsHalfStandardWorkDays(null)).toBe(false);
   });
 });
@@ -90,8 +96,12 @@ describe("monthMeetsHalfStandardWorkDays", () => {
 describe("isStartWorkingDateInCalendarMonth", () => {
   it("matches only the join month in the same year", () => {
     expect(isStartWorkingDateInCalendarMonth("2026-03-15", 2026, 2)).toBe(true);
-    expect(isStartWorkingDateInCalendarMonth("2026-03-15", 2026, 3)).toBe(false);
-    expect(isStartWorkingDateInCalendarMonth("2026-03-15", 2025, 2)).toBe(false);
+    expect(isStartWorkingDateInCalendarMonth("2026-03-15", 2026, 3)).toBe(
+      false,
+    );
+    expect(isStartWorkingDateInCalendarMonth("2026-03-15", 2025, 2)).toBe(
+      false,
+    );
   });
 });
 
@@ -100,33 +110,31 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     vi.useRealTimers();
   });
 
-  it("auto-accrues months after join month without payroll (join month still needs ½)", () => {
+  it("veteran Jan–May auto +1; from Jun 2026 half-day rule for all", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 24));
 
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026)).toBe(4);
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-08-01", 2026)).toBe(0);
-  });
-
-  it("accrues +1 per month for veterans without payroll summaries", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 6, 24));
-
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026)).toBe(7);
-  });
-
-  it("applies half-day rule only on join month for new joiners in the current year", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 6, 24));
+    expect(resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026)).toBe(5);
 
     const passAll = accrualMonthMap(2026, 0, 6, 14, 22);
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026, passAll)).toBe(7);
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026, passAll),
+    ).toBe(7);
 
     const failJuly = {
       ...passAll,
       "2026-07": { workDays: 5, standardWorkDays: 22 },
     };
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026, failJuly)).toBe(7);
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026, failJuly),
+    ).toBe(6);
+  });
+
+  it("new joiner before Jun 2026 keeps legacy join-month rule", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 24));
+
+    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026)).toBe(2);
 
     expect(
       resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026, {
@@ -139,7 +147,7 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     ).toBe(5);
   });
 
-  it("post-join months accrue +1 even when payroll fails ½ on those months", () => {
+  it("post-join months before Jun 2026 still auto +1 without payroll", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 24));
 
@@ -147,7 +155,7 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
       resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026, {
         "2026-04": { workDays: 4, standardWorkDays: 20 },
       }),
-    ).toBe(4);
+    ).toBe(2);
   });
 
   it("counts current month when condition is met", () => {
@@ -161,21 +169,21 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     ).toBe(1);
   });
 
-  it("join 25-Jun-2026 — chỉ tháng vào làm cần ½; tháng sau +1 mặc định", () => {
+  it("join 25-Jun-2026 — từ tháng 6 dùng quy tắc ½ cho mọi NV", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 29));
 
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026)).toBe(1);
+    expect(resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026)).toBe(0);
     expect(
       resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026, {
         "2026-06": { workDays: 4, standardWorkDays: 27 },
       }),
-    ).toBe(1);
+    ).toBe(0);
     expect(
       resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026, {
         "2026-06": { workDays: 14, standardWorkDays: 27 },
       }),
-    ).toBe(2);
+    ).toBe(1);
     expect(
       resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026, {
         "2026-06": { workDays: 4, standardWorkDays: 27 },
@@ -191,8 +199,12 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     const passAll2025 = accrualMonthMap(2025, 0, 11, 14, 22);
     const passJanJul2026 = accrualMonthMap(2026, 0, 6, 14, 22);
 
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2025, passAll2025)).toBe(12);
-    expect(resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026, passJanJul2026)).toBe(7);
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2025, passAll2025),
+    ).toBe(12);
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026, passJanJul2026),
+    ).toBe(7);
   });
 
   it("detects start date in calendar year", () => {
@@ -277,7 +289,10 @@ describe("computeAnnualLeaveTotals", () => {
       [ANNUAL_LEAVE_EMP.COMPENSATORY_DAY_OFF]: 0,
       [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 0,
     };
-    const t = computeAnnualLeaveTotals(row, 2026);
+    const passAll = accrualMonthMap(2026, 0, 6, 14, 22);
+    const t = computeAnnualLeaveTotals(row, 2026, {
+      monthWorkSummaryByYearMonth: passAll,
+    });
     expect(t[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]).toBe(9);
   });
 });

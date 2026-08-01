@@ -4,12 +4,15 @@ function AnnualLeaveManagerToolbar({
   t,
   year,
   yearOptions,
+  monthFilter,
+  monthOptions,
   search,
   deptFilter,
   departments,
   displayRowCount,
   filterPending,
   onYearChange,
+  onMonthFilterChange,
   onSearchChange,
   onDeptFilterChange,
   actionsSlot,
@@ -29,6 +32,33 @@ function AnnualLeaveManagerToolbar({
             {yearOptions.map((y) => (
               <option key={y} value={y}>
                 {y}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex h-7 items-center gap-1">
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-black dark:text-blue-400">
+            {t("annualLeave.workHoursMonthLabel", { defaultValue: "Tháng" })}
+          </span>
+          <select
+            className="h-8 min-w-[5.5rem] rounded-md border bg-white px-2 text-sm font-semibold text-black focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300"
+            value={monthFilter}
+            onChange={onMonthFilterChange}
+            aria-label={t("annualLeave.workHoursMonthLabel", {
+              defaultValue: "Tháng",
+            })}
+          >
+            <option value="">
+              {t("annualLeave.workHoursAllMonths", { defaultValue: "Tất cả" })}
+            </option>
+            {monthOptions.map((month) => (
+              <option key={month} value={month}>
+                {t("annualLeave.workHoursMonthOption", {
+                  defaultValue: "{{month}}/{{year}}",
+                  month,
+                  year,
+                })}
               </option>
             ))}
           </select>
@@ -75,12 +105,15 @@ function areToolbarPropsEqual(prev, next) {
     prev.t === next.t &&
     prev.year === next.year &&
     prev.yearOptions === next.yearOptions &&
+    prev.monthFilter === next.monthFilter &&
+    prev.monthOptions === next.monthOptions &&
     prev.search === next.search &&
     prev.deptFilter === next.deptFilter &&
     prev.departments === next.departments &&
     prev.displayRowCount === next.displayRowCount &&
     prev.filterPending === next.filterPending &&
     prev.onYearChange === next.onYearChange &&
+    prev.onMonthFilterChange === next.onMonthFilterChange &&
     prev.onSearchChange === next.onSearchChange &&
     prev.onDeptFilterChange === next.onDeptFilterChange &&
     prev.actionsSlot === next.actionsSlot

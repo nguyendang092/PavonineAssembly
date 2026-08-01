@@ -151,7 +151,7 @@ describe("annualLeaveDerived", () => {
       monthValues,
     );
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(1.5);
-    expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(7.5);
+    expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(5.5);
   });
 
   it("applies monthly accrual and tenure in row normalize", () => {
@@ -163,12 +163,20 @@ describe("annualLeaveDerived", () => {
       [ANNUAL_LEAVE_EMP.START_WORKING_DATE]: "2016-01-10",
       [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 0,
     };
+    const passAll = {};
+    for (let m = 0; m <= 6; m += 1) {
+      passAll[`2026-${String(m + 1).padStart(2, "0")}`] = {
+        workDays: 14,
+        standardWorkDays: 22,
+      };
+    }
     const row = normalizeAnnualLeaveRowLive(
       "emp_X",
       raw,
       {},
       2026,
       Array(12).fill(0),
+      passAll,
     );
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]).toBe(9);
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(0);

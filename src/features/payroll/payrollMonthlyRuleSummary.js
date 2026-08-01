@@ -1,6 +1,4 @@
-import {
-  formatPayrollHoursForDisplayHundredths,
-} from "@/features/attendance/attendanceWorkingHours";
+import { formatPayrollHoursForDisplayHundredths } from "@/features/attendance/attendanceWorkingHours";
 import {
   formatCoeffHoursForDisplay,
   getPayrollMonthlyCoeffHoursMap,
@@ -394,7 +392,11 @@ export function buildMonthlyRuleSummary(
       emp[PAYROLL_EMP.SHIFT] ?? emp.caLamViec,
     );
     let mainH = 0;
-    if (main.kind === "hours" && Number.isFinite(main.hours) && main.hours > 0) {
+    if (
+      main.kind === "hours" &&
+      Number.isFinite(main.hours) &&
+      main.hours > 0
+    ) {
       mainH = main.hours;
     } else if (
       main.kind === "leave" &&
@@ -414,7 +416,8 @@ export function buildMonthlyRuleSummary(
     addPayrollMonthlyLeaveColumnCounts(out, emp, ch);
 
     if (!emp) {
-      if (ch.isHolidayDay || compensatoryNbUnits(ch, null) > 0) out.workDays += 1;
+      if (ch.isHolidayDay || compensatoryNbUnits(ch, null) > 0)
+        out.workDays += 1;
       return;
     }
 
@@ -437,8 +440,7 @@ export function buildMonthlyRuleSummary(
 
     if (main.kind === "leave") {
       if (main.leaveShort === "1/2PN") {
-        const offLike =
-          ch.isOffDay || ch.isHolidayDay || ch.isCompensatoryDay;
+        const offLike = ch.isOffDay || ch.isHolidayDay || ch.isCompensatoryDay;
         if (offLike) {
           /** Giờ nửa ngày + TC (kể cả trưa) đã gộp trong coeff ×2.0 / ×3.0. */
           addWorkedHours(coeffSumForWorkHours);
@@ -664,10 +666,7 @@ export function buildMonthlyDetailFlatValues({
 }
 
 /** Ma trận ô chi tiết theo dòng hệ số TC — một lần gọi cho cả NV (lưới / Excel / in). */
-export function buildMonthlyDetailMatrixForEmployee(
-  summaries,
-  options = {},
-) {
+export function buildMonthlyDetailMatrixForEmployee(summaries, options = {}) {
   const coeffColBySubrow =
     options.coeffColBySubrow ?? MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW;
   const fmt = options.fmt ?? fmtPayrollMonthlySummaryCell;

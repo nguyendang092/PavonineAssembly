@@ -48,6 +48,25 @@ export function annualLeaveAttendanceCountStartDate(year) {
   return null;
 }
 
+/** Tháng đầu tiên (`yyyy-mm`) áp dụng +1 phép theo ½ «Ngày thực tế làm việc» (lưới giờ công). */
+export function annualLeavePayrollHalfAccrualFromYearMonth(year) {
+  const start = annualLeaveAttendanceCountStartDate(year);
+  if (start) return start.slice(0, 7);
+  if (Number(year) > 2026) return `${Number(year)}-01`;
+  return null;
+}
+
+/** Tháng `monthIndex` (0=Jan) có dùng quy tắc ½ ngày thực tế làm việc hay không. */
+export function annualLeaveMonthUsesPayrollHalfAccrualRule(year, monthIndex) {
+  const from = annualLeavePayrollHalfAccrualFromYearMonth(year);
+  if (!from) return false;
+  const y = Number(year);
+  const m = Number(monthIndex);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return false;
+  const yearMonth = `${y}-${String(m + 1).padStart(2, "0")}`;
+  return yearMonth >= from;
+}
+
 /** Điểm danh trước ngày bắt đầu (vd. thử nghiệm) — không trừ phép năm. */
 export function isAttendanceDateCountedForAnnualLeave(dateKey, year) {
   if (!dateKey || typeof dateKey !== "string") return false;

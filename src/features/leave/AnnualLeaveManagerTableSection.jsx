@@ -12,11 +12,17 @@ import {
 import { filterAnnualLeaveManagerEntries } from "./annualLeaveManagerFilter";
 import { persistAnnualLeaveEmployeeAdjustment } from "./annualLeaveAttendanceSync";
 import { useAnnualLeaveAttendanceEnhancement } from "./useAnnualLeaveAttendanceEnhancement";
+import {
+  filterAnnualLeaveManagerMonthColumnLabels,
+  filterAnnualLeaveManagerMonthValues,
+  resolveAnnualLeaveManagerMonthIndex,
+} from "./annualLeaveManagerMonthFilter";
 import AnnualLeaveManagerTablePanel from "./AnnualLeaveManagerTablePanel";
 const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
 
 function AnnualLeaveManagerTableSection({
   year,
+  monthFilter = "",
   yearData,
   entries,
   deptIndex,
@@ -58,9 +64,15 @@ function AnnualLeaveManagerTableSection({
   );
 
   const monthColumnLabels = useMemo(
-    () => listAnnualLeaveManagerMonthColumnLabels(year),
-    [year],
+    () =>
+      filterAnnualLeaveManagerMonthColumnLabels(
+        listAnnualLeaveManagerMonthColumnLabels(year),
+        monthFilter,
+      ),
+    [year, monthFilter],
   );
+
+  const usageThroughMonthIndex = resolveAnnualLeaveManagerMonthIndex(monthFilter);
 
   const liveMapsRef = useRef({
     deductionsByEmpKey: {},
@@ -76,16 +88,21 @@ function AnnualLeaveManagerTableSection({
   const normalizeEntryRow = useCallback(
     (entry) => {
       const maps = liveMapsRef.current;
+      const monthValues = maps.monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
       return normalizeAnnualLeaveRowLive(
         entry.id,
         entry._raw,
         maps.deductionsByEmpKey,
         year,
-        maps.monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES,
+        monthValues,
         maps.monthWorkSummaryByEmpKey[entry.id] ?? null,
+        {
+          asOfDateKey: detailThroughDateKey,
+          usageThroughMonthIndex,
+        },
       );
     },
-    [year],
+    [detailThroughDateKey, usageThroughMonthIndex, year],
   );
 
   useEffect(() => {
@@ -146,6 +163,7 @@ function AnnualLeaveManagerTableSection({
       filteredEntries={filteredEntries}
       monthlyByEmpKey={monthlyByEmpKey}
       year={year}
+      monthFilter={monthFilter}
       monthColumnLabels={monthColumnLabels}
       detailThroughDateKey={detailThroughDateKey}
       filterPending={filterPending}

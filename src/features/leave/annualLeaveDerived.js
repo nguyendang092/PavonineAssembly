@@ -147,6 +147,24 @@ export function sumAnnualLeaveMonthlyUsageValues(monthValues) {
   );
 }
 
+/** Tổng phép đã dùng lũy kế từ Jan đến `throughMonthIndex` (0=Jan). */
+export function sumAnnualLeaveMonthlyUsageValuesThroughMonth(
+  monthValues,
+  throughMonthIndex,
+) {
+  if (!Array.isArray(monthValues) || monthValues.length === 0) return null;
+  const end = Number(throughMonthIndex);
+  if (!Number.isFinite(end) || end < 0) {
+    return sumAnnualLeaveMonthlyUsageValues(monthValues);
+  }
+  let total = 0;
+  const last = Math.min(end, monthValues.length - 1);
+  for (let i = 0; i <= last; i += 1) {
+    total += parseAnnualLeaveNumber(monthValues[i]);
+  }
+  return roundAnnualLeaveHours(total);
+}
+
 /**
  * Phép đã dùng do HR (Excel) — không bao gồm PN từ điểm danh.
  * Không suy từ `annualLeaveUsed` − live attendance (dễ lệch khi dữ liệu cũ / theo tháng).
@@ -179,7 +197,11 @@ export function computeLiveAnnualLeaveState(
   raw,
   liveAttendanceUsed = 0,
   year = null,
-  { usedFromMonthlySum = null, monthWorkSummaryByYearMonth = null } = {},
+  {
+    usedFromMonthlySum = null,
+    monthWorkSummaryByYearMonth = null,
+    asOfDateKey = null,
+  } = {},
 ) {
   const hrUsed = resolveHrAnnualLeaveUsed(raw);
   const attendanceUsed =
@@ -200,7 +222,7 @@ export function computeLiveAnnualLeaveState(
       [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: used,
     },
     year,
-    { monthWorkSummaryByYearMonth },
+    { monthWorkSummaryByYearMonth, asOfDateKey },
   );
 
   return {
@@ -213,6 +235,7 @@ export function computeLiveAnnualLeaveState(
       year != null
         ? resolveAnnualLeaveCurrentYear(raw, year, {
             monthWorkSummaryByYearMonth,
+            asOfDateKey,
           })
         : parseAnnualLeaveNumber(
             raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
@@ -273,16 +296,27 @@ export function normalizeAnnualLeaveRowLive(
   year = null,
   monthValues = null,
   monthWorkSummaryByYearMonth = null,
+  {
+    asOfDateKey = null,
+    usageThroughMonthIndex = null,
+  } = {},
 ) {
   if (!raw || typeof raw !== "object") return null;
   const empKey = resolveAnnualLeaveEmpFirebaseKey({ recordId: id, raw }) || id;
   const liveAtt = deductionsByEmpKey[empKey] ?? 0;
   const resolvedMonthValues =
     monthValues ?? resolveStoredMonthlyLeaveUsage(raw);
-  const monthlyUsed = sumAnnualLeaveMonthlyUsageValues(resolvedMonthValues);
+  const monthlyUsed =
+    usageThroughMonthIndex != null
+      ? sumAnnualLeaveMonthlyUsageValuesThroughMonth(
+          resolvedMonthValues,
+          usageThroughMonthIndex,
+        )
+      : sumAnnualLeaveMonthlyUsageValues(resolvedMonthValues);
   const state = computeLiveAnnualLeaveState(raw, liveAtt, year, {
     usedFromMonthlySum: monthlyUsed,
     monthWorkSummaryByYearMonth,
+    asOfDateKey,
   });
 
   return {

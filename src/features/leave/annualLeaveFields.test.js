@@ -1,6 +1,8 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   annualLeaveAttendanceCountStartDate,
+  annualLeaveMonthUsesPayrollHalfAccrualRule,
+  annualLeavePayrollHalfAccrualFromYearMonth,
   isAttendanceDateCountedForAnnualLeave,
   isAttendanceDateDisplayOnlyForAnnualLeave,
   listAnnualLeaveCountYearMonths,
@@ -17,10 +19,18 @@ describe("annualLeave attendance count start", () => {
   });
   it("2026 starts on 2026-06-01", () => {
     expect(annualLeaveAttendanceCountStartDate(2026)).toBe("2026-06-01");
+    expect(annualLeavePayrollHalfAccrualFromYearMonth(2026)).toBe("2026-06");
   });
 
   it("years after 2026 start on Jan 1", () => {
     expect(annualLeaveAttendanceCountStartDate(2027)).toBe("2027-01-01");
+    expect(annualLeavePayrollHalfAccrualFromYearMonth(2027)).toBe("2027-01");
+  });
+
+  it("half accrual rule starts from June 2026 in 2026", () => {
+    expect(annualLeaveMonthUsesPayrollHalfAccrualRule(2026, 4)).toBe(false);
+    expect(annualLeaveMonthUsesPayrollHalfAccrualRule(2026, 5)).toBe(true);
+    expect(annualLeaveMonthUsesPayrollHalfAccrualRule(2027, 0)).toBe(true);
   });
 
   it("skips trial dates before June 2026", () => {

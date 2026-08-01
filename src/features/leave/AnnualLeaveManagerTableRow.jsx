@@ -68,7 +68,7 @@ function AnnualLeaveManagerTableRow({
       <td className={`${tdNum} font-bold ${sticky(8)}`}>
         {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED])}
       </td>
-      <td className={`${tdNum} font-bold ${sticky(9)}`}>
+      <td className={`${tdNum} annual-leave-balance-cell ${sticky(9)}`}>
         {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.BALANCE])}
       </td>
       {monthValues.map((value, monthIdx) => (

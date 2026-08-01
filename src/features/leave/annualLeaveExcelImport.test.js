@@ -109,7 +109,9 @@ describe("parseAnnualLeaveExcelFile", () => {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
 
-    const { records, errors } = await parseAnnualLeaveExcelFile(file, { year: 2026 });
+    const { records, errors } = await parseAnnualLeaveExcelFile(file, {
+      year: 2026,
+    });
     expect(errors).toEqual([]);
     expect(records).toHaveLength(1);
     expect(records[0][ANNUAL_LEAVE_EMP.MNV_PREFIX]).toBe("251205");
@@ -157,7 +159,9 @@ describe("parseAnnualLeaveExcelFile", () => {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
 
-    const { records, errors } = await parseAnnualLeaveExcelFile(file, { year: 2026 });
+    const { records, errors } = await parseAnnualLeaveExcelFile(file, {
+      year: 2026,
+    });
     expect(errors).toEqual([]);
     expect(records).toHaveLength(1);
     expect(records[0][ANNUAL_LEAVE_EMP.MONTHLY_LEAVE_USAGE]).toEqual([

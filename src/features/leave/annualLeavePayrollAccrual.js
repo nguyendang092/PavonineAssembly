@@ -4,7 +4,14 @@ import {
   pickPayrollMonthlyTimesheetTotalWorkColumns,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import { stampPayrollMonthChunkAttendanceRootFlags } from "@/features/payroll/payrollMonthlyGridData";
-import { isStartWorkingDateInCalendarYear } from "./annualLeaveCalculated";
+import {
+  annualLeaveMonthUsesPayrollHalfAccrualRule,
+} from "./annualLeaveFields";
+import {
+  isStartWorkingDateInCalendarMonth,
+  isStartWorkingDateInCalendarYear,
+  resolveAnnualLeaveAccrualMonthRange,
+} from "./annualLeaveCalculated";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
 
@@ -35,7 +42,7 @@ export function listCalendarDateKeysForYearMonth(yearMonth) {
   });
 }
 
-/** Các tháng vào làm `yyyy-mm` cần lưới giờ công (chỉ NV vào làm trong năm). */
+/** Các tháng `yyyy-mm` cần lưới giờ công để kiểm tra +1 phép. */
 export function collectAccrualYearMonthsForYear(indexed, year) {
   const months = new Set();
   const y = Number(year);
@@ -43,9 +50,27 @@ export function collectAccrualYearMonthsForYear(indexed, year) {
 
   for (const { raw } of Object.values(indexed)) {
     const startWorkingDate = raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE];
-    if (!isStartWorkingDateInCalendarYear(startWorkingDate, y)) continue;
-    const joinMonth = resolveJoinYearMonthKey(startWorkingDate, y);
-    if (joinMonth) months.add(joinMonth);
+    const range = resolveAnnualLeaveAccrualMonthRange(startWorkingDate, y);
+    if (!range) continue;
+
+    const newJoinerInYear = isStartWorkingDateInCalendarYear(startWorkingDate, y);
+    for (
+      let monthIndex = range.startMonth;
+      monthIndex <= range.endMonth;
+      monthIndex += 1
+    ) {
+      const yearMonth = `${y}-${String(monthIndex + 1).padStart(2, "0")}`;
+      if (annualLeaveMonthUsesPayrollHalfAccrualRule(y, monthIndex)) {
+        months.add(yearMonth);
+        continue;
+      }
+      if (
+        newJoinerInYear &&
+        isStartWorkingDateInCalendarMonth(startWorkingDate, y, monthIndex)
+      ) {
+        months.add(yearMonth);
+      }
+    }
   }
   return months;
 }
@@ -105,8 +130,7 @@ function buildDayChunkMapForYearMonths(
 }
 
 /**
- * Khối TỔNG lưới tháng giờ công — chỉ tháng có ngày vào làm.
- * Tổng ngày công ≥ ½ Ngày thực tế làm việc → +1 phép tháng vào làm.
+ * Khối TỔNG lưới tháng giờ công — dùng kiểm +1 phép theo ½ ngày thực tế làm việc.
  */
 export function buildAnnualLeaveMonthWorkSummary(
   dayChunkMap,
@@ -158,18 +182,34 @@ export function buildAnnualLeaveMonthWorkSummaryByEmpKey(
   for (const [empKey, { raw }] of Object.entries(indexed)) {
     const startWorkingDate = raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE];
     if (!startWorkingDate) continue;
-    if (!isStartWorkingDateInCalendarYear(startWorkingDate, y)) continue;
 
-    const joinMonth = resolveJoinYearMonthKey(startWorkingDate, y);
-    if (!joinMonth) continue;
+    const range = resolveAnnualLeaveAccrualMonthRange(startWorkingDate, y);
+    if (!range) continue;
 
-    const summary = buildAnnualLeaveMonthWorkSummary(
-      dayChunkMap,
-      joinMonth,
-      empKey,
-      startWorkingDate,
-    );
-    if (summary) map[empKey] = { [joinMonth]: summary };
+    const newJoinerInYear = isStartWorkingDateInCalendarYear(startWorkingDate, y);
+    const byMonth = {};
+    for (
+      let monthIndex = range.startMonth;
+      monthIndex <= range.endMonth;
+      monthIndex += 1
+    ) {
+      const yearMonth = `${y}-${String(monthIndex + 1).padStart(2, "0")}`;
+      const needsSummary =
+        annualLeaveMonthUsesPayrollHalfAccrualRule(y, monthIndex) ||
+        (newJoinerInYear &&
+          isStartWorkingDateInCalendarMonth(startWorkingDate, y, monthIndex));
+      if (!needsSummary) continue;
+
+      const summary = buildAnnualLeaveMonthWorkSummary(
+        dayChunkMap,
+        yearMonth,
+        empKey,
+        startWorkingDate,
+      );
+      if (summary) byMonth[yearMonth] = summary;
+    }
+
+    if (Object.keys(byMonth).length) map[empKey] = byMonth;
   }
 
   return map;
