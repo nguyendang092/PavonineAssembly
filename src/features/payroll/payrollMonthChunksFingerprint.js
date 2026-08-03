@@ -30,6 +30,8 @@ function digestPayrollMonthChunk(ch) {
         emp.duocNghiBu,
         emp.tangCaTrua,
         emp.cheDoNhanVien,
+        emp.ngayVaoLam,
+        emp.ngayHopDong,
       ].join("|"),
     );
   }

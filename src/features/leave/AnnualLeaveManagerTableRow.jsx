@@ -19,6 +19,17 @@ function hasAnnualLeaveMonthUsage(value) {
   return Number.isFinite(n) && n > 0;
 }
 
+function AnnualLeaveCalculatedCell({ ready, children, className = "" }) {
+  if (!ready) {
+    return (
+      <span className="annual-leave-month-empty font-normal" aria-hidden="true">
+        —
+      </span>
+    );
+  }
+  return children;
+}
+
 function AnnualLeaveManagerTableRow({
   row,
   raw,
@@ -29,6 +40,7 @@ function AnnualLeaveManagerTableRow({
   canManage = false,
   adjustmentSaving = false,
   onAdjustmentSave,
+  attendanceCalculated = true,
 }) {
   const sticky = (colIndex) =>
     annualLeaveStickyColClass(colIndex, { rowIndex: index });
@@ -63,13 +75,19 @@ function AnnualLeaveManagerTableRow({
         })}
       </td>
       <td className={`${tdNum} ${sticky(7)}`}>
-        {row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]}
+        <AnnualLeaveCalculatedCell ready={attendanceCalculated}>
+          {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR])}
+        </AnnualLeaveCalculatedCell>
       </td>
       <td className={`${tdNum} font-bold ${sticky(8)}`}>
-        {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED])}
+        <AnnualLeaveCalculatedCell ready={attendanceCalculated}>
+          {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED])}
+        </AnnualLeaveCalculatedCell>
       </td>
       <td className={`${tdNum} annual-leave-balance-cell ${sticky(9)}`}>
-        {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.BALANCE])}
+        <AnnualLeaveCalculatedCell ready={attendanceCalculated}>
+          {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.BALANCE])}
+        </AnnualLeaveCalculatedCell>
       </td>
       {monthValues.map((value, monthIdx) => (
         <td
@@ -123,7 +141,8 @@ function areAnnualLeaveManagerTableRowPropsEqual(prev, next) {
     prev.monthValues === next.monthValues &&
     prev.canManage === next.canManage &&
     prev.adjustmentSaving === next.adjustmentSaving &&
-    prev.onAdjustmentSave === next.onAdjustmentSave
+    prev.onAdjustmentSave === next.onAdjustmentSave &&
+    prev.attendanceCalculated === next.attendanceCalculated
   );
 }
 

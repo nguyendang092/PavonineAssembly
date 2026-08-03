@@ -12,6 +12,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { buildPayrollMonthDayCellFormRecord } from "@/features/payroll/buildPayrollDayFromRaw";
 import {
   comparePayrollMonthRowsByDepartment,
+  enrichPayrollMonthRepByIdWithMasterEmployees,
   formatPayrollMonthWeekday3,
   matchesPayrollMonthRowFilter,
   resolvePayrollMonthDayEmployee,
@@ -88,6 +89,7 @@ import { isKoreanAttendanceRoot } from "@/features/attendance/attendanceSeasonal
 import { usePayrollMonthDayChunks } from "@/features/payroll/usePayrollMonthDayChunks";
 import { usePayrollMonthEmployeeIndex } from "@/features/payroll/usePayrollMonthEmployeeIndex";
 import { usePayrollMonthSummaries } from "@/features/payroll/usePayrollMonthSummaries";
+import { computePayrollMonthSummariesForIds } from "@/features/payroll/payrollMonthSummaryCompute";
 import PayrollDepartmentMultiSelect from "@/features/payroll/PayrollDepartmentMultiSelect";
 import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
 import PayrollTimesheetPresenceFilters from "@/features/payroll/PayrollTimesheetPresenceFilters";
@@ -1275,6 +1277,11 @@ export default function PayrollMonthlyTimesheetModal({
   const { sortedIds, repById, chunkByDate, chunkByDateLive } =
     usePayrollMonthEmployeeIndex(dayChunks, displayDayChunks);
 
+  const summaryRepById = useMemo(
+    () => enrichPayrollMonthRepByIdWithMasterEmployees(repById, employees),
+    [repById, employees],
+  );
+
   const anchorDayMeta = useMemo(() => {
     const ch =
       chunkByDateLive.get(anchorDateKey) ?? chunkByDate.get(anchorDateKey);
@@ -1466,7 +1473,7 @@ export default function PayrollMonthlyTimesheetModal({
       monthKeys: monthRange.keys,
       chunkByDate,
       filteredIds,
-      repById,
+      repById: summaryRepById,
     });
 
   const isGridFullyBusy = isGridBusy || isSummariesBusy;
@@ -1633,13 +1640,33 @@ export default function PayrollMonthlyTimesheetModal({
         return;
       }
       try {
+        const missingSummaryIds = exportIds.filter(
+          (id) => !monthlySummaryById.has(id),
+        );
+        let exportSummaryById = monthlySummaryById;
+        if (missingSummaryIds.length > 0) {
+          const extraSummaries = await computePayrollMonthSummariesForIds({
+            monthKeys: monthRange.keys,
+            chunkByDate,
+            ids: missingSummaryIds,
+            repById: summaryRepById,
+            cache: new Map(),
+          });
+          if (extraSummaries?.size) {
+            exportSummaryById = new Map(monthlySummaryById);
+            for (const [id, summary] of extraSummaries) {
+              exportSummaryById.set(id, summary);
+            }
+          }
+        }
+
         const buf = await writePayrollMonthlyTimesheetWorkbook({
           tlPage,
           monthKeys: monthRange.keys,
           chunkByDate,
           filteredIds: exportIds,
           repById,
-          summaryById: monthlySummaryById,
+          summaryById: exportSummaryById,
           detailHeaders: detailHeadersByGroup,
           koreanTimesheetRules: isKoreanTimesheetSource,
         });
@@ -1681,7 +1708,7 @@ export default function PayrollMonthlyTimesheetModal({
       detailHeaders,
       monthlySummaryById,
       monthRange.keys,
-      repById,
+      summaryRepById,
       tlPage,
       isKoreanTimesheetSource,
     ],

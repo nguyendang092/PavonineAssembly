@@ -43,6 +43,7 @@ function AnnualLeaveManagerTableSection({
     attendanceMonthlyByEmpKey,
     monthWorkSummaryByEmpKey,
     attendanceEnhancing,
+    attendanceCalculated,
   } = useAnnualLeaveAttendanceEnhancement(year, yearData, {
     includePayrollMonthAccrual: true,
     throughDateKey: detailThroughDateKey,
@@ -168,6 +169,7 @@ function AnnualLeaveManagerTableSection({
       detailThroughDateKey={detailThroughDateKey}
       filterPending={filterPending}
       attendanceEnhancing={attendanceEnhancing}
+      attendanceCalculated={attendanceCalculated}
       normalizeEntryRow={normalizeEntryRow}
       canManage={canManageLeave}
       adjustmentSavingId={adjustmentSavingId}

@@ -21,6 +21,7 @@ function AnnualLeaveManagerTablePanel({
   detailThroughDateKey,
   filterPending = false,
   attendanceEnhancing = false,
+  attendanceCalculated = true,
   normalizeEntryRow,
   canManage = false,
   adjustmentSavingId = "",
@@ -37,24 +38,25 @@ function AnnualLeaveManagerTablePanel({
     () =>
       tablePagination.pagedItems.map((entry, localIdx) => ({
         entry,
-        row: normalizeEntryRow(entry),
+        row: attendanceCalculated ? normalizeEntryRow(entry) : null,
         index: tablePagination.rowIndexOffset + localIdx,
       })),
     [
+      attendanceCalculated,
       tablePagination.pagedItems,
       tablePagination.rowIndexOffset,
       normalizeEntryRow,
     ],
   );
 
-  const tableBusy = filterPending || attendanceEnhancing;
+  const tableBusy = filterPending;
 
   return (
     <>
       <div
         className={`annual-leave-table-compact min-h-0 w-full max-w-none flex-1 rounded-md bg-white shadow-sm transition-opacity duration-150 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700${
           tableBusy ? " opacity-80" : ""
-        }`}
+        }${attendanceEnhancing ? " annual-leave-table--attendance-pending" : ""}`}
       >
         <div className="annual-leave-table-scroll w-full min-w-0 max-w-full">
           <table className="annual-leave-table w-max min-w-full max-w-none border-separate border-spacing-0">
@@ -177,7 +179,7 @@ function AnnualLeaveManagerTablePanel({
                 pagedLiveRows.map(({ entry, row, index }) => (
                   <AnnualLeaveManagerTableRow
                     key={entry.id}
-                    row={row}
+                    row={row ?? entry._raw}
                     raw={entry._raw}
                     index={index}
                     year={year}
@@ -189,6 +191,7 @@ function AnnualLeaveManagerTablePanel({
                     canManage={canManage}
                     adjustmentSaving={adjustmentSavingId === entry.id}
                     onAdjustmentSave={onAdjustmentSave}
+                    attendanceCalculated={attendanceCalculated}
                   />
                 ))
               )}
@@ -224,6 +227,7 @@ function areTablePanelPropsEqual(prev, next) {
     prev.detailThroughDateKey === next.detailThroughDateKey &&
     prev.filterPending === next.filterPending &&
     prev.attendanceEnhancing === next.attendanceEnhancing &&
+    prev.attendanceCalculated === next.attendanceCalculated &&
     prev.normalizeEntryRow === next.normalizeEntryRow &&
     prev.canManage === next.canManage &&
     prev.adjustmentSavingId === next.adjustmentSavingId &&

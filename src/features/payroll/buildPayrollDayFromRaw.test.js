@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { sanitizeAttendanceDayNodeForUi } from "@/utils/attendanceEmployeeRecord";
 import { PAYROLL_EMP } from "./payrollEmployeeFields";
 import {
   buildPayrollMonthDayCellFormRecord,
@@ -116,6 +117,52 @@ describe("buildPayrollMonthDayChunkFromRaw — khóa emp_{MNV}", () => {
     expect(chunk.employees[0]?.monthEmployeeKey).toBe("200611");
     expect(chunk.byMonthEmployeeKey.has("200611")).toBe(true);
     expect(chunk.rowLookup?.has("200611")).toBe(true);
+  });
+
+  it("sanitizeAttendanceDayNodeForUi giữ caLamViec", () => {
+    const emp = sanitizeAttendanceDayNodeForUi(
+      {
+        mnv: "200629",
+        gioVao: "22:00",
+        gioRa: "06:00",
+        caLamViec: "S2",
+        stt: 1,
+      },
+      "emp_200629",
+    );
+    expect(emp.caLamViec).toBe("S2");
+  });
+
+  it("parsePayrollDayFromAttendanceRaw giữ caLamViec S2", () => {
+    const parsed = parsePayrollDayFromAttendanceRaw({
+      emp_200629: {
+        mnv: "200629",
+        gioVao: "22:00",
+        gioRa: "06:00",
+        caLamViec: "S2",
+        stt: 1,
+      },
+    });
+    expect(parsed.baseEmployees[0]?.caLamViec).toBe("S2");
+    expect(parsed.payrollEmployees[0]?.caLamViec).toBe("S2");
+  });
+
+  it("giữ caLamViec S2 trên chunk tháng (emp_{MNV})", () => {
+    const chunk = buildPayrollMonthDayChunkFromRaw(
+      {
+        emp_200629: {
+          mnv: "200629",
+          gioVao: "22:00",
+          gioRa: "06:00",
+          caLamViec: "S2",
+          stt: 1,
+        },
+      },
+      "2026-03-04",
+    );
+    expect(chunk).not.toBeNull();
+    expect(chunk.employees[0]?.caLamViec).toBe("S2");
+    expect(chunk.employees[0]?.gioVao).toBe("22:00");
   });
 });
 

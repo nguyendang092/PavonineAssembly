@@ -5,9 +5,13 @@ import {
   comparePayrollMonthRowsByDepartment,
   buildPayrollMonthIdentityIndexes,
   applyPayrollMonthCanonicalKeysToChunks,
+  enrichPayrollMonthRepByIdWithMasterEmployees,
   matchesPayrollMonthRowFilter,
   payrollMonthRepresentativeEmployee,
   resolvePayrollMonthDayEmployee,
+  resolvePayrollMonthEmployeeProfileForSummary,
+  resolvePayrollMonthMasterEmployee,
+  buildPayrollMonthMasterEmployeeLookup,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
   buildChunkByDateFromSerialized,
@@ -189,6 +193,117 @@ describe("payrollMonthlyGridData employee resolution", () => {
 
     expect(empA?.gioVao).toBe("07:34");
     expect(empB?.gioVao).toBe("08:00");
+  });
+
+  it("payrollMonthRepresentativeEmployee — không gộp ngày HĐ từ chunk ngày cuối tháng", () => {
+    const rowId = "260714";
+    const chunks = [
+      makeChunk(
+        [{ id: rowId, mnv: "260714", stt: 1, ngayHopDong: "16/7/2026" }],
+        "2026-07-16",
+      ),
+      makeChunk(
+        [{ id: rowId, mnv: "260714", stt: 1, ngayHopDong: "2026-12-01" }],
+        "2026-07-31",
+      ),
+    ];
+
+    const rep = payrollMonthRepresentativeEmployee(chunks, rowId);
+    expect(rep?.ngayHopDong).toBeUndefined();
+  });
+
+  it("resolvePayrollMonthEmployeeProfileForSummary — chọn ngày HĐ trong tháng, bỏ qua chunk cuối tháng sai", () => {
+    const monthKeys = ["2026-07-09", "2026-07-16", "2026-07-31"];
+    const rowId = "260714";
+    const dayChunks = new Map([
+      [
+        "2026-07-16",
+        makeChunk(
+          [{ id: rowId, mnv: "260714", ngayVaoLam: "9/7/2026", ngayHopDong: "16/7/2026" }],
+          "2026-07-16",
+        ),
+      ],
+      [
+        "2026-07-31",
+        makeChunk(
+          [{ id: rowId, mnv: "260714", ngayHopDong: "2026-12-01" }],
+          "2026-07-31",
+        ),
+      ],
+    ]);
+
+    const resolved = resolvePayrollMonthEmployeeProfileForSummary(
+      dayChunks,
+      monthKeys,
+      rowId,
+      { ngayHopDong: "2026-12-01", mnv: "260714" },
+    );
+
+    expect(resolved.ngayHopDong).toBe("2026-07-16");
+    expect(resolved.ngayVaoLam).toBe("2026-07-09");
+  });
+
+  it("enrichPayrollMonthRepByIdWithMasterEmployees — khớp rowId trực tiếp với MNV master", () => {
+    const repById = new Map([
+      ["260714", { mnv: "260714", hoVaTen: "Test NV" }],
+    ]);
+    const master = [
+      {
+        id: "emp_260714",
+        mnv: "260714",
+        ngayVaoLam: "9/7/2026",
+        ngayHopDong: "16/7/2026",
+      },
+    ];
+
+    const enriched = enrichPayrollMonthRepByIdWithMasterEmployees(
+      repById,
+      master,
+    );
+    expect(enriched.get("260714")?.ngayHopDong).toBe("16/7/2026");
+  });
+
+  it("resolvePayrollMonthMasterEmployee — khớp mọi NV theo MNV, Firebase id, emp_{mã}", () => {
+    const fbId = "-OxMasterKey";
+    const lookup = buildPayrollMonthMasterEmployeeLookup([
+      { id: fbId, mnv: "NV100", ngayHopDong: "2026-03-01" },
+      { id: "emp_200611", mnv: "", businessId: "200611", ngayHopDong: "2026-05-15" },
+    ]);
+
+    expect(
+      resolvePayrollMonthMasterEmployee("NV100", { mnv: "NV100" }, lookup)?.ngayHopDong,
+    ).toBe("2026-03-01");
+    expect(
+      resolvePayrollMonthMasterEmployee(
+        `NV100__${fbId}`,
+        { mnv: "NV100", id: fbId },
+        lookup,
+      )?.ngayHopDong,
+    ).toBe("2026-03-01");
+    expect(
+      resolvePayrollMonthMasterEmployee("200611", { mnv: "200611" }, lookup)
+        ?.ngayHopDong,
+    ).toBe("2026-05-15");
+  });
+
+  it("enrichPayrollMonthRepByIdWithMasterEmployees — bổ sung ngày HĐ cho mọi dòng rep", () => {
+    const repById = new Map([
+      ["NV100", { mnv: "NV100" }],
+      ["200611", { mnv: "200611" }],
+      ["999999", { mnv: "999999" }],
+    ]);
+    const master = [
+      { id: "emp_NV100", mnv: "NV100", ngayHopDong: "2026-03-01" },
+      { id: "emp_200611", mnv: "200611", ngayHopDong: "2026-05-15" },
+    ];
+
+    const enriched = enrichPayrollMonthRepByIdWithMasterEmployees(
+      repById,
+      master,
+    );
+    expect(enriched.get("NV100")?.ngayHopDong).toBe("2026-03-01");
+    expect(enriched.get("200611")?.ngayHopDong).toBe("2026-05-15");
+    expect(enriched.get("999999")?.ngayHopDong).toBeUndefined();
   });
 
   it("payrollMonthRepresentativeEmployee — boPhan mới nhất theo ngày gần nhất", () => {

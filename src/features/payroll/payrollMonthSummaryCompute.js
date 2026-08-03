@@ -1,4 +1,6 @@
 import { buildMonthlyRuleSummary } from "@/features/payroll/payrollMonthlyRuleSummary";
+import { payrollEmployeeProfileDatesFingerprint } from "@/features/payroll/payrollEmployeeFields";
+import { resolvePayrollMonthEmployeeProfileForSummary } from "@/features/payroll/payrollMonthlyGridData";
 import {
   PAYROLL_MONTH_SUMMARY_CACHE_MAX,
   PAYROLL_MONTH_SUMMARY_MAIN_BATCH_SIZE,
@@ -31,8 +33,8 @@ function trimSummaryCache(cache, maxSize) {
   }
 }
 
-function cacheKey(id, fingerprint) {
-  return `${id}\0${fingerprint}`;
+function cacheKey(id, fingerprint, profileFingerprint) {
+  return `${id}\0${fingerprint}\0${profileFingerprint}`;
 }
 
 function getCachedOrBuildMonthlySummary(
@@ -43,14 +45,24 @@ function getCachedOrBuildMonthlySummary(
   monthKeys,
   employeeProfile,
 ) {
-  const key = cacheKey(id, fingerprint);
+  const resolvedProfile = resolvePayrollMonthEmployeeProfileForSummary(
+    chunkByDate,
+    monthKeys,
+    id,
+    employeeProfile,
+  );
+  const profileFingerprint = payrollEmployeeProfileDatesFingerprint(
+    resolvedProfile,
+    monthKeys,
+  );
+  const key = cacheKey(id, fingerprint, profileFingerprint);
   const hit = cache.get(key);
   if (hit) return hit;
   const summary = buildMonthlyRuleSummary(
     chunkByDate,
     monthKeys,
     id,
-    employeeProfile,
+    resolvedProfile,
   );
   cache.set(key, summary);
   trimSummaryCache(cache, PAYROLL_MONTH_SUMMARY_CACHE_MAX);
@@ -176,7 +188,18 @@ export async function computePayrollMonthSummariesForIds({
         for (const id of idList) {
           const summary = workerResults[id];
           if (summary) {
-            const key = cacheKey(id, fingerprint);
+            const rep = repById?.get?.(id);
+            const resolvedProfile = resolvePayrollMonthEmployeeProfileForSummary(
+              chunkByDate,
+              monthKeys,
+              id,
+              rep,
+            );
+            const profileFingerprint = payrollEmployeeProfileDatesFingerprint(
+              resolvedProfile,
+              monthKeys,
+            );
+            const key = cacheKey(id, fingerprint, profileFingerprint);
             cache.set(key, summary);
             out.set(id, summary);
           }

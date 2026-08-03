@@ -8,7 +8,11 @@ import {
 } from "react";
 import { db, ref, onValue } from "@/services/firebase";
 import { buildPayrollMonthDayChunkFromRaw } from "@/features/payroll/buildPayrollDayFromRaw";
-import { fetchPayrollMonthDayChunks, stampPayrollMonthChunkAttendanceRootFlags } from "@/features/payroll/payrollMonthlyGridData";
+import {
+  applyPayrollMonthCanonicalKeysToChunks,
+  fetchPayrollMonthDayChunks,
+  stampPayrollMonthChunkAttendanceRootFlags,
+} from "@/features/payroll/payrollMonthlyGridData";
 import {
   PAYROLL_MONTH_FETCH_BATCH_SIZE,
 } from "@/features/payroll/payrollMonthDataScale";
@@ -103,7 +107,11 @@ export function usePayrollMonthDayChunks({
           setDayChunks((prev) => {
             const byDate = new Map(prev.map((c) => [c.dateKey, c]));
             byDate.set(dateKey, chunk);
-            return monthKeys.map((dk) => byDate.get(dk)).filter(Boolean);
+            const merged = monthKeys
+              .map((dk) => byDate.get(dk))
+              .filter(Boolean);
+            applyPayrollMonthCanonicalKeysToChunks(merged);
+            return merged;
           });
         });
       }),

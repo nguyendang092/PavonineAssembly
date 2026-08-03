@@ -14,13 +14,16 @@ import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollO
 import { payrollExcelHourValueToNumber } from "@/features/payroll/payrollExcelExport";
 import {
   buildMonthlyDetailMatrixForEmployee,
+  fmtPayrollMonthlySummaryCell,
+  fmtPayrollMonthlySummaryHoursCell,
   isPayrollMonthDayCellBeforeJoinWithoutAttendance,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
+  assignMonthlyDetailFlatToExportRow,
   buildPayrollMonthlyTimesheetDetailHeadersByGroup,
   DETAIL_GROUP_KEYS,
-  MONTH_DETAIL_COLS_PER_BLOCK,
   MONTH_DETAIL_OT_COL_COUNT,
+  MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT,
   MONTH_DETAIL_WORKDAY_COL_COUNT,
   MONTHLY_TIMESHEET_STICKY_COL_COUNT,
   PAYROLL_MONTHLY_DETAIL_COL_EXCEL_WIDTH,
@@ -60,6 +63,34 @@ function excelLeaveCountOrEmpty(n) {
   if (!Number.isFinite(n) || n <= 0) return null;
   if (Math.abs(n - Math.round(n)) < 1e-9) return Math.round(n);
   return roundHoursToTenths(n);
+}
+
+function uiSummaryFormatterToExcelFormatter(uiFmt, { hundredths = false } = {}) {
+  return (n) => {
+    const displayed = uiFmt(n);
+    if (displayed == null) return null;
+    const trimmed = String(displayed).trim();
+    if (trimmed === "" || trimmed === " ") return null;
+    const parsed = Number(trimmed.replace(",", "."));
+    if (!Number.isFinite(parsed)) return displayed;
+    return hundredths ? roundHoursToHundredths(parsed) : roundHoursToTenths(parsed);
+  };
+}
+
+/** Formatter khối chi tiết — khớp PayrollMonthlyTimesheetModal / buildMonthlyDetailMatrixForEmployee. */
+export function buildPayrollMonthlyTimesheetExcelDetailFormatters(
+  koreanTimesheetRules = false,
+) {
+  return {
+    fmt: uiSummaryFormatterToExcelFormatter(fmtPayrollMonthlySummaryCell),
+    fmtLeave: excelLeaveCountOrEmpty,
+    fmtHours: koreanTimesheetRules
+      ? uiSummaryFormatterToExcelFormatter(
+          fmtPayrollMonthlySummaryHoursCell,
+          { hundredths: true },
+        )
+      : null,
+  };
 }
 
 function excelDashMarkOrEmpty(mark) {
@@ -141,12 +172,22 @@ function applyPayrollMonthlyTimesheetExcelNumberFormats(
 
   const detailHourColSet = new Set();
   if (koreanTimesheetRules) {
-    const otStart = MONTH_DETAIL_WORKDAY_COL_COUNT;
-    const otEnd = otStart + MONTH_DETAIL_OT_COL_COUNT - 1;
-    for (const blockStart of [
-      layout.totalDetailStart,
-      layout.officialDetailStart,
-    ]) {
+    const blockOtRanges = [
+      {
+        blockStart: layout.totalDetailStart,
+        otStart: MONTH_DETAIL_WORKDAY_COL_COUNT,
+      },
+      {
+        blockStart: layout.trialDetailStart,
+        otStart: MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT,
+      },
+      {
+        blockStart: layout.officialDetailStart,
+        otStart: MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT,
+      },
+    ];
+    for (const { blockStart, otStart } of blockOtRanges) {
+      const otEnd = otStart + MONTH_DETAIL_OT_COL_COUNT - 1;
       for (let rel = otStart; rel <= otEnd; rel += 1) {
         detailHourColSet.add(blockStart + rel + 1);
       }
@@ -255,11 +296,10 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   filteredIds.forEach((id, empBlockIdx) => {
     const rep = repById.get(id);
     const summaries = summaryById.get(id);
-    const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries, {
-      fmt: excelHoursOrEmpty,
-      fmtLeave: excelLeaveCountOrEmpty,
-      fmtHours: koreanTimesheetRules ? excelHoursOrEmptyHundredths : null,
-    });
+    const detailMatrix = buildMonthlyDetailMatrixForEmployee(
+      summaries,
+      buildPayrollMonthlyTimesheetExcelDetailFormatters(koreanTimesheetRules),
+    );
     const nameDisp = String(rep?.hoVaTen ?? "—");
     const mnvDisp =
       rep?.mnv != null && String(rep.mnv).trim() ? String(rep.mnv) : "—";
@@ -290,11 +330,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
         });
       });
 
-      const detailFlat = detailMatrix[si];
-
-      detailFlat.forEach((v, i) => {
-        row[layout.totalDetailStart + i] = v;
-      });
+      assignMonthlyDetailFlatToExportRow(row, layout, detailMatrix[si]);
 
       grid.push(row);
     });

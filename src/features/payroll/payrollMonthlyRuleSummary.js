@@ -9,6 +9,8 @@ import {
 import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
 import {
   PAYROLL_EMP,
+  isIsoProfileDateKey,
+  normalizePayrollProfileDateKey,
   pickPayrollEmployeeProfileDates,
 } from "@/features/payroll/payrollEmployeeFields";
 import {
@@ -25,11 +27,13 @@ import {
   isNightShiftCaLamViec,
 } from "@/features/attendance/attendanceWorkingHours";
 import { attendanceAnnualLeaveDeductionForLoaiPhep } from "@/features/leave/annualLeaveBalanceLookup";
-import { normalizeDateForHtmlInput } from "@/utils/attendanceEmployeeRecord";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
 import { resolveTaiXeTongEffectiveIsOffDay } from "@/features/payroll/taiXeTongPayrollDay";
 import { parseLocalDateKey } from "@/utils/dateKey";
-import { resolvePayrollMonthDayEmployee } from "@/features/payroll/payrollMonthlyGridData";
+import {
+  resolvePayrollMonthDayEmployee,
+  resolvePayrollMonthEmployeeProfileForSummary,
+} from "@/features/payroll/payrollMonthlyGridData";
 
 /** Ô tổng hợp khối THỜI GIAN LÀM VIỆC — ẩn số 0. */
 export function fmtPayrollMonthlySummaryCell(n) {
@@ -50,12 +54,9 @@ export function fmtPayrollMonthlyLeaveDayCell(n) {
   return formatCoeffHoursForDisplay(n);
 }
 
-/** Chuẩn hóa ngày hồ sơ (ngày vào làm / ngày HĐ) để so sánh với `dateKey` YYYY-MM-DD. */
-export function normalizeProfileDateKey(raw) {
-  const s = String(raw ?? "").trim();
-  if (!s) return "";
-  const norm = normalizeDateForHtmlInput(s);
-  return norm || s.slice(0, 10);
+/** @deprecated Dùng `normalizePayrollProfileDateKey`. */
+export function normalizeProfileDateKey(raw, monthKeys = []) {
+  return normalizePayrollProfileDateKey(raw, monthKeys);
 }
 
 /**
@@ -67,9 +68,10 @@ export function monthlyWorkPhaseForDateKey(
   dateKey,
   joinDateRaw,
   contractDateRaw,
+  monthKeys = [],
 ) {
-  const join = normalizeProfileDateKey(joinDateRaw);
-  const contract = normalizeProfileDateKey(contractDateRaw);
+  const join = normalizePayrollProfileDateKey(joinDateRaw, monthKeys);
+  const contract = normalizePayrollProfileDateKey(contractDateRaw, monthKeys);
   const dk = String(dateKey ?? "").trim();
   if (!dk) return null;
 
@@ -87,8 +89,12 @@ export function monthlyWorkPhaseForDateKey(
 }
 
 /** Ngày trong tháng có được tính giờ công cho NV (từ ngày vào làm trở đi). */
-export function isPayrollMonthDayOnOrAfterJoin(dateKey, joinDateRaw) {
-  const join = normalizeProfileDateKey(joinDateRaw);
+export function isPayrollMonthDayOnOrAfterJoin(
+  dateKey,
+  joinDateRaw,
+  monthKeys = [],
+) {
+  const join = normalizePayrollProfileDateKey(joinDateRaw, monthKeys);
   const dk = String(dateKey ?? "").trim();
   if (!join || !dk) return true;
   return dk >= join;
@@ -102,15 +108,19 @@ export function isPayrollMonthDayCellBeforeJoinWithoutAttendance(
   dateKey,
   joinDateRaw,
   _dayEmp,
+  monthKeys = [],
 ) {
-  return !isPayrollMonthDayOnOrAfterJoin(dateKey, joinDateRaw);
+  return !isPayrollMonthDayOnOrAfterJoin(dateKey, joinDateRaw, monthKeys);
 }
 
 /** Số ngày công chuẩn từ ngày vào làm (trừ CN) — dùng chốt nghỉ không lương / phép năm. */
-export function countEmployedStandardWorkDaysInMonth(monthKeys, joinDateRaw) {
+export function countEmployedStandardWorkDaysInMonth(
+  monthKeys,
+  joinDateRaw,
+) {
   let n = 0;
   for (const dk of monthKeys) {
-    if (!isPayrollMonthDayOnOrAfterJoin(dk, joinDateRaw)) continue;
+    if (!isPayrollMonthDayOnOrAfterJoin(dk, joinDateRaw, monthKeys)) continue;
     const pd = parseLocalDateKey(dk);
     if (pd && pd.getDay() === 0) continue;
     n += 1;
@@ -132,7 +142,12 @@ export function countPhaseCalendarWorkDaysInMonth(
     if (phase == null) {
       n += 1;
     } else if (
-      monthlyWorkPhaseForDateKey(dk, joinDateRaw, contractDateRaw) === phase
+      monthlyWorkPhaseForDateKey(
+        dk,
+        joinDateRaw,
+        contractDateRaw,
+        monthKeys,
+      ) === phase
     ) {
       n += 1;
     }
@@ -263,7 +278,7 @@ const HALF_PN_FULL_DAY_WORKED_HOURS = 4;
 /**
  * Tổng hợp 3 khối cột chi tiết tháng:
  * - **THỜI GIAN LÀM VIỆC** (`total`): từ ngày vào làm (nếu có) đến hết tháng.
- * - **THỜI GIAN THỬ VIỆC** (`trial`): có ngày HĐ — ngày từ ngày vào làm đến trước ngày HĐ.
+ * - **THỜI GIAN THỬ VIỆC** (`trial`): có ngày HĐ — chỉ cộng ngày từ ngày vào làm đến trước ngày HĐ; «Tổng ngày công (gồm ngày nghỉ có lương)» = `trial.workDays`.
  * - **THỜI GIAN HỢP ĐỒNG** (`official`): từ ngày HĐ; không có ngày HĐ → mặc định toàn bộ (từ ngày vào làm).
  * - **Ngày thực tế làm việc** (`standardWorkDays`): số ngày tháng − Chủ nhật (cả 3 khối).
  */
@@ -273,11 +288,17 @@ export function buildMonthlyRuleSummary(
   id,
   employeeProfile = {},
 ) {
+  const resolvedProfile = resolvePayrollMonthEmployeeProfileForSummary(
+    dayChunks,
+    monthKeys,
+    id,
+    employeeProfile,
+  );
   const { joinDate, contractDate } =
-    pickPayrollEmployeeProfileDates(employeeProfile);
-  const join = normalizeProfileDateKey(joinDate);
-  const contract = normalizeProfileDateKey(contractDate);
-  const hasContract = Boolean(contract);
+    pickPayrollEmployeeProfileDates(resolvedProfile);
+  const join = normalizePayrollProfileDateKey(joinDate, monthKeys);
+  const contract = normalizePayrollProfileDateKey(contractDate, monthKeys);
+  const hasContract = isIsoProfileDateKey(contract);
   const calendarStandardWorkDays = countMonthlyStandardWorkDays(monthKeys);
   const employedStandardWorkDays = countEmployedStandardWorkDaysInMonth(
     monthKeys,
@@ -316,7 +337,7 @@ export function buildMonthlyRuleSummary(
     sats27: 0,
     /** Thứ Bảy OFF có giờ công — đếm ngày công riêng (hiển thị cột SAT.S). */
     satsWorkDays: 0,
-    /** Ca S2: giờ trong khung 22:00–05:00 (tối đa 8h / ngày). */
+    /** Ca S2: giờ trong khung 22:00–06:00 (ngày hôm sau), tối đa 8h / ngày. */
     nightShiftWindowHours: 0,
     standardWorkDays: calendarStandardWorkDays,
   });
@@ -480,10 +501,11 @@ export function buildMonthlyRuleSummary(
     addNbCompensatoryWorkHours(out, ch, emp, main, coeffMap);
     addSaturdaySatOverlay(out, coeffMap, dateKey, ch, emp);
 
+    const otParams = payrollOtDayParamsFromMonthChunkEmp(emp, ch);
     const nightH = getNightShiftTotalWindowHours22To05(
-      emp[PAYROLL_EMP.TIME_IN],
-      emp[PAYROLL_EMP.TIME_OUT],
-      emp[PAYROLL_EMP.SHIFT],
+      otParams.timeIn,
+      otParams.timeOut,
+      otParams.shiftCode,
     );
     if (Number.isFinite(nightH) && nightH > 0) {
       out.nightShiftWindowHours += nightH;
@@ -494,10 +516,10 @@ export function buildMonthlyRuleSummary(
     const ch = dayChunks.get(dk);
     if (!ch) continue;
 
-    const emp = resolvePayrollMonthDayEmployee(ch, id, employeeProfile);
-    if (!isPayrollMonthDayOnOrAfterJoin(dk, join)) continue;
+    const emp = resolvePayrollMonthDayEmployee(ch, id, resolvedProfile);
+    if (!isPayrollMonthDayOnOrAfterJoin(dk, join, monthKeys)) continue;
 
-    const phase = monthlyWorkPhaseForDateKey(dk, join, contract);
+    const phase = monthlyWorkPhaseForDateKey(dk, join, contract, monthKeys);
 
     applyDayToSummary(total, ch, emp, dk);
     if (hasContract && phase === "trial") {
@@ -507,13 +529,18 @@ export function buildMonthlyRuleSummary(
     }
   }
 
-  const finalizeSummary = (out, capStandardWorkDays) => {
+  const finalizeSummary = (out, capStandardWorkDays, { syncStandardWorkDays = false } = {}) => {
+    if (syncStandardWorkDays) {
+      out.standardWorkDays = capStandardWorkDays;
+    }
     out.workDays = Math.min(out.workDays, capStandardWorkDays);
     out.unpaidDays = Math.max(0, capStandardWorkDays - out.workDays);
   };
   finalizeSummary(total, employedStandardWorkDays);
-  finalizeSummary(trial, trialStandardWorkDays);
-  finalizeSummary(official, officialStandardWorkDays);
+  finalizeSummary(trial, trialStandardWorkDays, { syncStandardWorkDays: true });
+  finalizeSummary(official, officialStandardWorkDays, {
+    syncStandardWorkDays: true,
+  });
   return { total, trial, official };
 }
 

@@ -17,6 +17,7 @@ import {
   getAttendanceWorkingHoursHours,
   getEarlyPaperworkOvertimeHours,
   getNightShiftTotalWindowHours22To05,
+  getPayrollTableTotalNightGcHoursNumeric,
   getPayrollDayOvertimeHoursNumeric,
   getTaiXeOvertimeHoursFromGioRa,
   isEarlyArrivalFor0600PaperworkOvertime,
@@ -775,6 +776,28 @@ describe("ca đêm — TC trước 18:40 (giấy xác nhận)", () => {
     expect(getPayrollNightOtWindowHours22To06("23:30", "06:00")).toBe(6.5);
     expect(getPayrollNightOtWindowHours22To06("04:00", "06:00")).toBe(2);
     expect(getPayrollNightOtWindowHours22To06("04:00", "14:00")).toBe(2);
+    expect(getPayrollNightOtWindowHours22To06("19:40", "06:00")).toBe(8);
+  });
+
+  it("getPayrollTableTotalNightGcHoursNumeric — S2 22:00–06:00 ngày thường", () => {
+    expect(
+      getPayrollTableTotalNightGcHoursNumeric(
+        "22:00",
+        "06:00",
+        false,
+        "S2",
+        "",
+      ),
+    ).toBe(8);
+    expect(
+      getPayrollTableTotalNightGcHoursNumeric(
+        "19:40",
+        "06:00",
+        false,
+        "S2",
+        "",
+      ),
+    ).toBe(9);
   });
 
   it("cột GC ca đêm off ×2.7 — hiển thị sau xác nhận TC đêm (ngày thường)", () => {

@@ -14,6 +14,7 @@ import { listCalendarDateKeysForYearMonth } from "@/features/leave/annualLeavePa
 import {
   MONTH_DETAIL_COLS_PER_BLOCK,
   MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+  resolveMonthlyDetailFlatIndex,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
 
 /** 2026-01-10 là thứ Bảy. */
@@ -135,6 +136,66 @@ describe("buildMonthlyRuleSummary — SAT.S thứ Bảy OFF", () => {
     expect(total.sats27).toBe(total.coeff27);
     expect(total.satsWorkDays).toBe(1);
     expect(total.workDays).toBe(1);
+    expect(total.nightShiftWindowHours).toBe(8);
+  });
+
+  it("ngày thường S2 22:00–06:00 — khung 22–06 tối đa 8h", () => {
+    const workKey = "2026-03-04";
+    const dayChunks = new Map([
+      [
+        workKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: false,
+          employees: [nightEmp],
+        }),
+      ],
+    ]);
+    const { total } = buildMonthlyRuleSummary(
+      dayChunks,
+      [workKey],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+
+    expect(total.nightShiftWindowHours).toBe(8);
+    const flat = buildMonthlyDetailFlatValues({
+      si: 0,
+      summaries: { total },
+      fmt: fmtPayrollMonthlySummaryCell,
+    });
+    expect(String(flat[resolveMonthlyDetailFlatIndex(0, 15)]).trim()).not.toBe(
+      "",
+    );
+  });
+
+  it("S2 19:40–06:00 — chỉ tính khung 22–06 (= 8h), không cộng GC trước 22h", () => {
+    const workKey = "2026-03-05";
+    const dayChunks = new Map([
+      [
+        workKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          isCompensatoryDay: false,
+          employees: [
+            {
+              ...nightEmp,
+              gioVao: "19:40",
+              gioRa: "06:00",
+            },
+          ],
+        }),
+      ],
+    ]);
+    const { total } = buildMonthlyRuleSummary(
+      dayChunks,
+      [workKey],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+
     expect(total.nightShiftWindowHours).toBe(8);
   });
 
@@ -678,6 +739,271 @@ describe("buildMonthlyRuleSummary — Tổng ngày công", () => {
     expect(total.standardWorkDays).toBe(3);
     expect(total.workDays).toBe(1);
     expect(total.unpaidDays).toBe(2);
+  });
+});
+
+describe("buildMonthlyRuleSummary — khối THỜI GIAN THỬ VIỆC (ngày vào làm → trước ngày HĐ)", () => {
+  const empId = "e-trial-wd";
+  const trialKey = "2026-01-14";
+  const officialKey = "2026-01-16";
+  const joinKey = "2026-01-10";
+  const preJoinKey = "2026-01-08";
+
+  it("chỉ cộng ngày công từ ngày vào làm đến trước ngày HĐ vào trial.workDays", () => {
+    const workEmp = {
+      id: empId,
+      loaiPhep: "",
+      gioVao: "07:30",
+      gioRa: "16:30",
+      caLamViec: "S1",
+    };
+    const dayChunks = new Map([
+      [trialKey, makeChunk({ employees: [workEmp] })],
+      [officialKey, makeChunk({ employees: [workEmp] })],
+    ]);
+    const { total, trial, official } = buildMonthlyRuleSummary(
+      dayChunks,
+      [trialKey, officialKey],
+      empId,
+      { ngayVaoLam: "2020-01-01", ngayHopDong: officialKey },
+    );
+
+    expect(total.workDays).toBe(2);
+    expect(trial.workDays).toBe(1);
+    expect(official.workDays).toBe(1);
+    expect(trial.standardWorkDays).toBe(1);
+    expect(official.standardWorkDays).toBe(1);
+  });
+
+  it("bỏ qua ngày trước ngày vào làm trong khối thử việc", () => {
+    const workEmp = {
+      id: empId,
+      loaiPhep: "",
+      gioVao: "07:30",
+      gioRa: "16:30",
+      caLamViec: "S1",
+    };
+    const dayChunks = new Map([
+      [preJoinKey, makeChunk({ employees: [workEmp] })],
+      [joinKey, makeChunk({ employees: [workEmp] })],
+      [trialKey, makeChunk({ employees: [workEmp] })],
+      [officialKey, makeChunk({ employees: [workEmp] })],
+    ]);
+    const { total, trial, official } = buildMonthlyRuleSummary(
+      dayChunks,
+      [preJoinKey, joinKey, trialKey, officialKey],
+      empId,
+      { ngayVaoLam: joinKey, ngayHopDong: officialKey },
+    );
+
+    expect(total.workDays).toBe(3);
+    expect(trial.workDays).toBe(2);
+    expect(official.workDays).toBe(1);
+    expect(trial.standardWorkDays).toBe(2);
+  });
+
+  it("lưới tháng: cột Tổng ngày công khối thử việc = trial.workDays", () => {
+    const workEmp = {
+      id: empId,
+      loaiPhep: "",
+      gioVao: "07:30",
+      gioRa: "16:30",
+      caLamViec: "S1",
+    };
+    const dayChunks = new Map([
+      [trialKey, makeChunk({ employees: [workEmp] })],
+      [officialKey, makeChunk({ employees: [workEmp] })],
+    ]);
+    const summaries = buildMonthlyRuleSummary(
+      dayChunks,
+      [trialKey, officialKey],
+      empId,
+      { ngayVaoLam: "2020-01-01", ngayHopDong: officialKey },
+    );
+    const flat = buildMonthlyDetailFlatValues({
+      si: 0,
+      summaries,
+      coeffColBySubrow: MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+      fmt: fmtPayrollMonthlySummaryCell,
+      fmtLeave: (n) => String(n),
+      colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
+    });
+
+    const trialWorkDaysIdx = resolveMonthlyDetailFlatIndex(1, 0);
+    expect(flat[trialWorkDaysIdx]).toBe("1");
+    expect(flat[resolveMonthlyDetailFlatIndex(0, 1)]).toBe("2");
+  });
+
+  it("cả tháng làm việc: trial ≠ total khi ngày HĐ giữa tháng (vd. 6 vs 20 ngày công)", () => {
+    const monthKeys = listCalendarDateKeysForYearMonth("2026-07");
+    const workEmp = {
+      id: empId,
+      loaiPhep: "",
+      gioVao: "07:30",
+      gioRa: "16:30",
+      caLamViec: "S1",
+    };
+    const dayChunks = new Map();
+    for (const dk of monthKeys) {
+      const pd = new Date(`${dk}T12:00:00`);
+      if (pd.getDay() === 0) continue;
+      dayChunks.set(dk, makeChunk({ employees: [workEmp] }));
+    }
+    const { total, trial, official } = buildMonthlyRuleSummary(
+      dayChunks,
+      monthKeys,
+      empId,
+      { ngayVaoLam: "2026-01-01", ngayHopDong: "2026-07-07" },
+    );
+
+    expect(total.workDays).toBeGreaterThan(10);
+    expect(trial.workDays).toBe(5);
+    expect(official.workDays).toBeGreaterThan(10);
+    expect(trial.workDays).toBeLessThan(total.workDays);
+  });
+
+  it("đọc ngày HĐ từ dòng điểm danh khi rep thiếu ngày HĐ", () => {
+    const workEmp = {
+      id: empId,
+      loaiPhep: "",
+      gioVao: "07:30",
+      gioRa: "16:30",
+      caLamViec: "S1",
+      ngayHopDong: officialKey,
+    };
+    const dayChunks = new Map([
+      [trialKey, makeChunk({ employees: [workEmp] })],
+      [officialKey, makeChunk({ employees: [workEmp] })],
+    ]);
+    const { total, trial, official } = buildMonthlyRuleSummary(
+      dayChunks,
+      [trialKey, officialKey],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+
+    expect(total.workDays).toBe(2);
+    expect(trial.workDays).toBe(1);
+    expect(official.workDays).toBe(1);
+  });
+
+  it("mọi NV có HĐ giữa tháng — trial ≠ total (không chỉ một MNV cụ thể)", () => {
+    const monthKeys = listCalendarDateKeysForYearMonth("2026-07");
+    const cases = [
+      { rowId: "NV-A", join: "2026-07-01", contract: "2026-07-11" },
+      { rowId: "NV-B", join: "2026-07-05", contract: "2026-07-20" },
+      { rowId: "NV-C", join: "2026-07-09", contract: "2026-07-16" },
+    ];
+
+    for (const { rowId, join, contract } of cases) {
+      const workEmp = {
+        id: rowId,
+        mnv: rowId,
+        loaiPhep: "",
+        gioVao: "07:30",
+        gioRa: "16:30",
+        caLamViec: "S1",
+      };
+      const dayChunks = new Map();
+      for (const dk of monthKeys) {
+        if (dk < join) continue;
+        const pd = new Date(`${dk}T12:00:00`);
+        if (pd.getDay() === 0) continue;
+        const emp = {
+          ...workEmp,
+          ngayHopDong:
+            dk === contract ? contract : dk === monthKeys[monthKeys.length - 1] ? "2026-12-01" : "",
+        };
+        dayChunks.set(dk, makeChunk({ employees: [emp] }));
+      }
+
+      const { total, trial, official } = buildMonthlyRuleSummary(
+        dayChunks,
+        monthKeys,
+        rowId,
+        { ngayVaoLam: join, ngayHopDong: "2026-12-01", mnv: rowId },
+      );
+
+      expect(trial.workDays).toBeGreaterThan(0);
+      expect(official.workDays).toBeGreaterThan(0);
+      expect(trial.workDays).toBeLessThan(total.workDays);
+      expect(trial.workDays + official.workDays).toBe(total.workDays);
+    }
+  });
+
+  it("NV 260714 — vào 9/7, HĐ 16/7: trial ≈ 6, total ≈ 20 (không bị chunk ghi đè ngày HĐ)", () => {
+    const monthKeys = listCalendarDateKeysForYearMonth("2026-07");
+    const rowId = "260714";
+    const workEmp = {
+      id: rowId,
+      mnv: "260714",
+      loaiPhep: "",
+      gioVao: "07:30",
+      gioRa: "16:30",
+      caLamViec: "S1",
+    };
+    const dayChunks = new Map();
+    for (const dk of monthKeys) {
+      if (dk < "2026-07-09") continue;
+      const pd = new Date(`${dk}T12:00:00`);
+      if (pd.getDay() === 0) continue;
+      const emp = {
+        ...workEmp,
+        ngayHopDong: dk === "2026-07-31" ? "2026-12-01" : "",
+      };
+      dayChunks.set(dk, makeChunk({ employees: [emp] }));
+    }
+    const { total, trial, official } = buildMonthlyRuleSummary(
+      dayChunks,
+      monthKeys,
+      rowId,
+      { ngayVaoLam: "9/7/2026", ngayHopDong: "16/7/2026", mnv: "260714" },
+    );
+
+    expect(total.workDays).toBe(20);
+    expect(trial.workDays).toBe(6);
+    expect(official.workDays).toBe(14);
+    expect(trial.workDays).toBeLessThan(total.workDays);
+  });
+
+  it("NV 260714 — rep bị ngày HĐ sai: vẫn trial ≈ 6 khi chunk giữa tháng có 16/7", () => {
+    const monthKeys = listCalendarDateKeysForYearMonth("2026-07");
+    const rowId = "260714";
+    const workEmp = {
+      id: rowId,
+      mnv: "260714",
+      loaiPhep: "",
+      gioVao: "07:30",
+      gioRa: "16:30",
+      caLamViec: "S1",
+    };
+    const dayChunks = new Map();
+    for (const dk of monthKeys) {
+      if (dk < "2026-07-09") continue;
+      const pd = new Date(`${dk}T12:00:00`);
+      if (pd.getDay() === 0) continue;
+      const emp = {
+        ...workEmp,
+        ngayVaoLam: dk === "2026-07-09" ? "9/7/2026" : "",
+        ngayHopDong:
+          dk === "2026-07-16"
+            ? "16/7/2026"
+            : dk === "2026-07-31"
+              ? "2026-12-01"
+              : "",
+      };
+      dayChunks.set(dk, makeChunk({ employees: [emp] }));
+    }
+    const { total, trial, official } = buildMonthlyRuleSummary(
+      dayChunks,
+      monthKeys,
+      rowId,
+      { ngayHopDong: "2026-12-01", mnv: "260714" },
+    );
+
+    expect(total.workDays).toBe(20);
+    expect(trial.workDays).toBe(6);
+    expect(official.workDays).toBe(14);
   });
 });
 

@@ -323,21 +323,23 @@ export function getPayrollNightOtWindowHours22To06(timeIn, timeOut) {
   const b = parseHHMMToMinutes(timeOut);
   if (a == null || b == null) return 0;
 
-  const WIN_EVE_START = 22 * 60;
-  const WIN_MOR_END = 6 * 60;
-  const nextDay = b <= a;
-
+  const winMorningEnd = NIGHT_SHIFT_MONTHLY_WINDOW_END_MIN;
+  const winEveningStart = NIGHT_SHIFT_MONTHLY_WINDOW_START_MIN;
   let minutes = 0;
 
-  if (a >= WIN_EVE_START) {
-    const eveEnd = nextDay ? MINUTES_PER_DAY : Math.min(b, MINUTES_PER_DAY);
-    minutes += Math.max(0, eveEnd - a);
-    if (nextDay) {
-      minutes += Math.max(0, Math.min(b, WIN_MOR_END));
-    }
-  } else if (a <= WIN_MOR_END) {
-    const outMin = nextDay ? b : Math.min(b, WIN_MOR_END);
-    minutes += Math.max(0, outMin - a);
+  if (b <= a) {
+    const T0 = a;
+    const T1 = MINUTES_PER_DAY + b;
+    const winStart = winEveningStart;
+    const winEnd = MINUTES_PER_DAY + winMorningEnd;
+    const start = Math.max(T0, winStart);
+    const end = Math.min(T1, winEnd);
+    minutes = Math.max(0, end - start);
+  } else if (a <= winMorningEnd) {
+    const outMin = Math.min(b, winMorningEnd);
+    minutes = Math.max(0, outMin - a);
+  } else if (a >= winEveningStart) {
+    minutes = Math.max(0, Math.min(b, MINUTES_PER_DAY) - a);
   }
 
   if (minutes <= 0) return 0;
@@ -1667,8 +1669,12 @@ export function formatPayrollTableTotalDayGcCell(
   return payrollHoursCellDisplay(String(sum));
 }
 
-/** Tổng khối ca đêm: GC + TC (ngày off/lễ = đã gộp trong một cột GC ca đêm off/lễ). */
-export function formatPayrollTableTotalNightGcCell(
+/**
+ * Tổng khối ca đêm (số) — GC + TC; ngày off/lễ gộp một cột.
+ * Đồng bộ `formatPayrollTableTotalNightGcCell` và cột «Tổng GC ca đêm» lưới tháng.
+ * @returns {number}
+ */
+export function getPayrollTableTotalNightGcHoursNumeric(
   timeIn,
   timeOut,
   payrollOffLike,
@@ -1688,21 +1694,22 @@ export function formatPayrollTableTotalNightGcCell(
       includeTapVuInWorkingHours,
       includeThaiSanInWorkingHours,
     )
-  )
-    return PAYROLL_CELL_DASH;
+  ) {
+    return 0;
+  }
 
-  if (!isNightShiftCaLamViec(shiftCode)) return PAYROLL_CELL_DASH;
-  if (payrollOffLike) {
+  if (!isNightShiftCaLamViec(shiftCode)) return 0;
+
+  if (payrollOffLike || isHolidayDay) {
     const merged = getNightShiftPayrollOffHolidayMergedHoursNumeric(
       timeIn,
       timeOut,
       shiftCode,
       payrollEarlyOtPaperwork,
     );
-    const sum = merged == null ? 0 : merged;
-    if (sum === 0) return PAYROLL_CELL_DASH;
-    return payrollHoursCellDisplay(String(sum));
+    return merged == null || !Number.isFinite(merged) || merged <= 0 ? 0 : merged;
   }
+
   const parts = getNightShiftPayrollRegularHoursAndOtMinutes(
     timeIn,
     timeOut,
@@ -1710,9 +1717,7 @@ export function formatPayrollTableTotalNightGcCell(
     payrollEarlyOtPaperwork,
   );
   const regularHours =
-    parts != null && Number.isFinite(parts.regularHours)
-      ? parts.regularHours
-      : 0;
+    parts != null && Number.isFinite(parts.regularHours) ? parts.regularHours : 0;
   const otH = getNightShiftPayrollOvertimeHours(
     timeIn,
     timeOut,
@@ -1721,6 +1726,38 @@ export function formatPayrollTableTotalNightGcCell(
   );
   const overtimeHours = otH != null && Number.isFinite(otH) ? otH : 0;
   const sum = regularHours + overtimeHours;
+  return sum > 0 ? roundHoursToTenths(sum) : 0;
+}
+
+/** Tổng khối ca đêm: GC + TC (ngày off/lễ = đã gộp trong một cột GC ca đêm off/lễ). */
+export function formatPayrollTableTotalNightGcCell(
+  timeIn,
+  timeOut,
+  payrollOffLike,
+  shiftCode,
+  leaveType,
+  includeTapVuInWorkingHours = false,
+  includeThaiSanInWorkingHours = false,
+  includeTaiXeInWorkingHours = false,
+  includeTaiXeTongInWorkingHours = false,
+  payrollEarlyOtPaperwork = undefined,
+  payrollNightOtPaperwork = undefined,
+  isHolidayDay = false,
+) {
+  const sum = getPayrollTableTotalNightGcHoursNumeric(
+    timeIn,
+    timeOut,
+    payrollOffLike,
+    shiftCode,
+    leaveType,
+    includeTapVuInWorkingHours,
+    includeThaiSanInWorkingHours,
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
+    payrollEarlyOtPaperwork,
+    payrollNightOtPaperwork,
+    isHolidayDay,
+  );
   if (sum === 0) return PAYROLL_CELL_DASH;
   return payrollHoursCellDisplay(String(sum));
 }

@@ -61,6 +61,23 @@ export function resolveMonthlyDetailGroupAndCol(flatIdx) {
   return { groupIndex: 0, colInBlock: 0 };
 }
 
+/** Chỉ số cột 0-based — khối chi tiết trên lưới / Excel. */
+export function resolveMonthlyDetailBlockStart(layout, groupIndex) {
+  if (groupIndex === 1) return layout.trialDetailStart;
+  if (groupIndex === 2) return layout.officialDetailStart;
+  return layout.totalDetailStart;
+}
+
+/** Ghi `detailFlat` vào hàng xuất Excel — cùng map cột với PayrollMonthlyTimesheetModal. */
+export function assignMonthlyDetailFlatToExportRow(row, layout, detailFlat) {
+  if (!Array.isArray(detailFlat) || !row || !layout) return;
+  for (let flatIdx = 0; flatIdx < detailFlat.length; flatIdx += 1) {
+    const { groupIndex, colInBlock } = resolveMonthlyDetailGroupAndCol(flatIdx);
+    const blockStart = resolveMonthlyDetailBlockStart(layout, groupIndex);
+    row[blockStart + colInBlock] = detailFlat[flatIdx];
+  }
+}
+
 /** Nhãn nhóm SAT.S — lưới / in A3. */
 export const PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL = "SAT.S";
 

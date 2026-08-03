@@ -9,6 +9,11 @@ import {
   attendanceMnvStorageKey,
   businessEmployeeCode,
 } from "@/utils/attendanceEmployeeRecord";
+import {
+  pickBestPayrollContractDateForMonth,
+  pickBestPayrollJoinDateForMonth,
+  pickPayrollEmployeeProfileDates,
+} from "@/features/payroll/payrollEmployeeFields";
 
 /** Phân tách MNV và Firebase id khi cùng MNV có nhiều bản ghi. */
 export const PAYROLL_MONTH_ROW_ID_SEP = "__";
@@ -89,15 +94,17 @@ export function payrollMonthRepResolveBinding(rowId, rep) {
   };
 }
 
+/** Hồ sơ gộp từ chunk ngày — không gộp ngày vào làm/HĐ (chunk cuối tháng hay ghi sai). */
 const PAYROLL_MONTH_REP_PROFILE_LATEST_KEYS = [
   "hoVaTen",
   "mnv",
   "businessId",
   "mvt",
   "maBoPhan",
-  "ngayVaoLam",
-  "ngayHopDong",
 ];
+
+/** Chỉ lấy từ danh sách NV master khi enrich rep. */
+const PAYROLL_MONTH_REP_PROFILE_DATE_KEYS = ["ngayVaoLam", "ngayHopDong"];
 
 function mergePayrollMonthRepProfileFields(out, e, preferLatest) {
   const next = { ...out };
@@ -109,6 +116,17 @@ function mergePayrollMonthRepProfileFields(out, e, preferLatest) {
   }
   if (preferLatest && e.id) next.id = e.id;
   else if (!next.id && e.id) next.id = e.id;
+  return next;
+}
+
+function stripPayrollMonthRepProfileDates(emp) {
+  if (!emp) return emp;
+  const next = { ...emp };
+  for (const key of PAYROLL_MONTH_REP_PROFILE_DATE_KEYS) {
+    delete next[key];
+  }
+  delete next.joinDate;
+  delete next.contractDate;
   return next;
 }
 
@@ -372,7 +390,7 @@ export function payrollMonthRepresentativeEmployee(dayChunks, rowId) {
     }
 
     if (!out) {
-      out = { ...e };
+      out = stripPayrollMonthRepProfileDates(e);
       latestProfileDateKey = dk;
       continue;
     }
@@ -390,6 +408,158 @@ export function payrollMonthRepresentativeEmployee(dayChunks, rowId) {
     }
     if (latestBoPhan) out.boPhan = latestBoPhan;
     out.boPhanAll = [...boPhanAll];
+  }
+  return out;
+}
+
+function collectPayrollMonthProfileDateCandidates(
+  dayChunks,
+  monthKeys,
+  rowId,
+  employeeProfile,
+  field,
+) {
+  const candidates = [];
+  const add = (raw) => {
+    const s = String(raw ?? "").trim();
+    if (s) candidates.push(s);
+  };
+
+  const fromProfile = pickPayrollEmployeeProfileDates(employeeProfile);
+  add(field === "join" ? fromProfile.joinDate : fromProfile.contractDate);
+
+  for (const dk of monthKeys ?? []) {
+    const ch = dayChunks?.get?.(dk);
+    if (!ch) continue;
+    const emp = resolvePayrollMonthDayEmployee(ch, rowId, employeeProfile);
+    if (!emp) continue;
+    const dayDates = pickPayrollEmployeeProfileDates(emp);
+    add(field === "join" ? dayDates.joinDate : dayDates.contractDate);
+  }
+
+  return candidates;
+}
+
+function mergePayrollMonthRepProfileDatesFromMaster(out, master) {
+  const next = { ...out };
+  for (const key of PAYROLL_MONTH_REP_PROFILE_DATE_KEYS) {
+    const v = master[key];
+    if (v == null || String(v).trim() === "") continue;
+    next[key] = v;
+  }
+  return next;
+}
+
+/**
+ * Gộp ngày vào làm / ngày HĐ từ rep, danh sách NV master và từng dòng điểm danh trong tháng.
+ * Dùng trước `buildMonthlyRuleSummary` — tránh thiếu ngày HĐ khiến khối thử việc = khối tổng.
+ */
+export function resolvePayrollMonthEmployeeProfileForSummary(
+  dayChunks,
+  monthKeys,
+  rowId,
+  employeeProfile = {},
+) {
+  const joinCandidates = collectPayrollMonthProfileDateCandidates(
+    dayChunks,
+    monthKeys,
+    rowId,
+    employeeProfile,
+    "join",
+  );
+  const joinDate = pickBestPayrollJoinDateForMonth(joinCandidates, monthKeys);
+
+  const contractCandidates = collectPayrollMonthProfileDateCandidates(
+    dayChunks,
+    monthKeys,
+    rowId,
+    employeeProfile,
+    "contract",
+  );
+  const contractDate = pickBestPayrollContractDateForMonth(
+    contractCandidates,
+    monthKeys,
+    joinDate,
+  );
+
+  const next = { ...employeeProfile };
+  if (joinDate) {
+    next.ngayVaoLam = joinDate;
+    next.joinDate = joinDate;
+  }
+  if (contractDate) {
+    next.ngayHopDong = contractDate;
+    next.contractDate = contractDate;
+  }
+  return next;
+}
+
+/** Bổ sung ngày vào làm / ngày HĐ từ danh sách NV master (PayrollSalaryCalculator / AttendanceList). */
+export function buildPayrollMonthMasterEmployeeLookup(masterEmployees) {
+  const byKey = new Map();
+  const register = (key, emp) => {
+    const k = normalizePayrollMonthRowIdKey(key);
+    if (k && emp) byKey.set(k, emp);
+  };
+
+  for (const emp of masterEmployees ?? []) {
+    register(String(emp?.id ?? ""), emp);
+    register(businessEmployeeCode(emp), emp);
+    for (const alias of payrollMonthEmployeeRowAliases(emp)) {
+      register(alias, emp);
+    }
+  }
+  return byKey;
+}
+
+/** Khớp NV master với `rowId` lưới tháng — cùng alias như tra cứu chunk ngày. */
+export function resolvePayrollMonthMasterEmployee(rowId, rep, lookup) {
+  if (!lookup?.size) return null;
+
+  const { mnv, firebaseId } = parsePayrollMonthRowIdParts(rowId);
+  const rowKey = normalizePayrollMonthRowIdKey(rowId);
+  const keys = new Set([
+    firebaseId,
+    mnv,
+    rowKey,
+    attendanceMnvStorageKey(rep?.mnv ?? rep?.businessId),
+    businessEmployeeCode(rep),
+    rep?.id != null ? String(rep.id) : "",
+  ]);
+  for (const alias of payrollMonthEmployeeRowAliases(rep ?? {})) {
+    keys.add(alias);
+  }
+
+  for (const key of keys) {
+    const k = normalizePayrollMonthRowIdKey(key);
+    if (!k) continue;
+    const hit = lookup.get(k);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+export function enrichPayrollMonthRepByIdWithMasterEmployees(
+  repById,
+  masterEmployees,
+) {
+  if (!repById?.size) return repById;
+  if (!Array.isArray(masterEmployees) || !masterEmployees.length) {
+    return repById;
+  }
+
+  const lookup = buildPayrollMonthMasterEmployeeLookup(masterEmployees);
+  if (!lookup.size) return repById;
+
+  const out = new Map();
+  for (const [rowId, rep] of repById) {
+    const master = resolvePayrollMonthMasterEmployee(rowId, rep, lookup);
+    if (!master) {
+      out.set(rowId, rep);
+      continue;
+    }
+    const merged = mergePayrollMonthRepProfileFields(rep, master, true);
+    out.set(rowId, mergePayrollMonthRepProfileDatesFromMaster(merged, master));
   }
   return out;
 }

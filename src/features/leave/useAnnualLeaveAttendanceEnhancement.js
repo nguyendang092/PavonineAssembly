@@ -1,10 +1,4 @@
-import {
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from "react";
+import { useMemo } from "react";
 import { shouldSkipAnnualLeaveForAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 import { buildAttendanceAnnualLeaveDerivedMaps } from "./annualLeaveBalanceLookup";
 import {
@@ -22,7 +16,8 @@ const EMPTY_DERIVED = Object.freeze({
 });
 
 /**
- * Tải & tính điểm danh live — tách khỏi toolbar; tính nặng chạy sau transition.
+ * Tải & tính điểm danh live cho lưới quản lý phép năm.
+ * Chỉ coi đã tính xong khi có đủ dữ liệu điểm danh — tránh hiển thị số tạm sai cột ANNUAL LEAVE IN CURRENT YEAR.
  */
 export function useAnnualLeaveAttendanceEnhancement(
   year,
@@ -74,30 +69,22 @@ export function useAnnualLeaveAttendanceEnhancement(
     return null;
   }, [throughDateKey, yearMonthPrefix]);
 
-  const deferredAttendanceRoot = useDeferredValue(attendanceRoot);
-  const deferredPayrollMonthAttendanceRoot = useDeferredValue(
-    payrollMonthAttendanceRoot,
-  );
-  const attendanceRootForDerived = skipAttendance
-    ? null
-    : deferredAttendanceRoot;
+  const attendanceRootForDerived =
+    skipAttendance || !attendanceReady ? null : attendanceRoot;
   const payrollRootForMonthAccrual = skipAttendance
-    ? deferredPayrollMonthAttendanceRoot
-    : deferredAttendanceRoot;
+    ? payrollMonthAttendanceReady
+      ? payrollMonthAttendanceRoot
+      : null
+    : attendanceRootForDerived;
 
-  const [, startTransition] = useTransition();
-  const [attendanceUiReady, setAttendanceUiReady] = useState(false);
-
-  useEffect(() => {
-    if (skipAttendance || !attendanceReady) {
-      setAttendanceUiReady(false);
-      return;
-    }
-    startTransition(() => setAttendanceUiReady(true));
-  }, [skipAttendance, attendanceReady]);
+  const attendanceCalculated = skipAttendance
+    ? skipPayrollMonthAccrual ||
+      accrualYearMonths.length === 0 ||
+      payrollMonthAttendanceReady
+    : attendanceReady && Boolean(attendanceRoot) && Boolean(yearData);
 
   const attendanceDerived = useMemo(() => {
-    if (skipAttendance || !attendanceUiReady || !attendanceRootForDerived) {
+    if (!attendanceCalculated || skipAttendance || !attendanceRootForDerived) {
       return EMPTY_DERIVED;
     }
     return buildAttendanceAnnualLeaveDerivedMaps(
@@ -106,8 +93,8 @@ export function useAnnualLeaveAttendanceEnhancement(
       deductionFilter,
     );
   }, [
+    attendanceCalculated,
     attendanceRootForDerived,
-    attendanceUiReady,
     year,
     deductionFilter,
     skipAttendance,
@@ -115,12 +102,14 @@ export function useAnnualLeaveAttendanceEnhancement(
 
   const monthWorkSummaryByEmpKey = useMemo(() => {
     if (
+      !attendanceCalculated ||
       skipPayrollMonthAccrual ||
-      skipAttendance ||
-      !attendanceUiReady ||
       !yearData ||
       !payrollRootForMonthAccrual
     ) {
+      return {};
+    }
+    if (skipAttendance && !payrollMonthAttendanceReady) {
       return {};
     }
     return buildAnnualLeaveMonthWorkSummaryByEmpKey(
@@ -130,27 +119,24 @@ export function useAnnualLeaveAttendanceEnhancement(
       { attendanceRootPath },
     );
   }, [
+    attendanceCalculated,
     skipPayrollMonthAccrual,
-    attendanceUiReady,
     payrollRootForMonthAccrual,
     year,
     yearData,
     attendanceRootPath,
     skipAttendance,
+    payrollMonthAttendanceReady,
   ]);
 
-  const attendanceEnhancing = !skipAttendance && !attendanceReady;
-  const payrollEnhancing =
-    skipAttendance &&
-    includePayrollMonthAccrual &&
-    accrualYearMonths.length > 0 &&
-    !payrollMonthAttendanceReady;
+  const attendanceEnhancing = !attendanceCalculated;
 
   return {
     deductionsByEmpKey: attendanceDerived.deductionsByEmpKey,
     attendanceMonthlyByEmpKey: attendanceDerived.attendanceMonthlyByEmpKey,
     monthWorkSummaryByEmpKey,
-    attendanceEnhancing: attendanceEnhancing || payrollEnhancing,
+    attendanceEnhancing,
+    attendanceCalculated,
     attendanceReady: skipAttendance || attendanceReady,
   };
 }
