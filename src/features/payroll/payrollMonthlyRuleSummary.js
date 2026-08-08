@@ -16,6 +16,7 @@ import {
 import {
   MONTH_DETAIL_COLS_PER_BLOCK,
   MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW,
+  PAYROLL_MONTHLY_NIGHT_SHIFT_ALLOWANCE_VND,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
 import { isCompensatoryNbVisibleForDayContext } from "@/features/attendance/attendanceDayMeta";
 import {
@@ -52,6 +53,12 @@ export function fmtPayrollMonthlyLeaveDayCell(n) {
   if (!Number.isFinite(n) || n <= 0) return " ";
   if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
   return formatCoeffHoursForDisplay(n);
+}
+
+/** Ô phụ cấp ca đêm (VND) — số nguyên, có phân tách nghìn. */
+export function fmtPayrollMonthlyNightShiftAllowanceCell(n) {
+  if (!Number.isFinite(n) || n <= 0) return " ";
+  return Math.round(n).toLocaleString("vi-VN");
 }
 
 /** @deprecated Dùng `normalizePayrollProfileDateKey`. */
@@ -227,11 +234,16 @@ function compensatoryNbUnits(ch, emp) {
 
 function addPayrollMonthlyLeaveColumnCounts(out, emp, ch) {
   if (emp) {
+    const leaveRaw = getAttendanceLeaveTypeRaw(emp);
+    const leaveShort = leaveRaw
+      ? formatAttendanceLeaveTypeColumnDisplay(leaveRaw)
+      : "";
     const units = payrollMonthlyLeaveUnitsForEmployee(emp);
     out.pnDays += units.pn;
     out.klDays += units.kl;
     out.kpDays += units.kp;
     out.nbDays += Math.max(units.nb, compensatoryNbUnits(ch, emp));
+    out.tsDays += leaveUnitsByCode(leaveShort, "TS");
   } else {
     out.nbDays += compensatoryNbUnits(ch, null);
   }
@@ -325,6 +337,7 @@ export function buildMonthlyRuleSummary(
     nbDays: 0,
     klDays: 0,
     kpDays: 0,
+    tsDays: 0,
     coeff03: 0,
     coeff15: 0,
     coeff20: 0,
@@ -339,6 +352,8 @@ export function buildMonthlyRuleSummary(
     satsWorkDays: 0,
     /** Ca S2: giờ trong khung 22:00–06:00 (ngày hôm sau), tối đa 8h / ngày. */
     nightShiftWindowHours: 0,
+    /** Ca S2 — số ngày có ca làm việc (× phụ cấp). */
+    nightShiftAllowanceDays: 0,
     standardWorkDays: calendarStandardWorkDays,
   });
 
@@ -510,6 +525,12 @@ export function buildMonthlyRuleSummary(
     if (Number.isFinite(nightH) && nightH > 0) {
       out.nightShiftWindowHours += nightH;
     }
+
+    if (
+      isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT] ?? emp.caLamViec)
+    ) {
+      out.nightShiftAllowanceDays += 1;
+    }
   };
 
   for (const dk of monthKeys) {
@@ -548,20 +569,24 @@ export function buildMonthlyRuleSummary(
  * Hai cột khối TỔNG trên lưới tháng giờ công — dùng kiểm tra +1 phép tháng vào làm.
  * - `standardWorkDays` → «Ngày thực tế làm việc»
  * - `workDays` → «Tổng ngày công (gồm ngày nghỉ có lương)»
+ * - `tsDays` → «Số ngày nghỉ thai sản»
  */
 export function pickPayrollMonthlyTimesheetTotalWorkColumns(summary) {
   return {
     standardWorkDays: Number(summary?.standardWorkDays) || 0,
     workDays: Number(summary?.workDays) || 0,
+    tsDays: Number(summary?.tsDays) || 0,
   };
 }
 
-/** +1 phép tháng vào làm khi tổng ngày công ≥ ½ ngày thực tế làm việc (cùng lưới tháng). */
+/** +1 phép tháng khi đạt ngưỡng ½ ngày thực tế làm việc (tổng GC hoặc nghỉ TS). */
 export function payrollMonthlyJoinMonthMeetsAnnualLeaveAccrual(totalSummary) {
-  const { workDays, standardWorkDays } =
+  const { workDays, standardWorkDays, tsDays } =
     pickPayrollMonthlyTimesheetTotalWorkColumns(totalSummary);
   if (standardWorkDays <= 0) return false;
-  return workDays >= standardWorkDays / 2;
+  const halfStandard = standardWorkDays / 2;
+  if (tsDays >= halfStandard) return true;
+  return workDays >= halfStandard;
 }
 
 /** Chỉ số cột trong khối chi tiết (`MONTH_DETAIL_COLS_PER_BLOCK`). */
@@ -575,11 +600,13 @@ const DETAIL_COL_KP = 6;
 const DETAIL_COL_TC_START = 7;
 const DETAIL_COL_NB_DAY_COEFF20 = 13;
 const DETAIL_COL_NB_NIGHT_COEFF27 = 14;
-const DETAIL_COL_NIGHT_SHIFT_HOURS = 15;
+const DETAIL_COL_TS_DAYS = 15;
+const DETAIL_COL_NIGHT_SHIFT_ALLOWANCE = 16;
+const DETAIL_COL_NIGHT_SHIFT_HOURS = 17;
 
 /**
- * 16 cột một khối THỜI GIAN *.
- * - `si === 0`: ngày công + tổng TC (cột 7–12) + NB (13–14) + Tổng GC ca đêm (15).
+ * 18 cột một khối THỜI GIAN *.
+ * - `si === 0`: ngày công + tổng TC (cột 7–12) + NB (13–14) + TS + phụ cấp ca đêm + Tổng GC ca đêm (17).
  * - `si > 0`: mirror một ô TC tương ứng — cùng giá trị tổng, không tính lại.
  */
 function formatDetailSummaryHoursCell(fmt, fmtHours, n) {
@@ -593,6 +620,7 @@ function valuesForDetailBlock({
   fmt,
   fmtHours = null,
   fmtLeave = fmtPayrollMonthlyLeaveDayCell,
+  fmtAllowance = fmtPayrollMonthlyNightShiftAllowanceCell,
   colsPerBlock,
   includeSoNgayCong = true,
 }) {
@@ -634,6 +662,15 @@ function valuesForDetailBlock({
           summary.nbNightCoeff27,
         );
       }
+      if (idx === DETAIL_COL_TS_DAYS) {
+        return fmtLeave(summary.tsDays);
+      }
+      if (idx === DETAIL_COL_NIGHT_SHIFT_ALLOWANCE) {
+        return fmtAllowance(
+          summary.nightShiftAllowanceDays *
+            PAYROLL_MONTHLY_NIGHT_SHIFT_ALLOWANCE_VND,
+        );
+      }
       if (idx === DETAIL_COL_NIGHT_SHIFT_HOURS) {
         return formatDetailSummaryHoursCell(
           fmt,
@@ -665,12 +702,13 @@ export function buildMonthlyDetailFlatValues({
   fmt = fmtPayrollMonthlySummaryCell,
   fmtHours = null,
   fmtLeave = fmtPayrollMonthlyLeaveDayCell,
+  fmtAllowance = fmtPayrollMonthlyNightShiftAllowanceCell,
   colsPerBlock = MONTH_DETAIL_COLS_PER_BLOCK,
 }) {
   const total = summaries?.total ?? summaries ?? {};
   const trial = summaries?.trial ?? {};
   const official = summaries?.official ?? {};
-  const blockArgs = { si, coeffColBySubrow, fmt, fmtLeave, colsPerBlock };
+  const blockArgs = { si, coeffColBySubrow, fmt, fmtLeave, fmtAllowance, colsPerBlock };
   return [
     ...valuesForDetailBlock({
       ...blockArgs,
@@ -699,6 +737,8 @@ export function buildMonthlyDetailMatrixForEmployee(summaries, options = {}) {
   const fmt = options.fmt ?? fmtPayrollMonthlySummaryCell;
   const fmtHours = options.fmtHours ?? null;
   const fmtLeave = options.fmtLeave ?? fmtPayrollMonthlyLeaveDayCell;
+  const fmtAllowance =
+    options.fmtAllowance ?? fmtPayrollMonthlyNightShiftAllowanceCell;
   const colsPerBlock = options.colsPerBlock ?? MONTH_DETAIL_COLS_PER_BLOCK;
   return PAYROLL_MONTHLY_SUBROWS.map((_, si) =>
     buildMonthlyDetailFlatValues({
@@ -708,6 +748,7 @@ export function buildMonthlyDetailMatrixForEmployee(summaries, options = {}) {
       fmt,
       fmtHours,
       fmtLeave,
+      fmtAllowance,
       colsPerBlock,
     }),
   );

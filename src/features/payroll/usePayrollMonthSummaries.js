@@ -72,5 +72,6 @@ export function usePayrollMonthSummaries({
     monthlySummaryById,
     isSummariesBusy,
     summaryProgress,
+    summaryCacheRef: cacheRef,
   };
 }

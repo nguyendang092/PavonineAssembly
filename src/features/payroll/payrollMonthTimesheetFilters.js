@@ -3,7 +3,11 @@ import { employeeHasPayrollOvertimeHours, isAttendanceHalfPnLeaveType } from "@/
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
 import { getAttendanceWorkingHoursHours } from "@/features/attendance/attendanceWorkingHours";
 import { buildMonthlyRuleSummary } from "@/features/payroll/payrollMonthlyRuleSummary";
-import { resolvePayrollMonthDayEmployee } from "@/features/payroll/payrollMonthlyGridData";
+import {
+  comparePayrollMonthRowsByDepartment,
+  matchesPayrollMonthRowFilter,
+  resolvePayrollMonthDayEmployee,
+} from "@/features/payroll/payrollMonthlyGridData";
 import { resolveEffectivePayrollEarlyOtPaperwork } from "@/features/payroll/payrollEarlyOtMeta";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 
@@ -80,6 +84,41 @@ export function matchesPayrollMonthTimesheetPresenceFilter(
   return true;
 }
 
+/** Lọc + sắp xếp danh sách NV cho lưới tháng / xuất Excel. */
+export function filterPayrollMonthTimesheetRowIds({
+  sortedIds = [],
+  repById,
+  searchTerm = "",
+  departmentFilters,
+  normalizeDepartment,
+  needsPresenceFlags = false,
+  presenceFlagsById = null,
+  presenceFilters = {},
+}) {
+  return sortedIds
+    .filter((id) => {
+      const rep = repById?.get(id);
+      if (
+        !rep ||
+        !matchesPayrollMonthRowFilter(rep, {
+          searchTerm,
+          departmentFilters,
+          normalizeDepartment,
+        })
+      ) {
+        return false;
+      }
+      if (!needsPresenceFlags) return true;
+      return matchesPayrollMonthTimesheetPresenceFilter(
+        presenceFlagsById?.get(id),
+        presenceFilters,
+      );
+    })
+    .sort((a, b) =>
+      comparePayrollMonthRowsByDepartment(repById.get(a), repById.get(b)),
+    );
+}
+
 export function needsPayrollMonthTimesheetPresenceFlags({
   workHoursFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
   leaveTypeFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
@@ -92,6 +131,21 @@ export function needsPayrollMonthTimesheetPresenceFlags({
     overtimeFilter !== PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL ||
     shortHoursFilter !== PAYROLL_SHORT_HOURS_FILTER.ALL
   );
+}
+
+/** Số bộ lọc đang bật (khác «Tất cả») — badge trên nút Bộ lọc. */
+export function countActivePayrollTimesheetPresenceFilters({
+  workHoursFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  leaveTypeFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  overtimeFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  shortHoursFilter = PAYROLL_SHORT_HOURS_FILTER.ALL,
+} = {}) {
+  let count = 0;
+  if (workHoursFilter !== PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL) count += 1;
+  if (leaveTypeFilter !== PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL) count += 1;
+  if (overtimeFilter !== PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL) count += 1;
+  if (shortHoursFilter !== PAYROLL_SHORT_HOURS_FILTER.ALL) count += 1;
+  return count;
 }
 
 /**

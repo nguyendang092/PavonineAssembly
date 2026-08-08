@@ -22,6 +22,8 @@ import {
   assignMonthlyDetailFlatToExportRow,
   buildPayrollMonthlyTimesheetDetailHeadersByGroup,
   DETAIL_GROUP_KEYS,
+  MONTH_DETAIL_HOUR_COL_INDICES,
+  MONTH_DETAIL_ALLOWANCE_COL_INDICES,
   MONTH_DETAIL_OT_COL_COUNT,
   MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT,
   MONTH_DETAIL_WORKDAY_COL_COUNT,
@@ -48,6 +50,7 @@ const EXCEL_MAIN_SUBROW_HEIGHT = 26;
 const PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT = "0.0";
 /** Hai chữ số thập phân — Korean Timesheet khối THỜI GIAN LÀM VIỆC / HỢP ĐỒNG. */
 const PAYROLL_MONTHLY_EXCEL_HOURS_HUNDREDTHS_NUM_FMT = "0.00";
+const PAYROLL_MONTHLY_EXCEL_ALLOWANCE_NUM_FMT = "#,##0";
 
 function excelHoursOrEmpty(n) {
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -77,6 +80,11 @@ function uiSummaryFormatterToExcelFormatter(uiFmt, { hundredths = false } = {}) 
   };
 }
 
+function excelAllowanceOrEmpty(n) {
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n);
+}
+
 /** Formatter khối chi tiết — khớp PayrollMonthlyTimesheetModal / buildMonthlyDetailMatrixForEmployee. */
 export function buildPayrollMonthlyTimesheetExcelDetailFormatters(
   koreanTimesheetRules = false,
@@ -84,6 +92,7 @@ export function buildPayrollMonthlyTimesheetExcelDetailFormatters(
   return {
     fmt: uiSummaryFormatterToExcelFormatter(fmtPayrollMonthlySummaryCell),
     fmtLeave: excelLeaveCountOrEmpty,
+    fmtAllowance: excelAllowanceOrEmpty,
     fmtHours: koreanTimesheetRules
       ? uiSummaryFormatterToExcelFormatter(
           fmtPayrollMonthlySummaryHoursCell,
@@ -171,25 +180,19 @@ function applyPayrollMonthlyTimesheetExcelNumberFormats(
     : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
 
   const detailHourColSet = new Set();
+  const detailAllowanceColSet = new Set();
   if (koreanTimesheetRules) {
-    const blockOtRanges = [
-      {
-        blockStart: layout.totalDetailStart,
-        otStart: MONTH_DETAIL_WORKDAY_COL_COUNT,
-      },
-      {
-        blockStart: layout.trialDetailStart,
-        otStart: MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT,
-      },
-      {
-        blockStart: layout.officialDetailStart,
-        otStart: MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT,
-      },
+    const blockStarts = [
+      layout.totalDetailStart,
+      layout.trialDetailStart,
+      layout.officialDetailStart,
     ];
-    for (const { blockStart, otStart } of blockOtRanges) {
-      const otEnd = otStart + MONTH_DETAIL_OT_COL_COUNT - 1;
-      for (let rel = otStart; rel <= otEnd; rel += 1) {
+    for (const blockStart of blockStarts) {
+      for (const rel of MONTH_DETAIL_HOUR_COL_INDICES) {
         detailHourColSet.add(blockStart + rel + 1);
+      }
+      for (const rel of MONTH_DETAIL_ALLOWANCE_COL_INDICES) {
+        detailAllowanceColSet.add(blockStart + rel + 1);
       }
     }
   }
@@ -201,9 +204,11 @@ function applyPayrollMonthlyTimesheetExcelNumberFormats(
       : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
   }
   for (let c = detailColFirst; c <= maxCols; c += 1) {
-    sheet.getColumn(c).numFmt = detailHourColSet.has(c)
-      ? detailHourFmt
-      : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
+    sheet.getColumn(c).numFmt = detailAllowanceColSet.has(c)
+      ? PAYROLL_MONTHLY_EXCEL_ALLOWANCE_NUM_FMT
+      : detailHourColSet.has(c)
+        ? detailHourFmt
+        : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
   }
 
   for (let r = HEADER_ROW_COUNT + 1; r <= maxRow; r += 1) {
@@ -233,9 +238,11 @@ function applyPayrollMonthlyTimesheetExcelNumberFormats(
       const coerced = coercePayrollMonthlyExcelNumericCell(cell.value);
       cell.value = coerced;
       if (typeof coerced === "number") {
-        cell.numFmt = detailHourColSet.has(c)
-          ? detailHourFmt
-          : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
+        cell.numFmt = detailAllowanceColSet.has(c)
+          ? PAYROLL_MONTHLY_EXCEL_ALLOWANCE_NUM_FMT
+          : detailHourColSet.has(c)
+            ? detailHourFmt
+            : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
       }
     }
   }

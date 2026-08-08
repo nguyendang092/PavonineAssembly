@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPayrollMonthTimesheetFlagsById,
+  countActivePayrollTimesheetPresenceFilters,
   matchesPayrollMonthTimesheetPresenceFilter,
   PAYROLL_TIMESHEET_PRESENCE_FILTER,
   PAYROLL_SHORT_HOURS_FILTER,
@@ -266,5 +267,23 @@ describe("payrollMonthTimesheetFilters", () => {
         shortHoursFilter: PAYROLL_SHORT_HOURS_FILTER.UNDER_STANDARD,
       }),
     ).toBe(true);
+  });
+
+  it("countActivePayrollTimesheetPresenceFilters — badge số bộ lọc đang bật", () => {
+    expect(countActivePayrollTimesheetPresenceFilters()).toBe(0);
+    expect(
+      countActivePayrollTimesheetPresenceFilters({
+        workHoursFilter: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH,
+        leaveTypeFilter: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT,
+      }),
+    ).toBe(2);
+    expect(
+      countActivePayrollTimesheetPresenceFilters({
+        workHoursFilter: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH,
+        leaveTypeFilter: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH,
+        overtimeFilter: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT,
+        shortHoursFilter: PAYROLL_SHORT_HOURS_FILTER.UNDER_STANDARD,
+      }),
+    ).toBe(4);
   });
 });

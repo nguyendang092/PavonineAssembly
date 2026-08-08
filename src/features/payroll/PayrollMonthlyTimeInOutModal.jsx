@@ -453,7 +453,6 @@ export default function PayrollMonthlyTimeInOutModal({
     loadMonth,
   } = usePayrollMonthDayChunks({
     monthKeys: monthRange.keys,
-    liveEnabled: false,
     tlPage,
     emptyMessageKey: "monthlyTimeInOutEmpty",
     errorMessageKey: "monthlyTimeInOutError",
@@ -474,8 +473,8 @@ export default function PayrollMonthlyTimeInOutModal({
     setDayCellFormEmployees([]);
   }, [open]);
 
-  const { sortedIds, repById, chunkByDate, chunkByDateLive } =
-    usePayrollMonthEmployeeIndex(dayChunks, displayDayChunks);
+  const { sortedIds, repById, chunkByDate } =
+    usePayrollMonthEmployeeIndex(dayChunks);
 
   const gridOverlayCopy = useMemo(
     () =>
@@ -571,7 +570,7 @@ export default function PayrollMonthlyTimeInOutModal({
         });
         return;
       }
-      const ch = chunkByDateLive.get(dateKey);
+      const ch = chunkByDate.get(dateKey);
       if (!ch) return;
       const rep = repById.get(rowId);
       if (!rep) return;
@@ -616,7 +615,7 @@ export default function PayrollMonthlyTimeInOutModal({
     },
     [
       user,
-      chunkByDateLive,
+      chunkByDate,
       repById,
       userRole,
       userDepartments,
@@ -1006,11 +1005,11 @@ export default function PayrollMonthlyTimeInOutModal({
           void loadMonth();
         }}
         dayIsCompensatory={
-          chunkByDateLive.get(dayCellFormDate)?.isCompensatoryDay ?? false
+          chunkByDate.get(dayCellFormDate)?.isCompensatoryDay ?? false
         }
-        dayIsOffDay={chunkByDateLive.get(dayCellFormDate)?.isOffDay ?? false}
+        dayIsOffDay={chunkByDate.get(dayCellFormDate)?.isOffDay ?? false}
         dayIsHolidayDay={
-          chunkByDateLive.get(dayCellFormDate)?.isHolidayDay ?? false
+          chunkByDate.get(dayCellFormDate)?.isHolidayDay ?? false
         }
       />
     </>,

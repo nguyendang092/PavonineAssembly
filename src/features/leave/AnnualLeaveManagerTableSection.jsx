@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/contexts/UserContext";
 import { canManageAnnualLeave } from "@/config/authRoles";
@@ -8,6 +8,7 @@ import {
   buildAnnualLeaveMonthlyUsageByEmpKey,
   buildStoredMonthlyLeaveUsageByEmpKey,
   normalizeAnnualLeaveRowLive,
+  normalizeAnnualLeaveRowStored,
 } from "./annualLeaveDerived";
 import { filterAnnualLeaveManagerEntries } from "./annualLeaveManagerFilter";
 import { persistAnnualLeaveEmployeeAdjustment } from "./annualLeaveAttendanceSync";
@@ -43,6 +44,8 @@ function AnnualLeaveManagerTableSection({
     attendanceMonthlyByEmpKey,
     monthWorkSummaryByEmpKey,
     attendanceEnhancing,
+    attendanceUsageReady,
+    attendanceAccrualReady,
     attendanceCalculated,
   } = useAnnualLeaveAttendanceEnhancement(year, yearData, {
     includePayrollMonthAccrual: true,
@@ -75,49 +78,96 @@ function AnnualLeaveManagerTableSection({
 
   const usageThroughMonthIndex = resolveAnnualLeaveManagerMonthIndex(monthFilter);
 
-  const liveMapsRef = useRef({
-    deductionsByEmpKey: {},
-    monthlyByEmpKey: {},
-    monthWorkSummaryByEmpKey: {},
-  });
-  liveMapsRef.current = {
-    deductionsByEmpKey,
-    monthlyByEmpKey,
-    monthWorkSummaryByEmpKey,
-  };
+  const storedRowByEmpKey = useMemo(() => {
+    const map = {};
+    for (const entry of filteredEntries) {
+      const monthValues = storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
+      const row = normalizeAnnualLeaveRowStored(
+        entry.id,
+        entry._raw,
+        year,
+        monthValues,
+        { usageThroughMonthIndex },
+      );
+      if (row) map[entry.id] = row;
+    }
+    return map;
+  }, [
+    filteredEntries,
+    storedMonthlyByEmpKey,
+    year,
+    usageThroughMonthIndex,
+  ]);
 
   const normalizeEntryRow = useCallback(
     (entry) => {
-      const maps = liveMapsRef.current;
-      const monthValues = maps.monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
+      const monthValues = monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
       return normalizeAnnualLeaveRowLive(
         entry.id,
         entry._raw,
-        maps.deductionsByEmpKey,
+        deductionsByEmpKey,
         year,
         monthValues,
-        maps.monthWorkSummaryByEmpKey[entry.id] ?? null,
+        monthWorkSummaryByEmpKey[entry.id] ?? null,
         {
           asOfDateKey: detailThroughDateKey,
           usageThroughMonthIndex,
+          preferStoredCurrentYear: !attendanceAccrualReady,
         },
       );
     },
-    [detailThroughDateKey, usageThroughMonthIndex, year],
+    [
+      attendanceAccrualReady,
+      deductionsByEmpKey,
+      detailThroughDateKey,
+      monthlyByEmpKey,
+      monthWorkSummaryByEmpKey,
+      usageThroughMonthIndex,
+      year,
+    ],
   );
 
   useEffect(() => {
     if (!exportRef) return;
     exportRef.current = {
       getExportRows(filters) {
-        return filterAnnualLeaveManagerEntries(entries, filters, deptIndex)
-          .map((entry) => normalizeEntryRow(entry))
-          .filter(Boolean);
+        const filtered = filterAnnualLeaveManagerEntries(
+          entries,
+          filters,
+          deptIndex,
+        );
+        if (!attendanceCalculated) {
+          return filtered
+            .map((entry) => {
+              const monthValues =
+                storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
+              return normalizeAnnualLeaveRowStored(
+                entry.id,
+                entry._raw,
+                year,
+                monthValues,
+                { usageThroughMonthIndex },
+              );
+            })
+            .filter(Boolean);
+        }
+        return filtered.map((entry) => normalizeEntryRow(entry)).filter(Boolean);
       },
-      getMonthlyByEmpKey: () => liveMapsRef.current.monthlyByEmpKey,
+      getMonthlyByEmpKey: () => monthlyByEmpKey,
       getMonthColumnLabels: () => monthColumnLabels,
     };
-  }, [deptIndex, entries, exportRef, monthColumnLabels, normalizeEntryRow]);
+  }, [
+    attendanceCalculated,
+    deptIndex,
+    entries,
+    exportRef,
+    monthColumnLabels,
+    monthlyByEmpKey,
+    normalizeEntryRow,
+    storedMonthlyByEmpKey,
+    usageThroughMonthIndex,
+    year,
+  ]);
 
   const handleAdjustmentSave = useCallback(
     async (empKey, adjustment, raw) => {
@@ -169,7 +219,11 @@ function AnnualLeaveManagerTableSection({
       detailThroughDateKey={detailThroughDateKey}
       filterPending={filterPending}
       attendanceEnhancing={attendanceEnhancing}
+      attendanceUsageReady={attendanceUsageReady}
+      attendanceAccrualReady={attendanceAccrualReady}
       attendanceCalculated={attendanceCalculated}
+      storedRowByEmpKey={storedRowByEmpKey}
+      storedMonthlyByEmpKey={storedMonthlyByEmpKey}
       normalizeEntryRow={normalizeEntryRow}
       canManage={canManageLeave}
       adjustmentSavingId={adjustmentSavingId}

@@ -8,22 +8,30 @@ export const MONTHLY_TIMESHEET_STICKY_COL_COUNT = 5;
 export const PAYROLL_MONTHLY_DETAIL_COL_WIDTH_PX = 56;
 /** Độ rộng cột khối chi tiết khi xuất Excel (đơn vị ký tự). */
 export const PAYROLL_MONTHLY_DETAIL_COL_EXCEL_WIDTH = 12;
-export const MONTH_DETAIL_COLS_PER_BLOCK = 16;
-/** Khối tổng — đủ 16 cột (gồm «Ngày thực tế làm việc»). */
+export const MONTH_DETAIL_COLS_PER_BLOCK = 18;
+/** Khối tổng — đủ 18 cột (gồm «Ngày thực tế làm việc»). */
 export const MONTH_DETAIL_TOTAL_COLS_PER_BLOCK = MONTH_DETAIL_COLS_PER_BLOCK;
 /** Khối thử việc / hợp đồng — bỏ cột «Ngày thực tế làm việc». */
-export const MONTH_DETAIL_PHASE_COLS_PER_BLOCK = 15;
+export const MONTH_DETAIL_PHASE_COLS_PER_BLOCK = 17;
 /** Cột 0–6 trong khối tổng — «NGÀY LÀM VIỆC». */
 export const MONTH_DETAIL_WORKDAY_COL_COUNT = 7;
 /** Cột ngày làm việc khối thử việc / hợp đồng (không có «Ngày thực tế làm việc»). */
 export const MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT = 6;
-/** Cột 7–15 — «TĂNG CA (Hrs)» (6 TC + 2 NB + Tổng GC ca đêm). */
-export const MONTH_DETAIL_OT_COL_COUNT = 9;
+/** Cột 7–17 — «TĂNG CA (Hrs)» (6 TC + 2 NB + TS + phụ cấp ca đêm + Tổng GC ca đêm). */
+export const MONTH_DETAIL_OT_COL_COUNT = 11;
+/** Phụ cấp ca đêm (S2) — VND / ngày. */
+export const PAYROLL_MONTHLY_NIGHT_SHIFT_ALLOWANCE_VND = 50_000;
+/** Chỉ số cột giờ trong khối chi tiết (0-based) — dùng định dạng Excel giờ. */
+export const MONTH_DETAIL_HOUR_COL_INDICES = Object.freeze([
+  7, 8, 9, 10, 11, 12, 13, 14, 17,
+]);
+/** Chỉ số cột phụ cấp VND trong khối chi tiết (0-based). */
+export const MONTH_DETAIL_ALLOWANCE_COL_INDICES = Object.freeze([16]);
 /** Cột SAT.S — đã bỏ khỏi lưới / Excel. */
 export const MONTH_DETAIL_SATS_COL_COUNT = 0;
 export const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 
-/** Số cột từng khối chi tiết: tổng 16, thử việc/hợp đồng 15. */
+/** Số cột từng khối chi tiết: tổng 18, thử việc/hợp đồng 17. */
 export const MONTHLY_DETAIL_BLOCK_COL_COUNTS = Object.freeze([
   MONTH_DETAIL_TOTAL_COLS_PER_BLOCK,
   MONTH_DETAIL_PHASE_COLS_PER_BLOCK,
@@ -115,7 +123,7 @@ export function payrollMonthlyTimesheetLayoutOffsets(monthKeyCount) {
   };
 }
 
-/** 16 cột chi tiết — dùng chung lưới và Excel. */
+/** 18 cột chi tiết — dùng chung lưới và Excel. */
 export function buildPayrollMonthlyTimesheetDetailHeaders(
   tlPage,
   { includeSoNgayCong = true } = {},
@@ -136,6 +144,8 @@ export function buildPayrollMonthlyTimesheetDetailHeaders(
     tlPage("monthlyRuleColCoeff39", "TC đêm ngày lễ (×3.9)"),
     tlPage("monthlyRuleColNbDayCoeff20", "Giờ công ca ngày NB (×2.0)"),
     tlPage("monthlyRuleColNbNightCoeff27", "Giờ công ca đêm NB (×2.7)"),
+    tlPage("monthlyRuleColTsDays", "Số ngày nghỉ thai sản"),
+    tlPage("monthlyRuleColNightShiftAllowance", "Phụ cấp ca đêm"),
     tlPage("monthlyRuleColNightShiftTotalHours", "Tổng GC ca đêm"),
   ];
   return includeSoNgayCong ? headers : headers.slice(1);

@@ -8,6 +8,7 @@ import {
   resolveHrAnnualLeaveUsed,
   buildLiveAnnualLeaveBalanceByMnv,
   normalizeAnnualLeaveRowLive,
+  normalizeAnnualLeaveRowStored,
   sumAnnualLeaveMonthlyUsageValues,
 } from "./annualLeaveDerived";
 
@@ -152,6 +153,42 @@ describe("annualLeaveDerived", () => {
     );
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(1.5);
     expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(5.5);
+  });
+
+  it("normalizeAnnualLeaveRowStored uses Firebase snapshot without attendance", () => {
+    const raw = {
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 7,
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 2,
+      [ANNUAL_LEAVE_EMP.BALANCE]: 5,
+      [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "X",
+    };
+    const row = normalizeAnnualLeaveRowStored("emp_X", raw, 2026);
+    expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]).toBe(7);
+    expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(2);
+    expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(5);
+  });
+
+  it("preferStoredCurrentYear keeps Firebase accrual until payroll summary ready", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 24));
+
+    const raw = {
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 12,
+      [ANNUAL_LEAVE_EMP.START_WORKING_DATE]: "2016-01-10",
+      [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 0,
+    };
+    const passAll = {};
+    for (let m = 0; m <= 6; m += 1) {
+      passAll[`2026-${String(m + 1).padStart(2, "0")}`] = {
+        workDays: 14,
+        standardWorkDays: 22,
+      };
+    }
+    const state = computeLiveAnnualLeaveState(raw, 0, 2026, {
+      monthWorkSummaryByYearMonth: passAll,
+      preferStoredCurrentYear: true,
+    });
+    expect(state.annualLeaveCurrentYear).toBe(12);
   });
 
   it("applies monthly accrual and tenure in row normalize", () => {

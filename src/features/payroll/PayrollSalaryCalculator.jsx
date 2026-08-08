@@ -69,7 +69,6 @@ import {
 } from "@/features/payroll/payrollEarlyOtSession";
 import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimesheetModal";
 import PayrollMonthlyTimeInOutModal from "@/features/payroll/PayrollMonthlyTimeInOutModal";
-import PayrollTimesheetPresenceFilters from "@/features/payroll/PayrollTimesheetPresenceFilters";
 import {
   PAYROLL_TIMESHEET_PRESENCE_FILTER,
   PAYROLL_SHORT_HOURS_FILTER,
@@ -935,18 +934,6 @@ export default function PayrollSalaryCalculator() {
                 ? tlPage("annualLeaveBalance", "Phép năm")
                 : tlPage("annualLeaveBalanceFetch", "Lấy phép năm")}
             </button>
-            <PayrollTimesheetPresenceFilters
-              workHoursFilter={workHoursFilter}
-              leaveTypeFilter={leaveTypeFilter}
-              overtimeFilter={overtimeFilter}
-              shortHoursFilter={shortHoursFilter}
-              onWorkHoursFilterChange={setWorkHoursFilter}
-              onLeaveTypeFilterChange={setLeaveTypeFilter}
-              onOvertimeFilterChange={setOvertimeFilter}
-              onShortHoursFilterChange={setShortHoursFilter}
-              tl={tlPage}
-              disabled={isTableBusy}
-            />
           </div>
           <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto sm:justify-end">
             <PayrollToolsMenu
@@ -968,6 +955,16 @@ export default function PayrollSalaryCalculator() {
               showEarlyOtAction={earlyOtEligibleEmployees.length > 0}
               showLateOtAction={lateOtEligibleEmployees.length > 0}
               showNightOtAction
+              showPresenceFilters
+              workHoursFilter={workHoursFilter}
+              leaveTypeFilter={leaveTypeFilter}
+              overtimeFilter={overtimeFilter}
+              shortHoursFilter={shortHoursFilter}
+              onWorkHoursFilterChange={setWorkHoursFilter}
+              onLeaveTypeFilterChange={setLeaveTypeFilter}
+              onOvertimeFilterChange={setOvertimeFilter}
+              onShortHoursFilterChange={setShortHoursFilter}
+              filtersDisabled={isTableBusy}
             />
           </div>
         </div>

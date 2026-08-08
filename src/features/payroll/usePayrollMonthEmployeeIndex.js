@@ -9,8 +9,8 @@ function chunkByDateFromList(chunks) {
   return new Map((chunks ?? []).map((c) => [c.dateKey, c]));
 }
 
-/** STT, rep, map ngày — dùng `dayChunks` (mới nhất), không `displayDayChunks` (deferred). */
-export function usePayrollMonthEmployeeIndex(dayChunks, displayDayChunks) {
+/** STT, rep, map ngày — luôn dùng `dayChunks` mới nhất. */
+export function usePayrollMonthEmployeeIndex(dayChunks) {
   const sortedIds = useMemo(
     () => collectPayrollMonthSortedEmployeeIds(dayChunks),
     [dayChunks],
@@ -36,10 +36,5 @@ export function usePayrollMonthEmployeeIndex(dayChunks, displayDayChunks) {
     [dayChunks],
   );
 
-  const chunkByDateLive = useMemo(
-    () => chunkByDateFromList(dayChunks),
-    [dayChunks],
-  );
-
-  return { sortedIds, repById, chunkByDate, chunkByDateLive };
+  return { sortedIds, repById, chunkByDate };
 }

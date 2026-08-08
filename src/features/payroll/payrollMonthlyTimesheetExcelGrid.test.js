@@ -71,7 +71,7 @@ describe("payrollMonthlyTimesheetExcelGrid", () => {
     const uiMatrix = buildMonthlyDetailMatrixForEmployee(summaries, {
       fmt: fmtPayrollMonthlySummaryCell,
     });
-    const nightFlatIdx = resolveMonthlyDetailFlatIndex(0, 15);
+    const nightFlatIdx = resolveMonthlyDetailFlatIndex(0, 17);
     expect(String(uiMatrix[0][nightFlatIdx]).trim()).not.toBe("");
 
     const { grid, layout } = buildPayrollMonthlyTimesheetExcelGrid({
@@ -94,19 +94,19 @@ describe("payrollMonthlyTimesheetExcelGrid", () => {
   it("assignMonthlyDetailFlatToExportRow maps trial/official blocks separately", () => {
     const layout = {
       totalDetailStart: 10,
-      trialDetailStart: 26,
-      officialDetailStart: 41,
+      trialDetailStart: 28,
+      officialDetailStart: 45,
     };
-    const row = Array(60).fill(null);
-    const detailFlat = Array.from({ length: 46 }, (_, i) => i);
+    const row = Array(70).fill(null);
+    const detailFlat = Array.from({ length: 52 }, (_, i) => i);
     assignMonthlyDetailFlatToExportRow(row, layout, detailFlat);
 
     expect(row[10]).toBe(0);
-    expect(row[25]).toBe(15);
-    expect(row[26]).toBe(16);
-    expect(row[40]).toBe(30);
-    expect(row[41]).toBe(31);
-    expect(row[55]).toBe(45);
+    expect(row[27]).toBe(17);
+    expect(row[28]).toBe(18);
+    expect(row[44]).toBe(34);
+    expect(row[45]).toBe(35);
+    expect(row[61]).toBe(51);
   });
 
   it("excel detail formatters mirror UI display for hour cells", () => {

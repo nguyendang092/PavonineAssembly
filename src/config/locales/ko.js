@@ -1713,6 +1713,9 @@ const ko = {
     monthlyTimesheetCoeffL30: "공휴일 주간(합산): 계수 3,0.",
     monthlyTimesheetCoeffL39: "공휴일 야간(합산): 계수 3,9.",
     monthlyTimesheetReload: "새로고침",
+    monthlyTimesheetMonthPicker: "조회 월 선택",
+    monthlyTimesheetPrevMonth: "이전 달",
+    monthlyTimesheetNextMonth: "다음 달",
     monthlyTimesheetClose: "닫기",
     monthlyTimesheetZoomLabel: "격자 크기",
     monthlyTimesheetZoomOut: "격자 축소",
@@ -1720,12 +1723,6 @@ const ko = {
     monthlyTimesheetZoomReset: "기본",
     monthlyTimesheetZoomHint:
       "축소하면 한눈에, 확대하면 날짜 칸을 크게 볼 수 있습니다. 브라우저에 저장됩니다.",
-    monthlyTimesheetPrintA3: "A3 인쇄(근무시간)",
-    monthlyTimesheetPrintBlocked:
-      "브라우저가 새 창을 차단해 인쇄를 열 수 없습니다.",
-    monthlyTimesheetPrintA3Hint:
-      "A3 가로. «근무 시간» 블록만 인쇄(수습/계약 블록 제외).",
-    monthlyTimesheetPrintGenerated: "현재 그리드 필터 기준.",
     monthlyTimesheetLoading: "데이터를 불러오는 중...",
     monthlyTimesheetLoadingMore: "데이터를 불러오는 중...",
     monthlyTimesheetRendering: "표 업데이트 중…",
@@ -1760,6 +1757,11 @@ const ko = {
     monthlyTimesheetFilterAll: "전체",
     monthlyTimesheetFilterWith: "있음",
     monthlyTimesheetFilterWithout: "없음",
+    monthlyTimesheetFiltersMenu: "필터",
+    monthlyTimesheetFiltersMenuTitle: "월간 근태 필터",
+    monthlyTimesheetFiltersMenuHint:
+      "근무시간, 휴가 유형, 연장근무, 8시간 미만",
+    monthlyTimesheetFiltersClear: "필터 초기화",
     monthlyTimesheetExportExcel: "Excel보내기",
     monthlyTimesheetExportError: "Excel보내기 실패: {{error}}",
     monthlyTimesheetDayCellEditHint: "클릭하여 해당 일 출근을 수정합니다.",
@@ -1792,6 +1794,8 @@ const ko = {
     monthlyRuleColCoeff39: "공휴일 야간 (×3.9)",
     monthlyRuleColNbDayCoeff20: "보상휴 주간 근무 (×2.0)",
     monthlyRuleColNbNightCoeff27: "보상휴 야간 근무 (×2.7)",
+    monthlyRuleColTsDays: "출산휴가 일수",
+    monthlyRuleColNightShiftAllowance: "야간 근무 수당",
     monthlyRuleColSatsWorkDays: "토 OFF 근무일 / (×2.0)",
     monthlyRuleColSats27: "토 OFF (×2.7)",
     exportSheetTitle: "직원 근무시간표",

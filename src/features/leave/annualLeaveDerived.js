@@ -201,6 +201,7 @@ export function computeLiveAnnualLeaveState(
     usedFromMonthlySum = null,
     monthWorkSummaryByYearMonth = null,
     asOfDateKey = null,
+    preferStoredCurrentYear = false,
   } = {},
 ) {
   const hrUsed = resolveHrAnnualLeaveUsed(raw);
@@ -233,13 +234,68 @@ export function computeLiveAnnualLeaveState(
     balance: totals[ANNUAL_LEAVE_EMP.BALANCE],
     annualLeaveCurrentYear:
       year != null
-        ? resolveAnnualLeaveCurrentYear(raw, year, {
-            monthWorkSummaryByYearMonth,
-            asOfDateKey,
-          })
+        ? preferStoredCurrentYear
+          ? parseAnnualLeaveNumber(
+              raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
+            )
+          : resolveAnnualLeaveCurrentYear(raw, year, {
+              monthWorkSummaryByYearMonth,
+              asOfDateKey,
+            })
         : parseAnnualLeaveNumber(
             raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
           ),
+  };
+}
+
+/** Chuẩn hóa một dòng từ Firebase — hiển thị ngay, không cần điểm danh live. */
+export function normalizeAnnualLeaveRowStored(
+  id,
+  raw,
+  year = null,
+  monthValues = null,
+  { usageThroughMonthIndex = null } = {},
+) {
+  if (!raw || typeof raw !== "object") return null;
+  const empKey = resolveAnnualLeaveEmpFirebaseKey({ recordId: id, raw }) || id;
+  const storedMonths = monthValues ?? resolveStoredMonthlyLeaveUsage(raw);
+  const resolvedMonthValues =
+    storedMonths ?? Array.from({ length: 12 }, () => 0);
+  const monthlyUsed =
+    usageThroughMonthIndex != null
+      ? sumAnnualLeaveMonthlyUsageValuesThroughMonth(
+          resolvedMonthValues,
+          usageThroughMonthIndex,
+        )
+      : sumAnnualLeaveMonthlyUsageValues(resolvedMonthValues);
+  const totals = computeAnnualLeaveTotals(raw, year);
+  const hrUsed = resolveHrAnnualLeaveUsed(raw);
+  const storedUsed = parseAnnualLeaveNumber(
+    raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED],
+  );
+  const used =
+    monthlyUsed != null && storedMonths != null ? monthlyUsed : storedUsed;
+
+  return {
+    id: empKey,
+    ...raw,
+    annualLeaveCurrentYearBase: parseAnnualLeaveNumber(
+      raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
+    ),
+    [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: hrUsed,
+    [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: parseAnnualLeaveNumber(
+      raw[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED],
+    ),
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: used,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]:
+      totals[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR] ??
+      parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]),
+    [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]:
+      totals[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
+    [ANNUAL_LEAVE_EMP.BALANCE]: totals[ANNUAL_LEAVE_EMP.BALANCE],
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]: parseAnnualLeaveAdjustment(
+      raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT],
+    ),
   };
 }
 
@@ -299,6 +355,7 @@ export function normalizeAnnualLeaveRowLive(
   {
     asOfDateKey = null,
     usageThroughMonthIndex = null,
+    preferStoredCurrentYear = false,
   } = {},
 ) {
   if (!raw || typeof raw !== "object") return null;
@@ -317,6 +374,7 @@ export function normalizeAnnualLeaveRowLive(
     usedFromMonthlySum: monthlyUsed,
     monthWorkSummaryByYearMonth,
     asOfDateKey,
+    preferStoredCurrentYear,
   });
 
   return {

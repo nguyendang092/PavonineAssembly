@@ -19,17 +19,6 @@ function hasAnnualLeaveMonthUsage(value) {
   return Number.isFinite(n) && n > 0;
 }
 
-function AnnualLeaveCalculatedCell({ ready, children, className = "" }) {
-  if (!ready) {
-    return (
-      <span className="annual-leave-month-empty font-normal" aria-hidden="true">
-        —
-      </span>
-    );
-  }
-  return children;
-}
-
 function AnnualLeaveManagerTableRow({
   row,
   raw,
@@ -40,7 +29,8 @@ function AnnualLeaveManagerTableRow({
   canManage = false,
   adjustmentSaving = false,
   onAdjustmentSave,
-  attendanceCalculated = true,
+  attendanceUsageReady = false,
+  attendanceAccrualReady = false,
 }) {
   const sticky = (colIndex) =>
     annualLeaveStickyColClass(colIndex, { rowIndex: index });
@@ -74,20 +64,26 @@ function AnnualLeaveManagerTableRow({
           fullYear: true,
         })}
       </td>
-      <td className={`${tdNum} ${sticky(7)}`}>
-        <AnnualLeaveCalculatedCell ready={attendanceCalculated}>
-          {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR])}
-        </AnnualLeaveCalculatedCell>
+      <td
+        className={`${tdNum} ${sticky(7)}${
+          !attendanceAccrualReady ? " annual-leave-cell--pending" : ""
+        }`}
+      >
+        {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR])}
       </td>
-      <td className={`${tdNum} font-bold ${sticky(8)}`}>
-        <AnnualLeaveCalculatedCell ready={attendanceCalculated}>
-          {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED])}
-        </AnnualLeaveCalculatedCell>
+      <td
+        className={`${tdNum} font-bold ${sticky(8)}${
+          !attendanceUsageReady ? " annual-leave-cell--pending" : ""
+        }`}
+      >
+        {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED])}
       </td>
-      <td className={`${tdNum} annual-leave-balance-cell ${sticky(9)}`}>
-        <AnnualLeaveCalculatedCell ready={attendanceCalculated}>
-          {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.BALANCE])}
-        </AnnualLeaveCalculatedCell>
+      <td
+        className={`${tdNum} annual-leave-balance-cell ${sticky(9)}${
+          !attendanceUsageReady ? " annual-leave-cell--pending" : ""
+        }`}
+      >
+        {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.BALANCE])}
       </td>
       {monthValues.map((value, monthIdx) => (
         <td
@@ -96,7 +92,7 @@ function AnnualLeaveManagerTableRow({
             hasAnnualLeaveMonthUsage(value)
               ? " annual-leave-month-cell-used"
               : ""
-          }`}
+          }${!attendanceUsageReady ? " annual-leave-cell--pending" : ""}`}
         >
           {hasAnnualLeaveMonthUsage(value) ? (
             formatAnnualLeaveDecimal(value)
@@ -142,7 +138,8 @@ function areAnnualLeaveManagerTableRowPropsEqual(prev, next) {
     prev.canManage === next.canManage &&
     prev.adjustmentSaving === next.adjustmentSaving &&
     prev.onAdjustmentSave === next.onAdjustmentSave &&
-    prev.attendanceCalculated === next.attendanceCalculated
+    prev.attendanceUsageReady === next.attendanceUsageReady &&
+    prev.attendanceAccrualReady === next.attendanceAccrualReady
   );
 }
 

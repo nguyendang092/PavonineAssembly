@@ -15,12 +15,16 @@ const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
 function AnnualLeaveManagerTablePanel({
   filteredEntries,
   monthlyByEmpKey,
+  storedMonthlyByEmpKey = {},
+  storedRowByEmpKey = {},
   year,
   monthFilter = "",
   monthColumnLabels,
   detailThroughDateKey,
   filterPending = false,
   attendanceEnhancing = false,
+  attendanceUsageReady = false,
+  attendanceAccrualReady = false,
   attendanceCalculated = true,
   normalizeEntryRow,
   canManage = false,
@@ -36,16 +40,22 @@ function AnnualLeaveManagerTablePanel({
 
   const pagedLiveRows = useMemo(
     () =>
-      tablePagination.pagedItems.map((entry, localIdx) => ({
-        entry,
-        row: attendanceCalculated ? normalizeEntryRow(entry) : null,
-        index: tablePagination.rowIndexOffset + localIdx,
-      })),
+      tablePagination.pagedItems.map((entry, localIdx) => {
+        const storedRow = storedRowByEmpKey[entry.id] ?? null;
+        const liveRow = attendanceUsageReady ? normalizeEntryRow(entry) : null;
+        return {
+          entry,
+          row: liveRow ?? storedRow ?? entry._raw,
+          index: tablePagination.rowIndexOffset + localIdx,
+        };
+      }),
     [
-      attendanceCalculated,
+      attendanceAccrualReady,
+      attendanceUsageReady,
+      normalizeEntryRow,
+      storedRowByEmpKey,
       tablePagination.pagedItems,
       tablePagination.rowIndexOffset,
-      normalizeEntryRow,
     ],
   );
 
@@ -185,13 +195,16 @@ function AnnualLeaveManagerTablePanel({
                     year={year}
                     throughDateKey={detailThroughDateKey}
                     monthValues={filterAnnualLeaveManagerMonthValues(
-                      monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES,
+                      attendanceUsageReady
+                        ? monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES
+                        : storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES,
                       monthFilter,
                     )}
                     canManage={canManage}
                     adjustmentSaving={adjustmentSavingId === entry.id}
                     onAdjustmentSave={onAdjustmentSave}
-                    attendanceCalculated={attendanceCalculated}
+                    attendanceUsageReady={attendanceUsageReady}
+                    attendanceAccrualReady={attendanceAccrualReady}
                   />
                 ))
               )}
@@ -221,12 +234,16 @@ function areTablePanelPropsEqual(prev, next) {
   return (
     prev.filteredEntries === next.filteredEntries &&
     prev.monthlyByEmpKey === next.monthlyByEmpKey &&
+    prev.storedMonthlyByEmpKey === next.storedMonthlyByEmpKey &&
+    prev.storedRowByEmpKey === next.storedRowByEmpKey &&
     prev.year === next.year &&
     prev.monthFilter === next.monthFilter &&
     prev.monthColumnLabels === next.monthColumnLabels &&
     prev.detailThroughDateKey === next.detailThroughDateKey &&
     prev.filterPending === next.filterPending &&
     prev.attendanceEnhancing === next.attendanceEnhancing &&
+    prev.attendanceUsageReady === next.attendanceUsageReady &&
+    prev.attendanceAccrualReady === next.attendanceAccrualReady &&
     prev.attendanceCalculated === next.attendanceCalculated &&
     prev.normalizeEntryRow === next.normalizeEntryRow &&
     prev.canManage === next.canManage &&

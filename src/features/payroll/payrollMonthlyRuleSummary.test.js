@@ -165,7 +165,7 @@ describe("buildMonthlyRuleSummary — SAT.S thứ Bảy OFF", () => {
       summaries: { total },
       fmt: fmtPayrollMonthlySummaryCell,
     });
-    expect(String(flat[resolveMonthlyDetailFlatIndex(0, 15)]).trim()).not.toBe(
+    expect(String(flat[resolveMonthlyDetailFlatIndex(0, 17)]).trim()).not.toBe(
       "",
     );
   });
@@ -1292,5 +1292,56 @@ describe("buildMonthlyRuleSummary — Nghỉ bù (NB)", () => {
     });
     expect(flat[13]).not.toBe(" ");
     expect(flat[14]).not.toBe(" ");
+  });
+
+  it("đếm TS và phụ cấp ca đêm S2 vào cột chi tiết lưới tháng", () => {
+    const tsKey = "2026-02-10";
+    const s2Key = "2026-02-11";
+    const dayChunks = new Map([
+      [
+        tsKey,
+        makeChunk({
+          employees: [{ id: empId, loaiPhep: "Thai sản", caLamViec: "S1" }],
+        }),
+      ],
+      [
+        s2Key,
+        makeChunk({
+          employees: [
+            {
+              id: empId,
+              loaiPhep: "",
+              caLamViec: "S2",
+              gioVao: "22:00",
+              gioRa: "06:00",
+            },
+          ],
+        }),
+      ],
+    ]);
+    const summaries = buildMonthlyRuleSummary(
+      dayChunks,
+      [tsKey, s2Key],
+      empId,
+      { ngayVaoLam: "2020-01-01" },
+    );
+
+    expect(summaries.total.tsDays).toBe(1);
+    expect(summaries.total.nightShiftAllowanceDays).toBe(1);
+    expect(summaries.official.tsDays).toBe(1);
+    expect(summaries.official.nightShiftAllowanceDays).toBe(1);
+    expect(summaries.trial.tsDays).toBe(0);
+
+    const flat = buildMonthlyDetailFlatValues({
+      si: 0,
+      summaries,
+      fmt: fmtPayrollMonthlySummaryCell,
+      fmtHours: fmtPayrollMonthlySummaryHoursCell,
+      colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
+    });
+    expect(flat[resolveMonthlyDetailFlatIndex(0, 15)]).toBe("1");
+    expect(flat[resolveMonthlyDetailFlatIndex(0, 16)]).toBe("50.000");
+    expect(flat[resolveMonthlyDetailFlatIndex(2, 14)]).toBe("1");
+    expect(flat[resolveMonthlyDetailFlatIndex(2, 15)]).toBe("50.000");
   });
 });

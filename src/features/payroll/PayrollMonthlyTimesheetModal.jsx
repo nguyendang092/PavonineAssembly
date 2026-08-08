@@ -11,15 +11,13 @@ import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { buildPayrollMonthDayCellFormRecord } from "@/features/payroll/buildPayrollDayFromRaw";
 import {
-  comparePayrollMonthRowsByDepartment,
   enrichPayrollMonthRepByIdWithMasterEmployees,
   formatPayrollMonthWeekday3,
-  matchesPayrollMonthRowFilter,
   resolvePayrollMonthDayEmployee,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
   buildPayrollMonthTimesheetFlagsById,
-  matchesPayrollMonthTimesheetPresenceFilter,
+  filterPayrollMonthTimesheetRowIds,
   needsPayrollMonthTimesheetPresenceFlags,
   PAYROLL_TIMESHEET_PRESENCE_FILTER,
   PAYROLL_SHORT_HOURS_FILTER,
@@ -38,10 +36,8 @@ import {
   buildMonthlyDetailMatrixForEmployee,
   fmtPayrollMonthlySummaryHoursCell,
   isPayrollMonthDayCellBeforeJoinWithoutAttendance,
-  isPayrollMonthDayOnOrAfterJoin,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
-  buildPayrollMonthlyTimesheetDetailHeaders,
   buildPayrollMonthlyTimesheetDetailHeadersByGroup,
   DETAIL_GROUP_KEYS,
   MONTH_DETAIL_COLS_PER_BLOCK,
@@ -51,9 +47,7 @@ import {
   MONTH_DETAIL_SATS_COL_COUNT,
   MONTH_DETAIL_TOTAL_COLS_PER_BLOCK,
   MONTH_DETAIL_WORKDAY_COL_COUNT,
-  monthlyDetailBlockColCount,
   PAYROLL_MONTHLY_DETAIL_COL_WIDTH_PX,
-  PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL,
   payrollMonthlyTimesheetTotalColCount,
   resolveMonthlyDetailGroupAndCol,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
@@ -74,8 +68,6 @@ import {
   getAttendanceLeaveTypeCompactBadgeClassName,
   getAttendanceLeaveTypeEmphasisBadgeClassName,
   getAttendanceLeaveTypeEmphasisCellClassName,
-  getAttendanceLeaveTypeEmphasisPrintCellBg,
-  getAttendanceLeaveTypeEmphasisPrintStyleAttr,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import AttendanceOffHolidayDaysControl from "@/features/attendance/AttendanceOffHolidayDaysControl";
@@ -91,8 +83,9 @@ import { usePayrollMonthEmployeeIndex } from "@/features/payroll/usePayrollMonth
 import { usePayrollMonthSummaries } from "@/features/payroll/usePayrollMonthSummaries";
 import { computePayrollMonthSummariesForIds } from "@/features/payroll/payrollMonthSummaryCompute";
 import PayrollDepartmentMultiSelect from "@/features/payroll/PayrollDepartmentMultiSelect";
+import PayrollMonthNavigator from "@/features/payroll/PayrollMonthNavigator";
 import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
-import PayrollTimesheetPresenceFilters from "@/features/payroll/PayrollTimesheetPresenceFilters";
+import PayrollTimesheetPresenceFiltersMenu from "@/features/payroll/PayrollTimesheetPresenceFiltersMenu";
 import { payrollExportDepartmentFilenameSuffix } from "@/features/payroll/payrollExportDepartmentFilter";
 import "./payrollMonthlyTimesheetModal.css";
 
@@ -104,8 +97,6 @@ const MONTH_DAY_COL_WIDTH = 42;
 function payrollMonthlyEmpBlockScrollHeight(zoom = 1) {
   return PAYROLL_MONTHLY_SUBROWS.length * MONTH_DAY_COL_WIDTH * zoom;
 }
-/** Độ rộng mỗi cột khối «THỜI GIAN LÀM VIỆC» trên bản in A3 (mm). */
-const A3_PRINT_DETAIL_COL_WIDTH_MM = 9;
 /** Dưới ngưỡng này render đủ dòng; từ ngưỡng trở lên ảo hóa theo khối NV để tránh OOM. */
 const MONTHLY_TIMESHEET_VIRTUAL_THRESHOLD = 14;
 const MONTH_HEADER_ROW_TOPS_DEFAULT = {
@@ -169,10 +160,6 @@ const MONTH_DAY_MAIN_VALUE_CLASS =
   "pm-ts-day-value tabular-nums text-black dark:text-black";
 
 const MONTH_DAY_LEAVE_BADGE_BASE_CLASS = "pm-ts-leave-badge";
-
-/** In A3 — cùng cỡ với ô ngày dòng chính (6.5pt). */
-const MONTH_DAY_PRINT_MAIN_FONT_STYLE =
-  "font-size:6.5pt;line-height:1;font-weight:700";
 
 /** Ô ngày: class + props a11y khi được phép mở form điểm danh. */
 function payrollMonthTimesheetDayCellA11y({
@@ -257,446 +244,6 @@ function monthHeaderStickyStyle(top, zIndex) {
   };
 }
 
-/** Màu nền ô ngày — bản in A3. */
-function monthTimesheetDayBgPrint(ch, pd) {
-  if (pd?.getDay() === 0) return "#C7C7C7";
-  if (!ch) return "#f8fafc";
-  if (ch.isHolidayDay) return "#ffe4e6";
-  if (ch.isCompensatoryDay) return "#ccfbf1";
-  if (ch.isOffDay) return "#fef9c3";
-  if (pd?.getDay() === 6) return "#94a3b8";
-  return "#f1f5f9";
-}
-
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/** Tách nhãn cột chi tiết in A3 thành 2 dòng ngang (dòng 2 thường là hệ số / mã viết tắt). */
-function splitA3PrintDetailHeaderTwoLines(text) {
-  const s = String(text ?? "").trim();
-  if (!s) return ["", ""];
-  const coeffParen = s.match(/^(.+?)\s*(\(x[\d.]+\))\s*$/i);
-  if (coeffParen) return [coeffParen[1].trim(), coeffParen[2].trim()];
-  const genericParen = s.match(/^(.+?)\s*(\([^)]+\))\s*$/);
-  if (genericParen) return [genericParen[1].trim(), genericParen[2].trim()];
-  const slashBreak = s.match(/^(.+?\/)\s*(.+)$/);
-  if (slashBreak && slashBreak[2].length > 4) {
-    return [slashBreak[1].trim(), slashBreak[2].trim()];
-  }
-  const words = s.split(/\s+/);
-  if (words.length <= 1) return [s, ""];
-  const mid = Math.ceil(words.length / 2);
-  return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
-}
-
-function a3PrintDetailHeadTwoLines(text) {
-  const [line1, line2] = splitA3PrintDetailHeaderTwoLines(text);
-  const l2 = line2
-    ? `<br/><span class="pct-print-detail-line2">${escapeHtml(line2)}</span>`
-    : "";
-  return `<div class="pct-print-detail-2line"><span class="pct-print-detail-line1">${escapeHtml(line1)}</span>${l2}</div>`;
-}
-
-/**
- * Cửa sổ in A3 ngang: STT, tên, BP, hệ số TC + ngày trong tháng + khối «THỜI GIAN LÀM VIỆC»
- * (không in «Ngày vào làm» / «Ngày HĐ»; không in khối «THỜI GIAN THỬ VIỆC» / «THỜI GIAN HỢP ĐỒNG»).
- */
-function buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
-  monthKeys,
-  filteredIds,
-  repById,
-  chunkByDate,
-  summaryById,
-  detailHeaders,
-  labels,
-  employeeDayCellsById,
-  fmtHours = null,
-}) {
-  const dayCellBg = (ch, pd) => monthTimesheetDayBgPrint(ch, pd);
-
-  const appendDayCells = (rowDays, sr, isLastSub, parts) => {
-    for (const dayCell of rowDays) {
-      const pd = parseLocalDateKey(dayCell.dateKey);
-      const ch = dayCell.chunk;
-      const bg = dayCellBg(ch, pd);
-      const btm = isLastSub ? "border-bottom:2px solid #000" : "";
-      if (dayCell.beforeJoin || !ch) {
-        parts.push(`<td style="background:${bg};${btm}"> </td>`);
-        continue;
-      }
-      if (!dayCell.emp) {
-        const dayCode =
-          sr.coeff == null
-            ? escapeHtml(String(payrollMonthMainRowDashMark(ch, null)).trim())
-            : " ";
-        parts.push(
-          `<td style="background:${bg};${btm};text-align:center;font-weight:700">${dayCode || " "}</td>`,
-        );
-        continue;
-      }
-      if (sr.coeff == null) {
-        const main = dayCell.main;
-        let inner = " ";
-        if (main.kind === "leave") {
-          inner = `<span style="${getAttendanceLeaveTypeEmphasisPrintStyleAttr(main.leaveRaw, main.leaveShort)}">${escapeHtml(main.leaveShort || "")}</span>`;
-        } else if (main.kind === "hours") {
-          inner = `<span style="${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(formatCoeffHoursForDisplay(main.hours))}</span>`;
-        } else {
-          const dayMark = payrollMonthMainRowDashMark(ch, dayCell.emp);
-          inner = `<span style="${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${escapeHtml(String(dayMark))}</span>`;
-        }
-        parts.push(
-          `<td style="background:${main.kind === "leave" ? getAttendanceLeaveTypeEmphasisPrintCellBg(main.leaveRaw) : bg};${btm};text-align:center;vertical-align:middle;${MONTH_DAY_PRINT_MAIN_FONT_STYLE}">${inner}</td>`,
-        );
-        continue;
-      }
-      const coeffTxt = formatPayrollMonthlyCoeffSubrowDayCell({
-        emp: dayCell.emp,
-        ch,
-        sr,
-        coeffMap: dayCell.coeffMap,
-        main: dayCell.main,
-      });
-      const txt = coeffTxt ? escapeHtml(String(coeffTxt)) : " ";
-      parts.push(
-        `<td style="background:${bg};${btm};text-align:center;font-family:monospace;font-weight:700;font-size:6.5pt">${txt}</td>`,
-      );
-    }
-  };
-
-  const rot = (inner) =>
-    `<div class="pct-print-rot-wrap"><span class="pct-print-vneg90">${inner}</span></div>`;
-
-  const vmode = (inner) => `<div class="pct-print-vmode">${inner}</div>`;
-
-  const theadParts = [];
-  theadParts.push("<tr>");
-  theadParts.push(
-    `<th rowspan="3" class="pct-print-rot-cell pct-print-rot-stt">${rot(escapeHtml(labels.stt))}</th>`,
-  );
-  theadParts.push(
-    `<th rowspan="3" class="pct-print-rot-cell pct-print-rot-name">${vmode(escapeHtml(labels.name))}</th>`,
-  );
-  theadParts.push(
-    `<th rowspan="3" class="pct-print-rot-cell pct-print-rot-mnv">${vmode(escapeHtml(labels.mnv))}</th>`,
-  );
-  theadParts.push(
-    `<th rowspan="3" class="pct-print-rot-cell pct-print-rot-dept">${vmode(escapeHtml(labels.dept))}</th><th rowspan="3">${escapeHtml(labels.coeff)}</th>`,
-  );
-  theadParts.push(
-    `<th colspan="${monthKeys.length}" style="background:#e2e8f0">${escapeHtml(labels.daysBanner)}</th>`,
-  );
-  theadParts.push(
-    `<th colspan="${MONTH_DETAIL_COLS_PER_BLOCK}" style="background:#e2e8f0;border-left:2px solid #000">${escapeHtml(labels.workTimeTitle)}</th>`,
-  );
-  theadParts.push("</tr><tr>");
-  for (const dk of monthKeys) {
-    const pd = parseLocalDateKey(dk);
-    const dom = pd ? String(pd.getDate()).padStart(2, "0") : "";
-    const wd = formatPayrollMonthWeekday3(pd);
-    const ch = chunkByDate.get(dk);
-    const bg = dayCellBg(ch, pd);
-    theadParts.push(
-      `<th rowspan="2" style="background:${bg};font-size:6pt;font-weight:700">${escapeHtml(dom)}<br/><span style="font-size:5.5pt">${escapeHtml(wd)}</span></th>`,
-    );
-  }
-  const gBg = "background:#e2e8f0";
-  theadParts.push(
-    `<th colspan="${MONTH_DETAIL_WORKDAY_COL_COUNT}" style="${gBg};border-left:2px solid #000">${escapeHtml(labels.groupWorkday)}</th>`,
-  );
-  theadParts.push(
-    `<th colspan="${MONTH_DETAIL_OT_COL_COUNT}" style="${gBg}">${escapeHtml(labels.groupOt)}</th>`,
-  );
-  if (MONTH_DETAIL_SATS_COL_COUNT > 0) {
-    theadParts.push(
-      `<th colspan="${MONTH_DETAIL_SATS_COL_COUNT}" style="${gBg}">${escapeHtml(labels.groupSats)}</th>`,
-    );
-  }
-  theadParts.push("</tr><tr>");
-  for (let i = 0; i < detailHeaders.length; i++) {
-    const bl = i === 0 ? "border-left:2px solid #000" : "";
-    theadParts.push(
-      `<th class="pct-print-detail-head" style="background:#f1f5f9;${bl}">${a3PrintDetailHeadTwoLines(detailHeaders[i])}</th>`,
-    );
-  }
-  theadParts.push("</tr>");
-
-  const bodyParts = [];
-  for (let empBlockIdx = 0; empBlockIdx < filteredIds.length; empBlockIdx++) {
-    const id = filteredIds[empBlockIdx];
-    const rep = repById.get(id);
-    const summaries = summaryById.get(id);
-    if (!rep || !summaries?.total) continue;
-    // Bản in A3 chỉ in tới hết khối "THỜI GIAN LÀM VIỆC" đầu tiên.
-    const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries, {
-      fmtHours,
-    }).map(
-      (row) => row.slice(0, MONTH_DETAIL_COLS_PER_BLOCK),
-    );
-    const sttDisp = empBlockIdx + 1;
-
-    for (let si = 0; si < PAYROLL_MONTHLY_SUBROWS.length; si++) {
-      const sr = PAYROLL_MONTHLY_SUBROWS[si];
-      const isLastSub = si === PAYROLL_MONTHLY_SUBROWS.length - 1;
-      const btm = isLastSub ? "border-bottom:2px solid #000" : "";
-      const rowBg = empBlockIdx % 2 === 0 ? "#fff" : "#f8fafc";
-      bodyParts.push(`<tr style="background:${rowBg}">`);
-      if (si === 0) {
-        bodyParts.push(
-          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" class="pct-print-rot-cell pct-print-rot-stt" style="font-weight:700;${btm}">${rot(escapeHtml(String(sttDisp)))}</td>`,
-        );
-        bodyParts.push(
-          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" class="pct-print-rot-cell pct-print-rot-name" style="font-weight:700;${btm}">${vmode(`<span class="pct-print-name-text">${escapeHtml(rep.hoVaTen ?? "—")}</span>`)}</td>`,
-        );
-        bodyParts.push(
-          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" class="pct-print-rot-cell pct-print-rot-mnv" style="font-weight:700;${btm}">${vmode(escapeHtml(rep.mnv || "—"))}</td>`,
-        );
-        bodyParts.push(
-          `<td rowspan="${PAYROLL_MONTHLY_SUBROWS.length}" class="pct-print-rot-cell pct-print-rot-dept" style="font-weight:700;${btm}">${vmode(escapeHtml(rep.boPhan || "—"))}</td>`,
-        );
-      }
-      const coeffLabel =
-        sr.coeff == null ? "\u00a0" : escapeHtml(Number(sr.coeff).toFixed(1));
-      bodyParts.push(
-        `<td style="text-align:center;font-family:monospace;font-weight:700;${btm}">${coeffLabel}</td>`,
-      );
-      appendDayCells(
-        employeeDayCellsById.get(id) ?? [],
-        sr,
-        isLastSub,
-        bodyParts,
-      );
-      const detailVals = detailMatrix[si] ?? [];
-      for (let idx = 0; idx < detailVals.length; idx++) {
-        const v = detailVals[idx];
-        const bl = idx === 0 ? "border-left:2px solid #000" : "";
-        bodyParts.push(
-          `<td class="pct-print-detail-col" style="text-align:center;vertical-align:top;font-weight:700;font-size:6.5pt;${bl};${btm}">${escapeHtml(String(v))}</td>`,
-        );
-      }
-      bodyParts.push("</tr>");
-    }
-  }
-
-  const colgroupParts = ["<colgroup>"];
-  colgroupParts.push('<col style="width:6mm" />');
-  colgroupParts.push('<col style="width:14mm" />');
-  colgroupParts.push('<col style="width:8mm" />');
-  colgroupParts.push('<col style="width:6mm;min-width:6mm" />');
-  for (let i = 0; i < monthKeys.length; i++) colgroupParts.push("<col />");
-  for (let i = 0; i < MONTH_DETAIL_COLS_PER_BLOCK; i++) {
-    colgroupParts.push(
-      `<col style="width:${A3_PRINT_DETAIL_COL_WIDTH_MM}mm" />`,
-    );
-  }
-  colgroupParts.push("</colgroup>");
-
-  return `<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8" />
-  <title>${escapeHtml(labels.docTitle)}</title>
-  <style>
-    @page { 
-      size: A3 landscape; 
-      margin: 6mm; 
-    }
-    
-    body { 
-      margin: 0; 
-      font-family: Arial, Helvetica, sans-serif; 
-      -webkit-print-color-adjust: exact; 
-      print-color-adjust: exact; 
-    }
-    
-    h1 { 
-      font-size: 10pt; 
-      margin: 0 0 4px 0; 
-      text-align: center; 
-    }
-    
-    table.print-ts { 
-      width: 100%; 
-      border-collapse: collapse; 
-      table-layout: fixed; 
-    }
-    
-    /* Đồng bộ tất cả th và td */
-    .print-ts th,
-    .print-ts td { 
-      border: 1px solid #1e293b; 
-      padding: 2px 3px;
-      vertical-align: middle;
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 9pt;
-      font-weight: normal;
-      text-align: center;
-      word-break: break-word;
-      line-height: 1.2;
-    }
-
-    /* Cột cố định đầu bảng — gói nội dung, không tràn sang cột ngày */
-    .print-ts th.pct-print-rot-cell,
-    .print-ts td.pct-print-rot-cell {
-      box-sizing: border-box;
-      word-break: break-word;
-      overflow: hidden;
-      padding: 2px 1px;
-      vertical-align: middle;
-    }
-
-    .print-ts th.pct-print-rot-stt,
-    .print-ts td.pct-print-rot-stt {
-      width: 6mm;
-      max-width: 6mm;
-    }
-
-    .print-ts th.pct-print-rot-name,
-    .print-ts td.pct-print-rot-name {
-      width: 12mm;
-      max-width: 12mm;
-      font-family: Arial, Helvetica, "DejaVu Sans", sans-serif;
-    }
-
-    .print-ts th.pct-print-rot-mnv,
-    .print-ts td.pct-print-rot-mnv {
-      width: 8mm;
-      max-width: 8mm;
-      font-family: Consolas, "Courier New", monospace;
-    }
-
-    .print-ts th.pct-print-rot-dept,
-    .print-ts td.pct-print-rot-dept {
-      width: 10mm;
-      max-width: 10mm;
-      font-family: Arial, Helvetica, "DejaVu Sans", sans-serif;
-    }
-
-    /* Chữ dọc bằng writing-mode — luôn nằm trong bề ngang ô */
-    .print-ts .pct-print-vmode {
-      writing-mode: vertical-rl;
-      text-orientation: mixed;
-      font-size: 6.5pt;
-      font-weight: 700;
-      line-height: 1.15;
-      max-height: 68mm;
-      margin: 0 auto;
-      text-align: center;
-      overflow: hidden;
-      word-break: break-word;
-      font-family: Arial, Helvetica, "DejaVu Sans", sans-serif;
-    }
-
-    .print-ts th .pct-print-vmode {
-      font-size: 6pt;
-    }
-
-    /* STT: xoay -90° trong ô hẹp */
-    .print-ts .pct-print-rot-wrap {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      max-width: 100%;
-      margin: 0 auto;
-      min-height: 10mm;
-      box-sizing: border-box;
-    }
-
-    .print-ts .pct-print-vneg90 {
-      display: inline-block;
-      transform: rotate(0deg);
-      transform-origin: center center;
-      white-space: nowrap;
-      line-height: 1.05;
-    }
-
-    .print-ts .pct-print-name-text {
-      text-align: center;
-    }
-
-    .print-ts th .pct-print-name-text {
-      white-space: nowrap;
-    }
-
-    .print-ts td.pct-print-rot-name .pct-print-name-text {
-      white-space: normal;
-    }
-
-    .print-ts .pct-print-vmode .pct-print-mnv {
-      font-size: 0.78em;
-      font-weight: 600;
-      color: #1e40af;
-    }
-
-    /* Khối THỜI GIAN LÀM VIỆC — cột rộng hơn, tiêu đề 2 dòng ngang */
-    .print-ts th.pct-print-detail-head,
-    .print-ts td.pct-print-detail-col {
-      width: ${A3_PRINT_DETAIL_COL_WIDTH_MM}mm;
-      max-width: ${A3_PRINT_DETAIL_COL_WIDTH_MM}mm;
-      box-sizing: border-box;
-      padding: 2px 2px;
-      word-break: normal;
-      vertical-align: top;
-    }
-
-    .print-ts th.pct-print-detail-head {
-      padding: 3px 2px 2px;
-    }
-
-    .print-ts th.pct-print-detail-head .pct-print-detail-2line {
-      display: block;
-      font-family: Arial, Helvetica, "DejaVu Sans", sans-serif;
-      font-size: 5.25pt;
-      font-weight: 700;
-      line-height: 1.12;
-      text-align: center;
-      white-space: normal;
-      word-break: keep-all;
-    }
-
-    .print-ts th.pct-print-detail-head .pct-print-detail-line2 {
-      font-size: 4.85pt;
-      font-weight: 700;
-    }
-    
-    .print-ts th { 
-      font-weight: 700;
-      background-color: #f1f5f9;
-    }
-    
-    .hint { 
-      font-size: 6pt; 
-      color: #475569; 
-      text-align: center; 
-      margin-bottom: 4px; 
-    }
-
-    @media print {
-      .pct-print-screen-hint {
-        display: none !important;
-      }
-    }
-  </style>
-</head>
-<body>
-  <h1>${escapeHtml(labels.docTitle)}</h1>
-  <p class="hint pct-print-screen-hint">${escapeHtml(labels.printHint)}</p>
-  <table class="print-ts">
-    ${colgroupParts.join("")}
-    <thead>${theadParts.join("")}</thead>
-    <tbody>${bodyParts.join("")}</tbody>
-  </table>
-  <p class="hint pct-print-screen-hint">${escapeHtml(labels.generatedHint)}</p>
-</body>
-</html>`;
-}
-
 function buildPayrollMonthEmployeeDayCells({ monthDayMeta, rep, rowId }) {
   return monthDayMeta.map(({ dateKey, chunk, bodyBg }) => {
     if (!chunk) {
@@ -745,21 +292,6 @@ function buildPayrollMonthEmployeeDayCells({ monthDayMeta, rep, rowId }) {
       coeffMap,
     };
   });
-}
-
-function buildPayrollMonthEmployeeDayCellsMap(rowIds, monthDayMeta, repById) {
-  const m = new Map();
-  for (const rowId of rowIds) {
-    m.set(
-      rowId,
-      buildPayrollMonthEmployeeDayCells({
-        monthDayMeta,
-        rep: repById.get(rowId),
-        rowId,
-      }),
-    );
-  }
-  return m;
 }
 
 const PayrollMonthlyTimesheetDayCell = memo(
@@ -1167,22 +699,38 @@ export default function PayrollMonthlyTimesheetModal({
   const [dayCellFormDate, setDayCellFormDate] = useState("");
   const [dayCellFormInitial, setDayCellFormInitial] = useState(null);
   const [dayCellFormEmployees, setDayCellFormEmployees] = useState([]);
+  const [viewMonthFirstKey, setViewMonthFirstKey] = useState(() =>
+    getFirstDayOfMonthKey(anchorDateKey),
+  );
 
   const monthRange = useMemo(() => {
-    const first = getFirstDayOfMonthKey(anchorDateKey);
-    const last = getLastDayOfMonthKey(anchorDateKey);
+    const first = getFirstDayOfMonthKey(viewMonthFirstKey);
+    const last = getLastDayOfMonthKey(viewMonthFirstKey);
     const keys = enumerateDateKeysInclusive(first, last);
     return { first, last, keys };
-  }, [anchorDateKey]);
+  }, [viewMonthFirstKey]);
 
   const monthTitle = useMemo(() => {
     const d = parseLocalDateKey(monthRange.first);
-    if (!d) return anchorDateKey;
+    if (!d) return viewMonthFirstKey;
     return d.toLocaleDateString(displayLocale, {
       month: "long",
       year: "numeric",
     });
-  }, [monthRange.first, anchorDateKey, displayLocale]);
+  }, [monthRange.first, viewMonthFirstKey, displayLocale]);
+
+  useEffect(() => {
+    if (!open) return;
+    setViewMonthFirstKey(getFirstDayOfMonthKey(anchorDateKey));
+  }, [open, anchorDateKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    setDayCellFormOpen(false);
+    setDayCellFormDate("");
+    setDayCellFormInitial(null);
+    setDayCellFormEmployees([]);
+  }, [open, viewMonthFirstKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -1249,7 +797,6 @@ export default function PayrollMonthlyTimesheetModal({
   } = usePayrollMonthDayChunks({
     monthKeys: monthRange.keys,
     attendanceRootPath,
-    liveEnabled: false,
     tlPage,
     emptyMessageKey: isKoreanTimesheetSource
       ? "koreanMonthlyTimesheetEmpty"
@@ -1274,8 +821,8 @@ export default function PayrollMonthlyTimesheetModal({
     setDayCellFormEmployees([]);
   }, [open]);
 
-  const { sortedIds, repById, chunkByDate, chunkByDateLive } =
-    usePayrollMonthEmployeeIndex(dayChunks, displayDayChunks);
+  const { sortedIds, repById, chunkByDate } =
+    usePayrollMonthEmployeeIndex(dayChunks);
 
   const summaryRepById = useMemo(
     () => enrichPayrollMonthRepByIdWithMasterEmployees(repById, employees),
@@ -1283,14 +830,13 @@ export default function PayrollMonthlyTimesheetModal({
   );
 
   const anchorDayMeta = useMemo(() => {
-    const ch =
-      chunkByDateLive.get(anchorDateKey) ?? chunkByDate.get(anchorDateKey);
+    const ch = chunkByDate.get(monthRange.first);
     return {
       isOffDay: Boolean(ch?.isOffDay),
       isHolidayDay: Boolean(ch?.isHolidayDay),
       isCompensatoryDay: Boolean(ch?.isCompensatoryDay),
     };
-  }, [anchorDateKey, chunkByDate, chunkByDateLive]);
+  }, [monthRange.first, chunkByDate]);
 
   const tlAttendance = useCallback(
     (key, defaultValue, options = {}) =>
@@ -1322,7 +868,7 @@ export default function PayrollMonthlyTimesheetModal({
         });
         return;
       }
-      const ch = chunkByDateLive.get(dateKey);
+      const ch = chunkByDate.get(dateKey);
       if (!ch) return;
       const rep = repById.get(rowId);
       if (!rep) return;
@@ -1370,7 +916,7 @@ export default function PayrollMonthlyTimesheetModal({
     },
     [
       user,
-      chunkByDateLive,
+      chunkByDate,
       repById,
       userRole,
       userDepartments,
@@ -1430,46 +976,43 @@ export default function PayrollMonthlyTimesheetModal({
     repById,
   ]);
 
-  const filteredIds = useMemo(() => {
-    return sortedIds
-      .filter((id) => {
-        const rep = repById.get(id);
-        if (
-          !rep ||
-          !matchesPayrollMonthRowFilter(rep, {
-            searchTerm: effectiveSearchTerm,
-            departmentFilters: selectedDepartments,
-            normalizeDepartment,
-          })
-        ) {
-          return false;
-        }
-        if (!needsPresenceFlags) return true;
-        return matchesPayrollMonthTimesheetPresenceFilter(
-          presenceFlagsById?.get(id),
-          { workHoursFilter, leaveTypeFilter, overtimeFilter, shortHoursFilter },
-        );
-      })
-      .sort((a, b) =>
-        comparePayrollMonthRowsByDepartment(repById.get(a), repById.get(b)),
-      );
-  }, [
-    sortedIds,
-    repById,
-    effectiveSearchTerm,
-    selectedDepartments,
-    normalizeDepartment,
-    needsPresenceFlags,
-    presenceFlagsById,
-    workHoursFilter,
-    leaveTypeFilter,
-    overtimeFilter,
-    shortHoursFilter,
-  ]);
+  const presenceFilterState = useMemo(
+    () => ({
+      workHoursFilter,
+      leaveTypeFilter,
+      overtimeFilter,
+      shortHoursFilter,
+    }),
+    [workHoursFilter, leaveTypeFilter, overtimeFilter, shortHoursFilter],
+  );
 
-  const { monthlySummaryById, isSummariesBusy, summaryProgress } =
+  const filteredIds = useMemo(
+    () =>
+      filterPayrollMonthTimesheetRowIds({
+        sortedIds,
+        repById,
+        searchTerm: effectiveSearchTerm,
+        departmentFilters: selectedDepartments,
+        normalizeDepartment,
+        needsPresenceFlags,
+        presenceFlagsById,
+        presenceFilters: presenceFilterState,
+      }),
+    [
+      sortedIds,
+      repById,
+      effectiveSearchTerm,
+      selectedDepartments,
+      normalizeDepartment,
+      needsPresenceFlags,
+      presenceFlagsById,
+      presenceFilterState,
+    ],
+  );
+
+  const { monthlySummaryById, isSummariesBusy, summaryProgress, summaryCacheRef } =
     usePayrollMonthSummaries({
-      enabled: open,
+      enabled: open && !loading && !isDisplayStale,
       monthKeys: monthRange.keys,
       chunkByDate,
       filteredIds,
@@ -1587,32 +1130,19 @@ export default function PayrollMonthlyTimesheetModal({
     () => buildPayrollMonthlyTimesheetDetailHeadersByGroup(tlPage),
     [tlPage],
   );
-  const detailHeaders = detailHeadersByGroup.total;
 
   const buildExportIds = useCallback(
     (exportDepartments) =>
-      sortedIds
-        .filter((id) => {
-          const rep = repById.get(id);
-          if (
-            !rep ||
-            !matchesPayrollMonthRowFilter(rep, {
-              searchTerm: effectiveSearchTerm,
-              departmentFilters: exportDepartments,
-              normalizeDepartment,
-            })
-          ) {
-            return false;
-          }
-          if (!needsPresenceFlags) return true;
-          return matchesPayrollMonthTimesheetPresenceFilter(
-            presenceFlagsById?.get(id),
-            { workHoursFilter, leaveTypeFilter, overtimeFilter, shortHoursFilter },
-          );
-        })
-        .sort((a, b) =>
-          comparePayrollMonthRowsByDepartment(repById.get(a), repById.get(b)),
-        ),
+      filterPayrollMonthTimesheetRowIds({
+        sortedIds,
+        repById,
+        searchTerm: effectiveSearchTerm,
+        departmentFilters: exportDepartments,
+        normalizeDepartment,
+        needsPresenceFlags,
+        presenceFlagsById,
+        presenceFilters: presenceFilterState,
+      }),
     [
       sortedIds,
       repById,
@@ -1620,10 +1150,7 @@ export default function PayrollMonthlyTimesheetModal({
       normalizeDepartment,
       needsPresenceFlags,
       presenceFlagsById,
-      workHoursFilter,
-      leaveTypeFilter,
-      overtimeFilter,
-      shortHoursFilter,
+      presenceFilterState,
     ],
   );
 
@@ -1650,7 +1177,7 @@ export default function PayrollMonthlyTimesheetModal({
             chunkByDate,
             ids: missingSummaryIds,
             repById: summaryRepById,
-            cache: new Map(),
+            cache: summaryCacheRef.current,
           });
           if (extraSummaries?.size) {
             exportSummaryById = new Map(monthlySummaryById);
@@ -1705,10 +1232,11 @@ export default function PayrollMonthlyTimesheetModal({
     [
       buildExportIds,
       chunkByDate,
-      detailHeaders,
+      detailHeadersByGroup,
       monthlySummaryById,
       monthRange.keys,
       summaryRepById,
+      summaryCacheRef,
       tlPage,
       isKoreanTimesheetSource,
     ],
@@ -1725,88 +1253,6 @@ export default function PayrollMonthlyTimesheetModal({
     },
     [handleExportExcel],
   );
-
-  const handlePrintA3WorkTimeOnly = useCallback(() => {
-    if (!filteredIds.length || !monthRange.keys.length) return;
-    const labels = {
-      docTitle: `${tlPage(timesheetTitleKey, timesheetTitleDefault)} — ${monthTitle}`,
-      stt: tlPage("monthlyTimesheetColStt", "STT"),
-      name: tlPage("monthlyTimesheetColName", "Họ và tên"),
-      mnv: tlPage("monthlyTimesheetColMnv", "MNV"),
-      dept: tlPage("monthlyTimesheetColDept", "BP"),
-      coeff: tlPage("monthlyTimesheetColCoeff", "Hệ số TC"),
-      daysBanner: tlPage("monthlyTimesheetDaysInMonth", "Ngày trong tháng"),
-      workTimeTitle: tlPage("monthlyRuleTotalTitle", "THỜI GIAN LÀM VIỆC"),
-      groupWorkday: tlPage("monthlyRuleGroupWorkday", "NGÀY LÀM VIỆC"),
-      groupOt: tlPage("monthlyRuleGroupOt", "TĂNG CA (Hrs)"),
-      groupSats: PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL,
-      printHint: tlPage(
-        "monthlyTimesheetPrintA3Hint",
-        "Khổ A3 ngang — chỉ in khối THỜI GIAN LÀM VIỆC (không in thử việc / hợp đồng).",
-      ),
-      generatedHint: tlPage(
-        "monthlyTimesheetPrintGenerated",
-        "Theo bộ lọc đang hiển thị trên lưới.",
-      ),
-    };
-    const html = buildPayrollMonthlyTimesheetA3WorkTimePrintDocument({
-      monthKeys: monthRange.keys,
-      filteredIds,
-      repById,
-      chunkByDate,
-      summaryById: monthlySummaryById,
-      detailHeaders,
-      labels,
-      employeeDayCellsById: buildPayrollMonthEmployeeDayCellsMap(
-        filteredIds,
-        monthDayMeta,
-        repById,
-      ),
-      fmtHours: monthlyDetailFmtHours,
-    });
-    const w = window.open("", "_blank");
-    if (!w) {
-      onAlert?.({
-        show: true,
-        type: "error",
-        message: tlPage(
-          "monthlyTimesheetPrintBlocked",
-          "Trình duyệt đã chặn cửa sổ mới — không thể mở bản in.",
-        ),
-      });
-      return;
-    }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    const run = () => {
-      try {
-        w.print();
-      } finally {
-        w.close();
-      }
-    };
-    if (w.document.readyState === "complete") {
-      window.setTimeout(run, 0);
-    } else {
-      w.onload = () => window.setTimeout(run, 0);
-    }
-  }, [
-    filteredIds,
-    monthRange.keys,
-    repById,
-    chunkByDate,
-    monthlySummaryById,
-    detailHeaders,
-    monthDayMeta,
-    monthTitle,
-    tlPage,
-    onAlert,
-    monthlyDetailFmtHours,
-    timesheetTitleKey,
-    timesheetTitleDefault,
-  ]);
 
   const virtualEmpItems = shouldVirtualizeTimesheetBody
     ? empBlockVirtualizer.getVirtualItems()
@@ -1870,21 +1316,29 @@ export default function PayrollMonthlyTimesheetModal({
 
           <div className="min-h-0 flex flex-1 flex-col p-2 sm:p-3">
             <div className="pm-ts-toolbar mb-2 flex flex-wrap items-center justify-end gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-sky-50 px-2 py-1.5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
-              <AttendanceOffHolidayDaysControl
-                user={user}
-                userRole={userRole}
-                selectedDate={monthRange.first}
-                setSelectedDate={() => {}}
-                isOffDay={anchorDayMeta.isOffDay}
-                isHolidayDay={anchorDayMeta.isHolidayDay}
-                isCompensatoryDay={anchorDayMeta.isCompensatoryDay}
-                tl={tlAttendance}
-                attendanceRootPath={attendanceRootPath}
-                showDateInput={false}
-                elevatedOverlay
-                onSaved={handleOffHolidayDaysSaved}
-                className="mr-auto shrink-0"
-              />
+              <div className="mr-auto flex shrink-0 flex-wrap items-center gap-2">
+                <AttendanceOffHolidayDaysControl
+                  user={user}
+                  userRole={userRole}
+                  selectedDate={monthRange.first}
+                  setSelectedDate={() => {}}
+                  isOffDay={anchorDayMeta.isOffDay}
+                  isHolidayDay={anchorDayMeta.isHolidayDay}
+                  isCompensatoryDay={anchorDayMeta.isCompensatoryDay}
+                  tl={tlAttendance}
+                  attendanceRootPath={attendanceRootPath}
+                  showDateInput={false}
+                  elevatedOverlay
+                  onSaved={handleOffHolidayDaysSaved}
+                  className="shrink-0"
+                />
+                <PayrollMonthNavigator
+                  monthFirstKey={monthRange.first}
+                  onMonthFirstKeyChange={setViewMonthFirstKey}
+                  disabled={loading && !displayDayChunks.length}
+                  tlPage={tlPage}
+                />
+              </div>
               <input
                 type="text"
                 value={localNameFilter}
@@ -1895,7 +1349,7 @@ export default function PayrollMonthlyTimesheetModal({
                 )}
                 className="w-[220px] rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               />
-              <PayrollTimesheetPresenceFilters
+              <PayrollTimesheetPresenceFiltersMenu
                 workHoursFilter={workHoursFilter}
                 leaveTypeFilter={leaveTypeFilter}
                 overtimeFilter={overtimeFilter}
@@ -1906,7 +1360,6 @@ export default function PayrollMonthlyTimesheetModal({
                 onShortHoursFilterChange={setShortHoursFilter}
                 tl={tlPage}
                 disabled={isGridFullyBusy}
-                compact
               />
               <PayrollDepartmentMultiSelect
                 options={departmentOptions}
@@ -1979,18 +1432,6 @@ export default function PayrollMonthlyTimesheetModal({
                   ) : null}
                 </div>
               ) : null}
-              <button
-                type="button"
-                onClick={handlePrintA3WorkTimeOnly}
-                disabled={
-                  isGridFullyBusy ||
-                  !filteredIds.length ||
-                  !displayDayChunks.length
-                }
-                className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-              >
-                {tlPage("monthlyTimesheetPrintA3", "In A3")}
-              </button>
               <button
                 type="button"
                 onClick={() => setExportModalOpen(true)}

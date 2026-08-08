@@ -2,18 +2,58 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAttendanceFilterDropdownPlacement } from "@/features/attendance/useAttendanceToolbarDropdownPlacement";
 import { useCloseDropdownOnScroll } from "@/features/attendance/useCloseDropdownOnScroll";
+import { PayrollTimesheetPresenceFilterFields } from "@/features/payroll/PayrollTimesheetPresenceFilters";
+import {
+  countActivePayrollTimesheetPresenceFilters,
+  PAYROLL_SHORT_HOURS_FILTER,
+  PAYROLL_TIMESHEET_PRESENCE_FILTER,
+} from "@/features/payroll/payrollMonthTimesheetFilters";
 
-function ToolsMenuSection({ label, first = false }) {
+function ToolsMenuSection({ label, first = false, action = null }) {
   return (
     <div
-      className={`shrink-0 bg-slate-50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:bg-slate-800/80 dark:text-slate-400 ${
+      className={`flex shrink-0 items-center justify-between gap-2 bg-slate-50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:bg-slate-800/80 dark:text-slate-400 ${
         first
           ? "border-b border-gray-100 dark:border-slate-700"
           : "border-t border-b border-gray-100 dark:border-slate-700"
       }`}
     >
-      {label}
+      <span>{label}</span>
+      {action}
     </div>
+  );
+}
+
+function ToolsMenuCollapsibleSection({
+  label,
+  open,
+  onToggle,
+  first = false,
+  badge = null,
+  action = null,
+}) {
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      onClick={onToggle}
+      className={`flex w-full shrink-0 items-center justify-between gap-2 bg-slate-50 px-4 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 transition hover:bg-slate-100 dark:bg-slate-800/80 dark:text-slate-400 dark:hover:bg-slate-800 ${
+        first
+          ? "border-b border-gray-100 dark:border-slate-700"
+          : "border-t border-b border-gray-100 dark:border-slate-700"
+      }`}
+    >
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span>{label}</span>
+        {badge}
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        {action}
+        <span className="text-[10px] opacity-80" aria-hidden>
+          {open ? "▲" : "▼"}
+        </span>
+      </span>
+    </button>
   );
 }
 
@@ -51,15 +91,51 @@ function PayrollToolsMenu({
   showLateOtAction,
   showNightOtAction = false,
   showMonthlyTimeInOut = true,
+  showPresenceFilters = false,
+  workHoursFilter,
+  leaveTypeFilter,
+  overtimeFilter,
+  shortHoursFilter,
+  onWorkHoursFilterChange,
+  onLeaveTypeFilterChange,
+  onOvertimeFilterChange,
+  onShortHoursFilterChange,
+  filtersDisabled = false,
 }) {
   const [open, setOpen] = useState(false);
+  const [presenceFiltersOpen, setPresenceFiltersOpen] = useState(false);
   const anchorRef = useRef(null);
   const panelRef = useRef(null);
   const placement = useAttendanceFilterDropdownPlacement(open, anchorRef);
 
   const close = useCallback(() => setOpen(false), []);
 
+  const activeFilterCount = showPresenceFilters
+    ? countActivePayrollTimesheetPresenceFilters({
+        workHoursFilter,
+        leaveTypeFilter,
+        overtimeFilter,
+        shortHoursFilter,
+      })
+    : 0;
+
+  const handleClearFilters = useCallback(() => {
+    onWorkHoursFilterChange?.(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+    onLeaveTypeFilterChange?.(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+    onOvertimeFilterChange?.(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+    onShortHoursFilterChange?.(PAYROLL_SHORT_HOURS_FILTER.ALL);
+  }, [
+    onWorkHoursFilterChange,
+    onLeaveTypeFilterChange,
+    onOvertimeFilterChange,
+    onShortHoursFilterChange,
+  ]);
+
   useCloseDropdownOnScroll(open, panelRef, close);
+
+  useEffect(() => {
+    if (!open) setPresenceFiltersOpen(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -104,6 +180,11 @@ function PayrollToolsMenu({
       >
         <span aria-hidden>🛠</span>
         {t("attendanceList.toolsMenu", { defaultValue: "Công cụ" })}
+        {activeFilterCount > 0 ? (
+          <span className="inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-white/25 px-1 text-[10px] font-extrabold leading-none text-white">
+            {activeFilterCount}
+          </span>
+        ) : null}
         <span className="text-[10px] opacity-90" aria-hidden>
           {open ? "▲" : "▼"}
         </span>
@@ -128,8 +209,54 @@ function PayrollToolsMenu({
                 {t("attendanceList.toolsMenu", { defaultValue: "Công cụ" })}
               </div>
               <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+                {showPresenceFilters ? (
+                  <>
+                    <ToolsMenuCollapsibleSection
+                      first
+                      open={presenceFiltersOpen}
+                      onToggle={() => setPresenceFiltersOpen((value) => !value)}
+                      label={tlPage("monthlyTimesheetFiltersMenu", "Bộ lọc")}
+                      badge={
+                        activeFilterCount > 0 ? (
+                          <span className="inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-[#1a73e8] px-1 text-[9px] font-extrabold leading-none text-white dark:bg-blue-500">
+                            {activeFilterCount}
+                          </span>
+                        ) : null
+                      }
+                      action={
+                        activeFilterCount > 0 ? (
+                          <button
+                            type="button"
+                            className="normal-case tracking-normal text-[11px] font-bold text-[#1a73e8] hover:underline dark:text-blue-300"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleClearFilters();
+                            }}
+                          >
+                            {tlPage("monthlyTimesheetFiltersClear", "Xóa")}
+                          </button>
+                        ) : null
+                      }
+                    />
+                    {presenceFiltersOpen ? (
+                      <PayrollTimesheetPresenceFilterFields
+                        workHoursFilter={workHoursFilter}
+                        leaveTypeFilter={leaveTypeFilter}
+                        overtimeFilter={overtimeFilter}
+                        shortHoursFilter={shortHoursFilter}
+                        onWorkHoursFilterChange={onWorkHoursFilterChange}
+                        onLeaveTypeFilterChange={onLeaveTypeFilterChange}
+                        onOvertimeFilterChange={onOvertimeFilterChange}
+                        onShortHoursFilterChange={onShortHoursFilterChange}
+                        tl={tlPage}
+                        disabled={filtersDisabled}
+                        layout="toolsMenu"
+                      />
+                    ) : null}
+                  </>
+                ) : null}
                 <ToolsMenuSection
-                  first
+                  first={!showPresenceFilters}
                   label={tlPage("toolsSectionView", "Xem giờ công")}
                 />
                 <ToolsMenuItem

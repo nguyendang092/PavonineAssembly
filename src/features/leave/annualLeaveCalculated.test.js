@@ -91,6 +91,23 @@ describe("monthMeetsHalfStandardWorkDays", () => {
     ).toBe(false);
     expect(monthMeetsHalfStandardWorkDays(null)).toBe(false);
   });
+
+  it("grants accrual when maternity leave days reach half of standard work days", () => {
+    expect(
+      monthMeetsHalfStandardWorkDays({
+        workDays: 4,
+        tsDays: 11,
+        standardWorkDays: 22,
+      }),
+    ).toBe(true);
+    expect(
+      monthMeetsHalfStandardWorkDays({
+        workDays: 4,
+        tsDays: 10,
+        standardWorkDays: 22,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("isStartWorkingDateInCalendarMonth", () => {
@@ -167,6 +184,28 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
         "2026-03": { workDays: 11, standardWorkDays: 20 },
       }),
     ).toBe(1);
+  });
+
+  it("grants +1 via maternity leave days when total work days fall short", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 24));
+
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2026-07-01",
+        2026,
+        { "2026-07": { workDays: 5, tsDays: 11, standardWorkDays: 22 } },
+        "2026-07-31",
+      ),
+    ).toBe(1);
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2026-07-01",
+        2026,
+        { "2026-07": { workDays: 5, tsDays: 10, standardWorkDays: 22 } },
+        "2026-07-31",
+      ),
+    ).toBe(0);
   });
 
   it("join 25-Jun-2026 — từ tháng 6 dùng quy tắc ½ cho mọi NV", () => {

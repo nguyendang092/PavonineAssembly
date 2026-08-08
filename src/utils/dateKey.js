@@ -86,6 +86,19 @@ export function getLastDayOfMonthKey(dateKey) {
   return formatDateKeyLocal(last);
 }
 
+/** YYYY-MM từ một date key (luôn tháng chứa ngày đó). */
+export function getYearMonthFromDateKey(dateKey) {
+  return getFirstDayOfMonthKey(dateKey).slice(0, 7);
+}
+
+/** Dịch sang tháng kế / trước — trả về ngày 01 tháng đích (YYYY-MM-DD). */
+export function shiftMonthKey(dateKey, deltaMonths = 0) {
+  const d = parseLocalDateKey(getFirstDayOfMonthKey(dateKey));
+  if (!d) return getFirstDayOfMonthKey(dateKey);
+  const next = new Date(d.getFullYear(), d.getMonth() + deltaMonths, 1);
+  return formatDateKeyLocal(next);
+}
+
 /**
  * Liệt kê mọi YYYY-MM-DD từ fromKey đến toKey (bao gồm hai đầu), theo lịch local.
  * Trả về [] nếu sai định dạng hoặc from > to.

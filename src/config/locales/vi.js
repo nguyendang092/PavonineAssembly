@@ -1712,6 +1712,9 @@ const vi = {
       "Tăng ca / giờ công ngày lễ (ca ngày, gộp): hệ số 3,0.",
     monthlyTimesheetCoeffL39: "Tăng ca ca đêm ngày lễ (gộp): hệ số 3,9.",
     monthlyTimesheetReload: "Tải lại",
+    monthlyTimesheetMonthPicker: "Chọn tháng xem",
+    monthlyTimesheetPrevMonth: "Tháng trước",
+    monthlyTimesheetNextMonth: "Tháng sau",
     monthlyTimesheetClose: "Đóng",
     monthlyTimesheetZoomLabel: "Tỉ lệ",
     monthlyTimesheetZoomOut: "Thu nhỏ",
@@ -1719,12 +1722,6 @@ const vi = {
     monthlyTimesheetZoomReset: "Mặc định",
     monthlyTimesheetZoomHint:
       "Thu nhỏ để xem tổng quan, phóng to để đọc rõ ô từng ngày.",
-    monthlyTimesheetPrintA3: "IN A3",
-    monthlyTimesheetPrintA3Hint:
-      "Khổ A3 ngang — chỉ in khối THỜI GIAN LÀM VIỆC (không in thử việc / hợp đồng).",
-    monthlyTimesheetPrintGenerated: "Theo bộ lọc đang hiển thị trên lưới.",
-    monthlyTimesheetPrintBlocked:
-      "Trình duyệt đã chặn cửa sổ mới — không thể mở bản in.",
     monthlyTimesheetLoading: "Đang tải dữ liệu...",
     monthlyTimesheetLoadingMore: "Đang tải dữ liệu...",
     monthlyTimesheetRendering: "Đang cập nhật lưới…",
@@ -1762,6 +1759,11 @@ const vi = {
     monthlyTimesheetFilterAll: "Tất cả",
     monthlyTimesheetFilterWith: "Có",
     monthlyTimesheetFilterWithout: "Không",
+    monthlyTimesheetFiltersMenu: "Bộ lọc",
+    monthlyTimesheetFiltersMenuTitle: "Bộ lọc lưới tháng",
+    monthlyTimesheetFiltersMenuHint:
+      "Giờ công, loại phép, tăng ca, giờ công dưới 8h",
+    monthlyTimesheetFiltersClear: "Xóa bộ lọc",
     monthlyTimesheetExportExcel: "Xuất Excel",
     monthlyTimesheetExportError: "Xuất Excel thất bại: {{error}}",
     monthlyTimesheetDayCellEditHint: "Bấm để sửa điểm danh ngày này.",
@@ -1795,6 +1797,8 @@ const vi = {
     monthlyRuleColCoeff39: "TC đêm ngày lễ (×3.9)",
     monthlyRuleColNbDayCoeff20: "Giờ công ca ngày NB (×2.0)",
     monthlyRuleColNbNightCoeff27: "Giờ công ca đêm NB (×2.7)",
+    monthlyRuleColTsDays: "Số ngày nghỉ thai sản",
+    monthlyRuleColNightShiftAllowance: "Phụ cấp ca đêm",
     monthlyRuleColSatsWorkDays: "Sat.S ngày công / (×2.0)",
     monthlyRuleColSats27: "Sat.S (×2.7)",
     exportSheetTitle: "Bảng giờ công nhân viên",

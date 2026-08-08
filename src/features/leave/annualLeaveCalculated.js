@@ -114,17 +114,25 @@ export function isStartWorkingDateInCalendarYear(startWorkingDate, year) {
 }
 
 /**
- * +1 phép/tháng khi «Tổng ngày công (gồm ngày nghỉ có lương)» ≥ ½ «Ngày thực tế làm việc»
- * (khối TỔNG lưới giờ công tháng).
- * @param {{ workDays?: number, standardWorkDays?: number } | null | undefined} summary
+ * +1 phép/tháng khi:
+ * - «Tổng ngày công (gồm ngày nghỉ có lương)» ≥ ½ «Ngày thực tế làm việc», hoặc
+ * - «Số ngày nghỉ thai sản» ≥ ½ «Ngày thực tế làm việc».
+ * @param {{ workDays?: number, standardWorkDays?: number, tsDays?: number } | null | undefined} summary
  */
 export function monthMeetsHalfStandardWorkDays(summary) {
   if (!summary || typeof summary !== "object") return false;
   const standard = Number(summary.standardWorkDays);
-  const work = Number(summary.workDays);
   if (!Number.isFinite(standard) || standard <= 0) return false;
+
+  const halfStandard = standard / 2;
+  const tsDays = Number(summary.tsDays);
+  if (Number.isFinite(tsDays) && tsDays >= 0 && tsDays >= halfStandard) {
+    return true;
+  }
+
+  const work = Number(summary.workDays);
   if (!Number.isFinite(work) || work < 0) return false;
-  return work >= standard / 2;
+  return work >= halfStandard;
 }
 
 /** Khoảng tháng 0-based (Jan=0) tính +1 phép trong năm `year`. */
@@ -171,9 +179,10 @@ function resolveMonthWorkSummaryForAccrual(
 
 /**
  * Số tháng +1 phép trong năm.
- * - Từ `2026-06` (và mọi tháng năm ≥ 2027): mọi NV kiểm ≥ ½ ngày thực tế làm việc — không auto +1.
+ * - Từ `2026-06` (và mọi tháng năm ≥ 2027): mọi NV kiểm ≥ ½ ngày thực tế làm việc
+ *   (tổng ngày công hoặc ngày nghỉ thai sản) — không auto +1.
  * - Trước `2026-06` trong năm 2026: quy tắc cũ (NV cũ auto +1; NV mới chỉ tháng vào làm cần ½).
- * @param {Record<string, { workDays?: number, standardWorkDays?: number }> | null | undefined} monthWorkSummaryByYearMonth
+ * @param {Record<string, { workDays?: number, standardWorkDays?: number, tsDays?: number }> | null | undefined} monthWorkSummaryByYearMonth
  */
 export function resolveAnnualLeaveMonthlyAccrualDays(
   startWorkingDate,
