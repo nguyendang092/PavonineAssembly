@@ -159,23 +159,6 @@ export const NAVIGATION_BOARD_TOOLS = [
     adminOnly: true,
   },
   {
-    id: "APP-17",
-    path: "/honor-board",
-    category: "documents",
-    titleKey: "navbar.honorBoard",
-    descriptionKey: "navigationBoard.descHonorBoard",
-    status: "active",
-    adminOnly: true,
-  },
-  {
-    id: "APP-18",
-    path: "/downloads",
-    category: "documents",
-    titleKey: "navbar.files",
-    descriptionKey: "navigationBoard.descDownloads",
-    status: "active",
-  },
-  {
     id: "APP-19",
     path: "/user-department",
     category: "system",

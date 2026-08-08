@@ -6,6 +6,7 @@ import AttendanceTableRow, {
 import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
 import { isSeasonalAttendanceRoot, isKoreanAttendanceRoot } from "./attendanceSeasonalStt";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
+import { annualLeaveEmpFirebaseKey } from "@/features/leave/annualLeaveEmpKey";
 import {
   annualLeaveYearFromDateKey,
   getDisplayAnnualLeaveBalanceForAttendance,
@@ -28,7 +29,6 @@ function AttendanceListTableSection({
   t,
   attendanceRootPath = "attendance",
   selectedDate,
-  annualLeaveBalanceEnabled = false,
 }) {
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
   const isKoreanAttendance = isKoreanAttendanceRoot(attendanceRootPath);
@@ -43,13 +43,20 @@ function AttendanceListTableSection({
     attendanceLayoutOptions,
   );
   const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
+  const scopeEmpKeys = useMemo(
+    () =>
+      deferredFilteredEmployees
+        .map((emp) => annualLeaveEmpFirebaseKey(emp.mnv))
+        .filter(Boolean),
+    [deferredFilteredEmployees],
+  );
   const {
     balanceByMnv: annualLeaveBalanceByMnv,
     yearData: annualLeaveYearData,
   } = useAnnualLeaveBalanceMap(annualLeaveYear, {
-    enabled: annualLeaveBalanceEnabled,
     attendanceRootPath,
     throughDateKey: selectedDate,
+    scopeEmpKeys,
   });
 
   const canEditByEmpId = useMemo(() => {

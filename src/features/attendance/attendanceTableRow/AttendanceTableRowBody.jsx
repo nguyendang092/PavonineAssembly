@@ -47,6 +47,7 @@ import { formatAnnualLeaveDecimal } from "@/features/leave/annualLeaveCalculated
 import { getDisplayAnnualLeaveBalanceForAttendance } from "@/features/leave/annualLeaveBalanceLookup";
 import AnnualLeaveUsageDetailTrigger from "@/features/leave/AnnualLeaveUsageDetailTrigger";
 import { propsAreEqual } from "./propsAreEqual";
+import "../attendanceRowCheckHighlight.css";
 
 function AttendanceTableRow({
   emp,

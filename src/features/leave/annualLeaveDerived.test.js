@@ -7,6 +7,7 @@ import {
   resolveAnnualLeaveMonthUsageValue,
   resolveHrAnnualLeaveUsed,
   buildLiveAnnualLeaveBalanceByMnv,
+  buildStoredAnnualLeaveBalanceByMnv,
   normalizeAnnualLeaveRowLive,
   normalizeAnnualLeaveRowStored,
   sumAnnualLeaveMonthlyUsageValues,
@@ -73,6 +74,16 @@ describe("annualLeaveDerived", () => {
       { emp_ABC: 2 },
     );
     expect(map.emp_ABC).toBe(8);
+  });
+
+  it("buildStoredAnnualLeaveBalanceByMnv reads Firebase balance field", () => {
+    const map = buildStoredAnnualLeaveBalanceByMnv({
+      emp_ABC: {
+        [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "ABC",
+        [ANNUAL_LEAVE_EMP.BALANCE]: 4.5,
+      },
+    });
+    expect(map.emp_ABC).toBe(4.5);
   });
 
   it("sumAnnualLeaveMonthlyUsageValues totals month columns", () => {

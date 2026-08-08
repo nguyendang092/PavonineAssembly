@@ -58,7 +58,6 @@ const CertificateGenerator1 = lazyImport(
 const CertificateGenerator2 = lazyImport(
   () => import("@/components/ui/CertificateGenerator2"),
 );
-const HonorBoard = lazyImport(() => import("@/features/employee/HonorBoard"));
 const TemperatureMonitor = lazyImport(
   () => import("@/components/ui/TemperatureMonitor"),
 );
@@ -77,7 +76,6 @@ const WarehouseInventoryDashboard = lazyImport(
 const MCDefectReportDashboard = lazyImport(
   () => import("@/features/dashboard/mcDefectReport"),
 );
-const Downloads = lazyImport(() => import("@/components/ui/Downloads"));
 const UserDepartmentManager = lazyImport(
   () => import("@/features/employee/UserDepartmentManager"),
 );
@@ -98,7 +96,6 @@ const ROUTE_COMPONENTS = {
   S90DProductionReportPage,
   CertificateGenerator1,
   CertificateGenerator2,
-  HonorBoard,
   TemperatureMonitor,
   MoldManager,
   PerformanceChart,
@@ -111,7 +108,6 @@ const ROUTE_COMPONENTS = {
   AnnualLeaveManager,
   KoreanTimesheetPage,
   AttendanceDashboardPage,
-  Downloads,
   UserDepartmentManager,
   PermissionCatalogPage,
   NavigationBoardPage,

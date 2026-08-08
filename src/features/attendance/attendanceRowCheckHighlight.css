@@ -1,0 +1,56 @@
+/* Check tăng ca — vàng ấm; check loại phép 1/2PN+TC — tím nhạt (dùng chung điểm danh + lương). */
+.att-row-check-ot,
+.att-row-check-ot [role="cell"],
+.att-row-check-ot [role="gridcell"],
+.att-row-check-ot td {
+  background-color: rgb(254 249 195) !important;
+}
+
+.att-row-check-ot:hover,
+.att-row-check-ot:hover [role="cell"],
+.att-row-check-ot:hover [role="gridcell"],
+.att-row-check-ot:hover td {
+  background-color: rgb(254 240 138) !important;
+}
+
+.att-row-check-leave,
+.att-row-check-leave [role="cell"],
+.att-row-check-leave [role="gridcell"],
+.att-row-check-leave td {
+  background-color: rgb(237 233 254) !important;
+}
+
+.att-row-check-leave:hover,
+.att-row-check-leave:hover [role="cell"],
+.att-row-check-leave:hover [role="gridcell"],
+.att-row-check-leave:hover td {
+  background-color: rgb(221 214 254) !important;
+}
+
+.dark .att-row-check-ot,
+.dark .att-row-check-ot [role="cell"],
+.dark .att-row-check-ot [role="gridcell"],
+.dark .att-row-check-ot td {
+  background-color: rgb(113 63 18 / 0.38) !important;
+}
+
+.dark .att-row-check-ot:hover,
+.dark .att-row-check-ot:hover [role="cell"],
+.dark .att-row-check-ot:hover [role="gridcell"],
+.dark .att-row-check-ot:hover td {
+  background-color: rgb(113 63 18 / 0.52) !important;
+}
+
+.dark .att-row-check-leave,
+.dark .att-row-check-leave [role="cell"],
+.dark .att-row-check-leave [role="gridcell"],
+.dark .att-row-check-leave td {
+  background-color: rgb(91 33 182 / 0.32) !important;
+}
+
+.dark .att-row-check-leave:hover,
+.dark .att-row-check-leave:hover [role="cell"],
+.dark .att-row-check-leave:hover [role="gridcell"],
+.dark .att-row-check-leave:hover td {
+  background-color: rgb(91 33 182 / 0.42) !important;
+}

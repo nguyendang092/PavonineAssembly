@@ -1,18 +1,22 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  memo,
+  startTransition,
+  Suspense,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
-import { buildAttendanceAnnualLeaveUsageDetailForEmpKey } from "./annualLeaveBalanceLookup";
 import { annualLeaveEmpFirebaseKey } from "./annualLeaveEmpKey";
 import {
   buildAnnualLeaveDetailModalRowFromEmp,
   buildAnnualLeaveDetailModalRowFromManagerRow,
 } from "./annualLeaveModalRowFromEmp";
-import {
-  getAttendanceYearSnapshot,
-  isAttendanceYearSnapshotReady,
-  subscribeAttendanceYear,
-} from "./annualLeaveLiveStore";
-import AnnualLeaveUsageDetailModal from "./AnnualLeaveUsageDetailModal";
 import "./annualLeaveManager.css";
+
+const AnnualLeaveUsageDetailModal = lazy(
+  () => import("./AnnualLeaveUsageDetailModal"),
+);
 
 function AnnualLeaveUsageDetailTrigger({
   emp = null,
@@ -26,81 +30,12 @@ function AnnualLeaveUsageDetailTrigger({
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [detail, setDetail] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const empKey = managerRow?.id ?? annualLeaveEmpFirebaseKey(emp?.mnv);
   const row = useMemo(() => {
     if (managerRow) return buildAnnualLeaveDetailModalRowFromManagerRow(managerRow);
     return buildAnnualLeaveDetailModalRowFromEmp(emp, yearData);
   }, [managerRow, emp, yearData]);
-
-  const detailFilter = useMemo(
-    () => (throughDateKey ? { throughDateKey } : null),
-    [throughDateKey],
-  );
-
-  useEffect(() => {
-    if (!open || !empKey) {
-      setDetail(null);
-      setDetailLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    const rebuild = () => {
-      if (
-        !isAttendanceYearSnapshotReady(
-          attendanceRootPath,
-          year,
-          throughDateKey,
-        )
-      ) {
-        return;
-      }
-      if (cancelled) return;
-
-      const attendanceRoot =
-        getAttendanceYearSnapshot(
-          attendanceRootPath,
-          year,
-          throughDateKey,
-        ) ?? {};
-
-      setDetail(
-        buildAttendanceAnnualLeaveUsageDetailForEmpKey(
-          attendanceRoot,
-          year,
-          empKey,
-          detailFilter,
-        ),
-      );
-      setDetailLoading(false);
-    };
-
-    setDetailLoading(true);
-    rebuild();
-
-    const unsubscribe = subscribeAttendanceYear(
-      attendanceRootPath,
-      year,
-      rebuild,
-      throughDateKey,
-    );
-
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, [
-    open,
-    empKey,
-    attendanceRootPath,
-    year,
-    throughDateKey,
-    detailFilter,
-  ]);
 
   if (!empKey || !row) return null;
 
@@ -109,7 +44,7 @@ function AnnualLeaveUsageDetailTrigger({
       <button
         type="button"
         className={`annual-leave-inline-detail-btn ${className}`.trim()}
-        onClick={() => setOpen(true)}
+        onClick={() => startTransition(() => setOpen(true))}
         title={t("annualLeave.viewUsageDetail")}
         aria-label={t("annualLeave.viewUsageDetail")}
       >
@@ -128,18 +63,18 @@ function AnnualLeaveUsageDetailTrigger({
         </svg>
       </button>
       {open ? (
-        <AnnualLeaveUsageDetailModal
-          open={open}
-          onClose={() => setOpen(false)}
-          row={row}
-          detail={detail}
-          year={year}
-          t={t}
-          loading={detailLoading}
-          empKey={empKey}
-          attendanceRootPath={attendanceRootPath}
-          throughDateKey={throughDateKey}
-        />
+        <Suspense fallback={null}>
+          <AnnualLeaveUsageDetailModal
+            open={open}
+            onClose={() => setOpen(false)}
+            row={row}
+            year={year}
+            t={t}
+            empKey={empKey}
+            attendanceRootPath={attendanceRootPath}
+            throughDateKey={throughDateKey}
+          />
+        </Suspense>
       ) : null}
     </>
   );

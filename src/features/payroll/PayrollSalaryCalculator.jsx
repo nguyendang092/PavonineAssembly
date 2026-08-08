@@ -31,6 +31,7 @@ import PayrollSalaryTableRow, {
   PayrollSalaryTableThead,
 } from "@/features/payroll/payrollSalaryTableUi";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
+import { annualLeaveEmpFirebaseKey } from "@/features/leave/annualLeaveEmpKey";
 import {
   annualLeaveYearFromDateKey,
   getDisplayAnnualLeaveBalanceForAttendance,
@@ -130,20 +131,7 @@ export default function PayrollSalaryCalculator() {
     setShortHoursFilter(PAYROLL_SHORT_HOURS_FILTER.ALL);
   }, [selectedDate]);
   const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
-  const [annualLeaveBalanceEnabled, setAnnualLeaveBalanceEnabled] =
-    useState(false);
 
-  useEffect(() => {
-    setAnnualLeaveBalanceEnabled(false);
-  }, [selectedDate]);
-
-  const {
-    balanceByMnv: annualLeaveBalanceByMnv,
-    yearData: annualLeaveYearData,
-  } = useAnnualLeaveBalanceMap(annualLeaveYear, {
-    enabled: annualLeaveBalanceEnabled,
-    throughDateKey: selectedDate,
-  });
   const [isOffDay, setIsOffDay] = useState(false);
   const [isHolidayDay, setIsHolidayDay] = useState(false);
   const [isCompensatoryDay, setIsCompensatoryDay] = useState(false);
@@ -691,6 +679,22 @@ export default function PayrollSalaryCalculator() {
   const pagedEmployees = tablePagination.pagedItems;
   const tableRowIndexOffset = tablePagination.rowIndexOffset;
 
+  const annualLeaveScopeEmpKeys = useMemo(
+    () =>
+      pagedEmployees
+        .map((emp) => annualLeaveEmpFirebaseKey(emp.mnv))
+        .filter(Boolean),
+    [pagedEmployees],
+  );
+
+  const {
+    balanceByMnv: annualLeaveBalanceByMnv,
+    yearData: annualLeaveYearData,
+  } = useAnnualLeaveBalanceMap(annualLeaveYear, {
+    throughDateKey: selectedDate,
+    scopeEmpKeys: annualLeaveScopeEmpKeys,
+  });
+
   const departments = useMemo(() => {
     const set = new Set();
     for (const emp of employees) {
@@ -916,24 +920,6 @@ export default function PayrollSalaryCalculator() {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              className={`inline-flex h-8 shrink-0 items-center rounded-md border px-2 text-xs font-semibold transition ${
-                annualLeaveBalanceEnabled
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
-                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
-              }`}
-              title={tlPage(
-                "annualLeaveBalanceToggleHint",
-                "Bấm để tải cột phép năm (BALANCE) khớp điểm danh.",
-              )}
-              onClick={() => setAnnualLeaveBalanceEnabled((on) => !on)}
-              aria-pressed={annualLeaveBalanceEnabled}
-            >
-              {annualLeaveBalanceEnabled
-                ? tlPage("annualLeaveBalance", "Phép năm")
-                : tlPage("annualLeaveBalanceFetch", "Lấy phép năm")}
-            </button>
           </div>
           <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto sm:justify-end">
             <PayrollToolsMenu

@@ -53,7 +53,6 @@ function AttendanceListContentSection() {
     handleDelete,
     isOffDay,
     isHolidayDay,
-    annualLeaveBalanceEnabled,
   } = useAttendanceListContentBranch();
 
   const { searchTerm } = useAttendanceListSearchBranch();
@@ -193,7 +192,6 @@ function AttendanceListContentSection() {
         t={t}
         attendanceRootPath={attendanceRootPath}
         selectedDate={selectedDate}
-        annualLeaveBalanceEnabled={annualLeaveBalanceEnabled}
       />
 
       <HrTablePagination

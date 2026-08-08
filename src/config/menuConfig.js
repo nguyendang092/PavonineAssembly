@@ -140,25 +140,7 @@ export const menuConfig = [
                 label: "navbar.certificate2",
                 path: "/bangkhen2",
               },
-              {
-                key: "honorBoard",
-                label: "navbar.honorBoard",
-                path: "/honor-board",
-              },
             ],
-          },
-        ],
-      },
-
-      {
-        key: "download",
-        label: "navbar.download",
-        type: "nested",
-        children: [
-          {
-            key: "files",
-            label: "navbar.files",
-            path: "/downloads",
           },
         ],
       },
@@ -176,7 +158,6 @@ export const routeConfig = [
   { path: "/s90d-production-report", element: "S90DProductionReportPage" },
   { path: "/bangkhen1", element: "CertificateGenerator1" },
   { path: "/bangkhen2", element: "CertificateGenerator2" },
-  { path: "/honor-board", element: "HonorBoard" },
   { path: "/nhietdo", element: "TemperatureMonitor" },
   { path: "/mold", element: "MoldManager" },
   { path: "/performance", element: "PerformanceChart" },
@@ -191,5 +172,4 @@ export const routeConfig = [
   { path: "/attendance-dashboard", element: "AttendanceDashboardPage" },
   { path: "/user-department", element: "UserDepartmentManager" },
   { path: "/permission-catalog", element: "PermissionCatalogPage" },
-  { path: "/downloads", element: "Downloads" },
 ];

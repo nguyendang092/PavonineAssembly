@@ -304,6 +304,21 @@ function assignBalanceEmpKey(map, empKey, balance) {
   map[empKey] = balance;
 }
 
+/** Map `emp_{mnv}` → BALANCE đã lưu trên Firebase (hiển thị ngay trước khi tính live). */
+export function buildStoredAnnualLeaveBalanceByMnv(yearData) {
+  const map = {};
+  if (!yearData || typeof yearData !== "object") return map;
+
+  const indexed = indexAnnualLeaveYearByEmpKey(yearData);
+  for (const [empKey, { raw }] of Object.entries(indexed)) {
+    const balance = parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.BALANCE]);
+    if (Number.isFinite(balance)) {
+      assignBalanceEmpKey(map, empKey, balance);
+    }
+  }
+  return map;
+}
+
 /**
  * Map `emp_{mnv}` → BALANCE tính live (HR + quét điểm danh).
  */
@@ -314,12 +329,17 @@ export function buildLiveAnnualLeaveBalanceByMnv(
   usageDetailByEmpKey = {},
   attendanceMonthlyByEmpKey = {},
   monthWorkSummaryByEmpKey = {},
+  {
+    scopeEmpKeySet = null,
+    preferStoredCurrentYear = false,
+  } = {},
 ) {
   const map = {};
   if (!yearData || typeof yearData !== "object") return map;
 
   const indexed = indexAnnualLeaveYearByEmpKey(yearData);
   for (const [empKey, { raw }] of Object.entries(indexed)) {
+    if (scopeEmpKeySet && !scopeEmpKeySet.has(empKey)) continue;
     const storedMonthly = resolveStoredMonthlyLeaveUsage(raw);
     const monthValues = resolveEffectiveMonthlyLeaveUsage(
       raw,
@@ -337,6 +357,7 @@ export function buildLiveAnnualLeaveBalanceByMnv(
     const { balance } = computeLiveAnnualLeaveState(raw, liveAtt, year, {
       usedFromMonthlySum,
       monthWorkSummaryByYearMonth: monthWorkSummaryByEmpKey[empKey] ?? null,
+      preferStoredCurrentYear,
     });
     assignBalanceEmpKey(map, empKey, balance);
   }

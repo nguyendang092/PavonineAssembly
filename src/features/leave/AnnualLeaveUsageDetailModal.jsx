@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { ANNUAL_LEAVE_EMP, ANNUAL_LEAVE_MANAGER_MIN_YEAR } from "./annualLeaveFields";
 import {
   formatAnnualLeaveDecimal,
   parseAnnualLeaveNumber,
-  computeAnnualLeaveTotals,
 } from "./annualLeaveCalculated";
+import {
+  applyAnnualLeaveDetailLiveState,
+  buildAnnualLeaveDetailDisplayRowSnapshot,
+  computeAnnualLeaveDetailLiveTotals,
+  computeAnnualLeaveDetailUsageTotals,
+} from "./annualLeaveDetailDisplayRow";
 import { buildAttendanceAnnualLeaveUsageDetailForEmpKey } from "./annualLeaveBalanceLookup";
 import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
 import {
@@ -349,10 +354,8 @@ export default function AnnualLeaveUsageDetailModal({
   open,
   onClose,
   row,
-  detail,
   year,
   t,
-  loading = false,
   empKey = null,
   attendanceRootPath = "attendance",
   throughDateKey = null,
@@ -363,9 +366,10 @@ export default function AnnualLeaveUsageDetailModal({
   const [selectedLeaveDay, setSelectedLeaveDay] = useState(null);
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [selectedYear, setSelectedYear] = useState(Number(year));
-  const [yearDetail, setYearDetail] = useState(detail);
-  const [yearLoading, setYearLoading] = useState(loading);
+  const [yearDetail, setYearDetail] = useState(null);
+  const [yearLoading, setYearLoading] = useState(false);
   const [yearRowRaw, setYearRowRaw] = useState(null);
+  const [displayRow, setDisplayRow] = useState(row);
 
   const yearOptions = useMemo(() => buildYearOptions(year), [year]);
 
@@ -378,11 +382,7 @@ export default function AnnualLeaveUsageDetailModal({
       return;
     }
     setSelectedYear(Number(year));
-    if (!empKey) {
-      setYearDetail(detail);
-      setYearLoading(loading);
-    }
-  }, [open, year, empKey, detail, loading]);
+  }, [open, year]);
 
   useEffect(() => {
     if (!open) return;
@@ -397,13 +397,14 @@ export default function AnnualLeaveUsageDetailModal({
   useEffect(() => {
     if (!open || !empKey) {
       if (open) {
-        setYearDetail(detail);
-        setYearLoading(loading);
+        setYearDetail(null);
+        setYearLoading(false);
       }
       return;
     }
 
     let cancelled = false;
+    let frameId = 0;
 
     const rebuild = () => {
       if (
@@ -424,29 +425,38 @@ export default function AnnualLeaveUsageDetailModal({
           effectiveThroughDateKey,
         ) ?? {};
 
-      setYearDetail(
-        buildAttendanceAnnualLeaveUsageDetailForEmpKey(
-          attendanceRoot,
-          selectedYear,
-          empKey,
-          effectiveThroughDateKey ? { throughDateKey: effectiveThroughDateKey } : null,
-        ),
-      );
-      setYearLoading(false);
+      startTransition(() => {
+        if (cancelled) return;
+        setYearDetail(
+          buildAttendanceAnnualLeaveUsageDetailForEmpKey(
+            attendanceRoot,
+            selectedYear,
+            empKey,
+            effectiveThroughDateKey
+              ? { throughDateKey: effectiveThroughDateKey }
+              : null,
+          ),
+        );
+        setYearLoading(false);
+      });
     };
 
     setYearLoading(true);
-    rebuild();
+    frameId = requestAnimationFrame(rebuild);
 
     const unsubscribe = subscribeAttendanceYear(
       attendanceRootPath,
       selectedYear,
-      rebuild,
+      () => {
+        if (cancelled) return;
+        frameId = requestAnimationFrame(rebuild);
+      },
       effectiveThroughDateKey,
     );
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(frameId);
       unsubscribe();
     };
   }, [
@@ -484,36 +494,103 @@ export default function AnnualLeaveUsageDetailModal({
     };
   }, [open, empKey, selectedYear]);
 
-  const displayRow = useMemo(() => {
-    if (!yearRowRaw) return row;
-    const totals = computeAnnualLeaveTotals(yearRowRaw, selectedYear);
-    const sameAsOpenYear = Number(selectedYear) === Number(year);
-    const usedFromRow =
-      sameAsOpenYear && row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED] != null
-        ? parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED])
-        : null;
-    const balanceFromRow =
-      sameAsOpenYear && row[ANNUAL_LEAVE_EMP.BALANCE] != null
-        ? parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.BALANCE])
-        : null;
+  useEffect(() => {
+    if (!open || !row) {
+      setDisplayRow(null);
+      return;
+    }
 
-    return {
-      ...row,
-      [ANNUAL_LEAVE_EMP.FULL_NAME]:
-        yearRowRaw[ANNUAL_LEAVE_EMP.FULL_NAME] ?? row[ANNUAL_LEAVE_EMP.FULL_NAME],
-      [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]:
-        yearRowRaw[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ??
-        row[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT],
-      [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]:
-        totals[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
-      [ANNUAL_LEAVE_EMP.BALANCE]:
-        balanceFromRow ?? totals[ANNUAL_LEAVE_EMP.BALANCE],
-      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]:
-        usedFromRow ??
-        parseAnnualLeaveNumber(yearRowRaw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]) ??
-        parseAnnualLeaveNumber(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]),
+    setDisplayRow(row);
+
+    if (!empKey) return;
+
+    let cancelled = false;
+    let frameId = 0;
+
+    const refreshDisplayRow = () => {
+      if (cancelled) return;
+
+      const snapshot = buildAnnualLeaveDetailDisplayRowSnapshot({
+        row,
+        yearRowRaw,
+        selectedYear,
+        openYear: year,
+        throughDateKey: effectiveThroughDateKey,
+      });
+      startTransition(() => {
+        if (!cancelled && snapshot) setDisplayRow(snapshot);
+      });
+
+      if (!yearRowRaw) return;
+      if (
+        !isAttendanceYearSnapshotReady(
+          attendanceRootPath,
+          selectedYear,
+          effectiveThroughDateKey,
+        )
+      ) {
+        return;
+      }
+
+      const attendanceRoot =
+        getAttendanceYearSnapshot(
+          attendanceRootPath,
+          selectedYear,
+          effectiveThroughDateKey,
+        ) ?? {};
+
+      startTransition(() => {
+        if (cancelled) return;
+        const usageState = computeAnnualLeaveDetailUsageTotals(
+          yearRowRaw,
+          empKey,
+          attendanceRoot,
+          selectedYear,
+          { throughDateKey: effectiveThroughDateKey },
+        );
+        if (usageState) {
+          setDisplayRow(applyAnnualLeaveDetailLiveState(row, yearRowRaw, usageState));
+        }
+      });
+
+      if (!isAnnualLeaveYearSnapshotReady(selectedYear)) return;
+
+      const yearData = getAnnualLeaveYearSnapshot(selectedYear) ?? {};
+      startTransition(() => {
+        if (cancelled) return;
+        const liveState = computeAnnualLeaveDetailLiveTotals(
+          yearRowRaw,
+          empKey,
+          attendanceRoot,
+          yearData,
+          selectedYear,
+          {
+            attendanceRootPath,
+            throughDateKey: effectiveThroughDateKey,
+          },
+        );
+        if (liveState) {
+          setDisplayRow(applyAnnualLeaveDetailLiveState(row, yearRowRaw, liveState));
+        }
+      });
     };
-  }, [row, yearRowRaw, selectedYear, year]);
+
+    frameId = requestAnimationFrame(refreshDisplayRow);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frameId);
+    };
+  }, [
+    open,
+    row,
+    yearRowRaw,
+    empKey,
+    selectedYear,
+    year,
+    attendanceRootPath,
+    effectiveThroughDateKey,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -590,18 +667,19 @@ export default function AnnualLeaveUsageDetailModal({
 
   if (!open || !row) return null;
 
-  const name = displayRow[ANNUAL_LEAVE_EMP.FULL_NAME] ?? "";
-  const mnv = String(displayRow[ANNUAL_LEAVE_EMP.MNV_PREFIX] ?? "").trim();
-  const dept = String(displayRow[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ?? "").trim();
+  const summaryRow = displayRow ?? row;
+  const name = summaryRow[ANNUAL_LEAVE_EMP.FULL_NAME] ?? "";
+  const mnv = String(summaryRow[ANNUAL_LEAVE_EMP.MNV_PREFIX] ?? "").trim();
+  const dept = String(summaryRow[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ?? "").trim();
 
   const totalAnnualLeave = parseAnnualLeaveNumber(
-    displayRow[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
+    summaryRow[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
   );
   const annualLeaveUsed = parseAnnualLeaveNumber(
-    displayRow[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED],
+    summaryRow[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED],
   );
   const availableAnnualLeave = parseAnnualLeaveNumber(
-    displayRow[ANNUAL_LEAVE_EMP.BALANCE],
+    summaryRow[ANNUAL_LEAVE_EMP.BALANCE],
   );
 
   const totalSummary = formatSummaryDayCount(totalAnnualLeave, t);
@@ -649,7 +727,7 @@ export default function AnnualLeaveUsageDetailModal({
       >
         <div className="annual-leave-detail-layout">
           <AnnualLeaveDetailSidebar
-            row={displayRow}
+            row={summaryRow}
             year={selectedYear}
             t={t}
             onClose={onClose}
@@ -729,6 +807,51 @@ export default function AnnualLeaveUsageDetailModal({
           </label>
         </div>
 
+        <div className="annual-leave-detail-summary">
+          <SummaryCard
+            tone="balance"
+            icon={<CalendarCardIcon />}
+            label={t("annualLeave.totalAnnualLeave", {
+              defaultValue: "Tổng phép năm",
+            })}
+            value={totalSummary.display}
+            unit={totalSummary.unit}
+            sub={t("annualLeave.totalAnnualLeaveSub", {
+              defaultValue: "Theo bảng phép năm",
+            })}
+            progress={totalProgress}
+          />
+          <SummaryCard
+            tone="half"
+            icon={<BriefcaseCardIcon />}
+            label={t("annualLeave.annualLeaveUsed", {
+              defaultValue: "Phép năm đã sử dụng",
+            })}
+            value={usedSummary.display}
+            unit={usedSummary.unit}
+            sub={t("annualLeave.annualLeaveUsedClickHint", {
+              defaultValue:
+                "Theo cột ANNUAL LEAVE USED · Bấm xem danh sách",
+            })}
+            progress={usedProgress}
+            clickable
+            onClick={() => setUsedDaysOpen(true)}
+          />
+          <SummaryCard
+            tone="used"
+            icon={<ChecklistCardIcon />}
+            label={t("annualLeave.availableAnnualLeave", {
+              defaultValue: "Phép năm khả dụng",
+            })}
+            value={availableSummary.display}
+            unit={availableSummary.unit}
+            sub={t("annualLeave.availableAnnualLeaveSub", {
+              defaultValue: "Theo cột BALANCE trên bảng phép năm",
+            })}
+            progress={availableProgress}
+          />
+        </div>
+
         {yearLoading ? (
           <div className="annual-leave-detail-empty" aria-busy="true">
             <span className="annual-leave-detail-empty-icon" aria-hidden>
@@ -741,52 +864,6 @@ export default function AnnualLeaveUsageDetailModal({
             </p>
           </div>
         ) : (
-          <>
-            <div className="annual-leave-detail-summary">
-              <SummaryCard
-                tone="balance"
-                icon={<CalendarCardIcon />}
-                label={t("annualLeave.totalAnnualLeave", {
-                  defaultValue: "Tổng phép năm",
-                })}
-                value={totalSummary.display}
-                unit={totalSummary.unit}
-                sub={t("annualLeave.totalAnnualLeaveSub", {
-                  defaultValue: "Theo bảng phép năm",
-                })}
-                progress={totalProgress}
-              />
-              <SummaryCard
-                tone="half"
-                icon={<BriefcaseCardIcon />}
-                label={t("annualLeave.annualLeaveUsed", {
-                  defaultValue: "Phép năm đã sử dụng",
-                })}
-                value={usedSummary.display}
-                unit={usedSummary.unit}
-                sub={t("annualLeave.annualLeaveUsedClickHint", {
-                  defaultValue:
-                    "Theo cột ANNUAL LEAVE USED · Bấm xem danh sách",
-                })}
-                progress={usedProgress}
-                clickable
-                onClick={() => setUsedDaysOpen(true)}
-              />
-              <SummaryCard
-                tone="used"
-                icon={<ChecklistCardIcon />}
-                label={t("annualLeave.availableAnnualLeave", {
-                  defaultValue: "Phép năm khả dụng",
-                })}
-                value={availableSummary.display}
-                unit={availableSummary.unit}
-                sub={t("annualLeave.availableAnnualLeaveSub", {
-                  defaultValue: "Theo cột BALANCE trên bảng phép năm",
-                })}
-                progress={availableProgress}
-              />
-            </div>
-
             <div className="annual-leave-detail-section">
               <div className="annual-leave-detail-section-card">
                 <div className="annual-leave-detail-section-head">
@@ -975,7 +1052,6 @@ export default function AnnualLeaveUsageDetailModal({
                 </div>
               </div>
             </div>
-          </>
         )}
           </div>
         </div>
@@ -989,7 +1065,7 @@ export default function AnnualLeaveUsageDetailModal({
       <AnnualLeaveEmployeeTimePopup
         open={workHoursOpen}
         onClose={() => setWorkHoursOpen(false)}
-        row={displayRow}
+        row={summaryRow}
         year={selectedYear}
         empKey={empKey}
         attendanceRootPath={attendanceRootPath}
@@ -999,7 +1075,7 @@ export default function AnnualLeaveUsageDetailModal({
       <AnnualLeaveUsedDaysPopup
         open={usedDaysOpen}
         onClose={() => setUsedDaysOpen(false)}
-        row={displayRow}
+        row={summaryRow}
         detail={yearDetail}
         year={selectedYear}
         empKey={empKey}
@@ -1010,7 +1086,7 @@ export default function AnnualLeaveUsageDetailModal({
       <AnnualLeaveLeaveDayDetailPopup
         open={Boolean(selectedLeaveDay)}
         onClose={() => setSelectedLeaveDay(null)}
-        row={displayRow}
+        row={summaryRow}
         leaveDay={selectedLeaveDay}
         empKey={empKey}
         attendanceRootPath={attendanceRootPath}

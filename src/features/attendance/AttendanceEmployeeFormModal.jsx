@@ -55,7 +55,6 @@ import {
   getEmployeeRegimeSelectValue,
 } from "./employeeRegime";
 import { ATTENDANCE_EMP } from "./attendanceEmployeeFields";
-import AttendanceFormImageUploadField from "./AttendanceFormImageUploadField";
 
 /**
  * Map legacy `includeTsNvInWorkingHours` + chuẩn hóa `loaiPhep` khi mở form từ snapshot.
@@ -118,8 +117,6 @@ const EMPTY_EMPLOYEE_FORM = {
   [ATTENDANCE_EMP.NAME_YELLOW_BG]: "",
   /** Firebase: `loaiPhepCheck` — `"YES"` = tô nền cả dòng (check loại phép). */
   [ATTENDANCE_EMP.LEAVE_TYPE_CHECK]: "",
-  [ATTENDANCE_EMP.ANNUAL_LEAVE_IMAGE_URL]: "",
-  [ATTENDANCE_EMP.OT_PAPERWORK_IMAGE_URL]: "",
   includeTapVuInWorkingHours: "",
   includeThaiSanInWorkingHours: "",
   includeTaiXeInWorkingHours: "",
@@ -531,6 +528,8 @@ export default function AttendanceEmployeeFormModal({
         const dayDoc = buildEmployeeAttendanceDayDocument({
           form: (() => {
             const slice = formSliceForAttendanceDayDocument(form, sliceOverrides);
+            delete slice[ATTENDANCE_EMP.ANNUAL_LEAVE_IMAGE_URL];
+            delete slice[ATTENDANCE_EMP.OT_PAPERWORK_IMAGE_URL];
             if (!allowFullEdit) {
               delete slice[ATTENDANCE_EMP.NAME_YELLOW_BG];
               delete slice[ATTENDANCE_EMP.COMP_LEAVE_ALLOWED];
@@ -605,6 +604,8 @@ export default function AttendanceEmployeeFormModal({
               boPhanChuaDung: normalizeBoPhanChuaDungForForm(form.boPhanChuaDung),
               ...(isSeasonalAttendance ? { sttThoiVu: form.stt } : {}),
             });
+            delete slice[ATTENDANCE_EMP.ANNUAL_LEAVE_IMAGE_URL];
+            delete slice[ATTENDANCE_EMP.OT_PAPERWORK_IMAGE_URL];
             if (!isAdminAccess(user, userRole)) {
               delete slice[ATTENDANCE_EMP.NAME_YELLOW_BG];
               delete slice[ATTENDANCE_EMP.COMP_LEAVE_ALLOWED];
@@ -1250,34 +1251,6 @@ export default function AttendanceEmployeeFormModal({
                 </span>
               </label>
             </div>
-          </div>
-          <div className="grid min-w-0 grid-cols-1 gap-1.5 sm:col-span-2 sm:grid-cols-2 sm:gap-3">
-            <AttendanceFormImageUploadField
-              label={tl("annualLeaveImageUpload", "Hình phép năm")}
-              value={form[ATTENDANCE_EMP.ANNUAL_LEAVE_IMAGE_URL]}
-              onChange={(url) =>
-                setForm((prev) => ({
-                  ...prev,
-                  [ATTENDANCE_EMP.ANNUAL_LEAVE_IMAGE_URL]: url,
-                }))
-              }
-              disabled={isViewOnly}
-              uploadNamePrefix={`${form.mnv || "nv"}_${selectedDate}_phepNam`}
-              tl={tl}
-            />
-            <AttendanceFormImageUploadField
-              label={tl("otPaperworkImageUpload", "Giấy tăng ca")}
-              value={form[ATTENDANCE_EMP.OT_PAPERWORK_IMAGE_URL]}
-              onChange={(url) =>
-                setForm((prev) => ({
-                  ...prev,
-                  [ATTENDANCE_EMP.OT_PAPERWORK_IMAGE_URL]: url,
-                }))
-              }
-              disabled={isViewOnly}
-              uploadNamePrefix={`${form.mnv || "nv"}_${selectedDate}_tangCa`}
-              tl={tl}
-            />
           </div>
           {!isViewOnly ? (
             <button

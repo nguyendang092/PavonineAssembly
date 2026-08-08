@@ -4,7 +4,7 @@
 
 | Bạn chỉ có | Thiếu (app sẽ lỗi PERMISSION_DENIED) |
 |------------|--------------------------------------|
-| `internalAnnouncements` | `attendance`, `seasonalAttendance`, `performanceData`, `bar`, `ng`, `mcDefectReport`, `areas`, `temperature_monitor`, `details`, `molds`, `honorBoard`, `downloads`, `warehouseInventoryDashboard`, `logs`, `userPreferences` |
+| `internalAnnouncements` | `attendance`, `seasonalAttendance`, `performanceData`, `bar`, `ng`, `mcDefectReport`, `areas`, `temperature_monitor`, `details`, `molds`, `warehouseInventoryDashboard`, `logs`, `userPreferences` |
 
 File đầy đủ: `firebase/database.rules.json` — mọi nhánh `.read` / `.write`: `auth != null`.
 
@@ -32,8 +32,6 @@ File đầy đủ: `firebase/database.rules.json` — mọi nhánh `.read` / `.w
 ├── temperature_monitor/{area}/{machine}/{yyyy-MM}/
 ├── details/{area}/               # Chi tiết sản lượng (DetailedModal)
 ├── molds/{id}/
-├── honorBoard/{id}/
-├── downloads/stats/{fileId}/     # Số lần tải file tĩnh
 ├── warehouseInventoryDashboard/latestSnapshot/
 ├── logs/{pushId}/                # userLog — append only
 └── userPreferences/{safeEmail}/chartOrder_v1/{kind}/
@@ -70,7 +68,6 @@ Email hệ thống full quyền (không cần dòng mapping): `admin@gmail.com`,
 | userDepartments | Đã đăng nhập | Admin/HR email hệ thống |
 | internalAnnouncements | Đã đăng nhập | Tạo = đúng authorEmail; sửa/xóa = tác giả hoặc Admin/HR |
 | performanceData | Đã đăng nhập | Admin/HR |
-| honorBoard | Đã đăng nhập | Admin/HR |
 | bar, ng, molds, areas, temperature_monitor, details, warehouse… | Đã đăng nhập | Đã đăng nhập |
 | logs | Admin/HR | Mọi user đăng nhập — **chỉ thêm** (không sửa/xóa) |
 | userPreferences | Chính user (hoặc Admin/HR đọc) | Chỉ path `safeEmail` của mình |

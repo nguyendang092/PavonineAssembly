@@ -191,28 +191,6 @@
       }
     },
 
-    "honorBoard": {
-      ".read": "auth != null",
-      ".write": "auth != null",
-      "$entryId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    },
-
-    "downloads": {
-      ".read": "auth != null",
-      ".write": "auth != null",
-      "stats": {
-        ".read": "auth != null",
-        ".write": "auth != null",
-        "$fileId": {
-          ".read": "auth != null",
-          ".write": "auth != null"
-        }
-      }
-    },
-
     "warehouseInventoryDashboard": {
       ".read": "auth != null",
       ".write": "auth != null",

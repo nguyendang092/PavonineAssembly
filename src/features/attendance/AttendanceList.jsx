@@ -220,13 +220,6 @@ const AttendanceList = memo(function AttendanceList({
   const { employees, employeesRef, isOffDay, isHolidayDay, isCompensatoryDay } =
     useAttendanceDayFirebase(attendanceRootPath, selectedDate);
 
-  const [annualLeaveBalanceEnabled, setAnnualLeaveBalanceEnabled] =
-    useState(false);
-
-  useEffect(() => {
-    setAnnualLeaveBalanceEnabled(false);
-  }, [selectedDate, attendanceRootPath]);
-
   const {
     normalizeDepartment,
     loaiPhepFilterSet,
@@ -598,11 +591,6 @@ const AttendanceList = memo(function AttendanceList({
           }
         : null,
       tlPayrollPage,
-      annualLeaveBalanceEnabled,
-      setAnnualLeaveBalanceEnabled,
-      showAnnualLeaveBalanceToggle:
-        !isSeasonalAttendanceRoot(attendanceRootPath) &&
-        !isKoreanAttendanceRoot(attendanceRootPath),
     }),
     [
       navbarMobileMenuOpen,
@@ -682,8 +670,6 @@ const AttendanceList = memo(function AttendanceList({
       handlePrintAttendanceList,
       showKoreanMonthlyTimesheet,
       tlPayrollPage,
-      annualLeaveBalanceEnabled,
-      setAnnualLeaveBalanceEnabled,
     ],
   );
 
@@ -741,7 +727,6 @@ const AttendanceList = memo(function AttendanceList({
       handleDelete,
       isOffDay,
       isHolidayDay,
-      annualLeaveBalanceEnabled,
     }),
     [
       showEmployeeModal,
@@ -776,7 +761,6 @@ const AttendanceList = memo(function AttendanceList({
       handleDelete,
       isOffDay,
       isHolidayDay,
-      annualLeaveBalanceEnabled,
     ],
   );
 

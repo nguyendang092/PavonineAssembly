@@ -163,7 +163,7 @@ export function buildAnnualLeaveMonthWorkSummaryByEmpKey(
   attendanceRoot,
   year,
   yearData,
-  { attendanceRootPath = "attendance" } = {},
+  { attendanceRootPath = "attendance", scopeEmpKeySet = null } = {},
 ) {
   const map = {};
   if (!attendanceRoot || !yearData || typeof yearData !== "object") return map;
@@ -172,7 +172,14 @@ export function buildAnnualLeaveMonthWorkSummaryByEmpKey(
   if (!Number.isFinite(y)) return map;
 
   const indexed = indexAnnualLeaveYearByEmpKey(yearData);
-  const accrualYearMonths = collectAccrualYearMonthsForYear(indexed, y);
+  const scopedIndexed = scopeEmpKeySet
+    ? Object.fromEntries(
+        Object.entries(indexed).filter(([empKey]) =>
+          scopeEmpKeySet.has(empKey),
+        ),
+      )
+    : indexed;
+  const accrualYearMonths = collectAccrualYearMonthsForYear(scopedIndexed, y);
   const dayChunkMap = buildDayChunkMapForYearMonths(
     attendanceRoot,
     attendanceRootPath,
@@ -180,6 +187,7 @@ export function buildAnnualLeaveMonthWorkSummaryByEmpKey(
   );
 
   for (const [empKey, { raw }] of Object.entries(indexed)) {
+    if (scopeEmpKeySet && !scopeEmpKeySet.has(empKey)) continue;
     const startWorkingDate = raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE];
     if (!startWorkingDate) continue;
 
