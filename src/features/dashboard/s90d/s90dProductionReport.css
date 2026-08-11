@@ -3,8 +3,44 @@
   padding: 0.75rem 0.875rem 1.5rem;
   background: linear-gradient(160deg, #f8fafc 0%, #eef2ff 45%, #f1f5f9 100%);
   max-width: 100%;
-  overflow-x: hidden;
   box-sizing: border-box;
+  --s90d-sticky-offset: 11rem;
+}
+
+.s90d-report-sticky {
+  position: fixed;
+  top: var(--app-navbar-height, 4rem);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  background: linear-gradient(
+    180deg,
+    #f8fafc 0%,
+    #eef2ff 55%,
+    #f1f5f9 100%
+  );
+  border-bottom: 1px solid rgba(199, 210, 254, 0.55);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.s90d-report-sticky-spacer {
+  flex-shrink: 0;
+}
+
+.s90d-report-sticky .s90d-report-header {
+  margin-bottom: 0;
+}
+
+.s90d-report-sticky .s90d-tabs {
+  margin-bottom: 0;
+}
+
+.s90d-report-sticky .s90d-sync-banner {
+  margin: 0;
 }
 
 .s90d-report-header {
@@ -726,7 +762,7 @@ body.s90d-chart-modal-open {
 }
 
 .s90d-daily-card {
-  scroll-margin-top: 5rem;
+  scroll-margin-top: var(--s90d-sticky-offset, 11rem);
   min-width: 0;
 }
 

@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo } from "react";
 import Modal from "react-modal";
 import { useTranslation } from "react-i18next";
+import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
+import { useReportT } from "../../productionReport/useReportTranslation";
 import {
   Area,
   Bar,
@@ -162,6 +164,9 @@ export default function S90dSummaryChartModal({
   monthDisplayLabel = "",
 }) {
   const { t, i18n } = useTranslation();
+  const rt = useReportT();
+  const { chartReportBadgeKey = "chartReportBadge" } =
+    useProductionReportContext();
   const isDaily = variant === "daily";
   const locale = resolveS90dChartLocale(i18n.language);
   const displayLocale = i18n.language?.startsWith("ko") ? "ko" : "vi";
@@ -232,8 +237,8 @@ export default function S90dSummaryChartModal({
       ...row,
       name:
         row.nameKey === "ok"
-          ? t("s90dReport.kpiOkQty", "Số lượng đạt")
-          : t("s90dReport.kpiNgQty", "Số lượng NG"),
+          ? rt("kpiOkQty", "Số lượng đạt")
+          : rt("kpiNgQty", "Số lượng NG"),
       fill: row.nameKey === "ok" ? S90D_CHART.ok : S90D_CHART.ng,
     }));
   }, [grandTotalSummary, isDaily, t, totalSummary]);
@@ -281,10 +286,10 @@ export default function S90dSummaryChartModal({
     : hasProcessData || hasDefectData || hasPieData;
 
   const title = isDaily
-    ? t("s90dReport.chartDailyTitle", "Biểu đồ theo ngày — {{month}}", {
+    ? rt("chartDailyTitle", "Biểu đồ theo ngày — {{month}}", {
         month: monthDisplayLabel,
       })
-    : t("s90dReport.chartTotalTitle", "Biểu đồ tổng — {{month}}", {
+    : rt("chartTotalTitle", "Biểu đồ tổng — {{month}}", {
         month: monthDisplayLabel,
       });
 
@@ -300,12 +305,12 @@ export default function S90dSummaryChartModal({
   );
 
   const qtyLegend = [
-    { key: "ok", color: S90D_CHART.ok, label: t("s90dReport.kpiOkQty", "Số lượng đạt") },
-    { key: "ng", color: S90D_CHART.ng, label: t("s90dReport.kpiNgQty", "Số lượng NG") },
+    { key: "ok", color: S90D_CHART.ok, label: rt("kpiOkQty", "Số lượng đạt") },
+    { key: "ng", color: S90D_CHART.ng, label: rt("kpiNgQty", "Số lượng NG") },
     {
       key: "yield",
       color: S90D_CHART.yield,
-      label: t("s90dReport.kpiAvgYield", "Hiệu suất"),
+      label: rt("kpiAvgYield", "Hiệu suất"),
     },
   ];
 
@@ -327,17 +332,17 @@ export default function S90dSummaryChartModal({
       <header className="s90d-chart-modal-hero">
         <div className="s90d-chart-modal-hero-main">
           <span className="s90d-chart-modal-badge">
-            {t("s90dReport.chartReportBadge", "Báo cáo S90D")}
+            {rt(chartReportBadgeKey, "Báo cáo sản lượng")}
           </span>
           <h2 className="s90d-chart-modal-title">{title}</h2>
           <p className="s90d-chart-modal-subtitle">
             {isDaily
-              ? t(
-                  "s90dReport.chartDailySubtitle",
+              ? rt(
+                  "chartDailySubtitle",
                   "Xu hướng số lượng và lỗi theo từng ngày trong tháng",
                 )
-              : t(
-                  "s90dReport.chartTotalSubtitle",
+              : rt(
+                  "chartTotalSubtitle",
                   "So sánh số lượng đạt / NG và hiệu suất theo công đoạn",
                 )}
           </p>
@@ -345,7 +350,7 @@ export default function S90dSummaryChartModal({
             <span>{monthDisplayLabel}</span>
             <span aria-hidden="true">·</span>
             <span>
-              {t("s90dReport.chartGeneratedAt", "Xuất ngày {{date}}", {
+              {rt("chartGeneratedAt", "Xuất ngày {{date}}", {
                 date: reportDate,
               })}
             </span>
@@ -353,7 +358,7 @@ export default function S90dSummaryChartModal({
               <>
                 <span aria-hidden="true">·</span>
                 <span>
-                  {t("s90dReport.chartActiveDays", "{{count}} ngày có dữ liệu", {
+                  {rt("chartActiveDays", "{{count}} ngày có dữ liệu", {
                     count: totalSummary.activeDays,
                   })}
                 </span>
@@ -373,7 +378,7 @@ export default function S90dSummaryChartModal({
 
       {!hasAnyChart ? (
         <p className="s90d-chart-empty">
-          {t("s90dReport.chartNoData", "Chưa có dữ liệu để vẽ biểu đồ.")}
+          {rt("chartNoData", "Chưa có dữ liệu để vẽ biểu đồ.")}
         </p>
       ) : (
         <div className="s90d-chart-dashboard">
@@ -386,9 +391,9 @@ export default function S90dSummaryChartModal({
               hasDailyData ? (
                 <S90dChartPanel
                   wide
-                  title={t("s90dReport.chartDailyQtyTitle", "Số lượng theo ngày")}
-                  subtitle={t(
-                    "s90dReport.chartDailyQtyHint",
+                  title={rt("chartDailyQtyTitle", "Số lượng theo ngày")}
+                  subtitle={rt(
+                    "chartDailyQtyHint",
                     "Cột xanh = đạt · đỏ = NG · đường xanh dương = hiệu suất (%)",
                   )}
                 >
@@ -444,7 +449,7 @@ export default function S90dSummaryChartModal({
                         stroke={S90D_CHART.yieldTarget}
                         strokeDasharray="6 4"
                         label={{
-                          value: t("s90dReport.chartAvgYield", "TB {{value}}%", {
+                          value: rt("chartAvgYield", "TB {{value}}%", {
                             value: avgYield,
                           }),
                           fill: S90D_CHART.axis,
@@ -456,7 +461,7 @@ export default function S90dSummaryChartModal({
                         yAxisId="qty"
                         type="monotone"
                         dataKey="okQty"
-                        name={t("s90dReport.kpiOkQty", "Số lượng đạt")}
+                        name={rt("kpiOkQty", "Số lượng đạt")}
                         stroke={S90D_CHART.ok}
                         fill="url(#s90dOkArea)"
                         strokeWidth={2}
@@ -464,7 +469,7 @@ export default function S90dSummaryChartModal({
                       <Bar
                         yAxisId="qty"
                         dataKey="ngQty"
-                        name={t("s90dReport.kpiNgQty", "Số lượng NG")}
+                        name={rt("kpiNgQty", "Số lượng NG")}
                         fill={S90D_CHART.ng}
                         radius={[6, 6, 0, 0]}
                         barSize={14}
@@ -473,7 +478,7 @@ export default function S90dSummaryChartModal({
                         yAxisId="pct"
                         type="monotone"
                         dataKey="yieldPct"
-                        name={t("s90dReport.kpiAvgYield", "Hiệu suất")}
+                        name={rt("kpiAvgYield", "Hiệu suất")}
                         stroke={S90D_CHART.yield}
                         strokeWidth={3}
                         dot={{ r: 4, fill: "#fff", strokeWidth: 2 }}
@@ -486,12 +491,12 @@ export default function S90dSummaryChartModal({
             ) : hasProcessData ? (
               <S90dChartPanel
                 wide
-                title={t(
-                  "s90dReport.chartProcessQtyTitle",
+                title={rt(
+                  "chartProcessQtyTitle",
                   "Số lượng theo công đoạn",
                 )}
-                subtitle={t(
-                  "s90dReport.chartProcessQtyHint",
+                subtitle={rt(
+                  "chartProcessQtyHint",
                   "So sánh OK / NG và hiệu suất từng công đoạn trong tháng",
                 )}
               >
@@ -541,7 +546,7 @@ export default function S90dSummaryChartModal({
                     <Bar
                       yAxisId="qty"
                       dataKey="okQty"
-                      name={t("s90dReport.kpiOkQty", "Số lượng đạt")}
+                      name={rt("kpiOkQty", "Số lượng đạt")}
                       fill={S90D_CHART.ok}
                       radius={[8, 8, 0, 0]}
                       barSize={28}
@@ -558,7 +563,7 @@ export default function S90dSummaryChartModal({
                     <Bar
                       yAxisId="qty"
                       dataKey="ngQty"
-                      name={t("s90dReport.kpiNgQty", "Số lượng NG")}
+                      name={rt("kpiNgQty", "Số lượng NG")}
                       fill={S90D_CHART.ng}
                       radius={[8, 8, 0, 0]}
                       barSize={28}
@@ -576,7 +581,7 @@ export default function S90dSummaryChartModal({
                       yAxisId="pct"
                       type="monotone"
                       dataKey="yieldPct"
-                      name={t("s90dReport.kpiAvgYield", "Hiệu suất")}
+                      name={rt("kpiAvgYield", "Hiệu suất")}
                       stroke={S90D_CHART.yield}
                       strokeWidth={3}
                       dot={{ r: 5, fill: "#fff", strokeWidth: 2 }}
@@ -588,9 +593,9 @@ export default function S90dSummaryChartModal({
 
             {hasPieData ? (
               <S90dChartPanel
-                title={t("s90dReport.chartOkNgShareTitle", "Tỷ lệ OK / NG")}
-                subtitle={t(
-                  "s90dReport.chartOkNgShareHint",
+                title={rt("chartOkNgShareTitle", "Tỷ lệ OK / NG")}
+                subtitle={rt(
+                  "chartOkNgShareHint",
                   "Phân bổ số lượng đạt và NG trong kỳ",
                 )}
                 className="s90d-chart-panel--pie"
@@ -646,12 +651,12 @@ export default function S90dSummaryChartModal({
               {yieldComparisonData.length > 0 ? (
                 <S90dChartPanel
                   className="s90d-chart-panel--pair"
-                  title={t(
-                    "s90dReport.chartYieldCompareTitle",
+                  title={rt(
+                    "chartYieldCompareTitle",
                     "Hiệu suất & hiệu suất luỹ kế",
                   )}
-                  subtitle={t(
-                    "s90dReport.chartYieldCompareHint",
+                  subtitle={rt(
+                    "chartYieldCompareHint",
                     "Cột = hiệu suất công đoạn · đường = hiệu suất luỹ kế qua các công đoạn",
                   )}
                 >
@@ -684,7 +689,7 @@ export default function S90dSummaryChartModal({
                       />
                       <Bar
                         dataKey="yieldPct"
-                        name={t("s90dReport.kpiAvgYield", "Hiệu suất")}
+                        name={rt("kpiAvgYield", "Hiệu suất")}
                         fill={S90D_CHART.ok}
                         radius={[8, 8, 0, 0]}
                         barSize={32}
@@ -699,7 +704,7 @@ export default function S90dSummaryChartModal({
                       <Line
                         type="monotone"
                         dataKey="cumulativeYieldPct"
-                        name={t("s90dReport.chartCumulativeYield", "Hiệu suất luỹ kế")}
+                        name={rt("chartCumulativeYield", "Hiệu suất luỹ kế")}
                         stroke={S90D_CHART.total}
                         strokeWidth={3}
                         dot={{ r: 5, fill: "#fff", strokeWidth: 2 }}
@@ -712,12 +717,12 @@ export default function S90dSummaryChartModal({
               {defectByProcess.rows.length > 0 ? (
                 <S90dChartPanel
                   className="s90d-chart-panel--pair"
-                  title={t(
-                    "s90dReport.chartDefectByProcessTitle",
+                  title={rt(
+                    "chartDefectByProcessTitle",
                     "Lỗi theo công đoạn (Top 5 loại)",
                   )}
-                  subtitle={t(
-                    "s90dReport.chartDefectByProcessHint",
+                  subtitle={rt(
+                    "chartDefectByProcessHint",
                     "Phân bổ các loại lỗi chính trên từng công đoạn",
                   )}
                 >
@@ -764,12 +769,12 @@ export default function S90dSummaryChartModal({
             {isDaily && dailyProcessStackData.length > 0 ? (
               <S90dChartPanel
                 wide
-                title={t(
-                  "s90dReport.chartDailyProcessTitle",
+                title={rt(
+                  "chartDailyProcessTitle",
                   "Sản lượng theo công đoạn / ngày",
                 )}
-                subtitle={t(
-                  "s90dReport.chartDailyProcessHint",
+                subtitle={rt(
+                  "chartDailyProcessHint",
                   "Tổng SL từng công đoạn theo từng ngày",
                 )}
               >
@@ -816,9 +821,9 @@ export default function S90dSummaryChartModal({
 
             {isDaily && hasDailyData ? (
               <S90dChartPanel
-                title={t("s90dReport.chartNgRateTrendTitle", "Tỷ lệ NG theo ngày")}
-                subtitle={t(
-                  "s90dReport.chartNgRateTrendHint",
+                title={rt("chartNgRateTrendTitle", "Tỷ lệ NG theo ngày")}
+                subtitle={rt(
+                  "chartNgRateTrendHint",
                   "Theo dõi biến động tỷ lệ NG hàng ngày",
                 )}
               >
@@ -849,7 +854,7 @@ export default function S90dSummaryChartModal({
                     <Area
                       type="monotone"
                       dataKey="ngRatePct"
-                      name={t("s90dReport.kpiNgRate", "Tỷ lệ NG")}
+                      name={rt("kpiNgRate", "Tỷ lệ NG")}
                       stroke={S90D_CHART.ng}
                       fill={S90D_CHART.ngLight}
                       fillOpacity={0.35}
@@ -858,7 +863,7 @@ export default function S90dSummaryChartModal({
                     <Line
                       type="monotone"
                       dataKey="ngRatePct"
-                      name={t("s90dReport.kpiNgRate", "Tỷ lệ NG")}
+                      name={rt("kpiNgRate", "Tỷ lệ NG")}
                       stroke={S90D_CHART.ng}
                       strokeWidth={2}
                       dot={{ r: 4, fill: "#fff", strokeWidth: 2 }}
@@ -872,9 +877,9 @@ export default function S90dSummaryChartModal({
           {hasDefectData ? (
             <S90dChartPanel
               wide
-              title={t("s90dReport.chartTopDefectsTitle", "Phân tích lỗi chi tiết")}
-              subtitle={t(
-                "s90dReport.chartTopDefectsHint",
+              title={rt("chartTopDefectsTitle", "Phân tích lỗi chi tiết")}
+              subtitle={rt(
+                "chartTopDefectsHint",
                 "Top loại lỗi theo số lượng và tỷ trọng (%)",
               )}
             >
@@ -902,12 +907,12 @@ export default function S90dSummaryChartModal({
                   <Tooltip
                     formatter={(value, name, props) => [
                       `${formatS90dChartQty(value, locale)} (${formatS90dChartPct(props.payload.pct, locale)})`,
-                      t("s90dReport.chartDefectCount", "Số lỗi"),
+                      rt("chartDefectCount", "Số lỗi"),
                     ]}
                   />
                   <Bar
                     dataKey="count"
-                    name={t("s90dReport.chartDefectCount", "Số lỗi")}
+                    name={rt("chartDefectCount", "Số lỗi")}
                     radius={[0, 8, 8, 0]}
                     barSize={18}
                   >

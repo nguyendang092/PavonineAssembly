@@ -118,6 +118,24 @@
       }
     },
 
+    "ap5ff": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "manualEntries": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "ap5fz": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "manualEntries": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
     "mcDefectReport": {
       ".read": "auth != null",
       ".write": "auth != null",

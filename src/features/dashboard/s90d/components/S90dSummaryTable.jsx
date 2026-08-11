@@ -1,5 +1,7 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
+import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
+import { useReportT } from "../../productionReport/useReportTranslation";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
 import { isHighDefectCell } from "../lib/buildS90dSummary";
 import {
@@ -81,6 +83,7 @@ const SummaryRow = memo(function SummaryRow({
   t,
   variant,
 }) {
+  const rt = useReportT();
   const isTotal = row.isTotal;
   const isPercent = row.isPercent;
   const isDaily = variant === "daily";
@@ -92,13 +95,13 @@ const SummaryRow = memo(function SummaryRow({
       : "s90d-row-shift";
 
   const processLabel = isTotal
-    ? t("s90dReport.totalLabel", "TOTAL")
+    ? rt("totalLabel", "TOTAL")
     : isPercent
       ? ""
       : t(`areas.${row.process}`, { defaultValue: row.process });
 
   const classificationLabel = isTotal
-    ? t("s90dReport.totalLabel", "TOTAL")
+    ? rt("totalLabel", "TOTAL")
     : isPercent
       ? ""
       : row.classification
@@ -115,9 +118,9 @@ const SummaryRow = memo(function SummaryRow({
 
   let dateCell = isPercent ? "" : shortDate;
   let lineCell = isPercent
-    ? t("s90dReport.defectRateRowLabel", "Tỷ lệ theo tổng SL →")
+    ? rt("defectRateRowLabel", "Tỷ lệ theo tổng SL →")
     : isTotal
-      ? `${t("s90dReport.totalLabel", "TOTAL")}/${t("s90dReport.tabTotal", "Tổng")}`
+      ? `${rt("totalLabel", "TOTAL")}/${rt("tabTotal", "Tổng")}`
       : lineLabel;
 
   return (
@@ -178,16 +181,18 @@ export default function S90dSummaryTable({
   monthLabel = "",
 }) {
   const { t } = useTranslation();
+  const rt = useReportT();
+  const { defaultProductCode } = useProductionReportContext();
   const isDaily = variant === "daily";
   const dateLabel =
-    dateLabelProp ?? summary.dateLabel ?? t("s90dReport.dateTotal", "TOTAL");
+    dateLabelProp ?? summary.dateLabel ?? rt("dateTotal", "TOTAL");
   const shortDate = isDaily
     ? formatShortDateLabel(
         dateKey,
         dateLabel.replace(/월\s*/g, "/").replace(/일/g, ""),
       )
-    : monthLabel || t("s90dReport.dateTotal", "TOTAL");
-  const lineLabel = "S90D";
+    : monthLabel || rt("dateTotal", "TOTAL");
+  const lineLabel = summary?.productCode || defaultProductCode;
   const totalRow = summary.totalRow;
   const totalNgQty = totalRow?.ngQty ?? 0;
 
@@ -196,8 +201,8 @@ export default function S90dSummaryTable({
   );
 
   const boardTitle = isDaily
-    ? t("s90dReport.dailyBoardTitle", "Bảng tổng hợp theo ngày")
-    : t("s90dReport.totalBoardTitle", "Bảng tổng hợp tháng");
+    ? rt("dailyBoardTitle", "Bảng tổng hợp theo ngày")
+    : rt("totalBoardTitle", "Bảng tổng hợp tháng");
 
   return (
     <article className="s90d-board-card s90d-board-card--summary">
@@ -208,14 +213,14 @@ export default function S90dSummaryTable({
             <div className="s90d-meta-item s90d-meta-item--inline">
               <span className="s90d-meta-label">
                 {isDaily
-                  ? t("s90dReport.metaDate", "Ngày")
-                  : t("s90dReport.metaMonthYear", "Tháng/Năm")}
+                  ? rt("metaDate", "Ngày")
+                  : rt("metaMonthYear", "Tháng/Năm")}
               </span>
               <strong>{shortDate}</strong>
             </div>
             <div className="s90d-meta-item s90d-meta-item--inline">
               <span className="s90d-meta-label">
-                {t("s90dReport.metaProductCode", "Mã hàng")}
+                {rt("metaProductCode", "Mã hàng")}
               </span>
               <strong>{lineLabel}</strong>
             </div>
@@ -230,16 +235,16 @@ export default function S90dSummaryTable({
           <thead>
             <tr className="s90d-head-group">
               <th colSpan={INFO_COL_COUNT} className="s90d-head-group-shift">
-                {t("s90dReport.groupShiftInfo", "Thông tin ca")}
+                {rt("groupShiftInfo", "Thông tin ca")}
               </th>
               <th colSpan={DAILY_QTY_COL_COUNT} className="s90d-head-group-qty">
-                {t("s90dReport.groupQtyYield", "Số lượng & hiệu suất")}
+                {rt("groupQtyYield", "Số lượng & hiệu suất")}
               </th>
               <th
                 colSpan={S90D_DEFECT_COLUMNS.length}
                 className="s90d-head-group-defect"
               >
-                {t("s90dReport.groupDefects", "Chi tiết lỗi")}
+                {rt("groupDefects", "Chi tiết lỗi")}
               </th>
             </tr>
             <tr className="s90d-head-cols">

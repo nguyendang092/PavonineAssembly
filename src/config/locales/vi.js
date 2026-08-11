@@ -99,6 +99,7 @@ const vi = {
     certificate2: "Bằng khen ưu tú",
     sanLuong: "Báo cáo sản lượng",
     s90dProductionReport: "Báo cáo sản lượng S90D",
+    ap5ProductionReport: "Nhập sản lượng AP5FF & AP5FZ",
     dangNhap: "Đăng nhập",
     logOut: "Đăng xuất",
     changePassword: "Đổi mật khẩu",
@@ -144,6 +145,8 @@ const vi = {
     descSanLuong: "Theo dõi sản lượng sản xuất theo ngày và ca.",
     descS90dProductionReport:
       "Bảng tổng hợp sản lượng & lỗi S90D theo công đoạn (PRESS, HAIRLINE, ANODIZING, ASSEMBLY).",
+    descAp5ProductionReport:
+      "Nhập sản lượng AP5FF và AP5FZ theo công đoạn, ca và ngày — giống báo cáo S90D.",
     descPerformance: "Biểu đồ và báo cáo cải tiến sản xuất.",
     descTemperature: "Giám sát nhiệt độ thiết bị và khu vực sản xuất.",
     descMold: "Quản lý khuôn, vòng đời và trạng thái sử dụng.",
@@ -723,6 +726,16 @@ const vi = {
     boardLabelN: "Bảng {{n}}",
     expandLateShifts: "Hiện ca 22~24, 00~03, 03~05, 05~08",
     collapseLateShifts: "Ẩn ca 22~24 trở xuống",
+  },
+  ap5Report: {
+    pageTitle: "Nhập sản lượng AP5FF & AP5FZ",
+    pageSubtitle:
+      "Chọn mã hàng AP5FF hoặc AP5FZ; nhập số liệu ở tab công đoạn — tab Theo ngày và Tổng tự tính",
+    tabsLabel: "Loại báo cáo AP5",
+    loadingManual: "Đang tải dữ liệu AP5…",
+    productFilter: "Mã hàng",
+    chartReportBadgeAp5ff: "Báo cáo AP5FF",
+    chartReportBadgeAp5fz: "Báo cáo AP5FZ",
   },
   workplaceChart: {
     menuTitle: "📁 Menu",

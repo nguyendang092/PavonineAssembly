@@ -20,5 +20,15 @@ export const WORKPLACE_PRODUCTION_PATHS_S90D = Object.freeze({
   chartOrderKind: CHART_ORDER_KIND.WORKPLACE_AREA_S90D,
 });
 
+/** Firebase paths riêng cho báo cáo sản lượng AP5FF. */
+export const WORKPLACE_PRODUCTION_PATHS_AP5FF = Object.freeze({
+  manualEntriesRoot: "ap5ff/manualEntries",
+});
+
+/** Firebase paths riêng cho báo cáo sản lượng AP5FZ. */
+export const WORKPLACE_PRODUCTION_PATHS_AP5FZ = Object.freeze({
+  manualEntriesRoot: "ap5fz/manualEntries",
+});
+
 export const DEFAULT_WORKPLACE_PRODUCTION_PATHS =
   WORKPLACE_PRODUCTION_PATHS_NORMAL;

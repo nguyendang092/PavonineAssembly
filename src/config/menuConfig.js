@@ -47,6 +47,11 @@ export const menuConfig = [
                 path: "/s90d-production-report",
               },
               {
+                key: "ap5ProductionReport",
+                label: "navbar.ap5ProductionReport",
+                path: "/ap5-production-report",
+              },
+              {
                 key: "caiTien",
                 label: "navbar.caiTien",
                 path: "/performance",
@@ -156,6 +161,7 @@ export const routeConfig = [
   { path: "/", element: "NavigationBoardPage" },
   { path: "/normal", element: "WorkplaceDashboardNormal" },
   { path: "/s90d-production-report", element: "S90DProductionReportPage" },
+  { path: "/ap5-production-report", element: "AP5ProductionReportPage" },
   { path: "/bangkhen1", element: "CertificateGenerator1" },
   { path: "/bangkhen2", element: "CertificateGenerator2" },
   { path: "/nhietdo", element: "TemperatureMonitor" },

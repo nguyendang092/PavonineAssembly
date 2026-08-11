@@ -1,5 +1,6 @@
 import React, { memo, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useReportT } from "../../productionReport/useReportTranslation";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
 import { isHighDefectCell } from "../lib/buildS90dSummary";
 import { formatS90dDefectQty } from "../lib/buildS90dDailySummary";
@@ -102,6 +103,7 @@ const ShiftRow = memo(function ShiftRow({
   onProductCodeChange,
   onShiftFieldChange,
 }) {
+  const rt = useReportT();
   const isTotal = row.isTotal;
   const isPercent = row.isPercent;
   const canEdit = editable && !isTotal && !isPercent;
@@ -113,17 +115,17 @@ const ShiftRow = memo(function ShiftRow({
       : "s90d-row-shift";
 
   const processLabel = isTotal
-    ? t("s90dReport.totalLabel", "TOTAL")
+    ? rt("totalLabel", "TOTAL")
     : isPercent
       ? ""
-      : t(`areas.${row.process}`, { defaultValue: row.process });
+      : rt(`areas.${row.process}`, { defaultValue: row.process });
 
   const classificationLabel = isTotal
-    ? t("s90dReport.totalLabel", "TOTAL")
+    ? rt("totalLabel", "TOTAL")
     : isPercent
       ? ""
       : row.classification
-        ? t(`areas.${row.classification}`, {
+        ? rt(`areas.${row.classification}`, {
             defaultValue: row.classification,
           })
         : processLabel;
@@ -133,10 +135,10 @@ const ShiftRow = memo(function ShiftRow({
 
   if (isTotal) {
     dateCell = shortDate;
-    lineCell = `${t("s90dReport.totalLabel", "TOTAL")}/${t("s90dReport.tabTotal", "Tổng")}`;
+    lineCell = `${rt("totalLabel", "TOTAL")}/${rt("tabTotal", "Tổng")}`;
   } else if (isPercent) {
     dateCell = "";
-    lineCell = t("s90dReport.defectRateRowLabel", "Tỷ lệ theo tổng SL →");
+    lineCell = rt("defectRateRowLabel", "Tỷ lệ theo tổng SL →");
   }
 
   return (
@@ -227,6 +229,7 @@ export default function S90dProcessShiftTable({
   onRemoveBoard,
 }) {
   const { t } = useTranslation();
+  const rt = useReportT();
   const [lateShiftsExpanded, setLateShiftsExpanded] = useState(false);
   const totalRow = processSummary.totalRow;
   const totalNgQty = totalRow?.ngQty ?? 0;
@@ -280,18 +283,18 @@ export default function S90dProcessShiftTable({
       <header className="s90d-board-head">
         <div className="s90d-board-head-main">
           <h3 className="s90d-board-title">
-            {t("s90dReport.boardTitle", "Bảng theo dõi chất lượng sản xuất")}
+            {rt("boardTitle", "Bảng theo dõi chất lượng sản xuất")}
             <span className="s90d-board-badge">{processLabel}</span>
             {boardCount > 1 ? (
               <span className="s90d-board-badge s90d-board-badge--table">
                 {boardLabel ||
-                  t("s90dReport.boardLabelN", "Bảng {{n}}", { n: boardIndex })}
+                  rt("boardLabelN", "Bảng {{n}}", { n: boardIndex })}
               </span>
             ) : null}
           </h3>
           <p className="s90d-board-subtitle">
-            {t(
-              "s90dReport.boardSubtitle",
+            {rt(
+              "boardSubtitle",
               "Theo dõi số lượng, hiệu suất và lỗi theo từng ca sản xuất",
             )}
           </p>
@@ -304,20 +307,20 @@ export default function S90dProcessShiftTable({
               className="s90d-remove-board-btn"
               onClick={onRemoveBoard}
             >
-              {t("s90dReport.removeBoard", "Xóa bảng")}
+              {rt("removeBoard", "Xóa bảng")}
             </button>
           ) : null}
 
           <div className="s90d-board-meta">
           <div className="s90d-meta-item">
             <span className="s90d-meta-label">
-              {t("s90dReport.metaDate", "Ngày")}
+              {rt("metaDate", "Ngày")}
             </span>
             <strong>{shortDate}</strong>
           </div>
           <div className="s90d-meta-item">
             <span className="s90d-meta-label">
-              {t("s90dReport.metaProductCode", "Mã hàng")}
+              {rt("metaProductCode", "Mã hàng")}
             </span>
             {editable ? (
               <input
@@ -332,7 +335,7 @@ export default function S90dProcessShiftTable({
           </div>
           <div className="s90d-meta-item">
             <span className="s90d-meta-label">
-              {t("s90dReport.metaProcess", "Công đoạn")}
+              {rt("metaProcess", "Công đoạn")}
             </span>
             <strong>{processLabel}</strong>
           </div>
@@ -351,12 +354,12 @@ export default function S90dProcessShiftTable({
             onClick={() => setLateShiftsExpanded((expanded) => !expanded)}
           >
             {lateShiftsExpanded
-              ? t(
-                  "s90dReport.collapseLateShifts",
+              ? rt(
+                  "collapseLateShifts",
                   "Ẩn ca 22~24 trở xuống",
                 )
-              : t(
-                  "s90dReport.expandLateShifts",
+              : rt(
+                  "expandLateShifts",
                   "Hiện ca 22~24, 00~03, 03~05, 05~08",
                 )}
           </button>
@@ -368,16 +371,16 @@ export default function S90dProcessShiftTable({
           <thead>
             <tr className="s90d-head-group">
               <th colSpan={INFO_COL_COUNT} className="s90d-head-group-shift">
-                {t("s90dReport.groupShiftInfo", "Thông tin ca")}
+                {rt("groupShiftInfo", "Thông tin ca")}
               </th>
               <th colSpan={QTY_COL_COUNT} className="s90d-head-group-qty">
-                {t("s90dReport.groupQtyYield", "Số lượng & hiệu suất")}
+                {rt("groupQtyYield", "Số lượng & hiệu suất")}
               </th>
               <th
                 colSpan={S90D_DEFECT_COLUMNS.length}
                 className="s90d-head-group-defect"
               >
-                {t("s90dReport.groupDefects", "Chi tiết lỗi")}
+                {rt("groupDefects", "Chi tiết lỗi")}
               </th>
             </tr>
             <tr className="s90d-head-cols">

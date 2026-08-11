@@ -239,11 +239,13 @@ export function exportS90dManualMonthToExcel({
   monthDayKeys,
   monthKey,
   processFilter = null,
+  sheetName = "S90D_Nhap",
+  filePrefix = "S90D",
 }) {
   const headers = buildS90dExcelHeaders();
   const rows = buildS90dExcelRowsFromStore(store, monthDayKeys, { processFilter });
   const guideRows = [
-    ["Huong dan nhap Excel S90D"],
+    [`Huong dan nhap Excel ${filePrefix}`],
     ["Ngay: yyyy-MM-dd hoac dd/MM/yyyy"],
     [`Cong doan: ${S90D_PROCESSES.join(", ")}`],
     ["Bang: 1, 2, ... (neu mot ngay co nhieu bang du lieu)"],
@@ -254,11 +256,11 @@ export function exportS90dManualMonthToExcel({
   const dataSheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   const guideSheet = XLSX.utils.aoa_to_sheet(guideRows);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, dataSheet, "S90D_Nhap");
+  XLSX.utils.book_append_sheet(wb, dataSheet, sheetName);
   XLSX.utils.book_append_sheet(wb, guideSheet, "Huong_dan");
 
   const suffix = processFilter ? `_${processFilter}` : "";
-  XLSX.writeFile(wb, `S90D_${monthKey}${suffix}.xlsx`);
+  XLSX.writeFile(wb, `${filePrefix}_${monthKey}${suffix}.xlsx`);
 }
 
 export function parseS90dManualExcelRows(sheetRows, workbook) {
@@ -324,10 +326,14 @@ export function parseS90dManualExcelRows(sheetRows, workbook) {
   return parsedRows;
 }
 
-export async function readS90dManualExcelFile(file) {
+export async function readS90dManualExcelFile(
+  file,
+  { preferredSheetName = "S90D_Nhap" } = {},
+) {
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheetName =
+    workbook.SheetNames.find((name) => name === preferredSheetName) ??
     workbook.SheetNames.find((name) => name === "S90D_Nhap") ??
     workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];

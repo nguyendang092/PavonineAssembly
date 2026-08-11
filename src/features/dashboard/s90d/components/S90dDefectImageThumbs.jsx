@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { useReportT } from "../../productionReport/useReportTranslation";
 import { getDefectImageUrls } from "../lib/s90dDefectImages";
 
 export default function S90dDefectImageThumbs({
@@ -7,7 +7,7 @@ export default function S90dDefectImageThumbs({
   defectKey,
   isPercent = false,
 }) {
-  const { t } = useTranslation();
+  const rt = useReportT();
   if (isPercent) return null;
 
   const urls = getDefectImageUrls(imageMap, defectKey);
@@ -25,10 +25,10 @@ export default function S90dDefectImageThumbs({
           title={url}
         >
           {urls.length > 1
-            ? t("s90dReport.defectViewImageN", "Xem {{n}}", {
+            ? rt("defectViewImageN", "Xem {{n}}", {
                 n: index + 1,
               })
-            : t("s90dReport.defectViewImage", "Xem")}
+            : rt("defectViewImage", "Xem")}
         </a>
       ))}
     </div>

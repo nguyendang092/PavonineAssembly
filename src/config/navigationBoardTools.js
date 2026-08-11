@@ -44,6 +44,14 @@ export const NAVIGATION_BOARD_TOOLS = [
     status: "new",
   },
   {
+    id: "APP-22",
+    path: "/ap5-production-report",
+    category: "operations",
+    titleKey: "navbar.ap5ProductionReport",
+    descriptionKey: "navigationBoard.descAp5ProductionReport",
+    status: "new",
+  },
+  {
     id: "APP-03",
     path: "/performance",
     category: "operations",

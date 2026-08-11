@@ -52,6 +52,9 @@ const WorkplaceDashboardNormal = lazyImport(
 const S90DProductionReportPage = lazyImport(
   () => import("@/features/dashboard/S90DProductionReportPage"),
 );
+const AP5ProductionReportPage = lazyImport(
+  () => import("@/features/dashboard/AP5ProductionReportPage"),
+);
 const CertificateGenerator1 = lazyImport(
   () => import("@/components/ui/CertificateGenerator1"),
 );
@@ -94,6 +97,7 @@ const NAVBAR_SCROLLED_CLASS =
 const ROUTE_COMPONENTS = {
   WorkplaceDashboardNormal,
   S90DProductionReportPage,
+  AP5ProductionReportPage,
   CertificateGenerator1,
   CertificateGenerator2,
   TemperatureMonitor,

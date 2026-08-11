@@ -37,11 +37,12 @@ export function createEmptyProcessBoard(
   sequence = 1,
   id = createBoardId(),
   label,
+  productCode = DEFAULT_PRODUCT_CODE,
 ) {
   return {
     id,
     label: label ?? `Bảng ${sequence}`,
-    productCode: DEFAULT_PRODUCT_CODE,
+    productCode: String(productCode ?? DEFAULT_PRODUCT_CODE).trim() || DEFAULT_PRODUCT_CODE,
     shifts: Object.fromEntries(
       S90D_SHIFT_SLOTS.map((slot) => [slot, createEmptyShiftEntry()]),
     ),
@@ -374,13 +375,18 @@ export function updateProcessMonthShiftField(
   };
 }
 
-export function addProcessMonthBoard(localByDate, dateKey, label) {
+export function addProcessMonthBoard(
+  localByDate,
+  dateKey,
+  label,
+  productCode = DEFAULT_PRODUCT_CODE,
+) {
   const processDayEntry = cloneProcessDayEntry(
     localByDate[dateKey] ?? createEmptyDayProcessEntry(),
   );
   const nextSequence = processDayEntry.boards.length + 1;
   processDayEntry.boards.push(
-    createEmptyProcessBoard(nextSequence, createBoardId(), label),
+    createEmptyProcessBoard(nextSequence, createBoardId(), label, productCode),
   );
 
   return {

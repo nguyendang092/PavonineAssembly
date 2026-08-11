@@ -25,6 +25,26 @@ function pctOrZero(numerator, denominator) {
   return Math.round((numerator / denominator) * 1000) / 10;
 }
 
+export function resolveProductCodeFromDayEntry(
+  dayEntry,
+  fallback = DEFAULT_PRODUCT_CODE,
+) {
+  let placeholder = "";
+
+  for (const process of S90D_PROCESSES) {
+    for (const board of resolveProcessBoards(dayEntry?.[process])) {
+      const code = String(board?.productCode ?? "").trim();
+      if (!code) continue;
+      if (code !== DEFAULT_PRODUCT_CODE || fallback === DEFAULT_PRODUCT_CODE) {
+        return code;
+      }
+      placeholder = code;
+    }
+  }
+
+  return fallback || placeholder || DEFAULT_PRODUCT_CODE;
+}
+
 function emptyGrandProcessRow(process) {
   return {
     process,
@@ -354,7 +374,12 @@ function buildDailyPercentRow(totalRow) {
   };
 }
 
-export function buildDailySummaryFromManual({ dayEntry, dateKey }) {
+export function buildDailySummaryFromManual({
+  dayEntry,
+  dateKey,
+  defaultProductCode = DEFAULT_PRODUCT_CODE,
+}) {
+  const productCode = resolveProductCodeFromDayEntry(dayEntry, defaultProductCode);
   const processRows = S90D_PROCESSES.map((process) => {
     const aggregate = buildProcessDayAggregateSummaryFromManual({
       dayEntry,
@@ -372,6 +397,7 @@ export function buildDailySummaryFromManual({ dayEntry, dateKey }) {
   return {
     dateKey,
     dateLabel: formatS90dDailyDateLabel(dateKey),
+    productCode,
     processRows,
     totalRow,
     percentRow,
@@ -379,11 +405,16 @@ export function buildDailySummaryFromManual({ dayEntry, dateKey }) {
   };
 }
 
-export function buildMonthDailySummariesFromManual({ store, dateKeys }) {
+export function buildMonthDailySummariesFromManual({
+  store,
+  dateKeys,
+  defaultProductCode = DEFAULT_PRODUCT_CODE,
+}) {
   return dateKeys.map((dateKey) =>
     buildDailySummaryFromManual({
       dayEntry: store[dateKey],
       dateKey,
+      defaultProductCode,
     }),
   );
 }
@@ -445,7 +476,10 @@ function buildGrandPercentRow(totalRow) {
   };
 }
 
-export function buildGrandTotalSummaryFromManual(dailySummaries) {
+export function buildGrandTotalSummaryFromManual(
+  dailySummaries,
+  defaultProductCode = DEFAULT_PRODUCT_CODE,
+) {
   const byProcess = Object.fromEntries(
     S90D_PROCESSES.map((process) => [process, emptyGrandProcessRow(process)]),
   );
@@ -479,8 +513,12 @@ export function buildGrandTotalSummaryFromManual(dailySummaries) {
 
   const totalRow = buildGrandTotalRow(processRows);
   const percentRow = buildGrandPercentRow(totalRow);
+  const productCode =
+    dailySummaries.find((daily) => daily.productCode)?.productCode ??
+    defaultProductCode;
 
   return {
+    productCode,
     processRows,
     totalRow,
     percentRow,

@@ -1,8 +1,9 @@
 import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import AttendanceFormImageUploadField from "@/features/attendance/AttendanceFormImageUploadField";
+import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
+import { useReportT } from "../../productionReport/useReportTranslation";
 import { S90D_DEFECT_IMAGE_FIELD_PREFIX } from "../lib/s90dDefectImages";
-import { buildS90dDefectImageUploadPrefix } from "../lib/s90dManualEntriesFirebase";
 
 export default function S90dDefectCellEditor({
   qty,
@@ -17,23 +18,25 @@ export default function S90dDefectCellEditor({
   className = "",
 }) {
   const { t } = useTranslation();
+  const rt = useReportT();
+  const { buildDefectImageUploadPrefix } = useProductionReportContext();
   const tl = useCallback(
     (key, defaultValue, options = {}) => {
       if (key === "imgbbChooseImage") {
-        return t("s90dReport.defectUploadImage", "Ảnh", options);
+        return rt("defectUploadImage", "Ảnh", options);
       }
       if (key === "imgbbViewImage") {
-        return t("s90dReport.defectViewImage", "Xem", options);
+        return rt("defectViewImage", "Xem", options);
       }
       if (key === "imgbbRemoveImage") {
-        return t("s90dReport.defectRemoveImage", "Xóa", options);
+        return rt("defectRemoveImage", "Xóa", options);
       }
       if (key.startsWith("imgbb")) {
-        return t(`s90dReport.${key}`, { defaultValue, ...options });
+        return rt(key, defaultValue, options);
       }
       return t(`attendanceList.${key}`, { defaultValue, ...options });
     },
-    [t],
+    [rt, t],
   );
 
   const url = String(imageUrl ?? "").trim();
@@ -62,7 +65,7 @@ export default function S90dDefectCellEditor({
               uploadedUrl,
             )
           }
-          uploadNamePrefix={buildS90dDefectImageUploadPrefix({
+          uploadNamePrefix={buildDefectImageUploadPrefix({
             dateKey,
             boardId,
             process,
