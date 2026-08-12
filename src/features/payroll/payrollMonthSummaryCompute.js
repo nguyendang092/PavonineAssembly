@@ -4,6 +4,7 @@ import { resolvePayrollMonthEmployeeProfileForSummary } from "@/features/payroll
 import {
   PAYROLL_MONTH_SUMMARY_CACHE_MAX,
   PAYROLL_MONTH_SUMMARY_MAIN_BATCH_SIZE,
+  PAYROLL_MONTH_SUMMARY_PROGRESS_STEP,
   PAYROLL_MONTH_SUMMARY_SYNC_MAX_IDS,
   PAYROLL_MONTH_SUMMARY_WORKER_MIN_IDS,
 } from "@/features/payroll/payrollMonthDataScale";

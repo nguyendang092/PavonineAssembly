@@ -726,6 +726,7 @@ const ko = {
     boardLabelN: "표 {{n}}",
     expandLateShifts: "22~24 이후 교대 표시",
     collapseLateShifts: "22~24 이후 교대 숨기기",
+    toolbarActions: "작업",
   },
   ap5Report: {
     pageTitle: "AP5FF·AP5FZ 생산실적 입력",
@@ -734,6 +735,7 @@ const ko = {
     tabsLabel: "AP5 보고 유형",
     loadingManual: "AP5 데이터 불러오는 중…",
     productFilter: "품번",
+    toolbarActions: "작업",
     chartReportBadgeAp5ff: "AP5FF 보고",
     chartReportBadgeAp5fz: "AP5FZ 보고",
   },

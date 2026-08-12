@@ -67,9 +67,15 @@ export function buildPayrollMonthByMonthEmployeeKeyMap(employees) {
  * Sau khi có đủ chunk tháng — gán `monthEmployeeKey` canonical và rebuild index
  * (đồng bộ mọi NV: đổi BP, trùng MNV, thiếu MNV một số ngày).
  */
-export function applyPayrollMonthCanonicalKeysToChunks(dayChunks) {
+export function applyPayrollMonthCanonicalKeysToChunks(
+  dayChunks,
+  { mutateFromIndex = 0 } = {},
+) {
   const indexes = buildPayrollMonthIdentityIndexes(dayChunks);
-  for (const chunk of dayChunks ?? []) {
+  const list = dayChunks ?? [];
+  const start = Math.max(0, Math.min(mutateFromIndex, list.length));
+  for (let i = start; i < list.length; i += 1) {
+    const chunk = list[i];
     const employees = (chunk.employees ?? []).map((emp) => ({
       ...emp,
       monthEmployeeKey: canonicalPayrollMonthRowId(emp, indexes),
@@ -658,16 +664,25 @@ export async function fetchPayrollMonthDayChunks(monthKeys, hooks = {}) {
     );
     if (hooks.isStale?.()) return null;
     const validBatch = batchResults.filter(Boolean);
+    const mutateFromIndex = allChunks.length;
     allChunks.push(...validBatch);
-    applyPayrollMonthCanonicalKeysToChunks(allChunks);
+    applyPayrollMonthCanonicalKeysToChunks(allChunks, { mutateFromIndex });
     if (hooks.onAfterBatch) {
       hooks.onAfterBatch(i, monthKeys.length, [...allChunks]);
     }
-    if (i === 0 && hooks.onFirstBatch) hooks.onFirstBatch([...allChunks]);
-    if (yieldMs > 0 || i + batchSize < monthKeys.length) {
-      await new Promise((r) => setTimeout(r, yieldMs));
+    if (hooks.onFirstBatch && mutateFromIndex === 0 && validBatch.length) {
+      hooks.onFirstBatch([...allChunks]);
+    }
+    if (i + batchSize < monthKeys.length) {
+      await new Promise((resolve) => {
+        if (typeof requestAnimationFrame === "function") {
+          requestAnimationFrame(() => resolve());
+        } else {
+          setTimeout(resolve, yieldMs);
+        }
+      });
     }
   }
-  applyPayrollMonthCanonicalKeysToChunks(allChunks);
+  applyPayrollMonthCanonicalKeysToChunks(allChunks, { mutateFromIndex: 0 });
   return allChunks;
 }

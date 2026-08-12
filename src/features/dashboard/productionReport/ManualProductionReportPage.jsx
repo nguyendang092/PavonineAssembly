@@ -200,50 +200,61 @@ export default function ManualProductionReportPage({
           </div>
 
           <div className="s90d-toolbar">
-            {toolbarExtra}
-            <label>
-              {rt("monthYearFilter", "Tháng/Năm")}
-              <select
-                value={selectedMonthKey}
-                onChange={(e) => setSelectedMonthKey(e.target.value)}
-              >
-                {monthOptions.map((monthKey) => (
-                  <option key={monthKey} value={monthKey}>
-                    {formatS90dMonthDisplayLabel(monthKey)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="s90d-toolbar-filters">
+              {toolbarExtra}
+              <label className="s90d-toolbar-field">
+                <span className="s90d-toolbar-field-label">
+                  {rt("monthYearFilter", "Tháng/Năm")}
+                </span>
+                <select
+                  value={selectedMonthKey}
+                  onChange={(e) => setSelectedMonthKey(e.target.value)}
+                >
+                  {monthOptions.map((monthKey) => (
+                    <option key={monthKey} value={monthKey}>
+                      {formatS90dMonthDisplayLabel(monthKey)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
-            <button
-              type="button"
-              className="s90d-excel-btn"
-              disabled={loading || excelBusy}
-              onClick={handleExportExcel}
-            >
-              {rt("exportExcel", "Xuất Excel")}
-            </button>
-            <button
-              type="button"
-              className="s90d-excel-btn s90d-excel-btn--import"
-              disabled={loading || excelBusy}
-              onClick={() => excelInputRef.current?.click()}
-            >
-              {importing
-                ? rt("importingExcel", "Đang nhập…")
-                : rt("importExcel", "Nhập Excel")}
-            </button>
+            <div className="s90d-toolbar-actions">
+              <span className="s90d-toolbar-field-label s90d-toolbar-actions-label">
+                {rt("toolbarActions", "Thao tác")}
+              </span>
+              <div className="s90d-toolbar-actions-row">
+                <button
+                  type="button"
+                  className="s90d-excel-btn"
+                  disabled={loading || excelBusy}
+                  onClick={handleExportExcel}
+                >
+                  {rt("exportExcel", "Xuất Excel")}
+                </button>
+                <button
+                  type="button"
+                  className="s90d-excel-btn s90d-excel-btn--import"
+                  disabled={loading || excelBusy}
+                  onClick={() => excelInputRef.current?.click()}
+                >
+                  {importing
+                    ? rt("importingExcel", "Đang nhập…")
+                    : rt("importExcel", "Nhập Excel")}
+                </button>
 
-            {isSummaryTab ? (
-              <button
-                type="button"
-                className="s90d-chart-btn"
-                disabled={loading || !hasAnyData}
-                onClick={() => setChartModalOpen(true)}
-              >
-                {rt("viewChart", "Xem biểu đồ")}
-              </button>
-            ) : null}
+                {isSummaryTab ? (
+                  <button
+                    type="button"
+                    className="s90d-chart-btn"
+                    disabled={loading || !hasAnyData}
+                    onClick={() => setChartModalOpen(true)}
+                  >
+                    {rt("viewChart", "Xem biểu đồ")}
+                  </button>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
 

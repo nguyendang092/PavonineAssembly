@@ -5,6 +5,10 @@ import {
   startTransition,
 } from "react";
 import { computePayrollMonthSummariesForIds } from "@/features/payroll/payrollMonthSummaryCompute";
+import {
+  PAYROLL_MONTH_SUMMARY_MAIN_BATCH_SIZE,
+  PAYROLL_MONTH_SUMMARY_PROGRESS_STEP,
+} from "@/features/payroll/payrollMonthDataScale";
 
 /**
  * Tổng hợp tháng (`buildMonthlyRuleSummary`) — cache + batch / Web Worker khi nhiều NV.
@@ -53,6 +57,14 @@ export function usePayrollMonthSummaries({
       isStale: () => job !== jobRef.current,
       onProgress: (partialMap, done, total) => {
         if (job !== jobRef.current) return;
+        const isFinal = done >= total;
+        if (
+          !isFinal &&
+          done % PAYROLL_MONTH_SUMMARY_PROGRESS_STEP !== 0 &&
+          done % PAYROLL_MONTH_SUMMARY_MAIN_BATCH_SIZE !== 0
+        ) {
+          return;
+        }
         startTransition(() => {
           setMonthlySummaryById(new Map(partialMap));
           setSummaryProgress({ done, total });

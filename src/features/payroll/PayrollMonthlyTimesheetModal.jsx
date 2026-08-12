@@ -98,7 +98,8 @@ function payrollMonthlyEmpBlockScrollHeight(zoom = 1) {
   return PAYROLL_MONTHLY_SUBROWS.length * MONTH_DAY_COL_WIDTH * zoom;
 }
 /** Dưới ngưỡng này render đủ dòng; từ ngưỡng trở lên ảo hóa theo khối NV để tránh OOM. */
-const MONTHLY_TIMESHEET_VIRTUAL_THRESHOLD = 14;
+const MONTHLY_TIMESHEET_VIRTUAL_THRESHOLD = 8;
+const MONTHLY_TIMESHEET_VIRTUAL_OVERSCAN = 2;
 const MONTH_HEADER_ROW_TOPS_DEFAULT = {
   row1: 0,
   row2: 28,
@@ -292,6 +293,23 @@ function buildPayrollMonthEmployeeDayCells({ monthDayMeta, rep, rowId }) {
       coeffMap,
     };
   });
+}
+
+function payrollMonthlyEmployeeBlockPropsEqual(prev, next) {
+  return (
+    prev.rowId === next.rowId &&
+    prev.empBlockIdx === next.empBlockIdx &&
+    prev.rowDays === next.rowDays &&
+    prev.rep === next.rep &&
+    prev.summaries === next.summaries &&
+    prev.loading === next.loading &&
+    prev.user === next.user &&
+    prev.userRole === next.userRole &&
+    prev.userDepartments === next.userDepartments &&
+    prev.openDayCellEditor === next.openDayCellEditor &&
+    prev.tlPage === next.tlPage &&
+    prev.fmtHours === next.fmtHours
+  );
 }
 
 const PayrollMonthlyTimesheetDayCell = memo(
@@ -488,7 +506,7 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
     rowId,
     empBlockIdx,
     rep,
-    monthDayMeta,
+    rowDays,
     summaries,
     loading,
     user,
@@ -498,15 +516,6 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
     tlPage,
     fmtHours = null,
   }) {
-    const rowDays = useMemo(
-      () =>
-        buildPayrollMonthEmployeeDayCells({
-          monthDayMeta,
-          rep,
-          rowId,
-        }),
-      [monthDayMeta, rep, rowId],
-    );
     const sttDisp = empBlockIdx + 1;
     const employeeStripe =
       empBlockIdx % 2 === 0
@@ -614,6 +623,7 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
       </>
     );
   },
+  payrollMonthlyEmployeeBlockPropsEqual,
 );
 
 /**
@@ -822,7 +832,7 @@ export default function PayrollMonthlyTimesheetModal({
   }, [open]);
 
   const { sortedIds, repById, chunkByDate } =
-    usePayrollMonthEmployeeIndex(dayChunks);
+    usePayrollMonthEmployeeIndex(displayDayChunks);
 
   const summaryRepById = useMemo(
     () => enrichPayrollMonthRepByIdWithMasterEmployees(repById, employees),
@@ -1052,6 +1062,39 @@ export default function PayrollMonthlyTimesheetModal({
     [monthRange.keys, chunkByDate],
   );
 
+  const monthDayMetaFingerprint = useMemo(
+    () =>
+      monthDayMeta
+        .map(
+          (meta) =>
+            `${meta.dateKey}:${meta.chunk?.employees?.length ?? 0}:${meta.bodyBg}`,
+        )
+        .join("|"),
+    [monthDayMeta],
+  );
+
+  const dayCellsCacheRef = useRef({ fp: "", map: new Map() });
+
+  const getEmployeeRowDays = useCallback(
+    (rowId) => {
+      const rep = repById.get(rowId);
+      if (dayCellsCacheRef.current.fp !== monthDayMetaFingerprint) {
+        dayCellsCacheRef.current = { fp: monthDayMetaFingerprint, map: new Map() };
+      }
+      let rowDays = dayCellsCacheRef.current.map.get(rowId);
+      if (!rowDays) {
+        rowDays = buildPayrollMonthEmployeeDayCells({
+          monthDayMeta,
+          rep,
+          rowId,
+        });
+        dayCellsCacheRef.current.map.set(rowId, rowDays);
+      }
+      return rowDays;
+    },
+    [monthDayMeta, monthDayMetaFingerprint, repById],
+  );
+
   const shouldVirtualizeTimesheetBody =
     filteredIds.length >= MONTHLY_TIMESHEET_VIRTUAL_THRESHOLD;
 
@@ -1063,19 +1106,20 @@ export default function PayrollMonthlyTimesheetModal({
         TIMESHEET_ZOOM_CSS_OK ? timesheetZoom : 1,
       ),
     measureElement: (el) => el?.getBoundingClientRect().height ?? 0,
-    overscan: 3,
+    overscan: MONTHLY_TIMESHEET_VIRTUAL_OVERSCAN,
+    getItemKey: (index) => filteredIds[index] ?? index,
   });
 
   useLayoutEffect(() => {
-    if (!open || !shouldVirtualizeTimesheetBody) return;
+    if (!open || !shouldVirtualizeTimesheetBody || isGridFullyBusy) return;
     empBlockVirtualizer.measure();
   }, [
     open,
     shouldVirtualizeTimesheetBody,
     filteredIds.length,
     timesheetZoomIdx,
-    isGridFullyBusy,
     monthRange.keys.length,
+    isGridFullyBusy,
   ]);
 
   const timesheetTotalColCount = payrollMonthlyTimesheetTotalColCount(
@@ -1678,12 +1722,13 @@ export default function PayrollMonthlyTimesheetModal({
                               key={rowId}
                               ref={empBlockVirtualizer.measureElement}
                               data-index={vi.index}
+                              className="pm-ts-emp-block"
                             >
                               <PayrollMonthlyTimesheetEmployeeBlock
                                 rowId={rowId}
                                 empBlockIdx={vi.index}
                                 rep={repById.get(rowId)}
-                                monthDayMeta={monthDayMeta}
+                                rowDays={getEmployeeRowDays(rowId)}
                                 summaries={monthlySummaryById.get(rowId)}
                                 loading={loading}
                                 user={user}
@@ -1720,7 +1765,7 @@ export default function PayrollMonthlyTimesheetModal({
                             rowId={rowId}
                             empBlockIdx={idx}
                             rep={repById.get(rowId)}
-                            monthDayMeta={monthDayMeta}
+                            rowDays={getEmployeeRowDays(rowId)}
                             summaries={monthlySummaryById.get(rowId)}
                             loading={loading}
                             user={user}

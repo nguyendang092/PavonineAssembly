@@ -99,8 +99,160 @@
 .s90d-toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
+  gap: 0.875rem;
+  --s90d-toolbar-control-h: 2.375rem;
+  --s90d-toolbar-control-radius: 0.625rem;
+  --s90d-toolbar-control-font: 0.875rem;
+  --s90d-toolbar-panel-padding: 0.625rem 0.875rem;
+  --s90d-toolbar-panel-radius: 0.75rem;
+  --s90d-toolbar-panel-border: 1px solid #c7d2fe;
+  --s90d-toolbar-panel-bg: rgba(255, 255, 255, 0.82);
+  --s90d-toolbar-panel-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 14px rgba(79, 70, 229, 0.07);
+}
+
+.s90d-toolbar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
   gap: 0.75rem;
+  padding: var(--s90d-toolbar-panel-padding);
+  border-radius: var(--s90d-toolbar-panel-radius);
+  border: var(--s90d-toolbar-panel-border);
+  background: var(--s90d-toolbar-panel-bg);
+  box-shadow: var(--s90d-toolbar-panel-shadow);
+}
+
+.s90d-toolbar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: var(--s90d-toolbar-panel-padding);
+  border-radius: var(--s90d-toolbar-panel-radius);
+  border: var(--s90d-toolbar-panel-border);
+  background: var(--s90d-toolbar-panel-bg);
+  box-shadow: var(--s90d-toolbar-panel-shadow);
+}
+
+.s90d-toolbar-actions-label {
+  display: block;
+}
+
+.s90d-toolbar-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.s90d-toolbar-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 8.75rem;
+  margin: 0;
+}
+
+.s90d-toolbar-field-label {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+.s90d-toolbar-field select {
+  appearance: none;
+  box-sizing: border-box;
+  height: var(--s90d-toolbar-control-h);
+  min-height: var(--s90d-toolbar-control-h);
+  min-width: 9.25rem;
+  padding: 0 2.125rem 0 0.8125rem;
+  border-radius: var(--s90d-toolbar-control-radius);
+  border: 1px solid #cbd5e1;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234338ca' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.625rem center;
+  background-size: 1rem;
+  font-size: var(--s90d-toolbar-control-font);
+  font-weight: 700;
+  color: #1e1b4b;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.s90d-toolbar-field select:hover {
+  border-color: #a5b4fc;
+  background-color: #fafbff;
+}
+
+.s90d-toolbar-field select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16);
+}
+
+.s90d-toolbar-field select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.s90d-toolbar-field--product .s90d-toolbar-field-label {
+  color: #0f766e;
+}
+
+.s90d-toolbar-field--product select {
+  border-color: #5eead4;
+  background-color: #f0fdfa;
+  color: #115e59;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+.s90d-toolbar-field--product select:hover {
+  border-color: #2dd4bf;
+  background-color: #ecfdf5;
+}
+
+.s90d-toolbar-field--product select:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.18);
+}
+
+@media (max-width: 640px) {
+  .s90d-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .s90d-toolbar-filters,
+  .s90d-toolbar-actions {
+    width: 100%;
+  }
+
+  .s90d-toolbar-field {
+    flex: 1 1 8.75rem;
+  }
+
+  .s90d-toolbar-field select {
+    width: 100%;
+  }
+
+  .s90d-toolbar-actions-row {
+    width: 100%;
+  }
+
+  .s90d-toolbar-actions-row .s90d-excel-btn,
+  .s90d-toolbar-actions-row .s90d-chart-btn {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
 
 .s90d-toolbar label {
@@ -278,23 +430,38 @@
   color: #0f172a;
 }
 
+.s90d-excel-btn,
+.s90d-chart-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--s90d-toolbar-control-h);
+  min-height: var(--s90d-toolbar-control-h);
+  padding: 0 0.875rem;
+  border-radius: var(--s90d-toolbar-control-radius);
+  font-size: var(--s90d-toolbar-control-font);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
 .s90d-excel-btn {
-  align-self: flex-end;
-  min-height: 2.25rem;
-  padding: 0.45rem 0.9rem;
   border: 1px solid #059669;
-  border-radius: 0.5rem;
   background: #ecfdf5;
   color: #047857;
-  font-size: 0.75rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
 }
 
 .s90d-excel-btn:hover:not(:disabled) {
   background: #d1fae5;
   border-color: #047857;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
 }
 
 .s90d-excel-btn--import {
@@ -306,6 +473,7 @@
 .s90d-excel-btn--import:hover:not(:disabled) {
   background: #dbeafe;
   border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .s90d-excel-btn:disabled {
@@ -314,22 +482,15 @@
 }
 
 .s90d-chart-btn {
-  align-self: flex-end;
-  min-height: 2.25rem;
-  padding: 0.45rem 0.9rem;
   border: 1px solid #7c3aed;
-  border-radius: 0.5rem;
   background: #f5f3ff;
   color: #6d28d9;
-  font-size: 0.75rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
 }
 
 .s90d-chart-btn:hover:not(:disabled) {
   background: #ede9fe;
   border-color: #6d28d9;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
 }
 
 .s90d-chart-btn:disabled {

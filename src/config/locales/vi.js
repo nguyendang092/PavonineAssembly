@@ -726,6 +726,7 @@ const vi = {
     boardLabelN: "Bảng {{n}}",
     expandLateShifts: "Hiện ca 22~24, 00~03, 03~05, 05~08",
     collapseLateShifts: "Ẩn ca 22~24 trở xuống",
+    toolbarActions: "Thao tác",
   },
   ap5Report: {
     pageTitle: "Nhập sản lượng AP5FF & AP5FZ",
@@ -734,6 +735,7 @@ const vi = {
     tabsLabel: "Loại báo cáo AP5",
     loadingManual: "Đang tải dữ liệu AP5…",
     productFilter: "Mã hàng",
+    toolbarActions: "Thao tác",
     chartReportBadgeAp5ff: "Báo cáo AP5FF",
     chartReportBadgeAp5fz: "Báo cáo AP5FZ",
   },

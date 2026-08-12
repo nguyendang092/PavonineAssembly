@@ -34,8 +34,10 @@ export default function AP5ProductionReportPage() {
   );
 
   const toolbarExtra = (
-    <label>
-      {t("ap5Report.productFilter", "Mã hàng")}
+    <label className="s90d-toolbar-field s90d-toolbar-field--product">
+      <span className="s90d-toolbar-field-label">
+        {t("ap5Report.productFilter", "Mã hàng")}
+      </span>
       <select
         value={selectedProductId}
         onChange={(event) => setSelectedProductId(event.target.value)}
