@@ -36,6 +36,10 @@
   background: linear-gradient(180deg, #e8eef8 0%, #f1f5f9 28%, #f8fafc 100%);
 }
 
+.attendance-dashboard-viewport .attendance-dashboard__shell {
+  min-height: 0;
+}
+
 .attendance-dashboard__report-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

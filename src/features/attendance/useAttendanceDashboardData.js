@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, startTransition } from "react";
 import { db, ref, get } from "@/services/firebase";
 import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 import { countAttendanceDashboardDaySummary } from "./attendanceDashboardMetrics";
@@ -17,6 +17,39 @@ import {
   getIsOffDayFromRaw,
 } from "./attendanceDayMeta";
 
+const DASHBOARD_FETCH_BATCH_SIZE = 7;
+
+async function fetchDashboardDayRow(attendanceRootPath, dateKey, cache) {
+  const cacheKey = `${attendanceRootPath}/${dateKey}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey);
+
+  const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
+  const raw = snap.val();
+  const employees = reconcileAttendanceDayRowsFromRaw([], raw, {
+    seasonal: attendanceRootPath === "seasonalAttendance",
+  });
+  const summary = countAttendanceDashboardDaySummary(employees);
+  const row = {
+    dateKey,
+    employees,
+    summary,
+    isOffDay: getIsOffDayFromRaw(raw),
+    isHolidayDay: getIsHolidayDayFromRaw(raw),
+  };
+  cache.set(cacheKey, row);
+  return row;
+}
+
+function waitAnimationFrame() {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+      return;
+    }
+    resolve();
+  });
+}
+
 /**
  * Tải dữ liệu dashboard theo kỳ (ngày / tuần / tháng / năm).
  */
@@ -31,6 +64,7 @@ export function useAttendanceDashboardData(
   const [dayResults, setDayResults] = useState([]);
   const [offDayCount, setOffDayCount] = useState(0);
   const [holidayCount, setHolidayCount] = useState(0);
+  const dayCacheRef = useRef(new Map());
 
   const periodRange = useMemo(
     () => getDashboardPeriodRange(normalizedPeriod, anchorDateKey),
@@ -48,28 +82,33 @@ export function useAttendanceDashboardData(
       normalizedPeriod,
       anchorDateKey,
     );
+    const cache = dayCacheRef.current;
 
     setLoading(true);
-    Promise.all(
-      fetchKeys.map(async (dateKey) => {
-        const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-        const raw = snap.val();
-        const employees = reconcileAttendanceDayRowsFromRaw([], raw, {
-          seasonal: attendanceRootPath === "seasonalAttendance",
-        });
-        const summary = countAttendanceDashboardDaySummary(employees);
-        return {
-          dateKey,
-          employees,
-          summary,
-          isOffDay: getIsOffDayFromRaw(raw),
-          isHolidayDay: getIsHolidayDayFromRaw(raw),
-        };
-      }),
-    )
-      .then((rows) => {
+    setDayResults([]);
+
+    void (async () => {
+      const rows = [];
+      try {
+        for (let i = 0; i < fetchKeys.length; i += DASHBOARD_FETCH_BATCH_SIZE) {
+          if (cancelled) return;
+          const batchKeys = fetchKeys.slice(i, i + DASHBOARD_FETCH_BATCH_SIZE);
+          const batchRows = await Promise.all(
+            batchKeys.map((dateKey) =>
+              fetchDashboardDayRow(attendanceRootPath, dateKey, cache),
+            ),
+          );
+          rows.push(...batchRows);
+          startTransition(() => {
+            if (cancelled) return;
+            setDayResults([...rows]);
+          });
+          if (i + DASHBOARD_FETCH_BATCH_SIZE < fetchKeys.length) {
+            await waitAnimationFrame();
+          }
+        }
+
         if (cancelled) return;
-        setDayResults(rows);
         const periodSet = new Set(
           listDashboardPeriodDateKeys(normalizedPeriod, anchorDateKey),
         );
@@ -80,12 +119,15 @@ export function useAttendanceDashboardData(
           if (row.isOffDay) off += 1;
           if (row.isHolidayDay) hol += 1;
         }
-        setOffDayCount(off);
-        setHolidayCount(hol);
-      })
-      .finally(() => {
+        startTransition(() => {
+          if (cancelled) return;
+          setOffDayCount(off);
+          setHolidayCount(hol);
+        });
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;

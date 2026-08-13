@@ -28,6 +28,7 @@ export default function ManualProductionReportPage({
   manualEntries,
   toolbarExtra = null,
   dailyCardIdPrefix = "s90d-day",
+  totalTabSections = null,
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
@@ -63,6 +64,8 @@ export default function ManualProductionReportPage({
 
   const isProcessTab = S90D_PROCESSES.includes(activeTab);
   const isSummaryTab = activeTab === TABS.TOTAL || activeTab === TABS.DAILY;
+  const showGlobalLoading =
+    loading && !(totalTabSections?.length && activeTab === TABS.TOTAL);
   const excelBusy = saving || importing;
 
   useLayoutEffect(() => {
@@ -171,6 +174,11 @@ export default function ManualProductionReportPage({
     [rt, t],
   );
 
+  const pageSubtitle = rt(
+    "pageSubtitle",
+    "Nhập số liệu ở tab công đoạn; tab Theo ngày và Tổng tự tính tổng",
+  );
+
   return (
     <div className="s90d-report-page">
       <AlertMessage
@@ -191,12 +199,9 @@ export default function ManualProductionReportPage({
             <h1 className="s90d-report-title">
               {rt("pageTitle", "Báo cáo sản lượng")}
             </h1>
-            <p className="s90d-report-subtitle">
-              {rt(
-                "pageSubtitle",
-                "Nhập số liệu ở tab công đoạn; tab Theo ngày và Tổng tự tính tổng",
-              )}
-            </p>
+            {pageSubtitle ? (
+              <p className="s90d-report-subtitle">{pageSubtitle}</p>
+            ) : null}
           </div>
 
           <div className="s90d-toolbar">
@@ -297,7 +302,7 @@ export default function ManualProductionReportPage({
         monthDisplayLabel={monthDisplayLabel}
       />
 
-      {loading ? (
+      {showGlobalLoading ? (
         <LoadingBlock label={rt("loadingManual", "Đang tải dữ liệu…")} />
       ) : (
         <>
@@ -316,11 +321,37 @@ export default function ManualProductionReportPage({
               role="tabpanel"
               aria-label={tabLabels[TABS.TOTAL]}
             >
-              <S90dSummaryTable
-                summary={grandTotalSummary}
-                variant="total"
-                monthLabel={monthDisplayLabel}
-              />
+              {totalTabSections?.length ? (
+                <div className="s90d-daily-grid">
+                  {totalTabSections.map((section) => (
+                    <div
+                      key={section.productCode}
+                      className="s90d-daily-card"
+                      id={`${dailyCardIdPrefix}-total-${section.productCode}`}
+                    >
+                      {section.loading ? (
+                        <LoadingBlock
+                          label={rt("loadingManual", "Đang tải dữ liệu…")}
+                        />
+                      ) : (
+                        <S90dSummaryTable
+                          summary={section.summary}
+                          variant="total"
+                          monthLabel={
+                            section.monthDisplayLabel ?? monthDisplayLabel
+                          }
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <S90dSummaryTable
+                  summary={grandTotalSummary}
+                  variant="total"
+                  monthLabel={monthDisplayLabel}
+                />
+              )}
             </section>
           ) : activeTab === TABS.DAILY ? (
             <section
@@ -347,7 +378,7 @@ export default function ManualProductionReportPage({
             </section>
           ) : isProcessTab ? (
             <S90dProcessTabPanel
-              key={`${activeTab}-${selectedMonthKey}`}
+              key={`${dailyCardIdPrefix}-${activeTab}-${selectedMonthKey}`}
               process={activeTab}
               monthDayKeys={monthDayKeys}
               storeRevision={storeRevision}

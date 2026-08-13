@@ -61,7 +61,20 @@ export const AP5FZ_PRODUCTION_REPORT_CONFIG = Object.freeze({
   buildDefectImageUploadPrefix: buildDefectImageUploadPrefixFactory("ap5fz_defect"),
 });
 
+export const AP5FL_PRODUCTION_REPORT_CONFIG = Object.freeze({
+  id: "ap5fl",
+  i18nPrefix: "ap5Report",
+  defaultProductCode: "AP5FL",
+  firebaseRoot: "ap5fl/manualEntries",
+  storageKey: "ap5fl-manual-entries-v1",
+  excelSheetName: "AP5FL_Nhap",
+  excelFilePrefix: "AP5FL",
+  chartReportBadgeKey: "chartReportBadgeAp5fl",
+  buildDefectImageUploadPrefix: buildDefectImageUploadPrefixFactory("ap5fl_defect"),
+});
+
 export const AP5_PRODUCT_CONFIGS = Object.freeze([
   AP5FF_PRODUCTION_REPORT_CONFIG,
   AP5FZ_PRODUCTION_REPORT_CONFIG,
+  AP5FL_PRODUCTION_REPORT_CONFIG,
 ]);

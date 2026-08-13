@@ -1,0 +1,97 @@
+/**
+ * HR Management — một scroll dọc: #app-main-scroll (không scroll lồng trong bảng).
+ */
+
+html.hr-page-active #app-main-scroll.hr-page-scroll-root {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+:is(
+  .hr-page-viewport,
+  .attendance-list-page,
+  .annual-leave-viewport,
+  .payroll-salary-page-viewport,
+  .attendance-dashboard-viewport
+) {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-height: min(100%, calc(100dvh - var(--app-navbar-height, 4rem)));
+  box-sizing: border-box;
+}
+
+html.hr-page-active .attendance-with-sidebar {
+  min-height: min(100%, calc(100dvh - var(--app-navbar-height, 4rem)));
+}
+
+html.hr-page-active .attendance-with-sidebar__main {
+  min-height: 0 !important;
+}
+
+.hr-page-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.hr-page-main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  overflow: visible;
+}
+
+/* Bảng: chỉ cuộn ngang khi rộng — dọc theo #app-main-scroll */
+.hr-page-viewport .attendance-table-scroll,
+.hr-page-viewport .payroll-salary-table-scroll,
+.hr-page-viewport .annual-leave-table-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+}
+
+.hr-page-viewport .attendance-table-compact,
+.hr-page-viewport .payroll-salary-table-compact,
+.hr-page-viewport .attendance-list-table-panel,
+.hr-page-viewport .payroll-salary-table-panel,
+.hr-page-viewport .annual-leave-table-compact {
+  overflow: visible;
+}
+
+.hr-page-viewport .attendance-list-table-panel .attendance-table-compact tbody tr,
+.payroll-salary-page-viewport .payroll-salary-table-compact tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2rem;
+}
+
+.attendance-dashboard-viewport :is(
+  .attendance-dashboard__dept-week-scroll,
+  .attendance-dashboard__list-body--capped-scroll,
+  .attendance-dashboard__list-body--absent-scroll,
+  .attendance-dashboard__late-employees-scroll,
+  .attendance-dashboard__resignation-employees-scroll,
+  .attendance-dashboard__leave-people,
+  .attendance-dashboard__list--capped,
+  .attendance-dashboard__list--tall,
+  .attendance-dashboard__dept-week-panel,
+  .attendance-dashboard__list--late-fill
+),
+.attendance-dashboard-viewport
+  .attendance-dashboard__shell
+  .attendance-dashboard__list:not(.attendance-dashboard__list--capped):not(
+    .attendance-dashboard__list--absent
+  ) {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.attendance-dashboard-viewport .attendance-dashboard__list-row,
+.attendance-dashboard-viewport .attendance-dashboard__leave-person {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2rem;
+}

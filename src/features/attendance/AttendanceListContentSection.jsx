@@ -3,8 +3,6 @@ import LoadingBlock from "@/components/ui/LoadingBlock";
 import HrTablePagination from "@/components/ui/HrTablePagination";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
-import AttendanceEmployeeFormModal from "./AttendanceEmployeeFormModal";
-import AttendanceOffDaysModal from "./AttendanceOffDaysModal";
 import AttendanceListTableSection from "./AttendanceListTableSection";
 import AttendanceListSummary from "./AttendanceListSummary";
 import {
@@ -13,6 +11,12 @@ import {
   useAttendanceListSearchBranch,
 } from "./attendanceListBranchContexts";
 
+const AttendanceEmployeeFormModal = lazy(
+  () => import("./AttendanceEmployeeFormModal"),
+);
+const AttendanceOffDaysModal = lazy(
+  () => import("./AttendanceOffDaysModal"),
+);
 const AttendanceComboChartModal = lazy(
   () => import("./AttendanceComboChartModal"),
 );
@@ -101,6 +105,7 @@ function AttendanceListContentSection() {
   return (
     <>
       {showEmployeeModal ? (
+        <Suspense fallback={null}>
         <AttendanceEmployeeFormModal
           open
           onClose={closeEmployeeModal}
@@ -116,9 +121,11 @@ function AttendanceListContentSection() {
           dayIsOffDay={isOffDay}
           dayIsHolidayDay={isHolidayDay}
         />
+        </Suspense>
       ) : null}
 
       {offDaysModalOpen ? (
+        <Suspense fallback={null}>
         <AttendanceOffDaysModal
           open
           onClose={closeOffDaysModal}
@@ -129,6 +136,7 @@ function AttendanceListContentSection() {
           onSaved={refreshMonthOffDays}
           attendanceRootPath={attendanceRootPath}
         />
+        </Suspense>
       ) : null}
 
       {showComboChartModal ? (
@@ -182,7 +190,7 @@ function AttendanceListContentSection() {
       ) : null}
 
       <div className="attendance-list-table-panel">
-        <div className="relative min-h-0 flex flex-1 flex-col">
+        <div className="relative">
           <PayrollMonthGridLoadingOverlay
             active={filtersPending}
             message={tl("searchUpdating", "Đang cập nhật tìm kiếm…")}

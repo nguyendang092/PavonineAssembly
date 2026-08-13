@@ -96,7 +96,7 @@ function AnnualLeaveManagerTablePanel({
   return (
     <>
       <div
-        className={`annual-leave-table-compact min-h-0 w-full max-w-none flex-1 rounded-md bg-white shadow-sm transition-opacity duration-150 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700${
+        className={`annual-leave-table-compact w-full max-w-none rounded-md bg-white shadow-sm transition-opacity duration-150 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700${
           tableBusy ? " opacity-80" : ""
         }${attendanceEnhancing ? " annual-leave-table--attendance-pending" : ""}`}
       >

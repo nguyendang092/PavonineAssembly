@@ -887,7 +887,7 @@ export default function PayrollSalaryCalculator() {
   return (
     <>
       <AttendanceHrPageShell contextDate={selectedDate}>
-      <div className="payroll-salary-page payroll-salary-page-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
+      <div className="payroll-salary-page payroll-salary-page-viewport hr-page-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
         <div className="mb-1 shrink-0">
           <div className="w-full border-t-4 border-violet-600 bg-white px-2 py-0.5 shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
             <h1 className="text-sm font-bold uppercase leading-snug tracking-wide text-[#1e293b] md:text-base dark:text-slate-100">
@@ -907,7 +907,8 @@ export default function PayrollSalaryCalculator() {
           onClose={() => setAlert((a) => ({ ...a, show: false }))}
         />
 
-        <div className="attendance-toolbar-controls sticky top-0 z-30 mb-1 flex flex-col gap-1 border-b border-slate-200/90 bg-white px-1.5 py-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2 md:px-2 dark:border-slate-700/90 dark:bg-slate-900">
+        <div className="hr-page-body">
+        <div className="attendance-toolbar-controls sticky top-0 z-30 mb-1 flex shrink-0 flex-col gap-1 border-b border-slate-200/90 bg-white px-1.5 py-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2 md:px-2 dark:border-slate-700/90 dark:bg-slate-900">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
             <AttendanceOffHolidayDaysControl
               user={user}
@@ -981,13 +982,13 @@ export default function PayrollSalaryCalculator() {
           mode="viewport"
           message={tlPage("dayDataLoading", "Đang tải dữ liệu...")}
         />
-        <div className="payroll-salary-table-panel min-h-0 flex-1">
-        <div className="payroll-salary-table-compact relative min-w-0 w-full max-w-none overflow-x-auto overscroll-x-contain rounded-md bg-white leading-tight shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
+        <div className="payroll-salary-table-panel">
+        <div className="payroll-salary-table-compact relative min-w-0 w-full max-w-none rounded-md bg-white leading-tight shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
           <PayrollMonthGridLoadingOverlay
             active={filtersPending && !isDayLoading}
             message={tlPage("dayDataRendering", "Đang cập nhật bảng…")}
           />
-          <div className="payroll-salary-table-scroll min-w-0 w-full max-w-full overflow-x-auto overscroll-x-contain">
+          <div className="payroll-salary-table-scroll min-w-0 w-full max-w-full">
             <table
               className={`w-full max-w-none table-fixed border-collapse ${payrollTableWrapperMinWidthClass(columnPlan, showRowModalActions)}`}
             >
@@ -1051,6 +1052,7 @@ export default function PayrollSalaryCalculator() {
           onPageChange={tablePagination.setPage}
           onPageSizeChange={tablePagination.setPageSize}
         />
+        </div>
         </div>
         </div>
       </div>

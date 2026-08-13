@@ -100,7 +100,7 @@ const ko = {
     certificate2: "표창장 2",
     sanLuong: "생산실적",
     s90dProductionReport: "S90D 생산실적 보고",
-    ap5ProductionReport: "AP5FF·AP5FZ 생산실적 입력",
+    ap5ProductionReport: "AP5FF·AP5FZ·AP5FL 생산실적 입력",
     dangNhap: "로그인",
     logOut: "로그아웃",
     changePassword: "비밀번호 변경",
@@ -145,7 +145,7 @@ const ko = {
     descS90dProductionReport:
       "S90D 공정별(PRESS·HAIRLINE·ANODIZING·ASSEMBLY) 생산·불량 종합표.",
     descAp5ProductionReport:
-      "AP5FF·AP5FZ 공정·교대·일별 생산 실적 입력(S90D와 동일 형식).",
+      "AP5FF·AP5FZ·AP5FL 공정·교대·일별 생산 실적 입력(S90D와 동일 형식).",
     descPerformance: "개선 제안 차트 및 보고.",
     descTemperature: "설비·구역 온도 모니터링.",
     descMold: "금형 관리 및 사용 상태.",
@@ -729,15 +729,15 @@ const ko = {
     toolbarActions: "작업",
   },
   ap5Report: {
-    pageTitle: "AP5FF·AP5FZ 생산실적 입력",
-    pageSubtitle:
-      "AP5FF 또는 AP5FZ 선택 후 공정 탭에서 입력 — 일별·총합 탭은 자동 집계",
+    pageTitle: "AP5FF·AP5FZ·AP5FL 생산실적 입력",
+    pageSubtitle: "",
     tabsLabel: "AP5 보고 유형",
     loadingManual: "AP5 데이터 불러오는 중…",
     productFilter: "품번",
     toolbarActions: "작업",
     chartReportBadgeAp5ff: "AP5FF 보고",
     chartReportBadgeAp5fz: "AP5FZ 보고",
+    chartReportBadgeAp5fl: "AP5FL 보고",
   },
   workplaceChart: {
     menuTitle: "📁 메뉴",

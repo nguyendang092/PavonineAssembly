@@ -611,10 +611,10 @@ export default function AttendanceEmployeeFormModal({
           return;
         }
         const { firebaseKey } = firebaseKeyPreview;
-        const daySnap = await get(
-          ref(db, `${attendanceRootPath}/${selectedDate}/${firebaseKey}`),
-        );
-        const existingRaw = daySnap.val() || {};
+        const existingFromList = employees.find((row) => row.id === firebaseKey);
+        const existingRaw = existingFromList
+          ? attendanceExistingRawFromListRow(existingFromList)
+          : {};
         const addTarget = resolveAttendanceFormPersistTarget({
           storageKey,
           existingRaw,

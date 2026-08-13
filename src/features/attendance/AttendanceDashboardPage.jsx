@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, useDeferredValue } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,8 +17,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import ExcelJS from "exceljs";
 import AttendanceHrPageShell from "./AttendanceHrPageShell";
+import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import { useAttendanceDashboardData } from "./useAttendanceDashboardData";
 import {
   DASHBOARD_PERIOD_DAY,
@@ -38,7 +38,6 @@ import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 import { getTodayDateKeyLocal } from "@/utils/dateKey";
 import "./attendanceDashboard.css";
 import "./hrPageCompact.css";
-import "./attendanceToolbarFocus.css";
 
 function getEmployeeInitials(name) {
   const parts = String(name ?? "")
@@ -214,6 +213,8 @@ function AttendanceDashboardPage() {
   const { t, i18n } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [deptFilter, setDeptFilter] = useState("");
+  const deferredDeptFilter = useDeferredValue(deptFilter);
+  const deptFilterPending = deptFilter !== deferredDeptFilter;
   const [exportBusy, setExportBusy] = useState(false);
 
   const dateFromUrl = searchParams.get("date");
@@ -291,11 +292,11 @@ function AttendanceDashboardPage() {
   const snapshot = useMemo(
     () =>
       buildAttendanceDashboardSnapshot(employees, selectedDate, {
-        deptFilter,
+        deptFilter: deferredDeptFilter,
         rosterEmployees,
         periodDays: periodDayCount,
       }),
-    [employees, selectedDate, deptFilter, rosterEmployees, periodDayCount],
+    [employees, selectedDate, deferredDeptFilter, rosterEmployees, periodDayCount],
   );
 
   const handleDateChange = (e) => {
@@ -333,6 +334,7 @@ function AttendanceDashboardPage() {
   const handleExportExcel = async () => {
     setExportBusy(true);
     try {
+      const ExcelJS = (await import("exceljs")).default;
       const wb = new ExcelJS.Workbook();
       const sheet = wb.addWorksheet("Dashboard");
       const s = snapshot.summary;
@@ -508,7 +510,9 @@ function AttendanceDashboardPage() {
 
   return (
     <AttendanceHrPageShell contextDate={selectedDate}>
-      <div className="attendance-dashboard attendance-dashboard--fit hr-page-compact attendance-list-viewport w-full max-w-none">
+      <div className="attendance-dashboard attendance-dashboard-viewport hr-page-viewport attendance-dashboard--fit hr-page-compact attendance-list-viewport w-full max-w-none">
+        <div className="hr-page-body">
+        <div className="hr-page-main">
         <div className="attendance-dashboard__shell">
           <header className="attendance-dashboard__report-head dashboard-report-surface">
             <div className="attendance-dashboard__report-brand">
@@ -630,6 +634,7 @@ function AttendanceDashboardPage() {
                 className="attendance-dashboard__btn attendance-dashboard__btn--gold"
                 onClick={() => void handleExportExcel()}
                 disabled={exportBusy}
+                aria-busy={exportBusy}
               >
                 {tl("dashboardExportExcel", "Xuất Excel")}
               </button>
@@ -643,12 +648,23 @@ function AttendanceDashboardPage() {
             </div>
           </div>
 
-          {dataLoading ? (
+          <PayrollMonthGridLoadingOverlay
+            active={dataLoading}
+            mode="viewport"
+            message={tl("dashboardLoading", "Đang tải dữ liệu…")}
+          />
+
+          <div
+            className={`transition-opacity duration-150${
+              dataLoading || deptFilterPending ? " opacity-80" : ""
+            }`}
+          >
+          {employees.length === 0 && !dataLoading ? (
             <p className="attendance-dashboard__loading">
-              {tl("dashboardLoading", "Đang tải dữ liệu…")}
+              {tl("dashboardNoData", "Không có dữ liệu cho kỳ đã chọn.")}
             </p>
           ) : (
-          <>
+            <>
               <div className="attendance-dashboard__kpis">
                 <KpiCard
                   label={
@@ -1462,6 +1478,9 @@ function AttendanceDashboardPage() {
               </div>
           </>
           )}
+          </div>
+        </div>
+        </div>
         </div>
       </div>
     </AttendanceHrPageShell>

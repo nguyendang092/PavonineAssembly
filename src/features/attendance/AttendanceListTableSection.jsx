@@ -116,7 +116,7 @@ function AttendanceListTableSection({
       : "overflow-x-auto overscroll-x-contain";
 
   return (
-    <div className="min-w-0 w-full max-w-none bg-white attendance-table-compact">
+    <div className="attendance-table-compact min-w-0 w-full max-w-none bg-white">
       <div
         className={`attendance-table-scroll min-w-0 w-full max-w-full ${outerScrollClass}`}
       >

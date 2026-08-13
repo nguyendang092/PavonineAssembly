@@ -30,5 +30,10 @@ export const WORKPLACE_PRODUCTION_PATHS_AP5FZ = Object.freeze({
   manualEntriesRoot: "ap5fz/manualEntries",
 });
 
+/** Firebase paths riêng cho báo cáo sản lượng AP5FL. */
+export const WORKPLACE_PRODUCTION_PATHS_AP5FL = Object.freeze({
+  manualEntriesRoot: "ap5fl/manualEntries",
+});
+
 export const DEFAULT_WORKPLACE_PRODUCTION_PATHS =
   WORKPLACE_PRODUCTION_PATHS_NORMAL;

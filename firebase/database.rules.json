@@ -136,6 +136,15 @@
       }
     },
 
+    "ap5fl": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "manualEntries": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
     "mcDefectReport": {
       ".read": "auth != null",
       ".write": "auth != null",

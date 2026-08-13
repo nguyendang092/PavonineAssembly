@@ -1,9 +1,17 @@
-import { memo, useState, useMemo, useCallback, useEffect, startTransition } from "react";
+import {
+  memo,
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  startTransition,
+  lazy,
+  Suspense,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
 import AlertMessage from "@/components/ui/AlertMessage";
-import AttendanceExportRangeModal from "./AttendanceExportRangeModal";
 import { useAttendanceDayFirebase } from "./useAttendanceDayFirebase";
 import { useAttendanceListFilters } from "./useAttendanceListFilters";
 import {
@@ -14,7 +22,6 @@ import {
 } from "./useAttendanceToolbarDropdownPlacement";
 import { useAttendanceListMutations } from "./useAttendanceListMutations";
 import AttendanceListHeader from "./AttendanceListHeader";
-import AttendanceUnattendedModal from "./AttendanceUnattendedModal";
 import AttendanceListToolbarSection from "./AttendanceListToolbarSection";
 import AttendanceListToolbarSearchCluster from "./AttendanceToolbarSearchCluster";
 import AttendanceListContentSection from "./AttendanceListContentSection";
@@ -35,7 +42,6 @@ import { useAttendanceListHandlers } from "./useAttendanceListHandlers";
 import { useAttendanceListSetup } from "./useAttendanceListSetup";
 import { useAttendanceListI18n } from "./useAttendanceListI18n";
 import { useAttendanceCompareEmployees } from "./useAttendanceCompareEmployees";
-import AttendanceCompareEmployeesModal from "./AttendanceCompareEmployeesModal";
 import {
   AttendanceListToolbarBranchContext,
   AttendanceListContentBranchContext,
@@ -43,10 +49,21 @@ import {
   AttendanceListFilteredDataBranchContext,
   AttendanceListComboBranchContext,
 } from "./attendanceListBranchContexts";
-import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimesheetModal";
-import PayrollToolsMenu from "@/features/payroll/PayrollToolsMenu";
-import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
-import { executePayrollSalaryExcelExportRange } from "@/features/payroll/payrollSalaryExcelExportRange";
+const AttendanceExportRangeModal = lazy(
+  () => import("./AttendanceExportRangeModal"),
+);
+const AttendanceUnattendedModal = lazy(
+  () => import("./AttendanceUnattendedModal"),
+);
+const AttendanceCompareEmployeesModal = lazy(
+  () => import("./AttendanceCompareEmployeesModal"),
+);
+const PayrollMonthlyTimesheetModal = lazy(
+  () => import("@/features/payroll/PayrollMonthlyTimesheetModal"),
+);
+const PayrollRangeExcelExportModal = lazy(
+  () => import("@/features/payroll/PayrollRangeExcelExportModal"),
+);
 import { getTodayDateKeyLocal } from "@/utils/dateKey";
 import { db, get, ref } from "@/services/firebase";
 import {
@@ -306,6 +323,9 @@ const AttendanceList = memo(function AttendanceList({
     async (rangeFrom, rangeTo, selectedDepartments) => {
       setKoreanExportBusy(true);
       try {
+        const { executePayrollSalaryExcelExportRange } = await import(
+          "@/features/payroll/payrollSalaryExcelExportRange"
+        );
         const result = await executePayrollSalaryExcelExportRange({
           rangeFrom,
           rangeTo,
@@ -865,7 +885,7 @@ const AttendanceList = memo(function AttendanceList({
         statisticsOpen={showComboChartModal}
         onOpenStatistics={handleSidebarOpenStatistics}
       >
-      <div className="attendance-list-page hr-page-compact attendance-list-viewport w-full max-w-none">
+      <div className="attendance-list-page hr-page-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
         <AttendanceListHeader
           headerTitle={headerTitle}
           headerSubtitle={headerSubtitle}
@@ -880,8 +900,10 @@ const AttendanceList = memo(function AttendanceList({
           onClose={() => setAlert((a) => ({ ...a, show: false }))}
         />
 
+        {showUnattendedPopup ? (
+          <Suspense fallback={null}>
         <AttendanceUnattendedModal
-          showUnattendedPopup={showUnattendedPopup}
+          showUnattendedPopup
           unattendedEmployees={unattendedEmployees}
           closeUnattendedPopup={closeUnattendedPopup}
           unattendedSuppressSessionCheckbox={unattendedSuppressSessionCheckbox}
@@ -894,8 +916,11 @@ const AttendanceList = memo(function AttendanceList({
           tl={tl}
           t={t}
         />
+          </Suspense>
+        ) : null}
 
         {compareEmployeesOpen ? (
+          <Suspense fallback={null}>
           <AttendanceCompareEmployeesModal
             isOpen
             onClose={closeCompareEmployees}
@@ -906,10 +931,13 @@ const AttendanceList = memo(function AttendanceList({
             onCompare={handleCompareEmployeesByDepartment}
             tl={tl}
           />
+          </Suspense>
         ) : null}
 
+        {showExportRangeModal ? (
+          <Suspense fallback={null}>
         <AttendanceExportRangeModal
-          isOpen={showExportRangeModal}
+          isOpen
           onClose={closeExportRangeModal}
           exportRangeBusy={exportRangeBusy}
           exportRangeFrom={exportRangeFrom}
@@ -919,10 +947,13 @@ const AttendanceList = memo(function AttendanceList({
           onConfirmExport={handleExportAttendanceDateRange}
           tl={tl}
         />
+          </Suspense>
+        ) : null}
 
-        {showKoreanMonthlyTimesheet ? (
+        {showKoreanMonthlyTimesheet && monthlyTimesheetOpen ? (
+          <Suspense fallback={null}>
           <PayrollMonthlyTimesheetModal
-            open={monthlyTimesheetOpen}
+            open
             onClose={() => setMonthlyTimesheetOpen(false)}
             anchorDateKey={selectedDate}
             displayLocale={displayLocale}
@@ -939,11 +970,13 @@ const AttendanceList = memo(function AttendanceList({
             employees={employees}
             attendanceRootPath={KOREAN_ATTENDANCE_ROOT}
           />
+          </Suspense>
         ) : null}
 
-        {showKoreanMonthlyTimesheet ? (
+        {showKoreanMonthlyTimesheet && koreanExportModalOpen ? (
+          <Suspense fallback={null}>
           <PayrollRangeExcelExportModal
-            open={koreanExportModalOpen}
+            open
             onDismiss={() => {
               if (!koreanExportBusy) setKoreanExportModalOpen(false);
             }}
@@ -1009,8 +1042,10 @@ const AttendanceList = memo(function AttendanceList({
               "Bỏ chọn",
             )}
           />
+          </Suspense>
         ) : null}
 
+        <div className="hr-page-body">
         <AttendanceListSearchBranchContext.Provider value={searchBranchValue}>
           <AttendanceListToolbarBranchContext.Provider
             value={toolbarBranchValue}
@@ -1031,11 +1066,14 @@ const AttendanceList = memo(function AttendanceList({
               <AttendanceListComboBranchContext.Provider
                 value={comboBranchValue}
               >
-                <AttendanceListContentSection />
+                <div className="hr-page-main">
+                  <AttendanceListContentSection />
+                </div>
               </AttendanceListComboBranchContext.Provider>
             </AttendanceListContentBranchContext.Provider>
           </AttendanceListToolbarBranchContext.Provider>
         </AttendanceListSearchBranchContext.Provider>
+        </div>
       </div>
       </AttendanceHrPageShell>
     </>

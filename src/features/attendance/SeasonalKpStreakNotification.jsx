@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, memo, useDeferredValue } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, memo, startTransition } from "react";
 import { useTranslation } from "react-i18next";
 import NotificationBell from "@/components/ui/NotificationBell";
 import { db, ref, get } from "@/services/firebase";
@@ -20,6 +20,34 @@ import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 import { buildCompareSttRankMap } from "./attendanceCompareEmployeesLogic";
 
 const MAX_KP_STREAK_LOOKBACK_DAYS = 90;
+const KP_STREAK_DAY_CACHE_MAX = 120;
+const kpStreakDayRawCache = new Map();
+
+function readCachedDayRaw(attendanceRootPath, dateKey) {
+  return kpStreakDayRawCache.get(`${attendanceRootPath}/${dateKey}`);
+}
+
+function writeCachedDayRaw(attendanceRootPath, dateKey, raw) {
+  const cacheKey = `${attendanceRootPath}/${dateKey}`;
+  if (!kpStreakDayRawCache.has(cacheKey)) {
+    if (kpStreakDayRawCache.size >= KP_STREAK_DAY_CACHE_MAX) {
+      const oldest = kpStreakDayRawCache.keys().next().value;
+      if (oldest) kpStreakDayRawCache.delete(oldest);
+    }
+    kpStreakDayRawCache.set(cacheKey, raw);
+    return;
+  }
+  kpStreakDayRawCache.set(cacheKey, raw);
+}
+
+async function loadDayRaw(attendanceRootPath, dateKey) {
+  const cached = readCachedDayRaw(attendanceRootPath, dateKey);
+  if (cached !== undefined) return cached;
+  const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
+  const raw = snap.exists() ? snap.val() : null;
+  writeCachedDayRaw(attendanceRootPath, dateKey, raw);
+  return raw;
+}
 
 /**
  * Chủ nhật không tham gia chuỗi KP: không đọc Firebase, không cộng ngày, không làm mất nhịp —
@@ -180,8 +208,7 @@ async function computeKhongPhepStreakRows({
     if (isSundayDateKey(dateKey)) {
       continue;
     }
-    const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-    const raw = snap.exists() ? snap.val() : null;
+    const raw = await loadDayRaw(attendanceRootPath, dateKey);
     const next = new Set();
     for (const streakKey of active) {
       const empToday = streakKeyToEmp.get(streakKey);
@@ -221,7 +248,6 @@ export default memo(function SeasonalKpStreakNotification({
   selectedDate,
   attendanceRootPath,
 }) {
-  const deferredFilteredEmployees = useDeferredValue(filteredEmployees);
   const { t } = useTranslation();
   const tl = useCallback(
     (key, defaultValue, options = {}) =>
@@ -232,8 +258,8 @@ export default memo(function SeasonalKpStreakNotification({
   const [loading, setLoading] = useState(true);
   const requestGen = useRef(0);
   const sttRankByKey = useMemo(
-    () => buildCompareSttRankMap(deferredFilteredEmployees, true),
-    [deferredFilteredEmployees],
+    () => buildCompareSttRankMap(filteredEmployees, true),
+    [filteredEmployees],
   );
 
   useEffect(() => {
@@ -241,21 +267,28 @@ export default memo(function SeasonalKpStreakNotification({
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void (async () => {
-        setLoading(true);
-        setRows([]);
+        startTransition(() => {
+          if (cancelled || gen !== requestGen.current) return;
+          setLoading(true);
+          setRows([]);
+        });
         try {
           const next = await computeKhongPhepStreakRows({
             attendanceRootPath,
             selectedDate,
-            filteredEmployees: deferredFilteredEmployees,
+            filteredEmployees,
           });
           if (cancelled || gen !== requestGen.current) return;
-          setRows(next);
+          startTransition(() => {
+            setRows(next);
+            setLoading(false);
+          });
         } catch {
           if (cancelled || gen !== requestGen.current) return;
-          setRows([]);
-        } finally {
-          if (!cancelled && gen === requestGen.current) setLoading(false);
+          startTransition(() => {
+            setRows([]);
+            setLoading(false);
+          });
         }
       })();
     }, 350);
@@ -264,7 +297,7 @@ export default memo(function SeasonalKpStreakNotification({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [deferredFilteredEmployees, selectedDate, attendanceRootPath]);
+  }, [filteredEmployees, selectedDate, attendanceRootPath]);
 
   const title = tl(
     "seasonalKpStreakTitle",

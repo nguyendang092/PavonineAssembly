@@ -355,6 +355,14 @@
   flex-direction: column;
 }
 
+html.hr-page-active .attendance-with-sidebar__main {
+  min-height: 0 !important;
+}
+
+html.hr-page-active .attendance-with-sidebar {
+  min-height: 0;
+}
+
 @media (max-width: 1023px) {
   .attendance-with-sidebar__nav {
     display: none;

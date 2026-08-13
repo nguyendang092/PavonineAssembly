@@ -363,7 +363,7 @@ export default function AnnualLeaveManager() {
       <AttendanceHrPageShell
         contextDate={resolveAnnualLeaveManagerThroughDateKey(year, monthFilter)}
       >
-        <div className="annual-leave-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
+        <div className="annual-leave-viewport hr-page-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
           <p className="text-sm text-black dark:text-slate-300">
             {t("annualLeave.pleaseLogin")}
           </p>
@@ -376,7 +376,7 @@ export default function AnnualLeaveManager() {
     <AttendanceHrPageShell
       contextDate={resolveAnnualLeaveManagerThroughDateKey(year, monthFilter)}
     >
-      <div className="annual-leave-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
+      <div className="annual-leave-viewport hr-page-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
         <div className="mb-1 shrink-0">
           <div className="w-full border-t-4 border-blue-600 bg-white px-2 py-0.5 shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
             <h1 className="text-sm font-bold uppercase leading-snug tracking-wide text-black md:text-base dark:text-slate-100">
@@ -391,6 +391,7 @@ export default function AnnualLeaveManager() {
           onClose={() => setAlert((a) => ({ ...a, show: false }))}
         />
 
+        <div className="hr-page-body">
         <AnnualLeaveManagerToolbar
           t={t}
           year={year}
@@ -427,6 +428,7 @@ export default function AnnualLeaveManager() {
           }
         />
 
+        <div className="hr-page-main">
         <PayrollMonthGridLoadingOverlay active={yearLoading} mode="viewport" />
 
         {yearLoading ? (
@@ -450,6 +452,8 @@ export default function AnnualLeaveManager() {
             onAdjustmentSaveError={handleAdjustmentSaveError}
           />
         )}
+        </div>
+        </div>
       </div>
     </AttendanceHrPageShell>
   );

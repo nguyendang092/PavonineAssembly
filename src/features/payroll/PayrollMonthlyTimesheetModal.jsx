@@ -1798,8 +1798,9 @@ export default function PayrollMonthlyTimesheetModal({
           </div>
         </div>
       </div>
+      {exportModalOpen ? (
       <PayrollRangeExcelExportModal
-        open={exportModalOpen}
+        open
         onDismiss={() => {
           if (!exportBusy) setExportModalOpen(false);
         }}
@@ -1837,8 +1838,10 @@ export default function PayrollMonthlyTimesheetModal({
         exportLabel={tlPage("exportRangeSubmit", "Xuất Excel")}
         cancelLabel={tlPage("exportRangeCancel", "Hủy")}
       />
+      ) : null}
+      {dayCellFormOpen ? (
       <AttendanceEmployeeFormModal
-        open={dayCellFormOpen}
+        open
         onClose={() => {
           setDayCellFormOpen(false);
           setDayCellFormInitial(null);
@@ -1865,6 +1868,7 @@ export default function PayrollMonthlyTimesheetModal({
           dayCellFormDate && chunkByDate.get(dayCellFormDate)?.isHolidayDay,
         )}
       />
+      ) : null}
     </>,
     document.body,
   );
