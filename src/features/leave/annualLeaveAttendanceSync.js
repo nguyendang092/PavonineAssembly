@@ -165,6 +165,76 @@ export async function persistAnnualLeaveYearFromAttendance(
   return { results, appliedCount: results.length };
 }
 
+/**
+ * Cập nhật phép năm một NV sau điểm danh — tránh quét + ghi toàn bộ năm.
+ */
+export async function persistSingleEmployeeAnnualLeaveFromAttendance(
+  db,
+  {
+    year,
+    empKey,
+    attendanceRootPath = "attendance",
+    updatedBy = "",
+    attendanceRootOverride = null,
+  },
+) {
+  const resolvedEmpKey = String(empKey ?? "").trim();
+  if (!resolvedEmpKey) {
+    return { applied: false, reason: "no_emp_key" };
+  }
+
+  let attendanceRootData = attendanceRootOverride;
+  if (attendanceRootData == null) {
+    const rootSnap = await get(ref(db, attendanceRootPath));
+    attendanceRootData = rootSnap.val();
+  }
+
+  const { deductionsByEmpKey, attendanceMonthlyByEmpKey } =
+    buildAttendanceAnnualLeaveDerivedMaps(attendanceRootData, year);
+
+  const yearSnap = await get(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`));
+  const yearData = yearSnap.val();
+  if (!yearData || typeof yearData !== "object") {
+    return { applied: false, reason: "no_year" };
+  }
+
+  const indexed = indexAnnualLeaveYearByEmpKey(yearData);
+  const entry = indexed[resolvedEmpKey];
+  if (!entry?.raw) {
+    return { applied: false, reason: "no_record" };
+  }
+
+  const scopeEmpKeySet = new Set([resolvedEmpKey]);
+  const monthWorkSummaryByEmpKey = buildAnnualLeaveMonthWorkSummaryByEmpKey(
+    attendanceRootData,
+    year,
+    yearData,
+    { attendanceRootPath, scopeEmpKeySet },
+  );
+
+  const state = computePersistStateForRaw(entry.raw, resolvedEmpKey, year, {
+    deductionsByEmpKey,
+    attendanceMonthlyByEmpKey,
+    monthWorkSummaryByEmpKey,
+  });
+
+  if (!needsPersistUpdate(entry.raw, state)) {
+    return { applied: false, reason: "no_change" };
+  }
+
+  await update(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${resolvedEmpKey}`), {
+    id: resolvedEmpKey,
+    [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: state.hrUsed,
+    [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: state.attendanceUsed,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: state.used,
+    [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: state.totalAnnualLeave,
+    [ANNUAL_LEAVE_EMP.BALANCE]: state.balance,
+  });
+
+  await touchAnnualLeaveYearMeta(db, year, updatedBy);
+  return { applied: true, state };
+}
+
 function computePersistStateForRaw(
   raw,
   empKey,
@@ -250,7 +320,7 @@ function annualLeaveDeductionDelta(oldLoaiPhep, newLoaiPhep) {
   );
 }
 
-/** Sau khi điểm danh đổi loại phép — ghi lại cả năm theo `emp_{mnv}`. */
+/** Sau khi điểm danh đổi loại phép — ghi lại phép năm của NV liên quan. */
 export async function applyAnnualLeaveDeductionDelta(
   db,
   {
@@ -271,6 +341,27 @@ export async function applyAnnualLeaveDeductionDelta(
     : String(newLoaiPhep ?? "").trim();
   const delta = annualLeaveDeductionDelta(oldLp, newLp);
   if (delta === 0) return { applied: false, reason: "no_delta", delta: 0 };
+
+  const sourceRecord = oldRecord ?? newRecord;
+  const empKey = resolveAnnualLeaveEmpFirebaseKey({
+    recordId: sourceRecord?.id,
+    raw: sourceRecord,
+    mnv: sourceRecord?.mnv,
+  });
+
+  if (empKey) {
+    const single = await persistSingleEmployeeAnnualLeaveFromAttendance(db, {
+      year,
+      empKey,
+      attendanceRootPath,
+      updatedBy,
+    });
+    return {
+      applied: single.applied,
+      reason: single.reason,
+      delta,
+    };
+  }
 
   const { appliedCount } = await persistAnnualLeaveYearFromAttendance(db, {
     year,

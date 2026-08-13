@@ -36,6 +36,7 @@ export function useAnnualLeaveAttendanceEnhancement(
     throughDateKey = null,
     yearMonthPrefix = null,
     includePayrollMonthAccrual = true,
+    scopeEmpKeySet = null,
   } = {},
 ) {
   const skipAttendance =
@@ -72,10 +73,14 @@ export function useAnnualLeaveAttendanceEnhancement(
     );
 
   const deductionFilter = useMemo(() => {
-    if (throughDateKey) return { throughDateKey };
-    if (yearMonthPrefix) return { yearMonthPrefix };
-    return null;
-  }, [throughDateKey, yearMonthPrefix]);
+    const filter = {};
+    if (throughDateKey) filter.throughDateKey = throughDateKey;
+    else if (yearMonthPrefix) filter.yearMonthPrefix = yearMonthPrefix;
+    if (scopeEmpKeySet instanceof Set && scopeEmpKeySet.size > 0) {
+      filter.scopeEmpKeySet = scopeEmpKeySet;
+    }
+    return Object.keys(filter).length > 0 ? filter : null;
+  }, [throughDateKey, yearMonthPrefix, scopeEmpKeySet]);
 
   const deferredAttendanceRoot = useDeferredValue(
     skipAttendance || !attendanceReady ? null : attendanceRoot,
@@ -171,7 +176,13 @@ export function useAnnualLeaveAttendanceEnhancement(
         payrollRootForAccrual,
         year,
         yearData,
-        { attendanceRootPath },
+        {
+          attendanceRootPath,
+          scopeEmpKeySet:
+            scopeEmpKeySet instanceof Set && scopeEmpKeySet.size > 0
+              ? scopeEmpKeySet
+              : null,
+        },
       );
       if (!cancelled) {
         setMonthWorkSummaryByEmpKey(next);
@@ -194,6 +205,7 @@ export function useAnnualLeaveAttendanceEnhancement(
     attendanceReady,
     attendanceRoot,
     attendanceRootPath,
+    scopeEmpKeySet,
   ]);
 
   const attendanceUsageReady = skipAttendance

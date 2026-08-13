@@ -21,6 +21,7 @@ import AttendanceListContentSection from "./AttendanceListContentSection";
 import AttendanceHrPageShell from "./AttendanceHrPageShell";
 import "./attendanceToolbarFocus.css";
 import "./hrPageCompact.css";
+import "./attendanceListPage.css";
 import {
   useAttendanceListUiState,
   useAttendanceUnattendedPopupEffects,
@@ -226,6 +227,7 @@ const AttendanceList = memo(function AttendanceList({
     filterAttendanceListRows,
     filteredEmployees,
     deferredFilteredEmployees,
+    filtersPending,
     allLeaveTypesSelectAllChecked,
     allLeaveTypeFilterValues,
   } = useAttendanceListFilters({
@@ -720,6 +722,7 @@ const AttendanceList = memo(function AttendanceList({
       displayLocale,
       columnPlan,
       deferredFilteredEmployees,
+      filtersPending,
       showRowModalActions,
       canDeleteDayRecord,
       canEditEmployee,
@@ -754,6 +757,7 @@ const AttendanceList = memo(function AttendanceList({
       displayLocale,
       columnPlan,
       deferredFilteredEmployees,
+      filtersPending,
       showRowModalActions,
       canDeleteDayRecord,
       canEditEmployee,
@@ -861,7 +865,7 @@ const AttendanceList = memo(function AttendanceList({
         statisticsOpen={showComboChartModal}
         onOpenStatistics={handleSidebarOpenStatistics}
       >
-      <div className="hr-page-compact attendance-list-viewport w-full max-w-none">
+      <div className="attendance-list-page hr-page-compact attendance-list-viewport w-full max-w-none">
         <AttendanceListHeader
           headerTitle={headerTitle}
           headerSubtitle={headerSubtitle}

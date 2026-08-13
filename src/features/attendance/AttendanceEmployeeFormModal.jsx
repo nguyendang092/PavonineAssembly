@@ -93,6 +93,14 @@ function applyLegacyIncludeTsNvAndCanonicalPhep(record) {
   };
 }
 
+/** Dùng snapshot bảng thay `get()` trước khi sửa — giảm 1 round-trip Firebase. */
+function attendanceExistingRawFromListRow(row) {
+  if (!row || typeof row !== "object") return {};
+  const raw = { ...row };
+  delete raw.firebaseKey;
+  return raw;
+}
+
 const EMPTY_EMPLOYEE_FORM = {
   id: "",
   [ATTENDANCE_EMP.STT]: "",
@@ -180,6 +188,7 @@ export default function AttendanceEmployeeFormModal({
   const [form, setForm] = useState(() => ({ ...EMPTY_EMPLOYEE_FORM }));
   /** Khóa `attendance/{date}/{id}` khi sửa — giữ cố định khi form thay đổi */
   const [editAttendanceKey, setEditAttendanceKey] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   /**
    * Chỉ reset form khi mở form / đổi người sửa / đổi ngày — không phụ thuộc `initialRecord`
@@ -271,6 +280,10 @@ export default function AttendanceEmployeeFormModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initialRecord chỉ đọc khi formInitKey đổi; không deps object để tránh reset khi parent tạo {...emp} mới cùng id
   }, [open, formInitKey]);
+
+  useEffect(() => {
+    if (!open) setSaving(false);
+  }, [open]);
 
   const employeeRegimeSelectValue = getEmployeeRegimeSelectValue(form);
   const showDriverOtMinutesField =
@@ -446,28 +459,40 @@ export default function AttendanceEmployeeFormModal({
     onAlert?.(alert);
   };
 
-  const syncAnnualLeaveAfterAttendanceSave = async (oldRecord, newLoaiPhep) => {
+  const syncAnnualLeaveAfterAttendanceSave = (oldRecord, newLoaiPhep) => {
     if (shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
-      return { applied: false, reason: "isolated" };
+      return Promise.resolve({ applied: false, reason: "isolated" });
     }
-    try {
-      const year = annualLeaveYearFromDateKey(selectedDate);
-      return await applyAnnualLeaveDeductionDelta(db, {
-        year,
-        attendanceRootPath,
-        updatedBy: user?.email ?? "",
-        oldRecord,
-        newLoaiPhep,
-      });
-    } catch (err) {
+    const year = annualLeaveYearFromDateKey(selectedDate);
+    return applyAnnualLeaveDeductionDelta(db, {
+      year,
+      attendanceRootPath,
+      updatedBy: user?.email ?? "",
+      oldRecord,
+      newLoaiPhep,
+    }).catch((err) => {
       console.error("annualLeaveAttendanceSync failed:", err);
       return { applied: false, reason: "error" };
-    }
+    });
+  };
+
+  const finishSaveSuccess = (messageKey, oldRecordForLeave, loaiPhepToSave) => {
+    setForm({ ...EMPTY_EMPLOYEE_FORM });
+    setEditAttendanceKey(null);
+    setSaving(false);
+    onClose();
+    notify({
+      show: true,
+      type: "success",
+      message: t(messageKey),
+    });
+    onSaved?.();
+    void syncAnnualLeaveAfterAttendanceSave(oldRecordForLeave, loaiPhepToSave);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (readOnly) return;
+    if (readOnly || saving) return;
     if (!user) {
       notify({
         show: true,
@@ -488,6 +513,7 @@ export default function AttendanceEmployeeFormModal({
     }
 
     try {
+      setSaving(true);
       if (editAttendanceKey) {
         const existing = employees.find((emp) => emp.id === editAttendanceKey);
         if (
@@ -504,12 +530,10 @@ export default function AttendanceEmployeeFormModal({
             type: "error",
             message: t("attendanceList.error"),
           });
+          setSaving(false);
           return;
         }
-        const daySnap = await get(
-          ref(db, `${attendanceRootPath}/${selectedDate}/${editAttendanceKey}`),
-        );
-        const existingRaw = daySnap.val() || {};
+        const existingRaw = attendanceExistingRawFromListRow(existing);
         const allowFullEdit = isAdminAccess(user, userRole);
         const loaiPhepToSave = canonicalAttendanceLoaiPhep(
           String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim(),
@@ -549,14 +573,11 @@ export default function AttendanceEmployeeFormModal({
         await update(ref(db), {
           [attendancePath]: persistedNode,
         });
-        await syncAnnualLeaveAfterAttendanceSave(existingRaw, loaiPhepToSave);
-        onClose();
-        notify({
-          show: true,
-          type: "success",
-          message: t("attendanceList.updateSuccess"),
-        });
-        onSaved?.();
+        finishSaveSuccess(
+          "attendanceList.updateSuccess",
+          { ...existingRaw, id: editAttendanceKey, mnv: form.mnv ?? existing.mnv },
+          loaiPhepToSave,
+        );
       } else {
         if (
           !canAddAttendanceForDepartment({
@@ -571,6 +592,7 @@ export default function AttendanceEmployeeFormModal({
             type: "error",
             message: t("attendanceList.error"),
           });
+          setSaving(false);
           return;
         }
         const loaiPhepToSave = canonicalAttendanceLoaiPhep(
@@ -585,6 +607,7 @@ export default function AttendanceEmployeeFormModal({
             type: "error",
             message: t("attendanceList.error"),
           });
+          setSaving(false);
           return;
         }
         const { firebaseKey } = firebaseKeyPreview;
@@ -626,18 +649,14 @@ export default function AttendanceEmployeeFormModal({
             : { ...dayDoc, id: firebaseKey };
 
         await update(ref(db), { [path]: persistedNode });
-        await syncAnnualLeaveAfterAttendanceSave(existingRaw, loaiPhepToSave);
-        onClose();
-        notify({
-          show: true,
-          type: "success",
-          message: t("attendanceList.addSuccess"),
-        });
-        onSaved?.();
+        finishSaveSuccess(
+          "attendanceList.addSuccess",
+          { ...existingRaw, id: firebaseKey, mnv: form.mnv },
+          loaiPhepToSave,
+        );
       }
-      setForm({ ...EMPTY_EMPLOYEE_FORM });
-      setEditAttendanceKey(null);
     } catch (err) {
+      setSaving(false);
       notify({
         show: true,
         type: "error",
@@ -1255,11 +1274,15 @@ export default function AttendanceEmployeeFormModal({
           {!isViewOnly ? (
             <button
               type="submit"
-              className="sm:col-span-2 mt-0.5 w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-extrabold tracking-wide text-white shadow-lg transition hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 active:scale-95 dark:focus:ring-offset-slate-900"
+              disabled={saving}
+              aria-busy={saving}
+              className="sm:col-span-2 mt-0.5 w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-extrabold tracking-wide text-white shadow-lg transition hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 active:scale-95 disabled:cursor-wait disabled:opacity-70 dark:focus:ring-offset-slate-900"
             >
-              {isEditMode
-                ? t("attendanceList.btnUpdate")
-                : t("attendanceList.btnAdd")}
+              {saving
+                ? tl("savingEmployee", "Đang lưu…")
+                : isEditMode
+                  ? t("attendanceList.btnUpdate")
+                  : t("attendanceList.btnAdd")}
             </button>
           ) : null}
         </form>

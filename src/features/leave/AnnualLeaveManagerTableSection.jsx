@@ -39,6 +39,16 @@ function AnnualLeaveManagerTableSection({
   const { user, userRole } = useUser();
   const canManageLeave = canManage || canManageAnnualLeave(user, userRole);
   const [adjustmentSavingId, setAdjustmentSavingId] = useState("");
+  const scopeEmpKeySet = useMemo(() => {
+    if (
+      !filteredEntries.length ||
+      filteredEntries.length >= entries.length
+    ) {
+      return null;
+    }
+    return new Set(filteredEntries.map((entry) => entry.id));
+  }, [entries.length, filteredEntries]);
+
   const {
     deductionsByEmpKey,
     attendanceMonthlyByEmpKey,
@@ -50,6 +60,7 @@ function AnnualLeaveManagerTableSection({
   } = useAnnualLeaveAttendanceEnhancement(year, yearData, {
     includePayrollMonthAccrual: true,
     throughDateKey: detailThroughDateKey,
+    scopeEmpKeySet,
   });
 
   const storedMonthlyByEmpKey = useMemo(

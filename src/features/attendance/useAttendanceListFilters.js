@@ -7,10 +7,103 @@ import {
 import { sortEmployeesStableAsc } from "./attendanceListSort";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 
+function normalizeDepartmentListFilter(departmentListFilter) {
+  if (Array.isArray(departmentListFilter)) return departmentListFilter;
+  const single = String(departmentListFilter ?? "").trim();
+  return single ? [single] : [];
+}
+
+function buildSelectedDeptKeys(departmentListFilter, normalizeDepartment) {
+  return new Set(
+    normalizeDepartmentListFilter(departmentListFilter).map((dept) =>
+      normalizeDepartment(dept),
+    ),
+  );
+}
+
+function buildLoaiPhepFilterSet(loaiPhepFilter) {
+  return new Set(loaiPhepFilter);
+}
+
+function applyAttendanceListFiltersCore(
+  list,
+  {
+    searchQuery,
+    departmentListFilter,
+    loaiPhepFilter,
+    joinDateYearFilter,
+    joinDateMonthFilter,
+    showOnlyUnattendedFilter,
+    normalizeDepartment,
+  },
+  opts = {},
+) {
+  const {
+    omitQuickUnattendedFilter = false,
+    omitLoaiPhepFilter = false,
+    omitDepartmentFilters = false,
+    omitSearch = false,
+  } = opts;
+
+  const q = String(searchQuery ?? "").trim().toLowerCase();
+  const selectedDeptKeys = buildSelectedDeptKeys(
+    departmentListFilter,
+    normalizeDepartment,
+  );
+  const loaiPhepFilterSet = buildLoaiPhepFilterSet(loaiPhepFilter);
+  const joinYear = String(joinDateYearFilter || "").trim();
+  const joinMonth = joinYear ? String(joinDateMonthFilter || "").trim() : "";
+
+  return list.filter((emp) => {
+    const empDeptKey = normalizeDepartment(emp.boPhan);
+
+    const joinRaw = String(emp.ngayVaoLam || "").trim();
+    const joinYearOfEmp = joinRaw.length >= 4 ? joinRaw.slice(0, 4) : "";
+    const joinMonthOfEmp = joinRaw.length >= 7 ? joinRaw.slice(5, 7) : "";
+
+    if (
+      !omitDepartmentFilters &&
+      selectedDeptKeys.size > 0 &&
+      !selectedDeptKeys.has(empDeptKey)
+    ) {
+      return false;
+    }
+    if (
+      !omitQuickUnattendedFilter &&
+      showOnlyUnattendedFilter &&
+      !isEmployeeQuickUnattended(emp)
+    ) {
+      return false;
+    }
+    if (
+      !omitLoaiPhepFilter &&
+      loaiPhepFilterSet.size > 0 &&
+      !employeeMatchesLoaiPhepFilterSet(emp, loaiPhepFilterSet)
+    ) {
+      return false;
+    }
+
+    if (joinYear && joinYearOfEmp !== joinYear) return false;
+    if (joinMonth && joinMonthOfEmp !== joinMonth) return false;
+    if (omitSearch || !q) return true;
+
+    return (
+      (emp.hoVaTen || "").toLowerCase().includes(q) ||
+      String(emp.mnv ?? "")
+        .toLowerCase()
+        .includes(q) ||
+      String(emp.mvt ?? "")
+        .toLowerCase()
+        .includes(q) ||
+      (emp.boPhan || "").toLowerCase().includes(q)
+    );
+  });
+}
+
 /**
  * Pipeline lọc danh sách NV.
- * `deferredFilteredEmployees` — bảng / tóm tắt (search deferred để gõ mượt).
- * `filteredEmployees` — export / in (phản ánh search ngay).
+ * `deferredFilteredEmployees` — bảng / tóm tắt (search + bộ lọc nâng cao deferred để tick mượt).
+ * `filteredEmployees` — export / in (phản ánh lọc ngay).
  */
 export function useAttendanceListFilters({
   employees,
@@ -30,114 +123,104 @@ export function useAttendanceListFilters({
       .toLowerCase();
   }, []);
 
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+
+  const filtersPending = searchTerm !== deferredSearchTerm;
+
   const loaiPhepFilterSet = useMemo(
-    () => new Set(loaiPhepFilter),
+    () => buildLoaiPhepFilterSet(loaiPhepFilter),
     [loaiPhepFilter],
   );
 
-  const departmentFilterList = useMemo(() => {
-    if (Array.isArray(departmentListFilter)) return departmentListFilter;
-    const single = String(departmentListFilter ?? "").trim();
-    return single ? [single] : [];
-  }, [departmentListFilter]);
-
-  const selectedDeptKeys = useMemo(
-    () =>
-      new Set(
-        departmentFilterList.map((dept) => normalizeDepartment(dept)),
-      ),
-    [departmentFilterList, normalizeDepartment],
-  );
-
-  const joinYear = String(joinDateYearFilter || "").trim();
-  const joinMonth = joinYear ? String(joinDateMonthFilter || "").trim() : "";
-
   const applyAttendanceListFilters = useCallback(
-    (list, queryText, opts = {}) => {
-      const {
-        omitQuickUnattendedFilter = false,
-        omitLoaiPhepFilter = false,
-        omitDepartmentFilters = false,
-        omitSearch = false,
-      } = opts;
-      const q = String(queryText ?? "").trim().toLowerCase();
-
-      return list.filter((emp) => {
-        const empDeptKey = normalizeDepartment(emp.boPhan);
-
-        const joinRaw = String(emp.ngayVaoLam || "").trim();
-        const joinYearOfEmp = joinRaw.length >= 4 ? joinRaw.slice(0, 4) : "";
-        const joinMonthOfEmp =
-          joinRaw.length >= 7 ? joinRaw.slice(5, 7) : "";
-
-        if (
-          !omitDepartmentFilters &&
-          selectedDeptKeys.size > 0 &&
-          !selectedDeptKeys.has(empDeptKey)
-        )
-          return false;
-        if (
-          !omitQuickUnattendedFilter &&
-          showOnlyUnattendedFilter &&
-          !isEmployeeQuickUnattended(emp)
-        )
-          return false;
-        if (
-          !omitLoaiPhepFilter &&
-          loaiPhepFilterSet.size > 0 &&
-          !employeeMatchesLoaiPhepFilterSet(emp, loaiPhepFilterSet)
-        )
-          return false;
-
-        if (joinYear && joinYearOfEmp !== joinYear) return false;
-        if (joinMonth && joinMonthOfEmp !== joinMonth) return false;
-        if (omitSearch || !q) return true;
-        return (
-          (emp.hoVaTen || "").toLowerCase().includes(q) ||
-          String(emp.mnv ?? "")
-            .toLowerCase()
-            .includes(q) ||
-          String(emp.mvt ?? "")
-            .toLowerCase()
-            .includes(q) ||
-          (emp.boPhan || "").toLowerCase().includes(q)
-        );
-      });
-    },
+    (list, queryText, filterOverrides = {}, opts = {}) =>
+      applyAttendanceListFiltersCore(
+        list,
+        {
+          searchQuery: queryText,
+          departmentListFilter,
+          loaiPhepFilter,
+          joinDateYearFilter,
+          joinDateMonthFilter,
+          showOnlyUnattendedFilter,
+          normalizeDepartment,
+          ...filterOverrides,
+        },
+        opts,
+      ),
     [
-      selectedDeptKeys,
-      loaiPhepFilterSet,
-      joinYear,
-      joinMonth,
+      departmentListFilter,
+      loaiPhepFilter,
+      joinDateYearFilter,
+      joinDateMonthFilter,
       showOnlyUnattendedFilter,
       normalizeDepartment,
     ],
   );
 
   const filterAttendanceListRows = useCallback(
-    (list, opts = {}) =>
-      applyAttendanceListFilters(list, searchTerm, opts),
+    (list, opts = {}) => applyAttendanceListFilters(list, searchTerm, {}, opts),
     [applyAttendanceListFilters, searchTerm],
   );
 
   const filteredEmployees = useMemo(
     () =>
       sortEmployeesStableAsc(
-        applyAttendanceListFilters(employees, searchTerm),
+        applyAttendanceListFiltersCore(
+          employees,
+          {
+            searchQuery: searchTerm,
+            departmentListFilter,
+            loaiPhepFilter,
+            joinDateYearFilter,
+            joinDateMonthFilter,
+            showOnlyUnattendedFilter,
+            normalizeDepartment,
+          },
+        ),
         { seasonal },
       ),
-    [employees, applyAttendanceListFilters, searchTerm, seasonal],
+    [
+      employees,
+      searchTerm,
+      departmentListFilter,
+      loaiPhepFilter,
+      joinDateYearFilter,
+      joinDateMonthFilter,
+      showOnlyUnattendedFilter,
+      normalizeDepartment,
+      seasonal,
+    ],
   );
-
-  const deferredSearchTerm = useDeferredValue(searchTerm);
 
   const deferredFilteredEmployees = useMemo(
     () =>
       sortEmployeesStableAsc(
-        applyAttendanceListFilters(employees, deferredSearchTerm),
+        applyAttendanceListFiltersCore(
+          employees,
+          {
+            searchQuery: deferredSearchTerm,
+            departmentListFilter,
+            loaiPhepFilter,
+            joinDateYearFilter,
+            joinDateMonthFilter,
+            showOnlyUnattendedFilter,
+            normalizeDepartment,
+          },
+        ),
         { seasonal },
       ),
-    [employees, applyAttendanceListFilters, deferredSearchTerm, seasonal],
+    [
+      employees,
+      deferredSearchTerm,
+      departmentListFilter,
+      loaiPhepFilter,
+      joinDateYearFilter,
+      joinDateMonthFilter,
+      showOnlyUnattendedFilter,
+      normalizeDepartment,
+      seasonal,
+    ],
   );
 
   const allLeaveTypeFilterValues = useMemo(
@@ -158,6 +241,7 @@ export function useAttendanceListFilters({
     filterAttendanceListRows,
     filteredEmployees,
     deferredFilteredEmployees,
+    filtersPending,
     allLeaveTypeFilterValues,
     allLeaveTypesSelectAllChecked,
   };

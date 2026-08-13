@@ -127,7 +127,12 @@ function addAttendanceMonthlyTotal(monthRow, monthIndex, deduction) {
 }
 
 /** Chỉ duyệt một NV khi có `targetEmpKey` — tra trực tiếp `dayData[empKey]` trước. */
-function forEachAttendanceDayEmployee(dayData, targetEmpKey, iterate) {
+function forEachAttendanceDayEmployee(
+  dayData,
+  targetEmpKey,
+  iterate,
+  scopeEmpKeySet = null,
+) {
   if (!dayData || typeof dayData !== "object") return;
 
   const targetKey =
@@ -163,6 +168,11 @@ function forEachAttendanceDayEmployee(dayData, targetEmpKey, iterate) {
   for (const [empKey, rawEmp] of Object.entries(dayData)) {
     if (isAttendanceDayMetaKey(empKey)) continue;
     if (!rawEmp || typeof rawEmp !== "object") continue;
+    if (scopeEmpKeySet) {
+      const mnvKey = attendanceMnvKeyFromDayRecord(empKey, rawEmp);
+      const firebaseKey = annualLeaveEmpFirebaseKey(mnvKey);
+      if (!firebaseKey || !scopeEmpKeySet.has(firebaseKey)) continue;
+    }
     iterate(empKey, rawEmp);
   }
 }
@@ -178,14 +188,22 @@ export function buildAttendanceAnnualLeaveDerivedMaps(
   filterOrYearMonth = null,
   targetEmpKey = null,
 ) {
-  const { yearMonthPrefix = null, throughDateKey = null } =
-    normalizeAttendanceLeaveDeductionFilter(filterOrYearMonth);
+  const {
+    yearMonthPrefix = null,
+    throughDateKey = null,
+    scopeEmpKeySet = null,
+  } = normalizeAttendanceLeaveDeductionFilter(filterOrYearMonth);
 
   const deductionsByEmpKey = {};
   const attendanceMonthlyByEmpKey = {};
   if (!attendanceRootData || typeof attendanceRootData !== "object") {
     return { deductionsByEmpKey, attendanceMonthlyByEmpKey };
   }
+
+  const scopedKeys =
+    scopeEmpKeySet instanceof Set && scopeEmpKeySet.size > 0
+      ? scopeEmpKeySet
+      : null;
 
   const yearPrefix = `${year}-`;
   const monthPrefix =
@@ -213,7 +231,10 @@ export function buildAttendanceAnnualLeaveDerivedMaps(
 
     const monthIndex = Number(dateKey.slice(5, 7)) - 1;
 
-    forEachAttendanceDayEmployee(dayData, targetEmpKey, (_empKey, rawEmp) => {
+    forEachAttendanceDayEmployee(
+      dayData,
+      targetEmpKey,
+      (_empKey, rawEmp) => {
       const mnvKey = attendanceMnvKeyFromDayRecord(_empKey, rawEmp);
       if (!mnvKey) return;
 
@@ -224,6 +245,7 @@ export function buildAttendanceAnnualLeaveDerivedMaps(
 
       const firebaseKey = annualLeaveEmpFirebaseKey(mnvKey);
       if (!firebaseKey) return;
+      if (scopedKeys && !scopedKeys.has(firebaseKey)) return;
 
       const monthRow = ensureAttendanceMonthlyTotalsRow(
         attendanceMonthlyByEmpKey,
@@ -236,7 +258,9 @@ export function buildAttendanceAnnualLeaveDerivedMaps(
       deductionsByEmpKey[firebaseKey] = roundAnnualLeaveHours(
         (deductionsByEmpKey[firebaseKey] ?? 0) + deduction,
       );
-    });
+    },
+      scopedKeys && !targetEmpKey ? scopedKeys : null,
+    );
   }
 
   return { deductionsByEmpKey, attendanceMonthlyByEmpKey };

@@ -1,8 +1,9 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import HrTablePagination from "@/components/ui/HrTablePagination";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import AnnualLeaveManagerTableRow from "./AnnualLeaveManagerTableRow";
+import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import {
   ANNUAL_LEAVE_TABLE_HEADER_GRADIENT,
   annualLeaveStickyColClass,
@@ -11,6 +12,24 @@ import {
 import { filterAnnualLeaveManagerMonthValues } from "./annualLeaveManagerMonthFilter";
 
 const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
+
+const ROW_DISPLAY_KEYS = [
+  ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR,
+  ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT,
+  ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE,
+  ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED,
+  ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED,
+  ANNUAL_LEAVE_EMP.BALANCE,
+];
+
+function annualLeaveRowDisplayEqual(prevRow, nextRow) {
+  if (prevRow === nextRow) return true;
+  if (!prevRow || !nextRow) return false;
+  for (const key of ROW_DISPLAY_KEYS) {
+    if (prevRow[key] !== nextRow[key]) return false;
+  }
+  return true;
+}
 
 function AnnualLeaveManagerTablePanel({
   filteredEntries,
@@ -37,27 +56,40 @@ function AnnualLeaveManagerTablePanel({
   const tablePagination = useHrTablePagination(filteredEntries, {
     resetDeps: [year, monthFilter, filteredEntries.length],
   });
+  const pagedRowCacheRef = useRef(new Map());
 
-  const pagedLiveRows = useMemo(
-    () =>
-      tablePagination.pagedItems.map((entry, localIdx) => {
-        const storedRow = storedRowByEmpKey[entry.id] ?? null;
-        const liveRow = attendanceUsageReady ? normalizeEntryRow(entry) : null;
-        return {
-          entry,
-          row: liveRow ?? storedRow ?? entry._raw,
-          index: tablePagination.rowIndexOffset + localIdx,
-        };
-      }),
-    [
-      attendanceAccrualReady,
-      attendanceUsageReady,
-      normalizeEntryRow,
-      storedRowByEmpKey,
-      tablePagination.pagedItems,
-      tablePagination.rowIndexOffset,
-    ],
-  );
+  const pagedLiveRows = useMemo(() => {
+    const cache = pagedRowCacheRef.current;
+    const activeKeys = new Set();
+    const rows = tablePagination.pagedItems.map((entry, localIdx) => {
+      const storedRow = storedRowByEmpKey[entry.id] ?? null;
+      const liveRow = attendanceUsageReady ? normalizeEntryRow(entry) : null;
+      const freshRow = liveRow ?? storedRow ?? entry._raw;
+      activeKeys.add(entry.id);
+      const cached = cache.get(entry.id);
+      const row =
+        cached?.row && annualLeaveRowDisplayEqual(cached.row, freshRow)
+          ? cached.row
+          : freshRow;
+      const item = {
+        entry,
+        row,
+        index: tablePagination.rowIndexOffset + localIdx,
+      };
+      cache.set(entry.id, item);
+      return item;
+    });
+    for (const key of cache.keys()) {
+      if (!activeKeys.has(key)) cache.delete(key);
+    }
+    return rows;
+  }, [
+    attendanceUsageReady,
+    normalizeEntryRow,
+    storedRowByEmpKey,
+    tablePagination.pagedItems,
+    tablePagination.rowIndexOffset,
+  ]);
 
   const tableBusy = filterPending;
 

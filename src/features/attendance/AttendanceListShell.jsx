@@ -1,4 +1,5 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
+import AttendanceSidebarClock from "./AttendanceSidebarClock";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/contexts/UserContext";
@@ -84,39 +85,12 @@ function AttendanceListShell({
   const { t, i18n } = useTranslation();
   const { user, userRole } = useUser();
   const canAccessKoreanTimesheet = canViewKoreanTimesheet(user, userRole);
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   const displayLocale = useMemo(() => {
     const lang = (i18n.language || "vi").toLowerCase();
     if (lang.startsWith("ko")) return "ko-KR";
     return "vi-VN";
   }, [i18n.language]);
-
-  const sidebarDate = useMemo(
-    () =>
-      now.toLocaleDateString(displayLocale, {
-        weekday: "short",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      }),
-    [now, displayLocale],
-  );
-
-  const sidebarTime = useMemo(
-    () =>
-      now.toLocaleTimeString(displayLocale, {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
-    [now, displayLocale],
-  );
 
   const dateKey = useMemo(() => {
     if (contextDate && /^\d{4}-\d{2}-\d{2}$/.test(contextDate)) {
@@ -159,17 +133,7 @@ function AttendanceListShell({
         aria-label={t("attendanceList.sidebarAria", "Menu nhân sự")}
       >
         <div className="attendance-with-sidebar__brand">
-          <time
-            className="attendance-with-sidebar__brand-datetime"
-            dateTime={now.toISOString()}
-          >
-            <span className="attendance-with-sidebar__brand-date">
-              {sidebarDate}
-            </span>
-            <span className="attendance-with-sidebar__brand-time">
-              {sidebarTime}
-            </span>
-          </time>
+          <AttendanceSidebarClock displayLocale={displayLocale} />
           <div className="attendance-with-sidebar__brand-row">
             <span className="attendance-with-sidebar__brand-mark" aria-hidden>
               P

@@ -116,43 +116,47 @@ function AttendanceListTableSection({
       : "overflow-x-auto overscroll-x-contain";
 
   return (
-    <div className={`min-w-0 w-full max-w-none bg-white attendance-table-compact ${outerScrollClass}`}>
-      <table
-        className={`w-full max-w-none table-fixed border-collapse ${attendanceTableMinWidthClass}`}
+    <div className="min-w-0 w-full max-w-none bg-white attendance-table-compact">
+      <div
+        className={`attendance-table-scroll min-w-0 w-full max-w-full ${outerScrollClass}`}
       >
-        <AttendanceTableColgroup
-          showRowModalActions={showRowModalActions}
-          columnPlan={columnPlan}
-          layoutOptions={attendanceLayoutOptions}
-        />
-        <AttendanceTableThead
-          tl={tl}
-          showRowModalActions={showRowModalActions}
-          stickyHeader={true}
-          canDeleteRow={canDeleteDayRecord}
-          columnPlan={columnPlan}
-        />
-        <tbody>
-          {deferredFilteredEmployees.map((emp, localIdx) => {
-            const idx = rowIndexOffset + localIdx;
-            const rowKey = emp.id ?? emp.mnv ?? `row-${idx}`;
-            const annualLeaveBalance = getDisplayAnnualLeaveBalanceForAttendance(
-              emp,
-              annualLeaveBalanceByMnv,
-            );
-            return (
-              <AttendanceTableRow
-                key={rowKey}
-                emp={emp}
-                idx={idx}
-                canEdit={canEditByEmpId.get(rowKey) ?? false}
-                annualLeaveBalance={annualLeaveBalance}
-                {...sharedRowProps}
-              />
-            );
-          })}
-        </tbody>
-      </table>
+        <table
+          className={`w-full max-w-none table-fixed border-collapse ${attendanceTableMinWidthClass}`}
+        >
+          <AttendanceTableColgroup
+            showRowModalActions={showRowModalActions}
+            columnPlan={columnPlan}
+            layoutOptions={attendanceLayoutOptions}
+          />
+          <AttendanceTableThead
+            tl={tl}
+            showRowModalActions={showRowModalActions}
+            stickyHeader={true}
+            canDeleteRow={canDeleteDayRecord}
+            columnPlan={columnPlan}
+          />
+          <tbody>
+            {deferredFilteredEmployees.map((emp, localIdx) => {
+              const idx = rowIndexOffset + localIdx;
+              const rowKey = emp.id ?? emp.mnv ?? `row-${idx}`;
+              const annualLeaveBalance = getDisplayAnnualLeaveBalanceForAttendance(
+                emp,
+                annualLeaveBalanceByMnv,
+              );
+              return (
+                <AttendanceTableRow
+                  key={rowKey}
+                  emp={emp}
+                  idx={idx}
+                  canEdit={canEditByEmpId.get(rowKey) ?? false}
+                  annualLeaveBalance={annualLeaveBalance}
+                  {...sharedRowProps}
+                />
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

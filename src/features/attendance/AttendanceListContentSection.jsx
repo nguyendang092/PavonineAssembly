@@ -1,6 +1,7 @@
 import React, { memo, lazy, Suspense, useCallback } from "react";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import HrTablePagination from "@/components/ui/HrTablePagination";
+import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import AttendanceEmployeeFormModal from "./AttendanceEmployeeFormModal";
 import AttendanceOffDaysModal from "./AttendanceOffDaysModal";
@@ -46,6 +47,7 @@ function AttendanceListContentSection() {
     displayLocale,
     columnPlan,
     deferredFilteredEmployees,
+    filtersPending,
     showRowModalActions,
     canDeleteDayRecord,
     canEditEmployee,
@@ -98,32 +100,36 @@ function AttendanceListContentSection() {
 
   return (
     <>
-      <AttendanceEmployeeFormModal
-        open={showEmployeeModal}
-        onClose={closeEmployeeModal}
-        initialRecord={employeeModalRecord}
-        selectedDate={selectedDate}
-        employees={employees}
-        user={user}
-        userRole={userRole}
-        userDepartments={userDepartments}
-        attendanceRootPath={attendanceRootPath}
-        onAlert={setAlert}
-        dayIsCompensatory={isCompensatoryDay}
-        dayIsOffDay={isOffDay}
-        dayIsHolidayDay={isHolidayDay}
-      />
+      {showEmployeeModal ? (
+        <AttendanceEmployeeFormModal
+          open
+          onClose={closeEmployeeModal}
+          initialRecord={employeeModalRecord}
+          selectedDate={selectedDate}
+          employees={employees}
+          user={user}
+          userRole={userRole}
+          userDepartments={userDepartments}
+          attendanceRootPath={attendanceRootPath}
+          onAlert={setAlert}
+          dayIsCompensatory={isCompensatoryDay}
+          dayIsOffDay={isOffDay}
+          dayIsHolidayDay={isHolidayDay}
+        />
+      ) : null}
 
-      <AttendanceOffDaysModal
-        open={offDaysModalOpen}
-        onClose={closeOffDaysModal}
-        selectedDate={selectedDate}
-        user={user}
-        userRole={userRole}
-        tl={tl}
-        onSaved={refreshMonthOffDays}
-        attendanceRootPath={attendanceRootPath}
-      />
+      {offDaysModalOpen ? (
+        <AttendanceOffDaysModal
+          open
+          onClose={closeOffDaysModal}
+          selectedDate={selectedDate}
+          user={user}
+          userRole={userRole}
+          tl={tl}
+          onSaved={refreshMonthOffDays}
+          attendanceRootPath={attendanceRootPath}
+        />
+      ) : null}
 
       {showComboChartModal ? (
         <Suspense
@@ -175,42 +181,52 @@ function AttendanceListContentSection() {
         </Suspense>
       ) : null}
 
-      <AttendanceListTableSection
-        columnPlan={columnPlan}
-        deferredFilteredEmployees={tableEmployees}
-        rowIndexOffset={tableRowIndexOffset}
-        showRowModalActions={showRowModalActions}
-        canDeleteDayRecord={canDeleteDayRecord}
-        tl={tl}
-        user={user}
-        canEditEmployee={canEditEmployee}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        isOffDay={isOffDay}
-        isHolidayDay={isHolidayDay}
-        isCompensatoryDay={isCompensatoryDay}
-        t={t}
-        attendanceRootPath={attendanceRootPath}
-        selectedDate={selectedDate}
-      />
+      <div className="attendance-list-table-panel">
+        <div className="relative min-h-0 flex flex-1 flex-col">
+          <PayrollMonthGridLoadingOverlay
+            active={filtersPending}
+            message={tl("searchUpdating", "Đang cập nhật tìm kiếm…")}
+          />
+          <AttendanceListTableSection
+          columnPlan={columnPlan}
+          deferredFilteredEmployees={tableEmployees}
+          rowIndexOffset={tableRowIndexOffset}
+          showRowModalActions={showRowModalActions}
+          canDeleteDayRecord={canDeleteDayRecord}
+          tl={tl}
+          user={user}
+          canEditEmployee={canEditEmployee}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          isOffDay={isOffDay}
+          isHolidayDay={isHolidayDay}
+          isCompensatoryDay={isCompensatoryDay}
+          t={t}
+          attendanceRootPath={attendanceRootPath}
+          selectedDate={selectedDate}
+        />
+        </div>
 
-      <HrTablePagination
-        rangeStart={tablePagination.rangeStart}
-        rangeEnd={tablePagination.rangeEnd}
-        totalItems={tablePagination.totalItems}
-        page={tablePagination.page}
-        totalPages={tablePagination.totalPages}
-        pageNumbers={tablePagination.pageNumbers}
-        pageSize={tablePagination.pageSize}
-        onPageChange={tablePagination.setPage}
-        onPageSizeChange={tablePagination.setPageSize}
-      />
+        <div className="attendance-list-pagination">
+          <HrTablePagination
+            rangeStart={tablePagination.rangeStart}
+            rangeEnd={tablePagination.rangeEnd}
+            totalItems={tablePagination.totalItems}
+            page={tablePagination.page}
+            totalPages={tablePagination.totalPages}
+            pageNumbers={tablePagination.pageNumbers}
+            pageSize={tablePagination.pageSize}
+            onPageChange={tablePagination.setPage}
+            onPageSizeChange={tablePagination.setPageSize}
+          />
+        </div>
 
-      <AttendanceListSummary
-        deferredFilteredEmployees={deferredFilteredEmployees}
-        employeesCount={employees.length}
-        tl={tl}
-      />
+        <AttendanceListSummary
+          deferredFilteredEmployees={deferredFilteredEmployees}
+          employeesCount={employees.length}
+          tl={tl}
+        />
+      </div>
     </>
   );
 }

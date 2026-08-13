@@ -184,7 +184,7 @@ export default function AnnualLeaveManager() {
   }, []);
 
   const handleDeptFilterChange = useCallback((event) => {
-    setDeptFilter(event.target.value);
+    startTransition(() => setDeptFilter(event.target.value));
   }, []);
 
   const handleRecalculate = useCallback(async () => {

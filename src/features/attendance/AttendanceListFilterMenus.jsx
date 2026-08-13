@@ -1,10 +1,12 @@
-import React, { memo, useCallback, useEffect } from "react";
+import React, { memo, useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { isAdminAccess } from "@/config/authRoles";
 import ExportExcelButton from "@/components/ui/ExportExcelButton";
 import { ATTENDANCE_LOAI_PHEP_OPTIONS } from "./attendanceGioVaoTypeOptions";
 import { ATTENDANCE_LEAVE_FILTER_NONE } from "./attendanceListShared";
 import { useCloseDropdownOnScroll } from "./useCloseDropdownOnScroll";
+import AttendanceDepartmentFilterSection from "./AttendanceDepartmentFilterSection";
+import { useAttendanceAdvancedFilterDraft } from "./useAttendanceAdvancedFilterDraft";
 
 function ToolsMenuSection({ label, first = false }) {
   return (
@@ -118,21 +120,59 @@ function AttendanceListFilterMenus({
     Boolean(joinDateMonthFilter);
   const hasAnyFilters = hasAdvancedFilters || isQuickNoCheckInActive;
 
-  const clearAllFilters = useCallback(() => {
-    setLoaiPhepFilter([]);
-    setDepartmentListFilter([]);
-    setJoinDateYearFilter("");
-    setJoinDateMonthFilter("");
-    setShowOnlyUnattendedFilter(false);
-    setSearchTerm("");
-  }, [
-    setLoaiPhepFilter,
+  const {
+    draftDepartmentListFilter,
+    setDraftDepartmentListFilter,
+    draftLoaiPhepFilter,
+    setDraftLoaiPhepFilter,
+    draftJoinDateYearFilter,
+    setDraftJoinDateYearFilter,
+    draftJoinDateMonthFilter,
+    setDraftJoinDateMonthFilter,
+    applyDraft,
+    clearDraftAndApplied,
+    draftDirty,
+  } = useAttendanceAdvancedFilterDraft({
+    filterOpen,
+    departmentListFilter,
+    loaiPhepFilter,
+    joinDateYearFilter,
+    joinDateMonthFilter,
     setDepartmentListFilter,
+    setLoaiPhepFilter,
     setJoinDateYearFilter,
     setJoinDateMonthFilter,
+  });
+
+  const draftAllLeaveTypesSelectAllChecked = useMemo(
+    () =>
+      allLeaveTypeFilterValues.length > 0 &&
+      allLeaveTypeFilterValues.every((value) =>
+        draftLoaiPhepFilter.includes(value),
+      ),
+    [allLeaveTypeFilterValues, draftLoaiPhepFilter],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    clearDraftAndApplied();
+    setShowOnlyUnattendedFilter(false);
+    setSearchTerm("");
+    setExpandedSections({});
+  }, [
+    clearDraftAndApplied,
     setShowOnlyUnattendedFilter,
     setSearchTerm,
+    setExpandedSections,
   ]);
+
+  const handleCancelAdvancedFilter = useCallback(() => {
+    setFilterOpen(false);
+  }, [setFilterOpen]);
+
+  const handleSaveAdvancedFilter = useCallback(() => {
+    if (draftDirty) applyDraft();
+    setFilterOpen(false);
+  }, [applyDraft, draftDirty, setFilterOpen]);
 
   const closeToolsMenu = useCallback(() => {
     setFilterMenuDropdownOpen(false);
@@ -486,128 +526,31 @@ function AttendanceListFilterMenus({
                     </h3>
                     <p className="text-[11px] text-blue-50/95 mt-1 font-medium leading-snug">
                       {tl(
-                        "advancedFilterAutoUpdate",
-                        "Chọn điều kiện lọc • Kết quả tự động cập nhật",
+                        "advancedFilterSaveHint",
+                        "Chọn điều kiện lọc • Bấm Lưu để áp dụng lên bảng",
                       )}
+                      {draftDirty ? (
+                        <span className="ml-1 inline-flex rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                          {tl("advancedFilterDraft", "Chưa lưu")}
+                        </span>
+                      ) : null}
                     </p>
                   </div>
                 </div>
 
                 {/* Content — chiều cao cố định theo khung modal; cuộn bên trong */}
                 <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
-                  {/* Department Filter Section */}
-                  <div className="mb-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setExpandedSections((prev) => ({
-                          ...prev,
-                          department: !prev.department,
-                        }));
-                      }}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 rounded-lg font-semibold text-sm text-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-orange-200"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-orange-500 text-base">🏢</span>
-                        <span>{tl("department", "Bộ phận")}</span>
-                      </span>
-                      <span className="text-orange-600 font-bold">
-                        {expandedSections.department ? "▼" : "▶"}
-                      </span>
-                    </button>
-                    {expandedSections.department && (
-                      <div className="border-2 border-orange-100 rounded-lg mt-2 bg-gradient-to-b from-white to-orange-50/30 shadow-inner">
-                        <input
-                          type="text"
-                          value={filterDepartmentSearch}
-                          onChange={(e) =>
-                            setFilterDepartmentSearch(e.target.value)
-                          }
-                          placeholder={t("attendanceList.searchDepartment")}
-                          className="w-full border-b border-orange-200 h-8 px-3 text-sm outline-none"
-                        />
-                        <div className="max-h-80 overflow-y-auto">
-                          {departments.length === 0 ? (
-                            <div className="px-3 py-2 text-sm text-gray-500 italic">
-                              {tl("noData", "Không có dữ liệu")}
-                            </div>
-                          ) : (
-                            <>
-                              <label className="flex items-center px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm border-b-2 border-orange-200 bg-orange-50/50 font-semibold">
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    departmentListFilter.length ===
-                                    departments.filter((dept) =>
-                                      dept
-                                        .toLowerCase()
-                                        .includes(
-                                          filterDepartmentSearch.toLowerCase(),
-                                        ),
-                                    ).length
-                                  }
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setDepartmentListFilter([
-                                        ...departments.filter((dept) =>
-                                          dept
-                                            .toLowerCase()
-                                            .includes(
-                                              filterDepartmentSearch.toLowerCase(),
-                                            ),
-                                        ),
-                                      ]);
-                                    } else {
-                                      setDepartmentListFilter([]);
-                                    }
-                                  }}
-                                  className="mr-2 w-4 h-4 cursor-pointer"
-                                />
-                                ✓ {tl("selectAll", "Chọn tất cả")}
-                              </label>
-                              {departments
-                                .filter((dept) =>
-                                  dept
-                                    .toLowerCase()
-                                    .includes(
-                                      filterDepartmentSearch.toLowerCase(),
-                                    ),
-                                )
-                                .map((dept) => (
-                                  <label
-                                    key={dept}
-                                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={departmentListFilter.includes(
-                                        dept,
-                                      )}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setDepartmentListFilter([
-                                            ...departmentListFilter,
-                                            dept,
-                                          ]);
-                                        } else {
-                                          setDepartmentListFilter(
-                                            departmentListFilter.filter(
-                                              (d) => d !== dept,
-                                            ),
-                                          );
-                                        }
-                                      }}
-                                      className="mr-2 w-4 h-4 cursor-pointer"
-                                    />
-                                    {dept}
-                                  </label>
-                                ))}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <AttendanceDepartmentFilterSection
+                    departments={departments}
+                    departmentListFilter={draftDepartmentListFilter}
+                    setDepartmentListFilter={setDraftDepartmentListFilter}
+                    filterDepartmentSearch={filterDepartmentSearch}
+                    setFilterDepartmentSearch={setFilterDepartmentSearch}
+                    expandedSections={expandedSections}
+                    setExpandedSections={setExpandedSections}
+                    tl={tl}
+                    t={t}
+                  />
 
                   {/* Loại phép */}
                   <div className="mb-3">
@@ -635,22 +578,18 @@ function AttendanceListFilterMenus({
                           <label className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b-2 border-green-200 bg-green-50/50 font-semibold">
                             <input
                               type="checkbox"
-                              checked={allLeaveTypesSelectAllChecked}
+                              checked={draftAllLeaveTypesSelectAllChecked}
                               onChange={(e) => {
                                 if (e.target.checked) {
-                                  startTransition(() => {
-                                    setLoaiPhepFilter([
-                                      ...allLeaveTypeFilterValues,
-                                    ]);
-                                  });
+                                  setDraftLoaiPhepFilter([
+                                    ...allLeaveTypeFilterValues,
+                                  ]);
                                 } else {
                                   const remove = allLeaveTypeFilterValues;
-                                  startTransition(() => {
-                                    setLoaiPhepFilter((prev) => {
-                                      if (remove.length === 0) return prev;
-                                      const rm = new Set(remove);
-                                      return prev.filter((x) => !rm.has(x));
-                                    });
+                                  setDraftLoaiPhepFilter((prev) => {
+                                    if (remove.length === 0) return prev;
+                                    const rm = new Set(remove);
+                                    return prev.filter((x) => !rm.has(x));
                                   });
                                 }
                               }}
@@ -661,17 +600,17 @@ function AttendanceListFilterMenus({
                           <label className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100">
                             <input
                               type="checkbox"
-                              checked={loaiPhepFilter.includes(
+                              checked={draftLoaiPhepFilter.includes(
                                 ATTENDANCE_LEAVE_FILTER_NONE,
                               )}
                               onChange={(e) => {
                                 if (e.target.checked) {
-                                  setLoaiPhepFilter((prev) => [
+                                  setDraftLoaiPhepFilter((prev) => [
                                     ...prev,
                                     ATTENDANCE_LEAVE_FILTER_NONE,
                                   ]);
                                 } else {
-                                  setLoaiPhepFilter((prev) =>
+                                  setDraftLoaiPhepFilter((prev) =>
                                     prev.filter(
                                       (x) => x !== ATTENDANCE_LEAVE_FILTER_NONE,
                                     ),
@@ -692,15 +631,15 @@ function AttendanceListFilterMenus({
                             >
                               <input
                                 type="checkbox"
-                                checked={loaiPhepFilter.includes(opt.value)}
+                                checked={draftLoaiPhepFilter.includes(opt.value)}
                                 onChange={(e) => {
                                   if (e.target.checked) {
-                                    setLoaiPhepFilter((prev) => [
+                                    setDraftLoaiPhepFilter((prev) => [
                                       ...prev,
                                       opt.value,
                                     ]);
                                   } else {
-                                    setLoaiPhepFilter((prev) =>
+                                    setDraftLoaiPhepFilter((prev) =>
                                       prev.filter((v) => v !== opt.value),
                                     );
                                   }
@@ -757,13 +696,9 @@ function AttendanceListFilterMenus({
                               {tl("joinDateYear", "Năm vào làm")}
                             </div>
                             <select
-                              value={joinDateYearFilter}
+                              value={draftJoinDateYearFilter}
                               onChange={(e) => {
-                                const nextYear = e.target.value;
-                                setJoinDateYearFilter(nextYear);
-                                if (!nextYear) {
-                                  setJoinDateMonthFilter("");
-                                }
+                                setDraftJoinDateYearFilter(e.target.value);
                               }}
                               className="w-full h-9 rounded-md border border-indigo-300 bg-white px-2 text-sm font-semibold text-indigo-900 shadow-sm outline-none transition"
                             >
@@ -783,13 +718,13 @@ function AttendanceListFilterMenus({
                               {tl("joinDateMonth", "Tháng vào làm")}
                             </div>
                             <select
-                              value={joinDateMonthFilter}
+                              value={draftJoinDateMonthFilter}
                               onChange={(e) =>
-                                setJoinDateMonthFilter(e.target.value)
+                                setDraftJoinDateMonthFilter(e.target.value)
                               }
-                              disabled={!joinDateYearFilter}
+                              disabled={!draftJoinDateYearFilter}
                               className={`w-full h-9 rounded-md border border-sky-300 bg-white px-2 text-sm font-semibold text-sky-900 shadow-sm outline-none transition ${
-                                !joinDateYearFilter
+                                !draftJoinDateYearFilter
                                   ? "cursor-not-allowed opacity-55 bg-slate-100 text-slate-500 border-slate-300"
                                   : ""
                               }`}
@@ -814,27 +749,24 @@ function AttendanceListFilterMenus({
                 <div className="shrink-0 flex flex-row flex-nowrap items-stretch gap-2 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50 p-3 sm:gap-3 sm:p-5">
                   <button
                     type="button"
-                    onClick={() => {
-                      clearAllFilters();
-                      setExpandedSections({});
-                    }}
+                    onClick={clearAllFilters}
                     className="min-w-0 flex-1 px-1.5 py-2 text-center text-[11px] font-semibold leading-tight text-gray-700 shadow-sm transition-all duration-200 hover:shadow sm:px-3 sm:py-2.5 sm:text-sm rounded-lg border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600"
                   >
                     🗑️ {tl("clearAll", "Xóa tất cả")}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFilterOpen(false)}
+                    onClick={handleCancelAdvancedFilter}
                     className="min-w-0 flex-1 px-1.5 py-2 text-center text-[11px] font-semibold leading-tight text-white shadow-md transition-all duration-200 hover:shadow-lg sm:px-3 sm:py-2.5 sm:text-sm rounded-lg bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700"
                   >
                     ✖️ {t("attendanceList.cancel", { defaultValue: "Hủy" })}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFilterOpen(false)}
+                    onClick={handleSaveAdvancedFilter}
                     className="min-w-0 flex-1 px-1.5 py-2 text-center text-[11px] font-semibold leading-tight text-white shadow-md transition-all duration-200 hover:shadow-lg sm:px-3 sm:py-2.5 sm:text-sm rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
                   >
-                    ✓ {tl("close", "Đóng")}
+                    ✓ {tl("saveFilters", "Lưu")}
                   </button>
                 </div>
               </div>

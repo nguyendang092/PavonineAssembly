@@ -6,6 +6,8 @@ import React, {
   useRef,
   useDeferredValue,
   startTransition,
+  lazy,
+  Suspense,
 } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -16,7 +18,7 @@ import {
   canEditAttendanceForEmployee,
   isAdminAccess,
 } from "@/config/authRoles";
-import { db, ref, onValue, get, update } from "@/services/firebase";
+import { db, ref, onValue, update } from "@/services/firebase";
 import {
   parsePayrollDayFromAttendanceRaw,
   reconcilePayrollEmployeesFromBase,
@@ -51,25 +53,20 @@ import HrTablePagination from "@/components/ui/HrTablePagination";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import PayrollToolsMenu from "@/features/payroll/PayrollToolsMenu";
-import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmployeeFormModal";
 import AttendanceOffHolidayDaysControl from "@/features/attendance/AttendanceOffHolidayDaysControl";
-import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelExportModal";
 import { getTodayDateKeyLocal } from "@/utils/dateKey";
 import { executePayrollSalaryExcelExportRange } from "@/features/payroll/payrollSalaryExcelExportRange";
-import { filterPayrollEmployeesForTimesheetExport } from "@/features/payroll/payrollTimesheetExportFilters";
 import {
   getOvertimeHoursFromGioRa,
   isEarlyArrivalForPaperworkOvertime,
   isNightOtPaperworkEligible,
   isNightShiftCaLamViec,
 } from "@/features/attendance/attendanceWorkingHours";
-import PayrollEarlyOvertimePaperworkModal from "@/features/payroll/PayrollEarlyOvertimePaperworkModal";
+import { filterPayrollEmployeesForTimesheetExport } from "@/features/payroll/payrollTimesheetExportFilters";
 import {
   readEarlyOtSessionSuppressed,
   writeEarlyOtSessionSuppressed,
 } from "@/features/payroll/payrollEarlyOtSession";
-import PayrollMonthlyTimesheetModal from "@/features/payroll/PayrollMonthlyTimesheetModal";
-import PayrollMonthlyTimeInOutModal from "@/features/payroll/PayrollMonthlyTimeInOutModal";
 import {
   PAYROLL_TIMESHEET_PRESENCE_FILTER,
   PAYROLL_SHORT_HOURS_FILTER,
@@ -78,6 +75,23 @@ import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
 import "@/features/attendance/attendanceToolbarFocus.css";
 import "@/features/attendance/hrPageCompact.css";
 import "./payrollTableCompact.css";
+import "./payrollSalaryPage.css";
+
+const AttendanceEmployeeFormModal = lazy(
+  () => import("@/features/attendance/AttendanceEmployeeFormModal"),
+);
+const PayrollRangeExcelExportModal = lazy(
+  () => import("@/features/payroll/PayrollRangeExcelExportModal"),
+);
+const PayrollEarlyOvertimePaperworkModal = lazy(
+  () => import("@/features/payroll/PayrollEarlyOvertimePaperworkModal"),
+);
+const PayrollMonthlyTimesheetModal = lazy(
+  () => import("@/features/payroll/PayrollMonthlyTimesheetModal"),
+);
+const PayrollMonthlyTimeInOutModal = lazy(
+  () => import("@/features/payroll/PayrollMonthlyTimeInOutModal"),
+);
 
 const noop = () => {};
 
@@ -209,8 +223,20 @@ export default function PayrollSalaryCalculator() {
   }, []);
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
+  const deferredDepartmentFilter = useDeferredValue(departmentFilter);
+  const deferredWorkHoursFilter = useDeferredValue(workHoursFilter);
+  const deferredLeaveTypeFilter = useDeferredValue(leaveTypeFilter);
+  const deferredOvertimeFilter = useDeferredValue(overtimeFilter);
+  const deferredShortHoursFilter = useDeferredValue(shortHoursFilter);
   const isSearchStale = searchTerm !== deferredSearchTerm;
-  const isTableBusy = isDayLoading || isSearchStale;
+  const filtersPending =
+    isSearchStale ||
+    departmentFilter !== deferredDepartmentFilter ||
+    workHoursFilter !== deferredWorkHoursFilter ||
+    leaveTypeFilter !== deferredLeaveTypeFilter ||
+    overtimeFilter !== deferredOvertimeFilter ||
+    shortHoursFilter !== deferredShortHoursFilter;
+  const isTableBusy = isDayLoading || filtersPending;
 
   useEffect(() => {
     const generation = ++listenGenerationRef.current;
@@ -287,18 +313,12 @@ export default function PayrollSalaryCalculator() {
   }, [user?.uid]);
 
   const mergeOtPaperworkMeta = useCallback(
-    async (metaFieldKey, normalizeMap, updates) => {
+    async (metaFieldKey, normalizeMap, updates, localMap) => {
       const metaRef = ref(
         db,
         `attendance/${selectedDate}/${ATTENDANCE_DAY_META_KEY}`,
       );
-      const snap = await get(metaRef);
-      const metaVal = snap.val();
-      const cur = normalizeMap(
-        metaVal && typeof metaVal === "object"
-          ? metaVal[metaFieldKey]
-          : undefined,
-      );
+      const cur = normalizeMap(localMap ?? {});
       const next = { ...cur, ...updates };
       await update(metaRef, { [metaFieldKey]: next });
     },
@@ -311,8 +331,9 @@ export default function PayrollSalaryCalculator() {
         ATTENDANCE_DAY_META_EARLY_OT_KEY,
         normalizeEarlyOtPaperworkMap,
         updates,
+        earlyOtMap,
       ),
-    [mergeOtPaperworkMeta],
+    [mergeOtPaperworkMeta, earlyOtMap],
   );
 
   const mergeLateOt = useCallback(
@@ -321,8 +342,9 @@ export default function PayrollSalaryCalculator() {
         ATTENDANCE_DAY_META_LATE_OT_KEY,
         normalizeLateOtPaperworkMap,
         updates,
+        lateOtExcludedMap,
       ),
-    [mergeOtPaperworkMeta],
+    [mergeOtPaperworkMeta, lateOtExcludedMap],
   );
 
   const mergeNightOt = useCallback(
@@ -331,8 +353,9 @@ export default function PayrollSalaryCalculator() {
         ATTENDANCE_DAY_META_NIGHT_OT_KEY,
         normalizeNightOtPaperworkMap,
         updates,
+        nightOtMap,
       ),
-    [mergeOtPaperworkMeta],
+    [mergeOtPaperworkMeta, nightOtMap],
   );
 
   const employeesForPayroll = useMemo(
@@ -623,11 +646,11 @@ export default function PayrollSalaryCalculator() {
     (list, term) =>
       filterPayrollEmployeesForTimesheetExport(list, {
         searchTerm: term,
-        departmentFilter,
-        workHoursFilter,
-        leaveTypeFilter,
-        overtimeFilter,
-        shortHoursFilter,
+        departmentFilter: deferredDepartmentFilter,
+        workHoursFilter: deferredWorkHoursFilter,
+        leaveTypeFilter: deferredLeaveTypeFilter,
+        overtimeFilter: deferredOvertimeFilter,
+        shortHoursFilter: deferredShortHoursFilter,
         normalizeDepartment,
         dayCtx: {
           isOffDay,
@@ -640,19 +663,19 @@ export default function PayrollSalaryCalculator() {
         nightOtPaperworkById: nightOtMap,
       }),
     [
-      departmentFilter,
+      deferredDepartmentFilter,
+      deferredWorkHoursFilter,
+      deferredLeaveTypeFilter,
+      deferredOvertimeFilter,
+      deferredShortHoursFilter,
       earlyOtMap,
       isCompensatoryDay,
       isHolidayDay,
       isOffDay,
       lateOtExcludedMap,
       nightOtMap,
-      leaveTypeFilter,
       normalizeDepartment,
-      overtimeFilter,
-      shortHoursFilter,
       selectedDate,
-      workHoursFilter,
     ],
   );
 
@@ -668,11 +691,11 @@ export default function PayrollSalaryCalculator() {
     resetDeps: [
       selectedDate,
       deferredSearchTerm,
-      departmentFilter,
-      workHoursFilter,
-      leaveTypeFilter,
-      overtimeFilter,
-      shortHoursFilter,
+      deferredDepartmentFilter,
+      deferredWorkHoursFilter,
+      deferredLeaveTypeFilter,
+      deferredOvertimeFilter,
+      deferredShortHoursFilter,
     ],
   });
 
@@ -689,7 +712,6 @@ export default function PayrollSalaryCalculator() {
 
   const {
     balanceByMnv: annualLeaveBalanceByMnv,
-    yearData: annualLeaveYearData,
   } = useAnnualLeaveBalanceMap(annualLeaveYear, {
     throughDateKey: selectedDate,
     scopeEmpKeys: annualLeaveScopeEmpKeys,
@@ -865,7 +887,7 @@ export default function PayrollSalaryCalculator() {
   return (
     <>
       <AttendanceHrPageShell contextDate={selectedDate}>
-      <div className="payroll-salary-page hr-page-compact attendance-list-viewport w-full max-w-none">
+      <div className="payroll-salary-page payroll-salary-page-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
         <div className="mb-1 shrink-0">
           <div className="w-full border-t-4 border-violet-600 bg-white px-2 py-0.5 shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
             <h1 className="text-sm font-bold uppercase leading-snug tracking-wide text-[#1e293b] md:text-base dark:text-slate-100">
@@ -959,9 +981,10 @@ export default function PayrollSalaryCalculator() {
           mode="viewport"
           message={tlPage("dayDataLoading", "Đang tải dữ liệu...")}
         />
+        <div className="payroll-salary-table-panel min-h-0 flex-1">
         <div className="payroll-salary-table-compact relative min-w-0 w-full max-w-none overflow-x-auto overscroll-x-contain rounded-md bg-white leading-tight shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
           <PayrollMonthGridLoadingOverlay
-            active={isSearchStale && !isDayLoading}
+            active={filtersPending && !isDayLoading}
             message={tlPage("dayDataRendering", "Đang cập nhật bảng…")}
           />
           <div className="payroll-salary-table-scroll min-w-0 w-full max-w-full overflow-x-auto overscroll-x-contain">
@@ -1006,7 +1029,6 @@ export default function PayrollSalaryCalculator() {
                       attendanceDateKey={selectedDate}
                       annualLeaveBalance={annualLeaveBalance}
                       annualLeaveYear={annualLeaveYear}
-                      annualLeaveYearData={annualLeaveYearData}
                       annualLeaveThroughDateKey={selectedDate}
                       annualLeaveAttendanceRootPath="attendance"
                     />
@@ -1017,6 +1039,7 @@ export default function PayrollSalaryCalculator() {
           </div>
         </div>
 
+        <div className="payroll-salary-pagination">
         <HrTablePagination
           rangeStart={tablePagination.rangeStart}
           rangeEnd={tablePagination.rangeEnd}
@@ -1028,10 +1051,14 @@ export default function PayrollSalaryCalculator() {
           onPageChange={tablePagination.setPage}
           onPageSizeChange={tablePagination.setPageSize}
         />
+        </div>
+        </div>
       </div>
 
+      {showEmployeeModal ? (
+        <Suspense fallback={null}>
       <AttendanceEmployeeFormModal
-        open={showEmployeeModal}
+        open
         onClose={() => {
           setShowEmployeeModal(false);
           setEmployeeModalRecord(null);
@@ -1047,9 +1074,13 @@ export default function PayrollSalaryCalculator() {
         dayIsOffDay={isOffDay}
         dayIsHolidayDay={isHolidayDay}
       />
+        </Suspense>
+      ) : null}
 
+      {rangeExportModalOpen ? (
+        <Suspense fallback={null}>
       <PayrollRangeExcelExportModal
-        open={rangeExportModalOpen}
+        open
         onDismiss={() => {
           if (!rangeExportBusy) setRangeExportModalOpen(false);
         }}
@@ -1104,8 +1135,11 @@ export default function PayrollSalaryCalculator() {
         )}
         clearDepartmentsLabel={tlPage("exportDepartmentClear", "Bỏ chọn")}
       />
+        </Suspense>
+      ) : null}
 
       {monthlyTimeInOutOpen ? (
+        <Suspense fallback={null}>
         <PayrollMonthlyTimeInOutModal
           open
           onClose={() => setMonthlyTimeInOutOpen(false)}
@@ -1123,9 +1157,11 @@ export default function PayrollSalaryCalculator() {
           onAlert={setAlert}
           employees={employees}
         />
+        </Suspense>
       ) : null}
 
       {monthlyTimesheetOpen ? (
+        <Suspense fallback={null}>
         <PayrollMonthlyTimesheetModal
           open
           onClose={() => setMonthlyTimesheetOpen(false)}
@@ -1151,10 +1187,13 @@ export default function PayrollSalaryCalculator() {
           onAlert={setAlert}
           employees={employees}
         />
+        </Suspense>
       ) : null}
 
+      {earlyOtModalOpen && earlyOtModalRows.length > 0 ? (
+        <Suspense fallback={null}>
       <PayrollEarlyOvertimePaperworkModal
-        open={earlyOtModalOpen && earlyOtModalRows.length > 0}
+        open
         rows={earlyOtModalRows}
         initialChecked={earlyOtInitialChecked}
         onDismiss={handleEarlyOtDismiss}
@@ -1191,9 +1230,13 @@ export default function PayrollSalaryCalculator() {
           "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
         )}
       />
+        </Suspense>
+      ) : null}
 
+      {lateOtModalOpen && lateOtModalRows.length > 0 ? (
+        <Suspense fallback={null}>
       <PayrollEarlyOvertimePaperworkModal
-        open={lateOtModalOpen && lateOtModalRows.length > 0}
+        open
         rows={lateOtModalRows}
         initialChecked={lateOtInitialChecked}
         onDismiss={handleLateOtDismiss}
@@ -1225,9 +1268,13 @@ export default function PayrollSalaryCalculator() {
           "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
         )}
       />
+        </Suspense>
+      ) : null}
 
+      {nightOtModalOpen ? (
+        <Suspense fallback={null}>
       <PayrollEarlyOvertimePaperworkModal
-        open={nightOtModalOpen}
+        open
         rows={nightOtEligibleEmployees}
         initialChecked={nightOtInitialChecked}
         onDismiss={() => setNightOtModalOpen(false)}
@@ -1257,6 +1304,8 @@ export default function PayrollSalaryCalculator() {
           "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
         )}
       />
+        </Suspense>
+      ) : null}
       </AttendanceHrPageShell>
     </>
   );
