@@ -1,5 +1,6 @@
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
+import { resolveStoredMonthlyLeaveUsage } from "./annualLeaveDerived";
 
 /** Dòng nhẹ cho lọc / phân trang — chưa tính balance live. */
 export function buildAnnualLeaveManagerEntry(empKey, raw) {
@@ -26,6 +27,7 @@ export function buildAnnualLeaveManagerRowCatalog(yearData) {
       entries: [],
       deptIndex: new Map(),
       departments: [],
+      storedMonthlyByEmpKey: {},
     };
   }
 
@@ -33,11 +35,15 @@ export function buildAnnualLeaveManagerRowCatalog(yearData) {
   const entries = [];
   const deptIndex = new Map();
   const deptSet = new Set();
+  const storedMonthlyByEmpKey = {};
 
   for (const [empKey, { raw }] of Object.entries(indexed)) {
     const entry = buildAnnualLeaveManagerEntry(empKey, raw);
     if (!entry) continue;
     entries.push(entry);
+
+    const storedMonthly = resolveStoredMonthlyLeaveUsage(raw);
+    if (storedMonthly) storedMonthlyByEmpKey[empKey] = storedMonthly;
 
     const dept = String(entry[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT] ?? "");
     if (dept) deptSet.add(dept);
@@ -58,6 +64,7 @@ export function buildAnnualLeaveManagerRowCatalog(yearData) {
     entries,
     deptIndex,
     departments: Array.from(deptSet).sort(),
+    storedMonthlyByEmpKey,
   };
 }
 

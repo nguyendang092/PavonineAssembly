@@ -7,7 +7,7 @@ import { useProductionManualEntries } from "./productionReport/useProductionManu
 function S90DProductionReportContent() {
   const manualEntries = useProductionManualEntries(S90D_PRODUCTION_REPORT_CONFIG);
 
-  return <ManualProductionReportPage manualEntries={manualEntries} />;
+  return <ManualProductionReportPage manualEntries={manualEntries} dailyViewMode="dashboard" />;
 }
 
 export default function S90DProductionReportPage() {

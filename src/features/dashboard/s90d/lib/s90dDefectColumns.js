@@ -13,7 +13,7 @@ export const S90D_DEFECT_COLUMNS = Object.freeze([
   { key: "burr", ko: "칩눌림 불량", vi: "Lỗi ăn Bavia", shortVi: "Bavia" },
   { key: "scratch", ko: "스크러치", vi: "Trầy, xước", shortVi: "Trầy" },
   { key: "dent", ko: "찍힘", vi: "Cấn", shortVi: "Cấn" },
-  { key: "breakage", ko: "Lỗi gãy", vi: "Lỗi gãy", shortVi: "Gãy" },
+  { key: "breakage", ko: "파손 불량", vi: "Lỗi gãy", shortVi: "Gãy" },
   { key: "bendWarp", ko: "벤딩 불량", vi: "Lỗi cong, vênh", shortVi: "Cong" },
   { key: "hole", ko: "홀 불량", vi: "Lỗi hole", shortVi: "Hole" },
   { key: "sanding", ko: "헤어 불량", vi: "Lỗi chà", shortVi: "Chà" },
@@ -23,8 +23,8 @@ export const S90D_DEFECT_COLUMNS = Object.freeze([
   { key: "color", ko: "컬러", vi: "Màu", shortVi: "Màu" },
   { key: "whiteSpot", ko: "백점 불량", vi: "Lỗi chấm trắng", shortVi: "Chấm" },
   { key: "assemblyDefect", ko: "조립 불량", vi: "Lỗi Lắp ráp", shortVi: "L ráp" },
-  { key: "bending", ko: "Lỗi bending", vi: "Lỗi bending", shortVi: "Bend" },
-  { key: "hairlineDefect", ko: "Lỗi Hairline", vi: "Lỗi Hairline", shortVi: "Hair" },
+  { key: "bending", ko: "밴딩 불량", vi: "Lỗi bending", shortVi: "Bend" },
+  { key: "hairlineDefect", ko: "헤어라인 불량", vi: "Lỗi Hairline", shortVi: "Hair" },
 ]);
 
 /** Gom tên lỗi từ Excel/Firebase → key cột lỗi. */
@@ -68,6 +68,9 @@ export function normalizeS90dProcess(workplaceName) {
     .replace(/\s+/g, " ");
   if (upper.includes("PRESS") || upper.includes("FRÉ") || upper === "프레스") {
     return "PRESS";
+  }
+  if (upper === "MC" || upper.includes("MACHINING")) {
+    return "MC";
   }
   if (upper.includes("HAIRLINE") || upper.includes("HAIR LINE")) {
     return "HAIRLINE";

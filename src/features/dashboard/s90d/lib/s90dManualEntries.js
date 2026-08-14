@@ -1,6 +1,5 @@
 import {
   S90D_DEFECT_COLUMNS,
-  S90D_PROCESSES,
   createEmptyDefectCounts,
   sumDefectCounts,
 } from "./s90dDefectColumns";
@@ -13,10 +12,24 @@ import {
 } from "./s90dDefectImages";
 import { S90D_SHIFT_SLOTS, resolveShiftSlotKey } from "./s90dShiftSlots";
 
-export const S90D_MANUAL_STORAGE_KEY = "s90d-manual-entries-v1";
-export const DEFAULT_PRODUCT_CODE = "S90D";
-export const DEFAULT_BOARD_ID = "board-1";
+import {
+  DEFAULT_PRODUCT_CODE,
+  resolveManualEntryConfig,
+  shouldApplyFixedBoardSpecs,
+  S90D_MANUAL_ENTRY_CONFIG,
+} from "./s90dManualEntryReportConfig";
 
+export {
+  AP5_BOARD_SPECS,
+  AP5_DEFAULT_PRODUCT_CODE,
+  AP5_PROCESSES,
+  ASSEMBLY_PROCESS,
+  DEFAULT_PRODUCT_CODE,
+  S90D_ASSEMBLY_BOARD_SPECS,
+} from "./s90dManualEntryReportConfig";
+
+export const S90D_MANUAL_STORAGE_KEY = "s90d-manual-entries-v1";
+export const DEFAULT_BOARD_ID = "board-1";
 let boardIdCounter = 0;
 
 export function createBoardId() {
@@ -55,9 +68,41 @@ export function createEmptyDayProcessEntry() {
   };
 }
 
-export function createEmptyDayEntry() {
+export function createEmptyFixedBoardProcessEntry(boardSpecs) {
+  return {
+    boards: boardSpecs.map((spec, index) =>
+      createEmptyProcessBoard(
+        index + 1,
+        spec.id,
+        spec.label,
+        spec.productCode,
+      ),
+    ),
+  };
+}
+
+export function createEmptyAssemblyProcessEntry() {
+  return createEmptyFixedBoardProcessEntry(S90D_ASSEMBLY_BOARD_SPECS);
+}
+
+export function createEmptyProcessDayEntry(
+  process,
+  configInput = DEFAULT_PRODUCT_CODE,
+) {
+  const config = resolveManualEntryConfig(configInput);
+  if (shouldApplyFixedBoardSpecs(process, config)) {
+    return createEmptyFixedBoardProcessEntry(config.fixedBoardSpecs);
+  }
+  return createEmptyDayProcessEntry();
+}
+
+export function createEmptyDayEntry(configInput = DEFAULT_PRODUCT_CODE) {
+  const config = resolveManualEntryConfig(configInput);
   return Object.fromEntries(
-    S90D_PROCESSES.map((process) => [process, createEmptyDayProcessEntry()]),
+    config.processes.map((process) => [
+      process,
+      createEmptyProcessDayEntry(process, config),
+    ]),
   );
 }
 
@@ -75,19 +120,107 @@ function normalizeProcessBoard(rawBoard, sequence = 1) {
   return board;
 }
 
-export function resolveProcessBoards(processEntry) {
-  if (!processEntry || typeof processEntry !== "object") {
-    return [createEmptyProcessBoard(1, DEFAULT_BOARD_ID)];
+function matchesBoardSpec(board, spec, config) {
+  const code = String(board?.productCode ?? "").trim().toUpperCase();
+  const label = String(board?.label ?? "").trim().toUpperCase();
+  const target = spec.productCode.toUpperCase();
+
+  if (code === target || label === target) return true;
+
+  if (config.fixedBoardSpecsAllProcesses) {
+    return code.includes(target) || label.includes(target);
   }
+
+  if (spec.id === "assembly-inzi") {
+    return code.includes("INZI") || label.includes("INZI");
+  }
+  if (spec.id === "assembly-mxc") {
+    return code.includes("MXC") || label.includes("MXC");
+  }
+  return false;
+}
+
+function normalizeFixedBoards(rawBoards, config) {
+  const boardSpecs = config.fixedBoardSpecs ?? [];
+  const boards =
+    rawBoards.length > 0
+      ? rawBoards.map((board, index) => normalizeProcessBoard(board, index + 1))
+      : [];
+
+  const legacySingle =
+    boards.length === 1 &&
+    String(boards[0].productCode ?? "").trim() === config.defaultProductCode;
+
+  const unmatched = [...boards];
+
+  const takeMatch = (spec) => {
+    const index = unmatched.findIndex((board) =>
+      matchesBoardSpec(board, spec, config),
+    );
+    if (index < 0) return null;
+    return unmatched.splice(index, 1)[0];
+  };
+
+  return boardSpecs.map((spec, index) => {
+    const matched = takeMatch(spec);
+    if (matched) {
+      return {
+        ...matched,
+        id: spec.id,
+        label: spec.label,
+        productCode: spec.productCode,
+      };
+    }
+
+    if (legacySingle && index === 0) {
+      return {
+        ...boards[0],
+        id: spec.id,
+        label: spec.label,
+        productCode: spec.productCode,
+      };
+    }
+
+    return createEmptyProcessBoard(
+      index + 1,
+      spec.id,
+      spec.label,
+      spec.productCode,
+    );
+  });
+}
+
+function normalizeAssemblyBoards(rawBoards) {
+  return normalizeFixedBoards(rawBoards, S90D_MANUAL_ENTRY_CONFIG);
+}
+
+function resolveDefaultBoards(process, configInput = DEFAULT_PRODUCT_CODE) {
+  const config = resolveManualEntryConfig(configInput);
+  if (shouldApplyFixedBoardSpecs(process, config)) {
+    return createEmptyFixedBoardProcessEntry(config.fixedBoardSpecs).boards;
+  }
+  return [createEmptyProcessBoard(1, DEFAULT_BOARD_ID, undefined, config.defaultProductCode)];
+}
+
+export function resolveProcessBoards(
+  processEntry,
+  process,
+  configInput = DEFAULT_PRODUCT_CODE,
+) {
+  const config = resolveManualEntryConfig(configInput);
+
+  if (!processEntry || typeof processEntry !== "object") {
+    return resolveDefaultBoards(process, config);
+  }
+
+  let boards = [];
 
   if (Array.isArray(processEntry.boards) && processEntry.boards.length > 0) {
-    return processEntry.boards.map((board, index) =>
+    boards = processEntry.boards.map((board, index) =>
       normalizeProcessBoard(board, index + 1),
     );
-  }
-
-  if (processEntry.shifts || processEntry.productCode !== undefined) {
-    return [
+  } else if (processEntry.shifts || processEntry.productCode !== undefined) {
+    boards = [
       normalizeProcessBoard(
         {
           id: DEFAULT_BOARD_ID,
@@ -98,18 +231,29 @@ export function resolveProcessBoards(processEntry) {
         1,
       ),
     ];
+  } else {
+    return resolveDefaultBoards(process, config);
   }
 
-  return [createEmptyProcessBoard(1, DEFAULT_BOARD_ID)];
+  if (shouldApplyFixedBoardSpecs(process, config)) {
+    return normalizeFixedBoards(boards, config);
+  }
+
+  return boards;
 }
 
-export function normalizeProcessDayEntry(rawEntry) {
+export function normalizeProcessDayEntry(
+  rawEntry,
+  process,
+  configInput = DEFAULT_PRODUCT_CODE,
+) {
   return {
-    boards: resolveProcessBoards(rawEntry),
+    boards: resolveProcessBoards(rawEntry, process, configInput),
   };
 }
 
-export function normalizeManualStore(raw) {
+export function normalizeManualStore(raw, configInput = DEFAULT_PRODUCT_CODE) {
+  const config = resolveManualEntryConfig(configInput);
   if (!raw || typeof raw !== "object") return {};
 
   const store = {};
@@ -117,9 +261,13 @@ export function normalizeManualStore(raw) {
     const day = raw[dateKey];
     if (!day || typeof day !== "object") continue;
 
-    store[dateKey] = createEmptyDayEntry();
-    for (const process of S90D_PROCESSES) {
-      store[dateKey][process] = normalizeProcessDayEntry(day[process]);
+    store[dateKey] = createEmptyDayEntry(config);
+    for (const process of config.processes) {
+      store[dateKey][process] = normalizeProcessDayEntry(
+        day[process],
+        process,
+        config,
+      );
     }
   }
 
@@ -181,48 +329,64 @@ export function saveManualStore(store) {
   window.localStorage.setItem(S90D_MANUAL_STORAGE_KEY, JSON.stringify(store));
 }
 
-export function ensureDayEntry(store, dateKey) {
+export function ensureDayEntry(store, dateKey, configInput = DEFAULT_PRODUCT_CODE) {
   if (!store[dateKey]) {
-    store[dateKey] = createEmptyDayEntry();
+    store[dateKey] = createEmptyDayEntry(configInput);
   }
   return store[dateKey];
 }
 
-export function getDayEntry(store, dateKey) {
-  return normalizeManualStore({ [dateKey]: store[dateKey] ?? {} })[dateKey] ??
-    createEmptyDayEntry();
+export function getDayEntry(store, dateKey, configInput = DEFAULT_PRODUCT_CODE) {
+  return (
+    normalizeManualStore({ [dateKey]: store[dateKey] ?? {} }, configInput)[
+      dateKey
+    ] ?? createEmptyDayEntry(configInput)
+  );
 }
 
 function findBoardIndex(boards, boardId) {
   return boards.findIndex((board) => board.id === boardId);
 }
 
-function cloneProcessDayEntry(processDayEntry) {
+function cloneProcessDayEntry(
+  processDayEntry,
+  process,
+  configInput = DEFAULT_PRODUCT_CODE,
+) {
   return {
-    boards: resolveProcessBoards(processDayEntry).map((board) => ({
-      ...board,
-      shifts: Object.fromEntries(
-        Object.entries(board.shifts).map(([slot, shift]) => [
-          slot,
-          {
-            ...shift,
-            defects: { ...shift.defects },
-            defectImages: { ...shift.defectImages },
-          },
-        ]),
-      ),
-    })),
+    boards: resolveProcessBoards(processDayEntry, process, configInput).map(
+      (board) => ({
+        ...board,
+        shifts: Object.fromEntries(
+          Object.entries(board.shifts).map(([slot, shift]) => [
+            slot,
+            {
+              ...shift,
+              defects: { ...shift.defects },
+              defectImages: { ...shift.defectImages },
+            },
+          ]),
+        ),
+      }),
+    ),
   };
 }
 
-export function getProcessEntry(store, dateKey, process) {
-  return (
-    getDayEntry(store, dateKey)[process] ?? createEmptyDayProcessEntry()
+export function getProcessEntry(
+  store,
+  dateKey,
+  process,
+  configInput = DEFAULT_PRODUCT_CODE,
+) {
+  return normalizeProcessDayEntry(
+    getDayEntry(store, dateKey, configInput)[process],
+    process,
+    configInput,
   );
 }
 
 export function getProcessBoard(store, dateKey, process, boardId) {
-  const boards = resolveProcessBoards(getProcessEntry(store, dateKey, process));
+  const boards = getProcessEntry(store, dateKey, process).boards;
   return boards.find((board) => board.id === boardId) ?? boards[0];
 }
 
@@ -235,7 +399,7 @@ export function updateManualProductCode(
 ) {
   const next = { ...store };
   const day = { ...ensureDayEntry(next, dateKey) };
-  const processDayEntry = cloneProcessDayEntry(day[process]);
+  const processDayEntry = cloneProcessDayEntry(day[process], process);
   const boardIndex = findBoardIndex(processDayEntry.boards, boardId);
   const targetIndex = boardIndex >= 0 ? boardIndex : 0;
 
@@ -257,10 +421,12 @@ export function updateManualShiftField(
   field,
   value,
   boardId = DEFAULT_BOARD_ID,
+  configInput = DEFAULT_PRODUCT_CODE,
 ) {
+  const config = resolveManualEntryConfig(configInput);
   const next = { ...store };
-  const day = { ...ensureDayEntry(next, dateKey) };
-  const processDayEntry = cloneProcessDayEntry(day[process]);
+  const day = { ...ensureDayEntry(next, dateKey, config) };
+  const processDayEntry = cloneProcessDayEntry(day[process], process, config);
   const boardIndex = findBoardIndex(processDayEntry.boards, boardId);
   const targetIndex = boardIndex >= 0 ? boardIndex : 0;
   const board = processDayEntry.boards[targetIndex];
@@ -289,8 +455,19 @@ export function updateManualShiftField(
   return next;
 }
 
-export function ensureProcessBoardAtIndex(processDayEntry, boardIndex) {
-  const next = cloneProcessDayEntry(processDayEntry);
+export function ensureProcessBoardAtIndex(
+  processDayEntry,
+  boardIndex,
+  process,
+  configInput = DEFAULT_PRODUCT_CODE,
+) {
+  const config = resolveManualEntryConfig(configInput);
+  const next = cloneProcessDayEntry(processDayEntry, process, config);
+
+  if (shouldApplyFixedBoardSpecs(process, config)) {
+    return { boards: normalizeFixedBoards(next.boards, config) };
+  }
+
   while (next.boards.length < boardIndex) {
     next.boards.push(createEmptyProcessBoard(next.boards.length + 1));
   }
@@ -308,18 +485,27 @@ export function extractProcessMonthSlice(store, dateKeys, process) {
 }
 
 /** Gộp form công đoạn vào store trước khi lưu Firebase. */
-export function mergeProcessMonthIntoStore(store, dateKeys, process, localByDate) {
+export function mergeProcessMonthIntoStore(
+  store,
+  dateKeys,
+  process,
+  localByDate,
+  configInput = DEFAULT_PRODUCT_CODE,
+) {
+  const config = resolveManualEntryConfig(configInput);
   const next = { ...store };
 
   dateKeys.forEach((dateKey) => {
-    const day = { ...ensureDayEntry(next, dateKey) };
+    const day = { ...ensureDayEntry(next, dateKey, config) };
     day[process] = normalizeProcessDayEntry(
-      localByDate[dateKey] ?? createEmptyDayProcessEntry(),
+      localByDate[dateKey] ?? createEmptyProcessDayEntry(process, config),
+      process,
+      config,
     );
     next[dateKey] = day;
   });
 
-  return normalizeManualStore(next);
+  return normalizeManualStore(next, config);
 }
 
 export function updateProcessMonthProductCode(
@@ -353,10 +539,13 @@ export function updateProcessMonthShiftField(
   shiftSlot,
   field,
   value,
+  configInput = DEFAULT_PRODUCT_CODE,
 ) {
+  const config = resolveManualEntryConfig(configInput);
   const fakeStore = {
     [dateKey]: {
-      [process]: localByDate[dateKey] ?? createEmptyDayProcessEntry(),
+      [process]:
+        localByDate[dateKey] ?? createEmptyProcessDayEntry(process, config),
     },
   };
   const updated = updateManualShiftField(
@@ -367,6 +556,7 @@ export function updateProcessMonthShiftField(
     field,
     value,
     boardId,
+    config,
   );
 
   return {
@@ -380,9 +570,18 @@ export function addProcessMonthBoard(
   dateKey,
   label,
   productCode = DEFAULT_PRODUCT_CODE,
+  process,
+  configInput = DEFAULT_PRODUCT_CODE,
 ) {
+  const config = resolveManualEntryConfig(configInput);
+  if (shouldApplyFixedBoardSpecs(process, config)) {
+    return localByDate;
+  }
+
   const processDayEntry = cloneProcessDayEntry(
-    localByDate[dateKey] ?? createEmptyDayProcessEntry(),
+    localByDate[dateKey] ?? createEmptyProcessDayEntry(process, config),
+    process,
+    config,
   );
   const nextSequence = processDayEntry.boards.length + 1;
   processDayEntry.boards.push(
@@ -395,11 +594,23 @@ export function addProcessMonthBoard(
   };
 }
 
-export function removeProcessMonthBoard(localByDate, dateKey, boardId) {
+export function removeProcessMonthBoard(
+  localByDate,
+  dateKey,
+  boardId,
+  process,
+  configInput = DEFAULT_PRODUCT_CODE,
+) {
+  const config = resolveManualEntryConfig(configInput);
   const processDayEntry = cloneProcessDayEntry(
-    localByDate[dateKey] ?? createEmptyDayProcessEntry(),
+    localByDate[dateKey] ?? createEmptyProcessDayEntry(process, config),
+    process,
+    config,
   );
-  if (processDayEntry.boards.length <= 1) {
+  if (
+    processDayEntry.boards.length <= 1 ||
+    shouldApplyFixedBoardSpecs(process, config)
+  ) {
     return localByDate;
   }
 
@@ -426,6 +637,8 @@ export function boardHasData(board) {
   );
 }
 
-export function processDayHasData(processDayEntry) {
-  return resolveProcessBoards(processDayEntry).some(boardHasData);
+export function processDayHasData(processDayEntry, process, configInput) {
+  return resolveProcessBoards(processDayEntry, process, configInput).some(
+    boardHasData,
+  );
 }

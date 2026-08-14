@@ -4,7 +4,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useDeferredValue,
   startTransition,
 } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -36,6 +35,7 @@ import {
   buildAnnualLeaveMergeUploadUpdates,
 } from "./annualLeaveYearDataOps";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import "@/features/attendance/attendanceToolbarFocus.css";
 import "@/features/attendance/hrPageCompact.css";
 import "./annualLeaveManager.css";
@@ -124,24 +124,25 @@ export default function AnnualLeaveManager() {
     () => buildAnnualLeaveManagerRowCatalog(yearData),
     [yearData],
   );
-  const { entries, deptIndex, departments } = rowCatalog;
+  const { entries, deptIndex, departments, storedMonthlyByEmpKey } =
+    rowCatalog;
 
-  const deferredSearch = useDeferredValue(search);
-  const deferredDeptFilter = useDeferredValue(deptFilter);
-  const filterPending =
-    search !== deferredSearch || deptFilter !== deferredDeptFilter;
+  const debouncedSearch = useDebouncedValue(search, 220);
+  const filterPending = search !== debouncedSearch;
+  const exportFiltersRef = useRef({ search: "", deptFilter: "" });
+  exportFiltersRef.current = { search: debouncedSearch, deptFilter };
 
   const filteredEntries = useMemo(
     () =>
       filterAnnualLeaveManagerEntries(
         entries,
         {
-          search: deferredSearch,
-          deptFilter: deferredDeptFilter,
+          search: debouncedSearch,
+          deptFilter,
         },
         deptIndex,
       ),
-    [entries, deferredSearch, deferredDeptFilter, deptIndex],
+    [entries, debouncedSearch, deptFilter, deptIndex],
   );
 
   const displayRowCount = filteredEntries.length;
@@ -330,8 +331,13 @@ export default function AnnualLeaveManager() {
 
   const handleExport = useCallback(async () => {
     try {
+      const { search: exportSearch, deptFilter: exportDeptFilter } =
+        exportFiltersRef.current;
       const exportRows =
-        exportRef.current?.getExportRows({ search, deptFilter }) ?? [];
+        exportRef.current?.getExportRows({
+          search: exportSearch,
+          deptFilter: exportDeptFilter,
+        }) ?? [];
       if (!exportRows.length) return;
       const monthColumnLabels =
         exportRef.current?.getMonthColumnLabels?.() ?? [];
@@ -356,7 +362,42 @@ export default function AnnualLeaveManager() {
         message: err?.message || t("annualLeave.exportError"),
       });
     }
-  }, [search, deptFilter, year, t]);
+  }, [year, t]);
+
+  const actionsMenu = useMemo(
+    () => (
+      <AnnualLeaveManagerActionsMenu
+        t={t}
+        canManage={canManage}
+        actionsOpen={actionsOpen}
+        setActionsOpen={setActionsOpen}
+        actionsAnchorRef={actionsAnchorRef}
+        actionsPanelRef={actionsPanelRef}
+        fileInputRef={fileInputRef}
+        syncing={syncing}
+        uploading={uploading}
+        deleting={deleting}
+        hasEntries={entries.length > 0}
+        onRecalculate={handleRecalculate}
+        onUpload={handleUpload}
+        onDelete={() => void handleDeleteYearData()}
+        onExport={() => void handleExport()}
+      />
+    ),
+    [
+      t,
+      canManage,
+      actionsOpen,
+      syncing,
+      uploading,
+      deleting,
+      entries.length,
+      handleRecalculate,
+      handleUpload,
+      handleDeleteYearData,
+      handleExport,
+    ],
+  );
 
   if (!user) {
     return (
@@ -407,25 +448,7 @@ export default function AnnualLeaveManager() {
           onMonthFilterChange={handleMonthFilterChange}
           onSearchChange={handleSearchChange}
           onDeptFilterChange={handleDeptFilterChange}
-          actionsSlot={
-            <AnnualLeaveManagerActionsMenu
-              t={t}
-              canManage={canManage}
-              actionsOpen={actionsOpen}
-              setActionsOpen={setActionsOpen}
-              actionsAnchorRef={actionsAnchorRef}
-              actionsPanelRef={actionsPanelRef}
-              fileInputRef={fileInputRef}
-              syncing={syncing}
-              uploading={uploading}
-              deleting={deleting}
-              hasEntries={entries.length > 0}
-              onRecalculate={handleRecalculate}
-              onUpload={handleUpload}
-              onDelete={() => void handleDeleteYearData()}
-              onExport={() => void handleExport()}
-            />
-          }
+          actionsSlot={actionsMenu}
         />
 
         <div className="hr-page-main">
@@ -444,8 +467,8 @@ export default function AnnualLeaveManager() {
             entries={entries}
             deptIndex={deptIndex}
             filteredEntries={filteredEntries}
+            storedMonthlyByEmpKey={storedMonthlyByEmpKey}
             detailThroughDateKey={detailThroughDateKey}
-            filterPending={filterPending}
             exportRef={exportRef}
             canManage={canManage}
             onAdjustmentSaved={handleAdjustmentSaved}

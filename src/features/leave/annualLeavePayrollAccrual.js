@@ -10,6 +10,7 @@ import {
 import {
   isStartWorkingDateInCalendarMonth,
   isStartWorkingDateInCalendarYear,
+  normalizeAnnualLeaveStartWorkingDate,
   resolveAnnualLeaveAccrualMonthRange,
 } from "./annualLeaveCalculated";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
@@ -17,8 +18,9 @@ import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
 
 /** `yyyy-mm` của tháng có ngày vào làm trong năm `year`. */
 export function resolveJoinYearMonthKey(startWorkingDate, year) {
-  const text = String(startWorkingDate ?? "").trim();
-  const m = text.match(/^(\d{4})-(\d{2})/);
+  const normalized = normalizeAnnualLeaveStartWorkingDate(startWorkingDate);
+  if (!normalized) return null;
+  const m = normalized.match(/^(\d{4})-(\d{2})/);
   if (!m) return null;
   const y = Number(year);
   if (!Number.isFinite(y) || Number(m[1]) !== y) return null;
@@ -138,7 +140,8 @@ export function buildAnnualLeaveMonthWorkSummary(
   empKey,
   startWorkingDate,
 ) {
-  if (!dayChunkMap || !empKey || !startWorkingDate) return null;
+  const joinDate = normalizeAnnualLeaveStartWorkingDate(startWorkingDate);
+  if (!dayChunkMap || !empKey || !joinDate) return null;
 
   const monthKeys = listCalendarDateKeysForYearMonth(yearMonth);
   if (!monthKeys.length) return null;
@@ -150,7 +153,7 @@ export function buildAnnualLeaveMonthWorkSummary(
   }
 
   const summary = buildMonthlyRuleSummary(chunkMap, monthKeys, empKey, {
-    ngayVaoLam: startWorkingDate,
+    ngayVaoLam: joinDate,
   });
 
   return pickPayrollMonthlyTimesheetTotalWorkColumns(summary?.total);
@@ -188,7 +191,9 @@ export function buildAnnualLeaveMonthWorkSummaryByEmpKey(
 
   for (const [empKey, { raw }] of Object.entries(indexed)) {
     if (scopeEmpKeySet && !scopeEmpKeySet.has(empKey)) continue;
-    const startWorkingDate = raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE];
+    const startWorkingDate = normalizeAnnualLeaveStartWorkingDate(
+      raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
+    );
     if (!startWorkingDate) continue;
 
     const range = resolveAnnualLeaveAccrualMonthRange(startWorkingDate, y);

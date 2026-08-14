@@ -21,8 +21,10 @@ import {
   ANNUAL_LEAVE_RTDB_ROOT,
 } from "./annualLeaveFields";
 import {
+  normalizeAnnualLeaveStartWorkingDate,
   parseAnnualLeaveNumber,
   parseAnnualLeaveAdjustment,
+  resolveAnnualLeaveYearAsOfDateKey,
 } from "./annualLeaveCalculated";
 
 /** Chuyển bản ghi legacy sang khóa `emp_{mnv}` trên Firebase. */
@@ -60,14 +62,47 @@ function needsPersistUpdate(raw, state) {
     raw[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED],
   );
   const prevBalance = parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.BALANCE]);
+  const prevCurrentYear = parseAnnualLeaveNumber(
+    raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
+  );
+  const prevTotal = parseAnnualLeaveNumber(
+    raw[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
+  );
+  const normalizedStart = normalizeAnnualLeaveStartWorkingDate(
+    raw[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
+  );
+  const prevStart = String(raw[ANNUAL_LEAVE_EMP.START_WORKING_DATE] ?? "").trim();
 
   return (
     state.used !== prevUsed ||
     state.attendanceUsed !== prevAttendance ||
     state.hrUsed !== prevHr ||
     state.balance !== prevBalance ||
+    state.annualLeaveCurrentYear !== prevCurrentYear ||
+    state.totalAnnualLeave !== prevTotal ||
+    (normalizedStart && normalizedStart !== prevStart) ||
     raw[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED] == null
   );
+}
+
+function buildAnnualLeavePersistPayload(empKey, raw, state) {
+  const normalizedStart = normalizeAnnualLeaveStartWorkingDate(
+    raw[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
+  );
+  const prevStart = String(raw[ANNUAL_LEAVE_EMP.START_WORKING_DATE] ?? "").trim();
+
+  return {
+    id: empKey,
+    ...(normalizedStart && normalizedStart !== prevStart
+      ? { [ANNUAL_LEAVE_EMP.START_WORKING_DATE]: normalizedStart }
+      : {}),
+    [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: state.hrUsed,
+    [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: state.attendanceUsed,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: state.used,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: state.annualLeaveCurrentYear,
+    [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: state.totalAnnualLeave,
+    [ANNUAL_LEAVE_EMP.BALANCE]: state.balance,
+  };
 }
 
 async function touchAnnualLeaveYearMeta(db, year, updatedBy = "") {
@@ -138,14 +173,10 @@ export async function persistAnnualLeaveYearFromAttendance(
 
     if (!needsPersistUpdate(raw, state)) continue;
 
-    await update(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${empKey}`), {
-      id: empKey,
-      [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: state.hrUsed,
-      [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: state.attendanceUsed,
-      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: state.used,
-      [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: state.totalAnnualLeave,
-      [ANNUAL_LEAVE_EMP.BALANCE]: state.balance,
-    });
+    await update(
+      ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${empKey}`),
+      buildAnnualLeavePersistPayload(empKey, raw, state),
+    );
 
     anyApplied = true;
     results.push({
@@ -222,14 +253,10 @@ export async function persistSingleEmployeeAnnualLeaveFromAttendance(
     return { applied: false, reason: "no_change" };
   }
 
-  await update(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${resolvedEmpKey}`), {
-    id: resolvedEmpKey,
-    [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: state.hrUsed,
-    [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: state.attendanceUsed,
-    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: state.used,
-    [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: state.totalAnnualLeave,
-    [ANNUAL_LEAVE_EMP.BALANCE]: state.balance,
-  });
+  await update(
+    ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${resolvedEmpKey}`),
+    buildAnnualLeavePersistPayload(resolvedEmpKey, entry.raw, state),
+  );
 
   await touchAnnualLeaveYearMeta(db, year, updatedBy);
   return { applied: true, state };
@@ -262,6 +289,7 @@ function computePersistStateForRaw(
   return computeLiveAnnualLeaveState(raw, liveAttendanceUsed, year, {
     usedFromMonthlySum,
     monthWorkSummaryByYearMonth: monthWorkSummaryByEmpKey[empKey] ?? null,
+    asOfDateKey: resolveAnnualLeaveYearAsOfDateKey(year),
   });
 }
 
@@ -299,14 +327,9 @@ export async function persistAnnualLeaveEmployeeAdjustment(
   });
 
   await update(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${empKey}`), {
-    id: empKey,
+    ...buildAnnualLeavePersistPayload(empKey, updatedRaw, state),
     [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]:
       parsedAdj === 0 ? null : parsedAdj,
-    [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: state.hrUsed,
-    [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: state.attendanceUsed,
-    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: state.used,
-    [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: state.totalAnnualLeave,
-    [ANNUAL_LEAVE_EMP.BALANCE]: state.balance,
   });
 
   await touchAnnualLeaveYearMeta(db, year, updatedBy);

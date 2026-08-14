@@ -179,7 +179,7 @@ describe("annualLeaveDerived", () => {
     expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(5);
   });
 
-  it("preferStoredCurrentYear keeps Firebase accrual until payroll summary ready", () => {
+  it("always recalculates annual leave accrual from payroll summary", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 24));
 
@@ -197,9 +197,9 @@ describe("annualLeaveDerived", () => {
     }
     const state = computeLiveAnnualLeaveState(raw, 0, 2026, {
       monthWorkSummaryByYearMonth: passAll,
-      preferStoredCurrentYear: true,
+      asOfDateKey: "2026-07-24",
     });
-    expect(state.annualLeaveCurrentYear).toBe(12);
+    expect(state.annualLeaveCurrentYear).toBe(8);
   });
 
   it("applies monthly accrual and tenure in row normalize", () => {
@@ -225,6 +225,7 @@ describe("annualLeaveDerived", () => {
       2026,
       Array(12).fill(0),
       passAll,
+      { asOfDateKey: "2026-07-31" },
     );
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]).toBe(9);
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(0);

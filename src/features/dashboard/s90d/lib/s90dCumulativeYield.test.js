@@ -37,6 +37,6 @@ describe("s90dCumulativeYield", () => {
     applyS90dCumulativeYieldPct(processRows, { emptyAsNull: true });
 
     expect(processRows[0].cumulativeYieldPct).toBeNull();
-    expect(processRows[1].cumulativeYieldPct).toBe(0);
+    expect(processRows[1].cumulativeYieldPct).toBeNull();
   });
 });

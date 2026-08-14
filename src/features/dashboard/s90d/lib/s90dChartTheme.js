@@ -16,6 +16,7 @@ export const S90D_CHART = Object.freeze({
   tooltipBg: "#0f172a",
   process: {
     PRESS: "#4f46e5",
+    MC: "#0891b2",
     HAIRLINE: "#7c3aed",
     ANODIZING: "#a855f7",
     ASSEMBLY: "#db2777",

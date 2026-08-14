@@ -383,7 +383,10 @@ export default function S90dSummaryChartModal({
       ) : (
         <div className="s90d-chart-dashboard">
           <div className="s90d-chart-kpi-wrap">
-            <S90dKpiCards totalRow={kpiTotalRow} />
+            <S90dKpiCards
+              totalRow={kpiTotalRow}
+              processDetails={grandTotalSummary?.processDetails ?? null}
+            />
           </div>
 
           <div className="s90d-chart-grid s90d-chart-grid--hero">

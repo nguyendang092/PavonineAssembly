@@ -115,13 +115,13 @@ describe("parseAnnualLeaveExcelFile", () => {
     expect(errors).toEqual([]);
     expect(records).toHaveLength(1);
     expect(records[0][ANNUAL_LEAVE_EMP.MNV_PREFIX]).toBe("251205");
-    expect(records[0][ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]).toBe(9);
+    expect(records[0][ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]).toBe(7);
     expect(records[0][ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]).toBe(0);
     expect(records[0][ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]).toBe(0);
     expect(records[0][ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(0);
     expect(records[0][ANNUAL_LEAVE_EMP.BONUS_ANNUAL_LEAVE_ENV]).toBe(0);
-    expect(records[0][ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]).toBe(9);
-    expect(records[0][ANNUAL_LEAVE_EMP.BALANCE]).toBe(9);
+    expect(records[0][ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]).toBe(7);
+    expect(records[0][ANNUAL_LEAVE_EMP.BALANCE]).toBe(7);
   });
 
   it("derives current year, used and balance from month columns when summary cells are empty", async () => {
@@ -167,9 +167,9 @@ describe("parseAnnualLeaveExcelFile", () => {
     expect(records[0][ANNUAL_LEAVE_EMP.MONTHLY_LEAVE_USAGE]).toEqual([
       1, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ]);
-    expect(records[0][ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]).toBe(9);
+    expect(records[0][ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]).toBe(7);
     expect(records[0][ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(1.5);
-    expect(records[0][ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]).toBe(9);
-    expect(records[0][ANNUAL_LEAVE_EMP.BALANCE]).toBe(7.5);
+    expect(records[0][ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]).toBe(7);
+    expect(records[0][ANNUAL_LEAVE_EMP.BALANCE]).toBe(5.5);
   });
 });

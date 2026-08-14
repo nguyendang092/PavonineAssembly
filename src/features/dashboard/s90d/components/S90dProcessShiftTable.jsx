@@ -14,7 +14,7 @@ import S90dDefectCellEditor from "./S90dDefectCellEditor";
 import S90dDefectImageThumbs from "./S90dDefectImageThumbs";
 import S90dKpiCards from "./S90dKpiCards";
 
-const INFO_COL_COUNT = 5;
+const INFO_COL_COUNT = 4;
 const QTY_COL_COUNT = 5;
 
 function formatQty(value, isPercentRow, useDash) {
@@ -34,17 +34,12 @@ function DefectCell({
   qty,
   imageUrl = "",
   defectKey,
-  dateKey = "",
-  boardId = "",
-  process = "",
-  shiftSlot = "",
   isPercent,
   highlight,
   totalNgQty,
   useDash,
   editable = false,
   onQtyChange,
-  onImageChange,
 }) {
   const showPink = !isPercent && isHighDefectCell(qty, totalNgQty);
   const className = [
@@ -61,14 +56,7 @@ function DefectCell({
     return (
       <S90dDefectCellEditor
         qty={qty}
-        imageUrl={imageUrl}
-        defectKey={defectKey}
-        dateKey={dateKey}
-        boardId={boardId}
-        process={process}
-        shiftSlot={shiftSlot}
         onQtyChange={onQtyChange}
-        onImageChange={onImageChange}
         className={className}
       />
     );
@@ -100,7 +88,6 @@ const ShiftRow = memo(function ShiftRow({
   editable = false,
   dateKey = "",
   boardId = "",
-  onProductCodeChange,
   onShiftFieldChange,
 }) {
   const rt = useReportT();
@@ -130,6 +117,11 @@ const ShiftRow = memo(function ShiftRow({
           })
         : processLabel;
 
+  const processCellLabel =
+    !isPercent && classificationLabel && classificationLabel !== processLabel
+      ? `${processLabel} / ${classificationLabel}`
+      : processLabel;
+
   let dateCell = shortDate;
   let lineCell = formatShiftLineLabel(row.shiftSlot);
 
@@ -146,19 +138,11 @@ const ShiftRow = memo(function ShiftRow({
       <td className="s90d-sticky-col s90d-col-date">{dateCell}</td>
       <td className="s90d-col-line">{lineCell}</td>
       <td className="s90d-col-product" title={isPercent ? undefined : row.productCode}>
-        {canEdit ? (
-          <input
-            type="text"
-            className="s90d-cell-input s90d-cell-input--text"
-            value={row.productCode ?? ""}
-            onChange={(e) => onProductCodeChange?.(e.target.value)}
-          />
-        ) : (
-          isPercent ? "" : row.productCode
-        )}
+        {isPercent ? "" : row.productCode}
       </td>
-      <td className="s90d-process s90d-col-process">{processLabel}</td>
-      <td className="s90d-col-class">{classificationLabel}</td>
+      <td className="s90d-process s90d-col-process">
+        {isPercent ? "" : processCellLabel}
+      </td>
       <td className="s90d-num s90d-col-total-qty">
         {isPercent ? "" : formatQty(row.totalQty, false, useDash)}
       </td>
@@ -189,10 +173,6 @@ const ShiftRow = memo(function ShiftRow({
         <DefectCell
           key={key}
           defectKey={key}
-          dateKey={dateKey}
-          boardId={boardId}
-          process={row.process}
-          shiftSlot={row.shiftSlot}
           qty={row.defects[key] ?? 0}
           imageUrl={row.defectImages?.[key] ?? ""}
           isPercent={isPercent}
@@ -201,7 +181,6 @@ const ShiftRow = memo(function ShiftRow({
           onQtyChange={
             canEdit ? (value) => onShiftFieldChange?.(key, value) : undefined
           }
-          onImageChange={canEdit ? onShiftFieldChange : undefined}
           highlight={
             !isPercent &&
             isTotal &&
@@ -224,9 +203,7 @@ export default function S90dProcessShiftTable({
   boardCount = 1,
   useDash = true,
   editable = false,
-  onProductCodeChange,
   onShiftFieldChange,
-  onRemoveBoard,
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
@@ -269,7 +246,6 @@ export default function S90dProcessShiftTable({
       editable={editable}
       dateKey={dateKey}
       boardId={boardId}
-      onProductCodeChange={onProductCodeChange}
       onShiftFieldChange={
         row.isTotal || row.isPercent
           ? undefined
@@ -280,7 +256,7 @@ export default function S90dProcessShiftTable({
 
   return (
     <article className="s90d-board-card">
-      <header className="s90d-board-head">
+      <header className="s90d-board-head s90d-board-head--compact">
         <div className="s90d-board-head-main">
           <h3 className="s90d-board-title">
             {rt("boardTitle", "Bảng theo dõi chất lượng sản xuất")}
@@ -292,53 +268,28 @@ export default function S90dProcessShiftTable({
               </span>
             ) : null}
           </h3>
-          <p className="s90d-board-subtitle">
-            {rt(
-              "boardSubtitle",
-              "Theo dõi số lượng, hiệu suất và lỗi theo từng ca sản xuất",
-            )}
-          </p>
         </div>
 
         <div className="s90d-board-head-actions">
-          {onRemoveBoard ? (
-            <button
-              type="button"
-              className="s90d-remove-board-btn"
-              onClick={onRemoveBoard}
-            >
-              {rt("removeBoard", "Xóa bảng")}
-            </button>
-          ) : null}
-
-          <div className="s90d-board-meta">
-          <div className="s90d-meta-item">
-            <span className="s90d-meta-label">
-              {rt("metaDate", "Ngày")}
-            </span>
-            <strong>{shortDate}</strong>
-          </div>
-          <div className="s90d-meta-item">
-            <span className="s90d-meta-label">
-              {rt("metaProductCode", "Mã hàng")}
-            </span>
-            {editable ? (
-              <input
-                type="text"
-                className="s90d-meta-input"
-                value={productCode}
-                onChange={(e) => onProductCodeChange?.(e.target.value)}
-              />
-            ) : (
+          <div className="s90d-board-meta s90d-board-meta--inline-row">
+            <div className="s90d-meta-chip">
+              <span className="s90d-meta-label">
+                {rt("metaDate", "Ngày")}
+              </span>
+              <strong>{shortDate}</strong>
+            </div>
+            <div className="s90d-meta-chip">
+              <span className="s90d-meta-label">
+                {rt("metaProductCode", "Mã hàng")}
+              </span>
               <strong>{productCode}</strong>
-            )}
-          </div>
-          <div className="s90d-meta-item">
-            <span className="s90d-meta-label">
-              {rt("metaProcess", "Công đoạn")}
-            </span>
-            <strong>{processLabel}</strong>
-          </div>
+            </div>
+            <div className="s90d-meta-chip">
+              <span className="s90d-meta-label">
+                {rt("metaProcess", "Công đoạn")}
+              </span>
+              <strong>{processLabel}</strong>
+            </div>
           </div>
         </div>
       </header>
@@ -393,11 +344,8 @@ export default function S90dProcessShiftTable({
               <th className="s90d-head-shift s90d-col-product">
                 <S90dBilingualHeader ko="상품 코드" vi="Mã hàng" />
               </th>
-              <th className="s90d-head-shift">
+              <th className="s90d-head-shift s90d-col-process">
                 <S90dBilingualHeader ko="공정" vi="Công đoạn" />
-              </th>
-              <th className="s90d-head-shift">
-                <S90dBilingualHeader ko="구분" vi="Phân loại" />
               </th>
               <th className="s90d-head-qty s90d-head-total-qty">
                 <S90dBilingualHeader ko="총수량" vi="Tổng SL" />

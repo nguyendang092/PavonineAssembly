@@ -35,17 +35,14 @@ function AnnualLeaveManagerTablePanel({
   filteredEntries,
   monthlyByEmpKey,
   storedMonthlyByEmpKey = {},
-  storedRowByEmpKey = {},
   year,
   monthFilter = "",
   monthColumnLabels,
   detailThroughDateKey,
-  filterPending = false,
   attendanceEnhancing = false,
   attendanceUsageReady = false,
   attendanceAccrualReady = false,
-  attendanceCalculated = true,
-  normalizeEntryRow,
+  resolveDisplayRow,
   canManage = false,
   adjustmentSavingId = "",
   onAdjustmentSave,
@@ -58,13 +55,31 @@ function AnnualLeaveManagerTablePanel({
   });
   const pagedRowCacheRef = useRef(new Map());
 
+  const pagedMonthValuesByEmpKey = useMemo(() => {
+    const map = new Map();
+    for (const entry of tablePagination.pagedItems) {
+      const rawValues = attendanceUsageReady
+        ? monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES
+        : storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
+      map.set(
+        entry.id,
+        filterAnnualLeaveManagerMonthValues(rawValues, monthFilter),
+      );
+    }
+    return map;
+  }, [
+    attendanceUsageReady,
+    monthFilter,
+    monthlyByEmpKey,
+    storedMonthlyByEmpKey,
+    tablePagination.pagedItems,
+  ]);
+
   const pagedLiveRows = useMemo(() => {
     const cache = pagedRowCacheRef.current;
     const activeKeys = new Set();
     const rows = tablePagination.pagedItems.map((entry, localIdx) => {
-      const storedRow = storedRowByEmpKey[entry.id] ?? null;
-      const liveRow = attendanceUsageReady ? normalizeEntryRow(entry) : null;
-      const freshRow = liveRow ?? storedRow ?? entry._raw;
+      const freshRow = resolveDisplayRow(entry) ?? entry._raw;
       activeKeys.add(entry.id);
       const cached = cache.get(entry.id);
       const row =
@@ -84,21 +99,17 @@ function AnnualLeaveManagerTablePanel({
     }
     return rows;
   }, [
-    attendanceUsageReady,
-    normalizeEntryRow,
-    storedRowByEmpKey,
+    resolveDisplayRow,
     tablePagination.pagedItems,
     tablePagination.rowIndexOffset,
   ]);
 
-  const tableBusy = filterPending;
-
   return (
     <>
       <div
-        className={`annual-leave-table-compact w-full max-w-none rounded-md bg-white shadow-sm transition-opacity duration-150 dark:bg-slate-900 dark:ring-1 dark:ring-slate-700${
-          tableBusy ? " opacity-80" : ""
-        }${attendanceEnhancing ? " annual-leave-table--attendance-pending" : ""}`}
+        className={`annual-leave-table-compact w-full max-w-none rounded-md bg-white shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700${
+          attendanceEnhancing ? " annual-leave-table--attendance-pending" : ""
+        }`}
       >
         <div className="annual-leave-table-scroll w-full min-w-0 max-w-full">
           <table className="annual-leave-table w-max min-w-full max-w-none border-separate border-spacing-0">
@@ -226,12 +237,10 @@ function AnnualLeaveManagerTablePanel({
                     index={index}
                     year={year}
                     throughDateKey={detailThroughDateKey}
-                    monthValues={filterAnnualLeaveManagerMonthValues(
-                      attendanceUsageReady
-                        ? monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES
-                        : storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES,
-                      monthFilter,
-                    )}
+                    monthValues={
+                      pagedMonthValuesByEmpKey.get(entry.id) ??
+                      EMPTY_MONTH_VALUES
+                    }
                     canManage={canManage}
                     adjustmentSaving={adjustmentSavingId === entry.id}
                     onAdjustmentSave={onAdjustmentSave}
@@ -267,17 +276,14 @@ function areTablePanelPropsEqual(prev, next) {
     prev.filteredEntries === next.filteredEntries &&
     prev.monthlyByEmpKey === next.monthlyByEmpKey &&
     prev.storedMonthlyByEmpKey === next.storedMonthlyByEmpKey &&
-    prev.storedRowByEmpKey === next.storedRowByEmpKey &&
     prev.year === next.year &&
     prev.monthFilter === next.monthFilter &&
     prev.monthColumnLabels === next.monthColumnLabels &&
     prev.detailThroughDateKey === next.detailThroughDateKey &&
-    prev.filterPending === next.filterPending &&
     prev.attendanceEnhancing === next.attendanceEnhancing &&
     prev.attendanceUsageReady === next.attendanceUsageReady &&
     prev.attendanceAccrualReady === next.attendanceAccrualReady &&
-    prev.attendanceCalculated === next.attendanceCalculated &&
-    prev.normalizeEntryRow === next.normalizeEntryRow &&
+    prev.resolveDisplayRow === next.resolveDisplayRow &&
     prev.canManage === next.canManage &&
     prev.adjustmentSavingId === next.adjustmentSavingId &&
     prev.onAdjustmentSave === next.onAdjustmentSave

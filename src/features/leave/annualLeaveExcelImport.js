@@ -3,8 +3,10 @@ import { annualLeaveFirebaseKeyForMnv } from "./annualLeaveEmpKey";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import {
   computeAnnualLeaveTotals,
+  normalizeAnnualLeaveStartWorkingDate,
   parseAnnualLeaveNumber,
   resolveAnnualLeaveCurrentYear,
+  resolveAnnualLeaveYearAsOfDateKey,
 } from "./annualLeaveCalculated";
 import { sumAnnualLeaveMonthlyUsageValues } from "./annualLeaveDerived";
 import {
@@ -291,10 +293,11 @@ export async function parseAnnualLeaveExcelFile(file, options = {}) {
       continue;
     }
 
-    const startWorkingDate =
+    const startWorkingDate = normalizeAnnualLeaveStartWorkingDate(
       col.startWorkingDate >= 0
         ? parseExcelDate(row[col.startWorkingDate], workbook)
-        : "";
+        : "",
+    );
 
     const monthValues = readMonthlyLeaveUsageFromRow(row, col.monthIndices);
     const monthlyUsed = sumAnnualLeaveMonthlyUsageValues(monthValues);
@@ -328,7 +331,9 @@ export async function parseAnnualLeaveExcelFile(file, options = {}) {
 
     if (year != null && startWorkingDate) {
       base[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR] =
-        resolveAnnualLeaveCurrentYear(base, year);
+        resolveAnnualLeaveCurrentYear(base, year, {
+          asOfDateKey: resolveAnnualLeaveYearAsOfDateKey(year),
+        });
     } else {
       base[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR] = importedAnnual ?? 0;
     }

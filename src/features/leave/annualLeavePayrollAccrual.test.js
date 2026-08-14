@@ -8,6 +8,7 @@ import {
 import {
   buildAnnualLeaveMonthWorkSummary,
   listCalendarDateKeysForYearMonth,
+  resolveJoinYearMonthKey,
 } from "./annualLeavePayrollAccrual";
 import { monthMeetsHalfStandardWorkDays } from "./annualLeaveCalculated";
 
@@ -15,6 +16,13 @@ describe("listCalendarDateKeysForYearMonth", () => {
   it("lists all days in the month", () => {
     expect(listCalendarDateKeysForYearMonth("2026-02")).toHaveLength(28);
     expect(listCalendarDateKeysForYearMonth("2026-02")[0]).toBe("2026-02-01");
+  });
+});
+
+describe("resolveJoinYearMonthKey", () => {
+  it("accepts Excel-style join dates", () => {
+    expect(resolveJoinYearMonthKey("18-Jun-2026", 2026)).toBe("2026-06");
+    expect(resolveJoinYearMonthKey("2016-01-10", 2026)).toBe(null);
   });
 });
 

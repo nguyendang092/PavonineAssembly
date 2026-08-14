@@ -10,11 +10,8 @@ import {
   pickDefaultDateKey,
 } from "../lib/s90dDateUtils";
 import {
-  addProcessMonthBoard,
-  createEmptyDayProcessEntry,
-  removeProcessMonthBoard,
+  createEmptyProcessDayEntry,
   resolveProcessBoards,
-  updateProcessMonthProductCode,
   updateProcessMonthShiftField,
 } from "../lib/s90dManualEntries";
 
@@ -28,7 +25,8 @@ export default function S90dProcessTabPanel({
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
-  const { defaultProductCode } = useProductionReportContext();  const [localByDate, setLocalByDate] = useState({});
+  const { defaultProductCode, usesFixedBoardSpecs = false } =
+    useProductionReportContext();  const [localByDate, setLocalByDate] = useState({});
   const [isDirty, setIsDirty] = useState(false);
   const [selectedDateKey, setSelectedDateKey] = useState(() =>
     pickDefaultDateKey(monthDayKeys),
@@ -43,35 +41,42 @@ export default function S90dProcessTabPanel({
     const slice = Object.fromEntries(
       monthDayKeys.map((dateKey) => {
         const entry = getProcessEntry(dateKey, process);
-        if (defaultProductCode === "S90D") {
-          return [dateKey, entry];
+        if (usesFixedBoardSpecs) {
+          return [
+            dateKey,
+            { boards: resolveProcessBoards(entry, process, defaultProductCode) },
+          ];
         }
         return [
           dateKey,
           {
-            boards: resolveProcessBoards(entry).map((board) => ({
-              ...board,
-              productCode:
-                String(board.productCode ?? "").trim() === "S90D"
-                  ? defaultProductCode
-                  : board.productCode,
-            })),
+            boards: resolveProcessBoards(entry, process, defaultProductCode).map(
+              (board) => ({
+                ...board,
+                productCode:
+                  String(board.productCode ?? "").trim() === "S90D"
+                    ? defaultProductCode
+                    : board.productCode,
+              }),
+            ),
           },
         ];
       }),
     );
     setLocalByDate(slice);
     setIsDirty(false);
-  }, [process, monthDayKeys, storeRevision, getProcessEntry, defaultProductCode]);
+  }, [process, monthDayKeys, storeRevision, getProcessEntry, defaultProductCode, usesFixedBoardSpecs]);
 
   useEffect(() => {
     setSelectedDateKey((prev) => clampDateKeyToMonth(prev, monthDayKeys));
   }, [monthDayKeys]);
 
-  const selectedDayEntry = localByDate[selectedDateKey] ?? createEmptyDayProcessEntry();
+  const selectedDayEntry =
+    localByDate[selectedDateKey] ??
+    createEmptyProcessDayEntry(process, defaultProductCode);
   const selectedBoards = useMemo(
-    () => resolveProcessBoards(selectedDayEntry),
-    [selectedDayEntry],
+    () => resolveProcessBoards(selectedDayEntry, process, defaultProductCode),
+    [defaultProductCode, process, selectedDayEntry],
   );
 
   const boardSummaries = useMemo(
@@ -87,13 +92,6 @@ export default function S90dProcessTabPanel({
     [process, selectedBoards, selectedDateKey],
   );
 
-  const updateProductCode = useCallback((boardId, productCode) => {
-    setIsDirty(true);
-    setLocalByDate((prev) =>
-      updateProcessMonthProductCode(prev, selectedDateKey, boardId, productCode),
-    );
-  }, [selectedDateKey]);
-
   const updateShiftField = useCallback(
     (boardId, shiftSlot, field, value) => {
       setIsDirty(true);
@@ -106,35 +104,11 @@ export default function S90dProcessTabPanel({
           shiftSlot,
           field,
           value,
+          defaultProductCode,
         ),
       );
     },
-    [process, selectedDateKey],
-  );
-
-  const handleAddBoard = useCallback(() => {
-    setIsDirty(true);
-    setLocalByDate((prev) =>
-      addProcessMonthBoard(
-        prev,
-        selectedDateKey,
-        rt("boardLabelN", "Bảng {{n}}", {
-          n: resolveProcessBoards(prev[selectedDateKey]).length + 1,
-        }),
-        defaultProductCode,
-      ),
-    );
-  }, [defaultProductCode, selectedDateKey, rt]);
-
-  const handleRemoveBoard = useCallback(
-    (boardId) => {
-      if (selectedBoards.length <= 1) return;
-      setIsDirty(true);
-      setLocalByDate((prev) =>
-        removeProcessMonthBoard(prev, selectedDateKey, boardId),
-      );
-    },
-    [selectedBoards.length, selectedDateKey],
+    [defaultProductCode, process, selectedDateKey],
   );
 
   const handleSave = useCallback(async () => {
@@ -209,14 +183,6 @@ export default function S90dProcessTabPanel({
 
         <button
           type="button"
-          className="s90d-add-board-btn"
-          onClick={handleAddBoard}
-        >
-          {rt("addBoard", "Thêm bảng")}
-        </button>
-
-        <button
-          type="button"
           className={`s90d-save-btn${isDirty ? " s90d-save-btn--dirty" : ""}`}
           disabled={!isDirty || saving}
           onClick={handleSave}
@@ -238,23 +204,12 @@ export default function S90dProcessTabPanel({
               processSummary={summary}
               dateKey={selectedDateKey}
               boardId={board.id}
-              boardLabel={
-                board.label ||
-                rt("boardLabelN", "Bảng {{n}}", { n: index + 1 })
-              }
+              boardLabel={board.productCode || board.label}
               boardIndex={index + 1}
               boardCount={selectedBoards.length}
               editable
-              onProductCodeChange={(productCode) =>
-                updateProductCode(board.id, productCode)
-              }
               onShiftFieldChange={(shiftSlot, field, value) =>
                 updateShiftField(board.id, shiftSlot, field, value)
-              }
-              onRemoveBoard={
-                selectedBoards.length > 1
-                  ? () => handleRemoveBoard(board.id)
-                  : undefined
               }
             />
           </div>

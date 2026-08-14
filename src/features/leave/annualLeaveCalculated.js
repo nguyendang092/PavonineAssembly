@@ -36,6 +36,83 @@ function parseAnnualLeaveIsoDate(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+const ANNUAL_LEAVE_MONTH_NAME_TO_INDEX = Object.freeze({
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12,
+});
+
+/** Chuẩn hóa ngày vào làm từ ISO, Excel text (18-Jun-2026), hoặc dd/mm/yyyy. */
+export function normalizeAnnualLeaveStartWorkingDate(value) {
+  const iso = parseAnnualLeaveIsoDate(value);
+  if (iso) {
+    const y = iso.getFullYear();
+    const m = String(iso.getMonth() + 1).padStart(2, "0");
+    const d = String(iso.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+
+  const slash = text.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+  if (slash) {
+    const day = String(slash[1]).padStart(2, "0");
+    const month = String(slash[2]).padStart(2, "0");
+    return `${slash[3]}-${month}-${day}`;
+  }
+
+  const dmyText = text.match(/^(\d{1,2})[-\s]?([a-zA-Z]{3})[-\s]?(\d{2,4})$/i);
+  if (dmyText) {
+    const monthIndex = ANNUAL_LEAVE_MONTH_NAME_TO_INDEX[dmyText[2].toLowerCase()];
+    if (monthIndex) {
+      let y = Number(dmyText[3]);
+      if (dmyText[3].length === 2) {
+        y = y <= 50 ? 2000 + y : 1900 + y;
+      }
+      const day = String(Number(dmyText[1])).padStart(2, "0");
+      const month = String(monthIndex).padStart(2, "0");
+      return `${y}-${month}-${day}`;
+    }
+  }
+
+  return "";
+}
+
+function parseAnnualLeaveStartWorkingDate(value) {
+  const normalized = normalizeAnnualLeaveStartWorkingDate(value);
+  return parseAnnualLeaveIsoDate(normalized);
+}
+
+/** Tháng đã chốt (hết tháng hoặc asOf sau ngày cuối tháng) mới được +1 phép. */
+export function isAnnualLeaveAccrualMonthClosed(year, monthIndex, asOfDateKey) {
+  const y = Number(year);
+  const m = Number(monthIndex);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return true;
+
+  const asOf =
+    parseAnnualLeaveIsoDate(asOfDateKey) ??
+    parseAnnualLeaveIsoDate(resolveAnnualLeaveYearAsOfDateKey(y));
+  if (!asOf) return true;
+
+  if (asOf.getFullYear() < y) return true;
+  if (asOf.getFullYear() > y) return false;
+
+  const monthEndDay = new Date(y, m + 1, 0).getDate();
+  const monthEndKey = `${y}-${String(m + 1).padStart(2, "0")}-${String(monthEndDay).padStart(2, "0")}`;
+  const asOfKey = `${asOf.getFullYear()}-${String(asOf.getMonth() + 1).padStart(2, "0")}-${String(asOf.getDate()).padStart(2, "0")}`;
+  return asOfKey >= monthEndKey;
+}
+
 /** Ngày chốt thâm niên cho phép năm của `year` (năm hiện tại → hôm nay). */
 export function resolveAnnualLeaveTenureAsOfDateKey(year) {
   const y = Number(year);
@@ -55,7 +132,7 @@ export function completedYearsFromStartWorkingDate(
   startWorkingDate,
   asOfDateKey,
 ) {
-  const join = parseAnnualLeaveIsoDate(startWorkingDate);
+  const join = parseAnnualLeaveStartWorkingDate(startWorkingDate);
   const asOf = parseAnnualLeaveIsoDate(asOfDateKey);
   if (!join || !asOf) return null;
   if (asOf.getTime() < join.getTime()) return 0;
@@ -98,7 +175,7 @@ export function isStartWorkingDateInCalendarMonth(
   year,
   monthIndex,
 ) {
-  const join = parseAnnualLeaveIsoDate(startWorkingDate);
+  const join = parseAnnualLeaveStartWorkingDate(startWorkingDate);
   const y = Number(year);
   const m = Number(monthIndex);
   if (!join || !Number.isFinite(y) || !Number.isFinite(m)) return false;
@@ -107,7 +184,7 @@ export function isStartWorkingDateInCalendarMonth(
 
 /** NV có ngày vào làm thuộc năm lịch `year`. */
 export function isStartWorkingDateInCalendarYear(startWorkingDate, year) {
-  const join = parseAnnualLeaveIsoDate(startWorkingDate);
+  const join = parseAnnualLeaveStartWorkingDate(startWorkingDate);
   const y = Number(year);
   if (!join || !Number.isFinite(y)) return false;
   return join.getFullYear() === y;
@@ -145,7 +222,7 @@ export function resolveAnnualLeaveAccrualMonthRange(
   const y = Number(year);
   if (!asOf || !Number.isFinite(y)) return null;
 
-  const join = parseAnnualLeaveIsoDate(startWorkingDate);
+  const join = parseAnnualLeaveStartWorkingDate(startWorkingDate);
   const asOfDate = parseAnnualLeaveIsoDate(asOf);
   if (!join || !asOfDate) return null;
   if (asOfDate.getTime() < join.getTime()) return null;
@@ -199,12 +276,17 @@ export function resolveAnnualLeaveMonthlyAccrualDays(
 
   const y = Number(year);
   const newJoinerInYear = isStartWorkingDateInCalendarYear(startWorkingDate, y);
+  const asOf = asOfDateKey ?? resolveAnnualLeaveYearAsOfDateKey(y);
   let accrual = 0;
   for (
     let monthIndex = range.startMonth;
     monthIndex <= range.endMonth;
     monthIndex += 1
   ) {
+    if (!isAnnualLeaveAccrualMonthClosed(y, monthIndex, asOf)) {
+      continue;
+    }
+
     if (annualLeaveMonthUsesPayrollHalfAccrualRule(y, monthIndex)) {
       const summary = resolveMonthWorkSummaryForAccrual(
         monthWorkSummaryByYearMonth,
@@ -249,7 +331,9 @@ export function resolveAnnualLeaveCurrentYear(
   { monthWorkSummaryByYearMonth = null, asOfDateKey = null } = {},
 ) {
   const adjustment = resolveAnnualLeaveAdjustment(row);
-  const startDate = row?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE];
+  const startDate = normalizeAnnualLeaveStartWorkingDate(
+    row?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
+  );
   if (!startDate) {
     return roundAnnualLeaveHours(
       parseAnnualLeaveNumber(

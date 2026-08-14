@@ -6,8 +6,10 @@ import {
   formatAnnualLeaveMonthColumnLabel,
   isStartWorkingDateInCalendarMonth,
   isStartWorkingDateInCalendarYear,
+  isAnnualLeaveAccrualMonthClosed,
   listAnnualLeaveCalendarYearMonths,
   monthMeetsHalfStandardWorkDays,
+  normalizeAnnualLeaveStartWorkingDate,
   resolveAnnualLeaveAccrualMonthRange,
   resolveAnnualLeaveCurrentYear,
   resolveAnnualLeaveMonthlyAccrualDays,
@@ -135,7 +137,12 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
 
     const passAll = accrualMonthMap(2026, 0, 6, 14, 22);
     expect(
-      resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026, passAll),
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2016-01-10",
+        2026,
+        passAll,
+        "2026-07-31",
+      ),
     ).toBe(7);
 
     const failJuly = {
@@ -143,7 +150,12 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
       "2026-07": { workDays: 5, standardWorkDays: 22 },
     };
     expect(
-      resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026, failJuly),
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2016-01-10",
+        2026,
+        failJuly,
+        "2026-07-31",
+      ),
     ).toBe(6);
   });
 
@@ -154,13 +166,18 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     expect(resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026)).toBe(2);
 
     expect(
-      resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026, {
-        "2026-03": { workDays: 11, standardWorkDays: 20 },
-        "2026-04": { workDays: 4, standardWorkDays: 20 },
-        "2026-05": { workDays: 11, standardWorkDays: 20 },
-        "2026-06": { workDays: 11, standardWorkDays: 20 },
-        "2026-07": { workDays: 11, standardWorkDays: 20 },
-      }),
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2026-03-15",
+        2026,
+        {
+          "2026-03": { workDays: 11, standardWorkDays: 20 },
+          "2026-04": { workDays: 4, standardWorkDays: 20 },
+          "2026-05": { workDays: 11, standardWorkDays: 20 },
+          "2026-06": { workDays: 11, standardWorkDays: 20 },
+          "2026-07": { workDays: 11, standardWorkDays: 20 },
+        },
+        "2026-07-31",
+      ),
     ).toBe(5);
   });
 
@@ -180,9 +197,12 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     vi.setSystemTime(new Date(2026, 2, 20));
 
     expect(
-      resolveAnnualLeaveMonthlyAccrualDays("2026-03-15", 2026, {
-        "2026-03": { workDays: 11, standardWorkDays: 20 },
-      }),
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2026-03-15",
+        2026,
+        { "2026-03": { workDays: 11, standardWorkDays: 20 } },
+        "2026-03-31",
+      ),
     ).toBe(1);
   });
 
@@ -219,16 +239,49 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
       }),
     ).toBe(0);
     expect(
-      resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026, {
-        "2026-06": { workDays: 14, standardWorkDays: 27 },
-      }),
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2026-06-25",
+        2026,
+        { "2026-06": { workDays: 14, standardWorkDays: 27 } },
+        "2026-06-30",
+      ),
     ).toBe(1);
     expect(
-      resolveAnnualLeaveMonthlyAccrualDays("2026-06-25", 2026, {
-        "2026-06": { workDays: 4, standardWorkDays: 27 },
-        "2026-07": { workDays: 14, standardWorkDays: 27 },
-      }),
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2026-06-25",
+        2026,
+        {
+          "2026-06": { workDays: 4, standardWorkDays: 27 },
+          "2026-07": { workDays: 14, standardWorkDays: 27 },
+        },
+        "2026-07-31",
+      ),
     ).toBe(1);
+  });
+
+  it("join 18-Jun-2026 (MNV 260638) — chỉ tháng đã chốt đạt ½ mới +1", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 14));
+
+    const monthMap = {
+      "2026-06": { workDays: 11, standardWorkDays: 27 },
+      "2026-07": { workDays: 14, standardWorkDays: 27 },
+      "2026-08": { workDays: 14, standardWorkDays: 27 },
+    };
+
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2026-06-18",
+        2026,
+        monthMap,
+        "2026-08-14",
+      ),
+    ).toBe(1);
+    expect(normalizeAnnualLeaveStartWorkingDate("18-Jun-2026")).toBe(
+      "2026-06-18",
+    );
+    expect(isAnnualLeaveAccrualMonthClosed(2026, 7, "2026-08-14")).toBe(false);
+    expect(isAnnualLeaveAccrualMonthClosed(2026, 6, "2026-08-14")).toBe(true);
   });
 
   it("resets accrual for a new calendar year", () => {
@@ -239,10 +292,20 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     const passJanJul2026 = accrualMonthMap(2026, 0, 6, 14, 22);
 
     expect(
-      resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2025, passAll2025),
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2016-01-10",
+        2025,
+        passAll2025,
+        "2025-12-31",
+      ),
     ).toBe(12);
     expect(
-      resolveAnnualLeaveMonthlyAccrualDays("2016-01-10", 2026, passJanJul2026),
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2016-01-10",
+        2026,
+        passJanJul2026,
+        "2026-07-31",
+      ),
     ).toBe(7);
   });
 
@@ -295,6 +358,7 @@ describe("resolveAnnualLeaveCurrentYear", () => {
     expect(
       resolveAnnualLeaveCurrentYear(row, 2026, {
         monthWorkSummaryByYearMonth: passAll,
+        asOfDateKey: "2026-07-31",
       }),
     ).toBe(9);
   });
@@ -331,6 +395,7 @@ describe("computeAnnualLeaveTotals", () => {
     const passAll = accrualMonthMap(2026, 0, 6, 14, 22);
     const t = computeAnnualLeaveTotals(row, 2026, {
       monthWorkSummaryByYearMonth: passAll,
+      asOfDateKey: "2026-07-31",
     });
     expect(t[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]).toBe(9);
   });

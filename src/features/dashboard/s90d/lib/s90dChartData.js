@@ -1,5 +1,11 @@
 import { format, parseISO } from "date-fns";
+import { applyS90dCumulativeYieldPct } from "./s90dCumulativeYield";
 import { S90D_DEFECT_COLUMNS, S90D_PROCESSES } from "./s90dDefectColumns";
+import {
+  findBoardRowForProduct,
+  isProductProcessChainComplete,
+  normalizeProductCode,
+} from "./s90dProcessChain";
 
 export function formatS90dChartDayTick(dateKey) {
   try {
@@ -85,6 +91,106 @@ export function buildS90dYieldComparisonData(summary, processLabelFn) {
   return buildS90dTotalProcessChartData(summary, processLabelFn).filter(
     (row) => row.totalQty > 0,
   );
+}
+
+function pctFromQty(okQty, totalQty) {
+  if (!totalQty) return null;
+  return Math.round((okQty / totalQty) * 1000) / 10;
+}
+
+function resolveBoardYield(boardRow) {
+  const totalQty = Number(boardRow?.totalQty ?? 0);
+  const okQty = Number(boardRow?.okQty ?? 0);
+  if (totalQty <= 0) {
+    return { totalQty: 0, okQty: 0, yieldPct: null, ngRatePct: null };
+  }
+
+  const yieldPct =
+    boardRow?.yieldPct != null
+      ? Number(boardRow.yieldPct)
+      : pctFromQty(okQty, totalQty);
+  const ngRatePct =
+    boardRow?.ngRatePct != null
+      ? Number(boardRow.ngRatePct)
+      : pctFromQty(Number(boardRow?.ngQty ?? 0), totalQty);
+
+  return { totalQty, okQty, yieldPct, ngRatePct };
+}
+
+/** Hiệu suất theo mã hàng — chỉ hợp lệ khi đủ SL ở mọi công đoạn (PRESS → MC → … → ASSEMBLY). */
+export function buildProductCodeYieldItems(
+  processDetails = [],
+  {
+    boardSpecs = null,
+    processes = S90D_PROCESSES,
+    requireFullProcessChain = false,
+  } = {},
+) {
+  const specs = Array.isArray(boardSpecs) && boardSpecs.length >= 2 ? boardSpecs : null;
+  if (!specs || !Array.isArray(processDetails) || !processDetails.length) {
+    return [];
+  }
+
+  const outputProcess = processes[processes.length - 1] ?? "ASSEMBLY";
+
+  return specs.map((spec) => {
+    const productCode = String(spec.productCode ?? spec.label ?? "").trim();
+    const codeKey = normalizeProductCode(productCode);
+
+    const pseudoProcessRows = processes.map((process) => {
+      const detail = processDetails.find((item) => item.process === process);
+      const boardRow = findBoardRowForProduct(detail, codeKey);
+      const metrics = resolveBoardYield(boardRow);
+      return {
+        process,
+        totalQty: metrics.totalQty,
+        okQty: metrics.okQty,
+        yieldPct: metrics.yieldPct,
+        cumulativeYieldPct: null,
+      };
+    });
+
+    const outputDetail = processDetails.find(
+      (item) => item.process === outputProcess,
+    );
+    const outputBoard =
+      findBoardRowForProduct(outputDetail, codeKey) ??
+      [...processDetails]
+        .reverse()
+        .flatMap((detail) => detail.boardRows ?? [])
+        .find(
+          (row) =>
+            normalizeProductCode(row.productCode ?? row.label) === codeKey,
+        ) ??
+      null;
+    const outputMetrics = resolveBoardYield(outputBoard);
+
+    const chainComplete = requireFullProcessChain
+      ? isProductProcessChainComplete(pseudoProcessRows, processes)
+      : pseudoProcessRows.some((row) => row.totalQty > 0);
+
+    const activeProcessRows = pseudoProcessRows.filter((row) => row.totalQty > 0);
+    applyS90dCumulativeYieldPct(activeProcessRows, { emptyAsNull: false });
+    const lastActiveProcess =
+      activeProcessRows[activeProcessRows.length - 1] ?? null;
+
+    const stageYieldPct = chainComplete ? outputMetrics.yieldPct : null;
+    const cumulativeYieldPct = chainComplete
+      ? lastActiveProcess?.cumulativeYieldPct ?? stageYieldPct
+      : null;
+
+    return {
+      productCode,
+      label: String(spec.label ?? productCode).trim() || productCode,
+      totalQty: outputMetrics.totalQty,
+      okQty: outputMetrics.okQty,
+      yieldPct: stageYieldPct,
+      cumulativeYieldPct,
+      ngRatePct: chainComplete ? outputMetrics.ngRatePct ?? null : null,
+      hasData: outputMetrics.totalQty > 0,
+      isValid: chainComplete && outputMetrics.totalQty > 0,
+    };
+  });
 }
 
 export function buildS90dDailyTrendChartData(monthDailySummaries) {

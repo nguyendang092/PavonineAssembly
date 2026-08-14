@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db, onValue, ref, set } from "@/services/firebase";
-import {
-  formatS90dMonthDisplayLabel,
+import {  formatS90dMonthDisplayLabel,
   formatS90dMonthLabel,
   listMonthDateKeys,
   listMonthKeysFromStore,
@@ -10,7 +9,7 @@ import {
   buildGrandTotalSummaryFromManual,
   buildMonthDailySummariesFromManual,
 } from "../s90d/lib/buildS90dFromManual";
-import { S90D_PROCESSES } from "../s90d/lib/s90dDefectColumns";
+import { manualEntryConfigFromReportConfig } from "../s90d/lib/s90dManualEntryReportConfig";
 import {
   getProcessEntry,
   mergeProcessMonthIntoStore,
@@ -27,11 +26,11 @@ import {
   serializeManualEntriesForFirebase,
 } from "./manualEntriesFirebase";
 
-function loadManualStore(storageKey) {
+function loadManualStore(storageKey, manualEntryConfig) {
   try {
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return {};
-    return normalizeManualStore(JSON.parse(raw));
+    return normalizeManualStore(JSON.parse(raw), manualEntryConfig);
   } catch {
     return {};
   }
@@ -49,13 +48,17 @@ export function useProductionManualEntries(config) {
     excelFilePrefix,
     defaultProductCode,
   } = config;
+  const manualEntryConfig = useMemo(
+    () => manualEntryConfigFromReportConfig(config),
+    [config],
+  );
 
   const monthReferenceDate = useMemo(() => new Date(), []);
   const [selectedMonthKey, setSelectedMonthKey] = useState(() =>
     formatS90dMonthLabel(new Date()),
   );
   const [store, setStore] = useState(() =>
-    normalizeManualStore(loadManualStore(storageKey)),
+    normalizeManualStore(loadManualStore(storageKey, manualEntryConfig), manualEntryConfig),
   );
   const [storeRevision, setStoreRevision] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -67,13 +70,13 @@ export function useProductionManualEntries(config) {
 
   const applyLoadedStore = useCallback(
     (nextStore) => {
-      const normalized = normalizeManualStore(nextStore);
+      const normalized = normalizeManualStore(nextStore, manualEntryConfig);
       lastPersistedJsonRef.current = JSON.stringify(normalized);
       setStore(normalized);
       setStoreRevision((value) => value + 1);
       saveManualStore(storageKey, normalized);
     },
-    [storageKey],
+    [manualEntryConfig, storageKey],
   );
 
   useEffect(() => {
@@ -87,9 +90,15 @@ export function useProductionManualEntries(config) {
           return;
         }
 
-        const remoteStore = parseManualEntriesSnapshot(snapshot.val());
+        const remoteStore = normalizeManualStore(
+          parseManualEntriesSnapshot(snapshot.val()),
+          manualEntryConfig,
+        );
         const hasRemote = Object.keys(remoteStore).length > 0;
-        const localStore = normalizeManualStore(loadManualStore(storageKey));
+        const localStore = normalizeManualStore(
+          loadManualStore(storageKey, manualEntryConfig),
+          manualEntryConfig,
+        );
         const hasLocal = Object.keys(localStore).length > 0;
 
         let nextStore = remoteStore;
@@ -108,15 +117,14 @@ export function useProductionManualEntries(config) {
         setSyncError("");
       },
       () => {
-        applyLoadedStore(loadManualStore(storageKey));
+        applyLoadedStore(loadManualStore(storageKey, manualEntryConfig));
         setLoading(false);
         setSyncError("Không tải được dữ liệu từ Firebase — dùng bản cục bộ.");
       },
     );
 
     return () => unsubscribe();
-  }, [applyLoadedStore, firebaseRoot, storageKey]);
-
+  }, [applyLoadedStore, firebaseRoot, manualEntryConfig, storageKey]);
   const monthOptions = useMemo(
     () => listMonthKeysFromStore(store, monthReferenceDate),
     [store, monthReferenceDate],
@@ -142,7 +150,7 @@ export function useProductionManualEntries(config) {
 
   const persistStore = useCallback(
     async (nextStore) => {
-      const normalized = normalizeManualStore(nextStore);
+      const normalized = normalizeManualStore(nextStore, manualEntryConfig);
       setSaving(true);
       setSyncError("");
 
@@ -163,7 +171,7 @@ export function useProductionManualEntries(config) {
         setSaving(false);
       }
     },
-    [firebaseRoot, storageKey],
+    [firebaseRoot, manualEntryConfig, storageKey],
   );
 
   const saveProcessMonth = useCallback(
@@ -173,10 +181,11 @@ export function useProductionManualEntries(config) {
         dateKeys,
         process,
         localByDate,
+        manualEntryConfig,
       );
       await persistStore(nextStore);
     },
-    [persistStore, store],
+    [manualEntryConfig, persistStore, store],
   );
 
   const exportMonthToExcel = useCallback(
@@ -204,7 +213,7 @@ export function useProductionManualEntries(config) {
         if (!rows.length) {
           throw new Error("EMPTY_IMPORT");
         }
-        const nextStore = mergeImportedRowsIntoStore(store, rows);
+        const nextStore = mergeImportedRowsIntoStore(store, rows, manualEntryConfig);
         await persistStore(nextStore);
         return { importedCount: rows.length };
       } catch (error) {
@@ -216,12 +225,13 @@ export function useProductionManualEntries(config) {
         setImporting(false);
       }
     },
-    [excelSheetName, persistStore, store],
+    [excelSheetName, manualEntryConfig, persistStore, store],
   );
 
   const getProcessEntryForDate = useCallback(
-    (dateKey, process) => getProcessEntry(store, dateKey, process),
-    [store],
+    (dateKey, process) =>
+      getProcessEntry(store, dateKey, process, manualEntryConfig),
+    [manualEntryConfig, store],
   );
 
   const monthDailySummaries = useMemo(
@@ -230,22 +240,29 @@ export function useProductionManualEntries(config) {
         store,
         dateKeys: monthDayKeys,
         defaultProductCode,
+        manualEntryConfig,
       }),
-    [store, monthDayKeys, defaultProductCode],
+    [defaultProductCode, manualEntryConfig, monthDayKeys, store],
   );
 
   const grandTotalSummary = useMemo(
     () =>
-      buildGrandTotalSummaryFromManual(monthDailySummaries, defaultProductCode),
-    [monthDailySummaries, defaultProductCode],
+      buildGrandTotalSummaryFromManual(
+        monthDailySummaries,
+        defaultProductCode,
+        manualEntryConfig,
+      ),
+    [defaultProductCode, manualEntryConfig, monthDailySummaries],
   );
 
   const hasAnyData = useMemo(
     () =>
       Object.values(store ?? {}).some((day) =>
-        S90D_PROCESSES.some((process) => processDayHasData(day?.[process])),
+        manualEntryConfig.processes.some((process) =>
+          processDayHasData(day?.[process], process, manualEntryConfig),
+        ),
       ),
-    [store],
+    [manualEntryConfig, store],
   );
 
   return {
@@ -268,6 +285,7 @@ export function useProductionManualEntries(config) {
     monthDailySummaries,
     grandTotalSummary,
     hasAnyData,
-    processes: S90D_PROCESSES,
+    processes: manualEntryConfig.processes,
+    manualEntryConfig,
   };
 }

@@ -66,8 +66,6 @@ export function useAnnualLeaveBalanceMap(year, options = {}) {
     attendanceRootPath,
     throughDateKey,
     yearMonthPrefix,
-    includeUsageDetail: false,
-    includeBalanceMap: false,
     includeAttendance: true,
     includePayrollMonthAccrual: true,
     scopeEmpKeySet,

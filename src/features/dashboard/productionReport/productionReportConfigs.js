@@ -1,3 +1,9 @@
+import {
+  AP5_BOARD_SPECS,
+  AP5_PROCESSES,
+  S90D_ASSEMBLY_BOARD_SPECS,
+} from "../s90d/lib/s90dManualEntryReportConfig";
+import { S90D_PROCESSES } from "../s90d/lib/s90dDefectColumns";
 import { WORKPLACE_PRODUCTION_PATHS_S90D } from "../workplace/workplaceProductionPaths";
 
 function buildDefectImageUploadPrefixFactory(prefix) {
@@ -29,6 +35,10 @@ export const S90D_PRODUCTION_REPORT_CONFIG = Object.freeze({
   id: "s90d",
   i18nPrefix: "s90dReport",
   defaultProductCode: "S90D",
+  processes: S90D_PROCESSES,
+  fixedBoardSpecs: S90D_ASSEMBLY_BOARD_SPECS,
+  fixedBoardSpecsAllProcesses: false,
+  usesFixedBoardSpecs: true,
   firebaseRoot: WORKPLACE_PRODUCTION_PATHS_S90D.manualEntriesRoot,
   storageKey: "s90d-manual-entries-v1",
   excelSheetName: "S90D_Nhap",
@@ -37,44 +47,25 @@ export const S90D_PRODUCTION_REPORT_CONFIG = Object.freeze({
   buildDefectImageUploadPrefix: buildDefectImageUploadPrefixFactory("s90d_defect"),
 });
 
-export const AP5FF_PRODUCTION_REPORT_CONFIG = Object.freeze({
-  id: "ap5ff",
+export const AP5_PRODUCTION_REPORT_CONFIG = Object.freeze({
+  id: "ap5",
   i18nPrefix: "ap5Report",
-  defaultProductCode: "AP5FF",
-  firebaseRoot: "ap5ff/manualEntries",
-  storageKey: "ap5ff-manual-entries-v1",
-  excelSheetName: "AP5FF_Nhap",
-  excelFilePrefix: "AP5FF",
-  chartReportBadgeKey: "chartReportBadgeAp5ff",
-  buildDefectImageUploadPrefix: buildDefectImageUploadPrefixFactory("ap5ff_defect"),
+  defaultProductCode: "AP5",
+  processes: AP5_PROCESSES,
+  fixedBoardSpecs: AP5_BOARD_SPECS,
+  fixedBoardSpecsAllProcesses: true,
+  usesFixedBoardSpecs: true,
+  firebaseRoot: "ap5/manualEntries",
+  storageKey: "ap5-manual-entries-v1",
+  excelSheetName: "AP5_Nhap",
+  excelFilePrefix: "AP5",
+  chartReportBadgeKey: "chartReportBadgeAp5",
+  buildDefectImageUploadPrefix: buildDefectImageUploadPrefixFactory("ap5_defect"),
 });
 
-export const AP5FZ_PRODUCTION_REPORT_CONFIG = Object.freeze({
-  id: "ap5fz",
-  i18nPrefix: "ap5Report",
-  defaultProductCode: "AP5FZ",
-  firebaseRoot: "ap5fz/manualEntries",
-  storageKey: "ap5fz-manual-entries-v1",
-  excelSheetName: "AP5FZ_Nhap",
-  excelFilePrefix: "AP5FZ",
-  chartReportBadgeKey: "chartReportBadgeAp5fz",
-  buildDefectImageUploadPrefix: buildDefectImageUploadPrefixFactory("ap5fz_defect"),
-});
+/** @deprecated Giữ tương thích import cũ — dùng AP5_PRODUCTION_REPORT_CONFIG. */
+export const AP5FF_PRODUCTION_REPORT_CONFIG = AP5_PRODUCTION_REPORT_CONFIG;
+export const AP5FZ_PRODUCTION_REPORT_CONFIG = AP5_PRODUCTION_REPORT_CONFIG;
+export const AP5FL_PRODUCTION_REPORT_CONFIG = AP5_PRODUCTION_REPORT_CONFIG;
 
-export const AP5FL_PRODUCTION_REPORT_CONFIG = Object.freeze({
-  id: "ap5fl",
-  i18nPrefix: "ap5Report",
-  defaultProductCode: "AP5FL",
-  firebaseRoot: "ap5fl/manualEntries",
-  storageKey: "ap5fl-manual-entries-v1",
-  excelSheetName: "AP5FL_Nhap",
-  excelFilePrefix: "AP5FL",
-  chartReportBadgeKey: "chartReportBadgeAp5fl",
-  buildDefectImageUploadPrefix: buildDefectImageUploadPrefixFactory("ap5fl_defect"),
-});
-
-export const AP5_PRODUCT_CONFIGS = Object.freeze([
-  AP5FF_PRODUCTION_REPORT_CONFIG,
-  AP5FZ_PRODUCTION_REPORT_CONFIG,
-  AP5FL_PRODUCTION_REPORT_CONFIG,
-]);
+export const AP5_PRODUCT_CONFIGS = Object.freeze([AP5_PRODUCTION_REPORT_CONFIG]);

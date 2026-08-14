@@ -87,10 +87,12 @@ export function normalizeExcelShiftSlot(value) {
   return S90D_SHIFT_SLOTS.includes(resolved) ? resolved : "";
 }
 
-export function normalizeExcelProcess(value) {
+export function normalizeExcelProcess(value, processes = S90D_PROCESSES) {
   const raw = trimCell(value).toUpperCase();
-  if (S90D_PROCESSES.includes(raw)) return raw;
-  return normalizeS90dProcess(raw);
+  if (processes.includes(raw)) return raw;
+  const normalized = normalizeS90dProcess(raw);
+  if (normalized && processes.includes(normalized)) return normalized;
+  return normalizeS90dProcess(value);
 }
 
 function buildHeaderIndexMap(headerRow) {
@@ -214,20 +216,22 @@ export function buildS90dExcelRowsFromStore(store, monthDayKeys, options = {}) {
   monthDayKeys.forEach((dateKey) => {
     processes.forEach((process) => {
       const processDayEntry = getProcessEntry(store, dateKey, process);
-      resolveProcessBoards(processDayEntry).forEach((board, boardIndex) => {
-        S90D_SHIFT_SLOTS.forEach((shiftSlot) => {
-          const shift = board.shifts[shiftSlot];
-          rows.push([
-            dateKey,
-            process,
-            boardIndex + 1,
-            shiftSlot.replace(/~/g, "-"),
-            board.productCode || DEFAULT_PRODUCT_CODE,
-            shift?.okQty ?? 0,
-            ...S90D_DEFECT_COLUMNS.map(({ key }) => shift?.defects?.[key] ?? 0),
-          ]);
-        });
-      });
+      resolveProcessBoards(processDayEntry, process, DEFAULT_PRODUCT_CODE).forEach(
+        (board, boardIndex) => {
+          S90D_SHIFT_SLOTS.forEach((shiftSlot) => {
+            const shift = board.shifts[shiftSlot];
+            rows.push([
+              dateKey,
+              process,
+              boardIndex + 1,
+              shiftSlot.replace(/~/g, "-"),
+              board.productCode || DEFAULT_PRODUCT_CODE,
+              shift?.okQty ?? 0,
+              ...S90D_DEFECT_COLUMNS.map(({ key }) => shift?.defects?.[key] ?? 0),
+            ]);
+          });
+        },
+      );
     });
   });
 
@@ -346,8 +350,12 @@ export async function readS90dManualExcelFile(
   return parseS90dManualExcelRows(sheetRows, workbook);
 }
 
-export function mergeImportedRowsIntoStore(store, rows) {
-  let next = normalizeManualStore(store);
+export function mergeImportedRowsIntoStore(
+  store,
+  rows,
+  configInput = DEFAULT_PRODUCT_CODE,
+) {
+  let next = normalizeManualStore(store, configInput);
 
   rows.forEach(
     ({
@@ -359,8 +367,13 @@ export function mergeImportedRowsIntoStore(store, rows) {
       okQty,
       defects,
     }) => {
-      const day = { ...ensureDayEntry(next, dateKey) };
-      const processDayEntry = ensureProcessBoardAtIndex(day[process], boardIndex);
+      const day = { ...ensureDayEntry(next, dateKey, configInput) };
+      const processDayEntry = ensureProcessBoardAtIndex(
+        day[process],
+        boardIndex,
+        process,
+        configInput,
+      );
       const boardId = processDayEntry.boards[boardIndex - 1]?.id;
       day[process] = processDayEntry;
       next[dateKey] = day;
@@ -380,6 +393,7 @@ export function mergeImportedRowsIntoStore(store, rows) {
         "okQty",
         okQty,
         boardId,
+        configInput,
       );
       S90D_DEFECT_COLUMNS.forEach(({ key }) => {
         next = updateManualShiftField(
@@ -390,10 +404,11 @@ export function mergeImportedRowsIntoStore(store, rows) {
           key,
           defects[key] ?? 0,
           boardId,
+          configInput,
         );
       });
     },
   );
 
-  return normalizeManualStore(next);
+  return normalizeManualStore(next, configInput);
 }

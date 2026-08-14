@@ -30,6 +30,11 @@ export function applyS90dCumulativeYieldPct(processRows, { emptyAsNull = false }
 
     const previousCumulative =
       index > 0 ? processRows[index - 1]?.cumulativeYieldPct : null;
+    if (emptyAsNull && index > 0 && previousCumulative == null) {
+      row.cumulativeYieldPct = null;
+      return;
+    }
+
     row.cumulativeYieldPct = computeS90dCumulativeYieldPct(
       row.yieldPct,
       previousCumulative,

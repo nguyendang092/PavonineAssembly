@@ -1,11 +1,9 @@
-import { normalizeManualStore } from "../s90d/lib/s90dManualEntries";
-
 /** @param {unknown} raw */
 export function parseManualEntriesSnapshot(raw) {
   if (!raw || typeof raw !== "object") return {};
   const { _meta, ...entries } = raw;
   void _meta;
-  return normalizeManualStore(entries);
+  return entries;
 }
 
 /** @param {ReturnType<typeof normalizeManualStore>} store */

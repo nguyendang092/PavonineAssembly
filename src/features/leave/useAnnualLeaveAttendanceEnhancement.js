@@ -228,6 +228,5 @@ export function useAnnualLeaveAttendanceEnhancement(
     attendanceUsageReady,
     attendanceAccrualReady,
     attendanceCalculated,
-    attendanceReady: skipAttendance || attendanceReady,
   };
 }

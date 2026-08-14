@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import AlertMessage from "@/components/ui/AlertMessage";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import S90dProcessTabPanel from "../s90d/components/S90dProcessTabPanel";
+import S90dDailyTabPanel from "../s90d/components/S90dDailyTabPanel";
 import S90dSummaryChartModal from "../s90d/components/S90dSummaryChartModal";
 import S90dSummaryTable from "../s90d/components/S90dSummaryTable";
 import { S90D_PROCESSES } from "../s90d/lib/s90dDefectColumns";
@@ -16,26 +17,24 @@ import { formatS90dMonthDisplayLabel } from "../s90d/lib/s90dDateUtils";
 import { useReportT } from "./useReportTranslation";
 import "../s90d/s90dProductionReport.css";
 
-const TABS = Object.freeze({
+const BASE_TABS = Object.freeze({
   TOTAL: "total",
   DAILY: "daily",
-  ...Object.fromEntries(S90D_PROCESSES.map((process) => [process, process])),
 });
-
-const TAB_ORDER = Object.freeze([TABS.TOTAL, TABS.DAILY, ...S90D_PROCESSES]);
 
 export default function ManualProductionReportPage({
   manualEntries,
   toolbarExtra = null,
   dailyCardIdPrefix = "s90d-day",
   totalTabSections = null,
+  dailyViewMode = "cards",
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
   const excelInputRef = useRef(null);
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(0);
-  const [activeTab, setActiveTab] = useState(TABS.TOTAL);
+  const [activeTab, setActiveTab] = useState(BASE_TABS.TOTAL);
   const [saveAlert, setSaveAlert] = useState({
     show: false,
     type: "success",
@@ -60,12 +59,19 @@ export default function ManualProductionReportPage({
     monthDailySummaries,
     grandTotalSummary,
     hasAnyData,
+    processes = S90D_PROCESSES,
   } = manualEntries;
 
-  const isProcessTab = S90D_PROCESSES.includes(activeTab);
-  const isSummaryTab = activeTab === TABS.TOTAL || activeTab === TABS.DAILY;
+  const tabOrder = useMemo(
+    () => [BASE_TABS.TOTAL, BASE_TABS.DAILY, ...processes],
+    [processes],
+  );
+
+  const isProcessTab = processes.includes(activeTab);
+  const isSummaryTab =
+    activeTab === BASE_TABS.TOTAL || activeTab === BASE_TABS.DAILY;
   const showGlobalLoading =
-    loading && !(totalTabSections?.length && activeTab === TABS.TOTAL);
+    loading && !(totalTabSections?.length && activeTab === BASE_TABS.TOTAL);
   const excelBusy = saving || importing;
 
   useLayoutEffect(() => {
@@ -162,16 +168,16 @@ export default function ManualProductionReportPage({
 
   const tabLabels = useMemo(
     () => ({
-      [TABS.TOTAL]: rt("tabTotal", "Tổng"),
-      [TABS.DAILY]: rt("tabDaily", "Theo ngày"),
+      [BASE_TABS.TOTAL]: rt("tabTotal", "Tổng"),
+      [BASE_TABS.DAILY]: rt("tabDaily", "Theo ngày"),
       ...Object.fromEntries(
-        S90D_PROCESSES.map((process) => [
+        processes.map((process) => [
           process,
           t(`areas.${process}`, { defaultValue: process }),
         ]),
       ),
     }),
-    [rt, t],
+    [processes, rt, t],
   );
 
   const pageSubtitle = rt(
@@ -268,7 +274,7 @@ export default function ManualProductionReportPage({
           role="tablist"
           aria-label={rt("tabsLabel", "Loại báo cáo sản lượng")}
         >
-          {TAB_ORDER.map((tabKey) => (
+          {tabOrder.map((tabKey) => (
             <button
               key={tabKey}
               type="button"
@@ -296,7 +302,7 @@ export default function ManualProductionReportPage({
       <S90dSummaryChartModal
         isOpen={chartModalOpen && isSummaryTab}
         onClose={() => setChartModalOpen(false)}
-        variant={activeTab === TABS.DAILY ? "daily" : "total"}
+        variant={activeTab === BASE_TABS.DAILY ? "daily" : "total"}
         grandTotalSummary={grandTotalSummary}
         monthDailySummaries={monthDailySummaries}
         monthDisplayLabel={monthDisplayLabel}
@@ -315,11 +321,11 @@ export default function ManualProductionReportPage({
             </div>
           ) : null}
 
-          {activeTab === TABS.TOTAL ? (
+          {activeTab === BASE_TABS.TOTAL ? (
             <section
               className="s90d-report-section"
               role="tabpanel"
-              aria-label={tabLabels[TABS.TOTAL]}
+              aria-label={tabLabels[BASE_TABS.TOTAL]}
             >
               {totalTabSections?.length ? (
                 <div className="s90d-daily-grid">
@@ -345,6 +351,13 @@ export default function ManualProductionReportPage({
                     </div>
                   ))}
                 </div>
+              ) : dailyViewMode === "dashboard" ? (
+                <S90dDailyTabPanel
+                  variant="total"
+                  monthDailySummaries={monthDailySummaries}
+                  grandTotalSummary={grandTotalSummary}
+                  monthDisplayLabel={monthDisplayLabel}
+                />
               ) : (
                 <S90dSummaryTable
                   summary={grandTotalSummary}
@@ -353,28 +366,32 @@ export default function ManualProductionReportPage({
                 />
               )}
             </section>
-          ) : activeTab === TABS.DAILY ? (
+          ) : activeTab === BASE_TABS.DAILY ? (
             <section
               className="s90d-report-section"
               role="tabpanel"
-              aria-label={tabLabels[TABS.DAILY]}
+              aria-label={tabLabels[BASE_TABS.DAILY]}
             >
-              <div className="s90d-daily-grid">
-                {monthDailySummaries.map((dailySummary) => (
-                  <div
-                    key={dailySummary.dateKey}
-                    className="s90d-daily-card"
-                    id={`${dailyCardIdPrefix}-${dailySummary.dateKey}`}
-                  >
-                    <S90dSummaryTable
-                      summary={dailySummary}
-                      variant="daily"
-                      dateLabel={dailySummary.dateLabel}
-                      dateKey={dailySummary.dateKey}
-                    />
-                  </div>
-                ))}
-              </div>
+              {dailyViewMode === "dashboard" ? (
+                <S90dDailyTabPanel monthDailySummaries={monthDailySummaries} />
+              ) : (
+                <div className="s90d-daily-grid">
+                  {monthDailySummaries.map((dailySummary) => (
+                    <div
+                      key={dailySummary.dateKey}
+                      className="s90d-daily-card"
+                      id={`${dailyCardIdPrefix}-${dailySummary.dateKey}`}
+                    >
+                      <S90dSummaryTable
+                        summary={dailySummary}
+                        variant="daily"
+                        dateLabel={dailySummary.dateLabel}
+                        dateKey={dailySummary.dateKey}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           ) : isProcessTab ? (
             <S90dProcessTabPanel

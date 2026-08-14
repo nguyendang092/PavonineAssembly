@@ -201,7 +201,6 @@ export function computeLiveAnnualLeaveState(
     usedFromMonthlySum = null,
     monthWorkSummaryByYearMonth = null,
     asOfDateKey = null,
-    preferStoredCurrentYear = false,
   } = {},
 ) {
   const hrUsed = resolveHrAnnualLeaveUsed(raw);
@@ -234,14 +233,10 @@ export function computeLiveAnnualLeaveState(
     balance: totals[ANNUAL_LEAVE_EMP.BALANCE],
     annualLeaveCurrentYear:
       year != null
-        ? preferStoredCurrentYear
-          ? parseAnnualLeaveNumber(
-              raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
-            )
-          : resolveAnnualLeaveCurrentYear(raw, year, {
-              monthWorkSummaryByYearMonth,
-              asOfDateKey,
-            })
+        ? resolveAnnualLeaveCurrentYear(raw, year, {
+            monthWorkSummaryByYearMonth,
+            asOfDateKey,
+          })
         : parseAnnualLeaveNumber(
             raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
           ),
@@ -331,7 +326,7 @@ export function buildLiveAnnualLeaveBalanceByMnv(
   monthWorkSummaryByEmpKey = {},
   {
     scopeEmpKeySet = null,
-    preferStoredCurrentYear = false,
+    asOfDateKey = null,
   } = {},
 ) {
   const map = {};
@@ -357,7 +352,7 @@ export function buildLiveAnnualLeaveBalanceByMnv(
     const { balance } = computeLiveAnnualLeaveState(raw, liveAtt, year, {
       usedFromMonthlySum,
       monthWorkSummaryByYearMonth: monthWorkSummaryByEmpKey[empKey] ?? null,
-      preferStoredCurrentYear,
+      asOfDateKey,
     });
     assignBalanceEmpKey(map, empKey, balance);
   }
@@ -376,7 +371,6 @@ export function normalizeAnnualLeaveRowLive(
   {
     asOfDateKey = null,
     usageThroughMonthIndex = null,
-    preferStoredCurrentYear = false,
   } = {},
 ) {
   if (!raw || typeof raw !== "object") return null;
@@ -395,7 +389,6 @@ export function normalizeAnnualLeaveRowLive(
     usedFromMonthlySum: monthlyUsed,
     monthWorkSummaryByYearMonth,
     asOfDateKey,
-    preferStoredCurrentYear,
   });
 
   return {
