@@ -2,8 +2,7 @@ import React, { memo, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useReportT } from "../../productionReport/useReportTranslation";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
-import { isHighDefectCell } from "../lib/buildS90dSummary";
-import { formatS90dDefectQty } from "../lib/buildS90dDailySummary";
+import { formatS90dDefectQty, formatS90dYieldPct, isHighDefectCell } from "../lib/s90dDisplayUtils";
 import { isLateShiftSlot } from "../lib/s90dShiftSlots";
 import {
   formatShiftLineLabel,
@@ -14,7 +13,7 @@ import S90dDefectCellEditor from "./S90dDefectCellEditor";
 import S90dDefectImageThumbs from "./S90dDefectImageThumbs";
 import S90dKpiCards from "./S90dKpiCards";
 
-const INFO_COL_COUNT = 4;
+const INFO_COL_COUNT_BASE = 4;
 const QTY_COL_COUNT = 5;
 
 function formatQty(value, isPercentRow, useDash) {
@@ -86,9 +85,9 @@ const ShiftRow = memo(function ShiftRow({
   t,
   useDash,
   editable = false,
-  dateKey = "",
-  boardId = "",
   onShiftFieldChange,
+  showCodeSlotColumn = false,
+  defaultCodeSlot = null,
 }) {
   const rt = useReportT();
   const isTotal = row.isTotal;
@@ -133,6 +132,10 @@ const ShiftRow = memo(function ShiftRow({
     lineCell = rt("defectRateRowLabel", "Tỷ lệ theo tổng SL →");
   }
 
+  const codeSlot = row.codeSlot ?? defaultCodeSlot;
+  const codeSlotLabel =
+    showCodeSlotColumn && !isPercent && codeSlot ? `Code ${codeSlot}` : "";
+
   return (
     <tr className={trClass}>
       <td className="s90d-sticky-col s90d-col-date">{dateCell}</td>
@@ -140,6 +143,19 @@ const ShiftRow = memo(function ShiftRow({
       <td className="s90d-col-product" title={isPercent ? undefined : row.productCode}>
         {isPercent ? "" : row.productCode}
       </td>
+      {showCodeSlotColumn ? (
+        <td
+          className={`s90d-col-code-slot${
+            codeSlot === "D"
+              ? " s90d-col-code-slot--d"
+              : codeSlot === "E"
+                ? " s90d-col-code-slot--e"
+                : ""
+          }`}
+        >
+          {codeSlotLabel}
+        </td>
+      ) : null}
       <td className="s90d-process s90d-col-process">
         {isPercent ? "" : processCellLabel}
       </td>
@@ -164,7 +180,7 @@ const ShiftRow = memo(function ShiftRow({
         {isPercent ? "" : formatQty(row.ngQty, false, useDash)}
       </td>
       <td className="s90d-num s90d-col-yield">
-        {isPercent ? "" : formatPct(row.yieldPct, useDash)}
+        {isPercent ? "" : formatS90dYieldPct(row.yieldPct, useDash ? "-" : "0%")}
       </td>
       <td className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}>
         {isPercent ? "" : formatPct(row.ngRatePct, useDash)}
@@ -197,7 +213,6 @@ const ShiftRow = memo(function ShiftRow({
 export default function S90dProcessShiftTable({
   processSummary,
   dateKey = "",
-  boardId = "",
   boardLabel = "",
   boardIndex = 1,
   boardCount = 1,
@@ -221,6 +236,12 @@ export default function S90dProcessShiftTable({
     processSummary.shiftRows?.[0]?.productCode ??
     totalRow?.productCode ??
     "S90D";
+  const codeSlot = processSummary.codeSlot;
+  const showCodeSlotColumn = codeSlot === "D" || codeSlot === "E";
+  const infoColCount = INFO_COL_COUNT_BASE + (showCodeSlotColumn ? 1 : 0);
+  const tableTitle =
+    boardLabel ||
+    (codeSlot ? `${productCode} · Code ${codeSlot}` : productCode);
 
   const { primaryShiftRows, lateShiftRows } = useMemo(() => {
     const primary = [];
@@ -244,27 +265,37 @@ export default function S90dProcessShiftTable({
       t={t}
       useDash={useDash}
       editable={editable}
-      dateKey={dateKey}
-      boardId={boardId}
       onShiftFieldChange={
         row.isTotal || row.isPercent
           ? undefined
           : (field, value) => onShiftFieldChange?.(row.shiftSlot, field, value)
       }
+      showCodeSlotColumn={showCodeSlotColumn}
+      defaultCodeSlot={codeSlot}
     />
   );
 
   return (
-    <article className="s90d-board-card">
+    <article
+      className={`s90d-board-card${
+        codeSlot === "D"
+          ? " s90d-board-card--coded"
+          : codeSlot === "E"
+            ? " s90d-board-card--codee"
+            : ""
+      }`}
+    >
       <header className="s90d-board-head s90d-board-head--compact">
         <div className="s90d-board-head-main">
           <h3 className="s90d-board-title">
-            {rt("boardTitle", "Bảng theo dõi chất lượng sản xuất")}
+            {rt("boardTitle", "BẢNG SẢN LƯỢNG")}
             <span className="s90d-board-badge">{processLabel}</span>
+            <span className="s90d-board-badge s90d-board-badge--table">
+              {tableTitle}
+            </span>
             {boardCount > 1 ? (
-              <span className="s90d-board-badge s90d-board-badge--table">
-                {boardLabel ||
-                  rt("boardLabelN", "Bảng {{n}}", { n: boardIndex })}
+              <span className="s90d-board-badge s90d-board-badge--index">
+                {boardIndex}/{boardCount}
               </span>
             ) : null}
           </h3>
@@ -284,6 +315,12 @@ export default function S90dProcessShiftTable({
               </span>
               <strong>{productCode}</strong>
             </div>
+            {codeSlot ? (
+              <div className="s90d-meta-chip">
+                <span className="s90d-meta-label">Code {codeSlot}</span>
+                <strong>Code {codeSlot}</strong>
+              </div>
+            ) : null}
             <div className="s90d-meta-chip">
               <span className="s90d-meta-label">
                 {rt("metaProcess", "Công đoạn")}
@@ -305,10 +342,7 @@ export default function S90dProcessShiftTable({
             onClick={() => setLateShiftsExpanded((expanded) => !expanded)}
           >
             {lateShiftsExpanded
-              ? rt(
-                  "collapseLateShifts",
-                  "Ẩn ca 22~24 trở xuống",
-                )
+              ? rt("collapseLateShifts", "Ẩn ca 22~24 trở xuống")
               : rt(
                   "expandLateShifts",
                   "Hiện ca 22~24, 00~03, 03~05, 05~08",
@@ -321,7 +355,7 @@ export default function S90dProcessShiftTable({
         <table className="s90d-board-table s90d-process-table-layout">
           <thead>
             <tr className="s90d-head-group">
-              <th colSpan={INFO_COL_COUNT} className="s90d-head-group-shift">
+              <th colSpan={infoColCount} className="s90d-head-group-shift">
                 {rt("groupShiftInfo", "Thông tin ca")}
               </th>
               <th colSpan={QTY_COL_COUNT} className="s90d-head-group-qty">
@@ -344,6 +378,11 @@ export default function S90dProcessShiftTable({
               <th className="s90d-head-shift s90d-col-product">
                 <S90dBilingualHeader ko="상품 코드" vi="Mã hàng" />
               </th>
+              {showCodeSlotColumn ? (
+                <th className="s90d-head-shift s90d-col-code-slot">
+                  <S90dBilingualHeader ko="코드" vi="Code" />
+                </th>
+              ) : null}
               <th className="s90d-head-shift s90d-col-process">
                 <S90dBilingualHeader ko="공정" vi="Công đoạn" />
               </th>

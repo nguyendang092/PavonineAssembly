@@ -27,38 +27,8 @@ export const S90D_DEFECT_COLUMNS = Object.freeze([
   { key: "hairlineDefect", ko: "헤어라인 불량", vi: "Lỗi Hairline", shortVi: "Hair" },
 ]);
 
-/** Gom tên lỗi từ Excel/Firebase → key cột lỗi. */
-const REASON_TO_DEFECT_KEY = [
-  [/원자재|nguyên liệu|raw.?material/i, "rawMaterial"],
-  [/press|dập|프레스/i, "pressDefect"],
-  [/칩눌|침눌|bavia|burr|ăn bavia/i, "burr"],
-  [/scratch|스크러치|스크래치|trầy|xước/i, "scratch"],
-  [/찍힘|cấn|dent|mark/i, "dent"],
-  [/gãy|break|crack/i, "breakage"],
-  [/cong|vênh|warp|벤딩/i, "bendWarp"],
-  [/^(?!.*hair).*bending|lỗi bending/i, "bending"],
-  [/hole|홀(?!\s*불)|lỗ hole/i, "hole"],
-  [/chà|헤어|샌딩/i, "sanding"],
-  [/nhuộm|피막|tape|테이프|dye|anodiz/i, "tape"],
-  [/loang|stain|얼룩/i, "stain"],
-  [/ăn mòn|corrosion|부식/i, "corrosion"],
-  [/màu|color|컬러/i, "color"],
-  [/chấm trắng|white.?spot|백점/i, "whiteSpot"],
-  [/lắp ráp|assembly|조립/i, "assemblyDefect"],
-  [/hairline|헤어라인|lỗi hairline/i, "hairlineDefect"],
-];
-
 export function createEmptyDefectCounts() {
   return Object.fromEntries(S90D_DEFECT_COLUMNS.map(({ key }) => [key, 0]));
-}
-
-export function mapReasonToDefectKey(reason) {
-  const text = String(reason ?? "").trim();
-  if (!text) return null;
-  for (const [pattern, key] of REASON_TO_DEFECT_KEY) {
-    if (pattern.test(text)) return key;
-  }
-  return null;
 }
 
 export function normalizeS90dProcess(workplaceName) {

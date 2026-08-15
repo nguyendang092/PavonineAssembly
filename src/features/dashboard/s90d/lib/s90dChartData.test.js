@@ -212,7 +212,7 @@ describe("buildProductCodeYieldItems", () => {
 
     expect(ap5ff?.yieldPct).toBe(90.2);
 
-    expect(ap5ff?.cumulativeYieldPct).toBe(88.5);
+    expect(ap5ff?.cumulativeYieldPct).toBe(90.2);
 
   });
 
@@ -320,6 +320,125 @@ describe("buildProductCodeYieldItems", () => {
 
     ).toEqual([]);
 
+  });
+
+
+
+  it("builds S90D INZI/MXC Code D and Code E yield items", () => {
+    const s90dDetails = [
+      {
+        process: "PRESS",
+        boardRows: [
+          { codeSlot: "D", totalQty: 100, okQty: 95, yieldPct: 95 },
+          { codeSlot: "E", totalQty: 100, okQty: 80, yieldPct: 80 },
+        ],
+      },
+      {
+        process: "HAIRLINE",
+        boardRows: [
+          { codeSlot: "D", totalQty: 100, okQty: 90, yieldPct: 94.7 },
+          { codeSlot: "E", totalQty: 100, okQty: 72, yieldPct: 90 },
+        ],
+      },
+      {
+        process: "ANODIZING",
+        boardRows: [
+          { codeSlot: "D", totalQty: 100, okQty: 88, yieldPct: 97.8 },
+          { codeSlot: "E", totalQty: 100, okQty: 70, yieldPct: 97.2 },
+        ],
+      },
+      {
+        process: "ASSEMBLY",
+        boardRows: [
+          {
+            codeSlot: "D",
+            productCode: "S90D INZI",
+            totalQty: 100,
+            okQty: 91,
+            yieldPct: 93.1,
+          },
+          {
+            codeSlot: "E",
+            productCode: "S90D INZI",
+            totalQty: 100,
+            okQty: 75,
+            yieldPct: 92.6,
+          },
+          {
+            codeSlot: "D",
+            productCode: "S90D MXC",
+            totalQty: 100,
+            okQty: 89,
+            yieldPct: 91.0,
+          },
+          {
+            codeSlot: "E",
+            productCode: "S90D MXC",
+            totalQty: 100,
+            okQty: 73,
+            yieldPct: 91.8,
+          },
+        ],
+      },
+    ];
+
+    const items = buildProductCodeYieldItems(s90dDetails, {
+      usesProductSubCodes: true,
+      boardSpecs: [
+        { productCode: "S90D INZI", label: "S90D INZI" },
+        { productCode: "S90D MXC", label: "S90D MXC" },
+      ],
+      defaultProductCode: "S90D",
+      processes: ["PRESS", "HAIRLINE", "ANODIZING", "ASSEMBLY"],
+    });
+
+    expect(items).toHaveLength(4);
+    expect(items.map((item) => item.label)).toEqual([
+      "S90D INZI Code D",
+      "S90D INZI Code E",
+      "S90D MXC Code D",
+      "S90D MXC Code E",
+    ]);
+    expect(items[0]).toMatchObject({
+      yieldPct: 93.1,
+      isValid: true,
+    });
+    expect(items[2]).toMatchObject({
+      yieldPct: 91,
+      isValid: true,
+    });
+  });
+
+  it("marks S90D sub-code yield invalid when chain is incomplete", () => {
+    const s90dDetails = [
+      {
+        process: "PRESS",
+        boardRows: [{ codeSlot: "D", totalQty: 100, okQty: 95, yieldPct: 95 }],
+      },
+      {
+        process: "ASSEMBLY",
+        boardRows: [
+          {
+            codeSlot: "D",
+            productCode: "S90D INZI",
+            totalQty: 90,
+            okQty: 81,
+            yieldPct: 90,
+          },
+        ],
+      },
+    ];
+
+    const items = buildProductCodeYieldItems(s90dDetails, {
+      usesProductSubCodes: true,
+      processes: ["PRESS", "HAIRLINE", "ANODIZING", "ASSEMBLY"],
+    });
+
+    expect(items[0]).toMatchObject({
+      label: "S90D INZI Code D",
+      yieldPct: null,
+      isValid: false,
+    });
   });
 
 });

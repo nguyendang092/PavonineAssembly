@@ -81,6 +81,33 @@ describe("buildS90dFromManual", () => {
     expect(daily.processRows[0].totalQty).toBe(15);
   });
 
+  it("exposes separate Code D and Code E board rows for S90D processes", () => {
+    const dayEntry = createEmptyDayEntry();
+    dayEntry.PRESS.boards[0].shifts["08~10"] = { okQty: 10, ngQty: 0, defects: {} };
+    dayEntry.PRESS.boards[1].shifts["08~10"] = { okQty: 7, ngQty: 1, defects: { scratch: 1 } };
+    dayEntry.HAIRLINE.boards[0].shifts["08~10"] = { okQty: 9, ngQty: 1, defects: { scratch: 1 } };
+    dayEntry.HAIRLINE.boards[1].shifts["08~10"] = { okQty: 3, ngQty: 2, defects: { scratch: 2 } };
+
+    const daily = buildDailySummaryFromManual({
+      dayEntry,
+      dateKey: "2026-07-01",
+    });
+    const pressDetail = daily.processDetails.find(
+      (detail) => detail.process === "PRESS",
+    );
+    const hairlineDetail = daily.processDetails.find(
+      (detail) => detail.process === "HAIRLINE",
+    );
+
+    expect(pressDetail?.boardRows).toHaveLength(2);
+    expect(pressDetail?.boardRows[0].codeSlot).toBe("D");
+    expect(pressDetail?.boardRows[1].codeSlot).toBe("E");
+    expect(pressDetail?.boardRows[0].yieldPct).toBe(100);
+    expect(pressDetail?.boardRows[1].yieldPct).toBeCloseTo(87.5, 1);
+    expect(hairlineDetail?.boardRows[0].yieldPct).toBe(90);
+    expect(hairlineDetail?.boardRows[1].yieldPct).toBeCloseTo(68.6, 1);
+  });
+
   it("aggregates grand total from daily summaries", () => {
     const dayOne = createEmptyDayEntry();
     dayOne.PRESS.boards[0].shifts["08~10"] = { okQty: 5, ngQty: 0, defects: {} };
@@ -154,6 +181,70 @@ describe("buildS90dFromManual", () => {
     expect(daily.totalRow.okQty).toBe(95);
     expect(daily.totalRow.yieldPct).toBe(95);
     expect(daily.totalRow.ngRatePct).toBe(5);
+  });
+
+  it("chains AP5 board yields separately per product code", () => {
+    const dayEntry = createEmptyDayEntry(AP5_MANUAL_ENTRY_CONFIG);
+    dayEntry.PRESS.boards[0].shifts["08~10"] = {
+      okQty: 100,
+      ngQty: 0,
+      defects: {},
+    };
+    dayEntry.PRESS.boards[1].shifts["08~10"] = {
+      okQty: 80,
+      ngQty: 20,
+      defects: { scratch: 20 },
+    };
+    dayEntry.MC.boards[0].shifts["08~10"] = {
+      okQty: 95,
+      ngQty: 5,
+      defects: { scratch: 5 },
+    };
+    dayEntry.MC.boards[1].shifts["08~10"] = {
+      okQty: 72,
+      ngQty: 8,
+      defects: { scratch: 8 },
+    };
+    dayEntry.HAIRLINE.boards[0].shifts["08~10"] = {
+      okQty: 90,
+      ngQty: 10,
+      defects: { scratch: 10 },
+    };
+    dayEntry.HAIRLINE.boards[1].shifts["08~10"] = {
+      okQty: 60,
+      ngQty: 20,
+      defects: { scratch: 20 },
+    };
+
+    const daily = buildDailySummaryFromManual({
+      dayEntry,
+      dateKey: "2026-07-01",
+      manualEntryConfig: AP5_MANUAL_ENTRY_CONFIG,
+    });
+
+    const pressDetail = daily.processDetails.find(
+      (detail) => detail.process === "PRESS",
+    );
+    const hairlineDetail = daily.processDetails.find(
+      (detail) => detail.process === "HAIRLINE",
+    );
+    const pressFf = pressDetail?.boardRows.find(
+      (row) => row.productCode === "AP5FF",
+    );
+    const pressFz = pressDetail?.boardRows.find(
+      (row) => row.productCode === "AP5FZ",
+    );
+    const hairlineFf = hairlineDetail?.boardRows.find(
+      (row) => row.productCode === "AP5FF",
+    );
+    const hairlineFz = hairlineDetail?.boardRows.find(
+      (row) => row.productCode === "AP5FZ",
+    );
+
+    expect(pressFf?.yieldPct).toBe(100);
+    expect(pressFz?.yieldPct).toBe(80);
+    expect(hairlineFf?.yieldPct).toBeCloseTo(94.7, 1);
+    expect(hairlineFz?.yieldPct).toBeCloseTo(75, 1);
   });
 
   it("invalidates AP5 yield when MC has no quantity", () => {

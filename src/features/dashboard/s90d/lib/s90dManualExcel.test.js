@@ -58,7 +58,8 @@ describe("s90dManualExcel", () => {
       },
     ]);
 
-    expect(store["2026-07-01"].PRESS.boards[0].productCode).toBe("S90D-A");
+    expect(store["2026-07-01"].PRESS.boards[0].productCode).toBe("S90D");
+    expect(store["2026-07-01"].PRESS.boards[0].codeSlot).toBe("D");
     expect(store["2026-07-01"].PRESS.boards[0].shifts["08~10"].okQty).toBe(20);
     expect(store["2026-07-01"].PRESS.boards[0].shifts["08~10"].defects.scratch).toBe(2);
     expect(store["2026-07-01"].PRESS.boards[0].shifts["08~10"].ngQty).toBe(2);
@@ -78,7 +79,8 @@ describe("s90dManualExcel", () => {
     ]);
 
     expect(store["2026-07-01"].PRESS.boards).toHaveLength(2);
-    expect(store["2026-07-01"].PRESS.boards[1].productCode).toBe("S90D-B");
+    expect(store["2026-07-01"].PRESS.boards[1].productCode).toBe("S90D");
+    expect(store["2026-07-01"].PRESS.boards[1].codeSlot).toBe("E");
     expect(store["2026-07-01"].PRESS.boards[1].shifts["08~10"].okQty).toBe(7);
   });
 });

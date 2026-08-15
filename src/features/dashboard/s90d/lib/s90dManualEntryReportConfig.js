@@ -28,6 +28,7 @@ export function createManualEntryConfig({
   processes = S90D_PROCESSES,
   fixedBoardSpecs = null,
   fixedBoardSpecsAllProcesses = false,
+  usesProductSubCodes = false,
 } = {}) {
   return Object.freeze({
     defaultProductCode,
@@ -35,6 +36,7 @@ export function createManualEntryConfig({
     fixedBoardSpecs,
     fixedBoardSpecsAllProcesses,
     usesFixedBoardSpecs: Boolean(fixedBoardSpecs?.length),
+    usesProductSubCodes,
   });
 }
 
@@ -43,6 +45,7 @@ export const S90D_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
   processes: S90D_PROCESSES,
   fixedBoardSpecs: S90D_ASSEMBLY_BOARD_SPECS,
   fixedBoardSpecsAllProcesses: false,
+  usesProductSubCodes: true,
 });
 
 export const AP5_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
@@ -77,6 +80,7 @@ export function manualEntryConfigFromReportConfig(reportConfig = {}) {
     fixedBoardSpecs: reportConfig.fixedBoardSpecs ?? null,
     fixedBoardSpecsAllProcesses:
       reportConfig.fixedBoardSpecsAllProcesses ?? false,
+    usesProductSubCodes: reportConfig.usesProductSubCodes ?? false,
   });
 }
 
@@ -87,8 +91,4 @@ export function shouldApplyFixedBoardSpecs(process, config) {
     process === ASSEMBLY_PROCESS &&
     config.defaultProductCode === DEFAULT_PRODUCT_CODE
   );
-}
-
-export function blocksFixedBoardRemoval(process, config) {
-  return shouldApplyFixedBoardSpecs(process, config);
 }

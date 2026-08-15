@@ -203,8 +203,7 @@ export default function S90dProcessTabPanel({
             <S90dProcessShiftTable
               processSummary={summary}
               dateKey={selectedDateKey}
-              boardId={board.id}
-              boardLabel={board.productCode || board.label}
+              boardLabel={board.label || board.productCode}
               boardIndex={index + 1}
               boardCount={selectedBoards.length}
               editable

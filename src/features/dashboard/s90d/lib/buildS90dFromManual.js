@@ -6,6 +6,10 @@ import {
   sumDefectCounts,
 } from "./s90dDefectColumns";
 import { AP5_DEFAULT_PRODUCT_CODE } from "./s90dManualEntryReportConfig";
+import {
+  inferCodeSlotFromBoardId,
+  shouldShowProductBoardRows,
+} from "./s90dEntryBoardSpecs";
 import { formatS90dDailyDateLabel } from "./s90dDateUtils";
 import { DEFAULT_PRODUCT_CODE, resolveProcessBoards } from "./s90dManualEntries";
 import {
@@ -16,7 +20,7 @@ import {
   createEmptyDefectImageLists,
   normalizeDefectImageUrls,
 } from "./s90dDefectImages";
-import { applyS90dCumulativeYieldPct } from "./s90dCumulativeYield";
+import { applyS90dReportYieldMetrics, roundYieldPct } from "./s90dCumulativeYield";
 import {
   applyBrokenChainBoardYieldInvalidation,
   applyBrokenChainYieldInvalidation,
@@ -27,6 +31,16 @@ import { S90D_SHIFT_SLOTS } from "./s90dShiftSlots";
 function pct(numerator, denominator) {
   if (!denominator) return null;
   return Math.round((numerator / denominator) * 1000) / 10;
+}
+
+function yieldPctFromQty(numerator, denominator) {
+  if (!denominator) return null;
+  return roundYieldPct((numerator / denominator) * 100);
+}
+
+function yieldPctOrZero(numerator, denominator) {
+  if (!denominator) return 0;
+  return roundYieldPct((numerator / denominator) * 100) ?? 0;
 }
 
 function pctOrZero(numerator, denominator) {
@@ -78,7 +92,13 @@ function emptyGrandProcessRow(process) {
   };
 }
 
-function buildShiftRow(shiftSlot, process, productCode, shiftEntry) {
+function buildShiftRow(
+  shiftSlot,
+  process,
+  productCode,
+  shiftEntry,
+  { codeSlot = null } = {},
+) {
   const okQty = shiftEntry.okQty ?? 0;
   const defects = { ...createEmptyDefectCounts(), ...shiftEntry.defects };
   const ngQty = sumDefectCounts(defects);
@@ -90,9 +110,10 @@ function buildShiftRow(shiftSlot, process, productCode, shiftEntry) {
     process,
     classification: process,
     productCode,
+    codeSlot,
     totalQty,
     okQty,
-    yieldPct: pct(okQty, totalQty),
+    yieldPct: yieldPctFromQty(okQty, totalQty),
     ngQty,
     ngRatePct: pct(ngQty, totalQty),
     defects,
@@ -127,7 +148,7 @@ function buildShiftTotalRow(process, productCode, shiftRows) {
     });
   });
 
-  total.yieldPct = pct(total.okQty, total.totalQty);
+  total.yieldPct = yieldPctFromQty(total.okQty, total.totalQty);
   total.ngRatePct = pct(total.ngQty, total.totalQty);
   total.defectTotal = sumDefectCounts(total.defects);
   total.defectImages = collectDefectImageLists(shiftRows);
@@ -206,12 +227,15 @@ export function buildProcessShiftSummaryFromManual({
     resolveProcessBoards(dayEntry?.[process])[0] ??
     { productCode: DEFAULT_PRODUCT_CODE, shifts: {} };
   const productCode = entry?.productCode || DEFAULT_PRODUCT_CODE;
+  const codeSlot =
+    entry?.codeSlot === "D" || entry?.codeSlot === "E" ? entry.codeSlot : null;
   const shiftRows = S90D_SHIFT_SLOTS.map((slot) =>
     buildShiftRow(
       slot,
       process,
       productCode,
       entry?.shifts?.[slot] ?? { okQty: 0, ngQty: 0, defects: {} },
+      { codeSlot },
     ),
   );
   const totalRow = buildShiftTotalRow(process, productCode, shiftRows);
@@ -220,6 +244,7 @@ export function buildProcessShiftSummaryFromManual({
   return {
     process,
     dateLabel,
+    codeSlot,
     shiftRows,
     totalRow,
     percentRow,
@@ -261,13 +286,51 @@ function mergeProcessBoardSummariesToProcessRow(summaries, process) {
   });
 
   merged.yieldPct = merged.totalQty
-    ? pctOrZero(merged.okQty, merged.totalQty)
+    ? yieldPctOrZero(merged.okQty, merged.totalQty)
     : null;
   merged.ngRatePct = merged.totalQty
     ? pctOrZero(merged.ngQty, merged.totalQty)
     : null;
   merged.defectTotal = sumDefectCounts(merged.defects);
   return merged;
+}
+
+function buildDisplayBoardRowsFromAggregate(aggregate, process, config) {
+  if (!shouldShowProductBoardRows(process, config)) {
+    return [];
+  }
+
+  if (aggregate.boards.length < 2) return [];
+
+  return aggregate.summaries.map((summary, index) => {
+    const board = aggregate.boards[index];
+    const productCode =
+      String(
+        summary.totalRow.productCode ||
+          board?.productCode ||
+          board?.label ||
+          "",
+      ).trim() || DEFAULT_PRODUCT_CODE;
+    const codeSlot =
+      board?.codeSlot === "D" || board?.codeSlot === "E"
+        ? board.codeSlot
+        : inferCodeSlotFromBoardId(board?.id);
+
+    return {
+      boardId: board?.id ?? `board-${index}`,
+      label: board?.label ?? `Bảng ${index + 1}`,
+      productCode,
+      codeSlot: codeSlot ?? null,
+      totalQty: summary.totalRow.totalQty,
+      okQty: summary.totalRow.okQty,
+      yieldPct: summary.totalRow.yieldPct,
+      ngQty: summary.totalRow.ngQty,
+      ngRatePct: summary.totalRow.ngRatePct,
+      defects: summary.totalRow.defects,
+      defectTotal: summary.totalRow.defectTotal,
+      hasData: summary.hasData,
+    };
+  });
 }
 
 export function buildProcessDayAggregateSummaryFromManual({
@@ -397,7 +460,7 @@ function buildDailyTotalRow(
     });
 
     total.yieldPct = total.totalQty
-      ? pctOrZero(total.okQty, total.totalQty)
+      ? yieldPctOrZero(total.okQty, total.totalQty)
       : null;
     const lastWithCumul = [...processRows]
       .reverse()
@@ -448,45 +511,29 @@ export function buildDailySummaryFromManual({
       manualEntryConfig: config,
     });
 
-    const boardRows =
-      aggregate.boards.length >= 2
-        ? aggregate.summaries.map((summary, index) => {
-            const board = aggregate.boards[index];
-            const productCode =
-              String(
-                summary.totalRow.productCode ||
-                  board?.productCode ||
-                  board?.label ||
-                  "",
-              ).trim() || DEFAULT_PRODUCT_CODE;
-
-            return {
-              boardId: board?.id ?? `board-${index}`,
-              label: board?.label ?? `Bảng ${index + 1}`,
-              productCode,
-              totalQty: summary.totalRow.totalQty,
-              okQty: summary.totalRow.okQty,
-              yieldPct: summary.totalRow.yieldPct,
-              ngQty: summary.totalRow.ngQty,
-              ngRatePct: summary.totalRow.ngRatePct,
-              defects: summary.totalRow.defects,
-              defectTotal: summary.totalRow.defectTotal,
-              hasData: summary.hasData,
-            };
-          })
-        : [];
+    const boardRows = buildDisplayBoardRowsFromAggregate(aggregate, process, config);
 
     return {
       process,
       processRow: aggregate.processRow,
       boardRows,
-      boardCount: aggregate.boards.length,
+      boardCount: boardRows.length || aggregate.boards.length,
     };
   });
 
   const processRows = processDetails.map((detail) => detail.processRow);
 
-  applyS90dCumulativeYieldPct(processRows, { emptyAsNull: true });
+  applyS90dReportYieldMetrics(
+    {
+      processDetails,
+      processRows,
+      processes: config.processes,
+      usesProductSubCodes: config.usesProductSubCodes,
+      fixedBoardSpecsAllProcesses: config.fixedBoardSpecsAllProcesses,
+      fixedBoardSpecs: config.fixedBoardSpecs,
+    },
+    { emptyAsNull: true },
+  );
 
   if (config.fixedBoardSpecsAllProcesses) {
     applyBrokenChainYieldInvalidation(processRows, config.processes);
@@ -575,7 +622,7 @@ function buildGrandTotalRow(
       total.ngQty += row.ngQty;
     });
 
-    total.yieldPct = pctOrZero(total.okQty, total.totalQty);
+    total.yieldPct = yieldPctOrZero(total.okQty, total.totalQty);
     total.cumulativeYieldPct =
       processRows.length > 0
         ? processRows[processRows.length - 1].cumulativeYieldPct ?? 0
@@ -620,7 +667,7 @@ function mergeGrandBoardRowAggregate(target, source) {
 }
 
 function finalizeGrandBoardRowAggregate(row) {
-  row.yieldPct = row.totalQty ? pctOrZero(row.okQty, row.totalQty) : null;
+  row.yieldPct = row.totalQty ? yieldPctOrZero(row.okQty, row.totalQty) : null;
   row.ngRatePct = row.totalQty ? pctOrZero(row.ngQty, row.totalQty) : null;
   row.defectTotal = sumDefectCounts(row.defects);
   return row;
@@ -652,6 +699,10 @@ export function buildGrandProcessDetailsFromManual(
             boardId: boardRow.boardId ?? key,
             label: boardRow.label ?? boardRow.productCode ?? key,
             productCode: boardRow.productCode ?? key,
+            codeSlot:
+              boardRow.codeSlot === "D" || boardRow.codeSlot === "E"
+                ? boardRow.codeSlot
+                : inferCodeSlotFromBoardId(boardRow.boardId ?? key),
             totalQty: 0,
             okQty: 0,
             ngQty: 0,
@@ -707,16 +758,33 @@ export function buildGrandTotalSummaryFromManual(
 
   const processRows = config.processes.map((process) => {
     const row = byProcess[process];
-    row.yieldPct = row.totalQty ? pctOrZero(row.okQty, row.totalQty) : null;
+    row.yieldPct = row.totalQty ? yieldPctOrZero(row.okQty, row.totalQty) : null;
     row.ngRatePct = row.totalQty ? pctOrZero(row.ngQty, row.totalQty) : null;
     row.defectTotal = sumDefectCounts(row.defects);
     return row;
   });
 
-  applyS90dCumulativeYieldPct(processRows, { emptyAsNull: true });
+  const processDetails = buildGrandProcessDetailsFromManual(
+    dailySummaries,
+    processRows,
+    config,
+  );
+
+  applyS90dReportYieldMetrics(
+    {
+      processDetails,
+      processRows,
+      processes: config.processes,
+      usesProductSubCodes: config.usesProductSubCodes,
+      fixedBoardSpecsAllProcesses: config.fixedBoardSpecsAllProcesses,
+      fixedBoardSpecs: config.fixedBoardSpecs,
+    },
+    { emptyAsNull: true },
+  );
 
   if (config.fixedBoardSpecsAllProcesses) {
     applyBrokenChainYieldInvalidation(processRows, config.processes);
+    applyBrokenChainBoardYieldInvalidation(processDetails, config.processes);
   }
 
   const outputProcess = config.processes[config.processes.length - 1];
@@ -729,15 +797,6 @@ export function buildGrandTotalSummaryFromManual(
   const productCode =
     dailySummaries.find((daily) => daily.productCode)?.productCode ??
     config.defaultProductCode;
-  const processDetails = buildGrandProcessDetailsFromManual(
-    dailySummaries,
-    processRows,
-    config,
-  );
-
-  if (config.fixedBoardSpecsAllProcesses) {
-    applyBrokenChainBoardYieldInvalidation(processDetails, config.processes);
-  }
 
   return {
     productCode,

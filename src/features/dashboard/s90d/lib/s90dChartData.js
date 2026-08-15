@@ -1,6 +1,12 @@
 import { format, parseISO } from "date-fns";
-import { applyS90dCumulativeYieldPct } from "./s90dCumulativeYield";
+import { applyS90dProcessYieldMetrics, roundYieldPct } from "./s90dCumulativeYield";
 import { S90D_DEFECT_COLUMNS, S90D_PROCESSES } from "./s90dDefectColumns";
+import { S90D_CODE_SLOTS } from "./s90dEntryBoardSpecs";
+import { formatS90dBoardDisplayName } from "./s90dDisplayUtils";
+import {
+  DEFAULT_PRODUCT_CODE,
+  S90D_ASSEMBLY_BOARD_SPECS,
+} from "./s90dManualEntryReportConfig";
 import {
   findBoardRowForProduct,
   isProductProcessChainComplete,
@@ -95,7 +101,7 @@ export function buildS90dYieldComparisonData(summary, processLabelFn) {
 
 function pctFromQty(okQty, totalQty) {
   if (!totalQty) return null;
-  return Math.round((okQty / totalQty) * 1000) / 10;
+  return roundYieldPct((okQty / totalQty) * 100);
 }
 
 function resolveBoardYield(boardRow) {
@@ -117,6 +123,123 @@ function resolveBoardYield(boardRow) {
   return { totalQty, okQty, yieldPct, ngRatePct };
 }
 
+function findBoardRowByCodeSlot(processDetails, process, codeSlot) {
+  const detail = processDetails?.find((item) => item.process === process);
+  return detail?.boardRows?.find((board) => board.codeSlot === codeSlot) ?? null;
+}
+
+function findBoardRowForSubCodeYield(
+  processDetails,
+  process,
+  outputProcess,
+  { codeSlot, productCode },
+) {
+  const detail = processDetails?.find((item) => item.process === process);
+  if (!detail?.boardRows?.length) return null;
+
+  if (process === outputProcess) {
+    const code = normalizeProductCode(productCode);
+    return (
+      detail.boardRows.find((board) => {
+        if (board.codeSlot !== codeSlot) return false;
+        return normalizeProductCode(board.productCode ?? board.label) === code;
+      }) ?? null
+    );
+  }
+
+  return findBoardRowByCodeSlot(processDetails, process, codeSlot);
+}
+
+/** Hiệu suất S90D INZI/MXC × Code D/E — chuỗi dùng Code D/E trước assembly. */
+function buildS90dSubCodeYieldItems(
+  processDetails = [],
+  {
+    processes = S90D_PROCESSES,
+    boardSpecs = S90D_ASSEMBLY_BOARD_SPECS,
+    defaultProductCode = DEFAULT_PRODUCT_CODE,
+  } = {},
+) {
+  if (!Array.isArray(processDetails) || !processDetails.length) {
+    return [];
+  }
+
+  const specs =
+    Array.isArray(boardSpecs) && boardSpecs.length > 0
+      ? boardSpecs
+      : S90D_ASSEMBLY_BOARD_SPECS;
+  const outputProcess = processes[processes.length - 1] ?? "ASSEMBLY";
+
+  return specs.flatMap((spec) => {
+    const productCode = String(spec.productCode ?? spec.label ?? "").trim();
+
+    return S90D_CODE_SLOTS.map((codeSlot) => {
+      const pseudoProcessRows = processes.map((process) => {
+        const boardRow = findBoardRowForSubCodeYield(
+          processDetails,
+          process,
+          outputProcess,
+          { codeSlot, productCode },
+        );
+        const metrics = resolveBoardYield(boardRow);
+        return {
+          process,
+          totalQty: metrics.totalQty,
+          okQty: metrics.okQty,
+          yieldPct: metrics.yieldPct,
+          cumulativeYieldPct: null,
+        };
+      });
+
+      const outputBoard = findBoardRowForSubCodeYield(
+        processDetails,
+        outputProcess,
+        outputProcess,
+        { codeSlot, productCode },
+      );
+      const outputMetrics = resolveBoardYield(outputBoard);
+      const label = outputBoard
+        ? formatS90dBoardDisplayName(outputBoard, defaultProductCode)
+        : `${productCode} Code ${codeSlot}`;
+
+      const chainComplete = processes.every((process) => {
+        const boardRow = findBoardRowForSubCodeYield(
+          processDetails,
+          process,
+          outputProcess,
+          { codeSlot, productCode },
+        );
+        return (boardRow?.totalQty ?? 0) > 0;
+      });
+
+      const activeProcessRows = pseudoProcessRows.filter((row) => row.totalQty > 0);
+      applyS90dProcessYieldMetrics(activeProcessRows, { emptyAsNull: false });
+      const lastActiveProcess =
+        activeProcessRows[activeProcessRows.length - 1] ?? null;
+
+      const stageYieldPct = chainComplete ? outputMetrics.yieldPct : null;
+      const cumulativeYieldPct = chainComplete
+        ? lastActiveProcess?.cumulativeYieldPct ?? stageYieldPct
+        : null;
+
+      return {
+        productCode: label,
+        label,
+        codeSlot,
+        parentProductCode: productCode,
+        totalQty: outputMetrics.totalQty,
+        okQty: outputMetrics.okQty,
+        yieldPct: stageYieldPct,
+        cumulativeYieldPct,
+        ngRatePct: chainComplete ? outputMetrics.ngRatePct ?? null : null,
+        hasData:
+          outputMetrics.totalQty > 0 ||
+          pseudoProcessRows.some((row) => row.totalQty > 0),
+        isValid: chainComplete && outputMetrics.totalQty > 0,
+      };
+    });
+  });
+}
+
 /** Hiệu suất theo mã hàng — chỉ hợp lệ khi đủ SL ở mọi công đoạn (PRESS → MC → … → ASSEMBLY). */
 export function buildProductCodeYieldItems(
   processDetails = [],
@@ -124,8 +247,18 @@ export function buildProductCodeYieldItems(
     boardSpecs = null,
     processes = S90D_PROCESSES,
     requireFullProcessChain = false,
+    usesProductSubCodes = false,
+    defaultProductCode = DEFAULT_PRODUCT_CODE,
   } = {},
 ) {
+  if (usesProductSubCodes) {
+    return buildS90dSubCodeYieldItems(processDetails, {
+      processes,
+      boardSpecs,
+      defaultProductCode,
+    });
+  }
+
   const specs = Array.isArray(boardSpecs) && boardSpecs.length >= 2 ? boardSpecs : null;
   if (!specs || !Array.isArray(processDetails) || !processDetails.length) {
     return [];
@@ -170,7 +303,7 @@ export function buildProductCodeYieldItems(
       : pseudoProcessRows.some((row) => row.totalQty > 0);
 
     const activeProcessRows = pseudoProcessRows.filter((row) => row.totalQty > 0);
-    applyS90dCumulativeYieldPct(activeProcessRows, { emptyAsNull: false });
+    applyS90dProcessYieldMetrics(activeProcessRows, { emptyAsNull: false });
     const lastActiveProcess =
       activeProcessRows[activeProcessRows.length - 1] ?? null;
 
@@ -317,7 +450,9 @@ export function buildS90dDailyKpiSummary(monthDailySummaries) {
   );
 
   const yieldPct =
-    totalRow.totalQty > 0 ? (totalRow.okQty / totalRow.totalQty) * 100 : 0;
+    totalRow.totalQty > 0
+      ? roundYieldPct((totalRow.okQty / totalRow.totalQty) * 100)
+      : 0;
   const ngRatePct =
     totalRow.totalQty > 0 ? (totalRow.ngQty / totalRow.totalQty) * 100 : 0;
 
@@ -332,7 +467,7 @@ export function buildS90dDailyKpiSummary(monthDailySummaries) {
     totalQty: totalRow.totalQty,
     okQty: totalRow.okQty,
     ngQty: totalRow.ngQty,
-    yieldPct: Math.round(yieldPct * 10) / 10,
+    yieldPct: yieldPct ?? 0,
     ngRatePct: Math.round(ngRatePct * 10) / 10,
     defectTotal: totalRow.defectTotal,
     activeDays: activeDays.length,

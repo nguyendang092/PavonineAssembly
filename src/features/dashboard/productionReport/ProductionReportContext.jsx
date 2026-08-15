@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useMemo } from "react";
-import { buildS90dDefectImageUploadPrefix } from "../s90d/lib/s90dManualEntriesFirebase";
 
 const defaultContextValue = Object.freeze({
   i18nPrefix: "s90dReport",
   defaultProductCode: "S90D",
-  buildDefectImageUploadPrefix: buildS90dDefectImageUploadPrefix,
 });
 
 const ProductionReportContext = createContext(defaultContextValue);
@@ -14,9 +12,6 @@ export function ProductionReportProvider({ config, children }) {
     () => ({
       ...defaultContextValue,
       ...config,
-      buildDefectImageUploadPrefix:
-        config?.buildDefectImageUploadPrefix ??
-        defaultContextValue.buildDefectImageUploadPrefix,
     }),
     [config],
   );

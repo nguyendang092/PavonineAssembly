@@ -12,8 +12,10 @@ import {
   formatS90dDailyNg,
   formatS90dDailyPct,
   formatS90dDailyQty,
-} from "../lib/buildS90dDailySummary";
-import { formatShortDateLabel } from "../lib/s90dDisplayUtils";
+  formatS90dYieldPct,
+  formatShortDateLabel,
+  formatS90dBoardDisplayName,
+} from "../lib/s90dDisplayUtils";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
 import S90dBilingualHeader from "./S90dBilingualHeader";
 import S90dKpiCards from "./S90dKpiCards";
@@ -268,51 +270,10 @@ function getDefectEntries(row) {
   }).filter(Boolean);
 }
 
-function buildExpandableProcessIds(processDetails) {
-  const ids = new Set();
-
-  processDetails.forEach((detail) => {
-    const { process, processRow, boardRows, boardCount } = detail;
-    const hasMultipleBoards =
-      (boardCount ?? boardRows.length) >= 2 || boardRows.length >= 2;
-    const defectEntries = hasMultipleBoards ? [] : getDefectEntries(processRow);
-
-    if (hasMultipleBoards || defectEntries.length > 0) {
-      ids.add(process);
-    }
-  });
-
-  return ids;
-}
-
-function buildExpandableBoardIds(processDetails) {
-  const ids = new Set();
-
-  processDetails.forEach(({ boardRows, boardCount }) => {
-    const hasMultipleBoards =
-      (boardCount ?? boardRows.length) >= 2 || boardRows.length >= 2;
-    if (!hasMultipleBoards) return;
-
-    boardRows.forEach((boardRow) => {
-      if (getDefectEntries(boardRow).length > 0) {
-        ids.add(boardRow.boardId);
-      }
-    });
-  });
-
-  return ids;
-}
-
 async function waitForPaint() {
   await new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(resolve));
   });
-}
-
-function getBoardDisplayName(boardRow) {
-  const productCode = String(boardRow?.productCode ?? "").trim();
-  if (productCode && productCode !== "S90D") return productCode;
-  return String(boardRow?.label ?? productCode ?? "S90D").trim() || "S90D";
 }
 
 function BoardExpandedSection({
@@ -330,7 +291,7 @@ function BoardExpandedSection({
       <BoardSubHeaderRow rt={rt} />
       {boardRows.map((boardRow) => {
         const boardDefects = getDefectEntries(boardRow);
-        const displayName = getBoardDisplayName(boardRow);
+        const displayName = formatS90dBoardDisplayName(boardRow);
         const isBoardExpanded = expandedBoardIds.has(boardRow.boardId);
 
         return (
@@ -386,6 +347,7 @@ function BoardExpandedSection({
               <DefectDetailRows
                 defects={boardDefects}
                 rowKeyPrefix={`${process}-${boardRow.boardId}`}
+                nested
               />
             ) : null}
           </React.Fragment>
@@ -395,11 +357,13 @@ function BoardExpandedSection({
   );
 }
 
-function DefectDetailRows({ defects, rowKeyPrefix }) {
+function DefectDetailRows({ defects, rowKeyPrefix, nested = false }) {
   return defects.map((defect) => (
     <tr
       key={`${rowKeyPrefix}-defect-${defect.key}`}
-      className="s90d-daily-process-row s90d-daily-process-row--sub s90d-daily-process-row--defect"
+      className={`s90d-daily-process-row s90d-daily-process-row--sub s90d-daily-process-row--defect${
+        nested ? " s90d-daily-process-row--defect-nested" : ""
+      }`}
     >
       <td className="s90d-daily-process-name s90d-daily-process-name--sub s90d-daily-process-name--defect-detail">
         <span className="s90d-daily-defect-label">
@@ -419,31 +383,12 @@ function DefectDetailRows({ defects, rowKeyPrefix }) {
   ));
 }
 
-function S90dDailyProcessTable({
-  processDetails = [],
-  totalRow,
-  expandAllForExport = false,
-}) {
+function S90dDailyProcessTable({ processDetails = [], totalRow }) {
   const rt = useReportT();
   const { t } = useTranslation();
   const [expandedProcesses, setExpandedProcesses] = useState(() => new Set());
   const [expandedBoardIds, setExpandedBoardIds] = useState(() => new Set());
 
-  const allExpandedProcesses = useMemo(
-    () => buildExpandableProcessIds(processDetails),
-    [processDetails],
-  );
-  const allExpandedBoards = useMemo(
-    () => buildExpandableBoardIds(processDetails),
-    [processDetails],
-  );
-
-  const activeExpandedProcesses = expandAllForExport
-    ? allExpandedProcesses
-    : expandedProcesses;
-  const activeExpandedBoardIds = expandAllForExport
-    ? allExpandedBoards
-    : expandedBoardIds;
   const toggleProcess = (process) => {
     setExpandedProcesses((prev) => {
       const next = new Set(prev);
@@ -464,14 +409,12 @@ function S90dDailyProcessTable({
 
   return (
     <div className="s90d-daily-process-table-wrap">
-      {!expandAllForExport ? (
-        <p className="s90d-daily-process-hint">
-          {rt(
-            "dailyProcessExpandHint",
-            "Bấm ▶ ở đầu mỗi dòng để mở chi tiết lỗi của công đoạn đó",
-          )}
-        </p>
-      ) : null}
+      <p className="s90d-daily-process-hint">
+        {rt(
+          "dailyProcessExpandHint",
+          "Bấm ▶ ở đầu mỗi dòng để mở chi tiết lỗi của công đoạn đó",
+        )}
+      </p>
 
       <div className="s90d-daily-process-table-scroll">        <table className="s90d-daily-process-table">
           <colgroup>
@@ -533,7 +476,8 @@ function S90dDailyProcessTable({
               const { process, processRow, boardRows, boardCount } = detail;
               const hasMultipleBoards =
                 (boardCount ?? boardRows.length) >= 2 || boardRows.length >= 2;
-              const isExpanded = activeExpandedProcesses.has(process);              const processLabel = t(`areas.${process}`, { defaultValue: process });
+              const isExpanded = expandedProcesses.has(process);
+              const processLabel = t(`areas.${process}`, { defaultValue: process });
               const defectEntries = hasMultipleBoards
                 ? []
                 : getDefectEntries(processRow);
@@ -589,7 +533,8 @@ function S90dDailyProcessTable({
                     boardRows={boardRows}
                     process={process}
                     isExpanded={isExpanded}
-                    expandedBoardIds={activeExpandedBoardIds}                    onToggleBoard={toggleBoard}
+                    expandedBoardIds={expandedBoardIds}
+                    onToggleBoard={toggleBoard}
                     rt={rt}
                   />
 
@@ -627,7 +572,7 @@ function S90dDailyProcessTable({
                 <strong>{formatQty(totalRow?.okQty)}</strong>
               </td>
               <td className="s90d-daily-process-qty">
-                <strong>{formatPct(totalRow?.yieldPct)}</strong>
+                <strong>{formatS90dYieldPct(totalRow?.yieldPct)}</strong>
               </td>
               <td className="s90d-daily-process-qty s90d-daily-process-qty--ng">
                 <strong>{formatQty(totalRow?.ngQty)}</strong>
@@ -656,7 +601,6 @@ export default function S90dDailyTabPanel({
     pickDefaultDailyDateKey(monthDailySummaries),
   );
   const [exportingImage, setExportingImage] = useState(false);
-  const [expandAllForExport, setExpandAllForExport] = useState(false);
   const boardExportRef = useRef(null);
   const rollup = useMemo(
     () => buildMonthDailyRollup(monthDailySummaries),
@@ -702,7 +646,6 @@ export default function S90dDailyTabPanel({
     if (!boardExportRef.current || !activeSummary?.hasData || exportingImage) return;
 
     setExportingImage(true);
-    setExpandAllForExport(true);
 
     let scrollEl = null;
     let prevOverflow = "";
@@ -754,7 +697,6 @@ export default function S90dDailyTabPanel({
         scrollEl.style.overflowX = prevOverflowX;
         scrollEl.style.overflowY = prevOverflowY;
       }
-      setExpandAllForExport(false);
       setExportingImage(false);
     }
   }, [    activeSummary,
@@ -834,8 +776,8 @@ export default function S90dDailyTabPanel({
               <S90dDailyProcessTable
                 processDetails={processDetails}
                 totalRow={activeSummary.totalRow}
-                expandAllForExport={expandAllForExport}
-              />            </>
+              />
+            </>
           ) : (
             <div className="s90d-daily-empty-day">
               {rt(

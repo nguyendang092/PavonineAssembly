@@ -7,12 +7,7 @@ import { useProductionManualEntries } from "./productionReport/useProductionManu
 function AP5ProductionReportContent() {
   const manualEntries = useProductionManualEntries(AP5_PRODUCTION_REPORT_CONFIG);
 
-  return (
-    <ManualProductionReportPage
-      manualEntries={manualEntries}
-      dailyViewMode="dashboard"
-    />
-  );
+  return <ManualProductionReportPage manualEntries={manualEntries} />;
 }
 
 export default function AP5ProductionReportPage() {
