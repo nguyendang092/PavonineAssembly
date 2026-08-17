@@ -35,7 +35,7 @@ import {
   buildAnnualLeaveMergeUploadUpdates,
 } from "./annualLeaveYearDataOps";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useDebouncedSearchQuery } from "@/hooks/useDebouncedSearchQuery";
 import "@/features/attendance/attendanceToolbarFocus.css";
 import "@/features/attendance/hrPageCompact.css";
 import "./annualLeaveManager.css";
@@ -78,7 +78,8 @@ export default function AnnualLeaveManager() {
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [search, setSearch] = useState("");
+  const { query: debouncedSearch, onDebouncedSearchChange } =
+    useDebouncedSearchQuery(year);
   const [deptFilter, setDeptFilter] = useState("");
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -116,7 +117,6 @@ export default function AnnualLeaveManager() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    setSearch("");
     setDeptFilter("");
   }, [year]);
 
@@ -127,8 +127,6 @@ export default function AnnualLeaveManager() {
   const { entries, deptIndex, departments, storedMonthlyByEmpKey } =
     rowCatalog;
 
-  const debouncedSearch = useDebouncedValue(search, 220);
-  const filterPending = search !== debouncedSearch;
   const exportFiltersRef = useRef({ search: "", deptFilter: "" });
   exportFiltersRef.current = { search: debouncedSearch, deptFilter };
 
@@ -179,10 +177,6 @@ export default function AnnualLeaveManager() {
     },
     [syncSearchParams, year],
   );
-
-  const handleSearchChange = useCallback((event) => {
-    startTransition(() => setSearch(event.target.value));
-  }, []);
 
   const handleDeptFilterChange = useCallback((event) => {
     startTransition(() => setDeptFilter(event.target.value));
@@ -439,14 +433,13 @@ export default function AnnualLeaveManager() {
           yearOptions={YEAR_OPTIONS}
           monthFilter={monthFilter}
           monthOptions={ANNUAL_LEAVE_MANAGER_MONTH_VALUES}
-          search={search}
+          searchResetKey={year}
+          onDebouncedSearchChange={onDebouncedSearchChange}
           deptFilter={deptFilter}
           departments={departments}
           displayRowCount={displayRowCount}
-          filterPending={filterPending}
           onYearChange={handleYearChange}
           onMonthFilterChange={handleMonthFilterChange}
-          onSearchChange={handleSearchChange}
           onDeptFilterChange={handleDeptFilterChange}
           actionsSlot={actionsMenu}
         />

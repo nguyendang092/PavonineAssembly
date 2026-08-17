@@ -14,7 +14,11 @@ import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
  * Cụm ô tìm + nút — subscribe search + filtered-data context để gõ không re-render filter menus.
  */
 function AttendanceToolbarSearchCluster() {
-  const { searchTerm, setSearchTerm } = useAttendanceListSearchBranch();
+  const {
+    searchResetKey,
+    clearSearch,
+    onDebouncedSearchChange,
+  } = useAttendanceListSearchBranch();
   const {
     filteredEmployees,
     deferredFilteredEmployees,
@@ -87,8 +91,8 @@ function AttendanceToolbarSearchCluster() {
 
   return (
     <AttendanceSearchActionsBar
-      searchTerm={searchTerm}
-      onSearchChange={setSearchTerm}
+      searchResetKey={searchResetKey}
+      onDebouncedSearchChange={onDebouncedSearchChange}
       searchPlaceholder={t("attendanceList.searchPlaceholder")}
     >
       {isSeasonalAttendanceRoot(attendanceRootPath) ? (
@@ -127,7 +131,7 @@ function AttendanceToolbarSearchCluster() {
         handleQuickNoCheckInFilter={handleQuickNoCheckInFilter}
         handleOpenUnattendedPopup={handleOpenUnattendedPopup}
         setShowOnlyUnattendedFilter={setShowOnlyUnattendedFilter}
-        setSearchTerm={setSearchTerm}
+        clearSearch={clearSearch}
         expandedSections={expandedSections}
         setExpandedSections={setExpandedSections}
         filterDepartmentSearch={filterDepartmentSearch}

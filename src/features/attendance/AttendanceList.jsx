@@ -41,6 +41,7 @@ import { useAttendanceListDerivedLists } from "./useAttendanceListDerivedLists";
 import { useAttendanceListHandlers } from "./useAttendanceListHandlers";
 import { useAttendanceListSetup } from "./useAttendanceListSetup";
 import { useAttendanceListI18n } from "./useAttendanceListI18n";
+import { useDebouncedSearchQuery } from "@/hooks/useDebouncedSearchQuery";
 import { useAttendanceCompareEmployees } from "./useAttendanceCompareEmployees";
 import {
   AttendanceListToolbarBranchContext,
@@ -85,8 +86,14 @@ const AttendanceList = memo(function AttendanceList({
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [employeeModalRecord, setEmployeeModalRecord] = useState(null);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResetNonce, setSearchResetNonce] = useState(0);
+  const clearSearch = useCallback(() => {
+    setSearchResetNonce((nonce) => nonce + 1);
+  }, []);
   const [selectedDate, setSelectedDate] = useState(todayKey);
+  const searchResetKey = `${selectedDate}:${searchResetNonce}`;
+  const { query: debouncedSearchTerm, onDebouncedSearchChange } =
+    useDebouncedSearchQuery(searchResetKey);
   const [offDaysModalOpen, setOffDaysModalOpen] = useState(false);
   const [monthlyTimesheetOpen, setMonthlyTimesheetOpen] = useState(false);
   const [koreanExportModalOpen, setKoreanExportModalOpen] = useState(false);
@@ -244,12 +251,11 @@ const AttendanceList = memo(function AttendanceList({
     filterAttendanceListRows,
     filteredEmployees,
     deferredFilteredEmployees,
-    filtersPending,
     allLeaveTypesSelectAllChecked,
     allLeaveTypeFilterValues,
   } = useAttendanceListFilters({
     employees,
-    searchTerm,
+    searchTerm: debouncedSearchTerm,
     departmentListFilter,
     loaiPhepFilter,
     joinDateYearFilter,
@@ -696,8 +702,12 @@ const AttendanceList = memo(function AttendanceList({
   );
 
   const searchBranchValue = useMemo(
-    () => ({ searchTerm, setSearchTerm }),
-    [searchTerm, setSearchTerm],
+    () => ({
+      searchResetKey,
+      clearSearch,
+      onDebouncedSearchChange,
+    }),
+    [searchResetKey, clearSearch, onDebouncedSearchChange],
   );
 
   const filteredDataBranchValue = useMemo(
@@ -742,7 +752,6 @@ const AttendanceList = memo(function AttendanceList({
       displayLocale,
       columnPlan,
       deferredFilteredEmployees,
-      filtersPending,
       showRowModalActions,
       canDeleteDayRecord,
       canEditEmployee,
@@ -777,7 +786,6 @@ const AttendanceList = memo(function AttendanceList({
       displayLocale,
       columnPlan,
       deferredFilteredEmployees,
-      filtersPending,
       showRowModalActions,
       canDeleteDayRecord,
       canEditEmployee,
@@ -958,7 +966,7 @@ const AttendanceList = memo(function AttendanceList({
             anchorDateKey={selectedDate}
             displayLocale={displayLocale}
             tlPage={tlPayrollPage}
-            searchTerm={searchTerm}
+            searchTerm={debouncedSearchTerm}
             departmentFilter={koreanMonthlyDepartmentFilter}
             payrollDepartmentOptions={departments}
             onDepartmentFilterChange={handleKoreanMonthlyDepartmentFilterChange}

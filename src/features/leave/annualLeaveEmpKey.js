@@ -1,6 +1,10 @@
 import {
   attendanceFirebaseKeyFromMnv,
   attendanceMnvStorageKey,
+  isEmpFirebaseKey,
+  resolveEmpFirebaseKeyFromEmployee,
+  resolveEmpFirebaseKeyFromPayrollMonthRowId,
+  resolvePayrollMonthRowIdFromEmpKey,
 } from "@/utils/attendanceEmployeeRecord";
 import { ANNUAL_LEAVE_EMP, ANNUAL_LEAVE_META_KEY } from "./annualLeaveFields";
 
@@ -19,17 +23,34 @@ export function annualLeaveFirebaseKeyForMnv(mnv) {
 }
 
 export function isAnnualLeaveEmpFirebaseKey(key) {
-  return String(key ?? "").trim().startsWith("emp_");
+  return isEmpFirebaseKey(key);
 }
 
+/** MNV / khóa lưới giờ công từ khóa phép năm `emp_{mnv}`. */
+export function resolvePayrollMonthRowIdFromAnnualLeaveEmpKey(empKey) {
+  return resolvePayrollMonthRowIdFromEmpKey(empKey);
+}
+
+export {
+  resolveEmpFirebaseKeyFromEmployee,
+  resolveEmpFirebaseKeyFromPayrollMonthRowId,
+};
+
 /**
- * Khóa `emp_{mnv}` từ MNV, `mnvPrefix` hoặc `recordId` hiện có.
+ * Khóa `emp_{mnv}` từ MNV, `mnvPrefix`, `recordId` hoặc bản ghi NV.
  */
 export function resolveAnnualLeaveEmpFirebaseKey({
   mnv,
   recordId,
   raw,
 } = {}) {
+  const fromEmployee = resolveEmpFirebaseKeyFromEmployee({
+    mnv: mnv ?? raw?.[ANNUAL_LEAVE_EMP.MNV_PREFIX],
+    id: recordId ?? raw?.id,
+    businessId: raw?.[ANNUAL_LEAVE_EMP.MNV_SUFFIX],
+  });
+  if (fromEmployee) return fromEmployee;
+
   const mnvKey = attendanceMnvStorageKey(
     mnv ?? raw?.[ANNUAL_LEAVE_EMP.MNV_PREFIX],
   );
@@ -38,8 +59,8 @@ export function resolveAnnualLeaveEmpFirebaseKey({
     if (fromMnv) return fromMnv;
   }
 
-  const id = trimPart(recordId);
-  if (isAnnualLeaveEmpFirebaseKey(id)) return id;
+  const id = trimPart(recordId ?? raw?.id);
+  if (isEmpFirebaseKey(id)) return id;
 
   return "";
 }

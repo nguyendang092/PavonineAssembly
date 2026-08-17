@@ -14,6 +14,10 @@ vi.mock("@/services/firebase", () => ({
   ref: (_db, path) => path,
 }));
 
+vi.mock("./annualLeavePayrollAccrual", () => ({
+  buildAnnualLeaveMonthWorkSummaryByEmpKey: vi.fn(() => ({})),
+}));
+
 describe("applyAnnualLeaveDeductionDelta", () => {
   beforeEach(() => {
     mockGet.mockReset();

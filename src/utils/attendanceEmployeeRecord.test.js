@@ -4,8 +4,13 @@ import {
   attendanceMnvStorageKey,
   buildEmployeeAttendanceDayDocument,
   formSliceForAttendanceDayDocument,
+  isEmpFirebaseKey,
   mergeAttendanceDayNodeForPersist,
+  mnvFromEmpFirebaseKey,
   resolveAttendanceFormPersistTarget,
+  resolveEmpFirebaseKeyFromEmployee,
+  resolveEmpFirebaseKeyFromPayrollMonthRowId,
+  resolvePayrollMonthRowIdFromEmpKey,
 } from "./attendanceEmployeeRecord";
 
 describe("attendanceMnvStorageKey", () => {
@@ -29,6 +34,43 @@ describe("attendanceMnvStorageKey", () => {
 describe("attendanceFirebaseKeyFromMnv", () => {
   it("builds emp_ key from normalized mnv", () => {
     expect(attendanceFirebaseKeyFromMnv("PAVO 1")).toBe("emp_PAVO1");
+  });
+});
+
+describe("employee identity helpers", () => {
+  it("detects emp_ firebase keys", () => {
+    expect(isEmpFirebaseKey("emp_260638")).toBe(true);
+    expect(isEmpFirebaseKey("260638")).toBe(false);
+  });
+
+  it("extracts mnv from emp_ key", () => {
+    expect(mnvFromEmpFirebaseKey("emp_260638")).toBe("260638");
+    expect(mnvFromEmpFirebaseKey("emp_PAVO 1")).toBe("PAVO1");
+  });
+
+  it("maps emp_ key to payroll row id", () => {
+    expect(resolvePayrollMonthRowIdFromEmpKey("emp_260638")).toBe("260638");
+    expect(resolvePayrollMonthRowIdFromEmpKey("260638__-Oxabc")).toBe("260638");
+    expect(resolvePayrollMonthRowIdFromEmpKey("260638")).toBe("260638");
+  });
+
+  it("maps payroll row id back to emp_ key", () => {
+    expect(resolveEmpFirebaseKeyFromPayrollMonthRowId("260638")).toBe("emp_260638");
+    expect(resolveEmpFirebaseKeyFromPayrollMonthRowId("260638__-Oxabc")).toBe(
+      "emp_260638",
+    );
+  });
+
+  it("resolves emp_ key from employee record", () => {
+    expect(resolveEmpFirebaseKeyFromEmployee({ id: "emp_160701" })).toBe(
+      "emp_160701",
+    );
+    expect(resolveEmpFirebaseKeyFromEmployee({ mnv: "160701" })).toBe(
+      "emp_160701",
+    );
+    expect(
+      resolveEmpFirebaseKeyFromEmployee({ businessId: "PAVO 1", mnv: "" }),
+    ).toBe("emp_PAVO1");
   });
 });
 

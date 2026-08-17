@@ -19,6 +19,12 @@ import AnnualLeaveManagerTablePanel from "./AnnualLeaveManagerTablePanel";
 
 const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
 
+function buildScopeEmpKeySet(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return null;
+  const set = new Set(entries.map((entry) => entry.id).filter(Boolean));
+  return set.size > 0 ? set : null;
+}
+
 function AnnualLeaveManagerTableSection({
   year,
   monthFilter = "",
@@ -37,17 +43,23 @@ function AnnualLeaveManagerTableSection({
   const { user } = useUser();
   const [adjustmentSavingId, setAdjustmentSavingId] = useState("");
 
+  const scopeEmpKeySet = useMemo(
+    () => buildScopeEmpKeySet(filteredEntries),
+    [filteredEntries],
+  );
+
   const {
     deductionsByEmpKey,
     attendanceMonthlyByEmpKey,
     monthWorkSummaryByEmpKey,
+    accrualAsOfDateKey,
     attendanceEnhancing,
     attendanceUsageReady,
     attendanceAccrualReady,
-    attendanceCalculated,
   } = useAnnualLeaveAttendanceEnhancement(year, yearData, {
     includePayrollMonthAccrual: true,
     throughDateKey: detailThroughDateKey,
+    scopeEmpKeySet,
   });
 
   const { monthlyByEmpKey } = useMemo(
@@ -71,53 +83,55 @@ function AnnualLeaveManagerTableSection({
 
   const usageThroughMonthIndex = resolveAnnualLeaveManagerMonthIndex(monthFilter);
 
-  const normalizeLiveEntryRow = useCallback(
-    (entry) => {
+  const displayRowByEmpKey = useMemo(() => {
+    const map = new Map();
+    for (const entry of filteredEntries) {
       const monthValues = monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
-      return normalizeAnnualLeaveRowLive(
-        entry.id,
-        entry._raw,
-        deductionsByEmpKey,
-        year,
-        monthValues,
-        monthWorkSummaryByEmpKey[entry.id] ?? null,
-        {
-          asOfDateKey: detailThroughDateKey,
-          usageThroughMonthIndex,
-        },
-      );
-    },
-    [
-      deductionsByEmpKey,
-      detailThroughDateKey,
-      monthlyByEmpKey,
-      monthWorkSummaryByEmpKey,
-      usageThroughMonthIndex,
-      year,
-    ],
-  );
-
-  const resolveDisplayRow = useCallback(
-    (entry) => {
-      if (attendanceCalculated) {
-        return normalizeLiveEntryRow(entry);
+      if (attendanceUsageReady) {
+        const row = normalizeAnnualLeaveRowLive(
+          entry.id,
+          entry._raw,
+          deductionsByEmpKey,
+          year,
+          monthValues,
+          attendanceAccrualReady
+            ? monthWorkSummaryByEmpKey[entry.id] ?? null
+            : null,
+          {
+            asOfDateKey: accrualAsOfDateKey,
+            usageThroughMonthIndex,
+          },
+        );
+        if (row) map.set(entry.id, row);
+        continue;
       }
-      const monthValues = storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
-      return normalizeAnnualLeaveRowStored(
+
+      const storedRow = normalizeAnnualLeaveRowStored(
         entry.id,
         entry._raw,
         year,
-        monthValues,
+        storedMonthlyByEmpKey[entry.id] ?? monthValues,
         { usageThroughMonthIndex },
       );
-    },
-    [
-      attendanceCalculated,
-      normalizeLiveEntryRow,
-      storedMonthlyByEmpKey,
-      usageThroughMonthIndex,
-      year,
-    ],
+      if (storedRow) map.set(entry.id, storedRow);
+    }
+    return map;
+  }, [
+    accrualAsOfDateKey,
+    attendanceAccrualReady,
+    attendanceUsageReady,
+    deductionsByEmpKey,
+    filteredEntries,
+    monthWorkSummaryByEmpKey,
+    monthlyByEmpKey,
+    storedMonthlyByEmpKey,
+    usageThroughMonthIndex,
+    year,
+  ]);
+
+  const resolveDisplayRow = useCallback(
+    (entry) => displayRowByEmpKey.get(entry.id) ?? entry._raw,
+    [displayRowByEmpKey],
   );
 
   useEffect(() => {
@@ -195,7 +209,7 @@ function AnnualLeaveManagerTableSection({
       attendanceUsageReady={attendanceUsageReady}
       attendanceAccrualReady={attendanceAccrualReady}
       storedMonthlyByEmpKey={storedMonthlyByEmpKey}
-      resolveDisplayRow={resolveDisplayRow}
+      displayRowByEmpKey={displayRowByEmpKey}
       canManage={canManage}
       adjustmentSavingId={adjustmentSavingId}
       onAdjustmentSave={handleAdjustmentSave}

@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { ATTENDANCE_LOAI_PHEP_OPTIONS } from "./attendanceGioVaoTypeOptions";
 import {
   employeeMatchesLoaiPhepFilterSet,
@@ -102,8 +102,7 @@ function applyAttendanceListFiltersCore(
 
 /**
  * Pipeline lọc danh sách NV.
- * `deferredFilteredEmployees` — bảng / tóm tắt (search + bộ lọc nâng cao deferred để tick mượt).
- * `filteredEmployees` — export / in (phản ánh lọc ngay).
+ * `searchTerm` nên là giá trị debounce từ parent (ô tìm gõ mượt, lọc sau ~220ms).
  */
 export function useAttendanceListFilters({
   employees,
@@ -122,10 +121,6 @@ export function useAttendanceListFilters({
       .replace(/\s+/g, " ")
       .toLowerCase();
   }, []);
-
-  const deferredSearchTerm = useDeferredValue(searchTerm);
-
-  const filtersPending = searchTerm !== deferredSearchTerm;
 
   const loaiPhepFilterSet = useMemo(
     () => buildLoaiPhepFilterSet(loaiPhepFilter),
@@ -193,36 +188,6 @@ export function useAttendanceListFilters({
     ],
   );
 
-  const deferredFilteredEmployees = useMemo(
-    () =>
-      sortEmployeesStableAsc(
-        applyAttendanceListFiltersCore(
-          employees,
-          {
-            searchQuery: deferredSearchTerm,
-            departmentListFilter,
-            loaiPhepFilter,
-            joinDateYearFilter,
-            joinDateMonthFilter,
-            showOnlyUnattendedFilter,
-            normalizeDepartment,
-          },
-        ),
-        { seasonal },
-      ),
-    [
-      employees,
-      deferredSearchTerm,
-      departmentListFilter,
-      loaiPhepFilter,
-      joinDateYearFilter,
-      joinDateMonthFilter,
-      showOnlyUnattendedFilter,
-      normalizeDepartment,
-      seasonal,
-    ],
-  );
-
   const allLeaveTypeFilterValues = useMemo(
     () => ATTENDANCE_LOAI_PHEP_OPTIONS.map((o) => o.value),
     [],
@@ -240,8 +205,7 @@ export function useAttendanceListFilters({
     loaiPhepFilterSet,
     filterAttendanceListRows,
     filteredEmployees,
-    deferredFilteredEmployees,
-    filtersPending,
+    deferredFilteredEmployees: filteredEmployees,
     allLeaveTypeFilterValues,
     allLeaveTypesSelectAllChecked,
   };

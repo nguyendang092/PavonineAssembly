@@ -3,7 +3,10 @@ import {
   buildMonthlyRuleSummary,
   pickPayrollMonthlyTimesheetTotalWorkColumns,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
-import { stampPayrollMonthChunkAttendanceRootFlags } from "@/features/payroll/payrollMonthlyGridData";
+import {
+  resolvePayrollMonthEmployeeProfileForSummary,
+  stampPayrollMonthChunkAttendanceRootFlags,
+} from "@/features/payroll/payrollMonthlyGridData";
 import {
   annualLeaveMonthUsesPayrollHalfAccrualRule,
 } from "./annualLeaveFields";
@@ -14,7 +17,10 @@ import {
   resolveAnnualLeaveAccrualMonthRange,
 } from "./annualLeaveCalculated";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
-import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
+import {
+  indexAnnualLeaveYearByEmpKey,
+  resolvePayrollMonthRowIdFromAnnualLeaveEmpKey,
+} from "./annualLeaveEmpKey";
 
 /** `yyyy-mm` của tháng có ngày vào làm trong năm `year`. */
 export function resolveJoinYearMonthKey(startWorkingDate, year) {
@@ -51,11 +57,15 @@ export function collectAccrualYearMonthsForYear(indexed, year) {
   if (!Number.isFinite(y) || !indexed) return months;
 
   for (const { raw } of Object.values(indexed)) {
-    const startWorkingDate = raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE];
+    const startWorkingDate = normalizeAnnualLeaveStartWorkingDate(
+      raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
+    );
     const range = resolveAnnualLeaveAccrualMonthRange(startWorkingDate, y);
     if (!range) continue;
 
-    const newJoinerInYear = isStartWorkingDateInCalendarYear(startWorkingDate, y);
+    const newJoinerInYear =
+      startWorkingDate &&
+      isStartWorkingDateInCalendarYear(startWorkingDate, y);
     for (
       let monthIndex = range.startMonth;
       monthIndex <= range.endMonth;
@@ -103,6 +113,20 @@ export function resolveAccrualYearMonthsAttendanceRange(yearMonths) {
   };
 }
 
+/** Gom snapshot điểm danh — ưu tiên tháng accrual tải đủ (giống lưới giờ công). */
+export function mergeAttendanceRootsForPayrollAccrual(
+  scopedRoot,
+  accrualMonthRoot,
+) {
+  if (!accrualMonthRoot || typeof accrualMonthRoot !== "object") {
+    return scopedRoot ?? null;
+  }
+  if (!scopedRoot || typeof scopedRoot !== "object") {
+    return accrualMonthRoot;
+  }
+  return { ...scopedRoot, ...accrualMonthRoot };
+}
+
 function buildDayChunkMapForYearMonths(
   attendanceRoot,
   attendanceRootPath,
@@ -138,10 +162,11 @@ export function buildAnnualLeaveMonthWorkSummary(
   dayChunkMap,
   yearMonth,
   empKey,
-  startWorkingDate,
+  startWorkingDate = "",
 ) {
+  if (!dayChunkMap || !empKey) return null;
+
   const joinDate = normalizeAnnualLeaveStartWorkingDate(startWorkingDate);
-  if (!dayChunkMap || !empKey || !joinDate) return null;
 
   const monthKeys = listCalendarDateKeysForYearMonth(yearMonth);
   if (!monthKeys.length) return null;
@@ -152,9 +177,21 @@ export function buildAnnualLeaveMonthWorkSummary(
     if (chunk) chunkMap.set(dateKey, chunk);
   }
 
-  const summary = buildMonthlyRuleSummary(chunkMap, monthKeys, empKey, {
-    ngayVaoLam: joinDate,
-  });
+  const payrollRowId = resolvePayrollMonthRowIdFromAnnualLeaveEmpKey(empKey);
+  if (!payrollRowId) return null;
+
+  const employeeProfile = resolvePayrollMonthEmployeeProfileForSummary(
+    chunkMap,
+    monthKeys,
+    payrollRowId,
+    joinDate ? { ngayVaoLam: joinDate } : {},
+  );
+  const summary = buildMonthlyRuleSummary(
+    chunkMap,
+    monthKeys,
+    payrollRowId,
+    employeeProfile,
+  );
 
   return pickPayrollMonthlyTimesheetTotalWorkColumns(summary?.total);
 }
@@ -189,17 +226,17 @@ export function buildAnnualLeaveMonthWorkSummaryByEmpKey(
     accrualYearMonths,
   );
 
-  for (const [empKey, { raw }] of Object.entries(indexed)) {
-    if (scopeEmpKeySet && !scopeEmpKeySet.has(empKey)) continue;
+  for (const [empKey, { raw }] of Object.entries(scopedIndexed)) {
     const startWorkingDate = normalizeAnnualLeaveStartWorkingDate(
       raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
     );
-    if (!startWorkingDate) continue;
 
     const range = resolveAnnualLeaveAccrualMonthRange(startWorkingDate, y);
     if (!range) continue;
 
-    const newJoinerInYear = isStartWorkingDateInCalendarYear(startWorkingDate, y);
+    const newJoinerInYear =
+      startWorkingDate &&
+      isStartWorkingDateInCalendarYear(startWorkingDate, y);
     const byMonth = {};
     for (
       let monthIndex = range.startMonth;

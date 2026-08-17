@@ -304,6 +304,13 @@ export default function S90dSummaryChartModal({
     [locale],
   );
 
+  const modalSubtitle = isDaily
+    ? rt(
+        "chartDailySubtitle",
+        "Xu hướng số lượng và lỗi theo từng ngày trong tháng",
+      )
+    : rt("chartTotalSubtitle", "");
+
   const qtyLegend = [
     { key: "ok", color: S90D_CHART.ok, label: rt("kpiOkQty", "Số lượng đạt") },
     { key: "ng", color: S90D_CHART.ng, label: rt("kpiNgQty", "Số lượng NG") },
@@ -311,6 +318,11 @@ export default function S90dSummaryChartModal({
       key: "yield",
       color: S90D_CHART.yield,
       label: rt("kpiAvgYield", "Hiệu suất"),
+    },
+    {
+      key: "cumulative",
+      color: S90D_CHART.total,
+      label: rt("chartCumulativeYield", "Hiệu suất luỹ kế"),
     },
   ];
 
@@ -335,17 +347,9 @@ export default function S90dSummaryChartModal({
             {rt(chartReportBadgeKey, "Báo cáo sản lượng")}
           </span>
           <h2 className="s90d-chart-modal-title">{title}</h2>
-          <p className="s90d-chart-modal-subtitle">
-            {isDaily
-              ? rt(
-                  "chartDailySubtitle",
-                  "Xu hướng số lượng và lỗi theo từng ngày trong tháng",
-                )
-              : rt(
-                  "chartTotalSubtitle",
-                  "So sánh số lượng đạt / NG và hiệu suất theo công đoạn",
-                )}
-          </p>
+          {modalSubtitle ? (
+            <p className="s90d-chart-modal-subtitle">{modalSubtitle}</p>
+          ) : null}
           <div className="s90d-chart-modal-meta">
             <span>{monthDisplayLabel}</span>
             <span aria-hidden="true">·</span>
@@ -397,7 +401,7 @@ export default function S90dSummaryChartModal({
                   title={rt("chartDailyQtyTitle", "Số lượng theo ngày")}
                   subtitle={rt(
                     "chartDailyQtyHint",
-                    "Cột xanh = đạt · đỏ = NG · đường xanh dương = hiệu suất (%)",
+                    "Cột xanh = đạt · đỏ = NG · đường xanh dương = hiệu suất tích lũy chuỗi (tối đa 100%)",
                   )}
                 >
                   <S90dChartLegend items={qtyLegend} />
@@ -481,7 +485,7 @@ export default function S90dSummaryChartModal({
                         yAxisId="pct"
                         type="monotone"
                         dataKey="yieldPct"
-                        name={rt("kpiAvgYield", "Hiệu suất")}
+                        name={rt("chartCumulativeYield", "Hiệu suất luỹ kế")}
                         stroke={S90D_CHART.yield}
                         strokeWidth={3}
                         dot={{ r: 4, fill: "#fff", strokeWidth: 2 }}
@@ -498,10 +502,7 @@ export default function S90dSummaryChartModal({
                   "chartProcessQtyTitle",
                   "Số lượng theo công đoạn",
                 )}
-                subtitle={rt(
-                  "chartProcessQtyHint",
-                  "So sánh OK / NG và hiệu suất từng công đoạn trong tháng",
-                )}
+                subtitle={rt("chartProcessQtyHint", "")}
               >
                 <S90dChartLegend items={qtyLegend} />
                 <ResponsiveContainer width="100%" height={360}>
@@ -588,6 +589,16 @@ export default function S90dSummaryChartModal({
                       stroke={S90D_CHART.yield}
                       strokeWidth={3}
                       dot={{ r: 5, fill: "#fff", strokeWidth: 2 }}
+                    />
+                    <Line
+                      yAxisId="pct"
+                      type="monotone"
+                      dataKey="cumulativeYieldPct"
+                      name={rt("chartCumulativeYield", "Hiệu suất luỹ kế")}
+                      stroke={S90D_CHART.total}
+                      strokeWidth={2}
+                      strokeDasharray="6 4"
+                      dot={{ r: 4, fill: "#fff", strokeWidth: 2 }}
                     />
                   </ComposedChart>
                 </ResponsiveContainer>

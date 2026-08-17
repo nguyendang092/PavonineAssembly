@@ -199,7 +199,7 @@ describe("annualLeaveDerived", () => {
       monthWorkSummaryByYearMonth: passAll,
       asOfDateKey: "2026-07-24",
     });
-    expect(state.annualLeaveCurrentYear).toBe(8);
+    expect(state.annualLeaveCurrentYear).toBe(9);
   });
 
   it("applies monthly accrual and tenure in row normalize", () => {

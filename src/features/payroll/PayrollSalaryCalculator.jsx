@@ -28,12 +28,14 @@ import {
   pickPayrollEmployeeDayFields,
 } from "@/features/payroll/payrollEmployeeFields";
 import { payrollTableWrapperMinWidthClass } from "@/features/payroll/payrollTableLayout";
+import HrDebouncedSearchField from "@/components/ui/HrDebouncedSearchField";
+import { useDebouncedSearchQuery } from "@/hooks/useDebouncedSearchQuery";
 import PayrollSalaryTableRow, {
   PayrollSalaryTableColgroup,
   PayrollSalaryTableThead,
 } from "@/features/payroll/payrollSalaryTableUi";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
-import { annualLeaveEmpFirebaseKey } from "@/features/leave/annualLeaveEmpKey";
+import { resolveEmpFirebaseKeyFromEmployee } from "@/features/leave/annualLeaveEmpKey";
 import {
   annualLeaveYearFromDateKey,
   getDisplayAnnualLeaveBalanceForAttendance,
@@ -149,7 +151,8 @@ export default function PayrollSalaryCalculator() {
   const [isOffDay, setIsOffDay] = useState(false);
   const [isHolidayDay, setIsHolidayDay] = useState(false);
   const [isCompensatoryDay, setIsCompensatoryDay] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const { query: debouncedSearchTerm, onDebouncedSearchChange } =
+    useDebouncedSearchQuery(selectedDate);
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [workHoursFilter, setWorkHoursFilter] = useState(
     PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
@@ -222,15 +225,12 @@ export default function PayrollSalaryCalculator() {
       .toLowerCase();
   }, []);
 
-  const deferredSearchTerm = useDeferredValue(searchTerm);
   const deferredDepartmentFilter = useDeferredValue(departmentFilter);
   const deferredWorkHoursFilter = useDeferredValue(workHoursFilter);
   const deferredLeaveTypeFilter = useDeferredValue(leaveTypeFilter);
   const deferredOvertimeFilter = useDeferredValue(overtimeFilter);
   const deferredShortHoursFilter = useDeferredValue(shortHoursFilter);
-  const isSearchStale = searchTerm !== deferredSearchTerm;
   const filtersPending =
-    isSearchStale ||
     departmentFilter !== deferredDepartmentFilter ||
     workHoursFilter !== deferredWorkHoursFilter ||
     leaveTypeFilter !== deferredLeaveTypeFilter ||
@@ -682,15 +682,15 @@ export default function PayrollSalaryCalculator() {
   const filteredEmployees = useMemo(
     () =>
       sortEmployeesAscForPopup(
-        filterRows(employeesForPayroll, deferredSearchTerm),
+        filterRows(employeesForPayroll, debouncedSearchTerm),
       ),
-    [employeesForPayroll, filterRows, deferredSearchTerm],
+    [employeesForPayroll, filterRows, debouncedSearchTerm],
   );
 
   const tablePagination = useHrTablePagination(filteredEmployees, {
     resetDeps: [
       selectedDate,
-      deferredSearchTerm,
+      debouncedSearchTerm,
       deferredDepartmentFilter,
       deferredWorkHoursFilter,
       deferredLeaveTypeFilter,
@@ -705,7 +705,7 @@ export default function PayrollSalaryCalculator() {
   const annualLeaveScopeEmpKeys = useMemo(
     () =>
       pagedEmployees
-        .map((emp) => annualLeaveEmpFirebaseKey(emp.mnv))
+        .map((emp) => resolveEmpFirebaseKeyFromEmployee(emp))
         .filter(Boolean),
     [pagedEmployees],
   );
@@ -827,7 +827,7 @@ export default function PayrollSalaryCalculator() {
             nightOtPaperworkById: nightOtMap,
           },
           toolbarFilters: {
-            searchTerm,
+            searchTerm: debouncedSearchTerm,
             departmentFilter,
             workHoursFilter,
             leaveTypeFilter,
@@ -875,7 +875,7 @@ export default function PayrollSalaryCalculator() {
       nightOtMap,
       normalizeDepartment,
       payrollExportSheetTitle,
-      searchTerm,
+      debouncedSearchTerm,
       departmentFilter,
       workHoursFilter,
       leaveTypeFilter,
@@ -921,10 +921,9 @@ export default function PayrollSalaryCalculator() {
               tl={tlAttendance}
               className="min-w-0 flex-1"
             />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+            <HrDebouncedSearchField
+              resetKey={selectedDate}
+              onDebouncedChange={onDebouncedSearchChange}
               placeholder={tlPage(
                 "searchPlaceholder",
                 "Tìm theo tên, MNV, bộ phận…",
@@ -1148,7 +1147,7 @@ export default function PayrollSalaryCalculator() {
           anchorDateKey={selectedDate}
           displayLocale={displayLocale}
           tlPage={tlPage}
-          searchTerm={searchTerm}
+          searchTerm={debouncedSearchTerm}
           departmentFilter={departmentFilter}
           payrollDepartmentOptions={departments}
           onDepartmentFilterChange={setDepartmentFilter}
@@ -1170,7 +1169,7 @@ export default function PayrollSalaryCalculator() {
           anchorDateKey={selectedDate}
           displayLocale={displayLocale}
           tlPage={tlPage}
-          searchTerm={searchTerm}
+          searchTerm={debouncedSearchTerm}
           departmentFilter={departmentFilter}
           payrollDepartmentOptions={departments}
           onDepartmentFilterChange={setDepartmentFilter}

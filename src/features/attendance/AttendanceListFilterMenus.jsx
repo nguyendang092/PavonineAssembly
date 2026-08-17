@@ -80,7 +80,7 @@ function AttendanceListFilterMenus({
   handleQuickNoCheckInFilter,
   handleOpenUnattendedPopup,
   setShowOnlyUnattendedFilter,
-  setSearchTerm,
+  clearSearch,
   expandedSections,
   setExpandedSections,
   filterDepartmentSearch,
@@ -156,12 +156,12 @@ function AttendanceListFilterMenus({
   const clearAllFilters = useCallback(() => {
     clearDraftAndApplied();
     setShowOnlyUnattendedFilter(false);
-    setSearchTerm("");
+    clearSearch();
     setExpandedSections({});
   }, [
     clearDraftAndApplied,
     setShowOnlyUnattendedFilter,
-    setSearchTerm,
+    clearSearch,
     setExpandedSections,
   ]);
 

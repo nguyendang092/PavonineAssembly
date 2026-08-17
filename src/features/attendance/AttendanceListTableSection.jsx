@@ -6,7 +6,7 @@ import AttendanceTableRow, {
 import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
 import { isSeasonalAttendanceRoot, isKoreanAttendanceRoot } from "./attendanceSeasonalStt";
 import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
-import { annualLeaveEmpFirebaseKey } from "@/features/leave/annualLeaveEmpKey";
+import { resolveEmpFirebaseKeyFromEmployee } from "@/features/leave/annualLeaveEmpKey";
 import {
   annualLeaveYearFromDateKey,
   getDisplayAnnualLeaveBalanceForAttendance,
@@ -46,7 +46,7 @@ function AttendanceListTableSection({
   const scopeEmpKeys = useMemo(
     () =>
       deferredFilteredEmployees
-        .map((emp) => annualLeaveEmpFirebaseKey(emp.mnv))
+        .map((emp) => resolveEmpFirebaseKeyFromEmployee(emp))
         .filter(Boolean),
     [deferredFilteredEmployees],
   );

@@ -42,7 +42,7 @@ function AnnualLeaveManagerTablePanel({
   attendanceEnhancing = false,
   attendanceUsageReady = false,
   attendanceAccrualReady = false,
-  resolveDisplayRow,
+  displayRowByEmpKey,
   canManage = false,
   adjustmentSavingId = "",
   onAdjustmentSave,
@@ -79,7 +79,7 @@ function AnnualLeaveManagerTablePanel({
     const cache = pagedRowCacheRef.current;
     const activeKeys = new Set();
     const rows = tablePagination.pagedItems.map((entry, localIdx) => {
-      const freshRow = resolveDisplayRow(entry) ?? entry._raw;
+      const freshRow = displayRowByEmpKey.get(entry.id) ?? entry._raw;
       activeKeys.add(entry.id);
       const cached = cache.get(entry.id);
       const row =
@@ -99,7 +99,7 @@ function AnnualLeaveManagerTablePanel({
     }
     return rows;
   }, [
-    resolveDisplayRow,
+    displayRowByEmpKey,
     tablePagination.pagedItems,
     tablePagination.rowIndexOffset,
   ]);
@@ -283,7 +283,7 @@ function areTablePanelPropsEqual(prev, next) {
     prev.attendanceEnhancing === next.attendanceEnhancing &&
     prev.attendanceUsageReady === next.attendanceUsageReady &&
     prev.attendanceAccrualReady === next.attendanceAccrualReady &&
-    prev.resolveDisplayRow === next.resolveDisplayRow &&
+    prev.displayRowByEmpKey === next.displayRowByEmpKey &&
     prev.canManage === next.canManage &&
     prev.adjustmentSavingId === next.adjustmentSavingId &&
     prev.onAdjustmentSave === next.onAdjustmentSave

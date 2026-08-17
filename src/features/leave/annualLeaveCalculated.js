@@ -93,26 +93,6 @@ function parseAnnualLeaveStartWorkingDate(value) {
   return parseAnnualLeaveIsoDate(normalized);
 }
 
-/** Tháng đã chốt (hết tháng hoặc asOf sau ngày cuối tháng) mới được +1 phép. */
-export function isAnnualLeaveAccrualMonthClosed(year, monthIndex, asOfDateKey) {
-  const y = Number(year);
-  const m = Number(monthIndex);
-  if (!Number.isFinite(y) || !Number.isFinite(m)) return true;
-
-  const asOf =
-    parseAnnualLeaveIsoDate(asOfDateKey) ??
-    parseAnnualLeaveIsoDate(resolveAnnualLeaveYearAsOfDateKey(y));
-  if (!asOf) return true;
-
-  if (asOf.getFullYear() < y) return true;
-  if (asOf.getFullYear() > y) return false;
-
-  const monthEndDay = new Date(y, m + 1, 0).getDate();
-  const monthEndKey = `${y}-${String(m + 1).padStart(2, "0")}-${String(monthEndDay).padStart(2, "0")}`;
-  const asOfKey = `${asOf.getFullYear()}-${String(asOf.getMonth() + 1).padStart(2, "0")}-${String(asOf.getDate()).padStart(2, "0")}`;
-  return asOfKey >= monthEndKey;
-}
-
 /** Ngày chốt thâm niên cho phép năm của `year` (năm hiện tại → hôm nay). */
 export function resolveAnnualLeaveTenureAsOfDateKey(year) {
   const y = Number(year);
@@ -222,13 +202,21 @@ export function resolveAnnualLeaveAccrualMonthRange(
   const y = Number(year);
   if (!asOf || !Number.isFinite(y)) return null;
 
-  const join = parseAnnualLeaveStartWorkingDate(startWorkingDate);
+  const normalizedStart = normalizeAnnualLeaveStartWorkingDate(startWorkingDate);
+  const join = normalizedStart
+    ? parseAnnualLeaveStartWorkingDate(normalizedStart)
+    : null;
   const asOfDate = parseAnnualLeaveIsoDate(asOf);
-  if (!join || !asOfDate) return null;
-  if (asOfDate.getTime() < join.getTime()) return null;
+  if (!asOfDate) return null;
+  if (normalizedStart && !join) return null;
+  if (join && asOfDate.getTime() < join.getTime()) return null;
 
   const yearStart = parseAnnualLeaveIsoDate(`${y}-01-01`);
-  const periodStart = join.getTime() > yearStart.getTime() ? join : yearStart;
+  const periodStart = !join
+    ? yearStart
+    : join.getTime() > yearStart.getTime()
+      ? join
+      : yearStart;
 
   if (periodStart.getFullYear() > y || asOfDate.getFullYear() < y) return null;
 
@@ -257,7 +245,7 @@ function resolveMonthWorkSummaryForAccrual(
 /**
  * Số tháng +1 phép trong năm.
  * - Từ `2026-06` (và mọi tháng năm ≥ 2027): mọi NV kiểm ≥ ½ ngày thực tế làm việc
- *   (tổng ngày công hoặc ngày nghỉ thai sản) — không auto +1.
+ *   (tổng ngày công hoặc ngày nghỉ thai sản) — cộng ngay khi đạt, kể cả tháng hiện tại.
  * - Trước `2026-06` trong năm 2026: quy tắc cũ (NV cũ auto +1; NV mới chỉ tháng vào làm cần ½).
  * @param {Record<string, { workDays?: number, standardWorkDays?: number, tsDays?: number }> | null | undefined} monthWorkSummaryByYearMonth
  */
@@ -275,18 +263,15 @@ export function resolveAnnualLeaveMonthlyAccrualDays(
   if (!range) return 0;
 
   const y = Number(year);
-  const newJoinerInYear = isStartWorkingDateInCalendarYear(startWorkingDate, y);
-  const asOf = asOfDateKey ?? resolveAnnualLeaveYearAsOfDateKey(y);
+  const normalizedStart = normalizeAnnualLeaveStartWorkingDate(startWorkingDate);
+  const newJoinerInYear =
+    normalizedStart && isStartWorkingDateInCalendarYear(normalizedStart, y);
   let accrual = 0;
   for (
     let monthIndex = range.startMonth;
     monthIndex <= range.endMonth;
     monthIndex += 1
   ) {
-    if (!isAnnualLeaveAccrualMonthClosed(y, monthIndex, asOf)) {
-      continue;
-    }
-
     if (annualLeaveMonthUsesPayrollHalfAccrualRule(y, monthIndex)) {
       const summary = resolveMonthWorkSummaryForAccrual(
         monthWorkSummaryByYearMonth,
@@ -296,6 +281,10 @@ export function resolveAnnualLeaveMonthlyAccrualDays(
       if (monthMeetsHalfStandardWorkDays(summary)) {
         accrual += 1;
       }
+      continue;
+    }
+
+    if (!normalizedStart) {
       continue;
     }
 
@@ -335,6 +324,15 @@ export function resolveAnnualLeaveCurrentYear(
     row?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
   );
   if (!startDate) {
+    if (year != null && monthWorkSummaryByYearMonth) {
+      const monthlyAccrual = resolveAnnualLeaveMonthlyAccrualDays(
+        "",
+        year,
+        monthWorkSummaryByYearMonth,
+        asOfDateKey,
+      );
+      return roundAnnualLeaveHours(monthlyAccrual + adjustment);
+    }
     return roundAnnualLeaveHours(
       parseAnnualLeaveNumber(
         row?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],

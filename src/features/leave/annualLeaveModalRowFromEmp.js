@@ -1,12 +1,12 @@
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import {
-  annualLeaveEmpFirebaseKey,
   indexAnnualLeaveYearByEmpKey,
+  resolveEmpFirebaseKeyFromEmployee,
 } from "./annualLeaveEmpKey";
 
 /** Hàng modal chi tiết từ bản ghi điểm danh / lương. */
 export function buildAnnualLeaveDetailModalRowFromEmp(emp, yearData = null) {
-  const empKey = annualLeaveEmpFirebaseKey(emp?.mnv);
+  const empKey = resolveEmpFirebaseKeyFromEmployee(emp);
   let raw = null;
   if (yearData && typeof yearData === "object" && empKey) {
     const indexed = indexAnnualLeaveYearByEmpKey(yearData);

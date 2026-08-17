@@ -1,4 +1,4 @@
-import { attendanceMnvStorageKey } from "@/utils/attendanceEmployeeRecord";
+import { attendanceMnvStorageKey, mnvFromEmpFirebaseKey, resolveEmpFirebaseKeyFromEmployee } from "@/utils/attendanceEmployeeRecord";
 import {
   canonicalAttendanceLoaiPhepValue,
   getAttendanceLeaveTypeRaw,
@@ -41,11 +41,9 @@ export function attendanceAnnualLeaveDeductionForLoaiPhep(loaiPhep) {
 export function attendanceMnvKeyFromDayRecord(empKey, rawEmp) {
   const fromField = attendanceMnvStorageKey(rawEmp?.mnv);
   if (fromField) return fromField;
-  const key = String(empKey ?? "").trim();
-  if (key.startsWith("emp_")) {
-    return attendanceMnvStorageKey(key.slice(4));
-  }
-  return attendanceMnvStorageKey(key);
+  const fromKey = mnvFromEmpFirebaseKey(empKey);
+  if (fromKey) return fromKey;
+  return attendanceMnvStorageKey(empKey);
 }
 
 function normalizeAttendanceLeaveDeductionFilter(third) {
@@ -495,10 +493,7 @@ export function buildAttendanceAnnualLeaveUsageDetailForEmpKey(
 export function getAnnualLeaveBalanceForEmployee(emp, balanceByEmpKey) {
   if (!balanceByEmpKey || !emp) return null;
 
-  const mnvKey = attendanceMnvStorageKey(emp.mnv);
-  if (!mnvKey) return null;
-
-  const empKey = annualLeaveEmpFirebaseKey(mnvKey);
+  const empKey = resolveEmpFirebaseKeyFromEmployee(emp);
   if (!empKey) return null;
 
   const balance = balanceByEmpKey[empKey];

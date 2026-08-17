@@ -4,12 +4,22 @@ import {
   annualLeaveEmpFirebaseKey,
   indexAnnualLeaveYearByEmpKey,
   resolveAnnualLeaveEmpFirebaseKey,
+  resolvePayrollMonthRowIdFromAnnualLeaveEmpKey,
 } from "./annualLeaveEmpKey";
 
 describe("annualLeaveEmpKey", () => {
   it("builds emp_{mnv} firebase key", () => {
     expect(annualLeaveEmpFirebaseKey("251205")).toBe("emp_251205");
     expect(annualLeaveEmpFirebaseKey("12")).toBe("emp_12");
+  });
+
+  it("maps emp_{mnv} to payroll row id", () => {
+    expect(resolvePayrollMonthRowIdFromAnnualLeaveEmpKey("emp_260638")).toBe(
+      "260638",
+    );
+    expect(resolvePayrollMonthRowIdFromAnnualLeaveEmpKey("260638")).toBe(
+      "260638",
+    );
   });
 
   it("resolves canonical key from mnvPrefix", () => {

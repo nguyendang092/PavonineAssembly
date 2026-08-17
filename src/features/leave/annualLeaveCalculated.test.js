@@ -6,7 +6,6 @@ import {
   formatAnnualLeaveMonthColumnLabel,
   isStartWorkingDateInCalendarMonth,
   isStartWorkingDateInCalendarYear,
-  isAnnualLeaveAccrualMonthClosed,
   listAnnualLeaveCalendarYearMonths,
   monthMeetsHalfStandardWorkDays,
   normalizeAnnualLeaveStartWorkingDate,
@@ -92,6 +91,20 @@ describe("monthMeetsHalfStandardWorkDays", () => {
       monthMeetsHalfStandardWorkDays({ workDays: 10, standardWorkDays: 22 }),
     ).toBe(false);
     expect(monthMeetsHalfStandardWorkDays(null)).toBe(false);
+  });
+
+  it("grants accrual at exactly half of standard work days (13/26)", () => {
+    expect(
+      monthMeetsHalfStandardWorkDays({ workDays: 13, standardWorkDays: 26 }),
+    ).toBe(true);
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2026-06-01",
+        2026,
+        { "2026-06": { workDays: 13, standardWorkDays: 26 } },
+        "2026-06-30",
+      ),
+    ).toBe(1);
   });
 
   it("grants accrual when maternity leave days reach half of standard work days", () => {
@@ -259,7 +272,7 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
     ).toBe(1);
   });
 
-  it("join 18-Jun-2026 (MNV 260638) — chỉ tháng đã chốt đạt ½ mới +1", () => {
+  it("join 18-Jun-2026 (MNV 260638) — +1 ngay khi tháng hiện tại đạt ½", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 7, 14));
 
@@ -276,12 +289,24 @@ describe("resolveAnnualLeaveMonthlyAccrualDays", () => {
         monthMap,
         "2026-08-14",
       ),
-    ).toBe(1);
+    ).toBe(2);
     expect(normalizeAnnualLeaveStartWorkingDate("18-Jun-2026")).toBe(
       "2026-06-18",
     );
-    expect(isAnnualLeaveAccrualMonthClosed(2026, 7, "2026-08-14")).toBe(false);
-    expect(isAnnualLeaveAccrualMonthClosed(2026, 6, "2026-08-14")).toBe(true);
+  });
+
+  it("grants +1 in current month when half threshold is met mid-month", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 17));
+
+    expect(
+      resolveAnnualLeaveMonthlyAccrualDays(
+        "2026-08-01",
+        2026,
+        { "2026-08": { workDays: 13, standardWorkDays: 26 } },
+        "2026-08-17",
+      ),
+    ).toBe(1);
   });
 
   it("resets accrual for a new calendar year", () => {
@@ -326,6 +351,28 @@ describe("resolveAnnualLeaveCurrentYear", () => {
       [ANNUAL_LEAVE_EMP.START_WORKING_DATE]: "",
     };
     expect(resolveAnnualLeaveCurrentYear(row, 2026)).toBe(12);
+  });
+
+  it("uses payroll summary when start date is missing", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 17));
+
+    const row = {
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 0,
+      [ANNUAL_LEAVE_EMP.START_WORKING_DATE]: "",
+    };
+    expect(
+      resolveAnnualLeaveCurrentYear(
+        row,
+        2026,
+        {
+          monthWorkSummaryByYearMonth: {
+            "2026-06": { workDays: 13, standardWorkDays: 26 },
+          },
+          asOfDateKey: "2026-08-17",
+        },
+      ),
+    ).toBe(1);
   });
 
   it("applies manual adjustment (+/-) to current year", () => {

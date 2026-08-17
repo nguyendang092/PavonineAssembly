@@ -1,3 +1,5 @@
+import { capYieldPct } from "./s90dDisplayUtils";
+
 /** Màu và hằng số dùng chung cho biểu đồ báo cáo S90D. */
 export const S90D_CHART = Object.freeze({
   ok: "#10b981",
@@ -40,9 +42,9 @@ export function formatS90dChartQty(value, locale = "vi-VN") {
 }
 
 export function formatS90dChartPct(value, locale = "vi-VN") {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return "0.0%";
-  return `${num.toLocaleString(locale, {
+  const capped = capYieldPct(value);
+  if (capped == null) return "0.0%";
+  return `${capped.toLocaleString(locale, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })}%`;

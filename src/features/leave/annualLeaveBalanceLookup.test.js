@@ -44,6 +44,20 @@ describe("annualLeaveBalanceLookup", () => {
     expect(getAnnualLeaveBalanceForEmployee({ mnv: "12" }, map)).toBe(8);
   });
 
+  it("looks up balance by emp id when mnv field empty", () => {
+    const map = buildLiveAnnualLeaveBalanceByMnv(
+      {
+        emp_160701: {
+          [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "160701",
+          [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 5,
+          [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 1,
+        },
+      },
+      {},
+    );
+    expect(getAnnualLeaveBalanceForEmployee({ id: "emp_160701" }, map)).toBe(4);
+  });
+
   it("display uses live balance map", () => {
     const map = buildLiveAnnualLeaveBalanceByMnv(
       {

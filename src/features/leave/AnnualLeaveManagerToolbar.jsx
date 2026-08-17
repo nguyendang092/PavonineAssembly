@@ -1,4 +1,5 @@
 import { memo } from "react";
+import HrDebouncedSearchField from "@/components/ui/HrDebouncedSearchField";
 
 function AnnualLeaveManagerToolbar({
   t,
@@ -6,14 +7,13 @@ function AnnualLeaveManagerToolbar({
   yearOptions,
   monthFilter,
   monthOptions,
-  search,
+  searchResetKey,
+  onDebouncedSearchChange,
   deptFilter,
   departments,
   displayRowCount,
-  filterPending,
   onYearChange,
   onMonthFilterChange,
-  onSearchChange,
   onDeptFilterChange,
   actionsSlot,
 }) {
@@ -64,12 +64,11 @@ function AnnualLeaveManagerToolbar({
           </select>
         </label>
 
-        <input
-          type="search"
+        <HrDebouncedSearchField
+          resetKey={searchResetKey}
+          onDebouncedChange={onDebouncedSearchChange}
           placeholder={t("annualLeave.searchPlaceholder")}
           className="h-8 w-full min-w-0 rounded-md border px-2 text-sm text-black focus:ring-2 focus:ring-blue-200 sm:w-44 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-          value={search}
-          onChange={onSearchChange}
         />
 
         <select
@@ -87,11 +86,7 @@ function AnnualLeaveManagerToolbar({
       </div>
 
       <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto">
-        <span
-          className={`inline-flex h-8 items-center rounded-md border border-blue-200/80 bg-blue-50 px-2 text-xs font-semibold text-black dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200${
-            filterPending ? " opacity-70" : ""
-          }`}
-        >
+        <span className="inline-flex h-8 items-center rounded-md border border-blue-200/80 bg-blue-50 px-2 text-xs font-semibold text-black dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200">
           {t("annualLeave.rowCount", { count: displayRowCount })}
         </span>
         {actionsSlot}
@@ -107,14 +102,13 @@ function areToolbarPropsEqual(prev, next) {
     prev.yearOptions === next.yearOptions &&
     prev.monthFilter === next.monthFilter &&
     prev.monthOptions === next.monthOptions &&
-    prev.search === next.search &&
+    prev.searchResetKey === next.searchResetKey &&
     prev.deptFilter === next.deptFilter &&
     prev.departments === next.departments &&
     prev.displayRowCount === next.displayRowCount &&
-    prev.filterPending === next.filterPending &&
     prev.onYearChange === next.onYearChange &&
     prev.onMonthFilterChange === next.onMonthFilterChange &&
-    prev.onSearchChange === next.onSearchChange &&
+    prev.onDebouncedSearchChange === next.onDebouncedSearchChange &&
     prev.onDeptFilterChange === next.onDeptFilterChange &&
     prev.actionsSlot === next.actionsSlot
   );

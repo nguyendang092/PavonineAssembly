@@ -1,17 +1,16 @@
-import {
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useState,
-  startTransition,
-} from "react";
+import { useMemo } from "react";
 import { shouldSkipAnnualLeaveForAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
-import { buildStoredAnnualLeaveBalanceByMnv } from "./annualLeaveDerived";
+import { resolveAnnualLeaveYearAsOfDateKey } from "./annualLeaveCalculated";
+import {
+  buildLiveAnnualLeaveBalanceByMnv,
+  buildStoredAnnualLeaveBalanceByMnv,
+} from "./annualLeaveDerived";
 import { useAnnualLeaveLiveData } from "./useAnnualLeaveLiveData";
 
 function normalizeScopeEmpKeys(scopeEmpKeys) {
   if (!Array.isArray(scopeEmpKeys)) return null;
-  return new Set(scopeEmpKeys.filter(Boolean));
+  const set = new Set(scopeEmpKeys.filter(Boolean));
+  return set.size > 0 ? set : null;
 }
 
 function pickScopedBalanceMap(map, scopeEmpKeySet) {
@@ -24,8 +23,7 @@ function pickScopedBalanceMap(map, scopeEmpKeySet) {
 }
 
 /**
- * Map MNV → BALANCE cho cột điểm danh / giờ công.
- * Tự tải; hiển thị Firebase ngay; chỉ tính live theo trang hiện tại.
+ * Map `emp_{mnv}` → BALANCE cho cột điểm danh / giờ công.
  */
 export function useAnnualLeaveBalanceMap(year, options = {}) {
   const {
@@ -47,22 +45,8 @@ export function useAnnualLeaveBalanceMap(year, options = {}) {
     [scopeEmpKeys],
   );
 
-  const [attendanceLoadReady, setAttendanceLoadReady] = useState(false);
-
-  useEffect(() => {
-    if (!liveEnabled) {
-      setAttendanceLoadReady(false);
-      return;
-    }
-    setAttendanceLoadReady(false);
-    const frameId = requestAnimationFrame(() => {
-      setAttendanceLoadReady(true);
-    });
-    return () => cancelAnimationFrame(frameId);
-  }, [liveEnabled, year, throughDateKey, yearMonthPrefix, attendanceRootPath]);
-
   const live = useAnnualLeaveLiveData(year, {
-    enabled: liveEnabled && attendanceLoadReady,
+    enabled: liveEnabled,
     attendanceRootPath,
     throughDateKey,
     yearMonthPrefix,
@@ -72,103 +56,61 @@ export function useAnnualLeaveBalanceMap(year, options = {}) {
     ...rest,
   });
 
-  const storedBalanceByMnv = useMemo(
-    () =>
-      pickScopedBalanceMap(
-        buildStoredAnnualLeaveBalanceByMnv(live.yearData),
-        scopeEmpKeySet,
-      ),
-    [live.yearData, scopeEmpKeySet],
+  const accrualAsOfDateKey = useMemo(
+    () => resolveAnnualLeaveYearAsOfDateKey(year),
+    [year],
   );
 
-  const [balanceCache, setBalanceCache] = useState({});
+  const balanceByMnv = useMemo(() => {
+    if (!liveEnabled || !live.yearData) return {};
 
-  useEffect(() => {
-    setBalanceCache({});
-  }, [year, throughDateKey, yearMonthPrefix, attendanceRootPath]);
+    const stored = pickScopedBalanceMap(
+      buildStoredAnnualLeaveBalanceByMnv(live.yearData),
+      scopeEmpKeySet,
+    );
+    if (!live.attendanceDerivedReady) return stored;
 
-  const [usageBalanceByMnv, setUsageBalanceByMnv] = useState({});
-  const [accrualBalanceByMnv, setAccrualBalanceByMnv] = useState({});
+    const monthSummaries = live.accrualDerivedReady
+      ? live.monthWorkSummaryByEmpKey
+      : {};
 
-  useEffect(() => {
-    if (!liveEnabled || !live.attendanceDerivedReady) {
-      setUsageBalanceByMnv({});
-      return;
-    }
-
-    let cancelled = false;
-    startTransition(() => {
-      const next = live.buildUsageBalanceByMnv?.() ?? {};
-      if (!cancelled) setUsageBalanceByMnv(next);
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    return pickScopedBalanceMap(
+      {
+        ...stored,
+        ...buildLiveAnnualLeaveBalanceByMnv(
+          live.yearData,
+          live.deductionsByEmpKey,
+          year,
+          {},
+          live.attendanceMonthlyByEmpKey,
+          monthSummaries,
+          {
+            scopeEmpKeySet,
+            asOfDateKey: accrualAsOfDateKey,
+          },
+        ),
+      },
+      scopeEmpKeySet,
+    );
   }, [
     liveEnabled,
+    live.yearData,
     live.attendanceDerivedReady,
-    live.buildUsageBalanceByMnv,
-  ]);
-
-  useEffect(() => {
-    if (!liveEnabled || !live.accrualDerivedReady) {
-      setAccrualBalanceByMnv({});
-      return;
-    }
-
-    let cancelled = false;
-    startTransition(() => {
-      const next = live.buildAccrualBalanceByMnv?.() ?? {};
-      if (!cancelled) setAccrualBalanceByMnv(next);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    liveEnabled,
     live.accrualDerivedReady,
-    live.buildAccrualBalanceByMnv,
+    live.deductionsByEmpKey,
+    live.attendanceMonthlyByEmpKey,
+    live.monthWorkSummaryByEmpKey,
+    accrualAsOfDateKey,
+    year,
+    scopeEmpKeySet,
   ]);
-
-  useEffect(() => {
-    if (Object.keys(accrualBalanceByMnv).length > 0) {
-      setBalanceCache((prev) => ({ ...prev, ...accrualBalanceByMnv }));
-    }
-  }, [accrualBalanceByMnv]);
-
-  const deferredUsageBalanceByMnv = useDeferredValue(usageBalanceByMnv);
-  const deferredAccrualBalanceByMnv = useDeferredValue(accrualBalanceByMnv);
 
   const balanceEnhancing =
     liveEnabled &&
     (live.yearLoading ||
-      !attendanceLoadReady ||
       live.attendanceEnhancing ||
       live.payrollEnhancing ||
       (live.attendanceDerivedReady && !live.accrualDerivedReady));
-
-  const balanceByMnv = useMemo(() => {
-    if (!liveEnabled) return {};
-
-    const merged = { ...balanceCache, ...storedBalanceByMnv };
-    if (Object.keys(deferredUsageBalanceByMnv).length > 0) {
-      Object.assign(merged, deferredUsageBalanceByMnv);
-    }
-    if (Object.keys(deferredAccrualBalanceByMnv).length > 0) {
-      Object.assign(merged, deferredAccrualBalanceByMnv);
-    }
-
-    return pickScopedBalanceMap(merged, scopeEmpKeySet);
-  }, [
-    liveEnabled,
-    balanceCache,
-    storedBalanceByMnv,
-    deferredUsageBalanceByMnv,
-    deferredAccrualBalanceByMnv,
-    scopeEmpKeySet,
-  ]);
 
   return {
     balanceByMnv,

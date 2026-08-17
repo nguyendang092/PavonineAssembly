@@ -53,14 +53,25 @@ export function mergeDailyDefectTotals(monthDailySummaries) {
   return { totalQty, defects };
 }
 
+/** Hiệu suất hiển thị trên biểu đồ — ưu tiên tích lũy chuỗi, giới hạn 0–100%. */
+export function resolveS90dChartYieldPct(row) {
+  if (!row) return 0;
+  const raw =
+    row.cumulativeYieldPct ??
+    row.yieldPct ??
+    (row.totalQty > 0 ? (row.okQty / row.totalQty) * 100 : null);
+  return roundYieldPct(raw) ?? 0;
+}
+
 export function buildS90dChartKpiSummary(summary) {
   const totalRow = summary?.totalRow ?? {};
+  const chartYieldPct = resolveS90dChartYieldPct(totalRow);
   return {
     totalQty: totalRow.totalQty ?? 0,
     okQty: totalRow.okQty ?? 0,
     ngQty: totalRow.ngQty ?? 0,
-    yieldPct: totalRow.yieldPct ?? 0,
-    cumulativeYieldPct: totalRow.cumulativeYieldPct ?? totalRow.yieldPct ?? 0,
+    yieldPct: chartYieldPct,
+    cumulativeYieldPct: chartYieldPct,
     ngRatePct: totalRow.ngRatePct ?? 0,
     defectTotal: totalRow.defectTotal ?? 0,
     activeDays: summary?.activeDays ?? 0,
@@ -87,9 +98,9 @@ export function buildS90dTotalProcessChartData(summary, processLabelFn) {
     okQty: row.okQty ?? 0,
     ngQty: row.ngQty ?? 0,
     totalQty: row.totalQty ?? 0,
-    yieldPct: row.yieldPct ?? 0,
+    yieldPct: roundYieldPct(row.yieldPct) ?? 0,
     ngRatePct: row.ngRatePct ?? 0,
-    cumulativeYieldPct: row.cumulativeYieldPct ?? 0,
+    cumulativeYieldPct: roundYieldPct(row.cumulativeYieldPct) ?? 0,
   }));
 }
 
@@ -113,7 +124,7 @@ function resolveBoardYield(boardRow) {
 
   const yieldPct =
     boardRow?.yieldPct != null
-      ? Number(boardRow.yieldPct)
+      ? roundYieldPct(Number(boardRow.yieldPct))
       : pctFromQty(okQty, totalQty);
   const ngRatePct =
     boardRow?.ngRatePct != null
@@ -216,9 +227,13 @@ function buildS90dSubCodeYieldItems(
       const lastActiveProcess =
         activeProcessRows[activeProcessRows.length - 1] ?? null;
 
-      const stageYieldPct = chainComplete ? outputMetrics.yieldPct : null;
+      const stageYieldPct = chainComplete
+        ? roundYieldPct(outputMetrics.yieldPct)
+        : null;
       const cumulativeYieldPct = chainComplete
-        ? lastActiveProcess?.cumulativeYieldPct ?? stageYieldPct
+        ? roundYieldPct(
+            lastActiveProcess?.cumulativeYieldPct ?? stageYieldPct,
+          )
         : null;
 
       return {
@@ -228,7 +243,7 @@ function buildS90dSubCodeYieldItems(
         parentProductCode: productCode,
         totalQty: outputMetrics.totalQty,
         okQty: outputMetrics.okQty,
-        yieldPct: stageYieldPct,
+        yieldPct: cumulativeYieldPct ?? stageYieldPct,
         cumulativeYieldPct,
         ngRatePct: chainComplete ? outputMetrics.ngRatePct ?? null : null,
         hasData:
@@ -307,9 +322,11 @@ export function buildProductCodeYieldItems(
     const lastActiveProcess =
       activeProcessRows[activeProcessRows.length - 1] ?? null;
 
-    const stageYieldPct = chainComplete ? outputMetrics.yieldPct : null;
+    const stageYieldPct = chainComplete
+      ? roundYieldPct(outputMetrics.yieldPct)
+      : null;
     const cumulativeYieldPct = chainComplete
-      ? lastActiveProcess?.cumulativeYieldPct ?? stageYieldPct
+      ? roundYieldPct(lastActiveProcess?.cumulativeYieldPct ?? stageYieldPct)
       : null;
 
     return {
@@ -317,7 +334,7 @@ export function buildProductCodeYieldItems(
       label: String(spec.label ?? productCode).trim() || productCode,
       totalQty: outputMetrics.totalQty,
       okQty: outputMetrics.okQty,
-      yieldPct: stageYieldPct,
+      yieldPct: cumulativeYieldPct ?? stageYieldPct,
       cumulativeYieldPct,
       ngRatePct: chainComplete ? outputMetrics.ngRatePct ?? null : null,
       hasData: outputMetrics.totalQty > 0,
@@ -336,7 +353,8 @@ export function buildS90dDailyTrendChartData(monthDailySummaries) {
       okQty: daily.totalRow?.okQty ?? 0,
       ngQty: daily.totalRow?.ngQty ?? 0,
       totalQty: daily.totalRow?.totalQty ?? 0,
-      yieldPct: daily.totalRow?.yieldPct ?? 0,
+      yieldPct: resolveS90dChartYieldPct(daily.totalRow),
+      cumulativeYieldPct: roundYieldPct(daily.totalRow?.cumulativeYieldPct) ?? 0,
       ngRatePct: daily.totalRow?.ngRatePct ?? 0,
     }));
 }
@@ -449,9 +467,19 @@ export function buildS90dDailyKpiSummary(monthDailySummaries) {
     { totalQty: 0, okQty: 0, ngQty: 0, defectTotal: 0 },
   );
 
+  let yieldWeightedSum = 0;
+  let yieldWeightQty = 0;
+
+  activeDays.forEach((daily) => {
+    const outputQty = daily.totalRow?.totalQty ?? 0;
+    if (outputQty <= 0) return;
+    yieldWeightedSum += resolveS90dChartYieldPct(daily.totalRow) * outputQty;
+    yieldWeightQty += outputQty;
+  });
+
   const yieldPct =
-    totalRow.totalQty > 0
-      ? roundYieldPct((totalRow.okQty / totalRow.totalQty) * 100)
+    yieldWeightQty > 0
+      ? roundYieldPct(yieldWeightedSum / yieldWeightQty) ?? 0
       : 0;
   const ngRatePct =
     totalRow.totalQty > 0 ? (totalRow.ngQty / totalRow.totalQty) * 100 : 0;
@@ -467,7 +495,8 @@ export function buildS90dDailyKpiSummary(monthDailySummaries) {
     totalQty: totalRow.totalQty,
     okQty: totalRow.okQty,
     ngQty: totalRow.ngQty,
-    yieldPct: yieldPct ?? 0,
+    yieldPct,
+    cumulativeYieldPct: yieldPct,
     ngRatePct: Math.round(ngRatePct * 10) / 10,
     defectTotal: totalRow.defectTotal,
     activeDays: activeDays.length,
@@ -494,6 +523,9 @@ export function buildS90dDailyDefectSummary(monthDailySummaries) {
 export function computeAverageYield(chartRows) {
   const rows = (chartRows ?? []).filter((row) => row.totalQty > 0);
   if (!rows.length) return 0;
-  const sum = rows.reduce((acc, row) => acc + (row.yieldPct ?? 0), 0);
-  return Math.round((sum / rows.length) * 10) / 10;
+  const sum = rows.reduce(
+    (acc, row) => acc + resolveS90dChartYieldPct(row),
+    0,
+  );
+  return roundYieldPct(sum / rows.length) ?? 0;
 }

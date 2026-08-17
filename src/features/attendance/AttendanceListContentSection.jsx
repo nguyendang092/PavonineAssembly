@@ -1,14 +1,12 @@
 import React, { memo, lazy, Suspense, useCallback } from "react";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import HrTablePagination from "@/components/ui/HrTablePagination";
-import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import AttendanceListTableSection from "./AttendanceListTableSection";
 import AttendanceListSummary from "./AttendanceListSummary";
 import {
   useAttendanceListContentBranch,
   useAttendanceListComboBranch,
-  useAttendanceListSearchBranch,
 } from "./attendanceListBranchContexts";
 
 const AttendanceEmployeeFormModal = lazy(
@@ -51,7 +49,6 @@ function AttendanceListContentSection() {
     displayLocale,
     columnPlan,
     deferredFilteredEmployees,
-    filtersPending,
     showRowModalActions,
     canDeleteDayRecord,
     canEditEmployee,
@@ -61,10 +58,8 @@ function AttendanceListContentSection() {
     isHolidayDay,
   } = useAttendanceListContentBranch();
 
-  const { searchTerm } = useAttendanceListSearchBranch();
-
   const tablePagination = useHrTablePagination(deferredFilteredEmployees, {
-    resetDeps: [selectedDate, searchTerm, deferredFilteredEmployees.length],
+    resetDeps: [selectedDate, deferredFilteredEmployees.length],
   });
 
   const tableEmployees = tablePagination.pagedItems;
@@ -191,10 +186,6 @@ function AttendanceListContentSection() {
 
       <div className="attendance-list-table-panel">
         <div className="relative">
-          <PayrollMonthGridLoadingOverlay
-            active={filtersPending}
-            message={tl("searchUpdating", "Đang cập nhật tìm kiếm…")}
-          />
           <AttendanceListTableSection
           columnPlan={columnPlan}
           deferredFilteredEmployees={tableEmployees}

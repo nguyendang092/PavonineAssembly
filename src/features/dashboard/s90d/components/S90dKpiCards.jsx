@@ -78,7 +78,8 @@ export default function S90dKpiCards({ totalRow, processDetails = null }) {
   );
 
   const showProductYieldCharts = productYieldItems.length >= 2;
-  const aggregateYieldPct = totalRow?.yieldPct ?? totalRow?.cumulativeYieldPct;
+  const aggregateYieldPct =
+    totalRow?.cumulativeYieldPct ?? totalRow?.yieldPct;
   const aggregateYieldValid = aggregateYieldPct != null;
   const ngRatePct = totalRow?.ngRatePct ?? null;
 

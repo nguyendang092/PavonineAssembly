@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { annualLeaveEmpFirebaseKey } from "./annualLeaveEmpKey";
+import { resolveEmpFirebaseKeyFromEmployee } from "./annualLeaveEmpKey";
 import {
   buildAnnualLeaveDetailModalRowFromEmp,
   buildAnnualLeaveDetailModalRowFromManagerRow,
@@ -31,7 +31,7 @@ function AnnualLeaveUsageDetailTrigger({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
-  const empKey = managerRow?.id ?? annualLeaveEmpFirebaseKey(emp?.mnv);
+  const empKey = managerRow?.id ?? resolveEmpFirebaseKeyFromEmployee(emp);
   const row = useMemo(() => {
     if (managerRow) return buildAnnualLeaveDetailModalRowFromManagerRow(managerRow);
     return buildAnnualLeaveDetailModalRowFromEmp(emp, yearData);

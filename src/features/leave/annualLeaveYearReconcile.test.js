@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import { persistAnnualLeaveYearFromAttendance } from "./annualLeaveAttendanceSync";
+import * as payrollAccrual from "./annualLeavePayrollAccrual";
 
 const mockGet = vi.fn();
 const mockUpdate = vi.fn();
@@ -19,6 +20,11 @@ describe("persistAnnualLeaveYearFromAttendance", () => {
   });
 
   it("syncs PN across multiple days at emp_{mnv} keys", async () => {
+    vi.spyOn(
+      payrollAccrual,
+      "buildAnnualLeaveMonthWorkSummaryByEmpKey",
+    ).mockReturnValue({});
+
     mockGet.mockImplementation((path) => {
       if (path === "attendance") {
         return Promise.resolve({
@@ -86,6 +92,8 @@ describe("persistAnnualLeaveYearFromAttendance", () => {
         [ANNUAL_LEAVE_EMP.BALANCE]: 9,
       }),
     );
+
+    vi.restoreAllMocks();
   });
 
   it("recalculates annualLeaveCurrentYear for all employees with start date", async () => {

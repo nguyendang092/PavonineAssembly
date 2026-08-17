@@ -1,5 +1,5 @@
 import { pickAttendanceEmployeeDayFields } from "@/features/attendance/attendanceEmployeeFields";
-import { normalizeDateForHtmlInput } from "@/utils/attendanceEmployeeRecord";
+import { normalizeDateForHtmlInput } from "@/utils/dateHtmlInput";
 
 const ISO_PROFILE_DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 

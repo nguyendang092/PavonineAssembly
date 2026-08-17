@@ -400,11 +400,13 @@ describe("buildProductCodeYieldItems", () => {
       "S90D MXC Code E",
     ]);
     expect(items[0]).toMatchObject({
-      yieldPct: 93.1,
+      yieldPct: 98,
+      cumulativeYieldPct: 98,
       isValid: true,
     });
     expect(items[2]).toMatchObject({
-      yieldPct: 91,
+      yieldPct: 95.8,
+      cumulativeYieldPct: 95.8,
       isValid: true,
     });
   });
