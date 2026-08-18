@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateBoardRowsByProductGroup,
   formatS90dBoardDisplayName,
+  resolveS90dChainYieldPct,
+  resolveS90dStepYieldPct,
   resolveS90dTotalYieldPct,
 } from "./s90dDisplayUtils";
 
@@ -85,6 +87,42 @@ describe("aggregateBoardRowsByProductGroup", () => {
     expect(merged.find((row) => row.productCode === "S90D INZI")?.totalQty).toBe(
       200,
     );
+  });
+});
+
+describe("resolveS90dStepYieldPct", () => {
+  it("computes okQty / totalQty", () => {
+    expect(
+      resolveS90dStepYieldPct({ okQty: 90, totalQty: 100 }),
+    ).toBe(90);
+    expect(resolveS90dStepYieldPct({ okQty: 0, totalQty: 0 })).toBeNull();
+  });
+});
+
+describe("resolveS90dChainYieldPct", () => {
+  it("uses yieldPct for process rows (legacy Hiệu suất)", () => {
+    expect(
+      resolveS90dChainYieldPct({
+        okQty: 90,
+        totalQty: 100,
+        yieldPct: 94.4,
+        cumulativeYieldPct: 89.9,
+      }),
+    ).toBe(94.4);
+  });
+
+  it("uses resolveS90dTotalYieldPct for TOTAL rows", () => {
+    expect(
+      resolveS90dChainYieldPct(
+        {
+          okQty: 5974,
+          totalQty: 6124,
+          yieldPct: 94.4,
+          cumulativeYieldPct: 89.9,
+        },
+        { isTotal: true },
+      ),
+    ).toBe(94.4);
   });
 });
 

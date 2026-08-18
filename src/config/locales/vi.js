@@ -648,6 +648,7 @@ const vi = {
     kpiTotalQty: "Tổng số lượng",
     kpiOkQty: "Số lượng đạt",
     kpiNgQty: "Số lượng NG",
+    summaryCumulativeCol: "Tích lũy",
     kpiNgRate: "Tỷ lệ NG",
     defectViewImage: "Xem",
     defectViewImageN: "Xem {{n}}",

@@ -1422,9 +1422,25 @@ body.s90d-chart-modal-open {
 
 .s90d-summary-process-table .s90d-col-date,
 .s90d-summary-process-table .s90d-sticky-col.s90d-col-date {
-  width: 5rem;
-  min-width: 5rem;
+  width: 3.35rem;
+  min-width: 3.35rem;
+  max-width: 3.35rem;
   border: 1px solid #cbd5e1;
+  text-align: center;
+  font-size: 0.6875rem;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+  white-space: nowrap;
+}
+
+.s90d-summary-process-table thead .s90d-col-date .s90d-bilingual-header {
+  gap: 0.05rem;
+}
+
+.s90d-summary-process-table thead .s90d-col-date .s90d-th-ko,
+.s90d-summary-process-table thead .s90d-col-date .s90d-th-vi {
+  font-size: 0.625rem;
+  line-height: 1.05;
 }
 
 .s90d-summary-process-table thead .s90d-sticky-col.s90d-head-shift {
@@ -1445,7 +1461,9 @@ body.s90d-chart-modal-open {
 
 .s90d-summary-process-table .s90d-head-ng,
 .s90d-summary-process-table .s90d-col-ng,
-.s90d-summary-process-table .s90d-col-yield {
+.s90d-summary-process-table .s90d-col-yield,
+.s90d-summary-process-table .s90d-head-cumulative,
+.s90d-summary-process-table .s90d-col-cumulative {
   width: 3.5rem;
   min-width: 3.5rem;
 }
@@ -1473,9 +1491,9 @@ body.s90d-chart-modal-open {
 }
 
 .s90d-summary-process-table .s90d-col-product--full {
-  width: 5.5rem;
-  min-width: 5.5rem;
-  max-width: 6.5rem;
+  width: 4.25rem;
+  min-width: 4.25rem;
+  max-width: 4.75rem;
   position: relative;
   z-index: 1;
   overflow: hidden;
@@ -1483,8 +1501,19 @@ body.s90d-chart-modal-open {
   white-space: nowrap;
   text-align: center;
   border: 1px solid #cbd5e1;
-  padding-left: 0.35rem;
-  padding-right: 0.35rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  font-size: 0.6875rem;
+}
+
+.s90d-summary-process-table thead .s90d-col-product--full .s90d-bilingual-header {
+  gap: 0.05rem;
+}
+
+.s90d-summary-process-table thead .s90d-col-product--full .s90d-th-ko,
+.s90d-summary-process-table thead .s90d-col-product--full .s90d-th-vi {
+  font-size: 0.625rem;
+  line-height: 1.05;
 }
 
 .s90d-summary-process-table .s90d-row-percent .s90d-col-product--full {

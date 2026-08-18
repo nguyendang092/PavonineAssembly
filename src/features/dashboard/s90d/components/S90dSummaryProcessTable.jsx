@@ -9,13 +9,15 @@ import {
   formatS90dYieldPct,
   formatShortDateLabel,
   isHighDefectCell,
+  resolveS90dChainYieldPct,
+  resolveS90dStepYieldPct,
   resolveS90dTotalYieldPct,
 } from "../lib/s90dDisplayUtils";
 import S90dBilingualHeader from "./S90dBilingualHeader";
 import S90dDefectImageThumbs from "./S90dDefectImageThumbs";
 
 const INFO_COL_COUNT_BASE = 4;
-const QTY_COL_COUNT = 5;
+const QTY_COL_COUNT = 6;
 
 function resolveClassificationCell({ processLabel, isTotal, isPercent, rt }) {
   if (isPercent) return "";
@@ -109,12 +111,16 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
     isPercent,
     rt,
   });
-  const displayYieldPct = isTotal ? resolveS90dTotalYieldPct(row) : row.yieldPct;
+  const stepYieldPct = resolveS90dStepYieldPct(row);
+  const chainYieldPct = resolveS90dChainYieldPct(row, { isTotal });
 
   return (
     <tr className={trClass}>
       <td className="s90d-sticky-col s90d-col-date">{dateCell}</td>
-      <td className="s90d-col-product s90d-col-product--full">
+      <td
+        className="s90d-col-product s90d-col-product--full"
+        title={isPercent ? undefined : String(productCell || "").trim() || undefined}
+      >
         {productCell}
       </td>
       <td className="s90d-process s90d-col-process">{processCell}</td>
@@ -125,11 +131,14 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
       <td className="s90d-num s90d-col-ok">
         {isPercent ? "" : formatQty(row.okQty, false)}
       </td>
+      <td className="s90d-num s90d-col-yield">
+        {isPercent ? "" : formatS90dYieldPct(stepYieldPct, "-")}
+      </td>
+      <td className="s90d-num s90d-col-cumulative">
+        {isPercent ? "" : formatS90dYieldPct(chainYieldPct, "-")}
+      </td>
       <td className={`s90d-num s90d-col-ng ${isTotal ? "s90d-ng-total" : ""}`}>
         {isPercent ? "" : formatQty(row.ngQty, false)}
-      </td>
-      <td className="s90d-num s90d-col-yield">
-        {isPercent ? "" : formatS90dYieldPct(displayYieldPct, "-")}
       </td>
       <td className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}>
         {isPercent ? "" : formatPct(row.ngRatePct)}
@@ -265,11 +274,17 @@ export default function S90dSummaryProcessTable({
             <th className="s90d-head-qty s90d-head-ok">
               <S90dBilingualHeader ko="양품수량" vi="SL đạt" />
             </th>
-            <th className="s90d-head-qty s90d-head-ng">
-              <S90dBilingualHeader ko="불량수량" vi="SL NG" />
-            </th>
             <th className="s90d-head-qty">
               <S90dBilingualHeader ko="수율" vi="Hiệu suất" />
+            </th>
+            <th className="s90d-head-qty s90d-head-cumulative">
+              <S90dBilingualHeader
+                ko="누적"
+                vi={rt("summaryCumulativeCol", "Tích lũy")}
+              />
+            </th>
+            <th className="s90d-head-qty s90d-head-ng">
+              <S90dBilingualHeader ko="불량수량" vi="SL NG" />
             </th>
             <th className="s90d-head-qty s90d-head-ng-rate">
               <S90dBilingualHeader ko="불량율" vi="Tỷ lệ NG" />

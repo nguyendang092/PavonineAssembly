@@ -157,6 +157,24 @@ export function formatS90dYieldPct(value, emptyLabel = "0%") {
   return `${capYieldPct(value).toLocaleString("vi-VN")}%`;
 }
 
+export function resolveS90dStepYieldPct(row) {
+  if (!row?.totalQty) return null;
+  return capYieldPct((Number(row.okQty ?? 0) / Number(row.totalQty)) * 100);
+}
+
+/** Hiệu suất chuỗi — logic hiển thị cũ của cột Hiệu suất (tab Tổng/Theo ngày). */
+export function resolveS90dChainYieldPct(row, { isTotal = false } = {}) {
+  if (!row) return null;
+  if (isTotal) return resolveS90dTotalYieldPct(row);
+  if (row.yieldPct != null && row.yieldPct !== "") {
+    return capYieldPct(row.yieldPct);
+  }
+  if (row.cumulativeYieldPct != null && row.cumulativeYieldPct !== "") {
+    return capYieldPct(row.cumulativeYieldPct);
+  }
+  return resolveS90dStepYieldPct(row);
+}
+
 /** Hiệu suất dòng TOTAL — lấy từ công đoạn cuối (ASSEMBLY), khớp dòng ASSEMBLY. */
 export function resolveS90dTotalYieldPct(row) {
   if (!row) return null;

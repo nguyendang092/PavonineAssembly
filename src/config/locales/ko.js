@@ -648,6 +648,7 @@ const ko = {
     kpiTotalQty: "총수량",
     kpiOkQty: "양품수량",
     kpiNgQty: "불량수량",
+    summaryCumulativeCol: "누적",
     kpiNgRate: "불량율",
     defectViewImage: "보기",
     defectViewImageN: "보기 {{n}}",
