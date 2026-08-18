@@ -3,6 +3,8 @@ import {
   buildDailySummaryFromManual,
   buildGrandTotalSummaryFromManual,
   buildProcessShiftSummaryFromManual,
+  buildProductScopedDailySummary,
+  buildProductScopedGrandTotalSummary,
 } from "./buildS90dFromManual";
 import { AP5_MANUAL_ENTRY_CONFIG } from "./s90dManualEntryReportConfig";
 import { createEmptyDayEntry } from "./s90dManualEntries";
@@ -106,6 +108,30 @@ describe("buildS90dFromManual", () => {
     expect(pressDetail?.boardRows[1].yieldPct).toBeCloseTo(87.5, 1);
     expect(hairlineDetail?.boardRows[0].yieldPct).toBe(90);
     expect(hairlineDetail?.boardRows[1].yieldPct).toBeCloseTo(68.6, 1);
+  });
+
+  it("sets S90D total yield from final ASSEMBLY process row", () => {
+    const dayEntry = createEmptyDayEntry();
+    dayEntry.PRESS.boards[0].shifts["08~10"] = { okQty: 100, ngQty: 0, defects: {} };
+    dayEntry.PRESS.boards[1].shifts["08~10"] = { okQty: 80, ngQty: 20, defects: { scratch: 20 } };
+    dayEntry.HAIRLINE.boards[0].shifts["08~10"] = { okQty: 95, ngQty: 5, defects: { scratch: 5 } };
+    dayEntry.HAIRLINE.boards[1].shifts["08~10"] = { okQty: 72, ngQty: 8, defects: { scratch: 8 } };
+    dayEntry.ANODIZING.boards[0].shifts["08~10"] = { okQty: 90, ngQty: 10, defects: { scratch: 10 } };
+    dayEntry.ANODIZING.boards[1].shifts["08~10"] = { okQty: 70, ngQty: 10, defects: { scratch: 10 } };
+    dayEntry.ASSEMBLY.boards[0].shifts["08~10"] = { okQty: 88, ngQty: 12, defects: { scratch: 12 } };
+    dayEntry.ASSEMBLY.boards[1].shifts["08~10"] = { okQty: 71, ngQty: 9, defects: { scratch: 9 } };
+
+    const daily = buildDailySummaryFromManual({
+      dayEntry,
+      dateKey: "2026-07-01",
+    });
+    const assemblyRow = daily.processRows.find(
+      (row) => row.process === "ASSEMBLY",
+    );
+
+    expect(assemblyRow?.yieldPct).not.toBeNull();
+    expect(daily.totalRow.yieldPct).toBe(assemblyRow?.yieldPct);
+    expect(daily.totalRow.yieldPct).not.toBe(daily.totalRow.cumulativeYieldPct);
   });
 
   it("aggregates grand total from daily summaries", () => {
@@ -309,6 +335,65 @@ describe("buildS90dFromManual", () => {
     expect(grand.totalRow.defectImages.scratch).toEqual([
       "https://i.ibb.co/test1.jpg",
     ]);
+  });
+
+  it("scopes AP5 daily summary to a single product code", () => {
+    const dayEntry = createEmptyDayEntry(AP5_MANUAL_ENTRY_CONFIG);
+    dayEntry.PRESS.boards[0].shifts["08~10"] = {
+      okQty: 100,
+      ngQty: 0,
+      defects: {},
+    };
+    dayEntry.PRESS.boards[1].shifts["08~10"] = {
+      okQty: 80,
+      ngQty: 20,
+      defects: { scratch: 20 },
+    };
+    dayEntry.ASSEMBLY.boards[0].shifts["08~10"] = {
+      okQty: 95,
+      ngQty: 5,
+      defects: { scratch: 5 },
+    };
+    dayEntry.ASSEMBLY.boards[1].shifts["08~10"] = {
+      okQty: 70,
+      ngQty: 10,
+      defects: { scratch: 10 },
+    };
+
+    const daily = buildDailySummaryFromManual({
+      dayEntry,
+      dateKey: "2026-07-01",
+      manualEntryConfig: AP5_MANUAL_ENTRY_CONFIG,
+    });
+
+    const scopedFf = buildProductScopedDailySummary(
+      daily,
+      "AP5FF",
+      AP5_MANUAL_ENTRY_CONFIG,
+    );
+    const scopedFz = buildProductScopedDailySummary(
+      daily,
+      "AP5FZ",
+      AP5_MANUAL_ENTRY_CONFIG,
+    );
+
+    expect(scopedFf.productCode).toBe("AP5FF");
+    expect(scopedFf.totalRow.totalQty).toBe(100);
+    expect(scopedFf.totalRow.okQty).toBe(95);
+    expect(scopedFz.productCode).toBe("AP5FZ");
+    expect(scopedFz.totalRow.totalQty).toBe(80);
+    expect(scopedFz.totalRow.okQty).toBe(70);
+    expect(
+      scopedFf.processDetails.every((detail) => detail.boardRows.length === 0),
+    ).toBe(true);
+
+    const grandFf = buildProductScopedGrandTotalSummary(
+      [daily],
+      "AP5FF",
+      AP5_MANUAL_ENTRY_CONFIG,
+    );
+    expect(grandFf.productCode).toBe("AP5FF");
+    expect(grandFf.totalRow.okQty).toBe(95);
   });
 });
 

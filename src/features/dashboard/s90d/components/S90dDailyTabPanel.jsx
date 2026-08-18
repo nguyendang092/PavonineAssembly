@@ -8,6 +8,7 @@ import {
   buildMonthDailyRollup,
   pickDefaultDailyDateKey,
   resolveNgRateTone,
+  S90D_ALL_DAYS_KEY,
 } from "../lib/buildS90dDailyRollup";
 import { formatShortDateLabel } from "../lib/s90dDisplayUtils";
 import S90dKpiCards from "./S90dKpiCards";
@@ -33,6 +34,7 @@ function sanitizeExportSegment(value) {
 function buildBoardExportFilename({
   reportCode,
   isTotalView,
+  isAllDaysView,
   selectedDateKey,
   monthDisplayLabel,
   productCode,
@@ -42,6 +44,10 @@ function buildBoardExportFilename({
   if (isTotalView) {
     const month = sanitizeExportSegment(monthDisplayLabel) || "Thang";
     return `${prefix}_Tong_${month}_${code}.png`;
+  }
+  if (isAllDaysView) {
+    const month = sanitizeExportSegment(monthDisplayLabel) || "Thang";
+    return `${prefix}_Tat_ca_${month}_${code}.png`;
   }
   const date = sanitizeExportSegment(selectedDateKey) || "Ngay";
   return `${prefix}_${date}_${code}.png`;
@@ -98,8 +104,27 @@ function S90dDailyMonthStats({ rollup }) {
   );
 }
 
-function S90dDailyDateStrip({ monthDailySummaries, selectedDateKey, onSelect }) {
+function resolveProcessDetails(summary) {
+  if (summary?.processDetails?.length) {
+    return summary.processDetails;
+  }
+  return (summary?.processRows ?? []).map((processRow) => ({
+    process: processRow.process,
+    processRow,
+    boardRows: [],
+    boardCount: 1,
+  }));
+}
+
+function S90dDailyDateStrip({
+  monthDailySummaries,
+  selectedDateKey,
+  onSelect,
+  monthAvgNgRate = 0,
+  hasAnyDayData = false,
+}) {
   const rt = useReportT();
+  const isAllDaysSelected = selectedDateKey === S90D_ALL_DAYS_KEY;
 
   return (
     <div className="s90d-daily-date-strip-wrap">
@@ -112,11 +137,32 @@ function S90dDailyDateStrip({ monthDailySummaries, selectedDateKey, onSelect }) 
         </p>
       </div>
 
-      <div className="s90d-daily-date-strip" role="listbox" aria-label={rt("dailyPickDateLabel", "Chọn ngày xem chi tiết")}>
+      <div
+        className="s90d-daily-date-strip"
+        role="listbox"
+        aria-label={rt("dailyPickDateLabel", "Chọn ngày xem chi tiết")}
+      >
+        <button
+          type="button"
+          role="option"
+          aria-selected={isAllDaysSelected}
+          className={`s90d-daily-date-chip s90d-daily-date-chip--${
+            hasAnyDayData ? resolveNgRateTone(monthAvgNgRate) : "empty"
+          }${isAllDaysSelected ? " s90d-daily-date-chip--active" : ""}`}
+          onClick={() => onSelect(S90D_ALL_DAYS_KEY)}
+        >
+          <span className="s90d-daily-date-chip-date">
+            {rt("dailyAllDays", "Tất cả")}
+          </span>
+          <span className="s90d-daily-date-chip-rate">
+            {hasAnyDayData ? formatPct(monthAvgNgRate) : "—"}
+          </span>
+        </button>
         {monthDailySummaries.map((daily) => {
           const ngRatePct = daily.totalRow?.ngRatePct ?? 0;
           const tone = daily.hasData ? resolveNgRateTone(ngRatePct) : "empty";
-          const isSelected = daily.dateKey === selectedDateKey;
+          const isSelected =
+            !isAllDaysSelected && daily.dateKey === selectedDateKey;
 
           return (
             <button
@@ -149,66 +195,29 @@ async function waitForPaint() {
   });
 }
 
-export default function S90dDailyTabPanel({
-  monthDailySummaries = [],
-  variant = "daily",
-  grandTotalSummary = null,
+function S90dDailyBoardCard({
+  summary,
+  isTotalView = false,
   monthDisplayLabel = "",
+  selectedDateKey = "",
+  isAllDaysView = false,
+  defaultProductCode,
+  rt,
 }) {
-  const rt = useReportT();
-  const { defaultProductCode } = useProductionReportContext();
-  const isTotalView = variant === "total";
-  const [selectedDateKey, setSelectedDateKey] = useState(() =>
-    pickDefaultDailyDateKey(monthDailySummaries),
-  );
-  const [exportingImage, setExportingImage] = useState(false);
   const boardExportRef = useRef(null);
-  const rollup = useMemo(
-    () => buildMonthDailyRollup(monthDailySummaries),
-    [monthDailySummaries],
+  const [exportingImage, setExportingImage] = useState(false);
+  const processDetails = useMemo(
+    () => resolveProcessDetails(summary),
+    [summary],
   );
-
-  useEffect(() => {
-    if (isTotalView) return;
-    setSelectedDateKey((current) => {
-      if (monthDailySummaries.some((daily) => daily.dateKey === current)) {
-        return current;
-      }
-      return pickDefaultDailyDateKey(monthDailySummaries);
-    });
-  }, [isTotalView, monthDailySummaries]);
-
-  const selectedSummary = useMemo(
-    () =>
-      monthDailySummaries.find((daily) => daily.dateKey === selectedDateKey) ??
-      null,
-    [monthDailySummaries, selectedDateKey],
-  );
-
-  const activeSummary = isTotalView ? grandTotalSummary : selectedSummary;
-
-  const processDetails = useMemo(() => {
-    if (activeSummary?.processDetails?.length) {
-      return activeSummary.processDetails;
-    }
-    return (activeSummary?.processRows ?? []).map((processRow) => ({
-      process: processRow.process,
-      processRow,
-      boardRows: [],
-      boardCount: 1,
-    }));
-  }, [activeSummary]);
-
-  const selectedDateLabel = selectedSummary
-    ? formatShortDateLabel(selectedSummary.dateKey, selectedSummary.dateLabel)
-    : "";
-
-  const tableDateLabel = isTotalView ? monthDisplayLabel : selectedDateLabel;
-  const tableProductCode =
-    activeSummary?.productCode || defaultProductCode;
+  const dateLabel = isTotalView
+    ? monthDisplayLabel
+    : formatShortDateLabel(summary?.dateKey, summary?.dateLabel);
+  const productCode = summary?.productCode || defaultProductCode;
+  const hasData = Boolean(summary?.hasData);
 
   const handleDownloadBoardImage = useCallback(async () => {
-    if (!boardExportRef.current || !activeSummary?.hasData || exportingImage) return;
+    if (!boardExportRef.current || !hasData || exportingImage) return;
 
     setExportingImage(true);
 
@@ -247,9 +256,10 @@ export default function S90dDailyTabPanel({
       link.download = buildBoardExportFilename({
         reportCode: defaultProductCode,
         isTotalView,
-        selectedDateKey,
+        isAllDaysView,
+        selectedDateKey: summary?.dateKey || selectedDateKey,
         monthDisplayLabel,
-        productCode: activeSummary.productCode || defaultProductCode,
+        productCode,
       });
       link.click();
     } catch {
@@ -264,14 +274,272 @@ export default function S90dDailyTabPanel({
       }
       setExportingImage(false);
     }
-  }, [    activeSummary,
+  }, [
     defaultProductCode,
     exportingImage,
+    hasData,
+    isAllDaysView,
     isTotalView,
     monthDisplayLabel,
+    productCode,
     rt,
     selectedDateKey,
+    summary?.dateKey,
   ]);
+
+  if (!summary) return null;
+
+  return (
+    <article
+      ref={boardExportRef}
+      className="s90d-board-card s90d-daily-detail-card"
+    >
+      <header className="s90d-board-head s90d-board-head--compact">
+        <div className="s90d-board-head-main">
+          <h3 className="s90d-board-title">
+            {rt("boardTitle", "BẢNG SẢN LƯỢNG")}
+            <span className="s90d-board-badge">
+              {isTotalView
+                ? rt("totalBoardTitle", "Bảng tổng hợp tháng")
+                : rt("dailyBoardTitle", "Bảng sản lượng S90D theo ngày")}
+            </span>
+          </h3>
+        </div>
+
+        <div className="s90d-board-head-actions">
+          <div className="s90d-board-meta s90d-board-meta--inline-row">
+            <div className="s90d-meta-chip">
+              <span className="s90d-meta-label">
+                {isTotalView
+                  ? rt("metaMonthYear", "Tháng/Năm")
+                  : rt("metaDate", "Ngày")}
+              </span>
+              <strong>{dateLabel}</strong>
+            </div>
+            <div className="s90d-meta-chip">
+              <span className="s90d-meta-label">
+                {rt("metaProductCode", "Mã hàng")}
+              </span>
+              <strong>{productCode}</strong>
+            </div>
+          </div>
+          <div className="s90d-daily-detail-actions">
+            <button
+              type="button"
+              className="s90d-image-btn dashboard-no-print"
+              disabled={!hasData || exportingImage}
+              onClick={handleDownloadBoardImage}
+            >
+              <FiDownload className="s90d-btn-icon" aria-hidden="true" />
+              <span>
+                {exportingImage
+                  ? rt("boardImageExporting", "Đang tải…")
+                  : rt("downloadBoardImage", "Tải hình")}
+              </span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {hasData ? (
+        <>
+          <S90dKpiCards
+            totalRow={summary.totalRow}
+            processDetails={processDetails}
+            showProductYieldBreakdown={false}
+          />
+          <S90dSummaryProcessTable
+            processDetails={processDetails}
+            totalRow={summary.totalRow}
+            percentRow={summary.percentRow}
+            dateLabel={dateLabel}
+            productCode={productCode}
+          />
+        </>
+      ) : (
+        <div className="s90d-daily-empty-day">
+          {rt(
+            isTotalView ? "totalEmptyHint" : "dailyEmptyDayHint",
+            isTotalView
+              ? "Chưa có số liệu tháng này. Mở tab công đoạn để nhập."
+              : "Chưa có số liệu cho ngày này. Mở tab công đoạn để nhập.",
+          )}
+        </div>
+      )}
+    </article>
+  );
+}
+
+export default function S90dDailyTabPanel({
+  monthDailySummaries = [],
+  variant = "daily",
+  grandTotalSummary = null,
+  monthDisplayLabel = "",
+  productSections = null,
+}) {
+  const rt = useReportT();
+  const { defaultProductCode } = useProductionReportContext();
+  const isTotalView = variant === "total";
+  const [selectedDateKey, setSelectedDateKey] = useState(() =>
+    pickDefaultDailyDateKey(monthDailySummaries),
+  );
+  const rollup = useMemo(
+    () => buildMonthDailyRollup(monthDailySummaries),
+    [monthDailySummaries],
+  );
+
+  useEffect(() => {
+    if (isTotalView) return;
+    setSelectedDateKey((current) => {
+      if (current === S90D_ALL_DAYS_KEY) return current;
+      if (monthDailySummaries.some((daily) => daily.dateKey === current)) {
+        return current;
+      }
+      return pickDefaultDailyDateKey(monthDailySummaries);
+    });
+  }, [isTotalView, monthDailySummaries]);
+
+  const isAllDaysView =
+    !isTotalView && selectedDateKey === S90D_ALL_DAYS_KEY;
+
+  const selectedSummary = useMemo(
+    () =>
+      isAllDaysView
+        ? null
+        : monthDailySummaries.find((daily) => daily.dateKey === selectedDateKey) ??
+          null,
+    [isAllDaysView, monthDailySummaries, selectedDateKey],
+  );
+
+  const activeSummary = isTotalView
+    ? grandTotalSummary
+    : isAllDaysView
+      ? null
+      : selectedSummary;
+
+  const daysWithData = useMemo(
+    () => monthDailySummaries.filter((daily) => daily.hasData),
+    [monthDailySummaries],
+  );
+
+  const renderBoardContent = () => {
+    if (productSections?.length) {
+      if (isTotalView) {
+        return (
+          <div className="s90d-daily-product-stack">
+            {productSections.map((section) => (
+              <S90dDailyBoardCard
+                key={section.productCode}
+                summary={section.grandTotalSummary}
+                isTotalView
+                monthDisplayLabel={monthDisplayLabel}
+                defaultProductCode={section.productCode}
+                rt={rt}
+              />
+            ))}
+          </div>
+        );
+      }
+
+      if (isAllDaysView) {
+        if (!daysWithData.length) {
+          return (
+            <div className="s90d-daily-empty-day">
+              {rt(
+                "dailyEmptyDayHint",
+                "Chưa có số liệu cho ngày này. Mở tab công đoạn để nhập.",
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div className="s90d-daily-all-days-stack">
+            {daysWithData.map((daily) => (
+              <div
+                key={daily.dateKey}
+                className="s90d-daily-day-product-group"
+              >
+                {productSections.map((section) => {
+                  const summary = section.monthDailySummaries.find(
+                    (item) => item.dateKey === daily.dateKey,
+                  );
+                  return (
+                    <S90dDailyBoardCard
+                      key={`${daily.dateKey}-${section.productCode}`}
+                      summary={summary}
+                      defaultProductCode={section.productCode}
+                      rt={rt}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      return (
+        <div className="s90d-daily-product-stack">
+          {productSections.map((section) => {
+            const summary = section.monthDailySummaries.find(
+              (item) => item.dateKey === selectedDateKey,
+            );
+            return (
+              <S90dDailyBoardCard
+                key={section.productCode}
+                summary={summary}
+                selectedDateKey={selectedDateKey}
+                defaultProductCode={section.productCode}
+                rt={rt}
+              />
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (isAllDaysView) {
+      if (!daysWithData.length) {
+        return (
+          <div className="s90d-daily-empty-day">
+            {rt(
+              "dailyEmptyDayHint",
+              "Chưa có số liệu cho ngày này. Mở tab công đoạn để nhập.",
+            )}
+          </div>
+        );
+      }
+
+      return (
+        <div className="s90d-daily-all-days-stack">
+          {daysWithData.map((daily) => (
+            <S90dDailyBoardCard
+              key={daily.dateKey}
+              summary={daily}
+              defaultProductCode={defaultProductCode}
+              rt={rt}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    if (activeSummary || isTotalView) {
+      return (
+        <S90dDailyBoardCard
+          summary={activeSummary}
+          isTotalView={isTotalView}
+          monthDisplayLabel={monthDisplayLabel}
+          selectedDateKey={selectedDateKey}
+          defaultProductCode={defaultProductCode}
+          rt={rt}
+        />
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="s90d-daily-dashboard">
@@ -282,87 +550,12 @@ export default function S90dDailyTabPanel({
           monthDailySummaries={monthDailySummaries}
           selectedDateKey={selectedDateKey}
           onSelect={setSelectedDateKey}
+          monthAvgNgRate={rollup.avgNgRate}
+          hasAnyDayData={rollup.activeDays > 0}
         />
       ) : null}
 
-      {activeSummary ? (
-        <article
-          ref={boardExportRef}
-          className="s90d-board-card s90d-daily-detail-card"
-        >
-          <header className="s90d-board-head s90d-board-head--compact">
-            <div className="s90d-board-head-main">
-              <h3 className="s90d-board-title">
-                {rt("boardTitle", "BẢNG SẢN LƯỢNG")}
-                <span className="s90d-board-badge">
-                  {isTotalView
-                    ? rt("totalBoardTitle", "Bảng tổng hợp tháng")
-                    : rt("dailyBoardTitle", "Bảng sản lượng S90D theo ngày")}
-                </span>
-              </h3>
-            </div>
-
-            <div className="s90d-board-head-actions">
-              <div className="s90d-board-meta s90d-board-meta--inline-row">
-                <div className="s90d-meta-chip">
-                  <span className="s90d-meta-label">
-                    {isTotalView
-                      ? rt("metaMonthYear", "Tháng/Năm")
-                      : rt("metaDate", "Ngày")}
-                  </span>
-                  <strong>{tableDateLabel}</strong>
-                </div>
-                <div className="s90d-meta-chip">
-                  <span className="s90d-meta-label">
-                    {rt("metaProductCode", "Mã hàng")}
-                  </span>
-                  <strong>{tableProductCode}</strong>
-                </div>
-              </div>
-              <div className="s90d-daily-detail-actions">
-                <button
-                  type="button"
-                  className="s90d-image-btn dashboard-no-print"
-                  disabled={!activeSummary.hasData || exportingImage}
-                  onClick={handleDownloadBoardImage}
-                >
-                  <FiDownload className="s90d-btn-icon" aria-hidden="true" />
-                  <span>
-                    {exportingImage
-                      ? rt("boardImageExporting", "Đang tải…")
-                      : rt("downloadBoardImage", "Tải hình")}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </header>
-
-          {activeSummary.hasData ? (
-            <>
-              <S90dKpiCards
-                totalRow={activeSummary.totalRow}
-                processDetails={processDetails}
-              />
-              <S90dSummaryProcessTable
-                processDetails={processDetails}
-                totalRow={activeSummary.totalRow}
-                percentRow={activeSummary.percentRow}
-                dateLabel={tableDateLabel}
-                productCode={tableProductCode}
-              />
-            </>
-          ) : (
-            <div className="s90d-daily-empty-day">
-              {rt(
-                isTotalView ? "totalEmptyHint" : "dailyEmptyDayHint",
-                isTotalView
-                  ? "Chưa có số liệu tháng này. Mở tab công đoạn để nhập."
-                  : "Chưa có số liệu cho ngày này. Mở tab công đoạn để nhập.",
-              )}
-            </div>
-          )}
-        </article>
-      ) : null}
+      {renderBoardContent()}
     </div>
   );
 }

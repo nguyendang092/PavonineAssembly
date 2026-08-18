@@ -533,6 +533,7 @@ const vi = {
     ASSEMBLY: "ASSEMBLY",
     PRESS: "PRESS",
     MC: "MC",
+    GE: "GE",
     HAIRLINE: "HAIRLINE",
     EXTRUCSION: "EXTRUCSION",
     CNC: "MC",
@@ -638,6 +639,8 @@ const vi = {
     metaProductCode: "Mã hàng",
     metaProcess: "Công đoạn",
     groupShiftInfo: "Thông tin ca",
+    groupProductInfo: "Thông tin mã hàng",
+    dailyAllDays: "Tất cả",
     groupQtyYield: "Số lượng & hiệu suất",
     groupDefects: "Chi tiết lỗi",
     defectRateRowLabel: "Tỷ lệ theo tổng SL →",
@@ -721,6 +724,7 @@ const vi = {
     chartReportBadgeAp5: "Báo cáo AP5",
     dailyProcessExpandHint:
       "Bấm ▶ ở đầu mỗi dòng để mở chi tiết AP5FF, AP5FZ, AP5FL",
+    productSummaryTabsLabel: "Xem tổng hoặc theo ngày",
   },
   workplaceChart: {
     menuTitle: "📁 Menu",

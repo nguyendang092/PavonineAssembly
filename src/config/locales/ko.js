@@ -533,6 +533,7 @@ const ko = {
     ASSEMBLY: "조립",
     PRESS: "프레스",
     MC: "MC",
+    GE: "GE",
     HAIRLINE: "헤어라인",
     EXTRUCSION: "압출",
     CNC: "MC",
@@ -638,6 +639,8 @@ const ko = {
     metaProductCode: "상품 코드",
     metaProcess: "공정",
     groupShiftInfo: "시간대 정보",
+    groupProductInfo: "상품 코드 정보",
+    dailyAllDays: "전체",
     groupQtyYield: "수량 및 수율",
     groupDefects: "불량 상세",
     defectRateRowLabel: "총수량 대비 비율 →",
@@ -718,6 +721,7 @@ const ko = {
     chartReportBadgeAp5: "AP5 보고",
     dailyProcessExpandHint:
       "▶를 눌러 AP5FF, AP5FZ, AP5FL 상세 열기",
+    productSummaryTabsLabel: "총합 또는 일별 보기",
   },
   workplaceChart: {
     menuTitle: "📁 메뉴",

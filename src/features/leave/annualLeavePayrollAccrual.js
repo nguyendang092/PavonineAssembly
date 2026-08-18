@@ -88,11 +88,59 @@ export function collectAccrualYearMonthsForYear(indexed, year) {
 }
 
 /** Danh sách `yyyy-mm` cần tải điểm danh cho tính phép năm. */
-export function listAnnualLeaveAccrualYearMonths(yearData, year) {
+export function listAnnualLeaveAccrualYearMonths(
+  yearData,
+  year,
+  { scopeEmpKeySet = null, throughMonthIndex = null } = {},
+) {
   if (!yearData || typeof yearData !== "object") return [];
   const y = Number(year);
   const indexed = indexAnnualLeaveYearByEmpKey(yearData);
-  return [...collectAccrualYearMonthsForYear(indexed, y)].sort();
+  const months = new Set();
+
+  for (const [empKey, { raw }] of Object.entries(indexed)) {
+    if (
+      scopeEmpKeySet instanceof Set &&
+      scopeEmpKeySet.size > 0 &&
+      !scopeEmpKeySet.has(empKey)
+    ) {
+      continue;
+    }
+
+    const startWorkingDate = normalizeAnnualLeaveStartWorkingDate(
+      raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
+    );
+    const range = resolveAnnualLeaveAccrualMonthRange(startWorkingDate, y);
+    if (!range) continue;
+
+    const newJoinerInYear =
+      startWorkingDate &&
+      isStartWorkingDateInCalendarYear(startWorkingDate, y);
+    const endMonth =
+      throughMonthIndex != null && Number.isFinite(Number(throughMonthIndex))
+        ? Math.min(range.endMonth, Number(throughMonthIndex))
+        : range.endMonth;
+
+    for (
+      let monthIndex = range.startMonth;
+      monthIndex <= endMonth;
+      monthIndex += 1
+    ) {
+      const yearMonth = `${y}-${String(monthIndex + 1).padStart(2, "0")}`;
+      if (annualLeaveMonthUsesPayrollHalfAccrualRule(y, monthIndex)) {
+        months.add(yearMonth);
+        continue;
+      }
+      if (
+        newJoinerInYear &&
+        isStartWorkingDateInCalendarMonth(startWorkingDate, y, monthIndex)
+      ) {
+        months.add(yearMonth);
+      }
+    }
+  }
+
+  return [...months].sort();
 }
 
 /** Khoảng ngày RTDB điểm danh bao trùm các tháng tính phép. */

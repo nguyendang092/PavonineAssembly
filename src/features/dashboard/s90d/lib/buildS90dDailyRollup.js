@@ -9,6 +9,8 @@ export function resolveNgRateTone(ngRatePct) {
   return "bad";
 }
 
+export const S90D_ALL_DAYS_KEY = "__all__";
+
 export function buildMonthDailyRollup(monthDailySummaries = []) {
   const daysWithData = monthDailySummaries.filter((daily) => daily.hasData);
   const processSet = new Set();

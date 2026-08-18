@@ -8,6 +8,13 @@ import {
 import { buildAttendanceAnnualLeaveDerivedMaps } from "./annualLeaveBalanceLookup";
 import { resolveAnnualLeaveYearAsOfDateKey } from "./annualLeaveCalculated";
 import {
+  buildDerivedMapsFilterKey,
+  buildMonthWorkSummaryBucketKey,
+  getCachedAttendanceDerivedMaps,
+  mergeMonthWorkSummaryCache,
+  scopeEmpKeySetToCacheKey,
+} from "./annualLeaveDerivedRuntimeCache";
+import {
   useAttendanceJoinMonthsExternal,
   useAttendanceYearExternal,
 } from "./annualLeaveLiveExternalHooks";
@@ -51,12 +58,28 @@ export function useAnnualLeaveAttendanceDerived(
     throughDateKey = null,
     yearMonthPrefix = null,
     scopeEmpKeySet = null,
+    accrualThroughMonthIndex = null,
   } = {},
 ) {
+  const scopeEmpKeyKey = useMemo(
+    () => scopeEmpKeySetToCacheKey(scopeEmpKeySet),
+    [scopeEmpKeySet],
+  );
+
   const accrualYearMonths = useMemo(() => {
     if (skipPayrollMonthAccrual || !yearData) return [];
-    return listAnnualLeaveAccrualYearMonths(yearData, year);
-  }, [skipPayrollMonthAccrual, yearData, year]);
+    return listAnnualLeaveAccrualYearMonths(yearData, year, {
+      scopeEmpKeySet,
+      throughMonthIndex: accrualThroughMonthIndex,
+    });
+  }, [
+    skipPayrollMonthAccrual,
+    yearData,
+    year,
+    scopeEmpKeyKey,
+    accrualThroughMonthIndex,
+    scopeEmpKeySet,
+  ]);
 
   const {
     data: payrollMonthAttendanceRoot,
@@ -83,12 +106,22 @@ export function useAnnualLeaveAttendanceDerived(
         yearMonthPrefix,
         scopeEmpKeySet,
       }),
-    [throughDateKey, yearMonthPrefix, scopeEmpKeySet],
+    [throughDateKey, yearMonthPrefix, scopeEmpKeyKey, scopeEmpKeySet],
+  );
+
+  const derivedMapsFilterKey = useMemo(
+    () => buildDerivedMapsFilterKey(deductionFilter ?? {}),
+    [deductionFilter],
   );
 
   const accrualAsOfDateKey = useMemo(
     () => resolveAnnualLeaveYearAsOfDateKey(year),
     [year],
+  );
+
+  const monthWorkSummaryBucketKey = useMemo(
+    () => buildMonthWorkSummaryBucketKey(year, accrualAsOfDateKey),
+    [year, accrualAsOfDateKey],
   );
 
   const deferredAttendanceRoot = useDeferredValue(
@@ -133,10 +166,15 @@ export function useAnnualLeaveAttendanceDerived(
 
     let cancelled = false;
     startTransition(() => {
-      const next = buildAttendanceAnnualLeaveDerivedMaps(
+      const next = getCachedAttendanceDerivedMaps(
         deferredAttendanceRoot,
-        year,
-        deductionFilter,
+        derivedMapsFilterKey,
+        () =>
+          buildAttendanceAnnualLeaveDerivedMaps(
+            deferredAttendanceRoot,
+            year,
+            deductionFilter,
+          ),
       );
       if (!cancelled) {
         setDerivedMaps(next);
@@ -154,6 +192,7 @@ export function useAnnualLeaveAttendanceDerived(
     yearData,
     year,
     deductionFilter,
+    derivedMapsFilterKey,
   ]);
 
   useEffect(() => {
@@ -189,7 +228,7 @@ export function useAnnualLeaveAttendanceDerived(
 
     let cancelled = false;
     startTransition(() => {
-      const next = buildAnnualLeaveMonthWorkSummaryByEmpKey(
+      const computed = buildAnnualLeaveMonthWorkSummaryByEmpKey(
         payrollRootForAccrual,
         year,
         yearData,
@@ -201,8 +240,13 @@ export function useAnnualLeaveAttendanceDerived(
               : null,
         },
       );
+      const merged = mergeMonthWorkSummaryCache(
+        monthWorkSummaryBucketKey,
+        computed,
+        scopeEmpKeySet,
+      );
       if (!cancelled) {
-        setMonthWorkSummaryByEmpKey(next);
+        setMonthWorkSummaryByEmpKey(merged);
         setAccrualDerived(true);
       }
     });
@@ -220,7 +264,9 @@ export function useAnnualLeaveAttendanceDerived(
     payrollRootForAccrual,
     usageDerived,
     attendanceRootPath,
+    scopeEmpKeyKey,
     scopeEmpKeySet,
+    monthWorkSummaryBucketKey,
   ]);
 
   const attendanceUsageReady = skipAttendance

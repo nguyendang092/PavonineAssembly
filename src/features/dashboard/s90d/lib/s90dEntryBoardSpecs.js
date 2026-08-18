@@ -2,6 +2,7 @@ import {
   ASSEMBLY_PROCESS,
   DEFAULT_PRODUCT_CODE,
   resolveManualEntryConfig,
+  resolveProcessBoardSpecs,
   shouldApplyFixedBoardSpecs,
 } from "./s90dManualEntryReportConfig";
 
@@ -25,8 +26,9 @@ export function buildS90dEntryBoardSpecs(process, configInput = DEFAULT_PRODUCT_
   const config = resolveManualEntryConfig(configInput);
 
   if (!config.usesProductSubCodes) {
-    if (shouldApplyFixedBoardSpecs(process, config)) {
-      return (config.fixedBoardSpecs ?? []).map((spec) => ({
+    const boardSpecs = resolveProcessBoardSpecs(process, config);
+    if (boardSpecs.length) {
+      return boardSpecs.map((spec) => ({
         id: spec.id,
         label: spec.label,
         productCode: spec.productCode,
@@ -77,8 +79,7 @@ export function resolveDisplayBoardGroupKey(board) {
 
 export function shouldShowProductBoardRows(process, configInput = DEFAULT_PRODUCT_CODE) {
   const config = resolveManualEntryConfig(configInput);
-  if (shouldApplyFixedBoardSpecs(process, config)) {
-    return (config.fixedBoardSpecs?.length ?? 0) >= 2;
-  }
+  const boardSpecs = resolveProcessBoardSpecs(process, config);
+  if (boardSpecs.length >= 2) return true;
   return config.usesProductSubCodes;
 }

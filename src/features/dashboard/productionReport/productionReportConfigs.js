@@ -1,5 +1,6 @@
 import {
   AP5_BOARD_SPECS,
+  AP5_PROCESS_BOARD_SPECS,
   AP5_PROCESSES,
   S90D_ASSEMBLY_BOARD_SPECS,
 } from "../s90d/lib/s90dManualEntryReportConfig";
@@ -29,6 +30,7 @@ export const AP5_PRODUCTION_REPORT_CONFIG = Object.freeze({
   processes: AP5_PROCESSES,
   fixedBoardSpecs: AP5_BOARD_SPECS,
   fixedBoardSpecsAllProcesses: true,
+  processBoardSpecs: AP5_PROCESS_BOARD_SPECS,
   usesFixedBoardSpecs: true,
   firebaseRoot: "ap5/manualEntries",
   storageKey: "ap5-manual-entries-v1",

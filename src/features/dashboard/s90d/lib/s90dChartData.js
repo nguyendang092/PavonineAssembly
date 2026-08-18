@@ -56,12 +56,12 @@ export function mergeDailyDefectTotals(monthDailySummaries) {
   return { totalQty, defects };
 }
 
-/** Hiệu suất hiển thị trên biểu đồ — ưu tiên tích lũy chuỗi, giới hạn 0–100%. */
+/** Hiệu suất hiển thị trên biểu đồ — ưu tiên công đoạn cuối (ASSEMBLY), giới hạn 0–100%. */
 export function resolveS90dChartYieldPct(row) {
   if (!row) return 0;
   const raw =
-    row.cumulativeYieldPct ??
     row.yieldPct ??
+    row.cumulativeYieldPct ??
     (row.totalQty > 0 ? (row.okQty / row.totalQty) * 100 : null);
   return roundYieldPct(raw) ?? 0;
 }

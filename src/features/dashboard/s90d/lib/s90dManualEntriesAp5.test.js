@@ -4,6 +4,7 @@ import {
 } from "./s90dManualEntryReportConfig";
 import {
   createEmptyProcessDayEntry,
+  normalizeManualStore,
   resolveProcessBoards,
   updateProcessMonthShiftField,
 } from "./s90dManualEntries";
@@ -36,6 +37,65 @@ describe("s90dManualEntries AP5 multi-board edits", () => {
     );
     expect(boards.find((board) => board.id === "ap5fl")?.shifts["08~10"].okQty).toBe(
       0,
+    );
+  });
+
+  it("creates 4 AP5 boards on MC process tab", () => {
+    const config = AP5_MANUAL_ENTRY_CONFIG;
+    const boards = resolveProcessBoards(
+      createEmptyProcessDayEntry("MC", config),
+      "MC",
+      config,
+    );
+
+    expect(boards).toHaveLength(4);
+    expect(boards.map((board) => board.id)).toEqual([
+      "ap5ff",
+      "ap5fz",
+      "ap5fl",
+      "ap5fl-mc",
+    ]);
+    expect(boards.filter((board) => board.productCode === "AP5FL")).toHaveLength(2);
+  });
+
+  it("migrates legacy GE day entries to MC with AP5FL boards", () => {
+    const config = AP5_MANUAL_ENTRY_CONFIG;
+    const store = normalizeManualStore(
+      {
+        "2026-07-01": {
+          GE: {
+            boards: [
+              {
+                id: "ap5ff",
+                label: "AP5FF",
+                productCode: "AP5FF",
+                shifts: { "08~10": { okQty: 10, ngQty: 0, defects: {} } },
+              },
+              {
+                id: "ap5fz",
+                label: "AP5FZ",
+                productCode: "AP5FZ",
+                shifts: { "08~10": { okQty: 8, ngQty: 0, defects: {} } },
+              },
+            ],
+          },
+        },
+      },
+      config,
+    );
+
+    const boards = resolveProcessBoards(store["2026-07-01"].MC, "MC", config);
+    expect(boards).toHaveLength(4);
+    expect(boards.find((board) => board.id === "ap5ff")?.shifts["08~10"].okQty).toBe(
+      10,
+    );
+    expect(boards.find((board) => board.id === "ap5fz")?.shifts["08~10"].okQty).toBe(
+      8,
+    );
+    expect(boards.find((board) => board.id === "ap5fl")?.productCode).toBe("AP5FL");
+    expect(boards.find((board) => board.id === "ap5fl-mc")?.label).toBe("AP5FL GE");
+    expect(boards.find((board) => board.id === "ap5fl-mc")?.productCode).toBe(
+      "AP5FL",
     );
   });
 

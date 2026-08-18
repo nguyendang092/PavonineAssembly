@@ -24,7 +24,10 @@ import { applyS90dReportYieldMetrics, roundYieldPct } from "./s90dCumulativeYiel
 import {
   applyBrokenChainBoardYieldInvalidation,
   applyBrokenChainYieldInvalidation,
+  findBoardRowForProduct,
+  findMergedBoardRowForProduct,
   isS90dProcessChainComplete,
+  normalizeProductCode,
 } from "./s90dProcessChain";
 import { S90D_SHIFT_SLOTS } from "./s90dShiftSlots";
 
@@ -414,6 +417,19 @@ function resolveOutputProcessRow(processRows, outputProcess) {
   );
 }
 
+function resolveFinalProcessRow(processRows, outputProcess, processes = []) {
+  if (outputProcess) {
+    const matched = processRows.find((row) => row.process === outputProcess);
+    if (matched) return matched;
+  }
+  const lastProcess = processes[processes.length - 1];
+  if (lastProcess) {
+    const matched = processRows.find((row) => row.process === lastProcess);
+    if (matched) return matched;
+  }
+  return resolveOutputProcessRow(processRows, outputProcess);
+}
+
 function buildDailyTotalRow(
   processRows,
   { outputProcessOnly = false, outputProcess = null, processes = [] } = {},
@@ -459,13 +475,13 @@ function buildDailyTotalRow(
       total.ngQty += row.ngQty;
     });
 
-    total.yieldPct = total.totalQty
-      ? yieldPctOrZero(total.okQty, total.totalQty)
-      : null;
-    const lastWithCumul = [...processRows]
-      .reverse()
-      .find((row) => row.cumulativeYieldPct != null);
-    total.cumulativeYieldPct = lastWithCumul?.cumulativeYieldPct ?? null;
+    const finalProcessRow = resolveFinalProcessRow(
+      processRows,
+      outputProcess,
+      processes,
+    );
+    total.yieldPct = finalProcessRow?.yieldPct ?? null;
+    total.cumulativeYieldPct = finalProcessRow?.cumulativeYieldPct ?? null;
     total.ngRatePct = pctOrZero(total.ngQty, total.totalQty);
   }
 
@@ -577,6 +593,122 @@ export function buildMonthDailySummariesFromManual({
   );
 }
 
+function boardRowToProcessRow(process, boardRow) {
+  if (!boardRow) return emptyGrandProcessRow(process);
+
+  return {
+    process,
+    classification: process,
+    totalQty: boardRow.totalQty ?? 0,
+    okQty: boardRow.okQty ?? 0,
+    ngQty: boardRow.ngQty ?? 0,
+    yieldPct: boardRow.yieldPct ?? null,
+    cumulativeYieldPct: boardRow.cumulativeYieldPct ?? null,
+    ngRatePct: boardRow.ngRatePct ?? null,
+    defects: {
+      ...createEmptyDefectCounts(),
+      ...(boardRow.defects ?? {}),
+    },
+    defectTotal:
+      boardRow.defectTotal ?? sumDefectCounts(boardRow.defects ?? {}),
+    defectImages: boardRow.defectImages ?? createEmptyDefectImageLists(),
+  };
+}
+
+/** Lọc báo cáo ngày theo một mã AP5 (AP5FF / AP5FZ / AP5FL). */
+export function buildProductScopedDailySummary(
+  dailySummary,
+  productCode,
+  manualEntryConfig,
+) {
+  if (!dailySummary || !productCode) return dailySummary;
+
+  const config = resolveManualEntryConfig(manualEntryConfig);
+  const codeKey = normalizeProductCode(productCode);
+  const processes = config.processes;
+
+  const processDetails = processes.map((process) => {
+    const detail = dailySummary.processDetails?.find(
+      (item) => item.process === process,
+    );
+    const boardRow = findMergedBoardRowForProduct(detail, codeKey);
+
+    return {
+      process,
+      processRow: boardRowToProcessRow(process, boardRow),
+      boardRows: [],
+      boardCount: boardRow ? 1 : 0,
+    };
+  });
+
+  const processRows = processDetails.map((detail) => detail.processRow);
+
+  applyS90dReportYieldMetrics(
+    {
+      processDetails,
+      processRows,
+      processes,
+      usesProductSubCodes: config.usesProductSubCodes,
+      fixedBoardSpecsAllProcesses: config.fixedBoardSpecsAllProcesses,
+      fixedBoardSpecs: config.fixedBoardSpecs,
+    },
+    { emptyAsNull: true },
+  );
+
+  if (config.fixedBoardSpecsAllProcesses) {
+    applyBrokenChainYieldInvalidation(processRows, processes);
+    applyBrokenChainBoardYieldInvalidation(processDetails, processes);
+  }
+
+  const outputProcess = processes[processes.length - 1];
+  const totalRow = buildDailyTotalRow(processRows, {
+    outputProcessOnly: config.fixedBoardSpecsAllProcesses,
+    outputProcess,
+    processes: config.processes,
+  });
+  const percentRow = buildDailyPercentRow(totalRow);
+
+  return {
+    ...dailySummary,
+    productCode: codeKey,
+    processRows,
+    processDetails,
+    totalRow,
+    percentRow,
+    hasData: processRows.some((row) => row.totalQty > 0),
+  };
+}
+
+export function buildProductScopedMonthDailySummaries(
+  monthDailySummaries,
+  productCode,
+  manualEntryConfig,
+) {
+  return (monthDailySummaries ?? []).map((daily) =>
+    buildProductScopedDailySummary(daily, productCode, manualEntryConfig),
+  );
+}
+
+export function buildProductScopedGrandTotalSummary(
+  monthDailySummaries,
+  productCode,
+  manualEntryConfig,
+  defaultProductCode = DEFAULT_PRODUCT_CODE,
+) {
+  const config = resolveManualEntryConfig(manualEntryConfig ?? defaultProductCode);
+  const scopedDailies = buildProductScopedMonthDailySummaries(
+    monthDailySummaries,
+    productCode,
+    config,
+  );
+
+  return buildGrandTotalSummaryFromManual(
+    scopedDailies,
+    normalizeProductCode(productCode),
+    config,
+  );
+}
+
 function buildGrandTotalRow(
   processRows,
   { outputProcessOnly = false, outputProcess = null, processes = [] } = {},
@@ -622,11 +754,13 @@ function buildGrandTotalRow(
       total.ngQty += row.ngQty;
     });
 
-    total.yieldPct = yieldPctOrZero(total.okQty, total.totalQty);
-    total.cumulativeYieldPct =
-      processRows.length > 0
-        ? processRows[processRows.length - 1].cumulativeYieldPct ?? 0
-        : 0;
+    const finalProcessRow = resolveFinalProcessRow(
+      processRows,
+      outputProcess,
+      processes,
+    );
+    total.yieldPct = finalProcessRow?.yieldPct ?? null;
+    total.cumulativeYieldPct = finalProcessRow?.cumulativeYieldPct ?? 0;
     total.ngRatePct = pctOrZero(total.ngQty, total.totalQty);
   }
 

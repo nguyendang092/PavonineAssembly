@@ -9,6 +9,7 @@ import {
   formatShortDateLabel,
   formatS90dTypeSlotLabel,
   isHighDefectCell,
+  resolveS90dTotalYieldPct,
 } from "../lib/s90dDisplayUtils";
 import { isLateShiftSlot } from "../lib/s90dShiftSlots";
 import S90dBilingualHeader from "./S90dBilingualHeader";
@@ -183,7 +184,12 @@ const ShiftRow = memo(function ShiftRow({
         {isPercent ? "" : formatQty(row.ngQty, false, useDash)}
       </td>
       <td className="s90d-num s90d-col-yield">
-        {isPercent ? "" : formatS90dYieldPct(row.yieldPct, useDash ? "-" : "0%")}
+        {isPercent
+          ? ""
+          : formatS90dYieldPct(
+              isTotal ? resolveS90dTotalYieldPct(row) : row.yieldPct,
+              useDash ? "-" : "0%",
+            )}
       </td>
       <td className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}>
         {isPercent ? "" : formatPct(row.ngRatePct, useDash)}
@@ -239,6 +245,7 @@ export default function S90dProcessShiftTable({
     processSummary.shiftRows?.[0]?.productCode ??
     totalRow?.productCode ??
     "S90D";
+  const displayProductCode = boardLabel || productCode;
   const codeSlot = processSummary.codeSlot;
   const showCodeSlotColumn = codeSlot === "D" || codeSlot === "E";
   const infoColCount = INFO_COL_COUNT_BASE + (showCodeSlotColumn ? 1 : 0);
@@ -316,7 +323,7 @@ export default function S90dProcessShiftTable({
               <span className="s90d-meta-label">
                 {rt("metaProductCode", "Mã hàng")}
               </span>
-              <strong>{productCode}</strong>
+              <strong>{displayProductCode}</strong>
             </div>
             {codeSlot ? (
               <div className="s90d-meta-chip">
@@ -359,7 +366,7 @@ export default function S90dProcessShiftTable({
           <thead>
             <tr className="s90d-head-group">
               <th colSpan={infoColCount} className="s90d-head-group-shift">
-                {rt("groupShiftInfo", "Thông tin ca")}
+                {rt("groupProductInfo", "Thông tin mã hàng")}
               </th>
               <th colSpan={QTY_COL_COUNT} className="s90d-head-group-qty">
                 {rt("groupQtyYield", "Số lượng & hiệu suất")}

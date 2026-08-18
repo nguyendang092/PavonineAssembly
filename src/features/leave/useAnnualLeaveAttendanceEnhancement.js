@@ -16,6 +16,7 @@ export function useAnnualLeaveAttendanceEnhancement(
     yearMonthPrefix = null,
     includePayrollMonthAccrual = true,
     scopeEmpKeySet = null,
+    accrualThroughMonthIndex = null,
   } = {},
 ) {
   const skipAttendance =
@@ -32,5 +33,6 @@ export function useAnnualLeaveAttendanceEnhancement(
     throughDateKey,
     yearMonthPrefix,
     scopeEmpKeySet,
+    accrualThroughMonthIndex,
   });
 }

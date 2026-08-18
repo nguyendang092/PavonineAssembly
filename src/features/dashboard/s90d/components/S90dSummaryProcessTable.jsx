@@ -1,20 +1,27 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
+import { ASSEMBLY_PROCESS } from "../lib/s90dManualEntryReportConfig";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
 import {
-  formatS90dBoardDisplayName,
+  aggregateBoardRowsByProductGroup,
   formatS90dDefectQty,
-  formatS90dTypeSlotLabel,
   formatS90dYieldPct,
+  formatShortDateLabel,
   isHighDefectCell,
+  resolveS90dTotalYieldPct,
 } from "../lib/s90dDisplayUtils";
 import S90dBilingualHeader from "./S90dBilingualHeader";
 import S90dDefectImageThumbs from "./S90dDefectImageThumbs";
 
-const INFO_COL_COUNT_BASE = 3;
+const INFO_COL_COUNT_BASE = 4;
 const QTY_COL_COUNT = 5;
+
+function resolveClassificationCell({ processLabel, isTotal, isPercent, rt }) {
+  if (isPercent) return "";
+  if (isTotal) return rt("totalLabel", "TOTAL");
+  return processLabel;
+}
 
 function formatQty(value, isPercentRow) {
   if (isPercentRow) {
@@ -66,7 +73,6 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
   dateLabel,
   processLabel,
   totalNgQty,
-  showCodeSlotColumn,
   isBoardSubRow = false,
 }) {
   const rt = useReportT();
@@ -93,13 +99,17 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
     processCell = "";
   } else if (isBoardSubRow) {
     dateCell = "";
-    productCell = formatS90dBoardDisplayName(row);
+    productCell = String(row.productCode ?? row.label ?? "").trim();
     processCell = processLabel;
   }
 
-  const codeSlot = row.codeSlot;
-  const codeSlotLabel =
-    showCodeSlotColumn && !isPercent && codeSlot ? formatS90dTypeSlotLabel(codeSlot) : "";
+  const classificationCell = resolveClassificationCell({
+    processLabel,
+    isTotal,
+    isPercent,
+    rt,
+  });
+  const displayYieldPct = isTotal ? resolveS90dTotalYieldPct(row) : row.yieldPct;
 
   return (
     <tr className={trClass}>
@@ -107,20 +117,8 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
       <td className="s90d-col-product s90d-col-product--full">
         {productCell}
       </td>
-      {showCodeSlotColumn ? (
-        <td
-          className={`s90d-col-code-slot${
-            codeSlot === "D"
-              ? " s90d-col-code-slot--d"
-              : codeSlot === "E"
-                ? " s90d-col-code-slot--e"
-                : ""
-          }`}
-        >
-          {codeSlotLabel}
-        </td>
-      ) : null}
       <td className="s90d-process s90d-col-process">{processCell}</td>
+      <td className="s90d-col-classification">{classificationCell}</td>
       <td className="s90d-num s90d-col-total-qty">
         {isPercent ? "" : formatQty(row.totalQty, false)}
       </td>
@@ -131,7 +129,7 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
         {isPercent ? "" : formatQty(row.ngQty, false)}
       </td>
       <td className="s90d-num s90d-col-yield">
-        {isPercent ? "" : formatS90dYieldPct(row.yieldPct, "-")}
+        {isPercent ? "" : formatS90dYieldPct(displayYieldPct, "-")}
       </td>
       <td className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}>
         {isPercent ? "" : formatPct(row.ngRatePct)}
@@ -156,8 +154,70 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
   );
 });
 
+function resolveSummaryProcessDetails(summary) {
+  if (summary?.processDetails?.length) {
+    return summary.processDetails;
+  }
+  return (summary?.processRows ?? []).map((processRow) => ({
+    process: processRow.process,
+    processRow,
+    boardRows: [],
+    boardCount: 1,
+  }));
+}
+
+function renderSummaryProcessDetailRows({
+  processDetails,
+  dateLabel,
+  productCode,
+  totalNgQty,
+  t,
+  keyPrefix = "",
+}) {
+  return processDetails.flatMap((detail) => {
+    const { process, processRow, boardRows = [] } = detail;
+    const processLabel = t(`areas.${process}`, { defaultValue: process });
+    const aggregatedBoardRows = aggregateBoardRowsByProductGroup(boardRows);
+    const hasMultipleBoards =
+      process !== ASSEMBLY_PROCESS && aggregatedBoardRows.length >= 2;
+    const summaryRow = {
+      ...processRow,
+      productCode: productCode || processRow.productCode,
+    };
+    const rowKeyPrefix = keyPrefix ? `${keyPrefix}-` : "";
+
+    return (
+      <React.Fragment key={`${rowKeyPrefix}${process}`}>
+        <SummaryProcessRow
+          row={summaryRow}
+          dateLabel={dateLabel}
+          processLabel={processLabel}
+          totalNgQty={totalNgQty}
+        />
+        {hasMultipleBoards
+          ? aggregatedBoardRows.map((boardRow) => (
+              <SummaryProcessRow
+                key={`${rowKeyPrefix}${process}-${boardRow.boardId}`}
+                row={{
+                  ...boardRow,
+                  defects: boardRow.defects ?? {},
+                  defectImages: boardRow.defectImages ?? {},
+                }}
+                dateLabel={dateLabel}
+                processLabel={processLabel}
+                totalNgQty={totalNgQty}
+                isBoardSubRow
+              />
+            ))
+          : null}
+      </React.Fragment>
+    );
+  });
+}
+
 export default function S90dSummaryProcessTable({
   processDetails = [],
+  dailySummaries = null,
   totalRow = null,
   percentRow = null,
   dateLabel = "",
@@ -165,9 +225,7 @@ export default function S90dSummaryProcessTable({
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
-  const { usesProductSubCodes } = useProductionReportContext();
-  const showCodeSlotColumn = usesProductSubCodes;
-  const infoColCount = INFO_COL_COUNT_BASE + (showCodeSlotColumn ? 1 : 0);
+  const infoColCount = INFO_COL_COUNT_BASE;
   const totalNgQty = totalRow?.ngQty ?? 0;
 
   return (
@@ -176,7 +234,7 @@ export default function S90dSummaryProcessTable({
         <thead>
           <tr className="s90d-head-group">
             <th colSpan={infoColCount} className="s90d-head-group-shift">
-              {rt("groupShiftInfo", "Thông tin ca")}
+              {rt("groupProductInfo", "Thông tin mã hàng")}
             </th>
             <th colSpan={QTY_COL_COUNT} className="s90d-head-group-qty">
               {rt("groupQtyYield", "Số lượng & hiệu suất")}
@@ -189,19 +247,17 @@ export default function S90dSummaryProcessTable({
             </th>
           </tr>
           <tr className="s90d-head-cols">
-            <th className="s90d-sticky-col s90d-head-shift">
+            <th className="s90d-sticky-col s90d-col-date s90d-head-shift">
               <S90dBilingualHeader ko="일자" vi="Ngày" />
             </th>
             <th className="s90d-head-shift s90d-col-product s90d-col-product--full">
               <S90dBilingualHeader ko="상품 코드" vi="Mã hàng" />
             </th>
-            {showCodeSlotColumn ? (
-              <th className="s90d-head-shift s90d-col-code-slot">
-                <S90dBilingualHeader ko="타입" vi="Type" />
-              </th>
-            ) : null}
             <th className="s90d-head-shift s90d-col-process">
               <S90dBilingualHeader ko="공정" vi="Công đoạn" />
+            </th>
+            <th className="s90d-head-shift s90d-col-classification">
+              <S90dBilingualHeader ko="분류" vi="Phân loại" />
             </th>
             <th className="s90d-head-qty s90d-head-total-qty">
               <S90dBilingualHeader ko="총수량" vi="Tổng SL" />
@@ -226,51 +282,36 @@ export default function S90dSummaryProcessTable({
           </tr>
         </thead>
         <tbody>
-          {processDetails.map((detail) => {
-            const { process, processRow, boardRows = [] } = detail;
-            const processLabel = t(`areas.${process}`, { defaultValue: process });
-            const hasMultipleBoards = boardRows.length >= 2;
-            const summaryRow = {
-              ...processRow,
-              productCode: productCode || processRow.productCode,
-            };
-
-            return (
-              <React.Fragment key={process}>
-                <SummaryProcessRow
-                  row={summaryRow}
-                  dateLabel={dateLabel}
-                  processLabel={processLabel}
-                  totalNgQty={totalNgQty}
-                  showCodeSlotColumn={showCodeSlotColumn}
-                />
-                {hasMultipleBoards
-                  ? boardRows.map((boardRow) => (
-                      <SummaryProcessRow
-                        key={`${process}-${boardRow.boardId}`}
-                        row={{
-                          ...boardRow,
-                          defects: boardRow.defects ?? {},
-                          defectImages: boardRow.defectImages ?? {},
-                        }}
-                        dateLabel={dateLabel}
-                        processLabel={processLabel}
-                        totalNgQty={totalNgQty}
-                        showCodeSlotColumn={showCodeSlotColumn}
-                        isBoardSubRow
-                      />
-                    ))
-                  : null}
-              </React.Fragment>
-            );
-          })}
+          {dailySummaries?.length
+            ? dailySummaries.flatMap((daily) => {
+                if (!daily.hasData) return [];
+                const dayDateLabel = formatShortDateLabel(
+                  daily.dateKey,
+                  daily.dateLabel,
+                );
+                const dayProductCode = productCode || daily.productCode;
+                return renderSummaryProcessDetailRows({
+                  processDetails: resolveSummaryProcessDetails(daily),
+                  dateLabel: dayDateLabel,
+                  productCode: dayProductCode,
+                  totalNgQty,
+                  t,
+                  keyPrefix: daily.dateKey,
+                });
+              })
+            : renderSummaryProcessDetailRows({
+                processDetails,
+                dateLabel,
+                productCode,
+                totalNgQty,
+                t,
+              })}
           {totalRow ? (
             <SummaryProcessRow
               row={totalRow}
               dateLabel={dateLabel}
               processLabel=""
               totalNgQty={totalNgQty}
-              showCodeSlotColumn={showCodeSlotColumn}
             />
           ) : null}
           {percentRow ? (
@@ -279,7 +320,6 @@ export default function S90dSummaryProcessTable({
               dateLabel={dateLabel}
               processLabel=""
               totalNgQty={totalNgQty}
-              showCodeSlotColumn={showCodeSlotColumn}
             />
           ) : null}
         </tbody>

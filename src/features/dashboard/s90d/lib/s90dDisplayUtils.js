@@ -1,4 +1,14 @@
-import { inferCodeSlotFromBoardId, formatS90dTypeSlotLabel } from "./s90dEntryBoardSpecs";
+import {
+  inferCodeSlotFromBoardId,
+  formatS90dTypeSlotLabel,
+  resolveDisplayBoardGroupKey,
+} from "./s90dEntryBoardSpecs";
+import {
+  createEmptyDefectCounts,
+  S90D_DEFECT_COLUMNS,
+  sumDefectCounts,
+} from "./s90dDefectColumns";
+import { roundYieldPct } from "./s90dCumulativeYield";
 import { DEFAULT_PRODUCT_CODE } from "./s90dManualEntryReportConfig";
 
 export { formatS90dTypeSlotLabel, S90D_TYPE_SLOT_LABEL } from "./s90dEntryBoardSpecs";
@@ -42,6 +52,68 @@ function resolveBoardCodeSlot(boardRow) {
   return match ? match[1].toUpperCase() : null;
 }
 
+function summaryPctOrZero(numerator, denominator) {
+  if (!denominator) return 0;
+  return Math.round((numerator / denominator) * 1000) / 10;
+}
+
+function summaryYieldPct(numerator, denominator) {
+  if (!denominator) return null;
+  return roundYieldPct((numerator / denominator) * 100);
+}
+
+/** Gộp board Type D/E cùng mã hàng thành một dòng cho tab Tổng/Theo ngày. */
+export function aggregateBoardRowsByProductGroup(boardRows = []) {
+  if (!boardRows.length) return [];
+
+  const groupMap = new Map();
+
+  boardRows.forEach((row) => {
+    const groupKey =
+      resolveDisplayBoardGroupKey(row) ||
+      String(row.productCode ?? "").trim() ||
+      String(row.boardId ?? row.id ?? "").trim();
+    if (!groupKey) return;
+
+    if (!groupMap.has(groupKey)) {
+      const productCode =
+        String(row.productCode ?? "").trim() ||
+        String(row.label ?? "")
+          .trim()
+          .replace(/\s*·?\s*Type\s+[DE]\b/i, "");
+
+      groupMap.set(groupKey, {
+        boardId: groupKey,
+        productCode: productCode || groupKey,
+        label: productCode || groupKey,
+        codeSlot: null,
+        totalQty: 0,
+        okQty: 0,
+        ngQty: 0,
+        yieldPct: null,
+        ngRatePct: null,
+        defects: createEmptyDefectCounts(),
+        defectTotal: 0,
+      });
+    }
+
+    const target = groupMap.get(groupKey);
+    target.totalQty += row.totalQty ?? 0;
+    target.okQty += row.okQty ?? 0;
+    target.ngQty += row.ngQty ?? 0;
+    S90D_DEFECT_COLUMNS.forEach(({ key }) => {
+      target.defects[key] += row.defects?.[key] ?? 0;
+    });
+  });
+
+  return [...groupMap.values()].map((row) => ({
+    ...row,
+    yieldPct: summaryYieldPct(row.okQty, row.totalQty),
+    ngRatePct: summaryPctOrZero(row.ngQty, row.totalQty),
+    defectTotal: sumDefectCounts(row.defects),
+  }));
+}
+
 /** @param {{ boardId?: string, id?: string, label?: string, productCode?: string, codeSlot?: "D"|"E"|null }} boardRow */
 export function formatS90dBoardDisplayName(
   boardRow,
@@ -83,6 +155,21 @@ export function formatS90dDailyPct(value) {
 export function formatS90dYieldPct(value, emptyLabel = "0%") {
   if (value == null || value === "") return emptyLabel;
   return `${capYieldPct(value).toLocaleString("vi-VN")}%`;
+}
+
+/** Hiệu suất dòng TOTAL — lấy từ công đoạn cuối (ASSEMBLY), khớp dòng ASSEMBLY. */
+export function resolveS90dTotalYieldPct(row) {
+  if (!row) return null;
+  if (row.yieldPct != null && row.yieldPct !== "") {
+    return capYieldPct(row.yieldPct);
+  }
+  if (row.cumulativeYieldPct != null && row.cumulativeYieldPct !== "") {
+    return capYieldPct(row.cumulativeYieldPct);
+  }
+  if (Number(row.totalQty) > 0) {
+    return capYieldPct((Number(row.okQty) / Number(row.totalQty)) * 100);
+  }
+  return null;
 }
 
 export function formatS90dDailyNg(value) {

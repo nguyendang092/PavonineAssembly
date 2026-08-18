@@ -26,6 +26,7 @@ import {
   parseAnnualLeaveAdjustment,
   resolveAnnualLeaveYearAsOfDateKey,
 } from "./annualLeaveCalculated";
+import { queueSingleEmployeeAnnualLeavePersist } from "./annualLeavePersistQueue";
 
 /** Chuyển bản ghi legacy sang khóa `emp_{mnv}` trên Firebase. */
 export async function migrateAnnualLeaveYearToEmpKeys(db, year, yearData) {
@@ -373,15 +374,15 @@ export async function applyAnnualLeaveDeductionDelta(
   });
 
   if (empKey) {
-    const single = await persistSingleEmployeeAnnualLeaveFromAttendance(db, {
+    queueSingleEmployeeAnnualLeavePersist(db, {
       year,
       empKey,
       attendanceRootPath,
       updatedBy,
     });
     return {
-      applied: single.applied,
-      reason: single.reason,
+      applied: true,
+      reason: "queued",
       delta,
     };
   }

@@ -1,5 +1,115 @@
 import { describe, expect, it } from "vitest";
-import { formatS90dBoardDisplayName } from "./s90dDisplayUtils";
+import {
+  aggregateBoardRowsByProductGroup,
+  formatS90dBoardDisplayName,
+  resolveS90dTotalYieldPct,
+} from "./s90dDisplayUtils";
+
+describe("aggregateBoardRowsByProductGroup", () => {
+  it("merges Type D and Type E into one row per product", () => {
+    const merged = aggregateBoardRowsByProductGroup([
+      {
+        boardId: "press-coded",
+        productCode: "S90D",
+        codeSlot: "D",
+        totalQty: 100,
+        okQty: 95,
+        ngQty: 5,
+        defects: { scratch: 5 },
+      },
+      {
+        boardId: "press-codee",
+        productCode: "S90D",
+        codeSlot: "E",
+        totalQty: 80,
+        okQty: 70,
+        ngQty: 10,
+        defects: { scratch: 10 },
+      },
+    ]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].productCode).toBe("S90D");
+    expect(merged[0].codeSlot).toBeNull();
+    expect(merged[0].totalQty).toBe(180);
+    expect(merged[0].okQty).toBe(165);
+    expect(merged[0].ngQty).toBe(15);
+    expect(merged[0].defects.scratch).toBe(15);
+  });
+
+  it("keeps separate rows for different assembly products", () => {
+    const merged = aggregateBoardRowsByProductGroup([
+      {
+        boardId: "assembly-inzi-coded",
+        productCode: "S90D INZI",
+        codeSlot: "D",
+        totalQty: 100,
+        okQty: 90,
+        ngQty: 10,
+        defects: {},
+      },
+      {
+        boardId: "assembly-inzi-codee",
+        productCode: "S90D INZI",
+        codeSlot: "E",
+        totalQty: 100,
+        okQty: 80,
+        ngQty: 20,
+        defects: {},
+      },
+      {
+        boardId: "assembly-mxc-coded",
+        productCode: "S90D MXC",
+        codeSlot: "D",
+        totalQty: 50,
+        okQty: 45,
+        ngQty: 5,
+        defects: {},
+      },
+      {
+        boardId: "assembly-mxc-codee",
+        productCode: "S90D MXC",
+        codeSlot: "E",
+        totalQty: 50,
+        okQty: 40,
+        ngQty: 10,
+        defects: {},
+      },
+    ]);
+
+    expect(merged).toHaveLength(2);
+    expect(merged.map((row) => row.productCode).sort()).toEqual([
+      "S90D INZI",
+      "S90D MXC",
+    ]);
+    expect(merged.find((row) => row.productCode === "S90D INZI")?.totalQty).toBe(
+      200,
+    );
+  });
+});
+
+describe("resolveS90dTotalYieldPct", () => {
+  it("prefers final-process yieldPct for TOTAL rows", () => {
+    expect(
+      resolveS90dTotalYieldPct({
+        yieldPct: 94.4,
+        cumulativeYieldPct: 89.9,
+        totalQty: 6124,
+        okQty: 5974,
+      }),
+    ).toBe(94.4);
+  });
+
+  it("falls back to cumulative when yieldPct is missing", () => {
+    expect(
+      resolveS90dTotalYieldPct({
+        cumulativeYieldPct: 89.9,
+        totalQty: 100,
+        okQty: 90,
+      }),
+    ).toBe(89.9);
+  });
+});
 
 describe("formatS90dBoardDisplayName", () => {
   it("formats S90D Type D/E from codeSlot", () => {

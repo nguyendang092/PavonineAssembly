@@ -1,0 +1,283 @@
+================================================================================
+  QUẢN LÝ PHÉP NĂM — CÁCH HOẠT ĐỘNG, RENDER & TÍNH TOÁN DỮ LIỆU
+  PavonineAssembly | Cập nhật: 2026
+================================================================================
+
+Mục lục
+  1. Điểm vào & cấu trúc trang
+  2. Nguồn dữ liệu (Firebase)
+  3. Hai lớp dữ liệu: Stored vs Live
+  4. Hook & pipeline tính toán
+  5. Công thức tính phép
+  6. Luồng render bảng
+  7. Khi nào ghi lại Firebase?
+  8. Modal chi tiết & file liên quan
+  9. Tóm tắt nhanh
+
+================================================================================
+1. ĐIỂM VÀO & CẤU TRÚC TRANG
+================================================================================
+
+Route:     /annual-leave?year=2026&month=01
+Menu:      navbar.annualLeave (menuConfig.js)
+Trang:     src/features/leave/AnnualLeaveManager.jsx
+
+URL params:
+  - year   : năm phép (vd. 2026)
+  - month  : tùy chọn, lọc cột tháng / cắt dữ liệu đến cuối tháng (01–12)
+
+Quyền:
+  - Xem: user đăng nhập
+  - Sửa (upload, tính lại, điều chỉnh HR, xóa năm): Admin/HR (canManageAnnualLeave)
+
+Cây component:
+
+  AnnualLeaveManager
+  ├── AnnualLeaveManagerToolbar        (năm, tháng, phòng ban, search)
+  ├── AnnualLeaveManagerActionsMenu    (tính lại, Excel, export, xóa năm)
+  └── AnnualLeaveManagerTableSection
+      └── AnnualLeaveManagerTablePanel
+          └── AnnualLeaveManagerTableRow
+              ├── AnnualLeaveAdjustmentCell
+              └── AnnualLeaveUsageDetailTrigger → Modal chi tiết ngày nghỉ
+
+================================================================================
+2. NGUỒN DỮ LIỆU (FIREBASE)
+================================================================================
+
+Không dùng localStorage. Tất cả từ Firebase Realtime Database.
+
+Path Firebase:
+  annualLeave/{year}/emp_{mnv}     Hồ sơ phép từng nhân viên
+  annualLeave/{year}/_meta         Metadata (updatedAt, rowCount, …)
+  attendance/{yyyy-mm-dd}/emp_{mnv}  Điểm danh hàng ngày
+
+Trường quan trọng trên emp_{mnv}:
+  - fullName, startWorkingDate, subDepartment, dateOfBirth, …
+  - annualLeaveCurrentYear      Phép năm hiện tại (đã lưu)
+  - annualLeaveAdjustment       HR chỉnh tay (+/-)
+  - bonusAnnualLeaveEnv         Phép thưởng môi trường
+  - compensatoryDayOff          Phép bù
+  - totalAnnualLeave            Tổng phép
+  - annualLeaveUsed             Đã dùng
+  - balance                     Còn lại
+  - monthlyLeaveUsage           Mảng 12 tháng (từ Excel, chủ yếu T1–T5/2026)
+
+Quy tắc thời gian (năm 2026):
+  - Tháng 1–5/2026 : dữ liệu Excel / hiển thị thử — KHÔNG trừ PN từ điểm danh
+  - Từ tháng 6/2026: trừ PN từ điểm danh (loại phép PN, ½PN)
+  - NV seasonal / Korean attendance: bỏ qua sync phép năm
+
+File định nghĩa: src/features/leave/annualLeaveFields.js
+
+================================================================================
+3. HAI LỚP DỮ LIỆU: STORED vs LIVE
+================================================================================
+
+  STORED (Firebase)
+    - Lấy từ annualLeave/{year}
+    - Hiển thị ngay khi mở trang (chưa cần attendance)
+
+  LIVE (derived)
+    - Tính từ attendance + payroll grid
+    - Cập nhật UI khi điểm danh tải xong
+
+QUAN TRỌNG:
+  Bảng TÍNH LIVE trong React để hiển thị — KHÔNG ghi Firebase mỗi lần render.
+  Chỉ ghi Firebase khi có trigger sync (xem mục 7).
+
+================================================================================
+4. HOOK & PIPELINE TÍNH TOÁN
+================================================================================
+
+useAnnualLeaveYearData
+  File: useAnnualLeaveYearData.js
+  - Subscribe annualLeave/{year}
+  - Danh sách NV, filter toolbar
+
+useAnnualLeaveAttendanceDerived  (engine chính)
+  File: useAnnualLeaveAttendanceDerived.js
+  Tải attendance và tính:
+    1. deductionsByEmpKey       — tổng PN đã dùng (quét điểm danh)
+    2. attendanceMonthlyByEmpKey — PN theo từng tháng (T6+)
+    3. monthWorkSummaryByEmpKey  — workDays, standardWorkDays, tsDays / tháng
+                                   (phục vụ accrual +1 PN/tháng)
+
+  Dùng listener dùng chung: annualLeaveLiveStore.js (tránh subscribe trùng)
+
+useAnnualLeaveAttendanceEnhancement
+  File: useAnnualLeaveAttendanceEnhancement.js
+  - Wrapper cho bảng manager
+  - Bật payroll accrual, throughDateKey, scopeEmpKeySet (chỉ NV đang hiển thị)
+
+useAnnualLeaveLiveData / useAnnualLeaveBalanceMap
+  - Dùng cho balance live ở nơi khác (nếu cần)
+
+================================================================================
+5. CÔNG THỨC TÍNH PHÉP
+================================================================================
+
+5.1 Phép năm hiện tại (annualLeaveCurrentYear)
+--------------------------------------------------------------------------------
+
+  annualLeaveCurrentYear = monthlyAccrual + tenureBonus + adjustment
+
+  monthlyAccrual : +1 PN/tháng (theo quy tắc bên dưới)
+  tenureBonus    : +1 PN mỗi 5 năm thâm niên
+  adjustment     : HR chỉnh tay (annualLeaveAdjustment)
+
+File: annualLeaveCalculated.js → resolveAnnualLeaveCurrentYear
+
+5.2 Quy tắc +1 PN/tháng (accrual)
+--------------------------------------------------------------------------------
+
+File: annualLeaveCalculated.js → resolveAnnualLeaveMonthlyAccrualDays
+      monthMeetsHalfStandardWorkDays
+
+Điều kiện "đạt nửa tháng" (monthMeetsHalfStandardWorkDays):
+  Đạt MỘT trong hai:
+    - Tổng ngày công (gồm nghỉ có lương) >= 1/2 "Ngày thực tế làm việc"
+    - Số ngày nghỉ thai sản >= 1/2 "Ngày thực tế làm việc"
+
+Nguồn ngày công tháng:
+  buildAnnualLeaveMonthWorkSummary (annualLeavePayrollAccrual.js)
+  → buildMonthlyRuleSummary (payroll) — cùng logic bảng giờ công
+
+Theo giai đoạn:
+
+  T6/2026 trở đi (và mọi tháng năm >= 2027):
+    Mọi NV: +1 PN CHỈ KHI tháng đó đạt 1/2 ngày công
+    Cộng ngay khi đạt, kể cả tháng hiện tại (không chờ hết tháng)
+
+  T1–T5/2026 (quy tắc cũ):
+    NV cũ     : +1 auto mỗi tháng trong khoảng
+    NV mới    : tháng vào làm cần đạt 1/2; các tháng khác +1 auto
+
+Khoảng tháng tính: từ max(ngày vào làm, 1/1 năm) đến hôm nay (năm hiện tại)
+                   hoặc 31/12 (năm đã qua)
+
+5.3 Phép đã dùng & còn lại
+--------------------------------------------------------------------------------
+
+  annualLeaveUsed = HR used + attendance PN
+                    (hoặc tổng monthlyLeaveUsage nếu merge Excel)
+
+  totalAnnualLeave = currentYear + bonusEnv + compensatoryDayOff (+ thành phần khác)
+  balance          = totalAnnualLeave - annualLeaveUsed
+
+Gộp theo tháng (buildAnnualLeaveMonthlyUsageByEmpKey):
+  Tháng 1–5 : ưu tiên monthlyLeaveUsage từ Excel (Firebase)
+  Tháng 6+  : lấy từ điểm danh (PN, ½PN)
+
+File: annualLeaveDerived.js → computeLiveAnnualLeaveState
+
+================================================================================
+6. LUỒNG RENDER BẢNG
+================================================================================
+
+  [Firebase annualLeave] ──subscribe──> AnnualLeaveManager
+  [Firebase attendance]  ──subscribe──> useAnnualLeaveAttendanceDerived
+
+  Bước trong AnnualLeaveManagerTableSection:
+
+  1. buildAnnualLeaveManagerRowCatalog(yearData)
+     → catalog NV từ Firebase
+
+  2. Filter: search / phòng ban / tháng
+
+  3. useAnnualLeaveAttendanceEnhancement
+     → deductionsByEmpKey, attendanceMonthlyByEmpKey, monthWorkSummaryByEmpKey
+
+  4. buildAnnualLeaveMonthlyUsageByEmpKey
+     → gộp Excel T1–T5 + attendance T6+
+
+  5. Với mỗi NV trong filteredEntries:
+       - Nếu attendanceUsageReady = true
+           → normalizeAnnualLeaveRowLive (tính live)
+       - Ngược lại
+           → normalizeAnnualLeaveRowStored (chỉ Firebase)
+
+  6. Gom vào displayRowByEmpKey (Map) → tránh re-render thừa
+
+  7. AnnualLeaveManagerTablePanel → pagination + AnnualLeaveManagerTableRow
+
+Trạng thái "đang tải":
+  Ô có class annual-leave-cell--pending khi:
+    attendanceUsageReady = false  HOẶC  attendanceAccrualReady = false
+
+Lọc tháng (monthFilter):
+  - Chỉ hiện cột tháng được chọn
+  - throughDateKey cắt accrual/usage đến cuối tháng (hoặc hôm nay nếu tháng hiện tại)
+
+================================================================================
+7. KHI NÀO GHI LẠI FIREBASE?
+================================================================================
+
+  Trigger                              Hàm                              Phạm vi
+  ─────────────────────────────────────────────────────────────────────────────
+  Nút "Tính lại"                         persistAnnualLeaveYearFromAttendance   Cả năm
+  Upload Excel phép                      merge upload + persist                 Cả năm
+  Lưu điểm danh (đổi loại phép)          applyAnnualLeaveDeductionDelta         1 NV
+  Xóa dòng / upload / xóa all điểm danh persistAnnualLeaveYearFromAttendance  Cả năm
+  HR sửa cột "Điều chỉnh"                persistAnnualLeaveEmployeeAdjustment   1 NV
+
+Persist flow (annualLeaveAttendanceSync.js):
+  1. Quét attendance → derived maps
+  2. Tính work summary cho accrual
+  3. computeLiveAnnualLeaveState → used / total / balance / currentYear
+  4. So sánh với Firebase → update nếu khác
+  5. Cập nhật _meta
+
+Call sites:
+  - AnnualLeaveManager.jsx          (tính lại, upload)
+  - useAttendanceListMutations.js   (xóa điểm danh)
+  - AttendanceUploadHandler.js      (upload hàng loạt)
+  - AttendanceEmployeeFormModal.jsx (lưu form → syncAnnualLeaveAfterAttendanceSave)
+
+================================================================================
+8. MODAL CHI TIẾT & FILE LIÊN QUAN
+================================================================================
+
+Modal:
+  AnnualLeaveUsageDetailTrigger → AnnualLeaveUsageDetailModal
+  - Chi tiết từng ngày nghỉ PN
+  - Popup giờ công, popup ngày nghỉ
+
+Link sang trang khác (annualLeaveCrossLinks.js):
+  /attendance-list?date=…
+  /attendance-salary?date=…
+
+File logic chính:
+  annualLeaveFields.js           Path, field names, quy tắc ngày
+  annualLeaveEmpKey.js           emp_{mnv} key
+  annualLeaveCalculated.js       Accrual, tenure, công thức
+  annualLeaveDerived.js          Live state, normalize row
+  annualLeaveBalanceLookup.js    Quét attendance → deductions
+  annualLeavePayrollAccrual.js    Half-month accrual từ payroll grid
+  annualLeaveAttendanceSync.js   Ghi Firebase
+  annualLeaveManagerFilter.js    Search, phòng ban
+  annualLeaveManagerMonthFilter.js  Lọc tháng, throughDateKey
+
+Excel:
+  annualLeaveExcelImport.js / Export / Template
+
+Tests (src/features/leave/*.test.js):
+  annualLeaveCalculated.test.js
+  annualLeavePayrollAccrual.test.js
+  annualLeaveDerived.test.js
+  annualLeaveAttendanceSync.test.js
+  … (~136 tests tổng phép năm)
+
+================================================================================
+9. TÓM TẮT NHANH
+================================================================================
+
+  Hiển thị    : Firebase + tính live từ attendance; Map cache từng dòng
+  Accrual     : +1 PN/tháng nếu đạt 1/2 ngày công (payroll grid); T6/2026+ cho mọi NV
+  Usage       : Excel T1–T5; điểm danh T6+
+  Balance     : total - used; cập nhật live trên UI
+  Lưu DB      : Chỉ khi có trigger sync — KHÔNG auto mỗi render
+
+================================================================================
+  Hết tài liệu
+================================================================================

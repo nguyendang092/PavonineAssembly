@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
 import { buildProductCodeYieldItems } from "../lib/s90dChartData";
-import { formatS90dYieldPct } from "../lib/s90dDisplayUtils";
+import { formatS90dYieldPct, resolveS90dTotalYieldPct } from "../lib/s90dDisplayUtils";
 
 function formatQty(value) {
   return Number(value || 0).toLocaleString("vi-VN");
@@ -48,7 +48,11 @@ function S90dYieldRing({ yieldPct, label, sublabel, isValid = true }) {
   );
 }
 
-export default function S90dKpiCards({ totalRow, processDetails = null }) {
+export default function S90dKpiCards({
+  totalRow,
+  processDetails = null,
+  showProductYieldBreakdown = true,
+}) {
   const rt = useReportT();
   const {
     fixedBoardSpecs,
@@ -77,9 +81,9 @@ export default function S90dKpiCards({ totalRow, processDetails = null }) {
     ],
   );
 
-  const showProductYieldCharts = productYieldItems.length >= 2;
-  const aggregateYieldPct =
-    totalRow?.cumulativeYieldPct ?? totalRow?.yieldPct;
+  const showProductYieldCharts =
+    showProductYieldBreakdown && productYieldItems.length >= 2;
+  const aggregateYieldPct = resolveS90dTotalYieldPct(totalRow);
   const aggregateYieldValid = aggregateYieldPct != null;
   const ngRatePct = totalRow?.ngRatePct ?? null;
 

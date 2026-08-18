@@ -15,6 +15,16 @@ export const AP5_BOARD_SPECS = Object.freeze([
   { id: "ap5fl", label: "AP5FL", productCode: "AP5FL" },
 ]);
 
+/** Tab MC có thêm 1 bảng AP5FL — tổng 4 bảng nhập liệu. */
+export const AP5_MC_BOARD_SPECS = Object.freeze([
+  ...AP5_BOARD_SPECS,
+  { id: "ap5fl-mc", label: "AP5FL GE", productCode: "AP5FL" },
+]);
+
+export const AP5_PROCESS_BOARD_SPECS = Object.freeze({
+  MC: AP5_MC_BOARD_SPECS,
+});
+
 export const AP5_PROCESSES = Object.freeze([
   "PRESS",
   "MC",
@@ -23,12 +33,23 @@ export const AP5_PROCESSES = Object.freeze([
   "ASSEMBLY",
 ]);
 
+export function resolveProcessBoardSpecs(process, config) {
+  const processKey = String(process ?? "").trim();
+  const override = config.processBoardSpecs?.[processKey];
+  if (override?.length) return override;
+  if (shouldApplyFixedBoardSpecs(process, config)) {
+    return config.fixedBoardSpecs ?? [];
+  }
+  return [];
+}
+
 export function createManualEntryConfig({
   defaultProductCode = DEFAULT_PRODUCT_CODE,
   processes = S90D_PROCESSES,
   fixedBoardSpecs = null,
   fixedBoardSpecsAllProcesses = false,
   usesProductSubCodes = false,
+  processBoardSpecs = null,
 } = {}) {
   return Object.freeze({
     defaultProductCode,
@@ -37,6 +58,7 @@ export function createManualEntryConfig({
     fixedBoardSpecsAllProcesses,
     usesFixedBoardSpecs: Boolean(fixedBoardSpecs?.length),
     usesProductSubCodes,
+    processBoardSpecs,
   });
 }
 
@@ -53,6 +75,7 @@ export const AP5_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
   processes: AP5_PROCESSES,
   fixedBoardSpecs: AP5_BOARD_SPECS,
   fixedBoardSpecsAllProcesses: true,
+  processBoardSpecs: AP5_PROCESS_BOARD_SPECS,
 });
 
 export function resolveManualEntryConfig(input) {
@@ -81,6 +104,7 @@ export function manualEntryConfigFromReportConfig(reportConfig = {}) {
     fixedBoardSpecsAllProcesses:
       reportConfig.fixedBoardSpecsAllProcesses ?? false,
     usesProductSubCodes: reportConfig.usesProductSubCodes ?? false,
+    processBoardSpecs: reportConfig.processBoardSpecs ?? null,
   });
 }
 

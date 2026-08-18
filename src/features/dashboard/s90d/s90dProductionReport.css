@@ -907,6 +907,21 @@ body.s90d-chart-modal-open {
   color: #854d0e;
 }
 
+.s90d-tabs--sub {
+  margin-top: -0.375rem;
+  margin-bottom: 0.75rem;
+  padding: 0.2rem;
+  border-color: #e0e7ff;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.s90d-tab--sub {
+  min-width: 5.5rem;
+  padding: 0.375rem 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .s90d-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -953,6 +968,25 @@ body.s90d-chart-modal-open {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.s90d-daily-product-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.s90d-daily-day-product-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed #dbeafe;
+}
+
+.s90d-daily-day-product-group:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .s90d-daily-card {
@@ -1343,6 +1377,58 @@ body.s90d-chart-modal-open {
 .s90d-summary-process-table {
   table-layout: auto;
   --s90d-w-defect: 4.5rem;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.s90d-summary-process-table .s90d-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background-color: #fff;
+  box-shadow: none;
+}
+
+.s90d-summary-process-table .s90d-sticky-col::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: #cbd5e1;
+  pointer-events: none;
+}
+
+.s90d-summary-process-table thead .s90d-sticky-col {
+  z-index: 3;
+  background-color: #eef2ff;
+}
+
+.s90d-summary-process-table .s90d-row-shift:nth-child(even) .s90d-sticky-col,
+.s90d-summary-process-table .s90d-row-shift:nth-child(even) .s90d-col-date {
+  background-color: #fafafa;
+}
+
+.s90d-summary-process-table .s90d-row-total .s90d-sticky-col,
+.s90d-summary-process-table .s90d-row-total .s90d-col-date {
+  background-color: #ffff00 !important;
+}
+
+.s90d-summary-process-table .s90d-row-percent .s90d-sticky-col,
+.s90d-summary-process-table .s90d-row-percent .s90d-col-date {
+  background-color: #dbeafe !important;
+}
+
+.s90d-summary-process-table .s90d-col-date,
+.s90d-summary-process-table .s90d-sticky-col.s90d-col-date {
+  width: 5rem;
+  min-width: 5rem;
+  border: 1px solid #cbd5e1;
+}
+
+.s90d-summary-process-table thead .s90d-sticky-col.s90d-head-shift {
+  border: 1px solid #cbd5e1;
 }
 
 .s90d-summary-process-table .s90d-head-total-qty,
@@ -1377,14 +1463,26 @@ body.s90d-chart-modal-open {
   min-width: var(--s90d-w-defect);
 }
 
-.s90d-summary-process-table .s90d-col-product--full {
+.s90d-summary-process-table .s90d-col-classification {
   width: auto;
-  min-width: 8.5rem;
+  min-width: 4.5rem;
   max-width: none;
-  overflow: visible;
-  text-overflow: clip;
   white-space: nowrap;
-  text-align: left;
+  text-align: center;
+  font-size: inherit;
+}
+
+.s90d-summary-process-table .s90d-col-product--full {
+  width: 5.5rem;
+  min-width: 5.5rem;
+  max-width: 6.5rem;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  border: 1px solid #cbd5e1;
   padding-left: 0.35rem;
   padding-right: 0.35rem;
 }
@@ -1550,6 +1648,7 @@ body.s90d-chart-modal-open {
   left: 0;
   z-index: 1;
   background: inherit;
+  box-shadow: 1px 0 0 #cbd5e1;
 }
 
 .s90d-board-table thead .s90d-sticky-col {
@@ -1898,6 +1997,12 @@ body.s90d-chart-modal-open {
   margin-bottom: 0.75rem;
 }
 
+.s90d-daily-all-days-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .s90d-daily-date-strip-label {
   margin: 0;
   font-size: 0.8125rem;
@@ -2147,7 +2252,8 @@ body.s90d-chart-modal-open {
   background: #f5f3ff;
 }
 
-.s90d-daily-process-row--main[data-process="MC"] td {
+.s90d-daily-process-row--main[data-process="MC"] td,
+.s90d-daily-process-row--main[data-process="GE"] td {
   background: #ecfeff;
 }
 
@@ -2206,7 +2312,8 @@ body.s90d-chart-modal-open {
   background: #ede9fe;
 }
 
-.s90d-daily-process-row--expanded-parent[data-process="MC"] td {
+.s90d-daily-process-row--expanded-parent[data-process="MC"] td,
+.s90d-daily-process-row--expanded-parent[data-process="GE"] td {
   background: #cffafe;
 }
 
@@ -2426,7 +2533,8 @@ body.s90d-chart-modal-open {
   background: #6366f1;
 }
 
-.s90d-daily-process-dot[data-process="MC"] {
+.s90d-daily-process-dot[data-process="MC"],
+.s90d-daily-process-dot[data-process="GE"] {
   background: #0891b2;
 }
 

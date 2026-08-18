@@ -11,6 +11,10 @@ import LoadingBlock from "@/components/ui/LoadingBlock";
 import S90dProcessTabPanel from "../s90d/components/S90dProcessTabPanel";
 import S90dDailyTabPanel from "../s90d/components/S90dDailyTabPanel";
 import S90dSummaryChartModal from "../s90d/components/S90dSummaryChartModal";
+import {
+  buildProductScopedGrandTotalSummary,
+  buildProductScopedMonthDailySummaries,
+} from "../s90d/lib/buildS90dFromManual";
 import { S90D_PROCESSES } from "../s90d/lib/s90dDefectColumns";
 import { formatS90dMonthDisplayLabel } from "../s90d/lib/s90dDateUtils";
 import { useReportT } from "./useReportTranslation";
@@ -56,7 +60,44 @@ export default function ManualProductionReportPage({
     grandTotalSummary,
     hasAnyData,
     processes = S90D_PROCESSES,
+    manualEntryConfig,
   } = manualEntries;
+
+  const productBoardSpecs = useMemo(() => {
+    if (
+      !manualEntryConfig?.fixedBoardSpecsAllProcesses ||
+      !manualEntryConfig?.fixedBoardSpecs?.length
+    ) {
+      return [];
+    }
+    return manualEntryConfig.fixedBoardSpecs;
+  }, [manualEntryConfig]);
+
+  const usesMultiProductSummary = productBoardSpecs.length >= 2;
+
+  const productSummarySections = useMemo(() => {
+    if (!usesMultiProductSummary) return null;
+
+    return productBoardSpecs.map((spec) => ({
+      productCode: spec.productCode,
+      label: spec.label ?? spec.productCode,
+      monthDailySummaries: buildProductScopedMonthDailySummaries(
+        monthDailySummaries,
+        spec.productCode,
+        manualEntryConfig,
+      ),
+      grandTotalSummary: buildProductScopedGrandTotalSummary(
+        monthDailySummaries,
+        spec.productCode,
+        manualEntryConfig,
+      ),
+    }));
+  }, [
+    manualEntryConfig,
+    monthDailySummaries,
+    productBoardSpecs,
+    usesMultiProductSummary,
+  ]);
 
   const tabOrder = useMemo(
     () => [BASE_TABS.TOTAL, BASE_TABS.DAILY, ...processes],
@@ -175,6 +216,13 @@ export default function ManualProductionReportPage({
   );
 
   const pageSubtitle = rt("pageSubtitle", "");
+
+  const summaryPanelProps = {
+    monthDailySummaries,
+    grandTotalSummary,
+    monthDisplayLabel,
+    productSections: productSummarySections,
+  };
 
   return (
     <div className="s90d-report-page">
@@ -318,12 +366,7 @@ export default function ManualProductionReportPage({
               role="tabpanel"
               aria-label={tabLabels[BASE_TABS.TOTAL]}
             >
-              <S90dDailyTabPanel
-                variant="total"
-                monthDailySummaries={monthDailySummaries}
-                grandTotalSummary={grandTotalSummary}
-                monthDisplayLabel={monthDisplayLabel}
-              />
+              <S90dDailyTabPanel variant="total" {...summaryPanelProps} />
             </section>
           ) : activeTab === BASE_TABS.DAILY ? (
             <section
@@ -331,7 +374,7 @@ export default function ManualProductionReportPage({
               role="tabpanel"
               aria-label={tabLabels[BASE_TABS.DAILY]}
             >
-              <S90dDailyTabPanel monthDailySummaries={monthDailySummaries} />
+              <S90dDailyTabPanel {...summaryPanelProps} />
             </section>
           ) : isProcessTab ? (
             <S90dProcessTabPanel

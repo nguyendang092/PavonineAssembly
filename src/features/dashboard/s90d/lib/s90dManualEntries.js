@@ -18,7 +18,9 @@ import {
 } from "./s90dEntryBoardSpecs";
 import {
   DEFAULT_PRODUCT_CODE,
+  ASSEMBLY_PROCESS,
   resolveManualEntryConfig,
+  resolveProcessBoardSpecs,
   shouldApplyFixedBoardSpecs,
   S90D_MANUAL_ENTRY_CONFIG,
 } from "./s90dManualEntryReportConfig";
@@ -197,7 +199,7 @@ function resolveEntryBoards(rawBoards, process, config) {
 
   if (!config.usesProductSubCodes) {
     if (shouldApplyFixedBoardSpecs(process, config)) {
-      return normalizeFixedBoards(normalizedBoards, config);
+      return normalizeFixedBoards(normalizedBoards, config, process);
     }
     return normalizedBoards.length
       ? normalizedBoards
@@ -236,8 +238,8 @@ function matchesBoardSpec(board, spec, config) {
   return false;
 }
 
-function normalizeFixedBoards(rawBoards, config) {
-  const boardSpecs = config.fixedBoardSpecs ?? [];
+function normalizeFixedBoards(rawBoards, config, process) {
+  const boardSpecs = resolveProcessBoardSpecs(process, config);
   const boards =
     rawBoards.length > 0
       ? rawBoards.map((board, index) => normalizeProcessBoard(board, index + 1))
@@ -287,7 +289,7 @@ function normalizeFixedBoards(rawBoards, config) {
 }
 
 function normalizeAssemblyBoards(rawBoards) {
-  return normalizeFixedBoards(rawBoards, S90D_MANUAL_ENTRY_CONFIG);
+  return normalizeFixedBoards(rawBoards, S90D_MANUAL_ENTRY_CONFIG, ASSEMBLY_PROCESS);
 }
 
 function resolveDefaultBoards(process, configInput = DEFAULT_PRODUCT_CODE) {
@@ -340,6 +342,14 @@ export function normalizeProcessDayEntry(
   };
 }
 
+function resolveLegacyProcessDayEntry(day, process) {
+  if (process === "MC") {
+    if (day?.MC) return day.MC;
+    if (day?.GE) return day.GE;
+  }
+  return day?.[process];
+}
+
 export function normalizeManualStore(raw, configInput = DEFAULT_PRODUCT_CODE) {
   const config = resolveManualEntryConfig(configInput);
   if (!raw || typeof raw !== "object") return {};
@@ -352,7 +362,7 @@ export function normalizeManualStore(raw, configInput = DEFAULT_PRODUCT_CODE) {
     store[dateKey] = createEmptyDayEntry(config);
     for (const process of config.processes) {
       store[dateKey][process] = normalizeProcessDayEntry(
-        day[process],
+        resolveLegacyProcessDayEntry(day, process),
         process,
         config,
       );
@@ -539,7 +549,7 @@ export function ensureProcessBoardAtIndex(
   const next = cloneProcessDayEntry(processDayEntry, process, config);
 
   if (shouldApplyFixedBoardSpecs(process, config)) {
-    return { boards: normalizeFixedBoards(next.boards, config) };
+    return { boards: normalizeFixedBoards(next.boards, config, process) };
   }
 
   while (next.boards.length < boardIndex) {

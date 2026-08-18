@@ -1,5 +1,7 @@
-import { memo, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useUser } from "@/contexts/UserContext";
+import { db } from "@/services/firebase";
 import HrTablePagination from "@/components/ui/HrTablePagination";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import AnnualLeaveManagerTableRow from "./AnnualLeaveManagerTableRow";
@@ -9,7 +11,18 @@ import {
   annualLeaveStickyColClass,
   annualLeaveTableThClass,
 } from "./annualLeaveTableStyles";
-import { filterAnnualLeaveManagerMonthValues } from "./annualLeaveManagerMonthFilter";
+import {
+  buildAnnualLeaveMonthlyUsageByEmpKey,
+  normalizeAnnualLeaveRowLive,
+  normalizeAnnualLeaveRowStored,
+} from "./annualLeaveDerived";
+import { filterAnnualLeaveManagerEntries } from "./annualLeaveManagerFilter";
+import { persistAnnualLeaveEmployeeAdjustment } from "./annualLeaveAttendanceSync";
+import { useAnnualLeaveAttendanceEnhancement } from "./useAnnualLeaveAttendanceEnhancement";
+import {
+  filterAnnualLeaveManagerMonthValues,
+  resolveAnnualLeaveManagerMonthIndex,
+} from "./annualLeaveManagerMonthFilter";
 
 const EMPTY_MONTH_VALUES = Object.freeze(Array.from({ length: 12 }, () => 0));
 
@@ -22,6 +35,12 @@ const ROW_DISPLAY_KEYS = [
   ANNUAL_LEAVE_EMP.BALANCE,
 ];
 
+function buildScopeEmpKeySet(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return null;
+  const set = new Set(entries.map((entry) => entry.id).filter(Boolean));
+  return set.size > 0 ? set : null;
+}
+
 function annualLeaveRowDisplayEqual(prevRow, nextRow) {
   if (prevRow === nextRow) return true;
   if (!prevRow || !nextRow) return false;
@@ -33,26 +52,191 @@ function annualLeaveRowDisplayEqual(prevRow, nextRow) {
 
 function AnnualLeaveManagerTablePanel({
   filteredEntries,
-  monthlyByEmpKey,
+  entries = [],
+  deptIndex = {},
   storedMonthlyByEmpKey = {},
+  yearData = null,
   year,
   monthFilter = "",
   monthColumnLabels,
   detailThroughDateKey,
-  attendanceEnhancing = false,
-  attendanceUsageReady = false,
-  attendanceAccrualReady = false,
-  displayRowByEmpKey,
+  exportRef,
   canManage = false,
-  adjustmentSavingId = "",
-  onAdjustmentSave,
+  onAdjustmentSaved,
+  onAdjustmentSaveError,
 }) {
   const { t } = useTranslation();
+  const { user } = useUser();
+  const [adjustmentSavingId, setAdjustmentSavingId] = useState("");
   const tableColCount =
     10 + monthColumnLabels.length + 1 + (canManage ? 1 : 0);
+
   const tablePagination = useHrTablePagination(filteredEntries, {
     resetDeps: [year, monthFilter, filteredEntries.length],
   });
+
+  const pagedScopeEmpKeySet = useMemo(
+    () => buildScopeEmpKeySet(tablePagination.pagedItems),
+    [tablePagination.pagedItems],
+  );
+
+  const usageThroughMonthIndex = resolveAnnualLeaveManagerMonthIndex(monthFilter);
+
+  const {
+    deductionsByEmpKey,
+    attendanceMonthlyByEmpKey,
+    monthWorkSummaryByEmpKey,
+    accrualAsOfDateKey,
+    attendanceEnhancing,
+    attendanceUsageReady,
+    attendanceAccrualReady,
+  } = useAnnualLeaveAttendanceEnhancement(year, yearData, {
+    includePayrollMonthAccrual: true,
+    throughDateKey: detailThroughDateKey,
+    scopeEmpKeySet: pagedScopeEmpKeySet,
+    accrualThroughMonthIndex: usageThroughMonthIndex,
+  });
+
+  const { monthlyByEmpKey } = useMemo(
+    () =>
+      buildAnnualLeaveMonthlyUsageByEmpKey(
+        year,
+        storedMonthlyByEmpKey,
+        attendanceMonthlyByEmpKey,
+      ),
+    [attendanceMonthlyByEmpKey, year, storedMonthlyByEmpKey],
+  );
+
+  const displayRowByEmpKey = useMemo(() => {
+    const map = new Map();
+    for (const entry of tablePagination.pagedItems) {
+      const monthValues = monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
+      const storedRow = normalizeAnnualLeaveRowStored(
+        entry.id,
+        entry._raw,
+        year,
+        storedMonthlyByEmpKey[entry.id] ?? monthValues,
+        { usageThroughMonthIndex },
+      );
+
+      if (attendanceUsageReady && storedRow) {
+        const liveRow = normalizeAnnualLeaveRowLive(
+          entry.id,
+          entry._raw,
+          deductionsByEmpKey,
+          year,
+          monthValues,
+          attendanceAccrualReady
+            ? monthWorkSummaryByEmpKey[entry.id] ?? null
+            : null,
+          {
+            asOfDateKey: accrualAsOfDateKey,
+            usageThroughMonthIndex,
+          },
+        );
+        map.set(entry.id, liveRow ?? storedRow);
+      } else if (storedRow) {
+        map.set(entry.id, storedRow);
+      }
+    }
+    return map;
+  }, [
+    accrualAsOfDateKey,
+    attendanceAccrualReady,
+    attendanceUsageReady,
+    deductionsByEmpKey,
+    monthWorkSummaryByEmpKey,
+    monthlyByEmpKey,
+    storedMonthlyByEmpKey,
+    tablePagination.pagedItems,
+    usageThroughMonthIndex,
+    year,
+  ]);
+
+  const resolveDisplayRow = useCallback(
+    (entry) => displayRowByEmpKey.get(entry.id) ?? entry._raw,
+    [displayRowByEmpKey],
+  );
+
+  useEffect(() => {
+    if (!exportRef) return;
+    exportRef.current = {
+      getExportRows(filters) {
+        const filtered = filterAnnualLeaveManagerEntries(
+          entries,
+          filters,
+          deptIndex,
+        );
+        return filtered
+          .map((entry) => {
+            const monthValues =
+              storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
+            return (
+              normalizeAnnualLeaveRowStored(
+                entry.id,
+                entry._raw,
+                year,
+                monthValues,
+                { usageThroughMonthIndex },
+              ) ?? entry._raw
+            );
+          })
+          .filter(Boolean);
+      },
+      getMonthlyByEmpKey: () => monthlyByEmpKey,
+      getMonthColumnLabels: () => monthColumnLabels,
+    };
+  }, [
+    deptIndex,
+    entries,
+    exportRef,
+    monthColumnLabels,
+    monthlyByEmpKey,
+    storedMonthlyByEmpKey,
+    usageThroughMonthIndex,
+    year,
+  ]);
+
+  const handleAdjustmentSave = useCallback(
+    async (empKey, adjustment, raw) => {
+      if (!canManage || !empKey || !raw) return;
+      setAdjustmentSavingId(empKey);
+      try {
+        await persistAnnualLeaveEmployeeAdjustment(db, {
+          year,
+          empKey,
+          raw,
+          adjustment,
+          deductionsByEmpKey,
+          attendanceMonthlyByEmpKey,
+          monthWorkSummaryByEmpKey,
+          updatedBy: user?.email ?? "",
+        });
+        onAdjustmentSaved?.();
+      } catch (err) {
+        onAdjustmentSaveError?.(
+          err,
+          t("annualLeave.adjustmentSaveError", {
+            defaultValue: "Không lưu được điều chỉnh phép năm.",
+          }),
+        );
+      } finally {
+        setAdjustmentSavingId("");
+      }
+    },
+    [
+      canManage,
+      year,
+      user?.email,
+      deductionsByEmpKey,
+      attendanceMonthlyByEmpKey,
+      monthWorkSummaryByEmpKey,
+      onAdjustmentSaved,
+      onAdjustmentSaveError,
+      t,
+    ],
+  );
+
   const pagedRowCacheRef = useRef(new Map());
 
   const pagedMonthValuesByEmpKey = useMemo(() => {
@@ -79,7 +263,7 @@ function AnnualLeaveManagerTablePanel({
     const cache = pagedRowCacheRef.current;
     const activeKeys = new Set();
     const rows = tablePagination.pagedItems.map((entry, localIdx) => {
-      const freshRow = displayRowByEmpKey.get(entry.id) ?? entry._raw;
+      const freshRow = resolveDisplayRow(entry);
       activeKeys.add(entry.id);
       const cached = cache.get(entry.id);
       const row =
@@ -99,7 +283,7 @@ function AnnualLeaveManagerTablePanel({
     }
     return rows;
   }, [
-    displayRowByEmpKey,
+    resolveDisplayRow,
     tablePagination.pagedItems,
     tablePagination.rowIndexOffset,
   ]);
@@ -243,7 +427,7 @@ function AnnualLeaveManagerTablePanel({
                     }
                     canManage={canManage}
                     adjustmentSaving={adjustmentSavingId === entry.id}
-                    onAdjustmentSave={onAdjustmentSave}
+                    onAdjustmentSave={handleAdjustmentSave}
                     attendanceUsageReady={attendanceUsageReady}
                     attendanceAccrualReady={attendanceAccrualReady}
                   />
@@ -274,19 +458,18 @@ function AnnualLeaveManagerTablePanel({
 function areTablePanelPropsEqual(prev, next) {
   return (
     prev.filteredEntries === next.filteredEntries &&
-    prev.monthlyByEmpKey === next.monthlyByEmpKey &&
+    prev.entries === next.entries &&
+    prev.deptIndex === next.deptIndex &&
     prev.storedMonthlyByEmpKey === next.storedMonthlyByEmpKey &&
+    prev.yearData === next.yearData &&
     prev.year === next.year &&
     prev.monthFilter === next.monthFilter &&
     prev.monthColumnLabels === next.monthColumnLabels &&
     prev.detailThroughDateKey === next.detailThroughDateKey &&
-    prev.attendanceEnhancing === next.attendanceEnhancing &&
-    prev.attendanceUsageReady === next.attendanceUsageReady &&
-    prev.attendanceAccrualReady === next.attendanceAccrualReady &&
-    prev.displayRowByEmpKey === next.displayRowByEmpKey &&
+    prev.exportRef === next.exportRef &&
     prev.canManage === next.canManage &&
-    prev.adjustmentSavingId === next.adjustmentSavingId &&
-    prev.onAdjustmentSave === next.onAdjustmentSave
+    prev.onAdjustmentSaved === next.onAdjustmentSaved &&
+    prev.onAdjustmentSaveError === next.onAdjustmentSaveError
   );
 }
 

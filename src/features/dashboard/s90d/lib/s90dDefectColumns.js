@@ -39,6 +39,7 @@ export function normalizeS90dProcess(workplaceName) {
   if (upper.includes("PRESS") || upper.includes("FRÉ") || upper === "프레스") {
     return "PRESS";
   }
+  if (upper === "GE") return "GE";
   if (upper === "MC" || upper.includes("MACHINING")) {
     return "MC";
   }

@@ -90,7 +90,9 @@ export function normalizeExcelShiftSlot(value) {
 export function normalizeExcelProcess(value, processes = S90D_PROCESSES) {
   const raw = trimCell(value).toUpperCase();
   if (processes.includes(raw)) return raw;
+  if (raw === "GE" && processes.includes("MC")) return "MC";
   const normalized = normalizeS90dProcess(raw);
+  if (normalized === "GE" && processes.includes("MC")) return "MC";
   if (normalized && processes.includes(normalized)) return normalized;
   return normalizeS90dProcess(value);
 }

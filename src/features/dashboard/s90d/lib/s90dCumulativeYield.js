@@ -1,5 +1,5 @@
 import { S90D_CODE_SLOTS } from "./s90dEntryBoardSpecs";
-import { findBoardRowForProduct } from "./s90dProcessChain";
+import { findBoardRowForProduct, findMergedBoardRowForProduct } from "./s90dProcessChain";
 
 /** Công đoạn hiển thị hiệu suất = (SL đạt/Tổng SL) / hiệu suất công đoạn trước (cùng mã/Code). */
 export const S90D_CHAIN_DISPLAY_YIELD_PROCESSES = new Set([
@@ -137,7 +137,7 @@ export function applyS90dProductBoardYieldMetrics(
 
     for (const process of processes ?? []) {
       const detail = processDetails?.find((item) => item.process === process);
-      const boardRow = findBoardRowForProduct(detail, productCode);
+      const boardRow = findMergedBoardRowForProduct(detail, productCode);
       if (!boardRow) continue;
 
       const displayYield = applyRowDisplayYield(
