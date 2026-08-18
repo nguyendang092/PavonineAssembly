@@ -12,12 +12,12 @@ describe("s90dEntryBoardSpecs", () => {
     expect(specs).toHaveLength(2);
     expect(specs[0]).toMatchObject({
       id: "press-coded",
-      label: "Code D",
+      label: "Type D",
       codeSlot: "D",
     });
     expect(specs[1]).toMatchObject({
       id: "press-codee",
-      label: "Code E",
+      label: "Type E",
       codeSlot: "E",
     });
   });

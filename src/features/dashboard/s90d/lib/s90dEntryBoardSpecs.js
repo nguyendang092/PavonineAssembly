@@ -6,6 +6,12 @@ import {
 } from "./s90dManualEntryReportConfig";
 
 export const S90D_CODE_SLOTS = Object.freeze(["D", "E"]);
+export const S90D_TYPE_SLOT_LABEL = "Type";
+
+export function formatS90dTypeSlotLabel(codeSlot) {
+  if (codeSlot !== "D" && codeSlot !== "E") return "";
+  return `${S90D_TYPE_SLOT_LABEL} ${codeSlot}`;
+}
 
 export function inferCodeSlotFromBoardId(boardId) {
   const id = String(boardId ?? "").trim().toLowerCase();
@@ -43,7 +49,7 @@ export function buildS90dEntryBoardSpecs(process, configInput = DEFAULT_PRODUCT_
     return (config.fixedBoardSpecs ?? []).flatMap((spec) =>
       S90D_CODE_SLOTS.map((codeSlot) => ({
         id: `${spec.id}-code${codeSlot.toLowerCase()}`,
-        label: `${spec.label} · Code ${codeSlot}`,
+        label: `${spec.label} · ${formatS90dTypeSlotLabel(codeSlot)}`,
         productCode: spec.productCode,
         codeSlot,
         parentBoardId: spec.id,
@@ -54,7 +60,7 @@ export function buildS90dEntryBoardSpecs(process, configInput = DEFAULT_PRODUCT_
   const processKey = String(process ?? "process").toLowerCase();
   return S90D_CODE_SLOTS.map((codeSlot) => ({
     id: `${processKey}-code${codeSlot.toLowerCase()}`,
-    label: `Code ${codeSlot}`,
+    label: formatS90dTypeSlotLabel(codeSlot),
     productCode: config.defaultProductCode,
     codeSlot,
     parentBoardId: `${processKey}-code${codeSlot.toLowerCase()}`,

@@ -394,10 +394,10 @@ describe("buildProductCodeYieldItems", () => {
 
     expect(items).toHaveLength(4);
     expect(items.map((item) => item.label)).toEqual([
-      "S90D INZI Code D",
-      "S90D INZI Code E",
-      "S90D MXC Code D",
-      "S90D MXC Code E",
+      "S90D INZI Type D",
+      "S90D INZI Type E",
+      "S90D MXC Type D",
+      "S90D MXC Type E",
     ]);
     expect(items[0]).toMatchObject({
       yieldPct: 98,
@@ -437,7 +437,7 @@ describe("buildProductCodeYieldItems", () => {
     });
 
     expect(items[0]).toMatchObject({
-      label: "S90D INZI Code D",
+      label: "S90D INZI Type D",
       yieldPct: null,
       isValid: false,
     });

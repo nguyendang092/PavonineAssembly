@@ -34,12 +34,6 @@ import PayrollSalaryTableRow, {
   PayrollSalaryTableColgroup,
   PayrollSalaryTableThead,
 } from "@/features/payroll/payrollSalaryTableUi";
-import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
-import { resolveEmpFirebaseKeyFromEmployee } from "@/features/leave/annualLeaveEmpKey";
-import {
-  annualLeaveYearFromDateKey,
-  getDisplayAnnualLeaveBalanceForAttendance,
-} from "@/features/leave/annualLeaveBalanceLookup";
 import { useAttendanceColumnPlan } from "@/features/attendance/useAttendanceBirthDeptColumns";
 import {
   ATTENDANCE_DAY_META_KEY,
@@ -146,7 +140,6 @@ export default function PayrollSalaryCalculator() {
     setOvertimeFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
     setShortHoursFilter(PAYROLL_SHORT_HOURS_FILTER.ALL);
   }, [selectedDate]);
-  const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
 
   const [isOffDay, setIsOffDay] = useState(false);
   const [isHolidayDay, setIsHolidayDay] = useState(false);
@@ -702,21 +695,6 @@ export default function PayrollSalaryCalculator() {
   const pagedEmployees = tablePagination.pagedItems;
   const tableRowIndexOffset = tablePagination.rowIndexOffset;
 
-  const annualLeaveScopeEmpKeys = useMemo(
-    () =>
-      pagedEmployees
-        .map((emp) => resolveEmpFirebaseKeyFromEmployee(emp))
-        .filter(Boolean),
-    [pagedEmployees],
-  );
-
-  const {
-    balanceByMnv: annualLeaveBalanceByMnv,
-  } = useAnnualLeaveBalanceMap(annualLeaveYear, {
-    throughDateKey: selectedDate,
-    scopeEmpKeys: annualLeaveScopeEmpKeys,
-  });
-
   const departments = useMemo(() => {
     const set = new Set();
     for (const emp of employees) {
@@ -1003,13 +981,7 @@ export default function PayrollSalaryCalculator() {
                 columnPlan={columnPlan}
               />
               <tbody>
-                {pagedEmployees.map((emp, localIdx) => {
-                  const annualLeaveBalance =
-                    getDisplayAnnualLeaveBalanceForAttendance(
-                      emp,
-                      annualLeaveBalanceByMnv,
-                    );
-                  return (
+                {pagedEmployees.map((emp, localIdx) => (
                     <PayrollSalaryTableRow
                       key={emp.id}
                       emp={emp}
@@ -1027,13 +999,8 @@ export default function PayrollSalaryCalculator() {
                       isHolidayDay={isHolidayDay}
                       isCompensatoryDay={isCompensatoryDay}
                       attendanceDateKey={selectedDate}
-                      annualLeaveBalance={annualLeaveBalance}
-                      annualLeaveYear={annualLeaveYear}
-                      annualLeaveThroughDateKey={selectedDate}
-                      annualLeaveAttendanceRootPath="attendance"
                     />
-                  );
-                })}
+                  ))}
               </tbody>
             </table>
           </div>

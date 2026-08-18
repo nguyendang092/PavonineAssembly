@@ -1,5 +1,19 @@
-import { inferCodeSlotFromBoardId } from "./s90dEntryBoardSpecs";
+import { inferCodeSlotFromBoardId, formatS90dTypeSlotLabel } from "./s90dEntryBoardSpecs";
 import { DEFAULT_PRODUCT_CODE } from "./s90dManualEntryReportConfig";
+
+export { formatS90dTypeSlotLabel, S90D_TYPE_SLOT_LABEL } from "./s90dEntryBoardSpecs";
+
+export function formatS90dProductTypeLabel(
+  productCode,
+  codeSlot,
+  defaultProductCode = DEFAULT_PRODUCT_CODE,
+) {
+  const base = String(productCode ?? "").trim() || defaultProductCode;
+  if (codeSlot === "D" || codeSlot === "E") {
+    return `${base} ${formatS90dTypeSlotLabel(codeSlot)}`;
+  }
+  return base;
+}
 
 export function formatShiftLineLabel(shiftSlot) {
   if (!shiftSlot || shiftSlot === "TOTAL" || shiftSlot === "PERCENT") {
@@ -24,7 +38,7 @@ function resolveBoardCodeSlot(boardRow) {
   if (fromId) return fromId;
 
   const label = String(boardRow?.label ?? "");
-  const match = label.match(/Code\s+([DE])\b/i);
+  const match = label.match(/(?:Code|Type)\s+([DE])\b/i);
   return match ? match[1].toUpperCase() : null;
 }
 
@@ -37,8 +51,7 @@ export function formatS90dBoardDisplayName(
   const codeSlot = resolveBoardCodeSlot(boardRow);
 
   if (codeSlot) {
-    const base = productCode || defaultProductCode;
-    return `${base} Code ${codeSlot}`;
+    return formatS90dProductTypeLabel(productCode, codeSlot, defaultProductCode);
   }
 
   if (productCode) return productCode;

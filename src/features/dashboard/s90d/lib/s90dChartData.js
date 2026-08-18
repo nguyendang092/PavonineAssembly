@@ -2,7 +2,10 @@ import { format, parseISO } from "date-fns";
 import { applyS90dProcessYieldMetrics, roundYieldPct } from "./s90dCumulativeYield";
 import { S90D_DEFECT_COLUMNS, S90D_PROCESSES } from "./s90dDefectColumns";
 import { S90D_CODE_SLOTS } from "./s90dEntryBoardSpecs";
-import { formatS90dBoardDisplayName } from "./s90dDisplayUtils";
+import {
+  formatS90dBoardDisplayName,
+  formatS90dProductTypeLabel,
+} from "./s90dDisplayUtils";
 import {
   DEFAULT_PRODUCT_CODE,
   S90D_ASSEMBLY_BOARD_SPECS,
@@ -210,7 +213,7 @@ function buildS90dSubCodeYieldItems(
       const outputMetrics = resolveBoardYield(outputBoard);
       const label = outputBoard
         ? formatS90dBoardDisplayName(outputBoard, defaultProductCode)
-        : `${productCode} Code ${codeSlot}`;
+        : formatS90dProductTypeLabel(productCode, codeSlot, defaultProductCode);
 
       const chainComplete = processes.every((process) => {
         const boardRow = findBoardRowForSubCodeYield(

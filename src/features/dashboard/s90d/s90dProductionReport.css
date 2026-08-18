@@ -1340,6 +1340,62 @@ body.s90d-chart-modal-open {
   width: 10.5rem;
 }
 
+.s90d-summary-process-table {
+  table-layout: auto;
+  --s90d-w-defect: 4.5rem;
+}
+
+.s90d-summary-process-table .s90d-head-total-qty,
+.s90d-summary-process-table .s90d-col-total-qty {
+  width: 4.75rem;
+  min-width: 4.75rem;
+}
+
+.s90d-summary-process-table .s90d-head-ok,
+.s90d-summary-process-table .s90d-col-ok {
+  width: 4.75rem;
+  min-width: 4.75rem;
+}
+
+.s90d-summary-process-table .s90d-head-ng,
+.s90d-summary-process-table .s90d-col-ng,
+.s90d-summary-process-table .s90d-col-yield {
+  width: 3.5rem;
+  min-width: 3.5rem;
+}
+
+.s90d-summary-process-table .s90d-head-ng-rate,
+.s90d-summary-process-table .s90d-col-ng-rate {
+  width: 3.5rem;
+  min-width: 3.5rem;
+}
+
+.s90d-summary-process-table .s90d-head-defect,
+.s90d-summary-process-table .s90d-defect-cell {
+  width: var(--s90d-w-defect);
+  max-width: var(--s90d-w-defect);
+  min-width: var(--s90d-w-defect);
+}
+
+.s90d-summary-process-table .s90d-col-product--full {
+  width: auto;
+  min-width: 8.5rem;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  text-align: left;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+.s90d-summary-process-table .s90d-row-percent .s90d-col-product--full {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #1e40af;
+  white-space: normal;
+}
+
 .s90d-col-code-slot {
   width: 4.25rem;
   font-size: 0.625rem;
@@ -1349,7 +1405,7 @@ body.s90d-chart-modal-open {
 }
 
 .s90d-col-code-slot--d {
-  color: #c2410c;
+  color: #0f172a;
 }
 
 .s90d-col-code-slot--e {
@@ -1371,7 +1427,7 @@ body.s90d-chart-modal-open {
 
 .s90d-col-process {
   width: 4.5rem;
-  font-size: 0.625rem;
+  font-size: inherit;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1506,6 +1562,20 @@ body.s90d-chart-modal-open {
   background: #fafafa;
 }
 
+.s90d-row-board-sub .s90d-col-process {
+  color: #0f172a;
+  font-size: inherit;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.s90d-row-board-sub .s90d-col-product {
+  color: #0f172a;
+  font-size: inherit;
+  font-weight: 400;
+  padding-left: 1.25rem;
+}
+
 .s90d-row-total .s90d-sticky-col,
 .s90d-row-total .s90d-col-date {
   background: #ffff00 !important;
@@ -1545,12 +1615,14 @@ body.s90d-chart-modal-open {
 }
 
 .s90d-col-process {
-  font-weight: 800;
+  font-weight: 700;
+  font-size: inherit;
   text-transform: uppercase;
 }
 
 .s90d-process {
   font-weight: 700;
+  font-size: inherit;
   text-transform: uppercase;
 }
 

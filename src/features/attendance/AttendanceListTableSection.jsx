@@ -5,12 +5,6 @@ import AttendanceTableRow, {
 } from "./attendanceTableRow";
 import { attendanceTableWrapperMinWidthClass } from "./attendanceListShared";
 import { isSeasonalAttendanceRoot, isKoreanAttendanceRoot } from "./attendanceSeasonalStt";
-import { useAnnualLeaveBalanceMap } from "@/features/leave/useAnnualLeaveBalanceMap";
-import { resolveEmpFirebaseKeyFromEmployee } from "@/features/leave/annualLeaveEmpKey";
-import {
-  annualLeaveYearFromDateKey,
-  getDisplayAnnualLeaveBalanceForAttendance,
-} from "@/features/leave/annualLeaveBalanceLookup";
 
 function AttendanceListTableSection({
   columnPlan,
@@ -42,22 +36,6 @@ function AttendanceListTableSection({
     columnPlan,
     attendanceLayoutOptions,
   );
-  const annualLeaveYear = annualLeaveYearFromDateKey(selectedDate);
-  const scopeEmpKeys = useMemo(
-    () =>
-      deferredFilteredEmployees
-        .map((emp) => resolveEmpFirebaseKeyFromEmployee(emp))
-        .filter(Boolean),
-    [deferredFilteredEmployees],
-  );
-  const {
-    balanceByMnv: annualLeaveBalanceByMnv,
-    yearData: annualLeaveYearData,
-  } = useAnnualLeaveBalanceMap(annualLeaveYear, {
-    attendanceRootPath,
-    throughDateKey: selectedDate,
-    scopeEmpKeys,
-  });
 
   const canEditByEmpId = useMemo(() => {
     const map = new Map();
@@ -84,10 +62,6 @@ function AttendanceListTableSection({
       isSeasonalAttendance,
       isKoreanAttendance,
       attendanceDateKey: selectedDate,
-      annualLeaveYear,
-      annualLeaveYearData,
-      annualLeaveThroughDateKey: selectedDate,
-      annualLeaveAttendanceRootPath: attendanceRootPath,
     }),
     [
       showRowModalActions,
@@ -103,10 +77,7 @@ function AttendanceListTableSection({
       isCompensatoryDay,
       isSeasonalAttendance,
       isKoreanAttendance,
-      annualLeaveYear,
-      annualLeaveYearData,
       selectedDate,
-      attendanceRootPath,
     ],
   );
 
@@ -139,17 +110,12 @@ function AttendanceListTableSection({
             {deferredFilteredEmployees.map((emp, localIdx) => {
               const idx = rowIndexOffset + localIdx;
               const rowKey = emp.id ?? emp.mnv ?? `row-${idx}`;
-              const annualLeaveBalance = getDisplayAnnualLeaveBalanceForAttendance(
-                emp,
-                annualLeaveBalanceByMnv,
-              );
               return (
                 <AttendanceTableRow
                   key={rowKey}
                   emp={emp}
                   idx={idx}
                   canEdit={canEditByEmpId.get(rowKey) ?? false}
-                  annualLeaveBalance={annualLeaveBalance}
                   {...sharedRowProps}
                 />
               );

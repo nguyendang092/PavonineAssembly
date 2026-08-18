@@ -2,12 +2,15 @@ import React, { memo, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useReportT } from "../../productionReport/useReportTranslation";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
-import { formatS90dDefectQty, formatS90dYieldPct, isHighDefectCell } from "../lib/s90dDisplayUtils";
-import { isLateShiftSlot } from "../lib/s90dShiftSlots";
 import {
+  formatS90dDefectQty,
+  formatS90dYieldPct,
   formatShiftLineLabel,
   formatShortDateLabel,
+  formatS90dTypeSlotLabel,
+  isHighDefectCell,
 } from "../lib/s90dDisplayUtils";
+import { isLateShiftSlot } from "../lib/s90dShiftSlots";
 import S90dBilingualHeader from "./S90dBilingualHeader";
 import S90dDefectCellEditor from "./S90dDefectCellEditor";
 import S90dDefectImageThumbs from "./S90dDefectImageThumbs";
@@ -134,7 +137,7 @@ const ShiftRow = memo(function ShiftRow({
 
   const codeSlot = row.codeSlot ?? defaultCodeSlot;
   const codeSlotLabel =
-    showCodeSlotColumn && !isPercent && codeSlot ? `Code ${codeSlot}` : "";
+    showCodeSlotColumn && !isPercent && codeSlot ? formatS90dTypeSlotLabel(codeSlot) : "";
 
   return (
     <tr className={trClass}>
@@ -241,7 +244,7 @@ export default function S90dProcessShiftTable({
   const infoColCount = INFO_COL_COUNT_BASE + (showCodeSlotColumn ? 1 : 0);
   const tableTitle =
     boardLabel ||
-    (codeSlot ? `${productCode} · Code ${codeSlot}` : productCode);
+    (codeSlot ? `${productCode} · ${formatS90dTypeSlotLabel(codeSlot)}` : productCode);
 
   const { primaryShiftRows, lateShiftRows } = useMemo(() => {
     const primary = [];
@@ -317,8 +320,8 @@ export default function S90dProcessShiftTable({
             </div>
             {codeSlot ? (
               <div className="s90d-meta-chip">
-                <span className="s90d-meta-label">Code {codeSlot}</span>
-                <strong>Code {codeSlot}</strong>
+                <span className="s90d-meta-label">{formatS90dTypeSlotLabel(codeSlot)}</span>
+                <strong>{formatS90dTypeSlotLabel(codeSlot)}</strong>
               </div>
             ) : null}
             <div className="s90d-meta-chip">
@@ -380,7 +383,7 @@ export default function S90dProcessShiftTable({
               </th>
               {showCodeSlotColumn ? (
                 <th className="s90d-head-shift s90d-col-code-slot">
-                  <S90dBilingualHeader ko="코드" vi="Code" />
+                  <S90dBilingualHeader ko="타입" vi="Type" />
                 </th>
               ) : null}
               <th className="s90d-head-shift s90d-col-process">

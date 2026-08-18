@@ -43,9 +43,6 @@ import {
   getAttendanceGridColumnStart,
   cellClsForAttendanceTable,
 } from "./gridLayout";
-import { formatAnnualLeaveDecimal } from "@/features/leave/annualLeaveCalculated";
-import { getDisplayAnnualLeaveBalanceForAttendance } from "@/features/leave/annualLeaveBalanceLookup";
-import AnnualLeaveUsageDetailTrigger from "@/features/leave/AnnualLeaveUsageDetailTrigger";
 import { propsAreEqual } from "./propsAreEqual";
 import "../attendanceRowCheckHighlight.css";
 
@@ -68,12 +65,6 @@ function AttendanceTableRow({
   isSeasonalAttendance = false,
   isKoreanAttendance = false,
   attendanceDateKey = null,
-  annualLeaveBalance = undefined,
-  annualLeaveBalanceByMnv = {},
-  annualLeaveYear = new Date().getFullYear(),
-  annualLeaveYearData = null,
-  annualLeaveThroughDateKey = null,
-  annualLeaveAttendanceRootPath = "attendance",
 }) {
   const isPayroll = tableVariant === "payroll";
   const beforeJoinPayroll =
@@ -115,14 +106,6 @@ function AttendanceTableRow({
     : "text-[11px] md:text-sm";
   const showJoinWorkStatusDeptBlock = columnPlan === "full";
   const showDeptColumn = columnPlan === "full" || columnPlan === "compact";
-  const showAnnualLeaveColumn =
-    !isMinimal &&
-    getAttendanceGridColumnStart(
-      "annualLeaveBalance",
-      columnPlan,
-      showRowModalActions,
-      tableVariant,
-    ) != null;
   const cellCls = (cls) => `${cellClsForAttendanceTable(cls)} h-9 leading-none`;
 
   const showDeptWrongFlag = !isPayroll && isBoPhanChuaDung(emp.boPhanChuaDung);
@@ -170,17 +153,6 @@ function AttendanceTableRow({
   const leaveTypeCol = formatAttendanceLeaveTypeColumnForEmployee(emp);
   const leaveTypeColorClass =
     getAttendanceLeaveTypeColorClassNameForEmployee(emp);
-  const annualLeaveBalanceRaw =
-    annualLeaveBalance !== undefined
-      ? annualLeaveBalance
-      : getDisplayAnnualLeaveBalanceForAttendance(emp, annualLeaveBalanceByMnv);
-  const annualLeaveBalanceCol =
-    annualLeaveBalanceRaw != null &&
-    Number.isFinite(Number(annualLeaveBalanceRaw))
-      ? formatAnnualLeaveDecimal(annualLeaveBalanceRaw)
-      : isPayroll
-        ? PAYROLL_EMPTY_CELL
-        : ATTENDANCE_EMPTY_CELL;
   const caLamViecTrimmed =
     dayFields.shiftCode != null && String(dayFields.shiftCode).trim() !== ""
       ? String(dayFields.shiftCode).trim()
@@ -311,28 +283,6 @@ function AttendanceTableRow({
             {deptLabel}
           </span>
           {deptWrongFlagEl}
-        </td>
-      ) : null}
-      {showAnnualLeaveColumn ? (
-        <td
-          className={cellCls(
-            "hidden md:table-cell px-1 md:px-1.5 py-px text-sm text-center font-semibold tabular-nums text-gray-700 dark:text-slate-200",
-          )}
-          title={tl(
-            "annualLeaveBalanceHint",
-            "Số phép còn lại (BALANCE) từ Quản lý phép năm — khớp theo MNV.",
-          )}
-        >
-          <span className="annual-leave-balance-cell inline-flex items-center justify-center gap-0.5 min-w-0">
-            <span>{annualLeaveBalanceCol}</span>
-            <AnnualLeaveUsageDetailTrigger
-              emp={emp}
-              year={annualLeaveYear}
-              yearData={annualLeaveYearData}
-              attendanceRootPath={annualLeaveAttendanceRootPath}
-              throughDateKey={annualLeaveThroughDateKey}
-            />
-          </span>
         </td>
       ) : null}
       <td

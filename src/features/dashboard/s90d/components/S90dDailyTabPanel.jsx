@@ -1,24 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { FiDownload } from "react-icons/fi";
-import { useTranslation } from "react-i18next";import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
+import { useTranslation } from "react-i18next";
+import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
 import {
   buildMonthDailyRollup,
   pickDefaultDailyDateKey,
   resolveNgRateTone,
 } from "../lib/buildS90dDailyRollup";
-import {
-  formatS90dDailyNg,
-  formatS90dDailyPct,
-  formatS90dDailyQty,
-  formatS90dYieldPct,
-  formatShortDateLabel,
-  formatS90dBoardDisplayName,
-} from "../lib/s90dDisplayUtils";
-import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
-import S90dBilingualHeader from "./S90dBilingualHeader";
+import { formatShortDateLabel } from "../lib/s90dDisplayUtils";
 import S90dKpiCards from "./S90dKpiCards";
+import S90dSummaryProcessTable from "./S90dSummaryProcessTable";
 
 function formatQty(value) {
   return Number(value || 0).toLocaleString("vi-VN");
@@ -52,19 +45,6 @@ function buildBoardExportFilename({
   }
   const date = sanitizeExportSegment(selectedDateKey) || "Ngay";
   return `${prefix}_${date}_${code}.png`;
-}
-
-function NgRatePill({ value, emphasize = false }) {
-  const tone = resolveNgRateTone(value);
-  return (
-    <span
-      className={`s90d-daily-ng-pill s90d-daily-ng-pill--${tone}${
-        emphasize ? " s90d-daily-ng-pill--emphasis" : ""
-      }`}
-    >
-      {formatPct(value)}
-    </span>
-  );
 }
 
 function S90dDailyMonthStats({ rollup }) {
@@ -163,429 +143,10 @@ function S90dDailyDateStrip({ monthDailySummaries, selectedDateKey, onSelect }) 
   );
 }
 
-function ProcessMetricCells({ row, isSubRow = false, parentHighlight = false }) {
-  const yieldClass = parentHighlight ? " s90d-daily-process-qty--alert" : "";
-
-  return (
-    <>
-      <td
-        className={`s90d-daily-process-qty${isSubRow ? " s90d-daily-process-qty--sub" : ""}${
-          parentHighlight ? " s90d-daily-process-qty--strong" : ""
-        }`}
-      >
-        {formatS90dDailyQty(row.totalQty)}
-      </td>
-      <td className="s90d-daily-process-qty">{formatS90dDailyQty(row.okQty)}</td>
-      <td className={`s90d-daily-process-qty${yieldClass}`}>
-        {formatS90dDailyPct(row.yieldPct)}
-      </td>
-      <td className="s90d-daily-process-qty s90d-daily-process-qty--ng">
-        {formatS90dDailyNg(row.ngQty)}
-      </td>
-      <td className="s90d-daily-process-rate">
-        <NgRatePill value={row.ngRatePct} />
-      </td>
-    </>
-  );
-}
-
-function BoardRateCell({ boardRow }) {
-  return (
-    <td className="s90d-daily-process-rate">
-      <NgRatePill value={boardRow.ngRatePct} />
-    </td>
-  );
-}
-
-function BoardSubHeaderRow({ rt }) {
-  return (
-    <tr className="s90d-daily-board-header-row">
-      <td className="s90d-daily-board-header-cell">
-        <S90dBilingualHeader
-          ko="상품 코드"
-          vi={rt("metaProductCode", "Mã hàng")}
-          koBelow
-        />
-      </td>
-      <td className="s90d-daily-board-header-cell">
-        <S90dBilingualHeader
-          ko="총수량"
-          vi={rt("dailyTotalQtyCol", "Tổng SL")}
-          koBelow
-        />
-      </td>
-      <td className="s90d-daily-board-header-cell">
-        <S90dBilingualHeader
-          ko="양품수량"
-          vi={rt("dailyOkQtyCol", "SL đạt")}
-          koBelow
-        />
-      </td>
-      <td className="s90d-daily-board-header-cell">
-        <S90dBilingualHeader
-          ko="수율"
-          vi={rt("dailyYieldCol", "Hiệu suất")}
-          koBelow
-        />
-      </td>
-      <td className="s90d-daily-board-header-cell">
-        <S90dBilingualHeader
-          ko="불량수량"
-          vi={rt("dailyNgQtyCol", "SL NG")}
-          koBelow
-        />
-      </td>
-      <td className="s90d-daily-board-header-cell">
-        <S90dBilingualHeader
-          ko="불량율"
-          vi={rt("dailyNgRateCol", "Tỷ lệ NG")}
-          koBelow
-        />
-      </td>
-    </tr>
-  );
-}
-
-function calcDefectRatePct(qty, totalQty) {
-  if (!totalQty) return 0;
-  return Math.round((Number(qty) / Number(totalQty)) * 1000) / 10;
-}
-
-function getDefectEntries(row) {
-  if (!row?.defects) return [];
-
-  const totalQty = row.totalQty ?? 0;
-
-  return S90D_DEFECT_COLUMNS.map(({ key, ko, vi, shortVi }) => {
-    const qty = row.defects[key] ?? 0;
-    if (!Number(qty)) return null;
-
-    return {
-      key,
-      ko,
-      viLabel: shortVi || vi,
-      qty,
-      ngRatePct: calcDefectRatePct(qty, totalQty),
-    };
-  }).filter(Boolean);
-}
-
 async function waitForPaint() {
   await new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(resolve));
   });
-}
-
-function BoardExpandedSection({
-  boardRows,
-  process,
-  isExpanded,
-  expandedBoardIds,
-  onToggleBoard,
-  rt,
-}) {
-  if (!isExpanded || boardRows.length < 2) return null;
-
-  return (
-    <>
-      <BoardSubHeaderRow rt={rt} />
-      {boardRows.map((boardRow) => {
-        const boardDefects = getDefectEntries(boardRow);
-        const displayName = formatS90dBoardDisplayName(boardRow);
-        const isBoardExpanded = expandedBoardIds.has(boardRow.boardId);
-
-        return (
-          <React.Fragment key={`${process}-${boardRow.boardId}`}>
-            <tr className="s90d-daily-process-row s90d-daily-process-row--sub s90d-daily-process-row--board">
-              <td className="s90d-daily-process-name s90d-daily-process-name--board">
-                <div className="s90d-daily-board-name-inner">
-                  <span className="s90d-daily-tree-hook" aria-hidden="true">
-                    ↳
-                  </span>
-                  {boardDefects.length > 0 ? (
-                    <button
-                      type="button"
-                      className={`s90d-daily-process-toggle s90d-daily-board-row-toggle${
-                        isBoardExpanded ? " s90d-daily-process-toggle--open" : ""
-                      }`}
-                      aria-expanded={isBoardExpanded}
-                      aria-label={rt(
-                        "dailyToggleBoardDefects",
-                        "Mở chi tiết lỗi {{product}}",
-                        { product: displayName },
-                      )}
-                      onClick={() => onToggleBoard(boardRow.boardId)}
-                    >
-                      ▶
-                    </button>
-                  ) : (
-                    <span
-                      className="s90d-daily-board-toggle-spacer"
-                      aria-hidden="true"
-                    />
-                  )}
-                  <span className="s90d-daily-board-product-name">
-                    {displayName}
-                  </span>
-                </div>
-              </td>
-              <td className="s90d-daily-process-qty s90d-daily-process-qty--sub">
-                {formatS90dDailyQty(boardRow.totalQty)}
-              </td>
-              <td className="s90d-daily-process-qty">
-                {formatS90dDailyQty(boardRow.okQty)}
-              </td>
-              <td className="s90d-daily-process-qty">
-                {formatS90dDailyPct(boardRow.yieldPct)}
-              </td>
-              <td className="s90d-daily-process-qty s90d-daily-process-qty--ng">
-                {formatS90dDailyNg(boardRow.ngQty)}
-              </td>
-              <BoardRateCell boardRow={boardRow} />
-            </tr>
-            {isBoardExpanded && boardDefects.length > 0 ? (
-              <DefectDetailRows
-                defects={boardDefects}
-                rowKeyPrefix={`${process}-${boardRow.boardId}`}
-                nested
-              />
-            ) : null}
-          </React.Fragment>
-        );
-      })}
-    </>
-  );
-}
-
-function DefectDetailRows({ defects, rowKeyPrefix, nested = false }) {
-  return defects.map((defect) => (
-    <tr
-      key={`${rowKeyPrefix}-defect-${defect.key}`}
-      className={`s90d-daily-process-row s90d-daily-process-row--sub s90d-daily-process-row--defect${
-        nested ? " s90d-daily-process-row--defect-nested" : ""
-      }`}
-    >
-      <td className="s90d-daily-process-name s90d-daily-process-name--sub s90d-daily-process-name--defect-detail">
-        <span className="s90d-daily-defect-label">
-          <S90dBilingualHeader ko={defect.ko} vi={defect.viLabel} />
-        </span>
-      </td>
-      <td className="s90d-daily-process-qty s90d-daily-process-qty--sub">—</td>
-      <td className="s90d-daily-process-qty s90d-daily-process-qty--sub">—</td>
-      <td className="s90d-daily-process-qty s90d-daily-process-qty--sub">—</td>
-      <td className="s90d-daily-process-qty s90d-daily-process-qty--ng">
-        {formatS90dDailyNg(defect.qty)}
-      </td>
-      <td className="s90d-daily-process-rate">
-        <NgRatePill value={defect.ngRatePct} />
-      </td>
-    </tr>
-  ));
-}
-
-function S90dDailyProcessTable({ processDetails = [], totalRow }) {
-  const rt = useReportT();
-  const { t } = useTranslation();
-  const [expandedProcesses, setExpandedProcesses] = useState(() => new Set());
-  const [expandedBoardIds, setExpandedBoardIds] = useState(() => new Set());
-
-  const toggleProcess = (process) => {
-    setExpandedProcesses((prev) => {
-      const next = new Set(prev);
-      if (next.has(process)) next.delete(process);
-      else next.add(process);
-      return next;
-    });
-  };
-
-  const toggleBoard = (boardId) => {
-    setExpandedBoardIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(boardId)) next.delete(boardId);
-      else next.add(boardId);
-      return next;
-    });
-  };
-
-  return (
-    <div className="s90d-daily-process-table-wrap">
-      <p className="s90d-daily-process-hint">
-        {rt(
-          "dailyProcessExpandHint",
-          "Bấm ▶ ở đầu mỗi dòng để mở chi tiết lỗi của công đoạn đó",
-        )}
-      </p>
-
-      <div className="s90d-daily-process-table-scroll">        <table className="s90d-daily-process-table">
-          <colgroup>
-            <col className="s90d-daily-col-process" />
-            <col className="s90d-daily-col-metric" />
-            <col className="s90d-daily-col-metric" />
-            <col className="s90d-daily-col-metric" />
-            <col className="s90d-daily-col-metric" />
-            <col className="s90d-daily-col-metric" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>
-                <S90dBilingualHeader
-                  ko="공정"
-                  vi={rt("dailyProcessCol", "Công đoạn")}
-                  koBelow
-                />
-              </th>
-              <th>
-                <S90dBilingualHeader
-                  ko="총수량"
-                  vi={rt("dailyTotalQtyCol", "Tổng SL")}
-                  koBelow
-                />
-              </th>
-              <th>
-                <S90dBilingualHeader
-                  ko="양품수량"
-                  vi={rt("dailyOkQtyCol", "SL đạt")}
-                  koBelow
-                />
-              </th>
-              <th>
-                <S90dBilingualHeader
-                  ko="수율"
-                  vi={rt("dailyYieldCol", "Hiệu suất")}
-                  koBelow
-                />
-              </th>
-              <th>
-                <S90dBilingualHeader
-                  ko="불량수량"
-                  vi={rt("dailyNgQtyCol", "SL NG")}
-                  koBelow
-                />
-              </th>
-              <th>
-                <S90dBilingualHeader
-                  ko="불량율"
-                  vi={rt("dailyNgRateCol", "Tỷ lệ NG")}
-                  koBelow
-                />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {processDetails.map((detail) => {
-              const { process, processRow, boardRows, boardCount } = detail;
-              const hasMultipleBoards =
-                (boardCount ?? boardRows.length) >= 2 || boardRows.length >= 2;
-              const isExpanded = expandedProcesses.has(process);
-              const processLabel = t(`areas.${process}`, { defaultValue: process });
-              const defectEntries = hasMultipleBoards
-                ? []
-                : getDefectEntries(processRow);
-              const hasExpandableContent =
-                hasMultipleBoards || defectEntries.length > 0;
-
-              return (
-                <React.Fragment key={process}>
-                  <tr
-                    className={`s90d-daily-process-row s90d-daily-process-row--main${
-                      isExpanded && hasMultipleBoards
-                        ? " s90d-daily-process-row--expanded-parent"
-                        : ""
-                    }`}
-                    data-process={process}
-                  >
-                    <td className="s90d-daily-process-name">
-                      <div className="s90d-daily-process-name-inner">
-                        <button
-                          type="button"
-                          className={`s90d-daily-process-toggle${
-                            isExpanded ? " s90d-daily-process-toggle--open" : ""
-                          }${!hasExpandableContent ? " s90d-daily-process-toggle--muted" : ""}`}
-                          aria-expanded={isExpanded}
-                          aria-label={rt("dailyToggleProcess", "Mở chi tiết {{process}}", {
-                            process: processLabel,
-                          })}
-                          onClick={() => toggleProcess(process)}
-                        >
-                          ▶
-                        </button>
-                        <span className="s90d-daily-process-dot" data-process={process} />
-                        <span className="s90d-daily-process-label">{processLabel}</span>
-                        {hasMultipleBoards ? (
-                          <span className="s90d-daily-process-board-badge">
-                            {rt("dailyBoardCountBadge", "{{count}} mã hàng", {
-                              count: boardCount ?? boardRows.length,
-                            })}
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <ProcessMetricCells
-                      row={processRow}
-                      parentHighlight={
-                        hasMultipleBoards &&
-                        Number(processRow.ngRatePct) > 0
-                      }
-                    />
-                  </tr>
-
-                  <BoardExpandedSection
-                    boardRows={boardRows}
-                    process={process}
-                    isExpanded={isExpanded}
-                    expandedBoardIds={expandedBoardIds}
-                    onToggleBoard={toggleBoard}
-                    rt={rt}
-                  />
-
-                  {isExpanded && !hasMultipleBoards && defectEntries.length > 0 ? (
-                    <DefectDetailRows
-                      defects={defectEntries}
-                      rowKeyPrefix={process}
-                    />
-                  ) : null}
-
-                  {isExpanded &&
-                  !hasMultipleBoards &&
-                  defectEntries.length === 0 ? (
-                    <tr className="s90d-daily-process-row s90d-daily-process-row--sub s90d-daily-process-row--empty">
-                      <td
-                        colSpan={6}
-                        className="s90d-daily-process-empty-detail"
-                      >
-                        {rt("dailyNoDefectDetail", "Không có lỗi chi tiết cho công đoạn này.")}
-                      </td>
-                    </tr>
-                  ) : null}
-                </React.Fragment>
-              );
-            })}
-
-            <tr className="s90d-daily-process-row s90d-daily-process-row--total">
-              <td className="s90d-daily-process-name">
-                <strong>{rt("totalLabel", "TOTAL")}</strong>
-              </td>
-              <td className="s90d-daily-process-qty">
-                <strong>{formatQty(totalRow?.totalQty)}</strong>
-              </td>
-              <td className="s90d-daily-process-qty">
-                <strong>{formatQty(totalRow?.okQty)}</strong>
-              </td>
-              <td className="s90d-daily-process-qty">
-                <strong>{formatS90dYieldPct(totalRow?.yieldPct)}</strong>
-              </td>
-              <td className="s90d-daily-process-qty s90d-daily-process-qty--ng">
-                <strong>{formatQty(totalRow?.ngQty)}</strong>
-              </td>
-              <td className="s90d-daily-process-rate">
-                <NgRatePill value={totalRow?.ngRatePct} emphasize />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
 }
 
 export default function S90dDailyTabPanel({
@@ -642,6 +203,10 @@ export default function S90dDailyTabPanel({
     ? formatShortDateLabel(selectedSummary.dateKey, selectedSummary.dateLabel)
     : "";
 
+  const tableDateLabel = isTotalView ? monthDisplayLabel : selectedDateLabel;
+  const tableProductCode =
+    activeSummary?.productCode || defaultProductCode;
+
   const handleDownloadBoardImage = useCallback(async () => {
     if (!boardExportRef.current || !activeSummary?.hasData || exportingImage) return;
 
@@ -656,7 +221,7 @@ export default function S90dDailyTabPanel({
       await waitForPaint();
 
       scrollEl = boardExportRef.current.querySelector(
-        ".s90d-daily-process-table-scroll",
+        ".s90d-table-wrap--board",
       );
       if (scrollEl) {
         prevOverflow = scrollEl.style.overflow;
@@ -725,30 +290,34 @@ export default function S90dDailyTabPanel({
           ref={boardExportRef}
           className="s90d-board-card s90d-daily-detail-card"
         >
-          <header className="s90d-board-head s90d-board-head--title-row">
-            <div className="s90d-board-title-row s90d-daily-detail-head">
-              <h3 className="s90d-board-title-text">
-                {isTotalView
-                  ? rt("totalBoardTitle", "Bảng tổng hợp tháng")
-                  : rt("dailyBoardTitle", "Bảng sản lượng S90D theo ngày")}
-              </h3>
-              <div className="s90d-meta-item s90d-meta-item--inline">
-                <span className="s90d-meta-label">
+          <header className="s90d-board-head s90d-board-head--compact">
+            <div className="s90d-board-head-main">
+              <h3 className="s90d-board-title">
+                {rt("boardTitle", "BẢNG SẢN LƯỢNG")}
+                <span className="s90d-board-badge">
                   {isTotalView
-                    ? rt("metaMonthYear", "Tháng/Năm")
-                    : rt("metaDate", "Ngày")}
+                    ? rt("totalBoardTitle", "Bảng tổng hợp tháng")
+                    : rt("dailyBoardTitle", "Bảng sản lượng S90D theo ngày")}
                 </span>
-                <strong>
-                  {isTotalView ? monthDisplayLabel : selectedDateLabel}
-                </strong>
-              </div>
-              <div className="s90d-meta-item s90d-meta-item--inline">
-                <span className="s90d-meta-label">
-                  {rt("metaProductCode", "Mã hàng")}
-                </span>
-                <strong>
-                  {activeSummary.productCode || defaultProductCode}
-                </strong>
+              </h3>
+            </div>
+
+            <div className="s90d-board-head-actions">
+              <div className="s90d-board-meta s90d-board-meta--inline-row">
+                <div className="s90d-meta-chip">
+                  <span className="s90d-meta-label">
+                    {isTotalView
+                      ? rt("metaMonthYear", "Tháng/Năm")
+                      : rt("metaDate", "Ngày")}
+                  </span>
+                  <strong>{tableDateLabel}</strong>
+                </div>
+                <div className="s90d-meta-chip">
+                  <span className="s90d-meta-label">
+                    {rt("metaProductCode", "Mã hàng")}
+                  </span>
+                  <strong>{tableProductCode}</strong>
+                </div>
               </div>
               <div className="s90d-daily-detail-actions">
                 <button
@@ -764,7 +333,8 @@ export default function S90dDailyTabPanel({
                       : rt("downloadBoardImage", "Tải hình")}
                   </span>
                 </button>
-              </div>            </div>
+              </div>
+            </div>
           </header>
 
           {activeSummary.hasData ? (
@@ -773,9 +343,12 @@ export default function S90dDailyTabPanel({
                 totalRow={activeSummary.totalRow}
                 processDetails={processDetails}
               />
-              <S90dDailyProcessTable
+              <S90dSummaryProcessTable
                 processDetails={processDetails}
                 totalRow={activeSummary.totalRow}
+                percentRow={activeSummary.percentRow}
+                dateLabel={tableDateLabel}
+                productCode={tableProductCode}
               />
             </>
           ) : (
