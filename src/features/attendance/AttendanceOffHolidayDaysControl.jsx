@@ -54,10 +54,13 @@ export default function AttendanceOffHolidayDaysControl({
     closeOffHolidayDropdown,
   );
 
-  const handleSaved = useCallback(() => {
-    refreshMonthOffDays();
-    onSaved?.();
-  }, [refreshMonthOffDays, onSaved]);
+  const handleSaved = useCallback(
+    (affectedDateKeys) => {
+      refreshMonthOffDays();
+      onSaved?.(affectedDateKeys);
+    },
+    [refreshMonthOffDays, onSaved],
+  );
 
   if (!user) return null;
 

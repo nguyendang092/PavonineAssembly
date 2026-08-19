@@ -1,0 +1,637 @@
+================================================================================
+  HƯỚNG DẪN: RENDER & LOAD DỮ LIỆU LƯỚI THÁNG — GIỜ CÔNG (PAYROLL)
+================================================================================
+Phiên bản tài liệu: 2026-08-19
+Dự án: PavonineAssembly
+
+Mục đích:
+  Giải thích chi tiết cách mở lưới tháng, tải dữ liệu từ Firebase, xử lý
+  và render ra bảng chấm công tháng trong module «Xem giờ công».
+
+================================================================================
+1. TỔNG QUAN KIẾN TRÚC
+================================================================================
+
+Có HAI màn hình liên quan giờ công:
+
+  A) Bảng NGÀY (PayrollSalaryCalculator)
+     - Route: /attendance-salary
+     - Hiển thị 1 ngày, subscribe REALTIME (onValue)
+     - File: src/features/payroll/PayrollSalaryCalculator.jsx
+
+  B) Lưới THÁNG (PayrollMonthlyTimesheetModal)
+     - Mở từ modal fullscreen trên trang giờ công (hoặc Korean Timesheet)
+     - Fetch ONE-SHOT cả tháng (get), KHÔNG realtime
+     - File: src/features/payroll/PayrollMonthlyTimesheetModal.jsx
+
+Luồng mở lưới tháng (nhân viên thường):
+
+  /attendance-salary
+    → PayrollSalaryCalculator.jsx
+      → PayrollToolsMenu.jsx  (nút mở lưới tháng)
+        → setMonthlyTimesheetOpen(true)
+          → PayrollMonthlyTimesheetModal (lazy import)
+
+Luồng Korean Timesheet:
+
+  AttendanceList / KoreanTimesheetPage
+    → PayrollMonthlyTimesheetModal
+       attendanceRootPath="koreanAttendance"
+
+
+================================================================================
+2. DANH SÁCH FILE QUAN TRỌNG
+================================================================================
+
+ENTRY & UI
+----------
+  src/features/payroll/PayrollSalaryCalculator.jsx
+    - Trang chính giờ công ngày, state monthlyTimesheetOpen
+  src/features/payroll/PayrollMonthlyTimesheetModal.jsx
+    - Component chính render lưới tháng (modal fullscreen portal)
+  src/features/payroll/PayrollToolsMenu.jsx
+    - Nút «Lưới tháng» → onOpenMonthlyTimesheet()
+  src/features/payroll/payrollMonthlyTimesheetModal.css
+    - CSS modal, sticky header, zoom
+
+LAYOUT CỘT (một nguồn duy nhất)
+-------------------------------
+  src/features/payroll/payrollMonthlyTimesheetLayout.js
+    - Số cột sticky, cột ngày, khối chi tiết Tổng/Thử việc/Hợp đồng
+    - buildPayrollMonthlyTimesheetDetailHeaders()
+  src/features/payroll/payrollMonthlyTimesheetGridStyle.js
+    - Màu nền cột ngày (Chủ nhật, off, lễ, nghỉ bù)
+
+LOAD DỮ LIỆU THÁNG
+------------------
+  src/features/payroll/usePayrollMonthDayChunks.js
+    - Hook React: state dayChunks, hàm loadMonth()
+  src/features/payroll/payrollMonthlyGridData.js
+    - fetchPayrollMonthDayChunks() — gọi Firebase get() theo batch
+    - Index NV: collectPayrollMonthSortedEmployeeIds, repById, canonical rowId
+  src/features/payroll/buildPayrollDayFromRaw.js
+    - buildPayrollMonthDayChunkFromRaw() — parse 1 ngày RTDB → chunk object
+    - parsePayrollDayFromAttendanceRaw() — merge + sanitize như bảng ngày
+  src/features/payroll/payrollMonthDataScale.js
+    - PAYROLL_MONTH_FETCH_BATCH_SIZE = 7 (7 ngày/lần)
+  src/features/payroll/usePayrollMonthEmployeeIndex.js
+    - sortedIds, repById, chunkByDate từ dayChunks
+
+TÍNH GIỜ & TỔNG HỢP THÁNG
+-------------------------
+  src/features/payroll/payrollMonthlyCoefficientBuckets.js
+    - PAYROLL_MONTHLY_SUBROWS (7 dòng con/NV)
+    - getPayrollMonthlyMainRowCell() — dòng chính ô ngày
+    - getPayrollMonthlyCoeffHoursMap() — giờ theo hệ số TC
+  src/features/payroll/payrollOtDayParams.js
+    - payrollOtDayParamsFromMonthChunkEmp() — tham số tính OT/ngày
+  src/features/payroll/payrollMonthlyRuleSummary.js
+    - buildMonthlyRuleSummary(), buildMonthlyDetailMatrixForEmployee()
+  src/features/payroll/usePayrollMonthSummaries.js
+    - Tổng hợp cột chi tiết bên phải (async, cache, Web Worker)
+  src/features/payroll/payrollMonthSummaryCompute.js
+  src/features/payroll/payrollMonthSummaryWorker.js
+  src/features/attendance/attendanceWorkingHours.js
+    - Hàm tính GC, TC, ca đêm, off/lễ
+
+TRƯỜNG DỮ LIỆU
+--------------
+  src/features/payroll/payrollEmployeeFields.js  → PAYROLL_EMP.*
+  src/features/attendance/attendanceDayMeta.js     → _meta ngày (off/lễ/NB/OT)
+
+XUẤT EXCEL
+----------
+  src/features/payroll/payrollMonthlyTimesheetExcelGrid.js
+    - Cùng layout cột với lưới UI
+
+
+================================================================================
+3. FIREBASE — CẤU TRÚC DỮ LIỆU
+================================================================================
+
+Đường dẫn gốc (mặc định):
+  attendance/{YYYY-MM-DD}/
+
+Đường dẫn Korean:
+  koreanAttendance/{YYYY-MM-DD}/
+
+Ví dụ:
+  attendance/2026-08-19/emp_abc123
+  attendance/2026-08-19/_meta
+
+3.1. Bản ghi nhân viên (mỗi ngày)
+---------------------------------
+Khóa RTDB (PAYROLL_EMP trong payrollEmployeeFields.js):
+
+  stt              — Số thứ tự
+  mnv              — Mã nhân viên
+  mvt              — Mã vị trí
+  hoVaTen          — Họ tên
+  boPhan           — Bộ phận
+  maBoPhan         — Mã bộ phận
+  ngayVaoLam       — Ngày vào làm
+  ngayHopDong      — Ngày hợp đồng
+  gioVao           — Giờ vào (loại phép / BGC / giờ thực)
+  gioRa            — Giờ ra
+  caLamViec        — Ca (S1, S2, …)
+  loaiPhep         — Loại phép
+  tangCaTrua       — TC trưa (giờ)
+  tangCaTaiXePhut  — TC tài xế (phút)
+  duocNghiBu       — Được nghỉ bù (yes/no)
+
+Cờ payroll (merge từ _meta, KHÔNG lưu trực tiếp trên row):
+  payrollEarlyOtPaperwork
+  payrollLateOtExcluded
+  payrollNightOtPaperwork
+
+3.2. Meta ngày (_meta)
+----------------------
+  attendance/{dateKey}/_meta
+
+  isOffDay            — Ngày off
+  isHolidayDay        — Ngày lễ
+  isCompensatoryDay   — Ngày nghỉ bù (NB)
+  earlyOtPaperwork    — Map { employeeId: boolean } — TC sớm có giấy tờ
+  lateOtPaperwork     — Map { employeeId: boolean } — loại trừ TC muộn
+  nightOtPaperwork    — Map { employeeId: boolean } — TC ca đêm có giấy tờ
+
+3.3. Khóa dòng trên lưới tháng (rowId)
+--------------------------------------
+  - Thường = MNV
+  - Trùng MNV nhiều bản ghi Firebase → "{mnv}__{firebaseId}"
+  - Hằng: PAYROLL_MONTH_ROW_ID_SEP = "__"
+  - Hàm: canonicalPayrollMonthRowId(), parsePayrollMonthRowIdParts()
+  - File: payrollMonthlyGridData.js
+
+
+================================================================================
+4. PIPELINE LOAD DỮ LIỆU THÁNG (CHI TIẾT)
+================================================================================
+
+4.1. Kích hoạt load
+-------------------
+Trong PayrollMonthlyTimesheetModal.jsx:
+
+  useEffect(() => {
+    if (!open) return;
+    void loadMonth();
+  }, [open, loadMonth]);
+
+loadMonth() cũng được gọi lại khi:
+  - Đổi tháng (PayrollMonthNavigator → đổi monthRange.keys)
+  - Lưu form điểm danh (AttendanceEmployeeFormModal onSaved)
+  - Lưu off/lễ/NB (AttendanceOffHolidayDaysControl onSaved)
+  - Bấm nút «Tải lại» trên modal
+
+4.2. Hook usePayrollMonthDayChunks
+----------------------------------
+File: usePayrollMonthDayChunks.js
+
+Input:
+  monthKeys        — mảng ["2026-08-01", "2026-08-02", …, "2026-08-31"]
+  attendanceRootPath — "attendance" hoặc "koreanAttendance"
+  tlPage           — i18n
+
+Output state:
+  dayChunks          — mảng chunk đầy đủ (mới nhất)
+  displayDayChunks   — useDeferredValue(dayChunks) — render mượt hơn
+  loading            — đang tải batch đầu
+  loadingMore        — đang tải batch tiếp
+  isGridBusy         — loading || loadingMore || stale deferred
+  error              — thông báo lỗi / tháng trống
+  loadMonth()        — hàm refetch
+
+Cơ chế:
+  - Mỗi lần loadMonth: tăng loadSeqRef, reset dayChunks = []
+  - Gọi fetchPayrollMonthDayChunks()
+  - onFirstBatch: hiển thị batch đầu ngay (startTransition)
+  - onAfterBatch: cập nhật dần từng batch
+  - isStale(): hủy kết quả nếu user đổi tháng/đóng modal giữa chừng
+
+4.3. fetchPayrollMonthDayChunks
+-------------------------------
+File: payrollMonthlyGridData.js
+
+Pseudo-code:
+
+  for (i = 0; i < monthKeys.length; i += 7) {
+    batchKeys = monthKeys.slice(i, i + 7)
+    batchResults = await Promise.all(
+      batchKeys.map(dateKey =>
+        get(ref(db, `${attendanceRootPath}/${dateKey}`))
+          → buildPayrollMonthDayChunkFromRaw(snap.val(), dateKey)
+      )
+    )
+    allChunks.push(...validBatch)
+    applyPayrollMonthCanonicalKeysToChunks(allChunks)  // gán monthEmployeeKey
+    onFirstBatch / onAfterBatch callbacks
+    requestAnimationFrame yield giữa các batch
+  }
+  return allChunks
+
+Lưu ý:
+  - Dùng get() — KHÔNG onValue() → không realtime
+  - Batch size = 7 ngày (PAYROLL_MONTH_FETCH_BATCH_SIZE)
+  - Ngày không có dữ liệu VÀ không có _meta off/lễ/NB → chunk = null, bỏ qua
+
+4.4. buildPayrollMonthDayChunkFromRaw
+-------------------------------------
+File: buildPayrollDayFromRaw.js
+
+Input:  raw (object Firebase), dateKey ("2026-08-19")
+Output: chunk object hoặc null
+
+Cấu trúc chunk:
+
+  {
+    dateKey: "2026-08-19",
+    employees: [...],           // slim records (PAYROLL_MONTH_SLIM_KEYS)
+    baseEmployees: [...],       // full records (form edit, Excel)
+    byId: Map(firebaseId → emp),
+    byMonthEmployeeKey: Map(rowId → emp),
+    rowLookup: Map(variant keys → emp),
+    isOffDay: boolean,
+    isHolidayDay: boolean,
+    isCompensatoryDay: boolean,
+    isPayrollOffLikeDay: boolean,
+    earlyOtPaperworkById: { [id]: boolean },
+    lateOtExcludedById: { [id]: boolean },
+    nightOtPaperworkById: { [id]: boolean },
+  }
+
+Pipeline parse 1 ngày:
+  parsePayrollDayFromAttendanceRaw(raw)
+    → mergeAttendanceDayRowsFromRaw / reconcile
+    → đọc _meta off/lễ/NB/OT paperwork
+    → payrollEmployees (slim) + baseEmployees (full)
+
+4.5. Index nhân viên cả tháng
+-----------------------------
+Hook: usePayrollMonthEmployeeIndex(displayDayChunks)
+
+  sortedIds  — danh sách rowId đã sort (STT/MNV)
+  repById    — Map(rowId → hồ sơ gộp cả tháng: họ tên, BP, ngày vào làm…)
+  chunkByDate — Map(dateKey → chunk)
+
+Hàm gộp hồ sơ: payrollMonthRepresentativeEmployee()
+  - Lấy trường profile mới nhất từ các chunk ngày
+  - Ngày vào làm/HĐ: pickBestPayrollJoinDateForMonth / pickBestPayrollContractDateForMonth
+
+
+================================================================================
+5. PIPELINE TỔNG HỢP CỘT CHI TIẾT (BÊN PHẢI)
+================================================================================
+
+Sau khi có dayChunks + sortedIds:
+
+Hook: usePayrollMonthSummaries({
+  monthKeys,
+  chunkByDate,
+  filteredIds,    // sau lọc BP/tìm kiếm
+  repById,
+})
+
+  → monthlySummaryById: Map(rowId → buildMonthlyRuleSummary result)
+
+Tính toán:
+  computePayrollMonthSummariesForIds()  (payrollMonthSummaryCompute.js)
+    → buildMonthlyRuleSummary()         (payrollMonthlyRuleSummary.js)
+
+Ngưỡng hiệu năng (payrollMonthDataScale.js):
+  ≤ 48 NV  — tính sync trên main thread
+  ≥ 72 NV  — dùng Web Worker (payrollMonthSummaryWorker.js)
+  Cache tối đa 12000 entry
+
+Output dùng cho:
+  buildMonthlyDetailMatrixForEmployee() → 52 cột phẳng (18+17+17)
+  Render: PayrollMonthlyTimesheetDetailCells
+
+
+================================================================================
+6. CẤU TRÚC LƯỚI — CỘT & HÀNG
+================================================================================
+
+6.1. Tổng số cột
+----------------
+File: payrollMonthlyTimesheetLayout.js
+
+  payrollMonthlyTimesheetTotalColCount(monthKeyCount)
+    = 5 (sticky) + monthKeyCount (ngày) + 52 (chi tiết)
+
+  Chi tiết 52 cột = 18 (Tổng) + 17 (Thử việc) + 17 (Hợp đồng)
+
+6.2. Cột sticky trái (5 cột)
+----------------------------
+PayrollMonthlyTimesheetModal.jsx → STICKY_COL_WIDTHS = [36, 200, 72, 80, 64] px
+
+  1. STT
+  2. Họ tên
+  3. MNV
+  4. BP (Bộ phận)
+  5. Hệ số TC (label hệ số trên 6 dòng con)
+
+6.3. Cột ngày (28–31 cột)
+-------------------------
+  - Width: 42px (MONTH_DAY_COL_WIDTH)
+  - Key: dateKey "YYYY-MM-DD"
+  - Header hàng 2: số ngày (01, 02, …)
+  - Header hàng 3: thứ (formatPayrollMonthWeekday3)
+  - Màu nền: payrollMonthlyTimesheetDayHeaderBgClass / DayBodyBgClass
+    (Chủ nhật, off, lễ, nghỉ bù)
+
+6.4. Khối chi tiết (52 cột)
+---------------------------
+buildPayrollMonthlyTimesheetDetailHeaders() — 18 cột khối «Tổng»:
+
+  0.  Ngày thực tế làm việc
+  1.  Tổng ngày công (gồm ngày nghỉ có lương)
+  2.  Tổng ngày nghỉ không có lương
+  3.  Phép năm (PN)
+  4.  Nghỉ bù (NB)
+  5.  Nghỉ không lương (KL)
+  6.  Nghỉ không phép (KP)
+  7.  Giờ làm (×0.3)
+  8.  TC ngày thường / TC ca đêm (×1.5)
+  9.  TC ngày off ca ngày (×2.0)
+  10. TC ca đêm ngày off (×2.7)
+  11. TC ngày lễ (×3.0)
+  12. TC đêm ngày lễ (×3.9)
+  13. Giờ công ca ngày NB (×2.0)
+  14. Giờ công ca đêm NB (×2.7)
+  15. Số ngày nghỉ thai sản
+  16. Phụ cấp ca đêm (VND)
+  17. Tổng GC ca đêm
+
+Khối Thử việc / Hợp đồng: 17 cột (bỏ cột 0 «Ngày thực tế làm việc»)
+
+6.5. Cấu trúc hàng — 7 sub-row / nhân viên
+------------------------------------------
+PAYROLL_MONTHLY_SUBROWS (payrollMonthlyCoefficientBuckets.js):
+
+  si=0  main   coeff=null   — Dòng chính: phép / GC / gạch «-»
+  si=1  c03    coeff=0.3    — GC ca đêm
+  si=2  c15    coeff=1.5    — TC ngày thường / TC ca đêm
+  si=3  c20    coeff=2.0    — TC off ca ngày / NB overflow
+  si=4  c27    coeff=2.7    — TC off ca đêm / TC đêm NB
+  si=5  c30    coeff=3.0    — TC ngày lễ ca ngày
+  si=6  c39    coeff=3.9    — TC đêm ngày lễ
+
+Component khối NV: PayrollMonthlyTimesheetEmployeeBlock
+  → 7 × PayrollMonthlyTimesheetDayCell (mỗi ngày)
+  → PayrollMonthlyTimesheetDetailCells (cột tổng hợp)
+
+
+================================================================================
+7. PIPELINE RENDER Ô NGÀY (CHI TIẾT)
+================================================================================
+
+7.1. Chuẩn bị dữ liệu ô (per employee)
+--------------------------------------
+Hàm: buildPayrollMonthEmployeeDayCells({ monthDayMeta, rep, rowId })
+File: PayrollMonthlyTimesheetModal.jsx (dòng ~248)
+
+Với mỗi ngày trong tháng:
+
+  1. Lấy chunk = chunkByDate.get(dateKey)
+  2. resolvePayrollMonthDayEmployee(chunk, rowId, rep)
+     → tìm bản ghi NV trong chunk (qua rowLookup / byMonthEmployeeKey)
+  3. Kiểm tra beforeJoin:
+     isPayrollMonthDayCellBeforeJoinWithoutAttendance(dateKey, joinDate, emp)
+     → ô trống trước ngày vào làm
+  4. getPayrollMonthlyMainRowCell(emp, chunk)
+     → { kind: "leave" | "hours" | "dash", ... }
+  5. getPayrollMonthlyCoeffHoursMap(payrollOtDayParamsFromMonthChunkEmp(...))
+     → Map hệ số → số giờ cho 6 dòng TC
+
+Kết quả mỗi ô:
+  { dateKey, chunk, baseBg, beforeJoin, emp, main, coeffMap }
+
+7.2. Render ô (PayrollMonthlyTimesheetDayCell)
+----------------------------------------------
+Sub-row si=0 (main):
+  - kind=leave  → badge loại phép (PN, NB, KL, …)
+  - kind=hours  → số giờ công
+  - kind=dash   → «-» (off/lễ/Chủ nhật không hiển thị GC ở dòng chính)
+
+Sub-row si=1..6 (hệ số):
+  - formatPayrollMonthlyCoeffSubrowDayCell(coeffMap, coeff)
+  - Hiển thị giờ TC theo hệ số tương ứng
+
+Tương tác:
+  - Click ô → openDayCellEditor(dateKey, rowId)
+  - Kiểm tra quyền: canEditPayrollMonthTimesheetGridCell()
+  - Mở AttendanceEmployeeFormModal với buildPayrollMonthDayCellFormRecord()
+
+7.3. Logic hiển thị đặc biệt (payrollMonthlyCoefficientBuckets.js)
+-----------------------------------------------------------------
+  - Chủ nhật: GC+TC gộp vào 1 dòng hệ số; dòng chính «-»
+  - Ngày off/lễ: dòng chính «-»; giờ ở dòng hệ số
+  - Ngày nghỉ bù (NB): tối đa 8h GC trên dòng chính; dư → ×2.0/×2.7
+  - Ca đêm (S2): GC trên dòng chính; dòng ×0.3 hiển thị mã ca
+  - BGC: badge «BGC» khi chưa có giờ vào
+
+
+================================================================================
+8. COMPONENT TREE RENDER
+================================================================================
+
+PayrollMonthlyTimesheetModal (createPortal → document.body)
+│
+├── Toolbar
+│   ├── PayrollMonthNavigator          — prev/next tháng
+│   ├── PayrollDepartmentMultiSelect     — lọc bộ phận
+│   ├── PayrollTimesheetPresenceFiltersMenu
+│   ├── AttendanceOffHolidayDaysControl  — off/lễ/NB
+│   ├── Zoom controls
+│   └── Export Excel
+│
+├── PayrollMonthGridLoadingOverlay       — loading batch + tổng hợp
+│
+└── <div className="pm-ts-scroll">
+    └── <table>
+        ├── <thead> (3 hàng sticky)
+        │   hàng 1: «Thông tin mã hàng» | «Số lượng & hiệu suất» | «Chi tiết lỗi»
+        │   hàng 2-3: STT, Họ tên, … | ngày 1..N | header chi tiết
+        │
+        └── <tbody>
+            ├── (virtualized hoặc full render)
+            └── PayrollMonthlyTimesheetEmployeeBlock × N
+                ├── 7 × <tr> (PAYROLL_MONTHLY_SUBROWS)
+                │   ├── sticky td: STT/Họ tên/MNV/BP/Hệ số
+                │   ├── PayrollMonthlyTimesheetDayCell × số ngày
+                │   └── PayrollMonthlyTimesheetDetailCells (52 cột)
+                └── …
+
+Virtualization (@tanstack/react-virtual):
+  - Ngưỡng: MONTHLY_TIMESHEET_VIRTUAL_THRESHOLD = 8 NV
+  - Ảo hóa theo KHỐI NV (7 dòng), không theo từng cell
+  - overscan = 2 khối
+
+
+================================================================================
+9. LỌC & HIỂN THỊ NHÂN VIÊN
+================================================================================
+
+Sau sortedIds, áp dụng filterPayrollMonthTimesheetRowIds():
+
+  - Tìm kiếm tên/MNV (searchTerm + localNameFilter)
+  - Lọc bộ phận (selectedDepartments)
+  - Lọc có/không giờ công (workHoursFilter)
+  - Lọc loại phép (leaveTypeFilter)
+  - Lọc có/không TC (overtimeFilter)
+  - Lọc thiếu giờ (shortHoursFilter)
+
+File: payrollMonthTimesheetFilters.js
+
+Flags tháng: buildPayrollMonthTimesheetFlagsById()
+  - Dùng để lọc nhanh NV có mặt / có phép / có TC trong tháng
+
+
+================================================================================
+10. SO SÁNH REALTIME vs FETCH
+================================================================================
+
+┌─────────────────────┬──────────────────────────┬──────────────────────────┐
+│                     │ Bảng NGÀY                │ Lưới THÁNG               │
+├─────────────────────┼──────────────────────────┼──────────────────────────┤
+│ Component           │ PayrollSalaryCalculator  │ PayrollMonthlyTimesheet  │
+│                     │ + AttendanceTableRow     │ Modal                    │
+├─────────────────────┼──────────────────────────┼──────────────────────────┤
+│ Firebase            │ onValue (realtime)       │ get() (one-shot)         │
+│                     │ attendance/{1 ngày}      │ attendance/{mỗi ngày}    │
+├─────────────────────┼──────────────────────────┼──────────────────────────┤
+│ Cập nhật sau sửa    │ Tự động qua subscription │ Gọi lại loadMonth()      │
+├─────────────────────┼──────────────────────────┼──────────────────────────┤
+│ Parse dữ liệu       │ parsePayrollDayFrom      │ buildPayrollMonthDay     │
+│                     │ AttendanceRaw (inline)   │ ChunkFromRaw (×31 ngày)  │
+└─────────────────────┴──────────────────────────┴──────────────────────────┘
+
+
+================================================================================
+11. CHỈNH SỬA Ô & RELOAD
+================================================================================
+
+Luồng sửa 1 ô ngày trên lưới tháng:
+
+  1. User click PayrollMonthlyTimesheetDayCell
+  2. openDayCellEditor(dateKey, rowId)
+  3. buildPayrollMonthDayCellFormRecord({ chunk, rowId, rep, dayEmp })
+  4. AttendanceEmployeeFormModal mở với bản ghi ngày đó
+  5. User lưu → ghi Firebase attendance/{dateKey}/emp_xxx
+  6. onSaved={() => void loadMonth()}
+  7. Refetch TOÀN BỘ tháng (không patch local 1 ngày)
+
+Lưu off/lễ/NB:
+  AttendanceOffHolidayDaysControl → update _meta → handleOffHolidayDaysSaved → loadMonth()
+
+
+================================================================================
+12. i18n & QUYỀN
+================================================================================
+
+i18n namespace: salaryCalc.* (vi.js / ko.js)
+  - monthlyTimesheetEmpty, monthlyTimesheetError
+  - monthlyRuleCol* (tên cột khối chi tiết)
+  - groupDefects KHÔNG dùng ở đây (đó là S90D)
+
+Quyền:
+  src/config/featurePermissions.js
+  - canEditPayrollMonthTimesheetGridCell({ user, userRole, userDepartments, … })
+  - Route /attendance-salary
+
+
+================================================================================
+13. KOREAN TIMESHEET
+================================================================================
+
+  attendanceRootPath = "koreanAttendance"
+  isKoreanAttendanceRoot() → format giờ 2 chữ số thập phân
+  Empty message key: koreanMonthlyTimesheetEmpty
+
+Entry: AttendanceList.jsx hoặc KoreanTimesheetPage.jsx
+  → PayrollMonthlyTimesheetModal(attendanceRootPath="koreanAttendance")
+
+
+================================================================================
+14. XUẤT EXCEL THÁNG
+================================================================================
+
+  writePayrollMonthlyTimesheetWorkbook() — payrollMonthlyTimesheetExcelGrid.js
+  - Dùng cùng payrollMonthlyTimesheetLayoutOffsets()
+  - Dùng buildPayrollMonthlyTimesheetDetailHeadersByGroup()
+  - assignMonthlyDetailFlatToExportRow() ghi 52 cột chi tiết
+  - Mở từ PayrollRangeExcelExportModal trong modal lưới tháng
+
+
+================================================================================
+15. SƠ ĐỒ LUỒNG TỔNG HỢP (ASCII)
+================================================================================
+
+  [User mở modal]
+        │
+        ▼
+  usePayrollMonthDayChunks.loadMonth()
+        │
+        ▼
+  fetchPayrollMonthDayChunks(monthKeys)
+        │  loop batch 7 ngày
+        ▼
+  Firebase get(attendance/YYYY-MM-DD)
+        │
+        ▼
+  buildPayrollMonthDayChunkFromRaw(raw, dateKey)
+        │  parsePayrollDayFromAttendanceRaw
+        │  slimPayrollMonthEmployeeRecord
+        ▼
+  applyPayrollMonthCanonicalKeysToChunks()
+        │
+        ▼
+  dayChunks[] ──useDeferredValue──► displayDayChunks
+        │
+        ├─► usePayrollMonthEmployeeIndex
+        │     sortedIds, repById, chunkByDate
+        │
+        ├─► filterPayrollMonthTimesheetRowIds → filteredIds
+        │
+        └─► usePayrollMonthSummaries → monthlySummaryById
+                │
+                ▼
+        PayrollMonthlyTimesheetModal render
+                │
+                ├─ buildPayrollMonthEmployeeDayCells (per NV)
+                │     getPayrollMonthlyMainRowCell
+                │     getPayrollMonthlyCoeffHoursMap
+                │
+                └─ buildMonthlyDetailMatrixForEmployee (cột phải)
+                        │
+                        ▼
+                  <table> hiển thị lưới tháng
+
+
+================================================================================
+16. GỢI Ý DEBUG / KIỂM TRA
+================================================================================
+
+  1. Tháng trống:
+     - Kiểm tra Firebase attendance/{date} có node không
+     - Chunk null nếu không có NV VÀ không có _meta off/lễ/NB
+
+  2. NV thiếu một số ngày:
+     - rowLookup / byMonthEmployeeKey trong chunk ngày
+     - canonicalPayrollMonthRowId sau applyPayrollMonthCanonicalKeysToChunks
+
+  3. Giờ sai trên lưới tháng nhưng đúng bảng ngày:
+     - So sánh parsePayrollDayFromAttendanceRaw (cùng pipeline)
+     - Kiểm tra payrollOtDayParamsFromMonthChunkEmp + _meta OT paperwork
+
+  4. Cột chi tiết chậm:
+     - usePayrollMonthSummaries + Web Worker (≥72 NV)
+     - PayrollMonthGridLoadingOverlay hiển thị progress
+
+  5. Sau sửa không cập nhật:
+     - Lưới tháng KHÔNG realtime — cần loadMonth() hoặc đóng/mở lại modal
+
+
+================================================================================
+HẾT TÀI LIỆU
+================================================================================

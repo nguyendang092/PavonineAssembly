@@ -244,8 +244,9 @@ export function buildPayrollMonthDayCellFormRecord({
     };
   }
   const attendanceKey = dayEmp.id;
+  const baseEmployees = buildBaseEmployeesForDay(chunk);
   const baseEmp =
-    chunk?.baseEmployees?.find((e) => e.id === attendanceKey) ?? dayEmp;
+    baseEmployees.find((e) => e.id === attendanceKey) ?? dayEmp;
   return {
     ...profile,
     ...baseEmp,
@@ -329,11 +330,78 @@ export function parsePayrollDayFromAttendanceRaw(
 export { shallowStringRecordEqual };
 
 /**
+ * Full record cho form / Excel — lazy từ `_rawCache` trên chunk ngày.
+ */
+export function buildBaseEmployeesForDay(chunk) {
+  if (!chunk) return [];
+  if (Array.isArray(chunk._baseEmployeesCache)) {
+    return chunk._baseEmployeesCache;
+  }
+  if (Array.isArray(chunk.baseEmployees)) {
+    chunk._baseEmployeesCache = chunk.baseEmployees;
+    return chunk._baseEmployeesCache;
+  }
+  if (chunk._rawCache == null) return [];
+  const parsed = parsePayrollDayFromAttendanceRaw(chunk._rawCache);
+  chunk._baseEmployeesCache = parsed.baseEmployees;
+  return chunk._baseEmployeesCache;
+}
+
+function buildPayrollMonthChunkSkeleton({
+  dateKey,
+  status,
+  errorMessage = null,
+  slimEmployees = [],
+  parsed,
+  raw = null,
+}) {
+  return {
+    dateKey,
+    status,
+    errorMessage,
+    employees: slimEmployees,
+    byId: new Map(slimEmployees.map((e) => [e.id, e])),
+    byMonthEmployeeKey: buildPayrollMonthByMonthEmployeeKeyMapForRaw(slimEmployees),
+    rowLookup: buildPayrollMonthChunkRowLookupForRaw(slimEmployees),
+    isOffDay: parsed?.isOffDay ?? false,
+    isHolidayDay: parsed?.isHolidayDay ?? false,
+    isCompensatoryDay: parsed?.isCompensatoryDay ?? false,
+    isPayrollOffLikeDay: parsed?.isPayrollOffLikeDay ?? false,
+    earlyOtPaperworkById: parsed?.earlyOtPaperworkById ?? {},
+    lateOtExcludedById: parsed?.lateOtExcludedById ?? {},
+    nightOtPaperworkById: parsed?.nightOtPaperworkById ?? {},
+    _rawCache: raw,
+  };
+}
+
+function buildEmptyPayrollMonthDayChunk(dateKey, parsedOverrides = null) {
+  const parsed =
+    parsedOverrides ??
+    parsePayrollDayFromAttendanceRaw(null);
+  return buildPayrollMonthChunkSkeleton({
+    dateKey,
+    status: "empty",
+    parsed,
+    raw: null,
+  });
+}
+
+export function buildErrorPayrollMonthDayChunk(dateKey, err) {
+  return buildPayrollMonthChunkSkeleton({
+    dateKey,
+    status: "error",
+    errorMessage: err?.message ?? String(err ?? "unknown"),
+    parsed: parsePayrollDayFromAttendanceRaw(null),
+    raw: null,
+  });
+}
+
+/**
  * Một ngày trong lưới tháng: dòng đã gắn `payrollEarlyOtPaperwork` + map theo id.
  * @returns {null | {
  *   dateKey: string,
+ *   status: "ok" | "empty" | "error",
  *   employees: object[],
- *   baseEmployees: object[],
  *   byId: Map<string, object>,
  *   byMonthEmployeeKey: Map<string, object>,
  *   isOffDay: boolean,
@@ -354,20 +422,14 @@ export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
     parsed.isOffDay ||
     parsed.isHolidayDay ||
     parsed.isCompensatoryDay;
-  if (!slimEmployees.length && !hasMetaCalendarFlags) return null;
-  return {
+  if (!slimEmployees.length && !hasMetaCalendarFlags) {
+    return buildEmptyPayrollMonthDayChunk(dateKey, parsed);
+  }
+  return buildPayrollMonthChunkSkeleton({
     dateKey,
-    employees: slimEmployees,
-    baseEmployees: parsed.baseEmployees,
-    byId: new Map(slimEmployees.map((e) => [e.id, e])),
-    byMonthEmployeeKey: buildPayrollMonthByMonthEmployeeKeyMapForRaw(slimEmployees),
-    rowLookup: buildPayrollMonthChunkRowLookupForRaw(slimEmployees),
-    isOffDay: parsed.isOffDay,
-    isHolidayDay: parsed.isHolidayDay,
-    isCompensatoryDay: parsed.isCompensatoryDay,
-    isPayrollOffLikeDay: parsed.isPayrollOffLikeDay,
-    earlyOtPaperworkById: parsed.earlyOtPaperworkById,
-    lateOtExcludedById: parsed.lateOtExcludedById,
-    nightOtPaperworkById: parsed.nightOtPaperworkById,
-  };
+    status: "ok",
+    slimEmployees,
+    parsed,
+    raw: raw ?? null,
+  });
 }

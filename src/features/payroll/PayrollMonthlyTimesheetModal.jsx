@@ -9,10 +9,11 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { buildPayrollMonthDayCellFormRecord } from "@/features/payroll/buildPayrollDayFromRaw";
+import { buildPayrollMonthDayCellFormRecord, buildBaseEmployeesForDay } from "@/features/payroll/buildPayrollDayFromRaw";
 import {
   enrichPayrollMonthRepByIdWithMasterEmployees,
   formatPayrollMonthWeekday3,
+  isPayrollMonthChunkFetchError,
   resolvePayrollMonthDayEmployee,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
@@ -63,6 +64,7 @@ import {
   getLastDayOfMonthKey,
   parseLocalDateKey,
 } from "@/utils/dateKey";
+import { db, onValue, ref } from "@/services/firebase";
 import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
 import {
   getAttendanceLeaveTypeCompactBadgeClassName,
@@ -327,11 +329,34 @@ const PayrollMonthlyTimesheetDayCell = memo(
     blockStartClass,
     openDayCellEditor,
     tlPage,
+    onRetryDay,
   }) {
     const cellStyle = {
       ...monthDayCellStyle(),
       ...(isLastSub ? { borderBottom: "2px solid #000" } : null),
     };
+
+    if (dayCell.chunk && isPayrollMonthChunkFetchError(dayCell.chunk)) {
+      return (
+        <td
+          style={cellStyle}
+          title={dayCell.chunk.errorMessage ?? ""}
+          className={`${THIN_BODY_BORDER_CLASS} pm-ts-day-cell pm-ts-data-cell text-center text-rose-600 ${dayCell.baseBg} ${subrowEdgeClass} ${blockStartClass}`}
+        >
+          {sr.coeff == null ? (
+            <button
+              type="button"
+              className="font-bold hover:underline"
+              onClick={() => onRetryDay?.(dayCell.dateKey)}
+            >
+              ⚠
+            </button>
+          ) : (
+            " "
+          )}
+        </td>
+      );
+    }
 
     if (dayCell.beforeJoin) {
       return (
@@ -515,6 +540,7 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
     openDayCellEditor,
     tlPage,
     fmtHours = null,
+    onRetryDay,
   }) {
     const sttDisp = empBlockIdx + 1;
     const employeeStripe =
@@ -607,6 +633,7 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
                   blockStartClass={blockStartClass}
                   openDayCellEditor={openDayCellEditor}
                   tlPage={tlPage}
+                  onRetryDay={onRetryDay}
                 />
               ))}
               <PayrollMonthlyTimesheetDetailCells
@@ -795,15 +822,18 @@ export default function PayrollMonthlyTimesheetModal({
   }, []);
 
   const {
-    dayChunks,
     displayDayChunks,
     loading,
     loadingMore,
+    isRevalidating,
     isGridBusy,
     isDisplayStale,
+    errorDayCount,
     error,
     setError,
     loadMonth,
+    patchDay,
+    patchDays,
   } = usePayrollMonthDayChunks({
     monthKeys: monthRange.keys,
     attendanceRootPath,
@@ -854,9 +884,39 @@ export default function PayrollMonthlyTimesheetModal({
     [tlPage],
   );
 
-  const handleOffHolidayDaysSaved = useCallback(() => {
-    void loadMonth();
-  }, [loadMonth]);
+  const [hasRemoteUpdate, setHasRemoteUpdate] = useState(false);
+  const localLastLoadedAtRef = useRef(0);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const monthKey = monthRange.first.slice(0, 7);
+    const metaRef = ref(db, `attendanceMeta/lastModified/${monthKey}`);
+    const unsubscribe = onValue(metaRef, (snap) => {
+      const remoteTs = Number(snap.val() ?? 0);
+      if (remoteTs > localLastLoadedAtRef.current) {
+        setHasRemoteUpdate(true);
+      }
+    });
+    return () => unsubscribe();
+  }, [open, monthRange.first]);
+
+  useEffect(() => {
+    if (!loading && !loadingMore && displayDayChunks.length) {
+      localLastLoadedAtRef.current = Date.now();
+      setHasRemoteUpdate(false);
+    }
+  }, [loading, loadingMore, displayDayChunks]);
+
+  const handleOffHolidayDaysSaved = useCallback(
+    (affectedDateKeys) => {
+      if (Array.isArray(affectedDateKeys) && affectedDateKeys.length) {
+        patchDays(affectedDateKeys);
+      } else {
+        void loadMonth();
+      }
+    },
+    [loadMonth, patchDays],
+  );
 
   const openDayCellForm = useCallback((dateKey, dayEmps, formInitial) => {
     setDayCellFormEmployees(dayEmps);
@@ -879,13 +939,14 @@ export default function PayrollMonthlyTimesheetModal({
         return;
       }
       const ch = chunkByDate.get(dateKey);
-      if (!ch) return;
+      if (!ch || isPayrollMonthChunkFetchError(ch)) return;
       const rep = repById.get(rowId);
       if (!rep) return;
       const dayEmp = resolvePayrollMonthDayEmployee(ch, rowId, rep);
+      const baseEmps = buildBaseEmployeesForDay(ch);
       const dayEmps =
-        Array.isArray(ch.baseEmployees) && ch.baseEmployees.length > 0
-          ? ch.baseEmployees
+        baseEmps.length > 0
+          ? baseEmps
           : Array.isArray(ch.employees)
             ? ch.employees
             : [];
@@ -1340,6 +1401,11 @@ export default function PayrollMonthlyTimesheetModal({
               </h2>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {isRevalidating ? (
+                <span className="rounded bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-white">
+                  {tlPage("monthlyTimesheetRevalidating", "Đang đồng bộ…")}
+                </span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => void loadMonth()}
@@ -1359,6 +1425,50 @@ export default function PayrollMonthlyTimesheetModal({
           </div>
 
           <div className="min-h-0 flex flex-1 flex-col p-2 sm:p-3">
+            {hasRemoteUpdate ? (
+              <div className="pm-ts-update-banner mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950">
+                <span>
+                  {tlPage(
+                    "monthlyTimesheetRemoteUpdate",
+                    "Có cập nhật mới từ người dùng khác.",
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className="rounded border border-amber-400 bg-white px-2 py-1 font-bold hover:bg-amber-100"
+                  onClick={() => {
+                    setHasRemoteUpdate(false);
+                    void loadMonth();
+                  }}
+                >
+                  {tlPage("monthlyTimesheetReload", "Tải lại")}
+                </button>
+              </div>
+            ) : null}
+            {errorDayCount > 0 ? (
+              <div className="pm-ts-error-banner mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-950">
+                <span>
+                  {tlPage(
+                    "monthlyTimesheetErrorDays",
+                    "{{count}} ngày tải lỗi — dữ liệu các ngày này có thể chưa chính xác.",
+                    { count: errorDayCount },
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className="rounded border border-rose-400 bg-white px-2 py-1 font-bold hover:bg-rose-100"
+                  onClick={() => {
+                    for (const ch of displayDayChunks) {
+                      if (isPayrollMonthChunkFetchError(ch)) {
+                        void patchDay(ch.dateKey);
+                      }
+                    }
+                  }}
+                >
+                  {tlPage("monthlyTimesheetRetryErrors", "Thử lại")}
+                </button>
+              </div>
+            ) : null}
             <div className="pm-ts-toolbar mb-2 flex flex-wrap items-center justify-end gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-sky-50 px-2 py-1.5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
               <div className="mr-auto flex shrink-0 flex-wrap items-center gap-2">
                 <AttendanceOffHolidayDaysControl
@@ -1598,6 +1708,9 @@ export default function PayrollMonthlyTimesheetModal({
                       </tr>
                       <tr>
                         {monthDayMeta.map((dayMeta) => {
+                          const isErrorDay = isPayrollMonthChunkFetchError(
+                            dayMeta.chunk,
+                          );
                           return (
                             <th
                               key={dayMeta.dateKey}
@@ -1609,9 +1722,15 @@ export default function PayrollMonthlyTimesheetModal({
                                   85,
                                 ),
                               }}
-                              className={`${THIN_HEAD_BORDER_CLASS} ${NO_TOP_BORDER_CLASS} pm-ts-day-header px-1 py-1.5 text-center ${dayMeta.headerBg}`}
+                              title={
+                                isErrorDay
+                                  ? dayMeta.chunk?.errorMessage ?? ""
+                                  : undefined
+                              }
+                              className={`${THIN_HEAD_BORDER_CLASS} ${NO_TOP_BORDER_CLASS} pm-ts-day-header px-1 py-1.5 text-center ${dayMeta.headerBg} ${isErrorDay ? "text-rose-700" : ""}`}
                             >
                               <div className="pm-ts-header-day">
+                                {isErrorDay ? "⚠ " : ""}
                                 {String(dayMeta.dayOfMonth).padStart(2, "0")}
                               </div>
                               <div
@@ -1737,6 +1856,7 @@ export default function PayrollMonthlyTimesheetModal({
                                 openDayCellEditor={openDayCellEditor}
                                 tlPage={tlPage}
                                 fmtHours={monthlyDetailFmtHours}
+                                onRetryDay={patchDay}
                               />
                             </tbody>
                           );
@@ -1774,6 +1894,7 @@ export default function PayrollMonthlyTimesheetModal({
                             openDayCellEditor={openDayCellEditor}
                             tlPage={tlPage}
                             fmtHours={monthlyDetailFmtHours}
+                            onRetryDay={patchDay}
                           />
                         ))}
                       </tbody>
@@ -1855,7 +1976,10 @@ export default function PayrollMonthlyTimesheetModal({
         userRole={userRole}
         userDepartments={userDepartments}
         onAlert={onAlert}
-        onSaved={() => void loadMonth()}
+        onSaved={(savedDateKey) => {
+          if (savedDateKey) void patchDay(savedDateKey);
+          else void loadMonth();
+        }}
         attendanceRootPath={attendanceRootPath}
         dayIsCompensatory={Boolean(
           dayCellFormDate &&

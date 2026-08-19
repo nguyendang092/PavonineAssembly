@@ -486,7 +486,7 @@ export default function AttendanceEmployeeFormModal({
       type: "success",
       message: t(messageKey),
     });
-    onSaved?.();
+    onSaved?.(selectedDate);
     void syncAnnualLeaveAfterAttendanceSave(oldRecordForLeave, loaiPhepToSave);
   };
 

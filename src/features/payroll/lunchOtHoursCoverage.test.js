@@ -8,7 +8,7 @@ import {
   formatPayrollTableTotalDayGcCell,
 } from "@/features/attendance/attendanceWorkingHours";
 import { buildMonthlyRuleSummary } from "@/features/payroll/payrollMonthlyRuleSummary";
-import { getPayrollMonthlyCoeffHoursMap } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
+import { getPayrollMonthlyCoeffHoursMap, getPayrollMonthlyMainRowCell } from "@/features/payroll/payrollMonthlyCoefficientBuckets";
 import {
   formatPayrollTableDayShiftOvertimeCellFromEmp,
   formatPayrollTableHolidayDayWorkingCellFromEmp,
@@ -163,7 +163,7 @@ describe("tangCaTrua — lưới tháng (hệ số)", () => {
     expect(m.get(2.0) ?? 0).toBe(0);
   });
 
-  it("OFF / nghỉ bù → ×2.0", () => {
+  it("OFF → toàn bộ GC+TC trưa vào ×2.0", () => {
     const off = getPayrollMonthlyCoeffHoursMap({
       ...base,
       isOffDay: true,
@@ -171,6 +171,13 @@ describe("tangCaTrua — lưới tháng (hệ số)", () => {
     });
     expect(off.get(2.0)).toBe(9);
     expect(off.get(1.5) ?? 0).toBe(0);
+  });
+
+  it("nghỉ bù — tối đa 8h dòng chính, phần dư vào ×2.0", () => {
+    const compChunk = makeChunk([makeEmp()], { isCompensatoryDay: true });
+    const main = getPayrollMonthlyMainRowCell(makeEmp(), compChunk);
+    expect(main.kind).toBe("hours");
+    expect(main.hours).toBe(8);
 
     const comp = getPayrollMonthlyCoeffHoursMap({
       ...base,
@@ -178,7 +185,8 @@ describe("tangCaTrua — lưới tháng (hệ số)", () => {
       isHolidayDay: false,
       isCompensatoryDay: true,
     });
-    expect(comp.get(2.0)).toBe(9);
+    expect(comp.get(2.0)).toBe(1);
+    expect(comp.get(1.5) ?? 0).toBe(0);
   });
 
   it("ngày lễ → ×3.0", () => {

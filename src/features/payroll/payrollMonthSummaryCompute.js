@@ -1,12 +1,15 @@
 import { buildMonthlyRuleSummary } from "@/features/payroll/payrollMonthlyRuleSummary";
 import { payrollEmployeeProfileDatesFingerprint } from "@/features/payroll/payrollEmployeeFields";
-import { resolvePayrollMonthEmployeeProfileForSummary } from "@/features/payroll/payrollMonthlyGridData";
+import {
+  isPayrollMonthChunkFetchError,
+  resolvePayrollMonthEmployeeProfileForSummary,
+} from "@/features/payroll/payrollMonthlyGridData";
 import {
   PAYROLL_MONTH_SUMMARY_CACHE_MAX,
   PAYROLL_MONTH_SUMMARY_MAIN_BATCH_SIZE,
   PAYROLL_MONTH_SUMMARY_PROGRESS_STEP,
   PAYROLL_MONTH_SUMMARY_SYNC_MAX_IDS,
-  PAYROLL_MONTH_SUMMARY_WORKER_MIN_IDS,
+  shouldUsePayrollMonthSummaryWorker,
 } from "@/features/payroll/payrollMonthDataScale";
 import { computePayrollMonthChunksFingerprint } from "@/features/payroll/payrollMonthChunksFingerprint";
 import {
@@ -26,12 +29,8 @@ function schedulerYield(ms = 0) {
 
 function trimSummaryCache(cache, maxSize) {
   if (cache.size <= maxSize) return;
-  const drop = cache.size - maxSize;
-  const iter = cache.keys();
-  for (let i = 0; i < drop; i += 1) {
-    const k = iter.next().value;
-    if (k != null) cache.delete(k);
-  }
+  const oldestKey = cache.keys().next().value;
+  if (oldestKey != null) cache.delete(oldestKey);
 }
 
 function cacheKey(id, fingerprint, profileFingerprint) {
@@ -58,15 +57,21 @@ function getCachedOrBuildMonthlySummary(
   );
   const key = cacheKey(id, fingerprint, profileFingerprint);
   const hit = cache.get(key);
-  if (hit) return hit;
+  if (hit !== undefined) {
+    cache.delete(key);
+    cache.set(key, hit);
+    return hit;
+  }
   const summary = buildMonthlyRuleSummary(
     chunkByDate,
     monthKeys,
     id,
     resolvedProfile,
   );
+  if (cache.size >= PAYROLL_MONTH_SUMMARY_CACHE_MAX) {
+    trimSummaryCache(cache, PAYROLL_MONTH_SUMMARY_CACHE_MAX - 1);
+  }
   cache.set(key, summary);
-  trimSummaryCache(cache, PAYROLL_MONTH_SUMMARY_CACHE_MAX);
   return summary;
 }
 
@@ -169,11 +174,11 @@ export async function computePayrollMonthSummariesForIds({
     if (rep) profilesById[id] = rep;
   }
 
-  if (idList.length >= PAYROLL_MONTH_SUMMARY_WORKER_MIN_IDS) {
+  if (shouldUsePayrollMonthSummaryWorker(idList.length)) {
     const serializedChunks = [];
     for (const dk of monthKeys) {
       const ch = chunkByDate.get(dk);
-      if (!ch) continue;
+      if (isPayrollMonthChunkFetchError(ch)) continue;
       const s = serializePayrollMonthChunkForWorker(ch);
       if (s) serializedChunks.push(s);
     }

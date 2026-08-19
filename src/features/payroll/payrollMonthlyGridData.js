@@ -1,9 +1,15 @@
 import { db, ref, get } from "@/services/firebase";
 import { isKoreanAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
-import { buildPayrollMonthDayChunkFromRaw } from "@/features/payroll/buildPayrollDayFromRaw";
+import {
+  buildPayrollMonthDayChunkFromRaw,
+  buildErrorPayrollMonthDayChunk,
+} from "@/features/payroll/buildPayrollDayFromRaw";
 import {
   PAYROLL_MONTH_FETCH_BATCH_SIZE,
   PAYROLL_MONTH_FETCH_YIELD_MS,
+  PAYROLL_MONTH_DAY_FETCH_BASE_DELAY_MS,
+  PAYROLL_MONTH_DAY_FETCH_MAX_RETRY,
+  USE_MONTHLY_AGGREGATE_NODE,
 } from "@/features/payroll/payrollMonthDataScale";
 import {
   attendanceMnvStorageKey,
@@ -17,6 +23,36 @@ import {
 
 /** Phân tách MNV và Firebase id khi cùng MNV có nhiều bản ghi. */
 export const PAYROLL_MONTH_ROW_ID_SEP = "__";
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function yieldToNextFrame(yieldMs = 0) {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function" && yieldMs <= 0) {
+      requestAnimationFrame(() => resolve());
+    } else {
+      setTimeout(resolve, yieldMs);
+    }
+  });
+}
+
+function applyCanonicalKeysToOneChunk(chunk, indexes) {
+  if (!chunk) return;
+  const employees = (chunk.employees ?? []).map((emp) => ({
+    ...emp,
+    monthEmployeeKey: canonicalPayrollMonthRowId(emp, indexes),
+  }));
+  chunk.employees = employees;
+  chunk.byId = new Map(
+    employees.map((e) => [normalizePayrollMonthRowIdKey(e.id), e]),
+  );
+  chunk.byMonthEmployeeKey = buildPayrollMonthByMonthEmployeeKeyMap(employees);
+  chunk.rowLookup = buildPayrollMonthChunkRowLookup(employees);
+}
 
 /** Chuẩn hóa khóa dòng lưới tháng — tránh lệch number/string (vd. MNV 200611). */
 export function normalizePayrollMonthRowIdKey(key) {
@@ -69,25 +105,69 @@ export function buildPayrollMonthByMonthEmployeeKeyMap(employees) {
  */
 export function applyPayrollMonthCanonicalKeysToChunks(
   dayChunks,
-  { mutateFromIndex = 0 } = {},
+  { mutateFromIndex = 0, onlyDateKey } = {},
 ) {
-  const indexes = buildPayrollMonthIdentityIndexes(dayChunks);
   const list = dayChunks ?? [];
+  const indexes = buildPayrollMonthIdentityIndexes(list);
+
+  if (onlyDateKey) {
+    const chunk = list.find((c) => c?.dateKey === onlyDateKey);
+    if (chunk) applyCanonicalKeysToOneChunk(chunk, indexes);
+    return dayChunks;
+  }
+
   const start = Math.max(0, Math.min(mutateFromIndex, list.length));
   for (let i = start; i < list.length; i += 1) {
-    const chunk = list[i];
-    const employees = (chunk.employees ?? []).map((emp) => ({
-      ...emp,
-      monthEmployeeKey: canonicalPayrollMonthRowId(emp, indexes),
-    }));
-    chunk.employees = employees;
-    chunk.byId = new Map(
-      employees.map((e) => [normalizePayrollMonthRowIdKey(e.id), e]),
-    );
-    chunk.byMonthEmployeeKey = buildPayrollMonthByMonthEmployeeKeyMap(employees);
-    chunk.rowLookup = buildPayrollMonthChunkRowLookup(employees);
+    applyCanonicalKeysToOneChunk(list[i], indexes);
   }
   return dayChunks;
+}
+
+export function isPayrollMonthChunkFetchError(chunk) {
+  return chunk?.status === "error";
+}
+
+export function insertChunkSortedByDate(chunks, chunk) {
+  if (!chunk?.dateKey) return chunks ?? [];
+  const next = [...(chunks ?? [])];
+  const idx = next.findIndex((c) => c?.dateKey === chunk.dateKey);
+  if (idx >= 0) {
+    next[idx] = chunk;
+    return next;
+  }
+  const insertAt = next.findIndex((c) => String(c?.dateKey ?? "") > chunk.dateKey);
+  if (insertAt === -1) next.push(chunk);
+  else next.splice(insertAt, 0, chunk);
+  return next;
+}
+
+export async function fetchOneDayWithRetry(
+  attendanceRootPath,
+  dateKey,
+  { signal } = {},
+) {
+  for (let attempt = 0; attempt <= PAYROLL_MONTH_DAY_FETCH_MAX_RETRY; attempt += 1) {
+    if (signal?.aborted) {
+      return buildErrorPayrollMonthDayChunk(dateKey, new Error("aborted"));
+    }
+    try {
+      const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
+      return stampPayrollMonthChunkAttendanceRootFlags(
+        buildPayrollMonthDayChunkFromRaw(snap.val(), dateKey),
+        attendanceRootPath,
+      );
+    } catch (err) {
+      if (attempt === PAYROLL_MONTH_DAY_FETCH_MAX_RETRY) {
+        return buildErrorPayrollMonthDayChunk(dateKey, err);
+      }
+      await sleep(PAYROLL_MONTH_DAY_FETCH_BASE_DELAY_MS * 2 ** attempt);
+    }
+  }
+  return buildErrorPayrollMonthDayChunk(dateKey, new Error("fetch failed"));
+}
+
+export function countPayrollMonthErrorDays(dayChunks) {
+  return (dayChunks ?? []).filter((c) => isPayrollMonthChunkFetchError(c)).length;
 }
 
 export function payrollMonthRepResolveBinding(rowId, rep) {
@@ -637,52 +717,78 @@ export function stampPayrollMonthChunkAttendanceRootFlags(
   return chunk;
 }
 
+async function fetchPayrollMonthDayChunksFromAggregate(
+  monthKey,
+  attendanceRootPath,
+) {
+  const monthlyRoot =
+    attendanceRootPath === "koreanAttendance"
+      ? "koreanAttendanceMonthly"
+      : "attendanceMonthly";
+  const snap = await get(ref(db, `${monthlyRoot}/${monthKey}`));
+  const raw = snap.val() || {};
+  const dateKeys = Object.keys(raw).sort();
+  if (!dateKeys.length) return null;
+  const chunks = dateKeys.map((dateKey) =>
+    stampPayrollMonthChunkAttendanceRootFlags(
+      buildPayrollMonthDayChunkFromRaw(raw[dateKey], dateKey),
+      attendanceRootPath,
+    ),
+  );
+  applyPayrollMonthCanonicalKeysToChunks(chunks, { mutateFromIndex: 0 });
+  return chunks;
+}
+
 /**
- * Tải dữ liệu `{attendanceRootPath}/{ngày}` cho cả tháng — batch 4 ngày/lần.
+ * Tải dữ liệu `{attendanceRootPath}/{ngày}` cho cả tháng — batch + retry + abort.
  * @param {string} [hooks.attendanceRootPath="attendance"] — `attendance` hoặc `koreanAttendance`
  */
 export async function fetchPayrollMonthDayChunks(monthKeys, hooks = {}) {
   const attendanceRootPath = hooks.attendanceRootPath ?? "attendance";
+  const signal = hooks.signal;
+
+  if (USE_MONTHLY_AGGREGATE_NODE && monthKeys?.length && !signal?.aborted) {
+    try {
+      const monthKey = String(monthKeys[0]).slice(0, 7);
+      const fast = await fetchPayrollMonthDayChunksFromAggregate(
+        monthKey,
+        attendanceRootPath,
+      );
+      if (fast?.length && !signal?.aborted && !hooks.isStale?.()) {
+        return fast;
+      }
+    } catch {
+      /* fallback per-day */
+    }
+  }
+
   const allChunks = [];
-  const batchSize =
-    hooks.batchSize ?? PAYROLL_MONTH_FETCH_BATCH_SIZE;
+  const batchSize = hooks.batchSize ?? PAYROLL_MONTH_FETCH_BATCH_SIZE;
   const yieldMs = hooks.yieldMs ?? PAYROLL_MONTH_FETCH_YIELD_MS;
 
   for (let i = 0; i < monthKeys.length; i += batchSize) {
-    if (hooks.isStale?.()) return null;
+    if (signal?.aborted || hooks.isStale?.()) return null;
     const batchKeys = monthKeys.slice(i, i + batchSize);
     const batchResults = await Promise.all(
-      batchKeys.map(async (dateKey) => {
-        const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-        const chunk = stampPayrollMonthChunkAttendanceRootFlags(
-          buildPayrollMonthDayChunkFromRaw(snap.val(), dateKey),
-          attendanceRootPath,
-        );
-        if (!chunk) return null;
-        return chunk;
-      }),
+      batchKeys.map((dateKey) =>
+        fetchOneDayWithRetry(attendanceRootPath, dateKey, { signal }),
+      ),
     );
-    if (hooks.isStale?.()) return null;
-    const validBatch = batchResults.filter(Boolean);
+    if (signal?.aborted || hooks.isStale?.()) return null;
     const mutateFromIndex = allChunks.length;
-    allChunks.push(...validBatch);
+    allChunks.push(...batchResults);
     applyPayrollMonthCanonicalKeysToChunks(allChunks, { mutateFromIndex });
     if (hooks.onAfterBatch) {
       hooks.onAfterBatch(i, monthKeys.length, [...allChunks]);
     }
-    if (hooks.onFirstBatch && mutateFromIndex === 0 && validBatch.length) {
+    if (hooks.onFirstBatch && mutateFromIndex === 0 && batchResults.length) {
       hooks.onFirstBatch([...allChunks]);
     }
     if (i + batchSize < monthKeys.length) {
-      await new Promise((resolve) => {
-        if (typeof requestAnimationFrame === "function") {
-          requestAnimationFrame(() => resolve());
-        } else {
-          setTimeout(resolve, yieldMs);
-        }
-      });
+      await yieldToNextFrame(yieldMs);
     }
   }
+  if (signal?.aborted || hooks.isStale?.()) return null;
   applyPayrollMonthCanonicalKeysToChunks(allChunks, { mutateFromIndex: 0 });
   return allChunks;
 }

@@ -16,7 +16,7 @@ function digestPayrollMonthChunk(ch) {
   if (!ch) return 0;
   let h = mixFingerprintHash(
     0,
-    `${ch.isOffDay ? 1 : 0}|${ch.isHolidayDay ? 1 : 0}|${ch.isCompensatoryDay ? 1 : 0}`,
+    `${ch.status ?? "ok"}|${ch.isOffDay ? 1 : 0}|${ch.isHolidayDay ? 1 : 0}|${ch.isCompensatoryDay ? 1 : 0}`,
   );
   for (const emp of ch.employees ?? []) {
     h = mixFingerprintHash(
@@ -45,7 +45,7 @@ export function computePayrollMonthChunksFingerprint(chunkByDate, monthKeys) {
   let contentHash = 0;
   for (const dk of keys) {
     const ch = chunkByDate?.get?.(dk);
-    if (!ch) continue;
+    if (!ch || ch.status === "error") continue;
     loadedDays += 1;
     employeeSlots += ch.employees?.length ?? 0;
     contentHash = mixFingerprintHash(contentHash, digestPayrollMonthChunk(ch));

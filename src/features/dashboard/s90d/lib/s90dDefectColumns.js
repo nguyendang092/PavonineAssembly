@@ -10,21 +10,31 @@ export const S90D_PROCESSES = Object.freeze([
 export const S90D_DEFECT_COLUMNS = Object.freeze([
   { key: "rawMaterial", ko: "원자재", vi: "Nguyên liệu", shortVi: "NL" },
   { key: "pressDefect", ko: "PRESS 불량", vi: "Lỗi dập", shortVi: "Dập" },
-  { key: "burr", ko: "칩눌림 불량", vi: "Lỗi ăn Bavia", shortVi: "Bavia" },
+  { key: "burr", ko: "칩눌림 불량", vi: "Lỗi ấn Bavia", shortVi: "Bavia" },
   { key: "scratch", ko: "스크러치", vi: "Trầy, xước", shortVi: "Trầy" },
   { key: "dent", ko: "찍힘", vi: "Cấn", shortVi: "Cấn" },
   { key: "breakage", ko: "파손 불량", vi: "Lỗi gãy", shortVi: "Gãy" },
-  { key: "bendWarp", ko: "벤딩 불량", vi: "Lỗi cong, vênh", shortVi: "Cong" },
+  { key: "bendWarp", ko: "휨 불량", vi: "Lỗi cong, vênh", shortVi: "Cong" },
   { key: "hole", ko: "홀 불량", vi: "Lỗi hole", shortVi: "Hole" },
-  { key: "sanding", ko: "헤어 불량", vi: "Lỗi chà", shortVi: "Chà" },
+  { key: "sanding", ko: "사상불량", vi: "Lỗi chà", shortVi: "Chà" },
   { key: "tape", ko: "피막 불량", vi: "Lỗi nhuộm", shortVi: "Nhuộm" },
   { key: "stain", ko: "얼룩 불량", vi: "Lỗi loang màu", shortVi: "Loang" },
   { key: "corrosion", ko: "부식", vi: "Ăn mòn", shortVi: "Mòn" },
   { key: "color", ko: "컬러", vi: "Màu", shortVi: "Màu" },
   { key: "whiteSpot", ko: "백점 불량", vi: "Lỗi chấm trắng", shortVi: "Chấm" },
-  { key: "assemblyDefect", ko: "조립 불량", vi: "Lỗi Lắp ráp", shortVi: "L ráp" },
-  { key: "bending", ko: "밴딩 불량", vi: "Lỗi bending", shortVi: "Bend" },
-  { key: "hairlineDefect", ko: "헤어라인 불량", vi: "Lỗi Hairline", shortVi: "Hair" },
+  {
+    key: "assemblyDefect",
+    ko: "조립 불량",
+    vi: "Lỗi Lắp ráp",
+    shortVi: "L ráp",
+  },
+  { key: "bending", ko: "벤딩불량", vi: "Lỗi bending", shortVi: "Bend" },
+  {
+    key: "hairlineDefect",
+    ko: "헤어라인 불량",
+    vi: "Lỗi Hairline",
+    shortVi: "Hair",
+  },
 ]);
 
 export function createEmptyDefectCounts() {

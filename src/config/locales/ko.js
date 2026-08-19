@@ -644,11 +644,11 @@ const ko = {
     groupQtyYield: "수량 및 수율",
     groupDefects: "불량 상세",
     defectRateRowLabel: "총수량 대비 비율 →",
-    kpiAvgYield: "평균 수율",
+    kpiAvgYield: "직진율",
     kpiTotalQty: "총수량",
     kpiOkQty: "양품수량",
     kpiNgQty: "불량수량",
-    summaryCumulativeCol: "누적",
+    summaryCumulativeCol: "직진율",
     kpiNgRate: "불량율",
     defectViewImage: "보기",
     defectViewImageN: "보기 {{n}}",
@@ -666,8 +666,7 @@ const ko = {
     chartGeneratedAt: "출력일 {{date}}",
     chartActiveDays: "데이터 {{count}}일",
     chartProcessQtyHint: "",
-    chartDailyQtyHint:
-      "녹색=OK · 빨강=NG · 파란선=연쇄 누적 수율(최대 100%)",
+    chartDailyQtyHint: "녹색=OK · 빨강=NG · 파란선=연쇄 누적 수율(최대 100%)",
     chartOkNgShareTitle: "OK/NG 비율",
     chartOkNgShareHint: "기간 내 OK·NG 수량 분포",
     chartAvgYield: "평균 {{value}}%",
@@ -720,8 +719,7 @@ const ko = {
     manualEntryHint:
       "데이터 없음. PRESS, MC, HAIRLINE, ANODIZING, ASSEMBLY 공정 탭에서 일별 실적을 입력하세요.",
     chartReportBadgeAp5: "AP5 보고",
-    dailyProcessExpandHint:
-      "▶를 눌러 AP5FF, AP5FZ, AP5FL 상세 열기",
+    dailyProcessExpandHint: "▶를 눌러 AP5FF, AP5FZ, AP5FL 상세 열기",
     productSummaryTabsLabel: "총합 또는 일별 보기",
   },
   workplaceChart: {

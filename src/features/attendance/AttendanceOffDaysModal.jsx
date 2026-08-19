@@ -108,10 +108,12 @@ export default function AttendanceOffDaysModal({
       const had = new Map(snapshot.map((e) => [e.key, e.kind]));
       const allKeys = new Set([...want.keys(), ...had.keys()]);
       const updates = {};
+      const affectedDateKeys = [];
       for (const d of allKeys) {
         const w = want.get(d);
         const h = had.get(d);
         if (w === h) continue;
+        affectedDateKeys.push(d);
         const snap = await get(
           ref(db, `${attendanceRootPath}/${d}/_meta`),
         );
@@ -147,7 +149,7 @@ export default function AttendanceOffDaysModal({
         await update(ref(db), updates);
       }
       onClose();
-      onSaved?.();
+      onSaved?.(affectedDateKeys);
     } catch (err) {
       console.error("AttendanceOffDaysModal save:", err);
     } finally {

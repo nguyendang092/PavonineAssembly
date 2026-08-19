@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { buildPayrollMonthDayCellFormRecord } from "@/features/payroll/buildPayrollDayFromRaw";
+import { buildPayrollMonthDayCellFormRecord, buildBaseEmployeesForDay } from "@/features/payroll/buildPayrollDayFromRaw";
 import { pickPayrollEmployeeJoinDate } from "@/features/payroll/payrollEmployeeFields";
 import {
   formatPayrollMonthWeekday3,
@@ -443,7 +443,6 @@ export default function PayrollMonthlyTimeInOutModal({
   }, []);
 
   const {
-    dayChunks,
     displayDayChunks,
     loading,
     loadingMore,
@@ -451,6 +450,7 @@ export default function PayrollMonthlyTimeInOutModal({
     isDisplayStale,
     error,
     loadMonth,
+    patchDay,
   } = usePayrollMonthDayChunks({
     monthKeys: monthRange.keys,
     tlPage,
@@ -474,7 +474,7 @@ export default function PayrollMonthlyTimeInOutModal({
   }, [open]);
 
   const { sortedIds, repById, chunkByDate } =
-    usePayrollMonthEmployeeIndex(dayChunks);
+    usePayrollMonthEmployeeIndex(displayDayChunks);
 
   const gridOverlayCopy = useMemo(
     () =>
@@ -575,9 +575,10 @@ export default function PayrollMonthlyTimeInOutModal({
       const rep = repById.get(rowId);
       if (!rep) return;
       const dayEmp = resolvePayrollMonthDayEmployee(ch, rowId, rep);
+      const baseEmps = buildBaseEmployeesForDay(ch);
       const dayEmps =
-        Array.isArray(ch.baseEmployees) && ch.baseEmployees.length > 0
-          ? ch.baseEmployees
+        baseEmps.length > 0
+          ? baseEmps
           : Array.isArray(ch.employees)
             ? ch.employees
             : [];
@@ -1000,9 +1001,10 @@ export default function PayrollMonthlyTimeInOutModal({
         userRole={userRole}
         userDepartments={userDepartments}
         onAlert={onAlert}
-        onSaved={() => {
+        onSaved={(savedDateKey) => {
           setDayCellFormOpen(false);
-          void loadMonth();
+          if (savedDateKey) void patchDay(savedDateKey);
+          else void loadMonth();
         }}
         dayIsCompensatory={
           chunkByDate.get(dayCellFormDate)?.isCompensatoryDay ?? false

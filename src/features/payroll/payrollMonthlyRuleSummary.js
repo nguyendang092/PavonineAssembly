@@ -535,7 +535,7 @@ export function buildMonthlyRuleSummary(
 
   for (const dk of monthKeys) {
     const ch = dayChunks.get(dk);
-    if (!ch) continue;
+    if (!ch || ch.status === "error") continue;
 
     const emp = resolvePayrollMonthDayEmployee(ch, id, resolvedProfile);
     if (!isPayrollMonthDayOnOrAfterJoin(dk, join, monthKeys)) continue;
