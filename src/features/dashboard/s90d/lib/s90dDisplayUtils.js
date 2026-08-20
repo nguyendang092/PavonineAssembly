@@ -162,7 +162,22 @@ export function resolveS90dStepYieldPct(row) {
   return capYieldPct((Number(row.okQty ?? 0) / Number(row.totalQty)) * 100);
 }
 
-/** Hiệu suất chuỗi — logic hiển thị cũ của cột Hiệu suất (tab Tổng/Theo ngày). */
+/** Tích lũy (cột 직진율) — luôn lấy cumulativeYieldPct của đúng công đoạn. */
+export function resolveS90dCumulativeYieldPct(row, { isTotal = false } = {}) {
+  if (!row) return null;
+  if (isTotal) {
+    if (row.cumulativeYieldPct != null && row.cumulativeYieldPct !== "") {
+      return capYieldPct(row.cumulativeYieldPct);
+    }
+    return resolveS90dTotalYieldPct(row);
+  }
+  if (row.cumulativeYieldPct != null && row.cumulativeYieldPct !== "") {
+    return capYieldPct(row.cumulativeYieldPct);
+  }
+  return null;
+}
+
+/** Hiệu suất chuỗi — logic hiển thị cột Hiệu suất (tab Tổng/Theo ngày). */
 export function resolveS90dChainYieldPct(row, { isTotal = false } = {}) {
   if (!row) return null;
   if (isTotal) return resolveS90dTotalYieldPct(row);

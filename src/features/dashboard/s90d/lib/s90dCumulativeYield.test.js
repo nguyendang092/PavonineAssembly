@@ -67,6 +67,21 @@ describe("s90dCumulativeYield", () => {
     expect(processRows[3].cumulativeYieldPct).toBe(98);
   });
 
+  it("skips empty processes when chaining cumulative yield", () => {
+    const processRows = [
+      { process: "PRESS", okQty: 95, totalQty: 100 },
+      { process: "MC", okQty: 0, totalQty: 0 },
+      { process: "HAIRLINE", okQty: 90, totalQty: 100 },
+    ];
+
+    applyS90dProcessYieldMetrics(processRows);
+
+    expect(processRows[0].cumulativeYieldPct).toBe(95);
+    expect(processRows[1].cumulativeYieldPct).toBeNull();
+    expect(processRows[2].cumulativeYieldPct).toBe(94.7);
+    expect(processRows[2].yieldPct).toBe(94.7);
+  });
+
   it("uses null for empty daily rows when requested", () => {
     const processRows = [
       { process: "PRESS", yieldPct: 0, totalQty: 0 },

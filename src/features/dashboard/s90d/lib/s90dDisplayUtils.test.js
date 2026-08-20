@@ -3,6 +3,7 @@ import {
   aggregateBoardRowsByProductGroup,
   formatS90dBoardDisplayName,
   resolveS90dChainYieldPct,
+  resolveS90dCumulativeYieldPct,
   resolveS90dStepYieldPct,
   resolveS90dTotalYieldPct,
 } from "./s90dDisplayUtils";
@@ -96,6 +97,29 @@ describe("resolveS90dStepYieldPct", () => {
       resolveS90dStepYieldPct({ okQty: 90, totalQty: 100 }),
     ).toBe(90);
     expect(resolveS90dStepYieldPct({ okQty: 0, totalQty: 0 })).toBeNull();
+  });
+});
+
+describe("resolveS90dCumulativeYieldPct", () => {
+  it("uses cumulativeYieldPct for process rows", () => {
+    expect(
+      resolveS90dCumulativeYieldPct({
+        okQty: 90,
+        totalQty: 100,
+        yieldPct: 94.4,
+        cumulativeYieldPct: 92.9,
+      }),
+    ).toBe(92.9);
+  });
+
+  it("does not fall back to yieldPct when cumulative is missing", () => {
+    expect(
+      resolveS90dCumulativeYieldPct({
+        okQty: 90,
+        totalQty: 100,
+        yieldPct: 94.4,
+      }),
+    ).toBeNull();
   });
 });
 

@@ -138,13 +138,18 @@ const ShiftRow = memo(function ShiftRow({
 
   const codeSlot = row.codeSlot ?? defaultCodeSlot;
   const codeSlotLabel =
-    showCodeSlotColumn && !isPercent && codeSlot ? formatS90dTypeSlotLabel(codeSlot) : "";
+    showCodeSlotColumn && !isPercent && codeSlot
+      ? formatS90dTypeSlotLabel(codeSlot)
+      : "";
 
   return (
     <tr className={trClass}>
       <td className="s90d-sticky-col s90d-col-date">{dateCell}</td>
       <td className="s90d-col-line">{lineCell}</td>
-      <td className="s90d-col-product" title={isPercent ? undefined : row.productCode}>
+      <td
+        className="s90d-col-product"
+        title={isPercent ? undefined : row.productCode}
+      >
         {isPercent ? "" : row.productCode}
       </td>
       {showCodeSlotColumn ? (
@@ -176,8 +181,10 @@ const ShiftRow = memo(function ShiftRow({
             value={row.okQty || ""}
             onChange={(e) => onShiftFieldChange?.("okQty", e.target.value)}
           />
+        ) : isPercent ? (
+          ""
         ) : (
-          isPercent ? "" : formatQty(row.okQty, false, useDash)
+          formatQty(row.okQty, false, useDash)
         )}
       </td>
       <td className={`s90d-num s90d-col-ng ${isTotal ? "s90d-ng-total" : ""}`}>
@@ -191,7 +198,9 @@ const ShiftRow = memo(function ShiftRow({
               useDash ? "-" : "0%",
             )}
       </td>
-      <td className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}>
+      <td
+        className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}
+      >
         {isPercent ? "" : formatPct(row.ngRatePct, useDash)}
       </td>
       {S90D_DEFECT_COLUMNS.map(({ key }) => (
@@ -251,7 +260,9 @@ export default function S90dProcessShiftTable({
   const infoColCount = INFO_COL_COUNT_BASE + (showCodeSlotColumn ? 1 : 0);
   const tableTitle =
     boardLabel ||
-    (codeSlot ? `${productCode} · ${formatS90dTypeSlotLabel(codeSlot)}` : productCode);
+    (codeSlot
+      ? `${productCode} · ${formatS90dTypeSlotLabel(codeSlot)}`
+      : productCode);
 
   const { primaryShiftRows, lateShiftRows } = useMemo(() => {
     const primary = [];
@@ -314,9 +325,7 @@ export default function S90dProcessShiftTable({
         <div className="s90d-board-head-actions">
           <div className="s90d-board-meta s90d-board-meta--inline-row">
             <div className="s90d-meta-chip">
-              <span className="s90d-meta-label">
-                {rt("metaDate", "Ngày")}
-              </span>
+              <span className="s90d-meta-label">{rt("metaDate", "Ngày")}</span>
               <strong>{shortDate}</strong>
             </div>
             <div className="s90d-meta-chip">
@@ -327,7 +336,9 @@ export default function S90dProcessShiftTable({
             </div>
             {codeSlot ? (
               <div className="s90d-meta-chip">
-                <span className="s90d-meta-label">{formatS90dTypeSlotLabel(codeSlot)}</span>
+                <span className="s90d-meta-label">
+                  {formatS90dTypeSlotLabel(codeSlot)}
+                </span>
                 <strong>{formatS90dTypeSlotLabel(codeSlot)}</strong>
               </div>
             ) : null}
@@ -353,10 +364,7 @@ export default function S90dProcessShiftTable({
           >
             {lateShiftsExpanded
               ? rt("collapseLateShifts", "Ẩn ca 22~24 trở xuống")
-              : rt(
-                  "expandLateShifts",
-                  "Hiện ca 22~24, 00~03, 03~05, 05~08",
-                )}
+              : rt("expandLateShifts", "Hiện ca 22~24, 00~03, 03~05, 05~08")}
           </button>
         </div>
       ) : null}
@@ -406,7 +414,7 @@ export default function S90dProcessShiftTable({
                 <S90dBilingualHeader ko="불량수량" vi="SL NG" />
               </th>
               <th className="s90d-head-qty">
-                <S90dBilingualHeader ko="직진율" vi="Hiệu suất" />
+                <S90dBilingualHeader ko="수율" vi="Hiệu suất" />
               </th>
               <th className="s90d-head-qty s90d-head-ng-rate">
                 <S90dBilingualHeader ko="불량율" vi="Tỷ lệ NG" />

@@ -10,7 +10,7 @@ import {
   formatShortDateLabel,
   isHighDefectCell,
   resolveS90dChainYieldPct,
-  resolveS90dStepYieldPct,
+  resolveS90dCumulativeYieldPct,
   resolveS90dTotalYieldPct,
 } from "../lib/s90dDisplayUtils";
 import S90dBilingualHeader from "./S90dBilingualHeader";
@@ -111,15 +111,17 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
     isPercent,
     rt,
   });
-  const stepYieldPct = resolveS90dStepYieldPct(row);
   const chainYieldPct = resolveS90dChainYieldPct(row, { isTotal });
+  const cumulativeYieldPct = resolveS90dCumulativeYieldPct(row, { isTotal });
 
   return (
     <tr className={trClass}>
       <td className="s90d-sticky-col s90d-col-date">{dateCell}</td>
       <td
         className="s90d-col-product s90d-col-product--full"
-        title={isPercent ? undefined : String(productCell || "").trim() || undefined}
+        title={
+          isPercent ? undefined : String(productCell || "").trim() || undefined
+        }
       >
         {productCell}
       </td>
@@ -132,15 +134,17 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
         {isPercent ? "" : formatQty(row.okQty, false)}
       </td>
       <td className="s90d-num s90d-col-yield">
-        {isPercent ? "" : formatS90dYieldPct(stepYieldPct, "-")}
+        {isPercent ? "" : formatS90dYieldPct(chainYieldPct, "-")}
       </td>
       <td className="s90d-num s90d-col-cumulative">
-        {isPercent ? "" : formatS90dYieldPct(chainYieldPct, "-")}
+        {isPercent ? "" : formatS90dYieldPct(cumulativeYieldPct, "-")}
       </td>
       <td className={`s90d-num s90d-col-ng ${isTotal ? "s90d-ng-total" : ""}`}>
         {isPercent ? "" : formatQty(row.ngQty, false)}
       </td>
-      <td className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}>
+      <td
+        className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}
+      >
         {isPercent ? "" : formatPct(row.ngRatePct)}
       </td>
       {S90D_DEFECT_COLUMNS.map(({ key }) => (
@@ -266,7 +270,7 @@ export default function S90dSummaryProcessTable({
               <S90dBilingualHeader ko="공정" vi="Công đoạn" />
             </th>
             <th className="s90d-head-shift s90d-col-classification">
-              <S90dBilingualHeader ko="분류" vi="Phân loại" />
+              <S90dBilingualHeader ko="라인 구분" vi="Phân loại" />
             </th>
             <th className="s90d-head-qty s90d-head-total-qty">
               <S90dBilingualHeader ko="총수량" vi="Tổng SL" />
@@ -275,7 +279,7 @@ export default function S90dSummaryProcessTable({
               <S90dBilingualHeader ko="양품수량" vi="SL đạt" />
             </th>
             <th className="s90d-head-qty">
-              <S90dBilingualHeader ko="직진율" vi="Hiệu suất" />
+              <S90dBilingualHeader ko="수율" vi="Hiệu suất" />
             </th>
             <th className="s90d-head-qty s90d-head-cumulative">
               <S90dBilingualHeader ko="직진율" vi="Tích lũy" />

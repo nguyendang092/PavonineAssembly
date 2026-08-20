@@ -8,15 +8,20 @@ export const S90D_PROCESSES = Object.freeze([
 
 /** Cột lỗi chi tiết — nhãn song ngữ theo mẫu Excel mới nhất. */
 export const S90D_DEFECT_COLUMNS = Object.freeze([
-  { key: "rawMaterial", ko: "원자재", vi: "Nguyên liệu", shortVi: "NL" },
+  {
+    key: "rawMaterial",
+    ko: "원자재 불량",
+    vi: "Lỗi nguyên liệu",
+    shortVi: "NL",
+  },
   { key: "pressDefect", ko: "PRESS 불량", vi: "Lỗi dập", shortVi: "Dập" },
   { key: "burr", ko: "칩눌림 불량", vi: "Lỗi ấn Bavia", shortVi: "Bavia" },
-  { key: "scratch", ko: "스크러치", vi: "Trầy, xước", shortVi: "Trầy" },
+  { key: "scratch", ko: "스크 러치", vi: "Trầy, xước", shortVi: "Trầy" },
   { key: "dent", ko: "찍힘", vi: "Cấn", shortVi: "Cấn" },
   { key: "breakage", ko: "파손 불량", vi: "Lỗi gãy", shortVi: "Gãy" },
   { key: "bendWarp", ko: "휨 불량", vi: "Lỗi cong, vênh", shortVi: "Cong" },
   { key: "hole", ko: "홀 불량", vi: "Lỗi hole", shortVi: "Hole" },
-  { key: "sanding", ko: "사상불량", vi: "Lỗi chà", shortVi: "Chà" },
+  { key: "sanding", ko: "사상 불량", vi: "Lỗi chà", shortVi: "Chà" },
   { key: "tape", ko: "피막 불량", vi: "Lỗi nhuộm", shortVi: "Nhuộm" },
   { key: "stain", ko: "얼룩 불량", vi: "Lỗi loang màu", shortVi: "Loang" },
   { key: "corrosion", ko: "부식", vi: "Ăn mòn", shortVi: "Mòn" },

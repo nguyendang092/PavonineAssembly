@@ -240,27 +240,41 @@ export function applyS90dCumulativeYieldPct(
   processRows,
   { emptyAsNull = false } = {},
 ) {
-  (processRows ?? []).forEach((row, index) => {
-    if (emptyAsNull && !row.totalQty) {
+  let previousCumulative = null;
+  let hadEmptyProcessSinceLastCumulative = false;
+
+  (processRows ?? []).forEach((row) => {
+    if (!row.totalQty) {
       row.cumulativeYieldPct = null;
+      hadEmptyProcessSinceLastCumulative = true;
       return;
     }
 
     const stepYield =
       row.stepYieldPct ?? computeStepYieldPct(row) ?? row.yieldPct;
-    const previousCumulative =
-      index > 0 ? processRows[index - 1]?.cumulativeYieldPct : null;
 
-    if (emptyAsNull && index > 0 && previousCumulative == null) {
-      row.cumulativeYieldPct = null;
-      return;
+    if (previousCumulative == null) {
+      if (emptyAsNull && hadEmptyProcessSinceLastCumulative) {
+        row.cumulativeYieldPct = null;
+        return;
+      }
+      row.cumulativeYieldPct = computeS90dCumulativeYieldPct(
+        stepYield,
+        null,
+        0,
+      );
+    } else {
+      row.cumulativeYieldPct = computeS90dCumulativeYieldPct(
+        stepYield,
+        previousCumulative,
+        1,
+      );
     }
 
-    row.cumulativeYieldPct = computeS90dCumulativeYieldPct(
-      stepYield,
-      previousCumulative,
-      index,
-    );
+    if (row.totalQty > 0 && row.cumulativeYieldPct != null) {
+      previousCumulative = row.cumulativeYieldPct;
+      hadEmptyProcessSinceLastCumulative = false;
+    }
   });
 }
 
