@@ -1,0 +1,62 @@
+/* Sidebar Sản xuất — kế thừa layout HR, đổi màu brand cam. */
+
+.production-with-sidebar .production-with-sidebar__brand {
+  background: linear-gradient(135deg, #c2410c, #ea580c);
+  box-shadow: 0 6px 16px -8px rgba(234, 88, 12, 0.65);
+}
+
+.production-with-sidebar .attendance-with-sidebar__brand-date {
+  color: #9a3412;
+}
+
+.production-with-sidebar__links {
+  gap: 0.15rem;
+  overflow-y: auto;
+  padding-bottom: 0.25rem;
+}
+
+.production-with-sidebar__group + .production-with-sidebar__group {
+  margin-top: 0.45rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.production-with-sidebar__group-title {
+  margin: 0 0.55rem 0.25rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+/* Icon tones bổ sung */
+.attendance-with-sidebar__icon--orange {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.attendance-with-sidebar__icon--rose {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.attendance-with-sidebar__icon--green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.attendance-with-sidebar__item--active .attendance-with-sidebar__icon--orange {
+  background: #ea580c;
+  color: #fff;
+}
+
+.attendance-with-sidebar__item--active .attendance-with-sidebar__icon--rose {
+  background: #e11d48;
+  color: #fff;
+}
+
+.attendance-with-sidebar__item--active .attendance-with-sidebar__icon--green {
+  background: #16a34a;
+  color: #fff;
+}

@@ -386,7 +386,7 @@ export default function S90dProcessShiftTable({
                 <S90dBilingualHeader ko="line 구분" vi="Line" />
               </th>
               <th className="s90d-head-shift s90d-col-product">
-                <S90dBilingualHeader ko="상품 코드" vi="Mã hàng" />
+                <S90dBilingualHeader ko="모델명" vi="Mã hàng" />
               </th>
               {showCodeSlotColumn ? (
                 <th className="s90d-head-shift s90d-col-code-slot">
@@ -406,7 +406,7 @@ export default function S90dProcessShiftTable({
                 <S90dBilingualHeader ko="불량수량" vi="SL NG" />
               </th>
               <th className="s90d-head-qty">
-                <S90dBilingualHeader ko="수율" vi="Hiệu suất" />
+                <S90dBilingualHeader ko="직진율" vi="Hiệu suất" />
               </th>
               <th className="s90d-head-qty s90d-head-ng-rate">
                 <S90dBilingualHeader ko="불량율" vi="Tỷ lệ NG" />

@@ -77,10 +77,12 @@ export const PERMISSION_CATALOG = Object.freeze([
     labelVi: "Dashboard điểm danh — xem báo cáo / xuất Excel",
     quyTac:
       "Mọi user đã đăng nhập: xem toàn bộ dashboard (mọi bộ phận), in báo cáo, xuất Excel; không chặn theo Admin/HR/Manager/Staff hay bộ phận.",
-    routes: ["/attendance-dashboard"],
+    routes: ["/attendance-dashboard", "/attendance-daily-report"],
     modules: [
       "features/attendance/AttendanceDashboardPage.jsx",
+      "features/attendance/AttendanceDailyReportPage.jsx",
       "features/attendance/useAttendanceDashboardData.js",
+      "features/attendance/useAttendanceDailyReportData.js",
       "features/attendance/AttendanceListShell.jsx",
     ],
     authRolesHelpers: [

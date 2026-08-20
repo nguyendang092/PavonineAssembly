@@ -1,0 +1,27 @@
+/**
+ * Production — scroll dọc giống HR (`#app-main-scroll`).
+ */
+
+html.production-page-active #app-main-scroll.production-page-scroll-root {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.production-page-active .production-with-sidebar {
+  min-height: min(100%, calc(100dvh - var(--app-navbar-height, 4rem)));
+}
+
+html.production-page-active .production-with-sidebar__main {
+  min-height: 0 !important;
+}
+
+.production-page-viewport {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-height: min(100%, calc(100dvh - var(--app-navbar-height, 4rem)));
+  box-sizing: border-box;
+}

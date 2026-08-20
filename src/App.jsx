@@ -17,6 +17,7 @@ import "@/config/i18n";
 import { UserContext } from "@/contexts/UserContext";
 import ProtectedRoute from "@/auth/ProtectedRoute";
 import { routeConfig, PUBLIC_ROUTE_PATHS } from "@/config/menuConfig";
+import { PRODUCTION_LAYOUT_PATHS } from "@/features/production/productionSidebarConfig";
 import { inferRoleFromMapping, isAdminOrHR, ROLES } from "@/config/authRoles";
 import {
   BrowserRouter as Router,
@@ -44,6 +45,9 @@ const KoreanTimesheetPage = lazyImport(
 );
 const AttendanceDashboardPage = lazyImport(
   () => import("@/features/attendance/AttendanceDashboardPage"),
+);
+const AttendanceDailyReportPage = lazyImport(
+  () => import("@/features/attendance/AttendanceDailyReportPage"),
 );
 
 const WorkplaceDashboardNormal = lazyImport(
@@ -88,6 +92,9 @@ const PermissionCatalogPage = lazyImport(
 const NavigationBoardPage = lazyImport(
   () => import("@/features/home/NavigationBoardPage"),
 );
+const ProductionPageShell = lazyImport(
+  () => import("@/features/production/ProductionPageShell"),
+);
 const LoginRoute = lazyImport(() => import("@/auth/LoginRoute"));
 const NotFoundPage = lazyImport(() => import("@/components/ui/NotFoundPage"));
 
@@ -112,6 +119,7 @@ const ROUTE_COMPONENTS = {
   AnnualLeaveManager,
   KoreanTimesheetPage,
   AttendanceDashboardPage,
+  AttendanceDailyReportPage,
   UserDepartmentManager,
   PermissionCatalogPage,
   NavigationBoardPage,
@@ -340,8 +348,36 @@ const App = () => {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <ProductionPageShell />
+                    </ProtectedRoute>
+                  }
+                >
+                  {routeConfig
+                    .filter(
+                      (r) =>
+                        !PUBLIC_ROUTE_PATHS.has(r.path) &&
+                        PRODUCTION_LAYOUT_PATHS.includes(r.path),
+                    )
+                    .map((r) => {
+                      const RouteComponent = ROUTE_COMPONENTS[r.element];
+                      return RouteComponent ? (
+                        <Route
+                          key={r.path}
+                          path={r.path}
+                          element={<RouteComponent />}
+                        />
+                      ) : null;
+                    })}
+                </Route>
                 {routeConfig
-                  .filter((r) => !PUBLIC_ROUTE_PATHS.has(r.path))
+                  .filter(
+                    (r) =>
+                      !PUBLIC_ROUTE_PATHS.has(r.path) &&
+                      !PRODUCTION_LAYOUT_PATHS.includes(r.path),
+                  )
                   .map((r) => {
                     const RouteComponent = ROUTE_COMPONENTS[r.element];
                     return RouteComponent ? (

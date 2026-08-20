@@ -73,6 +73,11 @@ export const menuConfig = [
                   },
                 ],
               },
+              {
+                key: "attendanceDailyReport",
+                label: "navbar.attendanceDailyReport",
+                path: "/attendance-daily-report",
+              },
             ],
           },
         ],
@@ -176,6 +181,7 @@ export const routeConfig = [
   { path: "/attendance-salary", element: "PayrollSalaryCalculator" },
   { path: "/annual-leave", element: "AnnualLeaveManager" },
   { path: "/attendance-dashboard", element: "AttendanceDashboardPage" },
+  { path: "/attendance-daily-report", element: "AttendanceDailyReportPage" },
   { path: "/user-department", element: "UserDepartmentManager" },
   { path: "/permission-catalog", element: "PermissionCatalogPage" },
 ];

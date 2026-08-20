@@ -260,7 +260,7 @@ export default function S90dSummaryProcessTable({
               <S90dBilingualHeader ko="일자" vi="Ngày" />
             </th>
             <th className="s90d-head-shift s90d-col-product s90d-col-product--full">
-              <S90dBilingualHeader ko="상품 코드" vi="Mã hàng" />
+              <S90dBilingualHeader ko="모델명" vi="Mã hàng" />
             </th>
             <th className="s90d-head-shift s90d-col-process">
               <S90dBilingualHeader ko="공정" vi="Công đoạn" />
@@ -275,13 +275,10 @@ export default function S90dSummaryProcessTable({
               <S90dBilingualHeader ko="양품수량" vi="SL đạt" />
             </th>
             <th className="s90d-head-qty">
-              <S90dBilingualHeader ko="수율" vi="Hiệu suất" />
+              <S90dBilingualHeader ko="직진율" vi="Hiệu suất" />
             </th>
             <th className="s90d-head-qty s90d-head-cumulative">
-              <S90dBilingualHeader
-                ko="누적"
-                vi={rt("summaryCumulativeCol", "Tích lũy")}
-              />
+              <S90dBilingualHeader ko="직진율" vi="Tích lũy" />
             </th>
             <th className="s90d-head-qty s90d-head-ng">
               <S90dBilingualHeader ko="불량수량" vi="SL NG" />

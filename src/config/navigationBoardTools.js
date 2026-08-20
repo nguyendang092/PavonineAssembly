@@ -141,6 +141,14 @@ export const NAVIGATION_BOARD_TOOLS = [
     status: "new",
   },
   {
+    id: "APP-13B",
+    path: "/attendance-daily-report",
+    category: "operations",
+    titleKey: "navbar.attendanceDailyReport",
+    descriptionKey: "navigationBoard.descAttendanceDailyReport",
+    status: "new",
+  },
+  {
     id: "APP-14",
     path: "/attendance-salary",
     category: "hr",
