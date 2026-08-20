@@ -1,7 +1,6 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { MC_DEFECT_FILTER_ALL } from "./lib/constants";
-import FiltersSidebar from "./components/FiltersSidebar";
+import FiltersDropdown from "./components/FiltersDropdown";
 import KpiCards from "./components/KpiCards";
 import ChartsTopRow from "./components/ChartsTopRow";
 import ChartsHeatmapDonutRow from "./components/ChartsHeatmapDonutRow";
@@ -64,32 +63,12 @@ export default function McDefectReportPage() {
                 {tl("pageTitle", "BÁO CÁO HÀNG LỖI BỘ PHẬN MC")}
               </h1>
             </div>
-            <div className="grid grid-cols-1 gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800">
-                <p className="text-[10px] uppercase text-slate-500">
-                  {tl("reportMonth", "Report Month")}
-                </p>
-                <p>
-                  {filters.reportMonth === MC_DEFECT_FILTER_ALL
-                    ? tl("all", "All")
-                    : filters.reportMonth}
-                </p>
-              </div>
+            <div className="grid grid-cols-1 gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800">
                 <p className="text-[10px] uppercase text-slate-500">
                   {tl("lastUpdated", "Last Updated")}
                 </p>
                 <p>{new Date().toLocaleString(displayLocale)}</p>
-              </div>
-              <div className="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800">
-                <p className="text-[10px] uppercase text-slate-500">
-                  {tl("department", "Department")}
-                </p>
-                <p>
-                  {filters.reportDepartment === MC_DEFECT_FILTER_ALL
-                    ? tl("all", "All")
-                    : filters.reportDepartment}
-                </p>
               </div>
               <div className="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800">
                 <p className="text-[10px] uppercase text-slate-500">
@@ -112,6 +91,10 @@ export default function McDefectReportPage() {
                   </button>
                 </div>
               </div>
+              <FiltersDropdown
+                {...filters}
+                onResetFilters={filters.handleResetFilters}
+              />
             </div>
           </div>
         </header>
@@ -126,86 +109,79 @@ export default function McDefectReportPage() {
           <MessageBanner message={message} messageType={messageType} />
         ) : null}
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-          <FiltersSidebar
-            {...filters}
-            onResetFilters={filters.handleResetFilters}
+        <div className="space-y-4">
+          <KpiCards {...kpi} />
+          <ChartsTopRow
+            byEmployeeData={charts.byEmployeeData}
+            topEmployeeYAxisWidth={charts.topEmployeeYAxisWidth}
+            byDateData={charts.byDateData}
+            chartByDatePeriodLabel={charts.chartByDatePeriodLabel}
+            dailyAverage={charts.dailyAverage}
+          />
+          <ChartsHeatmapDonutRow
+            heatmapData={charts.heatmapData}
+            heatmapTableHeightPx={charts.heatmapTableHeightPx}
+            donutByErrorTypeData={charts.donutByErrorTypeData}
+            donutPlotHeightPx={charts.donutPlotHeightPx}
+            donutRadii={charts.donutRadii}
+          />
+          <EmployeeMonthlyAnnouncement
+            employeeRows={charts.employeeAnnouncementRows}
+            reportMonth={filters.reportMonth}
+            reportPeriodLabel={
+              charts.employeeAnnouncementPeriodLabel || filters.reportMonth
+            }
+            reportDepartment={filters.reportDepartment}
+            employeePickerOptions={charts.announcementEmployeePickerOptions}
+            manualEmployees={a3Manual.manualEmployees}
+            setManualEmployees={a3Manual.setManualEmployees}
+            a3ManualSaving={a3Manual.saving}
+          />
+          <MCDefectReportEntrySection
+            saving={saving}
+            form={form.form}
+            editingRecord={form.editingRecord}
+            handleChange={form.handleChange}
+            handleSubmit={form.handleSubmit}
+            onCancelEdit={form.handleCancelEdit}
+            onDownloadTemplate={actions.handleDownloadTemplate}
+            onImportExcel={actions.handleImportExcel}
+            rawRowsPaged={tables.rawRowsPaged}
+            filteredRows={tables.filteredRows}
+            currentRawPage={tables.currentRawPage}
+            totalRawPages={tables.totalRawPages}
+            rowsPerPage={tables.rowsPerPage}
+            onPrevRawPage={tables.onPrevRawPage}
+            onNextRawPage={tables.onNextRawPage}
+            onEdit={actions.handleEdit}
+            onDelete={actions.handleDelete}
+          />
+          <MCDefectReportPivotSection
+            detailRowsPaged={tables.detailRowsPaged}
+            detailRows={tables.detailRows}
+            currentDetailPage={tables.currentDetailPage}
+            totalDetailPages={tables.totalDetailPages}
+            rowsPerPage={tables.rowsPerPage}
+            onPrevDetailPage={tables.onPrevDetailPage}
+            onNextDetailPage={tables.onNextDetailPage}
           />
 
-          <div className="min-w-0 flex-1 space-y-4">
-            <KpiCards {...kpi} />
-            <ChartsTopRow
-              byEmployeeData={charts.byEmployeeData}
-              topEmployeeYAxisWidth={charts.topEmployeeYAxisWidth}
-              byDateData={charts.byDateData}
-              chartByDatePeriodLabel={charts.chartByDatePeriodLabel}
-              dailyAverage={charts.dailyAverage}
-            />
-            <ChartsHeatmapDonutRow
-              heatmapData={charts.heatmapData}
-              heatmapTableHeightPx={charts.heatmapTableHeightPx}
-              donutByErrorTypeData={charts.donutByErrorTypeData}
-              donutPlotHeightPx={charts.donutPlotHeightPx}
-              donutRadii={charts.donutRadii}
-            />
-            <EmployeeMonthlyAnnouncement
-              employeeRows={charts.employeeAnnouncementRows}
-              reportMonth={filters.reportMonth}
-              reportPeriodLabel={
-                charts.employeeAnnouncementPeriodLabel || filters.reportMonth
-              }
-              reportDepartment={filters.reportDepartment}
-              employeePickerOptions={charts.announcementEmployeePickerOptions}
-              manualEmployees={a3Manual.manualEmployees}
-              setManualEmployees={a3Manual.setManualEmployees}
-              a3ManualSaving={a3Manual.saving}
-            />
-            <MCDefectReportEntrySection
-              saving={saving}
-              form={form.form}
-              editingRecord={form.editingRecord}
-              handleChange={form.handleChange}
-              handleSubmit={form.handleSubmit}
-              onCancelEdit={form.handleCancelEdit}
-              onDownloadTemplate={actions.handleDownloadTemplate}
-              onImportExcel={actions.handleImportExcel}
-              rawRowsPaged={tables.rawRowsPaged}
-              filteredRows={tables.filteredRows}
-              currentRawPage={tables.currentRawPage}
-              totalRawPages={tables.totalRawPages}
-              rowsPerPage={tables.rowsPerPage}
-              onPrevRawPage={tables.onPrevRawPage}
-              onNextRawPage={tables.onNextRawPage}
-              onEdit={actions.handleEdit}
-              onDelete={actions.handleDelete}
-            />
-            <MCDefectReportPivotSection
-              detailRowsPaged={tables.detailRowsPaged}
-              detailRows={tables.detailRows}
-              currentDetailPage={tables.currentDetailPage}
-              totalDetailPages={tables.totalDetailPages}
-              rowsPerPage={tables.rowsPerPage}
-              onPrevDetailPage={tables.onPrevDetailPage}
-              onNextDetailPage={tables.onNextDetailPage}
-            />
-
-            <footer className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p>
-                  {tl("reportOwner", "Người tạo báo cáo:")}{" "}
-                  <input
-                    value={reportOwner}
-                    onChange={(e) => setReportOwner(e.target.value)}
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
-                  />
-                </p>
-                <p>
-                  {tl("updatedAt", "Cập nhật lúc:")}{" "}
-                  {new Date().toLocaleString(displayLocale)}
-                </p>
-              </div>
-            </footer>
-          </div>
+          <footer className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                {tl("reportOwner", "Người tạo báo cáo:")}{" "}
+                <input
+                  value={reportOwner}
+                  onChange={(e) => setReportOwner(e.target.value)}
+                  className="rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
+                />
+              </p>
+              <p>
+                {tl("updatedAt", "Cập nhật lúc:")}{" "}
+                {new Date().toLocaleString(displayLocale)}
+              </p>
+            </div>
+          </footer>
         </div>
       </div>
     </div>

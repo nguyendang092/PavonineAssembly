@@ -1,5 +1,9 @@
 /* Sidebar Sản xuất — kế thừa layout HR, đổi màu brand cam. */
 
+.production-with-sidebar .attendance-with-sidebar__nav {
+  z-index: 35;
+}
+
 .production-with-sidebar .production-with-sidebar__brand {
   background: linear-gradient(135deg, #c2410c, #ea580c);
   box-shadow: 0 6px 16px -8px rgba(234, 88, 12, 0.65);

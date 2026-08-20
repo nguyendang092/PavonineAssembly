@@ -7,7 +7,7 @@ Route: `/mc-defect-report` · Firebase: `mcDefectReport/byDate`, `mcDefectReport
 | Mục đích | File |
 |----------|------|
 | Bố cục trang, header, ghép các khối UI | `McDefectReportPage.jsx` |
-| Bộ lọc sidebar (tháng, BP, NV, loại lỗi) | `components/FiltersSidebar.jsx` |
+| Bộ lọc dropdown (tháng, BP, NV, loại lỗi) | `components/FiltersDropdown.jsx` |
 | 5 thẻ KPI | `components/KpiCards.jsx` |
 | Biểu đồ cột top NV + đường theo ngày | `components/ChartsTopRow.jsx` |
 | Heatmap + donut theo loại lỗi | `components/ChartsHeatmapDonutRow.jsx` |
@@ -38,7 +38,7 @@ mcDefectReport/
     excelImport.js
     pieChartLabel.jsx
   components/
-    FiltersSidebar.jsx
+    FiltersDropdown.jsx
     KpiCards.jsx
     ChartsTopRow.jsx
     ChartsHeatmapDonutRow.jsx
