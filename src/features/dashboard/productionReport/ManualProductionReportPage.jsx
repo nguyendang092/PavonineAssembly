@@ -46,7 +46,7 @@ export default function ManualProductionReportPage({
     saving,
     importing,
     syncError,
-    storeRevision,
+    processSyncRevision,
     saveProcessMonth,
     exportMonthToExcel,
     importMonthFromExcel,
@@ -381,7 +381,7 @@ export default function ManualProductionReportPage({
               key={`${activeTab}-${selectedMonthKey}`}
               process={activeTab}
               monthDayKeys={monthDayKeys}
-              storeRevision={storeRevision}
+              processSyncRevision={processSyncRevision}
               getProcessEntry={getProcessEntry}
               onSave={handleProcessSave}
               saving={saving}

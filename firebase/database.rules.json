@@ -127,6 +127,15 @@
       }
     },
 
+    "ap5": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "manualEntries": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
     "ap5fz": {
       ".read": "auth != null",
       ".write": "auth != null",

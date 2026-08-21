@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
-import { useReportT } from "../../productionReport/useReportTranslation";import S90dProcessShiftTable from "./S90dProcessShiftTable";
+import { useReportT } from "../../productionReport/useReportTranslation";
+import S90dProcessShiftTable from "./S90dProcessShiftTable";
 import { buildProcessShiftSummaryFromManual } from "../lib/buildS90dFromManual";
 import {
   clampDateKeyToMonth,
@@ -18,7 +19,7 @@ import {
 export default function S90dProcessTabPanel({
   process,
   monthDayKeys,
-  storeRevision = 0,
+  processSyncRevision = 0,
   getProcessEntry,
   onSave,
   saving = false,
@@ -26,7 +27,8 @@ export default function S90dProcessTabPanel({
   const { t } = useTranslation();
   const rt = useReportT();
   const { defaultProductCode, usesFixedBoardSpecs = false } =
-    useProductionReportContext();  const [localByDate, setLocalByDate] = useState({});
+    useProductionReportContext();
+  const [localByDate, setLocalByDate] = useState({});
   const [isDirty, setIsDirty] = useState(false);
   const [selectedDateKey, setSelectedDateKey] = useState(() =>
     pickDefaultDateKey(monthDayKeys),
@@ -37,35 +39,59 @@ export default function S90dProcessTabPanel({
   const monthMaxDate = monthDayKeys[monthDayKeys.length - 1] ?? "";
   const selectedDateIndex = monthDayKeys.indexOf(selectedDateKey);
 
+  const hydrateDayEntry = useCallback(
+    (dateKey) => {
+      const entry = getProcessEntry(dateKey, process);
+      if (usesFixedBoardSpecs) {
+        return {
+          boards: resolveProcessBoards(entry, process, defaultProductCode),
+        };
+      }
+
+      return {
+        boards: resolveProcessBoards(entry, process, defaultProductCode).map(
+          (board) => ({
+            ...board,
+            productCode:
+              String(board.productCode ?? "").trim() === "S90D"
+                ? defaultProductCode
+                : board.productCode,
+          }),
+        ),
+      };
+    },
+    [defaultProductCode, getProcessEntry, process, usesFixedBoardSpecs],
+  );
+
   useEffect(() => {
-    const slice = Object.fromEntries(
-      monthDayKeys.map((dateKey) => {
-        const entry = getProcessEntry(dateKey, process);
-        if (usesFixedBoardSpecs) {
-          return [
-            dateKey,
-            { boards: resolveProcessBoards(entry, process, defaultProductCode) },
-          ];
-        }
-        return [
-          dateKey,
-          {
-            boards: resolveProcessBoards(entry, process, defaultProductCode).map(
-              (board) => ({
-                ...board,
-                productCode:
-                  String(board.productCode ?? "").trim() === "S90D"
-                    ? defaultProductCode
-                    : board.productCode,
-              }),
-            ),
-          },
-        ];
-      }),
-    );
-    setLocalByDate(slice);
+    setLocalByDate({});
     setIsDirty(false);
-  }, [process, monthDayKeys, storeRevision, getProcessEntry, defaultProductCode, usesFixedBoardSpecs]);
+    setSelectedDateKey(pickDefaultDateKey(monthDayKeys));
+  }, [process, monthDayKeys]);
+
+  useEffect(() => {
+    if (isDirty) return;
+
+    setLocalByDate((prev) => ({
+      ...prev,
+      [selectedDateKey]: hydrateDayEntry(selectedDateKey),
+    }));
+  }, [
+    hydrateDayEntry,
+    isDirty,
+    processSyncRevision,
+    selectedDateKey,
+  ]);
+
+  useEffect(() => {
+    setLocalByDate((prev) => {
+      if (prev[selectedDateKey]) return prev;
+      return {
+        ...prev,
+        [selectedDateKey]: hydrateDayEntry(selectedDateKey),
+      };
+    });
+  }, [hydrateDayEntry, selectedDateKey]);
 
   useEffect(() => {
     setSelectedDateKey((prev) => clampDateKeyToMonth(prev, monthDayKeys));
@@ -217,4 +243,3 @@ export default function S90dProcessTabPanel({
     </section>
   );
 }
-

@@ -1,6 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { db, onValue, ref, set } from "@/services/firebase";
-import {  formatS90dMonthDisplayLabel,
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { db, onValue, ref, set, update } from "@/services/firebase";
+import {
+  formatS90dMonthDisplayLabel,
   formatS90dMonthLabel,
   listMonthDateKeys,
   listMonthKeysFromStore,
@@ -22,9 +30,12 @@ import {
   readS90dManualExcelFile,
 } from "../s90d/lib/s90dManualExcel";
 import {
+  buildManualEntriesFirebasePatch,
   parseManualEntriesSnapshot,
+  patchHasManualEntryChanges,
   serializeManualEntriesForFirebase,
 } from "./manualEntriesFirebase";
+import { scheduleManualStorePersist } from "./manualEntriesStorage";
 
 function loadManualStore(storageKey, manualEntryConfig) {
   try {
@@ -34,10 +45,6 @@ function loadManualStore(storageKey, manualEntryConfig) {
   } catch {
     return {};
   }
-}
-
-function saveManualStore(storageKey, store) {
-  window.localStorage.setItem(storageKey, JSON.stringify(store));
 }
 
 export function useProductionManualEntries(config) {
@@ -58,9 +65,15 @@ export function useProductionManualEntries(config) {
     formatS90dMonthLabel(new Date()),
   );
   const [store, setStore] = useState(() =>
-    normalizeManualStore(loadManualStore(storageKey, manualEntryConfig), manualEntryConfig),
+    normalizeManualStore(
+      loadManualStore(storageKey, manualEntryConfig),
+      manualEntryConfig,
+    ),
   );
-  const [storeRevision, setStoreRevision] = useState(0);
+  const storeRef = useRef(store);
+  storeRef.current = store;
+
+  const [processSyncRevision, setProcessSyncRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -69,12 +82,24 @@ export function useProductionManualEntries(config) {
   const skipRemoteRef = useRef(false);
 
   const applyLoadedStore = useCallback(
-    (nextStore) => {
+    (nextStore, { bumpProcessSync = true } = {}) => {
       const normalized = normalizeManualStore(nextStore, manualEntryConfig);
-      lastPersistedJsonRef.current = JSON.stringify(normalized);
+      const nextJson = JSON.stringify(normalized);
+
+      if (nextJson === lastPersistedJsonRef.current) {
+        setLoading(false);
+        return;
+      }
+
+      lastPersistedJsonRef.current = nextJson;
+      storeRef.current = normalized;
       setStore(normalized);
-      setStoreRevision((value) => value + 1);
-      saveManualStore(storageKey, normalized);
+
+      if (bumpProcessSync) {
+        setProcessSyncRevision((value) => value + 1);
+      }
+
+      scheduleManualStorePersist(storageKey, normalized);
     },
     [manualEntryConfig, storageKey],
   );
@@ -125,6 +150,7 @@ export function useProductionManualEntries(config) {
 
     return () => unsubscribe();
   }, [applyLoadedStore, firebaseRoot, manualEntryConfig, storageKey]);
+
   const monthOptions = useMemo(
     () => listMonthKeysFromStore(store, monthReferenceDate),
     [store, monthReferenceDate],
@@ -149,21 +175,38 @@ export function useProductionManualEntries(config) {
   );
 
   const persistStore = useCallback(
-    async (nextStore) => {
+    async (nextStore, { touchedDateKeys = null, fullRemoteWrite = false } = {}) => {
+      const previousStore = storeRef.current;
       const normalized = normalizeManualStore(nextStore, manualEntryConfig);
+      const nextJson = JSON.stringify(normalized);
+
       setSaving(true);
       setSyncError("");
 
       try {
-        lastPersistedJsonRef.current = JSON.stringify(normalized);
+        lastPersistedJsonRef.current = nextJson;
+        storeRef.current = normalized;
         setStore(normalized);
-        setStoreRevision((value) => value + 1);
-        saveManualStore(storageKey, normalized);
+        scheduleManualStorePersist(storageKey, normalized);
 
         skipRemoteRef.current = true;
-        await set(ref(db, firebaseRoot), {
-          ...serializeManualEntriesForFirebase(normalized),
-        });
+
+        if (fullRemoteWrite || !touchedDateKeys?.length) {
+          await set(ref(db, firebaseRoot), {
+            ...serializeManualEntriesForFirebase(normalized),
+          });
+          return;
+        }
+
+        const patch = buildManualEntriesFirebasePatch(
+          normalized,
+          previousStore,
+          touchedDateKeys,
+        );
+
+        if (patchHasManualEntryChanges(patch)) {
+          await update(ref(db, firebaseRoot), patch);
+        }
       } catch {
         setSyncError("Không lưu được lên Firebase — dữ liệu vẫn ở trình duyệt.");
         throw new Error("SAVE_FAILED");
@@ -177,21 +220,33 @@ export function useProductionManualEntries(config) {
   const saveProcessMonth = useCallback(
     async (process, dateKeys, localByDate) => {
       const nextStore = mergeProcessMonthIntoStore(
-        store,
+        storeRef.current,
         dateKeys,
         process,
         localByDate,
         manualEntryConfig,
       );
-      await persistStore(nextStore);
+
+      const touchedDateKeys = dateKeys.filter((dateKey) => {
+        const localDay = localByDate[dateKey];
+        if (localDay !== undefined) return true;
+        return (
+          JSON.stringify(nextStore[dateKey]) !==
+          JSON.stringify(storeRef.current[dateKey])
+        );
+      });
+
+      await persistStore(nextStore, {
+        touchedDateKeys: touchedDateKeys.length ? touchedDateKeys : dateKeys,
+      });
     },
-    [manualEntryConfig, persistStore, store],
+    [manualEntryConfig, persistStore],
   );
 
   const exportMonthToExcel = useCallback(
     (processFilter = null) => {
       exportS90dManualMonthToExcel({
-        store,
+        store: storeRef.current,
         monthDayKeys,
         monthKey: selectedMonthKey,
         processFilter,
@@ -199,7 +254,7 @@ export function useProductionManualEntries(config) {
         filePrefix: excelFilePrefix,
       });
     },
-    [store, monthDayKeys, selectedMonthKey, excelSheetName, excelFilePrefix],
+    [monthDayKeys, selectedMonthKey, excelSheetName, excelFilePrefix],
   );
 
   const importMonthFromExcel = useCallback(
@@ -213,8 +268,13 @@ export function useProductionManualEntries(config) {
         if (!rows.length) {
           throw new Error("EMPTY_IMPORT");
         }
-        const nextStore = mergeImportedRowsIntoStore(store, rows, manualEntryConfig);
-        await persistStore(nextStore);
+        const nextStore = mergeImportedRowsIntoStore(
+          storeRef.current,
+          rows,
+          manualEntryConfig,
+        );
+        await persistStore(nextStore, { fullRemoteWrite: true });
+        setProcessSyncRevision((value) => value + 1);
         return { importedCount: rows.length };
       } catch (error) {
         if (String(error?.message) === "EMPTY_IMPORT") {
@@ -225,24 +285,26 @@ export function useProductionManualEntries(config) {
         setImporting(false);
       }
     },
-    [excelSheetName, manualEntryConfig, persistStore, store],
+    [excelSheetName, manualEntryConfig, persistStore],
   );
 
   const getProcessEntryForDate = useCallback(
     (dateKey, process) =>
-      getProcessEntry(store, dateKey, process, manualEntryConfig),
-    [manualEntryConfig, store],
+      getProcessEntry(storeRef.current, dateKey, process, manualEntryConfig),
+    [manualEntryConfig],
   );
+
+  const deferredStore = useDeferredValue(store);
 
   const monthDailySummaries = useMemo(
     () =>
       buildMonthDailySummariesFromManual({
-        store,
+        store: deferredStore,
         dateKeys: monthDayKeys,
         defaultProductCode,
         manualEntryConfig,
       }),
-    [defaultProductCode, manualEntryConfig, monthDayKeys, store],
+    [defaultProductCode, manualEntryConfig, monthDayKeys, deferredStore],
   );
 
   const grandTotalSummary = useMemo(
@@ -270,7 +332,7 @@ export function useProductionManualEntries(config) {
     saving,
     importing,
     syncError,
-    storeRevision,
+    processSyncRevision,
     saveProcessMonth,
     exportMonthToExcel,
     importMonthFromExcel,

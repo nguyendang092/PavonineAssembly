@@ -581,11 +581,11 @@ export function mergeProcessMonthIntoStore(
 
   dateKeys.forEach((dateKey) => {
     const day = { ...ensureDayEntry(next, dateKey, config) };
-    day[process] = normalizeProcessDayEntry(
-      localByDate[dateKey] ?? createEmptyProcessDayEntry(process, config),
-      process,
-      config,
-    );
+    const localDay =
+      localByDate[dateKey] ??
+      store?.[dateKey]?.[process] ??
+      createEmptyProcessDayEntry(process, config);
+    day[process] = normalizeProcessDayEntry(localDay, process, config);
     next[dateKey] = day;
   });
 

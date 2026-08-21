@@ -1,0 +1,370 @@
+.temperature-monitor-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.65rem 0.75rem 1.25rem;
+}
+
+.temperature-filter-panel {
+  margin-bottom: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 0.55rem 0.65rem;
+  box-shadow: 0 4px 14px -12px rgb(15 23 42 / 0.35);
+}
+
+.dark .temperature-filter-panel {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.temperature-filter-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+}
+
+.temperature-filter-panel__kicker {
+  margin: 0;
+  flex: 1 1 100%;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ea580c;
+}
+
+@media (min-width: 900px) {
+  .temperature-filter-panel__kicker {
+    flex: 0 0 auto;
+    margin-right: 0.15rem;
+  }
+}
+
+.temperature-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.temperature-filter-field--inline {
+  flex: 1 1 8.5rem;
+  max-width: 100%;
+}
+
+.temperature-filter-field--grow {
+  flex: 2 1 11rem;
+}
+
+.temperature-filter-field__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.temperature-filter-field__input {
+  width: 100%;
+  min-height: 2rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #fff;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+  color: #0f172a;
+}
+
+.temperature-filter-field__input--month {
+  min-width: 9rem;
+}
+
+.dark .temperature-filter-field__input {
+  border-color: #475569;
+  background: #020617;
+  color: #f8fafc;
+}
+
+.temperature-filter-chart-btn {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid #c7d2fe;
+  border-radius: 0.5rem;
+  background: #eef2ff;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #4338ca;
+  white-space: nowrap;
+}
+
+.temperature-filter-chart-btn__text {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .temperature-filter-chart-btn__text {
+    display: inline;
+  }
+}
+
+.temperature-filter-chart-btn:hover:not(:disabled) {
+  background: #e0e7ff;
+}
+
+.temperature-filter-chart-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.temperature-filter-toggle-btn {
+  min-height: 2rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.dark .temperature-filter-toggle-btn {
+  border-color: #475569;
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+.temperature-filter-icon-btn {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fdba74;
+  border-radius: 0.5rem;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.78rem;
+}
+
+.temperature-filter-icon-btn:hover:not(:disabled) {
+  background: #ffedd5;
+}
+
+.temperature-machine-panel {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.dark .temperature-machine-panel {
+  border-top-color: #334155;
+}
+
+.temperature-machine-panel__empty {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.temperature-machine-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.temperature-machine-list__item {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  padding: 0.2rem 0.35rem 0.2rem 0.55rem;
+}
+
+.dark .temperature-machine-list__item {
+  border-color: #475569;
+  background: #1e293b;
+}
+
+.temperature-machine-list__name {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.dark .temperature-machine-list__name {
+  color: #e2e8f0;
+}
+
+.temperature-machine-list__edit {
+  width: 8rem;
+  min-height: 1.75rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.76rem;
+}
+
+.temperature-machine-list__actions {
+  display: inline-flex;
+  gap: 0.1rem;
+}
+
+.temperature-machine-list__action {
+  display: inline-flex;
+  width: 1.45rem;
+  height: 1.45rem;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.68rem;
+}
+
+.temperature-machine-list__action:hover {
+  background: #e2e8f0;
+}
+
+.temperature-machine-list__action--danger:hover {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.temperature-machine-panel__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+.temperature-machine-panel__pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.temperature-machine-panel__pager-btn {
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  background: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.temperature-machine-panel__pager-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.temperature-machine-panel__pager-label {
+  min-width: 2.5rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.temperature-machine-panel__add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.temperature-machine-panel__add-row .temperature-filter-field__input {
+  flex: 1 1 9rem;
+  max-width: 14rem;
+}
+
+.temperature-machine-panel__add-btn,
+.temperature-machine-panel__cancel-btn {
+  min-height: 2rem;
+  border-radius: 0.45rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.temperature-machine-panel__add-btn {
+  border: none;
+  background: #ea580c;
+  color: #fff;
+}
+
+.temperature-machine-panel__cancel-btn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #475569;
+}
+
+.temperature-monitor-main {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 0.85rem 0.75rem 1.1rem;
+}
+
+.dark .temperature-monitor-main {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.temperature-monitor-main__title {
+  margin: 0 0 0.85rem;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dark .temperature-monitor-main__title {
+  color: #f8fafc;
+}
+
+.temperature-monitor-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+}
+
+@media (min-width: 1280px) {
+  .temperature-monitor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

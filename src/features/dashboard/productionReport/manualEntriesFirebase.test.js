@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { AP5_MANUAL_ENTRY_CONFIG } from "../s90d/lib/s90dManualEntryReportConfig";
 import { normalizeManualStore } from "../s90d/lib/s90dManualEntries";
-import { parseManualEntriesSnapshot } from "./manualEntriesFirebase";
+import {
+  buildManualEntriesFirebasePatch,
+  parseManualEntriesSnapshot,
+  patchHasManualEntryChanges,
+} from "./manualEntriesFirebase";
 
 describe("parseManualEntriesSnapshot", () => {
   it("preserves AP5 ASSEMBLY board data when normalized with AP5 config", () => {
@@ -37,5 +41,27 @@ describe("parseManualEntriesSnapshot", () => {
     expect(boards.find((board) => board.id === "ap5ff")?.shifts["08~10"].okQty).toBe(
       88,
     );
+  });
+});
+
+describe("buildManualEntriesFirebasePatch", () => {
+  it("writes only touched date nodes that changed", () => {
+    const previousStore = {
+      "2026-07-01": { PRESS: { boards: [] } },
+      "2026-07-02": { PRESS: { boards: [] } },
+    };
+    const store = {
+      ...previousStore,
+      "2026-07-01": { PRESS: { boards: [{ id: "a", shifts: {} }] } },
+    };
+
+    const patch = buildManualEntriesFirebasePatch(store, previousStore, [
+      "2026-07-01",
+      "2026-07-02",
+    ]);
+
+    expect(patch["2026-07-01"]).toEqual(store["2026-07-01"]);
+    expect(patch["2026-07-02"]).toBeUndefined();
+    expect(patchHasManualEntryChanges(patch)).toBe(true);
   });
 });

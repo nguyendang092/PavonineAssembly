@@ -4,6 +4,7 @@ import {
 } from "./s90dManualEntryReportConfig";
 import {
   createEmptyProcessDayEntry,
+  mergeProcessMonthIntoStore,
   normalizeManualStore,
   resolveProcessBoards,
   updateProcessMonthShiftField,
@@ -133,5 +134,69 @@ describe("s90dManualEntries AP5 multi-board edits", () => {
     expect(boards.find((board) => board.id === "ap5fz")?.shifts["08~10"].okQty).toBe(
       50,
     );
+  });
+
+  it("mergeProcessMonthIntoStore keeps untouched dates from store when localByDate is sparse", () => {
+    const config = AP5_MANUAL_ENTRY_CONFIG;
+    let store = normalizeManualStore({}, config);
+
+    store = mergeProcessMonthIntoStore(
+      store,
+      ["2026-07-01", "2026-07-02"],
+      "PRESS",
+      {
+        "2026-07-01": updateProcessMonthShiftField(
+          {},
+          "2026-07-01",
+          "PRESS",
+          "ap5ff",
+          "08~10",
+          "okQty",
+          77,
+          config,
+        )["2026-07-01"],
+        "2026-07-02": updateProcessMonthShiftField(
+          {},
+          "2026-07-02",
+          "PRESS",
+          "ap5ff",
+          "08~10",
+          "okQty",
+          11,
+          config,
+        )["2026-07-02"],
+      },
+      config,
+    );
+
+    const localByDate = updateProcessMonthShiftField(
+      {},
+      "2026-07-02",
+      "PRESS",
+      "ap5ff",
+      "08~10",
+      "okQty",
+      99,
+      config,
+    );
+
+    const next = mergeProcessMonthIntoStore(
+      store,
+      ["2026-07-01", "2026-07-02"],
+      "PRESS",
+      localByDate,
+      config,
+    );
+
+    expect(
+      resolveProcessBoards(next["2026-07-01"].PRESS, "PRESS", config).find(
+        (board) => board.id === "ap5ff",
+      )?.shifts["08~10"].okQty,
+    ).toBe(77);
+    expect(
+      resolveProcessBoards(next["2026-07-02"].PRESS, "PRESS", config).find(
+        (board) => board.id === "ap5ff",
+      )?.shifts["08~10"].okQty,
+    ).toBe(99);
   });
 });
