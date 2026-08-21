@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { AP5_MANUAL_ENTRY_CONFIG } from "../s90d/lib/s90dManualEntryReportConfig";
 import { normalizeManualStore } from "../s90d/lib/s90dManualEntries";
 import {
-  buildManualEntriesFirebasePatch,
+  applyMonthSliceIfChanged,
+  buildMonthMetaOnlyPatch,
   parseManualEntriesSnapshot,
-  patchHasManualEntryChanges,
 } from "./manualEntriesFirebase";
 
 describe("parseManualEntriesSnapshot", () => {
@@ -44,24 +44,25 @@ describe("parseManualEntriesSnapshot", () => {
   });
 });
 
-describe("buildManualEntriesFirebasePatch", () => {
-  it("writes only touched date nodes that changed", () => {
-    const previousStore = {
-      "2026-07-01": { PRESS: { boards: [] } },
-      "2026-07-02": { PRESS: { boards: [] } },
-    };
+describe("applyMonthSliceIfChanged", () => {
+  it("skips merge when month checksum is unchanged", () => {
     const store = {
-      ...previousStore,
-      "2026-07-01": { PRESS: { boards: [{ id: "a", shifts: {} }] } },
+      "2026-08-01": { PRESS: { boards: [] } },
     };
+    const monthSlice = { "2026-08-01": store["2026-08-01"] };
+    const result = applyMonthSliceIfChanged(store, "2026-08", monthSlice);
+    expect(result.changed).toBe(false);
+    expect(result.store).toBe(store);
+  });
+});
 
-    const patch = buildManualEntriesFirebasePatch(store, previousStore, [
-      "2026-07-01",
-      "2026-07-02",
-    ]);
-
-    expect(patch["2026-07-01"]).toEqual(store["2026-07-01"]);
-    expect(patch["2026-07-02"]).toBeUndefined();
-    expect(patchHasManualEntryChanges(patch)).toBe(true);
+describe("buildMonthMetaOnlyPatch", () => {
+  it("writes checksum meta for touched months", () => {
+    const store = {
+      "2026-08-01": { PRESS: { boards: [{ id: "a", shifts: {} }] } },
+    };
+    const patch = buildMonthMetaOnlyPatch(store, ["2026-08"]);
+    expect(patch["_meta/months/2026-08/checksum"]).toEqual(expect.any(String));
+    expect(patch["_meta/months/2026-08/updatedAt"]).toEqual(expect.any(Number));
   });
 });

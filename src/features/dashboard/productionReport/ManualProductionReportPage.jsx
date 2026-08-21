@@ -46,11 +46,15 @@ export default function ManualProductionReportPage({
     saving,
     importing,
     syncError,
+    pendingSyncCount,
     processSyncRevision,
     saveProcessMonth,
     exportMonthToExcel,
     importMonthFromExcel,
     getProcessEntry,
+    saveProcessDraft,
+    loadProcessDraft,
+    clearProcessDraft,
     monthDisplayLabel,
     monthOptions,
     selectedMonthKey,
@@ -330,6 +334,15 @@ export default function ManualProductionReportPage({
         {syncError ? (
           <div className="s90d-sync-banner">{syncError}</div>
         ) : null}
+        {!syncError && pendingSyncCount > 0 ? (
+          <div className="s90d-sync-banner s90d-sync-banner--pending">
+            {rt(
+              "pendingSyncBanner",
+              "Có {{count}} thay đổi chờ đồng bộ Firebase khi có mạng.",
+              { count: pendingSyncCount },
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -380,11 +393,15 @@ export default function ManualProductionReportPage({
             <S90dProcessTabPanel
               key={`${activeTab}-${selectedMonthKey}`}
               process={activeTab}
+              monthKey={selectedMonthKey}
               monthDayKeys={monthDayKeys}
               processSyncRevision={processSyncRevision}
               getProcessEntry={getProcessEntry}
               onSave={handleProcessSave}
               saving={saving}
+              saveProcessDraft={saveProcessDraft}
+              loadProcessDraft={loadProcessDraft}
+              clearProcessDraft={clearProcessDraft}
             />
           ) : null}
         </>

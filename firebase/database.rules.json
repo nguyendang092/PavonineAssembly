@@ -115,6 +115,10 @@
       "manualEntries": {
         ".read": "auth != null",
         ".write": "auth != null"
+      },
+      "manualEntriesArchive": {
+        ".read": "auth != null",
+        ".write": "auth != null"
       }
     },
 
@@ -131,6 +135,10 @@
       ".read": "auth != null",
       ".write": "auth != null",
       "manualEntries": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "manualEntriesArchive": {
         ".read": "auth != null",
         ".write": "auth != null"
       }

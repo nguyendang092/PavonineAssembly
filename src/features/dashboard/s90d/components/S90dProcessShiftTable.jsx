@@ -228,7 +228,7 @@ const ShiftRow = memo(function ShiftRow({
   );
 });
 
-export default function S90dProcessShiftTable({
+export default memo(function S90dProcessShiftTable({
   processSummary,
   dateKey = "",
   boardLabel = "",
@@ -438,4 +438,4 @@ export default function S90dProcessShiftTable({
       </div>
     </article>
   );
-}
+});

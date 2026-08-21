@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
@@ -16,13 +16,44 @@ import {
   updateProcessMonthShiftField,
 } from "../lib/s90dManualEntries";
 
+const ProcessBoardCard = memo(function ProcessBoardCard({
+  board,
+  summary,
+  process,
+  selectedDateKey,
+  boardIndex,
+  boardCount,
+  onShiftFieldChange,
+}) {
+  return (
+    <div
+      className="s90d-daily-card"
+      id={`s90d-${process.toLowerCase()}-${selectedDateKey}-${board.id}`}
+    >
+      <S90dProcessShiftTable
+        processSummary={summary}
+        dateKey={selectedDateKey}
+        boardLabel={board.label || board.productCode}
+        boardIndex={boardIndex}
+        boardCount={boardCount}
+        editable
+        onShiftFieldChange={onShiftFieldChange}
+      />
+    </div>
+  );
+});
+
 export default function S90dProcessTabPanel({
   process,
+  monthKey,
   monthDayKeys,
   processSyncRevision = 0,
   getProcessEntry,
   onSave,
   saving = false,
+  saveProcessDraft,
+  loadProcessDraft,
+  clearProcessDraft,
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
@@ -64,38 +95,55 @@ export default function S90dProcessTabPanel({
   );
 
   useEffect(() => {
+    const draft = loadProcessDraft?.(process, monthKey);
+    if (draft?.localByDate && Object.keys(draft.localByDate).length) {
+      setLocalByDate(draft.localByDate);
+      setSelectedDateKey(
+        draft.selectedDateKey || pickDefaultDateKey(monthDayKeys),
+      );
+      setIsDirty(true);
+      return;
+    }
+
     setLocalByDate({});
     setIsDirty(false);
     setSelectedDateKey(pickDefaultDateKey(monthDayKeys));
-  }, [process, monthDayKeys]);
-
-  useEffect(() => {
-    if (isDirty) return;
-
-    setLocalByDate((prev) => ({
-      ...prev,
-      [selectedDateKey]: hydrateDayEntry(selectedDateKey),
-    }));
-  }, [
-    hydrateDayEntry,
-    isDirty,
-    processSyncRevision,
-    selectedDateKey,
-  ]);
+  }, [loadProcessDraft, monthDayKeys, monthKey, process]);
 
   useEffect(() => {
     setLocalByDate((prev) => {
-      if (prev[selectedDateKey]) return prev;
+      if (isDirty && prev[selectedDateKey]) return prev;
       return {
         ...prev,
         [selectedDateKey]: hydrateDayEntry(selectedDateKey),
       };
     });
-  }, [hydrateDayEntry, selectedDateKey]);
+  }, [hydrateDayEntry, isDirty, processSyncRevision, selectedDateKey]);
 
   useEffect(() => {
     setSelectedDateKey((prev) => clampDateKeyToMonth(prev, monthDayKeys));
   }, [monthDayKeys]);
+
+  useEffect(() => {
+    if (!isDirty || !saveProcessDraft) return undefined;
+
+    const timer = window.setTimeout(() => {
+      saveProcessDraft(process, monthKey, {
+        localByDate,
+        selectedDateKey,
+        savedAt: Date.now(),
+      });
+    }, 2000);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    isDirty,
+    localByDate,
+    monthKey,
+    process,
+    saveProcessDraft,
+    selectedDateKey,
+  ]);
 
   const selectedDayEntry =
     localByDate[selectedDateKey] ??
@@ -137,15 +185,26 @@ export default function S90dProcessTabPanel({
     [defaultProductCode, process, selectedDateKey],
   );
 
+  const shiftHandlers = useMemo(() => {
+    const handlers = new Map();
+    for (const board of selectedBoards) {
+      handlers.set(board.id, (shiftSlot, field, value) => {
+        updateShiftField(board.id, shiftSlot, field, value);
+      });
+    }
+    return handlers;
+  }, [selectedBoards, updateShiftField]);
+
   const handleSave = useCallback(async () => {
     if (!isDirty || saving) return;
     try {
       await onSave?.(localByDate);
       setIsDirty(false);
+      clearProcessDraft?.(process, monthKey);
     } catch {
       // Giữ trạng thái chưa lưu nếu Firebase lỗi.
     }
-  }, [isDirty, saving, localByDate, onSave]);
+  }, [clearProcessDraft, isDirty, localByDate, monthKey, onSave, process, saving]);
 
   const goToAdjacentDay = useCallback(
     (direction) => {
@@ -221,23 +280,16 @@ export default function S90dProcessTabPanel({
 
       <div className="s90d-daily-grid">
         {boardSummaries.map(({ board, summary }, index) => (
-          <div
+          <ProcessBoardCard
             key={board.id}
-            className="s90d-daily-card"
-            id={`s90d-${process.toLowerCase()}-${selectedDateKey}-${board.id}`}
-          >
-            <S90dProcessShiftTable
-              processSummary={summary}
-              dateKey={selectedDateKey}
-              boardLabel={board.label || board.productCode}
-              boardIndex={index + 1}
-              boardCount={selectedBoards.length}
-              editable
-              onShiftFieldChange={(shiftSlot, field, value) =>
-                updateShiftField(board.id, shiftSlot, field, value)
-              }
-            />
-          </div>
+            board={board}
+            summary={summary}
+            process={process}
+            selectedDateKey={selectedDateKey}
+            boardIndex={index + 1}
+            boardCount={selectedBoards.length}
+            onShiftFieldChange={shiftHandlers.get(board.id)}
+          />
         ))}
       </div>
     </section>

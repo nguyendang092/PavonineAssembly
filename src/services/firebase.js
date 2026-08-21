@@ -16,6 +16,8 @@ import {
   startAfter,
   startAt,
   endAt,
+  runTransaction,
+  off,
 } from "firebase/database";
 import {
   getStorage,
@@ -56,6 +58,8 @@ export {
   startAfter,
   startAt,
   endAt,
+  runTransaction,
+  off,
 };
 
 // Export Storage functions

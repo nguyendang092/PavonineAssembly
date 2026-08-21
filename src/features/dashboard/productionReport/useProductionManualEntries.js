@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { db, onValue, ref, set, update } from "@/services/firebase";
 import {
   formatS90dMonthDisplayLabel,
   formatS90dMonthLabel,
@@ -29,23 +28,8 @@ import {
   mergeImportedRowsIntoStore,
   readS90dManualExcelFile,
 } from "../s90d/lib/s90dManualExcel";
-import {
-  buildManualEntriesFirebasePatch,
-  parseManualEntriesSnapshot,
-  patchHasManualEntryChanges,
-  serializeManualEntriesForFirebase,
-} from "./manualEntriesFirebase";
-import { scheduleManualStorePersist } from "./manualEntriesStorage";
-
-function loadManualStore(storageKey, manualEntryConfig) {
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return {};
-    return normalizeManualStore(JSON.parse(raw), manualEntryConfig);
-  } catch {
-    return {};
-  }
-}
+import { createManualEntriesRepository } from "./manualEntriesRepository";
+import { extractMonthSlice } from "./manualEntriesMonthUtils";
 
 export function useProductionManualEntries(config) {
   const {
@@ -55,6 +39,7 @@ export function useProductionManualEntries(config) {
     excelFilePrefix,
     defaultProductCode,
   } = config;
+
   const manualEntryConfig = useMemo(
     () => manualEntryConfigFromReportConfig(config),
     [config],
@@ -64,12 +49,18 @@ export function useProductionManualEntries(config) {
   const [selectedMonthKey, setSelectedMonthKey] = useState(() =>
     formatS90dMonthLabel(new Date()),
   );
-  const [store, setStore] = useState(() =>
-    normalizeManualStore(
-      loadManualStore(storageKey, manualEntryConfig),
+
+  const repoRef = useRef(null);
+  if (!repoRef.current) {
+    repoRef.current = createManualEntriesRepository({
+      firebaseRoot,
+      storageKey,
       manualEntryConfig,
-    ),
-  );
+    });
+  }
+  const repo = repoRef.current;
+
+  const [store, setStore] = useState(() => repo.loadLocalStore());
   const storeRef = useRef(store);
   storeRef.current = store;
 
@@ -78,78 +69,100 @@ export function useProductionManualEntries(config) {
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [syncError, setSyncError] = useState("");
-  const lastPersistedJsonRef = useRef(JSON.stringify(store));
-  const skipRemoteRef = useRef(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const bootstrappedRef = useRef(false);
 
-  const applyLoadedStore = useCallback(
-    (nextStore, { bumpProcessSync = true } = {}) => {
+  const applyStore = useCallback(
+    (nextStore, { bumpProcessSync = false, persistLocal = true } = {}) => {
       const normalized = normalizeManualStore(nextStore, manualEntryConfig);
-      const nextJson = JSON.stringify(normalized);
+      storeRef.current = normalized;
+      setStore(normalized);
+      if (bumpProcessSync) {
+        setProcessSyncRevision((value) => value + 1);
+      }
+      if (persistLocal) {
+        repo.persistLocal(normalized);
+      }
+      repo.rememberDayRevisions(
+        normalized,
+        Object.keys(normalized).filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)),
+      );
+    },
+    [manualEntryConfig, repo],
+  );
 
-      if (nextJson === lastPersistedJsonRef.current) {
+  const flushPendingWrites = useCallback(async () => {
+    const result = await repo.flushPendingWrites((days) => {
+      const next = { ...storeRef.current, ...days };
+      applyStore(next, { bumpProcessSync: true });
+      return next;
+    });
+    setPendingSyncCount(repo.pendingWriteCount());
+    if (result.flushed > 0) {
+      setSyncError("");
+    }
+    return result;
+  }, [applyStore, repo]);
+
+  useEffect(() => {
+    repo.bindOnlineFlush(() => {
+      flushPendingWrites().catch(() => {});
+    });
+    setPendingSyncCount(repo.pendingWriteCount());
+
+    const handleMonthSlice = (monthKey, monthSlice) => {
+      if (!Object.keys(monthSlice ?? {}).length) {
+        const localSlice = extractMonthSlice(storeRef.current, monthKey);
+        if (Object.keys(localSlice).length && !bootstrappedRef.current) {
+          bootstrappedRef.current = true;
+          repo.bootstrapLocalToRemote(storeRef.current).catch(() => {
+            setSyncError("Không đồng bộ được dữ liệu lên Firebase.");
+          });
+        }
         setLoading(false);
         return;
       }
 
-      lastPersistedJsonRef.current = nextJson;
-      storeRef.current = normalized;
-      setStore(normalized);
+      const { store: merged, changed } = repo.applyMonthToStore(
+        storeRef.current,
+        monthKey,
+        monthSlice,
+      );
 
-      if (bumpProcessSync) {
-        setProcessSyncRevision((value) => value + 1);
+      if (!changed) {
+        setLoading(false);
+        return;
       }
 
-      scheduleManualStorePersist(storageKey, normalized);
-    },
-    [manualEntryConfig, storageKey],
-  );
+      applyStore(merged, { bumpProcessSync: true });
+      setLoading(false);
+      setSyncError("");
+    };
+
+    repo.subscribeMonths(selectedMonthKey, handleMonthSlice);
+    flushPendingWrites().catch(() => {});
+
+    return () => {
+      repo.unsubscribeMonths();
+    };
+  }, [applyStore, flushPendingWrites, repo, selectedMonthKey]);
+
+  useEffect(() => () => repo.dispose(), [repo]);
 
   useEffect(() => {
-    const recordsRef = ref(db, firebaseRoot);
-    const unsubscribe = onValue(
-      recordsRef,
-      (snapshot) => {
-        if (skipRemoteRef.current) {
-          skipRemoteRef.current = false;
-          setLoading(false);
-          return;
-        }
-
-        const remoteStore = normalizeManualStore(
-          parseManualEntriesSnapshot(snapshot.val()),
-          manualEntryConfig,
-        );
-        const hasRemote = Object.keys(remoteStore).length > 0;
-        const localStore = normalizeManualStore(
-          loadManualStore(storageKey, manualEntryConfig),
-          manualEntryConfig,
-        );
-        const hasLocal = Object.keys(localStore).length > 0;
-
-        let nextStore = remoteStore;
-        if (!hasRemote && hasLocal) {
-          nextStore = localStore;
-          skipRemoteRef.current = true;
-          set(ref(db, firebaseRoot), {
-            ...serializeManualEntriesForFirebase(localStore),
-          }).catch(() => {
-            setSyncError("Không đồng bộ được dữ liệu lên Firebase.");
-          });
-        }
-
-        applyLoadedStore(nextStore);
-        setLoading(false);
-        setSyncError("");
-      },
-      () => {
-        applyLoadedStore(loadManualStore(storageKey, manualEntryConfig));
-        setLoading(false);
-        setSyncError("Không tải được dữ liệu từ Firebase — dùng bản cục bộ.");
-      },
-    );
-
-    return () => unsubscribe();
-  }, [applyLoadedStore, firebaseRoot, manualEntryConfig, storageKey]);
+    if (typeof window.requestIdleCallback !== "function") return undefined;
+    const idleId = window.requestIdleCallback(() => {
+      repo
+        .lazyArchiveOldMonths(storeRef.current, monthReferenceDate)
+        .then((archivedStore) => {
+          if (archivedStore !== storeRef.current) {
+            applyStore(archivedStore, { bumpProcessSync: false });
+          }
+        })
+        .catch(() => {});
+    });
+    return () => window.cancelIdleCallback?.(idleId);
+  }, [applyStore, monthReferenceDate, repo]);
 
   const monthOptions = useMemo(
     () => listMonthKeysFromStore(store, monthReferenceDate),
@@ -164,7 +177,6 @@ export function useProductionManualEntries(config) {
     }
   }, [monthOptions, selectedMonthKey, monthReferenceDate]);
 
-  const monthLabel = selectedMonthKey;
   const monthDisplayLabel = useMemo(
     () => formatS90dMonthDisplayLabel(selectedMonthKey),
     [selectedMonthKey],
@@ -175,46 +187,46 @@ export function useProductionManualEntries(config) {
   );
 
   const persistStore = useCallback(
-    async (nextStore, { touchedDateKeys = null, fullRemoteWrite = false } = {}) => {
-      const previousStore = storeRef.current;
+    async (
+      nextStore,
+      {
+        touchedDateKeys = [],
+        process = "",
+        localByDate = {},
+        fullRemoteWrite = false,
+      } = {},
+    ) => {
       const normalized = normalizeManualStore(nextStore, manualEntryConfig);
-      const nextJson = JSON.stringify(normalized);
 
       setSaving(true);
       setSyncError("");
 
       try {
-        lastPersistedJsonRef.current = nextJson;
-        storeRef.current = normalized;
-        setStore(normalized);
-        scheduleManualStorePersist(storageKey, normalized);
+        applyStore(normalized, { bumpProcessSync: false });
 
-        skipRemoteRef.current = true;
-
-        if (fullRemoteWrite || !touchedDateKeys?.length) {
-          await set(ref(db, firebaseRoot), {
-            ...serializeManualEntriesForFirebase(normalized),
-          });
-          return;
-        }
-
-        const patch = buildManualEntriesFirebasePatch(
-          normalized,
-          previousStore,
+        const remoteOk = await repo.persistStoreAttempt({
+          store: normalized,
           touchedDateKeys,
-        );
+          process,
+          localByDate,
+          fullRemoteWrite,
+        });
 
-        if (patchHasManualEntryChanges(patch)) {
-          await update(ref(db, firebaseRoot), patch);
+        setPendingSyncCount(repo.pendingWriteCount());
+
+        if (!remoteOk) {
+          setSyncError(
+            "Không lưu được lên Firebase — đã xếp hàng, sẽ thử lại khi có mạng.",
+          );
+          throw new Error("SAVE_FAILED");
         }
-      } catch {
-        setSyncError("Không lưu được lên Firebase — dữ liệu vẫn ở trình duyệt.");
-        throw new Error("SAVE_FAILED");
+
+        setSyncError("");
       } finally {
         setSaving(false);
       }
     },
-    [firebaseRoot, manualEntryConfig, storageKey],
+    [applyStore, manualEntryConfig, repo],
   );
 
   const saveProcessMonth = useCallback(
@@ -228,8 +240,7 @@ export function useProductionManualEntries(config) {
       );
 
       const touchedDateKeys = dateKeys.filter((dateKey) => {
-        const localDay = localByDate[dateKey];
-        if (localDay !== undefined) return true;
+        if (localByDate[dateKey] !== undefined) return true;
         return (
           JSON.stringify(nextStore[dateKey]) !==
           JSON.stringify(storeRef.current[dateKey])
@@ -238,6 +249,8 @@ export function useProductionManualEntries(config) {
 
       await persistStore(nextStore, {
         touchedDateKeys: touchedDateKeys.length ? touchedDateKeys : dateKeys,
+        process,
+        localByDate,
       });
     },
     [manualEntryConfig, persistStore],
@@ -273,7 +286,10 @@ export function useProductionManualEntries(config) {
           rows,
           manualEntryConfig,
         );
-        await persistStore(nextStore, { fullRemoteWrite: true });
+        await persistStore(nextStore, {
+          touchedDateKeys: Object.keys(nextStore),
+          fullRemoteWrite: true,
+        });
         setProcessSyncRevision((value) => value + 1);
         return { importedCount: rows.length };
       } catch (error) {
@@ -292,6 +308,18 @@ export function useProductionManualEntries(config) {
     (dateKey, process) =>
       getProcessEntry(storeRef.current, dateKey, process, manualEntryConfig),
     [manualEntryConfig],
+  );
+
+  const draftActions = useMemo(
+    () => ({
+      saveProcessDraft: (process, monthKey, draft) =>
+        repo.saveProcessDraft(process, monthKey, draft),
+      loadProcessDraft: (process, monthKey) =>
+        repo.loadProcessDraft(process, monthKey),
+      clearProcessDraft: (process, monthKey) =>
+        repo.clearProcessDraft(process, monthKey),
+    }),
+    [repo],
   );
 
   const deferredStore = useDeferredValue(store);
@@ -332,13 +360,13 @@ export function useProductionManualEntries(config) {
     saving,
     importing,
     syncError,
+    pendingSyncCount,
     processSyncRevision,
     saveProcessMonth,
     exportMonthToExcel,
     importMonthFromExcel,
     getProcessEntry: getProcessEntryForDate,
-    firebasePath: firebaseRoot,
-    monthLabel,
+    ...draftActions,
     monthDisplayLabel,
     monthOptions,
     selectedMonthKey,
