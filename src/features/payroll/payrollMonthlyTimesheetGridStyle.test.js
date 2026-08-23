@@ -3,6 +3,7 @@ import {
   buildPayrollMonthlyTimesheetExcelBorders,
   getPayrollMonthlyTimesheetDayBodyBg,
   getPayrollMonthlyTimesheetDayHeaderBg,
+  isPayrollMonthlyTimesheetSundayLikeDay,
   PTS_COLORS,
 } from "./payrollMonthlyTimesheetGridStyle";
 import { payrollMonthlyTimesheetLayoutOffsets } from "./payrollMonthlyTimesheetLayout";
@@ -19,11 +20,29 @@ describe("payrollMonthlyTimesheetGridStyle", () => {
     const wed = new Date(2026, 0, 7);
     const ch = { isOffDay: true, isHolidayDay: false, isCompensatoryDay: false };
     expect(getPayrollMonthlyTimesheetDayHeaderBg(wed, ch)).toBe(
-      PTS_COLORS.daySunHeader,
+      PTS_COLORS.dayOffHeader,
     );
     expect(
       getPayrollMonthlyTimesheetDayBodyBg(wed, ch),
-    ).toBe(PTS_COLORS.daySunBody);
+    ).toBe(PTS_COLORS.dayOffBody);
+  });
+
+  it("ngày nghỉ bù NB cùng màu với ngày off", () => {
+    const thu = new Date(2026, 0, 8);
+    const ch = {
+      isOffDay: false,
+      isHolidayDay: false,
+      isCompensatoryDay: true,
+    };
+    expect(getPayrollMonthlyTimesheetDayHeaderBg(thu, ch)).toBe(
+      PTS_COLORS.dayOffHeader,
+    );
+    expect(getPayrollMonthlyTimesheetDayBodyBg(thu, ch)).toBe(
+      PTS_COLORS.dayOffBody,
+    );
+    expect(getPayrollMonthlyTimesheetDayHeaderBg(thu, ch)).toBe(
+      PTS_COLORS.dayCompHeader,
+    );
   });
 
   it("thứ 7 bình thường — xám; thứ 7 OFF — vàng như chủ nhật", () => {
@@ -39,11 +58,12 @@ describe("payrollMonthlyTimesheetGridStyle", () => {
       isHolidayDay: false,
       isCompensatoryDay: false,
     };
+    expect(isPayrollMonthlyTimesheetSundayLikeDay(sat, satOff)).toBe(true);
     expect(getPayrollMonthlyTimesheetDayHeaderBg(sat, satOff)).toBe(
-      PTS_COLORS.dayOffHeader,
+      PTS_COLORS.daySunHeader,
     );
     expect(getPayrollMonthlyTimesheetDayBodyBg(sat, satOff)).toBe(
-      PTS_COLORS.dayOffBody,
+      PTS_COLORS.daySunBody,
     );
   });
 

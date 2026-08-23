@@ -53,6 +53,7 @@ import {
   resolveMonthlyDetailGroupAndCol,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
 import {
+  isPayrollMonthlyTimesheetSundayLikeDay,
   payrollMonthlyTimesheetDayBodyBgClass,
   payrollMonthlyTimesheetDayHeaderBgClass,
   payrollMonthlyTimesheetDetailGroupBodyClass,
@@ -1114,7 +1115,10 @@ export default function PayrollMonthlyTimesheetModal({
           parsedDate,
           dayOfMonth: parsedDate ? parsedDate.getDate() : "",
           weekdayLabel: formatPayrollMonthWeekday3(parsedDate),
-          isSunday: parsedDate?.getDay() === 0,
+          isSundayLike: isPayrollMonthlyTimesheetSundayLikeDay(
+            parsedDate,
+            chunk,
+          ),
           chunk,
           headerBg: payrollMonthlyTimesheetDayHeaderBgClass(parsedDate, chunk),
           bodyBg: payrollMonthlyTimesheetDayBodyBgClass(parsedDate, chunk),
@@ -1734,7 +1738,7 @@ export default function PayrollMonthlyTimesheetModal({
                                 {String(dayMeta.dayOfMonth).padStart(2, "0")}
                               </div>
                               <div
-                                className={`pm-ts-header-wd ${dayMeta.isSunday ? "pm-ts-header-wd--sun" : ""}`}
+                                className={`pm-ts-header-wd ${dayMeta.isSundayLike ? "pm-ts-header-wd--sun" : ""}`}
                               >
                                 {dayMeta.weekdayLabel}
                               </div>

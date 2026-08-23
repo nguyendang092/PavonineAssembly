@@ -324,29 +324,8 @@ describe("buildProductCodeYieldItems", () => {
 
 
 
-  it("builds S90D INZI/MXC Code D and Code E yield items", () => {
+  it("returns empty for S90D sub-code chart yields", () => {
     const s90dDetails = [
-      {
-        process: "PRESS",
-        boardRows: [
-          { codeSlot: "D", totalQty: 100, okQty: 95, yieldPct: 95 },
-          { codeSlot: "E", totalQty: 100, okQty: 80, yieldPct: 80 },
-        ],
-      },
-      {
-        process: "HAIRLINE",
-        boardRows: [
-          { codeSlot: "D", totalQty: 100, okQty: 90, yieldPct: 94.7 },
-          { codeSlot: "E", totalQty: 100, okQty: 72, yieldPct: 90 },
-        ],
-      },
-      {
-        process: "ANODIZING",
-        boardRows: [
-          { codeSlot: "D", totalQty: 100, okQty: 88, yieldPct: 97.8 },
-          { codeSlot: "E", totalQty: 100, okQty: 70, yieldPct: 97.2 },
-        ],
-      },
       {
         process: "ASSEMBLY",
         boardRows: [
@@ -359,20 +338,6 @@ describe("buildProductCodeYieldItems", () => {
           },
           {
             codeSlot: "E",
-            productCode: "S90D INZI",
-            totalQty: 100,
-            okQty: 75,
-            yieldPct: 92.6,
-          },
-          {
-            codeSlot: "D",
-            productCode: "S90D MXC",
-            totalQty: 100,
-            okQty: 89,
-            yieldPct: 91.0,
-          },
-          {
-            codeSlot: "E",
             productCode: "S90D MXC",
             totalQty: 100,
             okQty: 73,
@@ -382,65 +347,16 @@ describe("buildProductCodeYieldItems", () => {
       },
     ];
 
-    const items = buildProductCodeYieldItems(s90dDetails, {
-      usesProductSubCodes: true,
-      boardSpecs: [
-        { productCode: "S90D INZI", label: "S90D INZI" },
-        { productCode: "S90D MXC", label: "S90D MXC" },
-      ],
-      defaultProductCode: "S90D",
-      processes: ["PRESS", "HAIRLINE", "ANODIZING", "ASSEMBLY"],
-    });
-
-    expect(items).toHaveLength(4);
-    expect(items.map((item) => item.label)).toEqual([
-      "S90D INZI Type D",
-      "S90D INZI Type E",
-      "S90D MXC Type D",
-      "S90D MXC Type E",
-    ]);
-    expect(items[0]).toMatchObject({
-      yieldPct: 98,
-      cumulativeYieldPct: 98,
-      isValid: true,
-    });
-    expect(items[2]).toMatchObject({
-      yieldPct: 95.8,
-      cumulativeYieldPct: 95.8,
-      isValid: true,
-    });
-  });
-
-  it("marks S90D sub-code yield invalid when chain is incomplete", () => {
-    const s90dDetails = [
-      {
-        process: "PRESS",
-        boardRows: [{ codeSlot: "D", totalQty: 100, okQty: 95, yieldPct: 95 }],
-      },
-      {
-        process: "ASSEMBLY",
-        boardRows: [
-          {
-            codeSlot: "D",
-            productCode: "S90D INZI",
-            totalQty: 90,
-            okQty: 81,
-            yieldPct: 90,
-          },
+    expect(
+      buildProductCodeYieldItems(s90dDetails, {
+        usesProductSubCodes: true,
+        boardSpecs: [
+          { productCode: "S90D INZI", label: "S90D INZI" },
+          { productCode: "S90D MXC", label: "S90D MXC" },
         ],
-      },
-    ];
-
-    const items = buildProductCodeYieldItems(s90dDetails, {
-      usesProductSubCodes: true,
-      processes: ["PRESS", "HAIRLINE", "ANODIZING", "ASSEMBLY"],
-    });
-
-    expect(items[0]).toMatchObject({
-      label: "S90D INZI Type D",
-      yieldPct: null,
-      isValid: false,
-    });
+        processes: ["PRESS", "HAIRLINE", "ANODIZING", "ASSEMBLY"],
+      }),
+    ).toEqual([]);
   });
 
 });

@@ -17,6 +17,7 @@ import {
   resolvePayrollMonthDayEmployee,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
+  isPayrollMonthlyTimesheetSundayLikeDay,
   payrollMonthlyTimesheetDayBodyBgClass,
   payrollMonthlyTimesheetDayHeaderBgClass,
 } from "@/features/payroll/payrollMonthlyTimesheetGridStyle";
@@ -527,6 +528,10 @@ export default function PayrollMonthlyTimeInOutModal({
           parsedDate,
           dayOfMonth: parsedDate ? parsedDate.getDate() : "",
           weekdayLabel: formatPayrollMonthWeekday3(parsedDate),
+          isSundayLike: isPayrollMonthlyTimesheetSundayLikeDay(
+            parsedDate,
+            chunk,
+          ),
           chunk,
           headerBg: payrollMonthlyTimesheetDayHeaderBgClass(parsedDate, chunk),
           bodyBg: payrollMonthlyTimesheetDayBodyBgClass(parsedDate, chunk),
@@ -893,7 +898,6 @@ export default function PayrollMonthlyTimeInOutModal({
                     </tr>
                     <tr>
                       {monthDayMeta.map((d) => {
-                        const isSun = d.parsedDate?.getDay() === 0;
                         return (
                           <th
                             key={d.dateKey}
@@ -904,7 +908,7 @@ export default function PayrollMonthlyTimeInOutModal({
                               {String(d.dayOfMonth).padStart(2, "0")}
                             </div>
                             <div
-                              className={`pm-tio-header-wd ${isSun ? "pm-tio-header-wd--sun" : ""}`}
+                              className={`pm-tio-header-wd ${d.isSundayLike ? "pm-tio-header-wd--sun" : ""}`}
                             >
                               {d.weekdayLabel}
                             </div>
