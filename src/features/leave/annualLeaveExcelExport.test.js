@@ -19,6 +19,7 @@ describe("exportAnnualLeaveExcel", () => {
         [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 8,
         [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 1.5,
         [ANNUAL_LEAVE_EMP.BALANCE]: 6.5,
+        [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]: 1,
       },
     ];
 
@@ -36,8 +37,11 @@ describe("exportAnnualLeaveExcel", () => {
     expect(sheet.getRow(2).getCell(2).value).toBe("MNV");
     expect(sheet.getRow(1).getCell(11).value).toBe("Jan-26");
     expect(sheet.getRow(3).getCell(8).value).toBe(8);
+    expect(sheet.getRow(3).getCell(9).value).toBe(1.5);
+    expect(sheet.getRow(3).getCell(10).value).toBe(6.5);
     expect(sheet.getRow(3).getCell(11).value).toBe("1.00");
     expect(sheet.getRow(3).getCell(16).value).toBe("0.50");
+    expect(sheet.getRow(3).getCell(23).value).toBe(1);
   });
 
   it("header rows match template builder", async () => {

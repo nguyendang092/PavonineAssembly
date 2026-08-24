@@ -335,7 +335,11 @@ export default function AnnualLeaveManager() {
       if (!exportRows.length) return;
       const monthColumnLabels =
         exportRef.current?.getMonthColumnLabels?.() ?? [];
-      const monthlyByEmpKey = exportRef.current?.getMonthlyByEmpKey?.() ?? {};
+      const monthlyByEmpKey =
+        exportRef.current?.getMonthlyByEmpKey?.({
+          search: exportSearch,
+          deptFilter: exportDeptFilter,
+        }) ?? {};
       const buffer = await exportAnnualLeaveExcel(exportRows, year, {
         monthColumnLabels,
         monthlyByEmpKey,

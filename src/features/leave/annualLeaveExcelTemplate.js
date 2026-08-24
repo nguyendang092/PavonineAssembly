@@ -21,6 +21,10 @@ export const ANNUAL_LEAVE_EXCEL_COL = {
   MONTHS_START: 10,
 };
 
+export function resolveAnnualLeaveExcelAdjustColumnIndex(monthCount = 12) {
+  return ANNUAL_LEAVE_EXCEL_COL.MONTHS_START + monthCount;
+}
+
 export function buildAnnualLeaveExcelMonthColumnLabels(year) {
   return listAnnualLeaveCalendarYearMonths(year).map(
     formatAnnualLeaveMonthColumnLabel,
@@ -41,13 +45,14 @@ export function buildAnnualLeaveExcelHeaderRow1(year) {
     "ANNUAL LEAVE USED",
     "BALANCE",
     ...buildAnnualLeaveExcelMonthColumnLabels(year),
+    "ADJUST",
   ];
 }
 
 /** Header hàng 2 — MNV / MVT dưới EMPL. CODE. */
 export function buildAnnualLeaveExcelHeaderRow2(year) {
   const monthCount = buildAnnualLeaveExcelMonthColumnLabels(year).length;
-  return ["", "MNV", "MVT", ...Array(7 + monthCount).fill("")];
+  return ["", "MNV", "MVT", ...Array(7 + monthCount + 1).fill("")];
 }
 
 export function annualLeaveExcelMonthColumnCount(year) {

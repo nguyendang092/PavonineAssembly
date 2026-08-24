@@ -12,12 +12,13 @@ import {
 } from "./annualLeaveExcelImport";
 
 describe("annualLeaveExcelTemplate", () => {
-  it("builds 22-column header with 12 months", () => {
+  it("builds 23-column header with 12 months and ADJUST", () => {
     const row1 = buildAnnualLeaveExcelHeaderRow1(2026);
     const row2 = buildAnnualLeaveExcelHeaderRow2(2026);
-    expect(row1).toHaveLength(22);
+    expect(row1).toHaveLength(23);
     expect(row1[10]).toBe("Jan-26");
     expect(row1[21]).toBe("Dec-26");
+    expect(row1[22]).toBe("ADJUST");
     expect(row2[1]).toBe("MNV");
     expect(row2[2]).toBe("MVT");
     expect(buildAnnualLeaveExcelMonthColumnLabels(2026)).toHaveLength(12);
@@ -52,6 +53,7 @@ describe("findAnnualLeaveHeaderLayout", () => {
         "-",
         "-",
         "-",
+        "",
       ],
     ];
     const layout = findAnnualLeaveHeaderLayout(rows, 2026);

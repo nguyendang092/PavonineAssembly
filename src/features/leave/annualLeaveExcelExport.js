@@ -3,16 +3,32 @@ import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import {
   formatAnnualLeaveDecimal,
   formatAnnualLeaveDisplayDate,
+  parseAnnualLeaveAdjustment,
+  roundAnnualLeaveHours,
 } from "./annualLeaveCalculated";
 import {
   ANNUAL_LEAVE_EXCEL_COL,
   buildAnnualLeaveExcelHeaderRow1,
   buildAnnualLeaveExcelHeaderRow2,
+  buildAnnualLeaveExcelMonthColumnLabels,
+  resolveAnnualLeaveExcelAdjustColumnIndex,
 } from "./annualLeaveExcelTemplate";
 
 const HEADER_FILL = "C6E0B4";
 const BALANCE_HEADER_FILL = "FFFF00";
 const BALANCE_HEADER_COLOR = "FF0000";
+const ANNUAL_LEAVE_DECIMAL_FMT = "0.00";
+
+function annualLeaveExcelNumeric(value) {
+  const n = roundAnnualLeaveHours(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function annualLeaveExcelAdjustment(value) {
+  const n = parseAnnualLeaveAdjustment(value);
+  if (n === 0) return "";
+  return annualLeaveExcelNumeric(n);
+}
 
 function applyHeaderCellStyle(cell, colNumber) {
   cell.font = { bold: true, size: 10 };
@@ -55,6 +71,19 @@ function applyDataCellStyle(cell, colNumber) {
   if (colNumber === ANNUAL_LEAVE_EXCEL_COL.BALANCE + 1) {
     cell.font = { color: { argb: BALANCE_HEADER_COLOR } };
   }
+  if (
+    colNumber === ANNUAL_LEAVE_EXCEL_COL.ANNUAL_LEAVE_USED + 1 ||
+    colNumber === ANNUAL_LEAVE_EXCEL_COL.BALANCE + 1
+  ) {
+    cell.numFmt = ANNUAL_LEAVE_DECIMAL_FMT;
+  }
+}
+
+function applyAdjustDataCellStyle(cell, adjustColNumber) {
+  applyDataCellStyle(cell, adjustColNumber);
+  if (cell.value !== "" && cell.value != null) {
+    cell.numFmt = ANNUAL_LEAVE_DECIMAL_FMT;
+  }
 }
 
 /**
@@ -68,8 +97,11 @@ export async function exportAnnualLeaveExcel(rows, year, options = {}) {
   const headerRow1 = buildAnnualLeaveExcelHeaderRow1(year);
   const headerRow2 = buildAnnualLeaveExcelHeaderRow2(year);
   const monthColumnLabels =
-    options.monthColumnLabels ?? headerRow1.slice(ANNUAL_LEAVE_EXCEL_COL.MONTHS_START);
+    options.monthColumnLabels ?? buildAnnualLeaveExcelMonthColumnLabels(year);
   const monthlyByEmpKey = options.monthlyByEmpKey ?? {};
+  const adjustColIndex = resolveAnnualLeaveExcelAdjustColumnIndex(
+    monthColumnLabels.length,
+  );
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(`Annual Leave ${year}`);
@@ -95,6 +127,7 @@ export async function exportAnnualLeaveExcel(rows, year, options = {}) {
   for (let m = 0; m < monthColumnLabels.length; m += 1) {
     sheet.mergeCells(1, ANNUAL_LEAVE_EXCEL_COL.MONTHS_START + 1 + m, 2, ANNUAL_LEAVE_EXCEL_COL.MONTHS_START + 1 + m);
   }
+  sheet.mergeCells(1, adjustColIndex + 1, 2, adjustColIndex + 1);
 
   sheet.views = [{ state: "frozen", ySplit: 2, xSplit: ANNUAL_LEAVE_EXCEL_COL.MONTHS_START }];
 
@@ -114,13 +147,20 @@ export async function exportAnnualLeaveExcel(rows, year, options = {}) {
         fullYear: true,
       }),
       annualDisplay,
-      formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]),
-      formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.BALANCE]),
+      annualLeaveExcelNumeric(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]),
+      annualLeaveExcelNumeric(row[ANNUAL_LEAVE_EMP.BALANCE]),
       ...monthValues.map((value) =>
         value > 0 ? formatAnnualLeaveDecimal(value) : "-",
       ),
+      annualLeaveExcelAdjustment(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]),
     ]);
-    dataRow.eachCell((cell, colNumber) => applyDataCellStyle(cell, colNumber));
+    dataRow.eachCell((cell, colNumber) => {
+      if (colNumber === adjustColIndex + 1) {
+        applyAdjustDataCellStyle(cell, adjustColIndex + 1);
+        return;
+      }
+      applyDataCellStyle(cell, colNumber);
+    });
   });
 
   sheet.columns = [
@@ -135,6 +175,7 @@ export async function exportAnnualLeaveExcel(rows, year, options = {}) {
     { width: 12 },
     { width: 10 },
     ...monthColumnLabels.map(() => ({ width: 11 })),
+    { width: 10 },
   ];
 
   const buffer = await workbook.xlsx.writeBuffer();
