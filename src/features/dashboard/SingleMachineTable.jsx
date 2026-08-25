@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { ref, set, onValue } from "firebase/database";
+import { ref, set } from "firebase/database";
 import { db } from "@/services/firebase";
+import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import { format, eachDayOfInterval, endOfMonth } from "date-fns";
 import { getDay } from "date-fns";
 import { useTranslation } from "react-i18next";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import { ko } from "date-fns/locale";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity } from "@/contexts/UserContext";
 import { logUserAction } from "@/utils/userLog";
 import {
   FiChevronLeft,
@@ -20,12 +21,17 @@ import { getMachineDisplayName } from "@/features/dashboard/temperatureMachineDi
 const PAGE_SIZE = 10;
 
 const SingleMachineTable = ({ area, machine, selectedMonth, showToast }) => {
-  const { user } = useUser();
+  const { user } = useUserIdentity();
   const { t, i18n } = useTranslation();
   const [data, setData] = useState({ temperature: {}, humidity: {} });
   const [currentPage, setCurrentPage] = useState(1);
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  const machineDataPath =
+    area && machine && selectedMonth
+      ? `temperature_monitor/${area}/${machine}/${selectedMonth}`
+      : null;
+  const { data: machineRaw, loading } = useFirebaseValue(machineDataPath);
 
   const goToPage = (page) => {
     if (page >= 1 && page <= totalPages) {
@@ -44,24 +50,11 @@ const SingleMachineTable = ({ area, machine, selectedMonth, showToast }) => {
   );
 
   useEffect(() => {
-    let isMounted = true;
-    if (!area || !machine || !selectedMonth) return;
-    setLoading(true);
+    setData(machineRaw || { temperature: {}, humidity: {} });
+  }, [machineRaw]);
 
-    const path = `temperature_monitor/${area}/${machine}/${selectedMonth}`;
-    const dataRef = ref(db, path);
-    const unsubscribe = onValue(
-      dataRef,
-      (snapshot) => {
-        if (!isMounted) return;
-        const val = snapshot.val() || { temperature: {}, humidity: {} };
-        setData(val);
-        setLoading(false);
-      },
-      (err) => {
-        if (isMounted) setLoading(false);
-      }
-    );
+  useEffect(() => {
+    if (!area || !machine || !selectedMonth) return;
 
     const today = new Date();
     const thisMonth = new Date(`${selectedMonth}-01`);
@@ -70,7 +63,7 @@ const SingleMachineTable = ({ area, machine, selectedMonth, showToast }) => {
       today.getFullYear() === thisMonth.getFullYear()
     ) {
       const index = daysInMonth.findIndex(
-        (d) => format(d, "yyyy-MM-dd") === format(today, "yyyy-MM-dd")
+        (d) => format(d, "yyyy-MM-dd") === format(today, "yyyy-MM-dd"),
       );
       if (index !== -1) {
         const page = Math.floor(index / PAGE_SIZE) + 1;
@@ -81,13 +74,7 @@ const SingleMachineTable = ({ area, machine, selectedMonth, showToast }) => {
     } else {
       setCurrentPage(1);
     }
-
-    return () => {
-      isMounted = false;
-      unsubscribe();
-      // Không setState nếu đã unmount
-    };
-  }, [area, machine, selectedMonth]);
+  }, [area, machine, selectedMonth, daysInMonth]);
 
   // Validate: chỉ cho phép số >= 0, tối đa 2 chữ số thập phân
   const validateValue = (val) => {

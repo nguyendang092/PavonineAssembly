@@ -1,5 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { db, ref, get } from "@/services/firebase";
+import {
+  bumpFirebaseGeneration,
+  isFirebaseGenerationStale,
+} from "@/hooks/firebaseGeneration";
 import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 import { countAttendanceDashboardDaySummary } from "./attendanceDashboardMetrics";
 import { getDateKeyBySubtractDays } from "@/utils/dateKey";
@@ -21,18 +25,30 @@ export function useAttendanceDashboardWeek(
 ) {
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(false);
+  const fetchGenerationRef = useRef(0);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!attendanceRootPath || !selectedDate) {
+      setPoints([]);
+      setLoading(false);
+      return undefined;
+    }
+
+    const myGeneration = bumpFirebaseGeneration(fetchGenerationRef);
     const keys = [];
     for (let i = 6; i >= 0; i -= 1) {
       keys.push(getDateKeyBySubtractDays(selectedDate, i));
     }
 
     setLoading(true);
-    Promise.all(
+    setPoints([]);
+
+    void Promise.all(
       keys.map(async (dateKey) => {
         const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
+        if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) {
+          return null;
+        }
         const raw = snap.val();
         const employees = reconcileAttendanceDayRowsFromRaw([], raw, {
           seasonal: attendanceRootPath === "seasonalAttendance",
@@ -46,15 +62,15 @@ export function useAttendanceDashboardWeek(
       }),
     )
       .then((rows) => {
-        if (!cancelled) setPoints(rows);
+        if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
+        setPoints(rows.filter(Boolean));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
+        setLoading(false);
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return undefined;
   }, [attendanceRootPath, selectedDate, locale]);
 
   return { weekPoints: points, weekLoading: loading };

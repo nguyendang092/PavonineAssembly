@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { db, ref, onValue } from "@/services/firebase";
+import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import { deriveRowsForYear } from "@/utils/performanceChartData";
 
 const FB_PATH = "performanceData";
@@ -9,20 +9,15 @@ const FB_PATH = "performanceData";
  * Một nguồn để tránh đóng `selectedYear` cũ trong listener Firebase.
  */
 export function usePerformanceYearData(selectedYear) {
+  const { data: remoteStore, loading } = useFirebaseValue(FB_PATH);
   const [yearDataStore, setYearDataStore] = useState({});
-  const [loading, setLoading] = useState(true);
   const [data, setData] = useState(() =>
     deriveRowsForYear(selectedYear, null),
   );
 
   useEffect(() => {
-    const performanceRef = ref(db, FB_PATH);
-    const unsub = onValue(performanceRef, (snapshot) => {
-      setYearDataStore(snapshot.val() || {});
-      setLoading(false);
-    });
-    return () => unsub();
-  }, []);
+    setYearDataStore(remoteStore || {});
+  }, [remoteStore]);
 
   useEffect(() => {
     const rows = deriveRowsForYear(selectedYear, yearDataStore[selectedYear]);

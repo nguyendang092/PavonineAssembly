@@ -7,6 +7,10 @@ import {
   startTransition,
 } from "react";
 import { db, get, ref } from "@/services/firebase";
+import {
+  bumpFirebaseGeneration,
+  isFirebaseGenerationStale,
+} from "@/hooks/firebaseGeneration";
 import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 import {
   previousDateOf,
@@ -45,6 +49,7 @@ export function useAttendanceCompareEmployees({
   });
   const compareDayRowsCacheRef = useRef(new Map());
   const compareBusyRef = useRef(false);
+  const compareGenerationRef = useRef(0);
 
   useEffect(() => {
     compareBusyRef.current = compareEmployeesBusy;
@@ -133,6 +138,7 @@ export function useAttendanceCompareEmployees({
       }
 
       setCompareEmployeesBusy(true);
+      const myGeneration = bumpFirebaseGeneration(compareGenerationRef);
       const isSeasonalAttendance =
         isSeasonalAttendanceRoot(attendanceRootPath);
       try {
@@ -141,6 +147,9 @@ export function useAttendanceCompareEmployees({
           const cached = compareDayRowsCacheRef.current.get(key);
           if (cached) return cached;
           const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
+          if (isFirebaseGenerationStale(myGeneration, compareGenerationRef)) {
+            return null;
+          }
           const rows = sortEmployeesStableAsc(
             reconcileAttendanceDayRowsFromRaw([], snap.val(), {
               seasonal: isSeasonalAttendance,
@@ -159,6 +168,13 @@ export function useAttendanceCompareEmployees({
           loadRowsByDate(previousDate),
           loadRowsByDate(currentDate),
         ]);
+        if (
+          isFirebaseGenerationStale(myGeneration, compareGenerationRef) ||
+          !previousRows ||
+          !currentRows
+        ) {
+          return;
+        }
 
         const prevSttRank = buildCompareSttRankMap(
           previousRows,
@@ -225,6 +241,7 @@ export function useAttendanceCompareEmployees({
         const allRows = computeCompareRows(allDepts, prevByDept, currByDept);
 
         startTransition(() => {
+          if (isFirebaseGenerationStale(myGeneration, compareGenerationRef)) return;
           setCompareEmployeesResult(
             buildCompareEmployeesResult({
               previousDate,
@@ -237,6 +254,7 @@ export function useAttendanceCompareEmployees({
           setCompareEmployeesOpen(true);
         });
       } catch (error) {
+        if (isFirebaseGenerationStale(myGeneration, compareGenerationRef)) return;
         setAlert({
           show: true,
           type: "error",
@@ -247,6 +265,7 @@ export function useAttendanceCompareEmployees({
           ),
         });
       } finally {
+        if (isFirebaseGenerationStale(myGeneration, compareGenerationRef)) return;
         setCompareEmployeesBusy(false);
       }
     },

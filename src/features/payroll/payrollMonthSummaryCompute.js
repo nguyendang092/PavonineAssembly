@@ -3,6 +3,7 @@ import { payrollEmployeeProfileDatesFingerprint } from "@/features/payroll/payro
 import {
   isPayrollMonthChunkFetchError,
   resolvePayrollMonthEmployeeProfileForSummary,
+  computePayrollMonthEmployeeFingerprint,
 } from "@/features/payroll/payrollMonthlyGridData";
 import {
   PAYROLL_MONTH_SUMMARY_CACHE_MAX,
@@ -11,7 +12,6 @@ import {
   PAYROLL_MONTH_SUMMARY_SYNC_MAX_IDS,
   shouldUsePayrollMonthSummaryWorker,
 } from "@/features/payroll/payrollMonthDataScale";
-import { computePayrollMonthChunksFingerprint } from "@/features/payroll/payrollMonthChunksFingerprint";
 import {
   serializePayrollMonthChunkForWorker,
 } from "@/features/payroll/payrollMonthChunkSerialize";
@@ -40,7 +40,6 @@ function cacheKey(id, fingerprint, profileFingerprint) {
 function getCachedOrBuildMonthlySummary(
   cache,
   id,
-  fingerprint,
   chunkByDate,
   monthKeys,
   employeeProfile,
@@ -55,7 +54,13 @@ function getCachedOrBuildMonthlySummary(
     resolvedProfile,
     monthKeys,
   );
-  const key = cacheKey(id, fingerprint, profileFingerprint);
+  const contentFingerprint = computePayrollMonthEmployeeFingerprint(
+    chunkByDate,
+    monthKeys,
+    id,
+    employeeProfile,
+  );
+  const key = cacheKey(id, contentFingerprint, profileFingerprint);
   const hit = cache.get(key);
   if (hit !== undefined) {
     cache.delete(key);
@@ -138,10 +143,6 @@ export async function computePayrollMonthSummariesForIds({
   isStale,
   onProgress,
 }) {
-  const fingerprint = computePayrollMonthChunksFingerprint(
-    chunkByDate,
-    monthKeys,
-  );
   const idList = ids ?? [];
 
   if (!idList.length) {
@@ -152,7 +153,6 @@ export async function computePayrollMonthSummariesForIds({
     getCachedOrBuildMonthlySummary(
       cache,
       id,
-      fingerprint,
       chunkByDate,
       monthKeys,
       repById?.get?.(id),
@@ -205,7 +205,13 @@ export async function computePayrollMonthSummariesForIds({
               resolvedProfile,
               monthKeys,
             );
-            const key = cacheKey(id, fingerprint, profileFingerprint);
+            const contentFingerprint = computePayrollMonthEmployeeFingerprint(
+              chunkByDate,
+              monthKeys,
+              id,
+              rep,
+            );
+            const key = cacheKey(id, contentFingerprint, profileFingerprint);
             cache.set(key, summary);
             out.set(id, summary);
           }

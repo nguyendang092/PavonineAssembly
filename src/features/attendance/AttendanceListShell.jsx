@@ -5,7 +5,7 @@ import SidebarNavLink from "./SidebarNavLink";
 import ProductionRouteFallback from "@/features/production/ProductionRouteFallback";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { canViewKoreanTimesheet } from "@/config/featurePermissions";
 import {
   annualLeavePathForDateKey,
@@ -86,7 +86,8 @@ function AttendanceListShell({
 }) {
   const { pathname } = useLocation();
   const { t, i18n } = useTranslation();
-  const { user, userRole } = useUser();
+  const { user } = useUserIdentity();
+  const { userRole } = useUserPermissions();
   const canAccessKoreanTimesheet = canViewKoreanTimesheet(user, userRole);
   const {
     navRef,

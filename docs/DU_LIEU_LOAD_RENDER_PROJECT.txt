@@ -1,0 +1,1643 @@
+================================================================================
+  PAVONINE ASSEMBLY — TOÀN BỘ CÁCH LOAD DỮ LIỆU & RENDER UI
+  Bản ALL-IN-ONE (gộp HUONG_DAN Giờ công + Phép năm) | Cập nhật: 2026-08-25
+================================================================================
+
+Mục lục
+  0.  Tóm tắt kiến trúc (1 trang)
+  1.  Khởi động ứng dụng (main.jsx → App.jsx)
+  2.  Xác thực, phiên đăng nhập & phân quyền
+  3.  Firebase Realtime Database & Storage
+  4.  Router, lazy load, prefetch chunk
+  5.  Layout shell (Navbar, Sidebar, scroll)
+  6.  Pattern chung: load → state → render
+  7.  Bảng route → layout → nguồn dữ liệu
+  8.  Chi tiết từng module / trang (tóm tắt)
+      8.1–8.16  (xem mục 14 cho sơ đồ ASCII)
+  9.  Sơ đồ ASCII theo từng module
+  10. i18n (đa ngôn ngữ)
+  11. CSS / viewport / scroll
+  12. Export Excel / PDF / ảnh (lazy)
+  13. Build, test, tài liệu liên quan
+  14. Sơ đồ luồng tổng quát + checklist
+  PHỤ LỤC A — Quản lý phép năm (đầy đủ, từ QUAN_LY_PHEP_NAM_HUONG_DAN.txt)
+  PHỤ LỤC B — Lưới tháng giờ công (đầy đủ, từ LUOI_THANG_GIO_CONG_HUONG_DAN.txt)
+
+================================================================================
+0. TÓM TẮT KIẾN TRÚC (1 TRANG)
+================================================================================
+
+Stack:
+  - React 18 + Vite
+  - React Router v6
+  - Firebase Auth + Realtime Database (RTDB) + Storage
+  - i18next (vi / ko)
+  - Tailwind CSS + CSS module theo feature
+
+Luồng tổng quát mọi trang:
+
+  main.jsx
+    → ThemeProvider, LoadingProvider
+    → App.jsx
+        → đọc localStorage.userLogin (phiên 30 phút)
+        → onValue(userDepartments) → userRole, userDepartments
+        → BrowserRouter
+            → Navbar (menu từ menuConfig.js)
+            → #app-main-scroll (vùng cuộn chính)
+                → Suspense (LoadingBlock)
+                    → Routes
+                        → ProtectedRoute (trừ /login)
+                        → ProductionPageShell (hầu hết route) HOẶC trang độc lập (/)
+                            → lazyImport() page component
+                                → hook load Firebase (onValue / get)
+                                → useMemo / derived state
+                                → render bảng / chart / form
+
+Hai cách load Firebase chính:
+  A. REALTIME  — onValue(ref) → cập nhật state mỗi khi DB đổi
+     Dùng: điểm danh theo ngày, giờ công ngày, khuôn, nhiệt độ, MC defect, …
+  B. ONE-SHOT  — get(ref) hoặc query range → fetch một lần (có thể cache)
+     Dùng: dashboard kỳ, báo cáo ngày, lưới tháng giờ công, snapshot kiểm kê
+
+Hai layout sidebar:
+  - Production sidebar  — productionSidebarConfig.js (hầu hết route)
+  - HR sidebar (legacy) — AttendanceListShell (chỉ khi route KHÔNG thuộc production layout)
+
+Tài liệu HR chi tiết (đã gộp trong file này):
+  - PHỤ LỤC A — Phép năm
+  - PHỤ LỤC B — Lưới tháng giờ công
+  - docs/FIREBASE_DATABASE.md, docs/GIO_CONG_TINH_TOAN.md (tham chiếu ngoài)
+
+================================================================================
+1. KHỞI ĐỘNG ỨNG DỤNG
+================================================================================
+
+1.1 Entry point — src/main.jsx
+──────────────────────────────
+  - initThemeFromStorage() → đọc appTheme từ localStorage, gắn class dark/light lên html
+  - import src/styles/index.css (tokens, Tailwind, layer global)
+  - Mount cây provider:
+      ThemeProvider → LoadingProvider → App
+
+  File theme: src/utils/theme.js, src/contexts/ThemeContext.jsx
+
+1.2 App shell — src/App.jsx
+────────────────────────────
+  Import sớm: @/config/i18n (khởi tạo i18next trước render)
+
+  State toàn cục:
+    user            — { email, name } từ localStorage
+    userDepartments — mảng phòng ban user được phép xem
+    userRole        — ADMIN | STAFF | … (authRoles.js)
+    isScrolled      — navbar có nền blur khi cuộn
+
+  UserContext (src/contexts/UserContext.js):
+    { user, setUser, userDepartments, userRole }
+    Consumer: useUser() ở mọi trang cần quyền / hiển thị tên
+
+  LoadingContext (src/contexts/LoadingContext.jsx):
+    useLoading().showLoading() / hideLoading()
+    Overlay fullscreen LoadingBlock (z-index --z-loading)
+
+  Cấu trúc DOM:
+    NavbarShell (fixed top, ẩn trên /login)
+    MainScrollShell (#app-main-scroll, paddingTop = --app-navbar-height)
+      Suspense → Routes
+    Footer
+    ScrollActionPortal → BackToTop + BackToBottom (portal document.body)
+
+  Scroll navbar:
+    Lắng nghe scroll trên #app-main-scroll → setIsScrolled → class nền indigo
+
+================================================================================
+2. XÁC THỰC, PHIÊN ĐĂNG NHẬP & PHÂN QUYỀN
+================================================================================
+
+2.1 Đăng nhập
+─────────────
+  Route: /login
+  File:  src/auth/LoginRoute.jsx → src/auth/SignIn.jsx
+
+  Luồng:
+    Firebase Auth signInWithEmailAndPassword
+    → ghi localStorage.userLogin = { email, name, expire }
+    → expire = Date.now() + 30 phút
+    → setUser() → redirect về trang trước (state.from)
+
+  App.jsx:
+    - Khởi tạo user từ readSessionUser()
+    - Timer tự logout khi hết expire
+    - Hết hạn → xóa userLogin → redirect /login
+
+2.2 ProtectedRoute — src/auth/ProtectedRoute.jsx
+──────────────────────────────────────────────────
+  Chỉ kiểm tra có session hay không.
+  KHÔNG kiểm tra role ở đây — từng trang tự gate bằng featurePermissions.
+
+2.3 Role & phòng ban — App-level listener
+──────────────────────────────────────────
+  useEffect([user]):
+    onValue(ref(db, "userDepartments"))
+    → tìm mapping theo email (case-insensitive)
+    → setUserDepartments(mapping.departments)
+    → setUserRole(inferRoleFromMapping)
+    → override ADMIN nếu isAdminOrHR(user)
+
+  File hỗ trợ:
+    src/config/authRoles.js       — ROLES, ADMIN_OR_HR_EMAILS, inferRoleFromMapping
+    src/config/featurePermissions.js — canManageAnnualLeave, canEditAttendance, …
+    src/features/admin/PermissionCatalogPage.jsx — catalog tĩnh PERMISSION_CATALOG
+
+2.4 Kiểm tra quyền trên trang
+──────────────────────────────
+  Pattern phổ biến:
+    const { user, userRole, userDepartments } = useUser();
+    if (!canXxx(user, userRole)) return <AlertMessage /> hoặc redirect;
+
+  Một số menu ẩn theo role:
+    adminOnly trên productionSidebarConfig / menuConfig
+    koreanOnly cho Korean Timesheet
+
+================================================================================
+3. FIREBASE REALTIME DATABASE & STORAGE
+================================================================================
+
+3.1 Khởi tạo — src/services/firebase.js
+─────────────────────────────────────────
+  initializeApp(firebaseConfig)
+  db = getDatabase(app)
+  storage = getStorage(app)
+
+  Export API dùng trong project:
+    ref, onValue, get, set, update, remove, push
+    query, orderByKey, startAt, endAt, limitToFirst, limitToLast
+    runTransaction, off
+    storageRef, uploadBytes, getDownloadURL, deleteObject
+
+  Upload ảnh: src/services/firebaseImageUpload.js, src/services/imageUpload/
+
+3.2 Cây dữ liệu RTDB (tóm tắt)
+──────────────────────────────
+  Chi tiết đầy đủ: docs/FIREBASE_DATABASE.md
+
+  Path thường gặp:
+    attendance/{yyyy-mm-dd}/emp_{mnv}     Điểm danh chính
+    seasonalAttendance/{date}/…           Thời vụ
+    koreanAttendance/{date}/…             Korean timesheet
+    annualLeave/{year}/emp_{mnv}          Phép năm (stored)
+    userDepartments                       Email → phòng ban, role
+    bar/, ng/                             Sản lượng workplace
+    s90dManualEntries/, ap5ManualEntries/ Báo cáo S90D/AP5
+    mcDefectReport/byDate/…               Hàng lỗi MC
+    performanceData/                      Cải tiến
+    molds/                                Khuôn
+    areas/                                Nhiệt độ (khu vực → máy)
+    warehouseInventoryDashboard/          Snapshot kiểm kê
+
+3.3 Khi dùng onValue vs get
+───────────────────────────
+  ┌─────────────────┬──────────────────────────────────────────────────────┐
+  │ onValue         │ Dữ liệu cần realtime, nhiều user cùng sửa           │
+  │ (listener)      │ VD: điểm danh ngày, payroll ngày, mold list         │
+  ├─────────────────┼──────────────────────────────────────────────────────┤
+  │ get             │ Snapshot một lần, báo cáo, dashboard kỳ             │
+  │ (one-shot)      │ VD: daily report, attendance dashboard, month grid  │
+  ├─────────────────┼──────────────────────────────────────────────────────┤
+  │ query+onValue   │ Range theo key (phép năm — attendance cả năm)       │
+  │                 │ annualLeaveLiveStore.js — dedupe listener             │
+  ├─────────────────┼──────────────────────────────────────────────────────┤
+  │ Repository      │ Firebase + localStorage + pending queue             │
+  │                 │ manualEntriesRepository.js (S90D/AP5)                 │
+  └─────────────────┴──────────────────────────────────────────────────────┘
+
+  Cleanup bắt buộc:
+    useEffect(() => {
+      const unsub = onValue(ref, callback);
+      return () => unsub();
+    }, [deps]);
+
+  Chống race condition:
+    generation counter (useAttendanceDayFirebase)
+    startTransition cho update không khẩn (payroll reconcile)
+
+3.4 External store (dedupe listener)
+────────────────────────────────────
+  src/features/leave/annualLeaveLiveStore.js
+    - Một listener attendance theo năm, nhiều component subscribe
+    - useSyncExternalStore qua useAnnualLeaveYearExternal
+
+================================================================================
+4. ROUTER, LAZY LOAD, PREFETCH CHUNK
+================================================================================
+
+4.1 Cấu hình route
+──────────────────
+  src/config/menuConfig.js
+    menuConfig[]     — cây menu Navbar (dropdown lồng nhau)
+    routeConfig[]    — { path, element } map tên component
+    PUBLIC_ROUTE_PATHS — chỉ /login
+
+  src/App.jsx
+    ROUTE_COMPONENTS — map tên string → lazy component
+    Mọi page import qua lazyImport(() => import(...))
+
+4.2 lazyImport — src/utils/lazyImport.js
+────────────────────────────────────────
+  Wrapper React.lazy:
+    - Chunk fail (deploy mới / cache) → reload trang 1 lần
+    - Tránh treo "Failed to fetch dynamically imported module"
+
+4.3 Hai nhóm route trong App.jsx
+────────────────────────────────
+  NHÓM A — PRODUCTION_LAYOUT_PATHS (productionSidebarConfig.js):
+    Nested under:
+      <ProtectedRoute><ProductionPageShell /></ProtectedRoute>
+    ProductionPageShell → ProductionSidebarShell → Suspense → Outlet
+
+  NHÓM B — Còn lại (hiện chỉ "/"):
+    <ProtectedRoute><RouteComponent /></ProtectedRoute>
+    Không có production sidebar
+
+  Alias redirect trong App:
+    /email/login → /login
+    /email → /
+    /ng → /normal
+    /attendance-table → /attendance-list
+
+4.4 Prefetch chunk (sidebar hover)
+──────────────────────────────────
+  src/config/routeChunkLoaders.js
+    ROUTE_CHUNK_LOADERS[path] = () => import(...)
+    prefetchRouteChunk(to) — gọi 1 lần/path
+
+  Gọi từ:
+    src/features/attendance/useAttendanceSidebarCollapse.js
+    SidebarNavLink onMouseEnter / onFocus / onTouchStart
+
+  Mục đích: tải JS chunk trước khi click → chuyển trang mượt hơn
+
+4.5 Suspense layers
+───────────────────
+  Lớp ngoài App.jsx:
+    fallback = LoadingBlock min-h-[60vh]
+
+  Lớp trong ProductionPageShell:
+    fallback = ProductionRouteFallback (nhẹ hơn, trong layout sidebar)
+
+================================================================================
+5. LAYOUT SHELL (NAVBAR, SIDEBAR, SCROLL)
+================================================================================
+
+5.1 Navbar — src/components/layout/Navbar.jsx
+───────────────────────────────────────────────
+  Menu desktop/mobile từ menuConfig
+  Theme toggle, đổi ngôn ngữ (i18n.changeLanguage)
+  Lazy: SignIn modal, ChangePasswordModal
+  useNavbarHeight → CSS var --app-navbar-height
+
+5.2 Production layout
+─────────────────────
+  ProductionPageShell.jsx
+    html.production-page-active
+    #app-main-scroll.production-page-scroll-root
+    scroll top = 0 khi pathname đổi
+
+  ProductionSidebarShell.jsx
+    PRODUCTION_SIDEBAR_SECTIONS từ productionSidebarConfig.js
+    Collapse / pin / hover expand (attendanceSidebar.css + productionSidebar.css)
+    Click link → navigate + collapse sidebar
+    Prefetch chunk on hover
+
+  CSS: productionPageViewport.css, productionSidebar.css
+
+5.3 HR layout (dual-mode)
+─────────────────────────
+  AttendanceHrPageShell.jsx
+    html.hr-page-active
+
+    Nếu route ∈ PRODUCTION_LAYOUT_PATHS:
+      Chỉ render <div className="hr-page-body">{children}</div>
+      (sidebar production đã có sẵn)
+
+    Nếu KHÔNG (legacy):
+      AttendanceListShell — sidebar HR riêng (điểm danh, giờ công, phép, …)
+
+  CSS: hrPageViewport.css, attendanceSidebar.css, hrPageCompact.css
+
+5.4 Trang chủ "/"
+────────────────
+  Không sidebar — chỉ Navbar + NavigationBoardPage
+  Card công cụ từ src/config/navigationBoardTools.js (config tĩnh)
+
+================================================================================
+6. PATTERN CHUNG: LOAD → STATE → RENDER
+================================================================================
+
+6.1 URL sync
+────────────
+  useSearchParams — ?date=, ?year=, ?month=, ?edit=
+  Ví dụ:
+    /attendance-list?date=2026-08-25
+    /annual-leave?year=2026&month=08
+    /attendance-salary?date=…
+
+6.2 Derived data
+────────────────
+  useMemo — filter, sort, KPI, chart series, pivot bảng
+  useDeferredValue — search box (payroll, mold, warehouse, dashboard)
+  useCallback — handler truyền xuống memo child
+
+6.3 Context split (giảm re-render)
+──────────────────────────────────
+  AttendanceList — 5 context nhánh:
+    src/features/attendance/attendanceListBranchContexts.js
+    Toolbar / Search / Content / FilteredData / ComboChart
+
+  Production report S90D/AP5:
+    ProductionReportContext.jsx — i18nPrefix, product config
+
+6.4 Mutation (ghi Firebase)
+───────────────────────────
+  set / update / remove trên ref cụ thể
+  Optimistic UI một số chỗ (S90D pending queue)
+  useAttendanceListMutations.js — CRUD điểm danh
+
+6.5 Pagination & search
+───────────────────────
+  useHrTablePagination.js + HrTablePagination.jsx
+  HrDebouncedSearchField.jsx + useDebouncedSearchQuery.js
+
+6.6 Virtual scroll
+──────────────────
+  @tanstack/react-virtual — bảng lớn (nơi có nhiều row)
+
+6.7 Loading UI
+──────────────
+  LoadingBlock / LoadingSpinner — inline
+  LoadingContext — overlay toàn app
+  PayrollMonthGridLoadingOverlay — lưới tháng giờ công
+  Feature-specific skeleton trong ProductionRouteFallback
+
+================================================================================
+7. BẢNG ROUTE → LAYOUT → NGUỒN DỮ LIỆU
+================================================================================
+
+  Path                        Component                      Layout          Firebase chính
+  ─────────────────────────────────────────────────────────────────────────────────────────
+  /                           NavigationBoardPage            Navbar only     (không)
+  /login                      LoginRoute                     Fullscreen      Auth
+  /normal                     WorkplaceDashboardNormal       Prod sidebar    bar/, ng/
+  /s90d-production-report     S90DProductionReportPage       Prod sidebar    s90dManualEntries/
+  /ap5-production-report      AP5ProductionReportPage        Prod sidebar    ap5ManualEntries/
+  /performance                PerformanceChart               Prod sidebar    performanceData/
+  /mc-defect-report           MCDefectReportDashboard        Prod sidebar    mcDefectReport/
+  /stock-variance             WarehouseInventoryDashboard    Prod sidebar    warehouseInventory…/latestSnapshot
+  /nhietdo                    TemperatureMonitor             Prod sidebar    areas/
+  /mold                       MoldManager                    Prod sidebar    molds/
+  /qr-code-generator          QRCodeGenerator                Prod sidebar    (client-only)
+  /attendance-list            AttendanceList                 Prod + HR shell attendance/{date}
+  /seasonal-staff-attendance  SeasonalStaffAttendance        Prod + HR shell seasonalAttendance/{date}
+  /korean-timesheet           KoreanTimesheetPage            Prod + HR shell koreanAttendance/{date}
+  /attendance-salary          PayrollSalaryCalculator        Prod + HR shell attendance/{date}
+  /annual-leave               AnnualLeaveManager             Prod + HR shell annualLeave/{year} + attendance range
+  /attendance-dashboard       AttendanceDashboardPage        Prod + HR shell attendance (batched get)
+  /attendance-daily-report    AttendanceDailyReportPage      Prod sidebar    attendance + seasonal (get)
+  /bangkhen1, /bangkhen2      CertificateGenerator1/2        Prod sidebar    (form client)
+  /user-department            UserDepartmentManager          Prod sidebar    userDepartments, attendance
+  /permission-catalog         PermissionCatalogPage          Prod sidebar    (catalog tĩnh JS)
+
+================================================================================
+8. CHI TIẾT TỪNG MODULE / TRANG
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+8.1 TRANG CHỦ — Navigation Board
+────────────────────────────────────────────────────────────────────────────────
+  Route:  /
+  File:   src/features/home/NavigationBoardPage.jsx
+  Config: src/config/navigationBoardTools.js
+
+  Load:   Không Firebase — card link tĩnh theo quyền/feature
+  Render: Grid card → React Router Link
+
+────────────────────────────────────────────────────────────────────────────────
+8.2 ĐIỂM DANH — AttendanceList, Thời vụ, Korean
+────────────────────────────────────────────────────────────────────────────────
+  Routes:
+    /attendance-list              → AttendanceList.jsx
+    /seasonal-staff-attendance    → SeasonalStaffAttendance.jsx (root seasonalAttendance)
+    /korean-timesheet             → KoreanTimesheetPage.jsx (root koreanAttendance)
+
+  Pipeline AttendanceList:
+    Route lazy load
+    → AttendanceHrPageShell
+    → useAttendanceDayFirebase(rootPath, selectedDate)
+         onValue(ref(db, `${rootPath}/${date}`))
+         mergeAttendanceDayRows.js → row objects
+    → useAttendanceListSetup — cột, quyền, URL ?edit=
+    → useAttendanceListFilters / useAttendanceListDerivedLists
+    → 5× BranchContext providers
+    → AttendanceListContentSection — bảng nhóm phòng ban
+    → AttendanceTableRow — từng dòng NV
+
+  Ghi dữ liệu:
+    useAttendanceListMutations.js — set/update/remove Firebase
+
+  File quan trọng:
+    useAttendanceDayFirebase.js
+    useAttendanceListHandlers.js
+    useAttendanceListUiState.js
+    attendanceWorkingHours.js (tính giờ — xem docs/GIO_CONG_TINH_TOAN.md)
+    AttendanceUploadHandler.js — import Excel
+
+────────────────────────────────────────────────────────────────────────────────
+8.3 BÁO CÁO ĐIỂM DANH NGÀY
+────────────────────────────────────────────────────────────────────────────────
+  Route: /attendance-daily-report
+  File:  src/features/attendance/AttendanceDailyReportPage.jsx
+
+  Pipeline:
+    ProductionPageShell (không AttendanceHrPageShell)
+    → useAttendanceDailyReportData(date)
+         get() × 2: attendance + seasonalAttendance cho 1 ngày
+    → buildAttendanceDailyReportGrid / attendanceDailyReportStats.js
+    → AttendanceDailyReportMetrics + AttendanceDailyReportTable
+
+  Export:
+    attendanceDailyReportExport.js — ExcelJS / html-to-image (lazy)
+
+────────────────────────────────────────────────────────────────────────────────
+8.4 DASHBOARD ĐIỂM DANH
+────────────────────────────────────────────────────────────────────────────────
+  Route: /attendance-dashboard
+  File:  src/features/attendance/AttendanceDashboardPage.jsx
+
+  Pipeline:
+    AttendanceHrPageShell
+    → useAttendanceDashboardData(root, anchorDate, period)
+         Batched get() — KHÔNG realtime
+         Cache + requestAnimationFrame yield
+    → attendanceDashboardMetrics.js — snapshot, trend
+    → Recharts Bar / Line / Pie
+
+  Export Excel: dynamic import("exceljs") khi user bấm export
+
+────────────────────────────────────────────────────────────────────────────────
+8.5 GIỜ CÔNG (PAYROLL)
+────────────────────────────────────────────────────────────────────────────────
+  Route: /attendance-salary?date=
+  File:  src/features/payroll/PayrollSalaryCalculator.jsx
+
+  A) Chế độ NGÀY (trang chính):
+    AttendanceHrPageShell
+    → onValue(attendance/{selectedDate}) — REALTIME
+    → buildPayrollDayFromRaw.js / reconcilePayrollEmployeesFromBase
+    → useDeferredValue(search) + pagination
+    → PayrollSalaryTableRow
+
+  B) Lưới THÁNG (modal):
+    PayrollToolsMenu → lazy PayrollMonthlyTimesheetModal
+    → usePayrollMonthDayChunks
+         get() từng chunk ngày + payrollMonthCache.js
+         prefetchAdjacentMonths()
+    → payrollMonthlyGridData.js
+    → PayrollMonthGridLoadingOverlay khi đang tải
+
+  Export:
+    PayrollRangeExcelExportModal (lazy)
+    payrollSalaryExcelExportRange.js, payrollExcelExport.js
+
+  Tài liệu chi tiết: PHỤ LỤC B (cuối file) + docs/GIO_CONG_TINH_TOAN.md
+
+────────────────────────────────────────────────────────────────────────────────
+8.6 PHÉP NĂM (ANNUAL LEAVE)
+────────────────────────────────────────────────────────────────────────────────
+  Route: /annual-leave?year=&month=
+  File:  src/features/leave/AnnualLeaveManager.jsx
+
+  Pipeline:
+    AttendanceHrPageShell
+    → useAnnualLeaveYearData(year)
+         useSyncExternalStore → annualLeaveLiveStore
+         Stored: annualLeave/{year}
+         Live: attendance range cả năm (deduped listener)
+    → annualLeaveCalculated.js — công thức PN, used, balance
+    → buildAnnualLeaveManagerRowCatalog + filter
+    → AnnualLeaveManagerTableSection → TableRow
+
+  Hai lớp dữ liệu:
+    STORED — Firebase annualLeave (hiển thị ngay)
+    LIVE   — tính lại từ attendance (có thể khác stored nếu chưa persist)
+
+  Ghi Firebase khi:
+    Tính lại, Excel upload, sync attendance, HR adjustment
+    (annualLeaveAttendanceSync.js)
+
+  Tài liệu chi tiết: PHỤ LỤC A (cuối file)
+
+────────────────────────────────────────────────────────────────────────────────
+8.7 BÁO CÁO SẢN LƯỢNG NORMAL (WORKPLACE)
+────────────────────────────────────────────────────────────────────────────────
+  Route: /normal
+  Files:
+    WorkplaceDashboardNormal.jsx → workplace/WorkplaceDashboardPage.jsx
+    hooks/useWorkplaceProductionDashboard.js
+    lib/barFirebase.js, buildChartFromWeekRows.js
+
+  Pipeline:
+    Chọn tuần/năm
+    → fetch bar/ + ng/ snapshot (get hoặc onValue tùy hook)
+    → buildChartFromWeekRows → Chart.js
+    → Excel upload: @e965/xlsx
+    → NG upload: ngWorkplaceUpload.js
+
+────────────────────────────────────────────────────────────────────────────────
+8.8 BÁO CÁO S90D & AP5 (MANUAL PRODUCTION REPORT)
+────────────────────────────────────────────────────────────────────────────────
+  Routes:
+    /s90d-production-report  → S90DProductionReportPage.jsx
+    /ap5-production-report   → AP5ProductionReportPage.jsx
+
+  Kiến trúc dùng chung:
+    productionReportConfigs.js — S90D_PRODUCTION_REPORT_CONFIG / AP5_…
+    ProductionReportContext.jsx
+    useProductionManualEntries.js
+    manualEntriesRepository.js
+    ManualProductionReportPage.jsx — tabs: Tổng / Theo ngày / Công đoạn
+
+  Pipeline:
+    ProductionReportProvider(config)
+    → useProductionManualEntries
+         repo.loadLocalStore() — hiển thị ngay draft offline
+         onValue Firebase theo tháng (month-scoped)
+         pending write queue → flush khi online
+    → Tab panels:
+         S90dSummaryProcessTable, daily panels, process charts
+    → useMemo summaries: buildS90dFromManual.js, s90dDefectColumns.js
+
+  S90D-specific: src/features/dashboard/s90d/
+  AP5: cùng pattern, config khác (firebaseRoot, i18n)
+
+────────────────────────────────────────────────────────────────────────────────
+8.9 BÁO CÁO CẢI TIẾN (PERFORMANCE)
+────────────────────────────────────────────────────────────────────────────────
+  Route: /performance
+  Files:
+    PerformanceChart.jsx
+    usePerformanceYearData.js — onValue(performanceData)
+    PerformanceChartParts.jsx
+    utils/performanceChartData.js
+
+  Pipeline:
+    Chọn năm → listener performanceData
+    → derive rows theo team template
+    → Chart + bảng sidebar
+
+────────────────────────────────────────────────────────────────────────────────
+8.10 BÁO CÁO HÀNG LỖI (MC DEFECT)
+────────────────────────────────────────────────────────────────────────────────
+  Route: /mc-defect-report
+  Files:
+    mcDefectReport/McDefectReportPage.jsx
+    hooks/useMcDefectDashboard.js — onValue(mcDefectReport/byDate)
+    hooks/useMcDefectA3ManualEmployees.js
+    lib/dataAggregations.js, excelImport.js
+
+  Pipeline:
+    Realtime byDate
+    → parse → filter tháng / phòng / NV
+    → Recharts + heatmap + bảng phân trang
+    → Export PNG/PDF: html-to-image + jspdf (lazy)
+
+────────────────────────────────────────────────────────────────────────────────
+8.11 KIỂM KÊ KHO (WAREHOUSE INVENTORY)
+────────────────────────────────────────────────────────────────────────────────
+  Route: /stock-variance
+  Files:
+    warehouseInventory/WarehouseInventoryPage.jsx
+    hooks/useWarehouseInventoryDashboard.js
+
+  Pipeline:
+    get(warehouseInventoryDashboard/latestSnapshot) on mount
+    Upload file Excel → parse client
+    → Chart.js + bảng chênh lệch
+
+────────────────────────────────────────────────────────────────────────────────
+8.12 QUẢN LÝ NHIỆT ĐỘ
+────────────────────────────────────────────────────────────────────────────────
+  Route: /nhietdo
+  File:  src/components/ui/TemperatureMonitor.jsx
+
+  Pipeline:
+    onValue(areas/) — danh sách khu vực
+    → per-machine onValue theo tháng
+    → SingleMachineTable, lazy ChartView
+    → TemperatureFilterPanel
+
+────────────────────────────────────────────────────────────────────────────────
+8.13 QUẢN LÝ KHUÔN (MOLD)
+────────────────────────────────────────────────────────────────────────────────
+  Route: /mold
+  File:  src/features/inventory/moldManager/MoldManagerPage.jsx
+
+  Pipeline:
+    html.mold-page-active
+    onValue(molds/) — realtime list
+    → filter + useDeferredValue(search) + pagination
+    → KPI cards, modals CRUD
+    → Excel import/export @e965/xlsx
+
+────────────────────────────────────────────────────────────────────────────────
+8.14 MÃ QR
+────────────────────────────────────────────────────────────────────────────────
+  Route: /qr-code-generator
+  File:  src/components/ui/QRCodeGenerator.jsx
+
+  Pipeline:
+    Hoàn toàn client — lib qrcode → canvas
+    Không Firebase
+
+────────────────────────────────────────────────────────────────────────────────
+8.15 BẰNG KHEN
+────────────────────────────────────────────────────────────────────────────────
+  Routes: /bangkhen1, /bangkhen2
+  Files:  CertificateGenerator1.jsx, CertificateGenerator2.jsx
+          CertificateGeneratorFormShell.jsx
+
+  Pipeline:
+    Form nhập liệu client → render certificate → export ảnh/PDF
+    adminOnly trên sidebar
+
+────────────────────────────────────────────────────────────────────────────────
+8.16 PHÂN QUYỀN USER & PERMISSION CATALOG
+────────────────────────────────────────────────────────────────────────────────
+  /user-department — UserDepartmentManager.jsx
+    onValue(userDepartments) — CRUD mapping email ↔ phòng ban
+    onValue(attendance) — lấy danh sách phòng ban thực tế
+
+  /permission-catalog — PermissionCatalogPage.jsx
+    PERMISSION_CATALOG từ featurePermissions.js (tĩnh)
+    Search filter client-side — không Firebase
+
+================================================================================
+9. SƠ ĐỒ ASCII THEO TỪNG MODULE
+================================================================================
+
+9.1 Trang chủ (/)
+─────────────────
+  navigationBoardTools.js (static config)
+           │
+           ▼
+  NavigationBoardPage ──filter theo quyền──► Grid card Link
+           │
+           └──► React Router navigate → route khác
+
+9.2 Điểm danh (/attendance-list, seasonal, korean)
+──────────────────────────────────────────────────
+  lazyImport(AttendanceList)
+           │
+           ▼
+  AttendanceHrPageShell
+           │
+           ▼
+  useAttendanceDayFirebase ──onValue──► attendance/{date}/
+           │                              seasonalAttendance/
+           │                              koreanAttendance/
+           ▼
+  mergeAttendanceDayRows ──► useAttendanceListFilters
+           │                      useAttendanceListDerivedLists
+           ▼
+  5× BranchContext ──► AttendanceListContentSection
+           │                AttendanceTableRow × N
+           ▼
+  useAttendanceListMutations ──set/update──► Firebase
+
+9.3 Báo cáo điểm danh ngày
+───────────────────────────
+  AttendanceDailyReportPage
+           │
+           ├── get(attendance/{date}) ──────┐
+           └── get(seasonalAttendance/{date})┘
+                       │
+                       ▼
+           buildAttendanceDailyReportGrid / Stats
+                       │
+           ┌───────────┴───────────┐
+           ▼                       ▼
+  AttendanceDailyReportMetrics   AttendanceDailyReportTable
+
+9.4 Dashboard điểm danh
+─────────────────────────
+  AttendanceDashboardPage
+           │
+           ▼
+  useAttendanceDashboardData (batched get, cache, rAF yield)
+           │
+           ▼
+  attendanceDashboardMetrics.js
+           │
+           ▼
+  Recharts (Bar / Line / Pie)
+
+9.5 Giờ công — bảng NGÀY
+────────────────────────
+  PayrollSalaryCalculator
+           │
+           ▼
+  onValue(attendance/{date}) ──REALTIME──► raw day
+           │
+           ▼
+  buildPayrollDayFromRaw / reconcilePayrollEmployeesFromBase
+           │
+           ▼
+  useDeferredValue(search) + pagination
+           │
+           ▼
+  PayrollSalaryTableRow × N
+           │
+           └──► PayrollToolsMenu ──► lazy PayrollMonthlyTimesheetModal
+                                    (xem PHỤ LỤC B)
+
+9.6 Phép năm
+────────────
+  AnnualLeaveManager
+           │
+     ┌─────┴─────┐
+     ▼           ▼
+  onValue      annualLeaveLiveStore
+  annualLeave/   onValue attendance range
+  {year}         (deduped)
+     │           │
+     └─────┬─────┘
+           ▼
+  useAnnualLeaveAttendanceDerived
+           │
+           ▼
+  normalizeRowLive / normalizeRowStored
+           │
+           ▼
+  AnnualLeaveManagerTableRow × N
+           │
+           └── persist trigger ──► annualLeaveAttendanceSync (xem PHỤ LỤC A)
+
+9.7 Báo cáo sản lượng Normal (/normal)
+──────────────────────────────────────
+  useWorkplaceProductionDashboard
+           │
+     ┌─────┴─────┐
+     ▼           ▼
+  barFirebase   ng/ snapshot
+  (bar/)        (get/onValue)
+     │           │
+     └─────┬─────┘
+           ▼
+  buildChartFromWeekRows ──► Chart.js
+           │
+           └── Excel upload (@e965/xlsx) / ngWorkplaceUpload
+
+9.8 S90D & AP5
+──────────────
+  S90DProductionReportPage / AP5ProductionReportPage
+           │
+           ▼
+  ProductionReportProvider(config)
+           │
+           ▼
+  useProductionManualEntries
+           │
+     ┌─────┴──────────────────┐
+     ▼                        ▼
+  loadLocalStore()      onValue Firebase
+  (localStorage draft)  (month-scoped)
+     │                        │
+     └──────────┬─────────────┘
+                ▼
+  manualEntriesRepository (pending queue → flush online)
+                │
+                ▼
+  ManualProductionReportPage
+    ├── Tab Tổng
+    ├── Tab Theo ngày
+    └── Tab Công đoạn
+                │
+                ▼
+  buildS90dFromManual / charts / S90dSummaryProcessTable
+
+9.9 Báo cáo cải tiến (/performance)
+───────────────────────────────────
+  PerformanceChart
+           │
+           ▼
+  usePerformanceYearData ──onValue──► performanceData/
+           │
+           ▼
+  performanceChartData.js (team templates)
+           │
+           ▼
+  PerformanceChartParts (sidebar + chart + table)
+
+9.10 MC Defect (/mc-defect-report)
+──────────────────────────────────
+  useMcDefectDashboard
+           │
+           ▼
+  onValue(mcDefectReport/byDate/…)
+           │
+           ▼
+  dataAggregations.js (filter tháng/BP/NV)
+           │
+     ┌─────┴─────┬─────────┐
+     ▼           ▼         ▼
+  Recharts    Heatmap   Paginated table
+           │
+           └── export: html-to-image + jspdf (lazy)
+
+9.11 Kiểm kê kho (/stock-variance)
+──────────────────────────────────
+  useWarehouseInventoryDashboard
+           │
+           ▼
+  get(warehouseInventoryDashboard/latestSnapshot)
+           │
+           ├── user upload Excel ──► parse client
+           ▼
+  Chart.js + variance table
+
+9.12 Nhiệt độ (/nhietdo)
+────────────────────────
+  TemperatureMonitor
+           │
+           ▼
+  onValue(areas/) ──► list khu vực
+           │
+           ▼ (per machine)
+  onValue(machine/{month}) ──► SingleMachineTable
+           │
+           └── lazy ChartView
+
+9.13 Khuôn (/mold)
+──────────────────
+  MoldManagerPage  [html.mold-page-active]
+           │
+           ▼
+  onValue(molds/) ──REALTIME──► list
+           │
+           ▼
+  filter + useDeferredValue(search) + pagination
+           │
+           ▼
+  KPI cards + CRUD modals + Excel @e965/xlsx
+
+9.14 Mã QR
+──────────
+  QRCodeGenerator
+           │
+           ▼
+  qrcode lib ──► canvas (100% client, không Firebase)
+
+9.15 Bằng khen
+──────────────
+  CertificateGenerator1/2
+           │
+           ▼
+  Form state (client) ──► render certificate ──► export ảnh/PDF
+
+9.16 Phân quyền
+───────────────
+  UserDepartmentManager          PermissionCatalogPage
+           │                              │
+           ▼                              ▼
+  onValue(userDepartments)      PERMISSION_CATALOG (static JS)
+  onValue(attendance) depts     search filter client
+           │
+           └── CRUD mapping email ↔ phòng ban
+
+9.17 Auth & App bootstrap (tham chiếu)
+──────────────────────────────────────
+  main.jsx → ThemeProvider → LoadingProvider → App
+           │
+           ▼
+  readSessionUser(localStorage.userLogin, TTL 30 phút)
+           │
+           ▼
+  onValue(userDepartments) → userRole, userDepartments
+           │
+           ▼
+  Router → ProtectedRoute → ProductionPageShell? → Page
+
+================================================================================
+10. i18n (ĐA NGÔN NGỮ)
+================================================================================
+
+  Init:     src/config/i18n.js (import trong App.jsx)
+  Bundles:  src/config/locales/vi.js (~2000 keys)
+            src/config/locales/ko.js
+            shared/workforcePayrollTerms.js
+
+  Lưu ngôn ngữ: localStorage.appLanguage
+  Fallback: browser language → vi
+
+  Dùng trong component:
+    const { t } = useTranslation();
+    t("navbar.attendance")
+
+  Production report:
+    ProductionReportContext + useReportTranslation.js
+    i18nPrefix theo S90D / AP5 config
+
+  Navbar: toggle vi/ko → i18n.changeLanguage(lang)
+
+================================================================================
+11. CSS / VIEWPORT / SCROLL
+================================================================================
+
+  Global tokens: src/styles/tokens.css (--z-navbar, --z-loading, …)
+  Entry CSS:     src/styles/index.css
+
+  Class trên html (bật/tắt theo trang):
+  ┌──────────────────────────┬─────────────────────────┬─────────────────────┐
+  │ Class                    │ Set bởi                 │ CSS file            │
+  ├──────────────────────────┼─────────────────────────┼─────────────────────┤
+  │ production-page-active   │ ProductionPageShell     │ productionPageViewport │
+  │ hr-page-active           │ AttendanceHrPageShell   │ hrPageViewport      │
+  │ mold-page-active         │ MoldManagerPage         │ moldManager.css     │
+  │ dark (theme)             │ ThemeContext            │ Tailwind dark:      │
+  └──────────────────────────┴─────────────────────────┴─────────────────────┘
+
+  Vùng cuộn:
+    #app-main-scroll — scroll chính toàn app
+    .production-page-scroll-root / .hr-page-scroll-root — override overflow
+    .hr-page-body — nội dung HR khi đã có production sidebar
+    .production-with-sidebar — flex sidebar + main
+
+  Sidebar width:
+    --att-sb-width-expanded: 17rem (attendanceSidebar.css)
+    Collapsed rail + hover expand + pin
+
+  Compact HR: hrPageCompact.css, attendanceToolbarFocus.css
+
+================================================================================
+12. EXPORT EXCEL / PDF / ẢNH (LAZY)
+================================================================================
+
+  Pattern A — Lazy modal UI:
+    React.lazy(() => import("…Modal")) — chỉ tải khi mở menu
+    VD: PayrollRangeExcelExportModal, PayrollMonthlyTimesheetModal
+
+  Pattern B — Dynamic import lúc export:
+    await import("exceljs")
+    await import("html-to-image")
+    await import("jspdf")
+
+  Pattern C — Static import trong module export:
+    annualLeaveExcelExport.js, payrollExcelExport.js, s90dManualExcel.js
+    Chỉ load khi user gọi hàm export
+
+  Pattern D — Upload đọc Excel:
+    @e965/xlsx — import tĩnh trong handler upload
+
+  Nút dùng chung: src/components/ui/ExportExcelButton.jsx
+
+================================================================================
+13. BUILD, TEST, TÀI LIỆU LIÊN QUAN
+================================================================================
+
+  Scripts (package.json):
+    npm run dev          — Vite dev server
+    npm run dev:force    — xóa cache Vite (OneDrive watcher)
+    npm run build        — dist/
+    npm test             — Vitest
+    npm run server       — API upload ảnh (server/index.mjs)
+    npm run cap:*        — Capacitor mobile (MOBILE_BUILD.md)
+
+  Test:
+    Vitest trong vite.config.js
+    ~134 file *.test.js — logic thuần (payroll, leave, attendance, s90d, auth)
+    Không test E2E browser mặc định
+
+  Build lưu ý:
+    KHÔNG dùng manualChunks tùy ý — đã gây circular dependency
+    chunkSizeWarningLimit: 3200
+
+  Tài liệu khác trong repo:
+    docs/FIREBASE_DATABASE.md
+    docs/GIO_CONG_TINH_TOAN.md
+    src/features/payroll/LUOI_THANG_GIO_CONG_HUONG_DAN.txt  (bản gốc = PHỤ LỤC B)
+    src/features/leave/QUAN_LY_PHEP_NAM_HUONG_DAN.txt       (bản gốc = PHỤ LỤC A)
+    src/features/dashboard/workplace/README.md
+    src/features/dashboard/mcDefectReport/README.md
+    src/features/dashboard/warehouseInventory/README.md
+    MOBILE_BUILD.md
+
+================================================================================
+14. SƠ ĐỒ LUỒNG TỔNG QUÁT + CHECKLIST
+================================================================================
+
+  [Browser load index.html]
+           │
+           ▼
+  [main.jsx] Theme + Loading providers
+           │
+           ▼
+  [App.jsx]
+    ├─ readSessionUser(localStorage)
+    ├─ onValue(userDepartments) → role
+    └─ Router
+           │
+           ├─ /login → SignIn → Firebase Auth → userLogin
+           │
+           └─ ProtectedRoute
+                 │
+                 ├─ "/" → NavigationBoard (static)
+                 │
+                 └─ ProductionPageShell (hầu hết route)
+                       ├─ Sidebar + prefetchRouteChunk
+                       └─ Suspense → Page Component
+                             │
+                             ├─ AttendanceHrPageShell? (HR pages)
+                             │
+                             ├─ Hooks load data
+                             │     onValue ──► realtime state
+                             │     get     ──► snapshot state
+                             │     repo    ──► local + Firebase
+                             │
+                             ├─ useMemo derived
+                             │
+                             └─ Render UI
+                                   Table / Chart / Form
+                                   Mutation → set/update Firebase
+
+  ─────────────────────────────────────────────────────────────────────────────
+  Khi thêm trang mới — checklist:
+    1. Thêm lazyImport + ROUTE_COMPONENTS trong App.jsx
+    2. Thêm routeConfig trong menuConfig.js
+    3. Nếu cần sidebar → PRODUCTION_LAYOUT_PATHS + PRODUCTION_SIDEBAR_SECTIONS
+    4. Thêm ROUTE_CHUNK_LOADERS cho prefetch
+    5. Chọn onValue vs get; cleanup unsubscribe
+    6. Gate quyền trong featurePermissions.js
+    7. Thêm i18n keys vi.js / ko.js
+    8. CSS viewport nếu cần (hr-page / production-page / feature css)
+  ─────────────────────────────────────────────────────────────────────────────
+
+================================================================================
+PHỤ LỤC A — QUẢN LÝ PHÉP NĂM (ĐẦY ĐỦ)
+Nguồn: src/features/leave/QUAN_LY_PHEP_NAM_HUONG_DAN.txt
+================================================================================
+
+  QUẢN LÝ PHÉP NĂM — CÁCH HOẠT ĐỘNG, RENDER & TÍNH TOÁN DỮ LIỆU
+  PavonineAssembly | Cập nhật: 2026
+
+Mục lục PHỤ LỤC A
+  A.1  Điểm vào & cấu trúc trang
+  A.2  Nguồn dữ liệu (Firebase)
+  A.3  Hai lớp dữ liệu: Stored vs Live
+  A.4  Hook & pipeline tính toán
+  A.5  Công thức tính phép
+  A.6  Luồng render bảng
+  A.7  Khi nào ghi lại Firebase?
+  A.8  Modal chi tiết & file liên quan
+  A.9  Tóm tắt nhanh
+
+────────────────────────────────────────────────────────────────────────────────
+A.1 ĐIỂM VÀO & CẤU TRÚC TRANG
+────────────────────────────────────────────────────────────────────────────────
+
+Route:     /annual-leave?year=2026&month=01
+Menu:      navbar.annualLeave (menuConfig.js)
+Trang:     src/features/leave/AnnualLeaveManager.jsx
+
+URL params:
+  - year   : năm phép (vd. 2026)
+  - month  : tùy chọn, lọc cột tháng / cắt dữ liệu đến cuối tháng (01–12)
+
+Quyền:
+  - Xem: user đăng nhập
+  - Sửa (upload, tính lại, điều chỉnh HR, xóa năm): Admin/HR (canManageAnnualLeave)
+
+Cây component:
+
+  AnnualLeaveManager
+  ├── AnnualLeaveManagerToolbar        (năm, tháng, phòng ban, search)
+  ├── AnnualLeaveManagerActionsMenu    (tính lại, Excel, export, xóa năm)
+  └── AnnualLeaveManagerTableSection
+      └── AnnualLeaveManagerTablePanel
+          └── AnnualLeaveManagerTableRow
+              ├── AnnualLeaveAdjustmentCell
+              └── AnnualLeaveUsageDetailTrigger → Modal chi tiết ngày nghỉ
+
+────────────────────────────────────────────────────────────────────────────────
+A.2 NGUỒN DỮ LIỆU (FIREBASE)
+────────────────────────────────────────────────────────────────────────────────
+
+Không dùng localStorage. Tất cả từ Firebase Realtime Database.
+
+Path Firebase:
+  annualLeave/{year}/emp_{mnv}     Hồ sơ phép từng nhân viên
+  annualLeave/{year}/_meta         Metadata (updatedAt, rowCount, …)
+  attendance/{yyyy-mm-dd}/emp_{mnv}  Điểm danh hàng ngày
+
+Trường quan trọng trên emp_{mnv}:
+  - fullName, startWorkingDate, subDepartment, dateOfBirth, …
+  - annualLeaveCurrentYear      Phép năm hiện tại (đã lưu)
+  - annualLeaveAdjustment       HR chỉnh tay (+/-)
+  - bonusAnnualLeaveEnv         Phép thưởng môi trường
+  - compensatoryDayOff          Phép bù
+  - totalAnnualLeave            Tổng phép
+  - annualLeaveUsed             Đã dùng
+  - balance                     Còn lại
+  - monthlyLeaveUsage           Mảng 12 tháng (từ Excel, chủ yếu T1–T5/2026)
+
+Quy tắc thời gian (năm 2026):
+  - Tháng 1–5/2026 : dữ liệu Excel / hiển thị thử — KHÔNG trừ PN từ điểm danh
+  - Từ tháng 6/2026: trừ PN từ điểm danh (loại phép PN, ½PN)
+  - NV seasonal / Korean attendance: bỏ qua sync phép năm
+
+File định nghĩa: src/features/leave/annualLeaveFields.js
+
+────────────────────────────────────────────────────────────────────────────────
+A.3 HAI LỚP DỮ LIỆU: STORED vs LIVE
+────────────────────────────────────────────────────────────────────────────────
+
+  STORED (Firebase)
+    - Lấy từ annualLeave/{year}
+    - Hiển thị ngay khi mở trang (chưa cần attendance)
+
+  LIVE (derived)
+    - Tính từ attendance + payroll grid
+    - Cập nhật UI khi điểm danh tải xong
+
+QUAN TRỌNG:
+  Bảng TÍNH LIVE trong React để hiển thị — KHÔNG ghi Firebase mỗi lần render.
+  Chỉ ghi Firebase khi có trigger sync (xem A.7).
+
+────────────────────────────────────────────────────────────────────────────────
+A.4 HOOK & PIPELINE TÍNH TOÁN
+────────────────────────────────────────────────────────────────────────────────
+
+useAnnualLeaveYearData
+  File: useAnnualLeaveYearData.js
+  - Subscribe annualLeave/{year}
+  - Danh sách NV, filter toolbar
+
+useAnnualLeaveAttendanceDerived  (engine chính)
+  File: useAnnualLeaveAttendanceDerived.js
+  Tải attendance và tính:
+    1. deductionsByEmpKey       — tổng PN đã dùng (quét điểm danh)
+    2. attendanceMonthlyByEmpKey — PN theo từng tháng (T6+)
+    3. monthWorkSummaryByEmpKey  — workDays, standardWorkDays, tsDays / tháng
+                                   (phục vụ accrual +1 PN/tháng)
+
+  Incremental (annualLeaveAttendanceDiff.js + annualLeaveDerivedRuntimeCache.js):
+    - Diff fingerprint theo ngày (Firebase clone mới không gây tính lại)
+    - Cache Map theo empKey — chỉ recompute NV trong diff ∩ scope
+    - scopeEmpKeySet = NV trên trang hiện tại (pagination)
+    - STORED hiển thị trước; isEmpUsageReady / isEmpAccrualReady → pending từng dòng
+
+  Dùng listener dùng chung: annualLeaveLiveStore.js (tránh subscribe trùng)
+
+useAnnualLeaveAttendanceEnhancement
+  File: useAnnualLeaveAttendanceEnhancement.js
+  - Wrapper cho bảng manager
+  - Bật payroll accrual, throughDateKey, scopeEmpKeySet (chỉ NV đang hiển thị)
+
+useAnnualLeaveLiveData / useAnnualLeaveBalanceMap
+  - Dùng cho balance live ở nơi khác (nếu cần)
+
+────────────────────────────────────────────────────────────────────────────────
+A.5 CÔNG THỨC TÍNH PHÉP
+────────────────────────────────────────────────────────────────────────────────
+
+A.5.1 Phép năm hiện tại (annualLeaveCurrentYear)
+  annualLeaveCurrentYear = monthlyAccrual + tenureBonus + adjustment
+
+  monthlyAccrual : +1 PN/tháng (theo quy tắc bên dưới)
+  tenureBonus    : +1 PN mỗi 5 năm thâm niên
+  adjustment     : HR chỉnh tay (annualLeaveAdjustment)
+
+  File: annualLeaveCalculated.js → resolveAnnualLeaveCurrentYear
+
+A.5.2 Quy tắc +1 PN/tháng (accrual)
+  File: annualLeaveCalculated.js → resolveAnnualLeaveMonthlyAccrualDays
+        monthMeetsHalfStandardWorkDays
+
+  Điều kiện "đạt nửa tháng" (monthMeetsHalfStandardWorkDays):
+    Đạt MỘT trong hai:
+      - Tổng ngày công (gồm nghỉ có lương) >= 1/2 "Ngày thực tế làm việc"
+      - Số ngày nghỉ thai sản >= 1/2 "Ngày thực tế làm việc"
+
+  Nguồn ngày công tháng:
+    buildAnnualLeaveMonthWorkSummary (annualLeavePayrollAccrual.js)
+    → buildMonthlyRuleSummary (payroll) — cùng logic bảng giờ công
+
+  Theo giai đoạn:
+    T6/2026 trở đi (và mọi tháng năm >= 2027):
+      Mọi NV: +1 PN CHỈ KHI tháng đó đạt 1/2 ngày công
+      Cộng ngay khi đạt, kể cả tháng hiện tại (không chờ hết tháng)
+
+    T1–T5/2026 (quy tắc cũ):
+      NV cũ     : +1 auto mỗi tháng trong khoảng
+      NV mới    : tháng vào làm cần đạt 1/2; các tháng khác +1 auto
+
+  Khoảng tháng tính: từ max(ngày vào làm, 1/1 năm) đến hôm nay (năm hiện tại)
+                     hoặc 31/12 (năm đã qua)
+
+A.5.3 Phép đã dùng & còn lại
+  annualLeaveUsed = HR used + attendance PN
+                    (hoặc tổng monthlyLeaveUsage nếu merge Excel)
+
+  totalAnnualLeave = currentYear + bonusEnv + compensatoryDayOff (+ thành phần khác)
+  balance          = totalAnnualLeave - annualLeaveUsed
+
+  Gộp theo tháng (buildAnnualLeaveMonthlyUsageByEmpKey):
+    Tháng 1–5 : ưu tiên monthlyLeaveUsage từ Excel (Firebase)
+    Tháng 6+  : lấy từ điểm danh (PN, ½PN)
+
+  File: annualLeaveDerived.js → computeLiveAnnualLeaveState
+
+────────────────────────────────────────────────────────────────────────────────
+A.6 LUỒNG RENDER BẢNG
+────────────────────────────────────────────────────────────────────────────────
+
+  [Firebase annualLeave] ──subscribe──> AnnualLeaveManager
+  [Firebase attendance]  ──subscribe──> useAnnualLeaveAttendanceDerived
+
+  Bước trong AnnualLeaveManagerTableSection:
+
+  1. buildAnnualLeaveManagerRowCatalog(yearData)
+     → catalog NV từ Firebase
+
+  2. Filter: search / phòng ban / tháng
+
+  3. useAnnualLeaveAttendanceEnhancement
+     → deductionsByEmpKey, attendanceMonthlyByEmpKey, monthWorkSummaryByEmpKey
+
+  4. buildAnnualLeaveMonthlyUsageByEmpKey
+     → gộp Excel T1–T5 + attendance T6+
+
+  5. Với mỗi NV trong filteredEntries:
+       - Nếu attendanceUsageReady = true
+           → normalizeAnnualLeaveRowLive (tính live)
+       - Ngược lại
+           → normalizeAnnualLeaveRowStored (chỉ Firebase)
+
+  6. Gom vào displayRowByEmpKey (Map) → tránh re-render thừa
+
+  7. AnnualLeaveManagerTablePanel → pagination + AnnualLeaveManagerTableRow
+
+  Trạng thái "đang tải":
+    Ô có class annual-leave-cell--pending khi:
+      attendanceUsageReady = false  HOẶC  attendanceAccrualReady = false
+
+  Lọc tháng (monthFilter):
+    - Chỉ hiện cột tháng được chọn
+    - throughDateKey cắt accrual/usage đến cuối tháng (hoặc hôm nay nếu tháng hiện tại)
+
+────────────────────────────────────────────────────────────────────────────────
+A.7 KHI NÀO GHI LẠI FIREBASE?
+────────────────────────────────────────────────────────────────────────────────
+
+  Trigger                              Hàm                              Phạm vi
+  ─────────────────────────────────────────────────────────────────────────────
+  Nút "Tính lại"                         persistAnnualLeaveYearFromAttendance   Cả năm
+  Upload Excel phép                      merge upload + persist                 Cả năm
+  Lưu điểm danh (đổi loại phép)          applyAnnualLeaveDeductionDelta         1 NV
+  Xóa dòng / upload / xóa all điểm danh persistAnnualLeaveYearFromAttendance  Cả năm
+  HR sửa cột "Điều chỉnh"                persistAnnualLeaveEmployeeAdjustment   1 NV
+
+  Persist flow (annualLeaveAttendanceSync.js):
+    1. Quét attendance → derived maps
+    2. Tính work summary cho accrual
+    3. computeLiveAnnualLeaveState → used / total / balance / currentYear
+    4. So sánh với Firebase → update nếu khác
+    5. Cập nhật _meta
+
+  Call sites:
+    - AnnualLeaveManager.jsx          (tính lại, upload)
+    - useAttendanceListMutations.js   (xóa điểm danh)
+    - AttendanceUploadHandler.js      (upload hàng loạt)
+    - AttendanceEmployeeFormModal.jsx (lưu form → syncAnnualLeaveAfterAttendanceSave)
+
+────────────────────────────────────────────────────────────────────────────────
+A.8 MODAL CHI TIẾT & FILE LIÊN QUAN
+────────────────────────────────────────────────────────────────────────────────
+
+  Modal:
+    AnnualLeaveUsageDetailTrigger → AnnualLeaveUsageDetailModal
+    - Chi tiết từng ngày nghỉ PN
+    - Popup giờ công, popup ngày nghỉ
+
+  Link sang trang khác (annualLeaveCrossLinks.js):
+    /attendance-list?date=…
+    /attendance-salary?date=…
+
+  File logic chính:
+    annualLeaveFields.js           Path, field names, quy tắc ngày
+    annualLeaveEmpKey.js           emp_{mnv} key
+    annualLeaveCalculated.js       Accrual, tenure, công thức
+    annualLeaveDerived.js          Live state, normalize row
+    annualLeaveBalanceLookup.js    Quét attendance → deductions
+    annualLeavePayrollAccrual.js    Half-month accrual từ payroll grid
+    annualLeaveAttendanceSync.js   Ghi Firebase
+    annualLeaveManagerFilter.js    Search, phòng ban
+    annualLeaveManagerMonthFilter.js  Lọc tháng, throughDateKey
+
+  Excel:
+    annualLeaveExcelImport.js / Export / Template
+
+  Tests (src/features/leave/*.test.js):
+    annualLeaveCalculated.test.js
+    annualLeavePayrollAccrual.test.js
+    annualLeaveDerived.test.js
+    annualLeaveAttendanceSync.test.js
+
+────────────────────────────────────────────────────────────────────────────────
+A.9 TÓM TẮT NHANH
+────────────────────────────────────────────────────────────────────────────────
+
+  Hiển thị    : Firebase + tính live từ attendance; Map cache từng dòng
+  Accrual     : +1 PN/tháng nếu đạt 1/2 ngày công (payroll grid); T6/2026+ cho mọi NV
+  Usage       : Excel T1–T5; điểm danh T6+
+  Balance     : total - used; cập nhật live trên UI
+  Lưu DB      : Chỉ khi có trigger sync — KHÔNG auto mỗi render
+
+================================================================================
+PHỤ LỤC B — LƯỚI THÁNG GIỜ CÔNG (ĐẦY ĐỦ)
+Nguồn: src/features/payroll/LUOI_THANG_GIO_CONG_HUONG_DAN.txt
+================================================================================
+
+  HƯỚNG DẪN: RENDER & LOAD DỮ LIỆU LƯỚI THÁNG — GIỜ CÔNG (PAYROLL)
+  Phiên bản: 2026-08-19 | PavonineAssembly
+
+Mục lục PHỤ LỤC B
+  B.1  Tổng quan kiến trúc
+  B.2  Danh sách file quan trọng
+  B.3  Firebase — cấu trúc dữ liệu
+  B.4  Pipeline load dữ liệu tháng
+  B.5  Pipeline tổng hợp cột chi tiết
+  B.6  Cấu trúc lưới — cột & hàng
+  B.7  Pipeline render ô ngày
+  B.8  Component tree render
+  B.9  Lọc & hiển thị nhân viên
+  B.10 So sánh realtime vs fetch
+  B.11 Chỉnh sửa ô & reload
+  B.12 i18n & quyền
+  B.13 Korean Timesheet
+  B.14 Xuất Excel tháng
+  B.15 Sơ đồ luồng ASCII
+  B.16 Gợi ý debug
+
+────────────────────────────────────────────────────────────────────────────────
+B.1 TỔNG QUAN KIẾN TRÚC
+────────────────────────────────────────────────────────────────────────────────
+
+  A) Bảng NGÀY (PayrollSalaryCalculator)
+     Route: /attendance-salary | onValue REALTIME
+     File: src/features/payroll/PayrollSalaryCalculator.jsx
+
+  B) Lưới THÁNG (PayrollMonthlyTimesheetModal)
+     Modal fullscreen | get() ONE-SHOT cả tháng
+     File: src/features/payroll/PayrollMonthlyTimesheetModal.jsx
+
+  Luồng mở lưới tháng:
+    /attendance-salary → PayrollToolsMenu → setMonthlyTimesheetOpen(true)
+      → PayrollMonthlyTimesheetModal (lazy)
+
+  Korean: AttendanceList / KoreanTimesheetPage
+    → PayrollMonthlyTimesheetModal(attendanceRootPath="koreanAttendance")
+
+────────────────────────────────────────────────────────────────────────────────
+B.2 DANH SÁCH FILE QUAN TRỌNG
+────────────────────────────────────────────────────────────────────────────────
+
+  ENTRY & UI:
+    PayrollSalaryCalculator.jsx, PayrollMonthlyTimesheetModal.jsx
+    PayrollToolsMenu.jsx, payrollMonthlyTimesheetModal.css
+
+  LAYOUT CỘT:
+    payrollMonthlyTimesheetLayout.js, payrollMonthlyTimesheetGridStyle.js
+
+  LOAD DỮ LIỆU:
+    usePayrollMonthDayChunks.js, payrollMonthlyGridData.js
+    buildPayrollDayFromRaw.js, payrollMonthDataScale.js
+    usePayrollMonthEmployeeIndex.js
+
+  TÍNH GIỜ:
+    payrollMonthlyCoefficientBuckets.js, payrollOtDayParams.js
+    payrollMonthlyRuleSummary.js, usePayrollMonthSummaries.js
+    payrollMonthSummaryCompute.js, payrollMonthSummaryWorker.js
+    attendanceWorkingHours.js
+
+  TRƯỜNG: payrollEmployeeFields.js, attendanceDayMeta.js
+  EXCEL:  payrollMonthlyTimesheetExcelGrid.js
+
+────────────────────────────────────────────────────────────────────────────────
+B.3 FIREBASE — CẤU TRÚC DỮ LIỆU
+────────────────────────────────────────────────────────────────────────────────
+
+  attendance/{YYYY-MM-DD}/  hoặc  koreanAttendance/{YYYY-MM-DD}/
+
+  Bản ghi NV: stt, mnv, mvt, hoVaTen, boPhan, maBoPhan, ngayVaoLam,
+              ngayHopDong, gioVao, gioRa, caLamViec, loaiPhep,
+              tangCaTrua, tangCaTaiXePhut, duocNghiBu
+
+  Cờ payroll (merge từ _meta): payrollEarlyOtPaperwork, payrollLateOtExcluded,
+                                payrollNightOtPaperwork
+
+  _meta ngày: isOffDay, isHolidayDay, isCompensatoryDay,
+               earlyOtPaperwork, lateOtPaperwork, nightOtPaperwork (maps)
+
+  rowId lưới: MNV hoặc "{mnv}__{firebaseId}" (PAYROLL_MONTH_ROW_ID_SEP)
+
+────────────────────────────────────────────────────────────────────────────────
+B.4 PIPELINE LOAD DỮ LIỆU THÁNG
+────────────────────────────────────────────────────────────────────────────────
+
+  Kích hoạt: useEffect([open, loadMonth]) trong PayrollMonthlyTimesheetModal
+  loadMonth() lại khi: đổi tháng, lưu form, lưu off/lễ/NB, nút Tải lại
+
+  usePayrollMonthDayChunks:
+    Input: monthKeys[], attendanceRootPath, tlPage
+    Output: dayChunks, displayDayChunks (deferred), loading, loadingMore,
+            isGridBusy, error, loadMonth()
+    Cơ chế: loadSeqRef, batch callbacks, isStale() hủy khi đổi tháng
+
+  fetchPayrollMonthDayChunks (payrollMonthlyGridData.js):
+    Loop batch 14 ngày (resolvePayrollMonthFetchBatchSize) → get(ref) → buildPayrollMonthDayChunkFromRaw
+    payrollMonthCache.js — TTL 5 phút, stale-while-revalidate, invalidate khi remote update
+    → applyPayrollMonthCanonicalKeysToChunks → callbacks + rAF yield
+
+  buildPayrollMonthDayChunkFromRaw → chunk { dateKey, employees, baseEmployees,
+    byId, byMonthEmployeeKey, rowLookup, isOffDay, isHolidayDay, … }
+
+  usePayrollMonthEmployeeIndex → sortedIds, repById, chunkByDate
+
+────────────────────────────────────────────────────────────────────────────────
+B.5 PIPELINE TỔNG HỢP CỘT CHI TIẾT
+────────────────────────────────────────────────────────────────────────────────
+
+  usePayrollMonthSummaries → monthlySummaryById
+  computePayrollMonthSummariesForIds → buildMonthlyRuleSummary
+  Ngưỡng: ≤48 NV sync | ≥72 NV Web Worker | cache 12000 entry
+  Output: buildMonthlyDetailMatrixForEmployee → 52 cột (18+17+17)
+
+────────────────────────────────────────────────────────────────────────────────
+B.6 CẤU TRÚC LƯỚI — CỘT & HÀNG
+────────────────────────────────────────────────────────────────────────────────
+
+  payrollMonthlyTimesheetTotalColCount(monthKeyCount)
+    = 5 (sticky) + monthKeyCount (ngày) + 52 (chi tiết)
+  Chi tiết 52 cột = 18 (Tổng) + 17 (Thử việc) + 17 (Hợp đồng)
+
+  Cột sticky trái (5): STICKY_COL_WIDTHS = [36, 200, 72, 80, 64] px
+    1. STT  2. Họ tên  3. MNV  4. BP  5. Hệ số TC
+
+  Cột ngày: 42px (MONTH_DAY_COL_WIDTH), key dateKey YYYY-MM-DD
+    Header hàng 2: số ngày | hàng 3: thứ (formatPayrollMonthWeekday3)
+    Màu: payrollMonthlyTimesheetDayHeaderBgClass / DayBodyBgClass
+
+  Khối «Tổng» 18 cột (buildPayrollMonthlyTimesheetDetailHeaders):
+    0. Ngày thực tế làm việc
+    1. Tổng ngày công (gồm ngày nghỉ có lương)
+    2. Tổng ngày nghỉ không có lương
+    3. Phép năm (PN)  4. Nghỉ bù (NB)  5. Nghỉ không lương (KL)
+    6. Nghỉ không phép (KP)  7. Giờ làm (×0.3)
+    8. TC ngày thường / TC ca đêm (×1.5)
+    9. TC ngày off ca ngày (×2.0)  10. TC ca đêm ngày off (×2.7)
+    11. TC ngày lễ (×3.0)  12. TC đêm ngày lễ (×3.9)
+    13. Giờ công ca ngày NB (×2.0)  14. Giờ công ca đêm NB (×2.7)
+    15. Số ngày nghỉ thai sản  16. Phụ cấp ca đêm (VND)  17. Tổng GC ca đêm
+  Khối Thử việc / Hợp đồng: 17 cột (bỏ cột 0)
+
+  PAYROLL_MONTHLY_SUBROWS (7 dòng con/NV):
+    si=0 main coeff=null   — phép / GC / «-»
+    si=1 c03  0.3  | si=2 c15  1.5 | si=3 c20  2.0
+    si=4 c27  2.7  | si=5 c30  3.0 | si=6 c39  3.9
+  PayrollMonthlyTimesheetEmployeeBlock → 7×DayCell + DetailCells
+
+────────────────────────────────────────────────────────────────────────────────
+B.7 PIPELINE RENDER Ô NGÀY
+────────────────────────────────────────────────────────────────────────────────
+
+  buildPayrollMonthEmployeeDayCells (PayrollMonthlyTimesheetModal ~248):
+    1. chunk = chunkByDate.get(dateKey)
+    2. resolvePayrollMonthDayEmployee(chunk, rowId, rep)
+    3. isPayrollMonthDayCellBeforeJoinWithoutAttendance → ô trống
+    4. getPayrollMonthlyMainRowCell → kind: leave|hours|dash
+    5. getPayrollMonthlyCoeffHoursMap(payrollOtDayParamsFromMonthChunkEmp(...))
+
+  PayrollMonthlyTimesheetDayCell:
+    si=0: leave→badge | hours→số GC | dash→«-»
+    si=1..6: formatPayrollMonthlyCoeffSubrowDayCell
+    Click → openDayCellEditor → canEditPayrollMonthTimesheetGridCell
+    → AttendanceEmployeeFormModal + buildPayrollMonthDayCellFormRecord
+
+  Logic đặc biệt (payrollMonthlyCoefficientBuckets.js):
+    Chủ nhật: GC+TC gộp 1 dòng hệ số; main «-»
+    Off/lễ: main «-»; giờ ở dòng hệ số
+    NB: tối đa 8h GC main; dư → ×2.0/×2.7
+    Ca đêm S2: GC main; ×0.3 hiển thị mã ca | BGC badge khi chưa giờ vào
+
+────────────────────────────────────────────────────────────────────────────────
+B.8 COMPONENT TREE RENDER
+────────────────────────────────────────────────────────────────────────────────
+
+  PayrollMonthlyTimesheetModal (createPortal → document.body)
+  ├── Toolbar: PayrollMonthNavigator, PayrollDepartmentMultiSelect,
+  │   PayrollTimesheetPresenceFiltersMenu, AttendanceOffHolidayDaysControl,
+  │   Zoom, Export Excel
+  ├── PayrollMonthGridLoadingOverlay
+  └── div.pm-ts-scroll → table
+        thead 3 hàng sticky (Thông tin | Số lượng | Chi tiết lỗi + ngày + detail)
+        tbody: PayrollMonthlyTimesheetEmployeeBlock × N
+          7× tr → sticky td + DayCell×ngày + DetailCells(52 cột)
+        Virtualization @tanstack/react-virtual: ngưỡng 8 NV, overscan 2 khối
+
+────────────────────────────────────────────────────────────────────────────────
+B.9 LỌC & HIỂN THỊ NHÂN VIÊN
+────────────────────────────────────────────────────────────────────────────────
+
+  filterPayrollMonthTimesheetRowIds: search, dept, workHours, leaveType,
+    overtime, shortHours — payrollMonthTimesheetFilters.js
+  buildPayrollMonthTimesheetFlagsById — flags tháng
+
+────────────────────────────────────────────────────────────────────────────────
+B.10 SO SÁNH REALTIME vs FETCH
+────────────────────────────────────────────────────────────────────────────────
+
+  Bảng NGÀY: onValue 1 ngày → tự cập nhật
+  Lưới THÁNG: get() ×31 ngày → loadMonth() sau sửa
+
+────────────────────────────────────────────────────────────────────────────────
+B.11 CHỈNH SỬA Ô & RELOAD
+────────────────────────────────────────────────────────────────────────────────
+
+  Click ô → form modal → set Firebase → onSaved → loadMonth() refetch cả tháng
+  Off/lễ/NB: AttendanceOffHolidayDaysControl → _meta → loadMonth()
+
+────────────────────────────────────────────────────────────────────────────────
+B.12 i18n & QUYỀN
+────────────────────────────────────────────────────────────────────────────────
+
+  Namespace salaryCalc.* | canEditPayrollMonthTimesheetGridCell
+
+────────────────────────────────────────────────────────────────────────────────
+B.13 KOREAN TIMESHEET
+────────────────────────────────────────────────────────────────────────────────
+
+  attendanceRootPath="koreanAttendance" | format 2 chữ số thập phân
+
+────────────────────────────────────────────────────────────────────────────────
+B.14 XUẤT EXCEL THÁNG
+────────────────────────────────────────────────────────────────────────────────
+
+  writePayrollMonthlyTimesheetWorkbook — payrollMonthlyTimesheetExcelGrid.js
+  Cùng layout với UI | PayrollRangeExcelExportModal
+
+────────────────────────────────────────────────────────────────────────────────
+B.15 SƠ ĐỒ LUỒNG ASCII
+────────────────────────────────────────────────────────────────────────────────
+
+  [User mở modal]
+        │
+        ▼
+  usePayrollMonthDayChunks.loadMonth()
+        │
+        ├─ cache fresh (<5 phút) → render ngay, 0 GET
+        ├─ cache stale → render cache + revalidate ngầm
+        └─ cache miss → batch fetch
+        │
+        ▼
+  fetchPayrollMonthDayChunks(monthKeys)  loop batch 14 ngày
+        │
+        ▼ (idle sau render)
+  prefetchAdjacentMonths() — tháng ±1
+        │
+        ▼
+  Firebase get(attendance/YYYY-MM-DD)
+        │
+        ▼
+  buildPayrollMonthDayChunkFromRaw → applyPayrollMonthCanonicalKeysToChunks
+        │
+        ▼
+  dayChunks[] ──useDeferredValue──► displayDayChunks
+        │
+        ├─► usePayrollMonthEmployeeIndex → sortedIds, repById, chunkByDate
+        ├─► filterPayrollMonthTimesheetRowIds → filteredIds
+        └─► usePayrollMonthSummaries → monthlySummaryById
+                │
+                ▼
+        PayrollMonthlyTimesheetModal render → <table>
+
+────────────────────────────────────────────────────────────────────────────────
+B.16 GỢI Ý DEBUG
+────────────────────────────────────────────────────────────────────────────────
+
+  1. Tháng trống: Firebase có node? chunk null nếu không NV và không _meta
+  2. NV thiếu ngày: rowLookup / canonicalPayrollMonthRowId
+  3. Giờ sai vs bảng ngày: so sánh parsePayrollDayFromAttendanceRaw pipeline
+  4. Cột chi tiết chậm: Web Worker ≥72 NV
+  5. Sau sửa không cập nhật: cần loadMonth() — không realtime
+
+================================================================================
+  Hết tài liệu ALL-IN-ONE — docs/DU_LIEU_LOAD_RENDER_PROJECT.txt
+================================================================================

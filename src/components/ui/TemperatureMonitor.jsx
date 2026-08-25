@@ -8,12 +8,13 @@ import {
   lazy,
   Suspense,
 } from "react";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity } from "@/contexts/UserContext";
 import { logUserAction } from "@/utils/userLog";
 import { format } from "date-fns";
 import Modal from "react-modal";
-import { ref, onValue, set, remove, update, get } from "firebase/database";
+import { ref, set, remove, update, get } from "firebase/database";
 import { db } from "@/services/firebase";
+import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import AlertMessage from "./AlertMessage";
 import LoadingBlock from "./LoadingBlock";
 import SingleMachineTable from "@/features/dashboard/SingleMachineTable";
@@ -27,15 +28,15 @@ const PAGE_SIZE = 6;
 const ChartView = lazy(() => import("@/features/dashboard/ChartView"));
 
 const TemperatureMonitor = () => {
-  const { user } = useUser();
+  const { user } = useUserIdentity();
   const { t } = useTranslation();
   const [toastMessage, setToastMessage] = useState("");
   const [editingMachine, setEditingMachine] = useState(null);
   const [editMachineName, setEditMachineName] = useState("");
-  const [areas, setAreas] = useState({});
   const [selectedArea, setSelectedArea] = useState(null);
   const [searchMachine, setSearchMachine] = useState("");
-  const [areasLoading, setAreasLoading] = useState(false);
+  const { data: areasRaw, loading: areasLoading } = useFirebaseValue("areas");
+  const areas = areasRaw || {};
   const [selectedMonth, setSelectedMonth] = useState(() =>
     format(new Date(), "yyyy-MM"),
   );
@@ -60,28 +61,8 @@ const TemperatureMonitor = () => {
   }, []);
 
   useEffect(() => {
-    setAreasLoading(true);
-    const areasRef = ref(db, "areas");
-    let isMounted = true;
-    const unsubscribe = onValue(
-      areasRef,
-      (snapshot) => {
-        if (!isMounted) return;
-        const data = snapshot.val() || {};
-        setAreas(data);
-        setAreasLoading(false);
-        // Nếu selectedArea không còn tồn tại thì reset
-        setSelectedArea((prev) => (prev && !data[prev] ? null : prev));
-      },
-      () => {
-        if (isMounted) setAreasLoading(false);
-      },
-    );
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
-  }, []);
+    setSelectedArea((prev) => (prev && !areas[prev] ? null : prev));
+  }, [areas]);
 
   // Chunk load máy (pagination)
   const [machinePage, setMachinePage] = useState(1);

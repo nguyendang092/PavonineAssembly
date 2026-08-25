@@ -12,6 +12,9 @@ import {
 
 /**
  * Tổng hợp tháng (`buildMonthlyRuleSummary`) — cache + batch / Web Worker khi nhiều NV.
+ *
+ * - `monthLoadToken`: tăng khi loadMonth hoàn tất → tính lại toàn bộ filteredIds
+ * - `dirtyPatch`: { token, employeeIds } → chỉ merge summary NV bị ảnh hưởng (patch 1 ô)
  */
 export function usePayrollMonthSummaries({
   enabled = true,
@@ -19,6 +22,8 @@ export function usePayrollMonthSummaries({
   chunkByDate,
   filteredIds,
   repById,
+  monthLoadToken = 0,
+  dirtyPatch = null,
 }) {
   const [monthlySummaryById, setMonthlySummaryById] = useState(
     () => new Map(),
@@ -27,6 +32,10 @@ export function usePayrollMonthSummaries({
   const [summaryProgress, setSummaryProgress] = useState(null);
   const cacheRef = useRef(new Map());
   const jobRef = useRef(0);
+  const chunkByDateRef = useRef(chunkByDate);
+  const repByIdRef = useRef(repById);
+  chunkByDateRef.current = chunkByDate;
+  repByIdRef.current = repById;
 
   useEffect(() => {
     if (!enabled) {
@@ -50,9 +59,9 @@ export function usePayrollMonthSummaries({
 
     void computePayrollMonthSummariesForIds({
       monthKeys,
-      chunkByDate,
+      chunkByDate: chunkByDateRef.current,
       ids,
-      repById,
+      repById: repByIdRef.current,
       cache: cacheRef.current,
       isStale: () => job !== jobRef.current,
       onProgress: (partialMap, done, total) => {
@@ -78,7 +87,42 @@ export function usePayrollMonthSummaries({
         setSummaryProgress(null);
       });
     });
-  }, [enabled, filteredIds, monthKeys, chunkByDate, repById]);
+  }, [enabled, monthLoadToken, filteredIds, monthKeys]);
+
+  useEffect(() => {
+    if (!enabled || !dirtyPatch?.employeeIds?.length) return undefined;
+
+    const job = ++jobRef.current;
+    const dirtySet = new Set(dirtyPatch.employeeIds);
+    const ids = (filteredIds ?? []).filter((id) => dirtySet.has(id));
+    if (!ids.length) return undefined;
+
+    setIsSummariesBusy(true);
+
+    void computePayrollMonthSummariesForIds({
+      monthKeys,
+      chunkByDate: chunkByDateRef.current,
+      ids,
+      repById: repByIdRef.current,
+      cache: cacheRef.current,
+      isStale: () => job !== jobRef.current,
+    }).then((result) => {
+      if (job !== jobRef.current || result == null) return;
+      startTransition(() => {
+        setMonthlySummaryById((prev) => {
+          const next = new Map(prev);
+          for (const [id, summary] of result) {
+            next.set(id, summary);
+          }
+          return next;
+        });
+        setIsSummariesBusy(false);
+        setSummaryProgress(null);
+      });
+    });
+
+    return undefined;
+  }, [enabled, dirtyPatch?.token, dirtyPatch?.employeeIds, filteredIds, monthKeys]);
 
   return {
     monthlySummaryById,

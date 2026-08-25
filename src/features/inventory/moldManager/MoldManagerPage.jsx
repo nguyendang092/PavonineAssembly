@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { push, remove, update } from "firebase/database";
 import * as XLSX from "@e965/xlsx";
 import AlertMessage from "@/components/ui/AlertMessage";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity } from "@/contexts/UserContext";
 import { db, onValue, ref, set } from "@/services/firebase";
 import MoldFormModal from "./components/MoldFormModal";
 import MoldDetailModal from "./components/MoldDetailModal";
@@ -28,7 +28,7 @@ import "./moldManager.css";
 
 export default function MoldManagerPage() {
   const { t } = useTranslation();
-  const { user } = useUser();
+  const { user } = useUserIdentity();
 
   const columns = MOLD_COLUMNS;
   const emptyForm = useMemo(

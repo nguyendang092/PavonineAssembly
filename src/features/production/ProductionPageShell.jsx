@@ -1,5 +1,6 @@
 import { memo, useEffect, useLayoutEffect, Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { AttendanceStatisticsSidebarProvider } from "@/features/attendance/attendanceStatisticsSidebarContext";
 import ProductionSidebarShell from "./ProductionSidebarShell";
 import ProductionRouteFallback from "./ProductionRouteFallback";
 import "@/features/attendance/attendanceSidebar.css";
@@ -27,11 +28,13 @@ function ProductionPageShell() {
   }, []);
 
   return (
-    <ProductionSidebarShell>
-      <Suspense fallback={<ProductionRouteFallback />}>
-        <Outlet />
-      </Suspense>
-    </ProductionSidebarShell>
+    <AttendanceStatisticsSidebarProvider>
+      <ProductionSidebarShell>
+        <Suspense fallback={<ProductionRouteFallback />}>
+          <Outlet />
+        </Suspense>
+      </ProductionSidebarShell>
+    </AttendanceStatisticsSidebarProvider>
   );
 }
 

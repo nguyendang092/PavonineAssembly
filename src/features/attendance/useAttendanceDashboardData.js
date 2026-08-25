@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState, startTransition } from "react";
 import { db, ref, get } from "@/services/firebase";
+import {
+  bumpFirebaseGeneration,
+  isFirebaseGenerationStale,
+} from "@/hooks/firebaseGeneration";
 import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 import { countAttendanceDashboardDaySummary } from "./attendanceDashboardMetrics";
 import {
@@ -65,6 +69,7 @@ export function useAttendanceDashboardData(
   const [offDayCount, setOffDayCount] = useState(0);
   const [holidayCount, setHolidayCount] = useState(0);
   const dayCacheRef = useRef(new Map());
+  const fetchGenerationRef = useRef(0);
 
   const periodRange = useMemo(
     () => getDashboardPeriodRange(normalizedPeriod, anchorDateKey),
@@ -77,7 +82,7 @@ export function useAttendanceDashboardData(
   );
 
   useEffect(() => {
-    let cancelled = false;
+    const myGeneration = bumpFirebaseGeneration(fetchGenerationRef);
     const fetchKeys = listDashboardFetchDateKeys(
       normalizedPeriod,
       anchorDateKey,
@@ -91,16 +96,17 @@ export function useAttendanceDashboardData(
       const rows = [];
       try {
         for (let i = 0; i < fetchKeys.length; i += DASHBOARD_FETCH_BATCH_SIZE) {
-          if (cancelled) return;
+          if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
           const batchKeys = fetchKeys.slice(i, i + DASHBOARD_FETCH_BATCH_SIZE);
           const batchRows = await Promise.all(
             batchKeys.map((dateKey) =>
               fetchDashboardDayRow(attendanceRootPath, dateKey, cache),
             ),
           );
+          if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
           rows.push(...batchRows);
           startTransition(() => {
-            if (cancelled) return;
+            if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
             setDayResults([...rows]);
           });
           if (i + DASHBOARD_FETCH_BATCH_SIZE < fetchKeys.length) {
@@ -108,7 +114,7 @@ export function useAttendanceDashboardData(
           }
         }
 
-        if (cancelled) return;
+        if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
         const periodSet = new Set(
           listDashboardPeriodDateKeys(normalizedPeriod, anchorDateKey),
         );
@@ -120,18 +126,17 @@ export function useAttendanceDashboardData(
           if (row.isHolidayDay) hol += 1;
         }
         startTransition(() => {
-          if (cancelled) return;
+          if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
           setOffDayCount(off);
           setHolidayCount(hol);
         });
       } finally {
-        if (!cancelled) setLoading(false);
+        if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
+        setLoading(false);
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return undefined;
   }, [attendanceRootPath, anchorDateKey, normalizedPeriod]);
 
   const periodDayResults = useMemo(

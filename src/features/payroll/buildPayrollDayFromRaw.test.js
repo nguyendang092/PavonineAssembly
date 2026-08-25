@@ -5,6 +5,7 @@ import {
   buildPayrollMonthDayCellFormRecord,
   buildPayrollMonthDayChunkFromRaw,
   parsePayrollDayFromAttendanceRaw,
+  patchPayrollMonthDayRawInMemory,
   pickPayrollMonthRepProfileFields,
 } from "./buildPayrollDayFromRaw";
 
@@ -183,5 +184,26 @@ describe("parsePayrollDayFromAttendanceRaw — TC sớm ca đêm", () => {
     expect(
       parsed.payrollEmployees[0][PAYROLL_EMP.PAYROLL_EARLY_OT_PAPERWORK],
     ).toBeUndefined();
+  });
+});
+
+describe("patchPayrollMonthDayRawInMemory", () => {
+  it("cập nhật _rawCache tại chỗ — không cần get() lại", () => {
+    const chunk = buildPayrollMonthDayChunkFromRaw(
+      {
+        "emp-1": { mnv: "001", gioVao: "08:00", gioRa: "17:00", loaiPhep: "" },
+      },
+      "2026-06-03",
+    );
+    const patchedRaw = patchPayrollMonthDayRawInMemory(chunk, "emp-1", {
+      id: "emp-1",
+      mnv: "001",
+      gioVao: "08:00",
+      gioRa: "17:00",
+      loaiPhep: "PN",
+      stt: 1,
+    });
+    expect(patchedRaw).not.toBeNull();
+    expect(patchedRaw["emp-1"].loaiPhep).toBe("PN");
   });
 });

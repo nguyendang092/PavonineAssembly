@@ -53,7 +53,7 @@ function getStartOfWeek(dateStr) {
   startOfWeek.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
   return formatLocalYmd(startOfWeek);
 }
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity } from "@/contexts/UserContext";
 
 export default function DetailedModal({
   isOpen,
@@ -62,7 +62,7 @@ export default function DetailedModal({
   detailsRoot = "details",
 }) {
   const { t } = useTranslation();
-  const { user } = useUser();
+  const { user } = useUserIdentity();
   const [selectedArea, setSelectedArea] = useState(area || "Assembly");
   const [selectedModel, setSelectedModel] = useState("");
   const [areas, setAreas] = useState([]);

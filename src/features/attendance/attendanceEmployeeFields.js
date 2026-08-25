@@ -1,4 +1,4 @@
-import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
+import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFieldKeys";
 
 /**
  * Khóa trường RTDB / form điểm danh — giữ nguyên giá trị lưu trữ (tiếng Việt).

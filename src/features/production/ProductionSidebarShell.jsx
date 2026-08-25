@@ -1,8 +1,9 @@
-import { memo, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { memo, useCallback, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import SidebarNavLink from "@/features/attendance/SidebarNavLink";
+import { useAttendanceStatisticsSidebar } from "@/features/attendance/attendanceStatisticsSidebarContext";
 import { useTranslation } from "react-i18next";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
 import { canViewKoreanTimesheet } from "@/config/featurePermissions";
 import {
@@ -111,6 +112,15 @@ const ICONS = {
       <rect x="3" y="13" width="8" height="8" rx="1.5" />
     </svg>
   ),
+  statistics: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M4 19V5" />
+      <path d="M4 19h16" />
+      <rect x="7" y="10" width="3" height="9" rx="0.5" />
+      <rect x="12" y="7" width="3" height="12" rx="0.5" />
+      <rect x="17" y="13" width="3" height="6" rx="0.5" />
+    </svg>
+  ),
   koreanTimesheet: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
       <rect x="3" y="4" width="18" height="17" rx="2" />
@@ -153,6 +163,7 @@ const ITEM_ICONS = {
   "/attendance-daily-report": ICONS.attendance,
   "/attendance-list": ICONS.attendance,
   "/seasonal-staff-attendance": ICONS.seasonal,
+  openAttendanceStatistics: ICONS.statistics,
   "/attendance-salary": ICONS.workHours,
   "/annual-leave": ICONS.annualLeave,
   "/attendance-dashboard": ICONS.dashboard,
@@ -171,8 +182,11 @@ function isItemVisible(item, user, userRole) {
 
 function ProductionSidebarShell({ children }) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { user, userRole } = useUser();
+  const { user } = useUserIdentity();
+  const { userRole } = useUserPermissions();
+  const { handler: statisticsHandler } = useAttendanceStatisticsSidebar() ?? {};
 
   const displayLocale = useMemo(() => {
     const lang = (i18n.language || "vi").toLowerCase();
@@ -204,6 +218,16 @@ function ProductionSidebarShell({ children }) {
     }
     return item.path;
   };
+
+  const handleOpenAttendanceStatistics = useCallback(() => {
+    if (statisticsHandler?.open) {
+      statisticsHandler.open();
+      return;
+    }
+    navigate(
+      `/attendance-list?date=${encodeURIComponent(todayKey)}&openStatistics=1`,
+    );
+  }, [navigate, statisticsHandler, todayKey]);
 
   const visibleSections = useMemo(
     () =>
@@ -256,19 +280,39 @@ function ProductionSidebarShell({ children }) {
               <p className="production-with-sidebar__group-title">
                 {t(section.sectionKey, section.sectionDefault)}
               </p>
-              {section.items.map((item) => (
-                <SidebarNavLink
-                  key={item.path}
-                  to={resolveTo(item)}
-                  className={itemClass(isPathActive(item.path), item.tone)}
-                >
-                  <SidebarItemContent
-                    tone={item.tone}
-                    icon={ITEM_ICONS[item.path]}
-                    label={t(item.labelKey, item.labelDefault)}
-                  />
-                </SidebarNavLink>
-              ))}
+              {section.items.map((item) => {
+                if (item.action === "openAttendanceStatistics") {
+                  const statisticsActive = Boolean(statisticsHandler?.isOpen);
+                  return (
+                    <button
+                      key={item.action}
+                      type="button"
+                      className={itemClass(statisticsActive, item.tone)}
+                      onClick={handleOpenAttendanceStatistics}
+                    >
+                      <SidebarItemContent
+                        tone={item.tone}
+                        icon={ITEM_ICONS.openAttendanceStatistics}
+                        label={t(item.labelKey, item.labelDefault)}
+                      />
+                    </button>
+                  );
+                }
+
+                return (
+                  <SidebarNavLink
+                    key={item.path}
+                    to={resolveTo(item)}
+                    className={itemClass(isPathActive(item.path), item.tone)}
+                  >
+                    <SidebarItemContent
+                      tone={item.tone}
+                      icon={ITEM_ICONS[item.path]}
+                      label={t(item.labelKey, item.labelDefault)}
+                    />
+                  </SidebarNavLink>
+                );
+              })}
             </div>
           ))}
         </nav>

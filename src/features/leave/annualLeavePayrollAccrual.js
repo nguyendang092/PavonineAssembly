@@ -247,6 +247,66 @@ export function buildAnnualLeaveMonthWorkSummary(
 /**
  * Map `emp_{mnv}` → `{ "yyyy-mm": { workDays, standardWorkDays } }` từ lưới tháng giờ công.
  */
+export function buildAnnualLeaveMonthWorkSummaryForEmpKey(
+  attendanceRoot,
+  year,
+  yearData,
+  empKey,
+  { attendanceRootPath = "attendance" } = {},
+) {
+  if (!attendanceRoot || !yearData || !empKey) return null;
+
+  const indexed = indexAnnualLeaveYearByEmpKey(yearData);
+  const row = indexed[empKey];
+  if (!row?.raw) return null;
+
+  const y = Number(year);
+  if (!Number.isFinite(y)) return null;
+
+  const startWorkingDate = normalizeAnnualLeaveStartWorkingDate(
+    row.raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
+  );
+  const range = resolveAnnualLeaveAccrualMonthRange(startWorkingDate, y);
+  if (!range) return null;
+
+  const accrualYearMonths = collectAccrualYearMonthsForYear({ [empKey]: row }, y);
+  const dayChunkMap = buildDayChunkMapForYearMonths(
+    attendanceRoot,
+    attendanceRootPath,
+    accrualYearMonths,
+  );
+
+  const newJoinerInYear =
+    startWorkingDate && isStartWorkingDateInCalendarYear(startWorkingDate, y);
+  const byMonth = {};
+
+  for (
+    let monthIndex = range.startMonth;
+    monthIndex <= range.endMonth;
+    monthIndex += 1
+  ) {
+    const yearMonth = `${y}-${String(monthIndex + 1).padStart(2, "0")}`;
+    const needsSummary =
+      annualLeaveMonthUsesPayrollHalfAccrualRule(y, monthIndex) ||
+      (newJoinerInYear &&
+        isStartWorkingDateInCalendarMonth(startWorkingDate, y, monthIndex));
+    if (!needsSummary) continue;
+
+    const summary = buildAnnualLeaveMonthWorkSummary(
+      dayChunkMap,
+      yearMonth,
+      empKey,
+      startWorkingDate,
+    );
+    if (summary) byMonth[yearMonth] = summary;
+  }
+
+  return Object.keys(byMonth).length ? byMonth : null;
+}
+
+/**
+ * Map `emp_{mnv}` → `{ "yyyy-mm": { workDays, standardWorkDays } }` từ lưới tháng giờ công.
+ */
 export function buildAnnualLeaveMonthWorkSummaryByEmpKey(
   attendanceRoot,
   year,
@@ -267,47 +327,16 @@ export function buildAnnualLeaveMonthWorkSummaryByEmpKey(
         ),
       )
     : indexed;
-  const accrualYearMonths = collectAccrualYearMonthsForYear(scopedIndexed, y);
-  const dayChunkMap = buildDayChunkMapForYearMonths(
-    attendanceRoot,
-    attendanceRootPath,
-    accrualYearMonths,
-  );
 
-  for (const [empKey, { raw }] of Object.entries(scopedIndexed)) {
-    const startWorkingDate = normalizeAnnualLeaveStartWorkingDate(
-      raw?.[ANNUAL_LEAVE_EMP.START_WORKING_DATE],
+  for (const empKey of Object.keys(scopedIndexed)) {
+    const summary = buildAnnualLeaveMonthWorkSummaryForEmpKey(
+      attendanceRoot,
+      year,
+      yearData,
+      empKey,
+      { attendanceRootPath },
     );
-
-    const range = resolveAnnualLeaveAccrualMonthRange(startWorkingDate, y);
-    if (!range) continue;
-
-    const newJoinerInYear =
-      startWorkingDate &&
-      isStartWorkingDateInCalendarYear(startWorkingDate, y);
-    const byMonth = {};
-    for (
-      let monthIndex = range.startMonth;
-      monthIndex <= range.endMonth;
-      monthIndex += 1
-    ) {
-      const yearMonth = `${y}-${String(monthIndex + 1).padStart(2, "0")}`;
-      const needsSummary =
-        annualLeaveMonthUsesPayrollHalfAccrualRule(y, monthIndex) ||
-        (newJoinerInYear &&
-          isStartWorkingDateInCalendarMonth(startWorkingDate, y, monthIndex));
-      if (!needsSummary) continue;
-
-      const summary = buildAnnualLeaveMonthWorkSummary(
-        dayChunkMap,
-        yearMonth,
-        empKey,
-        startWorkingDate,
-      );
-      if (summary) byMonth[yearMonth] = summary;
-    }
-
-    if (Object.keys(byMonth).length) map[empKey] = byMonth;
+    if (summary) map[empKey] = summary;
   }
 
   return map;

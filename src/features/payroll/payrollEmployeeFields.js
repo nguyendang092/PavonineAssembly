@@ -1,5 +1,8 @@
 import { pickAttendanceEmployeeDayFields } from "@/features/attendance/attendanceEmployeeFields";
 import { normalizeDateForHtmlInput } from "@/utils/dateHtmlInput";
+import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFieldKeys";
+
+export { PAYROLL_EMP };
 
 const ISO_PROFILE_DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -58,34 +61,6 @@ export function normalizePayrollProfileDateKey(raw, monthKeys = []) {
   const norm = normalizeDateForHtmlInput(`${y}-${pad(month)}-${pad(day)}`);
   return norm && isIsoProfileDateKey(norm) ? norm : "";
 }
-
-/**
- * Khóa trường RTDB / Excel — giữ nguyên (dữ liệu lưu trữ).
- * Dùng hằng để tránh nhầm tên biến tiếng Việt khi đọc/ghi bản ghi.
- */
-export const PAYROLL_EMP = {
-  STT: "stt",
-  MNV: "mnv",
-  MVT: "mvt",
-  EMPLOYEE_NAME: "hoVaTen",
-  GENDER: "gioiTinh",
-  DEPT_CODE: "maBoPhan",
-  DEPARTMENT: "boPhan",
-  JOIN_DATE: "ngayVaoLam",
-  CONTRACT_DATE: "ngayHopDong",
-  TIME_IN: "gioVao",
-  TIME_OUT: "gioRa",
-  LUNCH_OT_HOURS: "tangCaTrua",
-  /** Phút TC tài xế nhập thủ công — quy đổi tỷ lệ phút/60, cộng vào TC ca ngày. */
-  DRIVER_OT_MINUTES: "tangCaTaiXePhut",
-  SHIFT: "caLamViec",
-  LEAVE_TYPE: "loaiPhep",
-  COMP_LEAVE_ALLOWED: "duocNghiBu",
-  /** Cờ payroll trên dòng (từ `_meta` hoặc merge) — không phải khóa RTDB trên bản ghi NV. */
-  PAYROLL_EARLY_OT_PAPERWORK: "payrollEarlyOtPaperwork",
-  PAYROLL_LATE_OT_EXCLUDED: "payrollLateOtExcluded",
-  PAYROLL_NIGHT_OT_PAPERWORK: "payrollNightOtPaperwork",
-};
 
 /**
  * Tham số ngày chuẩn cho tính GC/TC bảng lương — đồng bộ `payrollOtDayParamsFromEmp`.

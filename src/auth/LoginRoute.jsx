@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import SignIn from "./SignIn";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity } from "@/contexts/UserContext";
 
 function safeRedirectTarget(from) {
   if (!from || typeof from !== "string") return "/";
@@ -16,7 +16,7 @@ function safeRedirectTarget(from) {
  * Trang đăng nhập toàn màn hình (router mặc định khi chưa đăng nhập).
  */
 export default function LoginRoute() {
-  const { user, setUser } = useUser();
+  const { user, setUser } = useUserIdentity();
   const navigate = useNavigate();
   const location = useLocation();
 

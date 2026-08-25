@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { canManageAnnualLeave } from "@/config/authRoles";
 import { db, ref, remove, update } from "@/services/firebase";
 import AlertMessage from "@/components/ui/AlertMessage";
@@ -65,7 +65,8 @@ const YEAR_OPTIONS = Array.from(
 
 export default function AnnualLeaveManager() {
   const { t } = useTranslation();
-  const { user, userRole } = useUser();
+  const { user } = useUserIdentity();
+  const { userRole } = useUserPermissions();
   const [searchParams, setSearchParams] = useSearchParams();
   const yearFromUrl = Number(searchParams.get("year"));
   const monthFromUrl = parseAnnualLeaveManagerMonthFilter(

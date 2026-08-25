@@ -1,7 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { canViewKoreanTimesheet } from "@/config/featurePermissions";
 import AttendanceList from "./AttendanceList";
 import { KOREAN_ATTENDANCE_ROOT } from "./attendanceSeasonalStt";
@@ -12,7 +12,8 @@ import { KOREAN_ATTENDANCE_ROOT } from "./attendanceSeasonalStt";
  */
 export default function KoreanTimesheetPage() {
   const { t } = useTranslation();
-  const { user, userRole } = useUser();
+  const { user } = useUserIdentity();
+  const { userRole } = useUserPermissions();
 
   if (!canViewKoreanTimesheet(user, userRole)) {
     return <Navigate to="/attendance-list" replace />;

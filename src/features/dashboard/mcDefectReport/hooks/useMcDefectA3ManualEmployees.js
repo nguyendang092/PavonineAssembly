@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { db, onValue, ref, remove, set } from "@/services/firebase";
+import { useCallback, useEffect, useState } from "react";
+import { db, ref, remove, set } from "@/services/firebase";
+import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import { MC_DEFECT_FILTER_ALL } from "../lib/constants";
 import {
   buildMcDefectA3ManualEmployeesPath,
@@ -15,51 +16,32 @@ export function useMcDefectA3ManualEmployees(
 ) {
   const [manualEmployees, setManualEmployeesState] = useState([]);
   const [saving, setSaving] = useState(false);
-  const activeScopePathRef = useRef("");
 
   const canSync =
     Boolean(reportMonth) && reportMonth !== MC_DEFECT_FILTER_ALL;
+  const scopePath = canSync
+    ? buildMcDefectA3ManualEmployeesPath(reportMonth, reportDepartment)
+    : null;
+  const { data: scopeRaw, error: scopeError } = useFirebaseValue(scopePath, {
+    enabled: canSync,
+  });
 
   useEffect(() => {
     if (!canSync) {
-      activeScopePathRef.current = "";
       setManualEmployeesState([]);
-      return undefined;
+      return;
     }
-
-    const scopePath = buildMcDefectA3ManualEmployeesPath(
-      reportMonth,
-      reportDepartment,
-    );
-    activeScopePathRef.current = scopePath;
-
-    const recordsRef = ref(db, scopePath);
-    const unsubscribe = onValue(
-      recordsRef,
-      (snapshot) => {
-        if (activeScopePathRef.current !== scopePath) return;
-        setManualEmployeesState(
-          parseMcDefectA3ManualEmployeesSnapshot(snapshot.val()),
-        );
-      },
-      () => {
-        if (activeScopePathRef.current !== scopePath) return;
-        onLoadError?.();
-      },
-    );
-
-    return () => {
-      if (activeScopePathRef.current === scopePath) {
-        activeScopePathRef.current = "";
-      }
-      unsubscribe();
-    };
-  }, [canSync, onLoadError, reportDepartment, reportMonth]);
+    if (scopeError) {
+      onLoadError?.();
+      return;
+    }
+    setManualEmployeesState(parseMcDefectA3ManualEmployeesSnapshot(scopeRaw));
+  }, [canSync, onLoadError, scopeError, scopeRaw]);
 
   const persistManualEmployees = useCallback(
     (entries) => {
       if (!canSync) return Promise.resolve();
-      const scopePath = buildMcDefectA3ManualEmployeesPath(
+      const path = buildMcDefectA3ManualEmployeesPath(
         reportMonth,
         reportDepartment,
       );
@@ -67,8 +49,8 @@ export function useMcDefectA3ManualEmployees(
       setSaving(true);
       const savePromise =
         Object.keys(payload).length === 0
-          ? remove(ref(db, scopePath))
-          : set(ref(db, scopePath), payload);
+          ? remove(ref(db, path))
+          : set(ref(db, path), payload);
       return savePromise
         .catch(() => {
           onSaveError?.();

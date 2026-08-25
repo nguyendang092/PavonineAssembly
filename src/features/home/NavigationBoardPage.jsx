@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
 import { canViewKoreanTimesheet } from "@/config/featurePermissions";
 import {
@@ -206,7 +206,8 @@ const NavigationBoardToolCard = memo(function NavigationBoardToolCard({
 
 export default function NavigationBoardPage() {
   const { t, i18n } = useTranslation();
-  const { user, userRole } = useUser();
+  const { user } = useUserIdentity();
+  const { userRole } = useUserPermissions();
   const now = useLiveClock();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");

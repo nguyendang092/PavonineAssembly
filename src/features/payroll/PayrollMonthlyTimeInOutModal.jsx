@@ -395,6 +395,7 @@ export default function PayrollMonthlyTimeInOutModal({
   const tableBodyScrollRef = useRef(null);
   const [dayCellFormOpen, setDayCellFormOpen] = useState(false);
   const [dayCellFormDate, setDayCellFormDate] = useState("");
+  const [dayCellFormRowId, setDayCellFormRowId] = useState("");
   const [dayCellFormInitial, setDayCellFormInitial] = useState(null);
   const [dayCellFormEmployees, setDayCellFormEmployees] = useState([]);
 
@@ -470,6 +471,7 @@ export default function PayrollMonthlyTimeInOutModal({
     if (open) return;
     setDayCellFormOpen(false);
     setDayCellFormDate("");
+    setDayCellFormRowId("");
     setDayCellFormInitial(null);
     setDayCellFormEmployees([]);
   }, [open]);
@@ -555,12 +557,36 @@ export default function PayrollMonthlyTimeInOutModal({
     return m;
   }, [filteredIds, monthDayMeta, repById]);
 
-  const openDayCellForm = useCallback((dateKey, dayEmps, formInitial) => {
+  const openDayCellForm = useCallback((dateKey, rowId, dayEmps, formInitial) => {
     setDayCellFormEmployees(dayEmps);
     setDayCellFormDate(dateKey);
+    setDayCellFormRowId(rowId ?? "");
     setDayCellFormInitial(formInitial);
     setDayCellFormOpen(true);
   }, []);
+
+  const handleDayCellSaved = useCallback(
+    async (payload) => {
+      setDayCellFormOpen(false);
+      const dateKey =
+        typeof payload === "string"
+          ? payload
+          : payload?.dateKey ?? dayCellFormDate;
+      if (!dateKey) {
+        void loadMonth();
+        return;
+      }
+      await patchDay(dateKey, {
+        dayRaw: typeof payload === "object" ? payload?.dayRaw : null,
+        firebaseKey:
+          typeof payload === "object" ? payload?.firebaseKey : undefined,
+        persistedNode:
+          typeof payload === "object" ? payload?.persistedNode : undefined,
+        affectedRowIds: dayCellFormRowId ? [dayCellFormRowId] : [],
+      });
+    },
+    [patchDay, loadMonth, dayCellFormDate, dayCellFormRowId],
+  );
 
   const openDayCellEditor = useCallback(
     (dateKey, rowId) => {
@@ -617,7 +643,7 @@ export default function PayrollMonthlyTimeInOutModal({
         });
         return;
       }
-      openDayCellForm(dateKey, dayEmps, formInitial);
+      openDayCellForm(dateKey, rowId, dayEmps, formInitial);
     },
     [
       user,
@@ -1005,11 +1031,7 @@ export default function PayrollMonthlyTimeInOutModal({
         userRole={userRole}
         userDepartments={userDepartments}
         onAlert={onAlert}
-        onSaved={(savedDateKey) => {
-          setDayCellFormOpen(false);
-          if (savedDateKey) void patchDay(savedDateKey);
-          else void loadMonth();
-        }}
+        onSaved={handleDayCellSaved}
         dayIsCompensatory={
           chunkByDate.get(dayCellFormDate)?.isCompensatoryDay ?? false
         }

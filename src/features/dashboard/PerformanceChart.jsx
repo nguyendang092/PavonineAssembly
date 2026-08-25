@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toPng } from "html-to-image";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import { db, ref, set } from "@/services/firebase";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
 import { usePerformanceYearData } from "./usePerformanceYearData";
 import {
@@ -30,7 +30,8 @@ function ymdStamp() {
 
 export default function PerformanceChart() {
   const { t } = useTranslation();
-  const { user, userRole } = useUser();
+  const { user } = useUserIdentity();
+  const { userRole } = useUserPermissions();
   const canEdit = isAdminAccess(user, userRole);
 
   const [selectedYear, setSelectedYear] = useState(() =>

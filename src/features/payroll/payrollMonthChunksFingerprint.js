@@ -3,7 +3,7 @@
  * (giờ vào/ra, loại phép, cờ ngày…) để không giữ tổng cũ sau khi sửa điểm danh.
  */
 
-function mixFingerprintHash(hash, text) {
+export function mixFingerprintHash(hash, text) {
   const s = String(text ?? "");
   let h = hash;
   for (let i = 0; i < s.length; i += 1) {

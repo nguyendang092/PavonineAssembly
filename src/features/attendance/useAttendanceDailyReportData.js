@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { db, ref, get } from "@/services/firebase";
+import { useMemo } from "react";
+import { useFirebaseOnce } from "@/hooks/useFirebaseOnce";
 import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 import {
   getIsCompensatoryDayFromRaw,
@@ -7,76 +7,55 @@ import {
   getIsOffDayFromRaw,
 } from "./attendanceDayMeta";
 
-async function fetchAttendanceDayEmployees(attendanceRootPath, dateKey) {
-  const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-  const raw = snap.val();
-  const employees = reconcileAttendanceDayRowsFromRaw([], raw, {
-    seasonal: attendanceRootPath === "seasonalAttendance",
-  });
-  return { raw, employees };
-}
-
 /**
  * Tải điểm danh ngày — cả 정규직 (`attendance`) và 일용직 (`seasonalAttendance`).
  */
 export function useAttendanceDailyReportData(dateKey) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [regularEmployees, setRegularEmployees] = useState([]);
-  const [seasonalEmployees, setSeasonalEmployees] = useState([]);
-  const [dayMeta, setDayMeta] = useState({
-    isOffDay: false,
-    isHolidayDay: false,
-    isCompensatoryDay: false,
-  });
+  const regularPath = dateKey ? `attendance/${dateKey}` : null;
+  const seasonalPath = dateKey ? `seasonalAttendance/${dateKey}` : null;
 
-  useEffect(() => {
-    if (!dateKey) {
-      setRegularEmployees([]);
-      setSeasonalEmployees([]);
-      return undefined;
-    }
+  const regularFetch = useFirebaseOnce(regularPath, [dateKey]);
+  const seasonalFetch = useFirebaseOnce(seasonalPath, [dateKey]);
 
-    let cancelled = false;
-    setLoading(true);
-    setError("");
+  const loading = Boolean(dateKey) && (regularFetch.loading || seasonalFetch.loading);
+  const error = regularFetch.error || seasonalFetch.error || "";
 
-    void (async () => {
-      try {
-        const [regular, seasonal] = await Promise.all([
-          fetchAttendanceDayEmployees("attendance", dateKey),
-          fetchAttendanceDayEmployees("seasonalAttendance", dateKey),
-        ]);
-        if (cancelled) return;
+  const regularEmployees = useMemo(
+    () =>
+      dateKey
+        ? reconcileAttendanceDayRowsFromRaw([], regularFetch.data, {
+            seasonal: false,
+          })
+        : [],
+    [dateKey, regularFetch.data],
+  );
 
-        setRegularEmployees(regular.employees);
-        setSeasonalEmployees(seasonal.employees);
-        setDayMeta({
-          isOffDay: getIsOffDayFromRaw(regular.raw),
-          isHolidayDay: getIsHolidayDayFromRaw(regular.raw),
-          isCompensatoryDay: getIsCompensatoryDayFromRaw(regular.raw),
-        });
-      } catch (err) {
-        if (!cancelled) {
-          setError(err?.message || String(err));
-          setRegularEmployees([]);
-          setSeasonalEmployees([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+  const seasonalEmployees = useMemo(
+    () =>
+      dateKey
+        ? reconcileAttendanceDayRowsFromRaw([], seasonalFetch.data, {
+            seasonal: true,
+          })
+        : [],
+    [dateKey, seasonalFetch.data],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [dateKey]);
+  const dayMeta = useMemo(
+    () => ({
+      isOffDay: getIsOffDayFromRaw(regularFetch.data),
+      isHolidayDay: getIsHolidayDayFromRaw(regularFetch.data),
+      isCompensatoryDay: getIsCompensatoryDayFromRaw(regularFetch.data),
+    }),
+    [regularFetch.data],
+  );
 
   return {
     loading,
     error,
-    regularEmployees,
-    seasonalEmployees,
-    dayMeta,
+    regularEmployees: error ? [] : regularEmployees,
+    seasonalEmployees: error ? [] : seasonalEmployees,
+    dayMeta: error
+      ? { isOffDay: false, isHolidayDay: false, isCompensatoryDay: false }
+      : dayMeta,
   };
 }

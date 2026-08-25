@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, startTransition } from "react";
-import { db, ref, onValue } from "@/services/firebase";
+import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import {
   getIsOffDayFromRaw,
   getIsHolidayDayFromRaw,
@@ -19,42 +19,41 @@ export function useAttendanceDayFirebase(attendanceRootPath, selectedDate) {
 
   const attendanceRawRef = useRef(undefined);
   const employeesRef = useRef([]);
-  const listenGenerationRef = useRef(0);
+
+  const dayPath =
+    selectedDate && attendanceRootPath
+      ? `${attendanceRootPath}/${selectedDate}`
+      : null;
+  const { data: attendanceRaw, loading } = useFirebaseValue(dayPath);
 
   useEffect(() => {
     employeesRef.current = employees;
   }, [employees]);
 
   useEffect(() => {
-    const generation = ++listenGenerationRef.current;
     attendanceRawRef.current = undefined;
     setEmployees([]);
     setIsOffDay(false);
     setIsHolidayDay(false);
     setIsCompensatoryDay(false);
-
-    const empRef = ref(db, `${attendanceRootPath}/${selectedDate}`);
-    const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
-    const unsubscribe = onValue(empRef, (snapshot) => {
-      if (generation !== listenGenerationRef.current) return;
-
-      const data = snapshot.val();
-      attendanceRawRef.current = data;
-
-      startTransition(() => {
-        setIsOffDay(getIsOffDayFromRaw(data));
-        setIsHolidayDay(getIsHolidayDayFromRaw(data));
-        setIsCompensatoryDay(getIsCompensatoryDayFromRaw(data));
-        setEmployees((prev) =>
-          reconcileAttendanceDayRowsFromRaw(prev, data, { seasonal }),
-        );
-      });
-    });
-
-    return () => {
-      unsubscribe();
-    };
   }, [selectedDate, attendanceRootPath]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const data = attendanceRaw;
+    attendanceRawRef.current = data;
+    const seasonal = isSeasonalAttendanceRoot(attendanceRootPath);
+
+    startTransition(() => {
+      setIsOffDay(getIsOffDayFromRaw(data));
+      setIsHolidayDay(getIsHolidayDayFromRaw(data));
+      setIsCompensatoryDay(getIsCompensatoryDayFromRaw(data));
+      setEmployees((prev) =>
+        reconcileAttendanceDayRowsFromRaw(prev, data, { seasonal }),
+      );
+    });
+  }, [attendanceRaw, loading, attendanceRootPath]);
 
   return {
     employees,

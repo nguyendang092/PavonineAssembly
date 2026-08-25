@@ -26,6 +26,7 @@ import AttendanceListToolbarSection from "./AttendanceListToolbarSection";
 import AttendanceListToolbarSearchCluster from "./AttendanceToolbarSearchCluster";
 import AttendanceListContentSection from "./AttendanceListContentSection";
 import AttendanceHrPageShell from "./AttendanceHrPageShell";
+import { useAttendanceStatisticsSidebar } from "./attendanceStatisticsSidebarContext";
 import "./attendanceToolbarFocus.css";
 import "./hrPageCompact.css";
 import "./attendanceListPage.css";
@@ -885,6 +886,36 @@ const AttendanceList = memo(function AttendanceList({
       setShowComboChartModal(true);
     });
   }, [setComboDashboardGroup, setShowComboChartModal]);
+
+  const statisticsSidebar = useAttendanceStatisticsSidebar();
+  const registerStatistics = statisticsSidebar?.register;
+  const unregisterStatistics = statisticsSidebar?.unregister;
+
+  useEffect(() => {
+    if (!registerStatistics) return undefined;
+    registerStatistics({
+      open: handleSidebarOpenStatistics,
+      isOpen: showComboChartModal,
+    });
+    return () => unregisterStatistics?.();
+  }, [
+    registerStatistics,
+    unregisterStatistics,
+    handleSidebarOpenStatistics,
+    showComboChartModal,
+  ]);
+
+  useEffect(() => {
+    if (searchParams.get("openStatistics") !== "1") return;
+    handleSidebarOpenStatistics();
+    const next = new URLSearchParams(searchParams);
+    next.delete("openStatistics");
+    setSearchParams(next, { replace: true });
+  }, [
+    searchParams,
+    setSearchParams,
+    handleSidebarOpenStatistics,
+  ]);
 
   return (
     <>

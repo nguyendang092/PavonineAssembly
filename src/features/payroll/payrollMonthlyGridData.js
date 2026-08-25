@@ -20,6 +20,7 @@ import {
   pickBestPayrollJoinDateForMonth,
   pickPayrollEmployeeProfileDates,
 } from "@/features/payroll/payrollEmployeeFields";
+import { mixFingerprintHash } from "@/features/payroll/payrollMonthChunksFingerprint";
 
 /** Phân tách MNV và Firebase id khi cùng MNV có nhiều bản ghi. */
 export const PAYROLL_MONTH_ROW_ID_SEP = "__";
@@ -139,6 +140,25 @@ export function insertChunkSortedByDate(chunks, chunk) {
   if (insertAt === -1) next.push(chunk);
   else next.splice(insertAt, 0, chunk);
   return next;
+}
+
+/** Row id lưới tháng bị ảnh hưởng sau patch 1 ngày (summary incremental). */
+export function collectAffectedRowIdsFromPatchedChunk(chunk, firebaseKey) {
+  const ids = new Set();
+  const fbKey = normalizePayrollMonthRowIdKey(firebaseKey);
+  if (fbKey) ids.add(fbKey);
+
+  for (const emp of chunk?.employees ?? []) {
+    const empId = normalizePayrollMonthRowIdKey(emp?.id);
+    if (fbKey && empId !== fbKey) continue;
+    if (emp?.monthEmployeeKey) {
+      ids.add(normalizePayrollMonthRowIdKey(emp.monthEmployeeKey));
+    }
+    if (empId) ids.add(empId);
+    const mnv = businessEmployeeCode(emp);
+    if (mnv) ids.add(mnv);
+  }
+  return [...ids].filter(Boolean);
 }
 
 export async function fetchOneDayWithRetry(
@@ -791,4 +811,53 @@ export async function fetchPayrollMonthDayChunks(monthKeys, hooks = {}) {
   if (signal?.aborted || hooks.isStale?.()) return null;
   applyPayrollMonthCanonicalKeysToChunks(allChunks, { mutateFromIndex: 0 });
   return allChunks;
+}
+
+/** Fingerprint theo từng NV — patch 1 ngày không invalidate cache summary NV khác. */
+export function computePayrollMonthEmployeeFingerprint(
+  chunkByDate,
+  monthKeys,
+  rowId,
+  employeeProfile,
+) {
+  const resolvedProfile = resolvePayrollMonthEmployeeProfileForSummary(
+    chunkByDate,
+    monthKeys,
+    rowId,
+    employeeProfile,
+  );
+  let h = mixFingerprintHash(0, String(rowId ?? ""));
+  for (const dk of monthKeys ?? []) {
+    const ch = chunkByDate?.get?.(dk);
+    if (!ch || ch.status === "error") {
+      h = mixFingerprintHash(h, `${dk}|missing`);
+      continue;
+    }
+    h = mixFingerprintHash(
+      h,
+      `${ch.isOffDay ? 1 : 0}|${ch.isHolidayDay ? 1 : 0}|${ch.isCompensatoryDay ? 1 : 0}`,
+    );
+    const emp = resolvePayrollMonthDayEmployee(ch, rowId, resolvedProfile);
+    if (!emp) {
+      h = mixFingerprintHash(h, `${dk}|empty`);
+      continue;
+    }
+    h = mixFingerprintHash(
+      h,
+      [
+        dk,
+        emp.gioVao,
+        emp.gioRa,
+        emp.loaiPhep,
+        emp.caLamViec,
+        emp.duocNghiBu,
+        emp.tangCaTrua,
+        emp.tangCaTaiXePhut,
+        emp.payrollEarlyOtPaperwork,
+        emp.payrollLateOtExcluded,
+        emp.payrollNightOtPaperwork,
+      ].join("|"),
+    );
+  }
+  return String(h);
 }

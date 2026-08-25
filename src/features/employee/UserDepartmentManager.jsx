@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import {
   canManageUserDepartmentMappings,
   inferRoleFromMapping,
@@ -12,7 +12,8 @@ import AlertMessage from "@/components/ui/AlertMessage";
 
 function UserDepartmentManager() {
   const { t } = useTranslation();
-  const { user, userRole } = useUser();
+  const { user } = useUserIdentity();
+  const { userRole } = useUserPermissions();
   const [mappings, setMappings] = useState([]);
   const [availableDepartments, setAvailableDepartments] = useState([]);
   const [form, setForm] = useState({

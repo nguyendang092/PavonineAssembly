@@ -1,6 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { db } from "@/services/firebase";
 import { ref, get } from "firebase/database";
+import {
+  bumpFirebaseGeneration,
+  isFirebaseGenerationStale,
+} from "@/hooks/firebaseGeneration";
 import { getDay, getDaysInMonth } from "date-fns";
 import {
   LineChart,
@@ -31,6 +35,7 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
   const [chartData, setChartData] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const { t } = useTranslation();
+  const fetchGenerationRef = useRef(0);
 
   const getThreshold = () => {
     if (type === "temperature") return { min: 17, max: 28 };
@@ -41,7 +46,10 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
   const threshold = getThreshold();
 
   useEffect(() => {
-    let isMounted = true;
+    const myGeneration = bumpFirebaseGeneration(fetchGenerationRef);
+    setChartData([]);
+    setAlerts([]);
+
     const fetchData = async () => {
       const year = parseInt(selectedMonth.split("-")[0], 10);
       const month = parseInt(selectedMonth.split("-")[1], 10) - 1;
@@ -72,6 +80,7 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
       );
 
       const results = await Promise.all(promises);
+      if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
 
       results.forEach(({ machine, data }) => {
         if (!data) return;
@@ -99,19 +108,13 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
       const sortedData = Object.values(result).sort(
         (a, b) => parseInt(a.day) - parseInt(b.day),
       );
-      if (isMounted) {
-        setChartData(sortedData);
-        setAlerts(newAlerts);
-      }
+      if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
+      setChartData(sortedData);
+      setAlerts(newAlerts);
     };
 
-    fetchData();
-    return () => {
-      isMounted = false;
-      setChartData([]);
-      setAlerts([]);
-    };
-  }, [selectedArea, selectedMonth, machines, type, t]);
+    void fetchData();
+  }, [selectedArea, selectedMonth, machines, type, t, threshold.max, threshold.min]);
 
   const handleExportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(chartData);

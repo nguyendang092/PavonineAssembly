@@ -18,7 +18,8 @@ import {
   canEditAttendanceForEmployee,
   isAdminAccess,
 } from "@/config/authRoles";
-import { db, ref, onValue, update, get } from "@/services/firebase";
+import { db, ref, update, get } from "@/services/firebase";
+import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import {
   parsePayrollDayFromAttendanceRaw,
   reconcilePayrollEmployeesFromBase,
@@ -180,10 +181,7 @@ export default function PayrollSalaryCalculator() {
   const [rangeExportBusy, setRangeExportBusy] = useState(false);
   const [monthlyTimesheetOpen, setMonthlyTimesheetOpen] = useState(false);
   const [monthlyTimeInOutOpen, setMonthlyTimeInOutOpen] = useState(false);
-  const [isDayLoading, setIsDayLoading] = useState(false);
-
   const attendanceRawRef = useRef(undefined);
-  const listenGenerationRef = useRef(0);
   const employeesRef = useRef([]);
   const payrollEmployeesRef = useRef([]);
 
@@ -229,68 +227,71 @@ export default function PayrollSalaryCalculator() {
     leaveTypeFilter !== deferredLeaveTypeFilter ||
     overtimeFilter !== deferredOvertimeFilter ||
     shortHoursFilter !== deferredShortHoursFilter;
+  const attendancePath = selectedDate ? `attendance/${selectedDate}` : null;
+  const {
+    data: attendanceDayRaw,
+    loading: isDayLoading,
+  } = useFirebaseValue(attendancePath);
+
   const isTableBusy = isDayLoading || filtersPending;
 
   useEffect(() => {
-    const generation = ++listenGenerationRef.current;
     attendanceRawRef.current = undefined;
-    setIsDayLoading(true);
     setEmployees([]);
     setEarlyOtMap({});
     setLateOtExcludedMap({});
-    const empRef = ref(db, `attendance/${selectedDate}`);
-    const unsubscribe = onValue(empRef, (snapshot) => {
-      if (generation !== listenGenerationRef.current) return;
+    setNightOtMap({});
+  }, [selectedDate]);
 
-      const data = snapshot.val();
-      attendanceRawRef.current = data;
+  useEffect(() => {
+    if (isDayLoading) return;
 
-      startTransition(() => {
-        const parsed = parsePayrollDayFromAttendanceRaw(
-          data,
-          employeesRef.current,
-          payrollEmployeesRef.current,
-        );
-        payrollEmployeesRef.current = parsed.payrollEmployees;
-        setIsOffDay((prev) =>
-          prev === parsed.isOffDay ? prev : parsed.isOffDay,
-        );
-        setIsHolidayDay((prev) =>
-          prev === parsed.isHolidayDay ? prev : parsed.isHolidayDay,
-        );
-        setIsCompensatoryDay((prev) =>
-          prev === parsed.isCompensatoryDay ? prev : parsed.isCompensatoryDay,
-        );
-        setEarlyOtMap((prev) =>
-          shallowStringRecordEqual(prev, parsed.earlyOtPaperworkById)
-            ? prev
-            : parsed.earlyOtPaperworkById,
-        );
-        setLateOtExcludedMap((prev) =>
-          shallowStringRecordEqual(prev, parsed.lateOtExcludedById)
-            ? prev
-            : parsed.lateOtExcludedById,
-        );
-        setNightOtMap((prev) =>
-          shallowStringRecordEqual(prev, parsed.nightOtPaperworkById)
-            ? prev
-            : parsed.nightOtPaperworkById,
-        );
-        setEmployees((prevBase) => {
-          if (
-            parsed.baseEmployees === prevBase ||
-            (prevBase.length === parsed.baseEmployees.length &&
-              prevBase.every((row, i) => row === parsed.baseEmployees[i]))
-          ) {
-            return prevBase;
-          }
-          return parsed.baseEmployees;
-        });
-        setIsDayLoading(false);
+    const data = attendanceDayRaw;
+    attendanceRawRef.current = data;
+
+    startTransition(() => {
+      const parsed = parsePayrollDayFromAttendanceRaw(
+        data,
+        employeesRef.current,
+        payrollEmployeesRef.current,
+      );
+      payrollEmployeesRef.current = parsed.payrollEmployees;
+      setIsOffDay((prev) =>
+        prev === parsed.isOffDay ? prev : parsed.isOffDay,
+      );
+      setIsHolidayDay((prev) =>
+        prev === parsed.isHolidayDay ? prev : parsed.isHolidayDay,
+      );
+      setIsCompensatoryDay((prev) =>
+        prev === parsed.isCompensatoryDay ? prev : parsed.isCompensatoryDay,
+      );
+      setEarlyOtMap((prev) =>
+        shallowStringRecordEqual(prev, parsed.earlyOtPaperworkById)
+          ? prev
+          : parsed.earlyOtPaperworkById,
+      );
+      setLateOtExcludedMap((prev) =>
+        shallowStringRecordEqual(prev, parsed.lateOtExcludedById)
+          ? prev
+          : parsed.lateOtExcludedById,
+      );
+      setNightOtMap((prev) =>
+        shallowStringRecordEqual(prev, parsed.nightOtPaperworkById)
+          ? prev
+          : parsed.nightOtPaperworkById,
+      );
+      setEmployees((prevBase) => {
+        if (
+          parsed.baseEmployees === prevBase ||
+          (prevBase.length === parsed.baseEmployees.length &&
+            prevBase.every((row, i) => row === parsed.baseEmployees[i]))
+        ) {
+          return prevBase;
+        }
+        return parsed.baseEmployees;
       });
     });
-    return () => unsubscribe();
-  }, [selectedDate]);
+  }, [attendanceDayRaw, isDayLoading, selectedDate]);
 
   useEffect(() => {
     setEarlyOtSuppressed(false);

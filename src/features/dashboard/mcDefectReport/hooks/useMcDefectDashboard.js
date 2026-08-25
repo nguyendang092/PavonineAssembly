@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
-import { db, onValue, ref, remove, set } from "@/services/firebase";
+import { db, ref, remove, set } from "@/services/firebase";
+import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import {
   INITIAL_MC_DEFECT_FORM,
   MC_DEFECT_FILTER_ALL,
@@ -42,7 +43,11 @@ export function useMcDefectDashboard() {
   );
   const dashboardExportRef = useRef(null);
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: defectReportRaw,
+    loading: firebaseLoading,
+    error: firebaseError,
+  } = useFirebaseValue(MC_DEFECT_REPORT_PATH);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
@@ -79,21 +84,16 @@ export function useMcDefectDashboard() {
   );
 
   useEffect(() => {
-    const recordsRef = ref(db, MC_DEFECT_REPORT_PATH);
-    const unsubscribe = onValue(
-      recordsRef,
-      (snapshot) => {
-        setRows(parseMcDefectReportSnapshot(snapshot.val()));
-        setLoading(false);
-      },
-      () => {
-        setLoading(false);
-        setMessageType("error");
-        setMessage(tl("loadFirebaseError", "Không tải được dữ liệu từ Firebase."));
-      },
-    );
-    return () => unsubscribe();
-  }, [tl]);
+    if (firebaseLoading) return;
+    if (firebaseError) {
+      setMessageType("error");
+      setMessage(tl("loadFirebaseError", "Không tải được dữ liệu từ Firebase."));
+      return;
+    }
+    setRows(parseMcDefectReportSnapshot(defectReportRaw));
+  }, [defectReportRaw, firebaseError, firebaseLoading, tl]);
+
+  const loading = firebaseLoading;
 
   const monthOptions = useMemo(() => buildMonthOptions(rows), [rows]);
 

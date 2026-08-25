@@ -1,8 +1,15 @@
 /**
  * Ngưỡng / batch cho lưới tháng — chỉnh khi dữ liệu lớn.
  */
-export const PAYROLL_MONTH_FETCH_BATCH_SIZE = 7;
-export const PAYROLL_MONTH_PREFETCH_BATCH_SIZE = 3;
+export const PAYROLL_MONTH_FETCH_BATCH_SIZE = 14;
+export const PAYROLL_MONTH_PREFETCH_BATCH_SIZE = 7;
+export const PAYROLL_MONTH_PREFETCH_IDLE_TIMEOUT_MS = 5000;
+
+/** Số ngày mỗi batch fetch — tối đa PAYROLL_MONTH_FETCH_BATCH_SIZE. */
+export function resolvePayrollMonthFetchBatchSize(dayCount) {
+  const n = Math.max(1, Number(dayCount) || PAYROLL_MONTH_FETCH_BATCH_SIZE);
+  return Math.min(PAYROLL_MONTH_FETCH_BATCH_SIZE, n);
+}
 export const PAYROLL_MONTH_FETCH_YIELD_MS = 0;
 export const PAYROLL_MONTH_DAY_FETCH_MAX_RETRY = 2;
 export const PAYROLL_MONTH_DAY_FETCH_BASE_DELAY_MS = 400;

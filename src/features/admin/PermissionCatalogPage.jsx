@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
 import { PERMISSION_CATALOG } from "@/config/featurePermissions";
 
 export default function PermissionCatalogPage() {
   const { t } = useTranslation();
-  const { user, userRole } = useUser();
+  const { user } = useUserIdentity();
+  const { userRole } = useUserPermissions();
   const [q, setQ] = useState("");
 
   const rows = useMemo(() => {

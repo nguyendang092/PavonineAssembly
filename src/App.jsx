@@ -1,24 +1,23 @@
 import React, {
-  useEffect,
   useState,
   useLayoutEffect,
-  useMemo,
   useRef,
   Suspense,
 } from "react";
 import { createPortal } from "react-dom";
-// firebase for global data fetching
-import { db, ref, onValue } from "@/services/firebase";
 import Navbar from "@/components/layout/Navbar";
 import BackToTop from "@/components/ui/BackToTop";
 import BackToBottom from "@/components/ui/BackToBottom";
 import Footer from "@/components/layout/Footer";
 import "@/config/i18n";
-import { UserContext } from "@/contexts/UserContext";
+import {
+  UserProvider,
+  useUserIdentity,
+  useUserPermissions,
+} from "@/contexts/UserContext";
 import ProtectedRoute from "@/auth/ProtectedRoute";
 import { routeConfig, PUBLIC_ROUTE_PATHS } from "@/config/menuConfig";
 import { PRODUCTION_LAYOUT_PATHS } from "@/features/production/productionSidebarConfig";
-import { inferRoleFromMapping, isAdminOrHR, ROLES } from "@/config/authRoles";
 import {
   BrowserRouter as Router,
   Routes,
@@ -125,14 +124,6 @@ const ROUTE_COMPONENTS = {
   NavigationBoardPage,
 };
 
-function clearSessionAndRedirectToLogin(setUser) {
-  localStorage.removeItem("userLogin");
-  setUser(null);
-  if (window.location.pathname !== "/login") {
-    window.location.replace("/login");
-  }
-}
-
 function ScrollActionPortal({ scrollContainerRef }) {
   const { pathname } = useLocation();
   if (AUTH_PATHS.has(pathname)) return null;
@@ -153,8 +144,10 @@ function ScrollActionPortal({ scrollContainerRef }) {
   );
 }
 
-function NavbarShell({ isScrolled, user, setUser, userRole }) {
+function NavbarShell({ isScrolled }) {
   const { pathname } = useLocation();
+  const { user, setUser } = useUserIdentity();
+  const { userRole } = useUserPermissions();
   if (AUTH_PATHS.has(pathname)) return null;
   return (
     <div
@@ -185,121 +178,15 @@ function MainScrollShell({ mainScrollRef, children }) {
   );
 }
 
-function readSessionUser() {
-  try {
-    const loginData = localStorage.getItem("userLogin");
-    if (!loginData) return null;
-    const { email, name, expire } = JSON.parse(loginData);
-    if (
-      email &&
-      typeof expire === "number" &&
-      Number.isFinite(expire) &&
-      Date.now() < expire
-    ) {
-      return { email, name };
-    }
-    localStorage.removeItem("userLogin");
-  } catch {
-    localStorage.removeItem("userLogin");
-  }
-  return null;
-}
-
 const App = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [user, setUser] = useState(() => readSessionUser());
-
-  // departments the currently logged in user has access to
-  const [userDepartments, setUserDepartments] = useState([]);
-  const [userRole, setUserRole] = useState(null);
-
-  /** Vùng cuộn chính — dùng cho navbar shadow + BackToTop / BackToBottom */
   const mainScrollRef = useRef(null);
-
-  const userContextValue = useMemo(
-    () => ({ user, setUser, userDepartments, userRole }),
-    [user, userDepartments, userRole],
-  );
-
-  useEffect(() => {
-    setUser(readSessionUser());
-  }, []);
-
-  useEffect(() => {
-    if (!user?.email) return undefined;
-
-    let timerId;
-    try {
-      const loginData = localStorage.getItem("userLogin");
-      if (!loginData) {
-        setUser(null);
-        return undefined;
-      }
-      const { expire } = JSON.parse(loginData);
-      if (typeof expire !== "number" || !Number.isFinite(expire)) {
-        clearSessionAndRedirectToLogin(setUser);
-        return undefined;
-      }
-      if (Date.now() >= expire) {
-        clearSessionAndRedirectToLogin(setUser);
-        return undefined;
-      }
-      const delay = expire - Date.now();
-      timerId = window.setTimeout(() => {
-        clearSessionAndRedirectToLogin(setUser);
-      }, delay);
-    } catch {
-      clearSessionAndRedirectToLogin(setUser);
-    }
-
-    return () => {
-      if (timerId) clearTimeout(timerId);
-    };
-  }, [user]);
-
-  // load departments + role for the logged-in user
-  useEffect(() => {
-    if (!user?.email) {
-      setUserDepartments([]);
-      setUserRole(null);
-      return;
-    }
-    const userDeptsRef = ref(db, "userDepartments");
-    const unsubscribe = onValue(userDeptsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const mapping = Object.values(data).find((m) => {
-          if (!m.email || !user.email) return false;
-          return (
-            m.email.trim().toLowerCase() === user.email.trim().toLowerCase()
-          );
-        });
-        if (mapping) {
-          const depts =
-            mapping.departments ||
-            (mapping.department ? [mapping.department] : []);
-          setUserDepartments(depts);
-          let role = inferRoleFromMapping({ ...mapping, departments: depts });
-          if (isAdminOrHR(user)) role = ROLES.ADMIN;
-          setUserRole(role);
-        } else {
-          setUserDepartments([]);
-          setUserRole(isAdminOrHR(user) ? ROLES.ADMIN : ROLES.STAFF);
-        }
-      } else {
-        setUserDepartments([]);
-        setUserRole(isAdminOrHR(user) ? ROLES.ADMIN : ROLES.STAFF);
-      }
-    });
-    return () => unsubscribe();
-  }, [user]);
 
   useLayoutEffect(() => {
     const el = mainScrollRef.current;
     if (!el) return undefined;
     el.scrollTo({ top: 0, behavior: "auto" });
     const handleScroll = () => {
-      // Bật nền navbar sớm để người dùng luôn thấy phân tách.
       const scrolled =
         (el?.scrollTop ?? 0) > 4 ||
         (window.scrollY ?? window.pageYOffset ?? 0) > 4;
@@ -315,15 +202,10 @@ const App = () => {
   }, []);
 
   return (
-    <UserContext.Provider value={userContextValue}>
+    <UserProvider>
       <Router>
         <div className="min-h-screen flex flex-col bg-gray-50 text-slate-900 transition-colors duration-200 dark:bg-slate-950 dark:text-slate-100">
-          <NavbarShell
-            isScrolled={isScrolled}
-            user={user}
-            setUser={setUser}
-            userRole={userRole}
-          />
+          <NavbarShell isScrolled={isScrolled} />
 
           <MainScrollShell mainScrollRef={mainScrollRef}>
             <Suspense fallback={<LoadingBlock className="min-h-[60vh]" />}>
@@ -410,7 +292,7 @@ const App = () => {
           <ScrollActionPortal scrollContainerRef={mainScrollRef} />
         </div>
       </Router>
-    </UserContext.Provider>
+    </UserProvider>
   );
 };
 

@@ -1,2 +1,10 @@
-export { UserContext, useUser } from './UserContext';
-export { LoadingProvider, useLoading } from './LoadingContext';
+export {
+  UserContext,
+  UserIdentityContext,
+  UserPermissionContext,
+  UserProvider,
+  useUser,
+  useUserIdentity,
+  useUserPermissions,
+} from "./UserContext.jsx";
+export { LoadingProvider, useLoading } from "./LoadingContext";

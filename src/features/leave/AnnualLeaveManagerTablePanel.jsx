@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity } from "@/contexts/UserContext";
 import { db } from "@/services/firebase";
 import HrTablePagination from "@/components/ui/HrTablePagination";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
@@ -65,7 +65,7 @@ function AnnualLeaveManagerTablePanel({
   onAdjustmentSaveError,
 }) {
   const { t } = useTranslation();
-  const { user } = useUser();
+  const { user } = useUserIdentity();
   const [adjustmentSavingId, setAdjustmentSavingId] = useState("");
   const tableColCount =
     10 + monthColumnLabels.length + 1 + (canManage ? 1 : 0);
@@ -74,9 +74,19 @@ function AnnualLeaveManagerTablePanel({
     resetDeps: [year, monthFilter, filteredEntries.length],
   });
 
-  const filteredScopeEmpKeySet = useMemo(
-    () => buildScopeEmpKeySet(filteredEntries),
-    [filteredEntries],
+  const pagedScopeEmpKeyKey = useMemo(
+    () =>
+      tablePagination.pagedItems
+        .map((entry) => entry.id)
+        .filter(Boolean)
+        .sort()
+        .join("|"),
+    [tablePagination.pagedItems],
+  );
+
+  const pagedScopeEmpKeySet = useMemo(
+    () => buildScopeEmpKeySet(tablePagination.pagedItems),
+    [pagedScopeEmpKeyKey, tablePagination.pagedItems],
   );
 
   const usageThroughMonthIndex = resolveAnnualLeaveManagerMonthIndex(monthFilter);
@@ -89,10 +99,12 @@ function AnnualLeaveManagerTablePanel({
     attendanceEnhancing,
     attendanceUsageReady,
     attendanceAccrualReady,
+    isEmpUsageReady,
+    isEmpAccrualReady,
   } = useAnnualLeaveAttendanceEnhancement(year, yearData, {
     includePayrollMonthAccrual: true,
     throughDateKey: detailThroughDateKey,
-    scopeEmpKeySet: filteredScopeEmpKeySet,
+    scopeEmpKeySet: pagedScopeEmpKeySet,
     accrualThroughMonthIndex: usageThroughMonthIndex,
   });
 
@@ -107,7 +119,7 @@ function AnnualLeaveManagerTablePanel({
   );
 
   const buildDisplayRowForEntry = useCallback(
-    (entry) => {
+    (entry, { usageReady = attendanceUsageReady, accrualReady = attendanceAccrualReady } = {}) => {
       const monthValues =
         monthlyByEmpKey[entry.id] ??
         storedMonthlyByEmpKey[entry.id] ??
@@ -117,8 +129,8 @@ function AnnualLeaveManagerTablePanel({
         year,
         monthValues,
         usageThroughMonthIndex,
-        attendanceUsageReady,
-        attendanceAccrualReady,
+        attendanceUsageReady: usageReady,
+        attendanceAccrualReady: accrualReady,
         deductionsByEmpKey,
         monthWorkSummaryByEmpKey,
         accrualAsOfDateKey,
@@ -140,11 +152,19 @@ function AnnualLeaveManagerTablePanel({
   const displayRowByEmpKey = useMemo(() => {
     const map = new Map();
     for (const entry of tablePagination.pagedItems) {
-      const row = buildDisplayRowForEntry(entry);
+      const row = buildDisplayRowForEntry(entry, {
+        usageReady: isEmpUsageReady(entry.id),
+        accrualReady: isEmpAccrualReady(entry.id),
+      });
       if (row) map.set(entry.id, row);
     }
     return map;
-  }, [buildDisplayRowForEntry, tablePagination.pagedItems]);
+  }, [
+    buildDisplayRowForEntry,
+    isEmpAccrualReady,
+    isEmpUsageReady,
+    tablePagination.pagedItems,
+  ]);
 
   const resolveDisplayRow = useCallback(
     (entry) => displayRowByEmpKey.get(entry.id) ?? entry._raw,
@@ -162,7 +182,10 @@ function AnnualLeaveManagerTablePanel({
         );
         return filtered
           .map((entry, idx) => {
-            const row = buildDisplayRowForEntry(entry);
+            const row = buildDisplayRowForEntry(entry, {
+              usageReady: isEmpUsageReady(entry.id),
+              accrualReady: isEmpAccrualReady(entry.id),
+            });
             if (!row) return null;
             return {
               ...row,
@@ -196,6 +219,8 @@ function AnnualLeaveManagerTablePanel({
     deptIndex,
     entries,
     exportRef,
+    isEmpAccrualReady,
+    isEmpUsageReady,
     monthColumnLabels,
     monthFilter,
     monthlyByEmpKey,
@@ -248,7 +273,8 @@ function AnnualLeaveManagerTablePanel({
   const pagedMonthValuesByEmpKey = useMemo(() => {
     const map = new Map();
     for (const entry of tablePagination.pagedItems) {
-      const rawValues = attendanceUsageReady
+      const rowReady = isEmpUsageReady(entry.id);
+      const rawValues = rowReady
         ? monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES
         : storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
       map.set(
@@ -258,7 +284,7 @@ function AnnualLeaveManagerTablePanel({
     }
     return map;
   }, [
-    attendanceUsageReady,
+    isEmpUsageReady,
     monthFilter,
     monthlyByEmpKey,
     storedMonthlyByEmpKey,
@@ -434,8 +460,8 @@ function AnnualLeaveManagerTablePanel({
                     canManage={canManage}
                     adjustmentSaving={adjustmentSavingId === entry.id}
                     onAdjustmentSave={handleAdjustmentSave}
-                    attendanceUsageReady={attendanceUsageReady}
-                    attendanceAccrualReady={attendanceAccrualReady}
+                    attendanceUsageReady={isEmpUsageReady(entry.id)}
+                    attendanceAccrualReady={isEmpAccrualReady(entry.id)}
                   />
                 ))
               )}

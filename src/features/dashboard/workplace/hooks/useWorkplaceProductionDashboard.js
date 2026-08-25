@@ -3,7 +3,7 @@ import * as XLSX from "@e965/xlsx";
 import { useTranslation } from "react-i18next";
 import { ref, update, get } from "firebase/database";
 import { db } from "@/services/firebase";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity } from "@/contexts/UserContext";
 import { logUserAction } from "@/utils/userLog";
 import { uploadNgFaultyExcel } from "../../ngWorkplaceUpload";
 import {
@@ -27,7 +27,7 @@ import { DEFAULT_WORKPLACE_PRODUCTION_PATHS } from "../workplaceProductionPaths"
 export function useWorkplaceProductionDashboard(
   pathsConfig = DEFAULT_WORKPLACE_PRODUCTION_PATHS,
 ) {
-  const { user } = useUser();
+  const { user } = useUserIdentity();
   const { t } = useTranslation();
   const userEmailKey = useMemo(
     () => user?.email?.trim().toLowerCase() || "anonymous",

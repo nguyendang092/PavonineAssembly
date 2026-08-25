@@ -65,7 +65,8 @@ import {
   getLastDayOfMonthKey,
   parseLocalDateKey,
 } from "@/utils/dateKey";
-import { db, onValue, ref } from "@/services/firebase";
+import { db, ref } from "@/services/firebase";
+import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import { payrollMonthMainRowDashMark } from "@/features/attendance/attendanceDayMeta";
 import {
   getAttendanceLeaveTypeCompactBadgeClassName,
@@ -82,6 +83,7 @@ import {
 } from "@/features/payroll/payrollMonthModalUi";
 import { isKoreanAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 import { usePayrollMonthDayChunks } from "@/features/payroll/usePayrollMonthDayChunks";
+import { invalidatePayrollMonthCache } from "@/features/payroll/payrollMonthCache";
 import { usePayrollMonthEmployeeIndex } from "@/features/payroll/usePayrollMonthEmployeeIndex";
 import { usePayrollMonthSummaries } from "@/features/payroll/usePayrollMonthSummaries";
 import { computePayrollMonthSummariesForIds } from "@/features/payroll/payrollMonthSummaryCompute";
@@ -735,8 +737,10 @@ export default function PayrollMonthlyTimesheetModal({
   const tableBodyScrollRef = useRef(null);
   const [dayCellFormOpen, setDayCellFormOpen] = useState(false);
   const [dayCellFormDate, setDayCellFormDate] = useState("");
+  const [dayCellFormRowId, setDayCellFormRowId] = useState("");
   const [dayCellFormInitial, setDayCellFormInitial] = useState(null);
   const [dayCellFormEmployees, setDayCellFormEmployees] = useState([]);
+  const [summaryDirtyPatch, setSummaryDirtyPatch] = useState(null);
   const [viewMonthFirstKey, setViewMonthFirstKey] = useState(() =>
     getFirstDayOfMonthKey(anchorDateKey),
   );
@@ -835,6 +839,8 @@ export default function PayrollMonthlyTimesheetModal({
     loadMonth,
     patchDay,
     patchDays,
+    monthLoadToken,
+    cacheKey,
   } = usePayrollMonthDayChunks({
     monthKeys: monthRange.keys,
     attendanceRootPath,
@@ -849,18 +855,26 @@ export default function PayrollMonthlyTimesheetModal({
 
   useEffect(() => {
     if (!open) return;
+    setSummaryDirtyPatch(null);
     void loadMonth();
   }, [open, loadMonth]);
 
-  usePayrollMonthModalScrollLock(open);
+  useEffect(() => {
+    if (!open) return;
+    setSummaryDirtyPatch(null);
+  }, [open, monthRange.first]);
 
   useEffect(() => {
     if (open) return;
     setDayCellFormOpen(false);
     setDayCellFormDate("");
+    setDayCellFormRowId("");
     setDayCellFormInitial(null);
     setDayCellFormEmployees([]);
+    setSummaryDirtyPatch(null);
   }, [open]);
+
+  usePayrollMonthModalScrollLock(open);
 
   const { sortedIds, repById, chunkByDate } =
     usePayrollMonthEmployeeIndex(displayDayChunks);
@@ -887,19 +901,26 @@ export default function PayrollMonthlyTimesheetModal({
 
   const [hasRemoteUpdate, setHasRemoteUpdate] = useState(false);
   const localLastLoadedAtRef = useRef(0);
+  const attendanceMetaPath = useMemo(() => {
+    if (!open) return null;
+    const monthKey = monthRange.first.slice(0, 7);
+    return `attendanceMeta/lastModified/${monthKey}`;
+  }, [open, monthRange.first]);
+  const { data: remoteModifiedRaw } = useFirebaseValue(attendanceMetaPath, {
+    enabled: open,
+  });
 
   useEffect(() => {
-    if (!open) return undefined;
-    const monthKey = monthRange.first.slice(0, 7);
-    const metaRef = ref(db, `attendanceMeta/lastModified/${monthKey}`);
-    const unsubscribe = onValue(metaRef, (snap) => {
-      const remoteTs = Number(snap.val() ?? 0);
-      if (remoteTs > localLastLoadedAtRef.current) {
-        setHasRemoteUpdate(true);
-      }
-    });
-    return () => unsubscribe();
-  }, [open, monthRange.first]);
+    const remoteTs = Number(remoteModifiedRaw ?? 0);
+    if (remoteTs > localLastLoadedAtRef.current) {
+      setHasRemoteUpdate(true);
+    }
+  }, [remoteModifiedRaw]);
+
+  useEffect(() => {
+    if (!hasRemoteUpdate || !open) return;
+    invalidatePayrollMonthCache(cacheKey);
+  }, [hasRemoteUpdate, open, cacheKey]);
 
   useEffect(() => {
     if (!loading && !loadingMore && displayDayChunks.length) {
@@ -908,20 +929,41 @@ export default function PayrollMonthlyTimesheetModal({
     }
   }, [loading, loadingMore, displayDayChunks]);
 
-  const handleOffHolidayDaysSaved = useCallback(
-    (affectedDateKeys) => {
-      if (Array.isArray(affectedDateKeys) && affectedDateKeys.length) {
-        patchDays(affectedDateKeys);
-      } else {
-        void loadMonth();
+  const handleDayCellSaved = useCallback(
+    async (payload) => {
+      const dateKey =
+        typeof payload === "string"
+          ? payload
+          : payload?.dateKey ?? dayCellFormDate;
+      if (!dateKey) {
+        void loadMonth({ force: true });
+        return;
+      }
+
+      const hintRowIds = dayCellFormRowId ? [dayCellFormRowId] : [];
+      const result = await patchDay(dateKey, {
+        dayRaw: typeof payload === "object" ? payload?.dayRaw : null,
+        firebaseKey:
+          typeof payload === "object" ? payload?.firebaseKey : undefined,
+        persistedNode:
+          typeof payload === "object" ? payload?.persistedNode : undefined,
+        affectedRowIds: hintRowIds,
+      });
+
+      if (result?.success && result.affectedRowIds?.length) {
+        setSummaryDirtyPatch({
+          token: Date.now(),
+          employeeIds: result.affectedRowIds,
+        });
       }
     },
-    [loadMonth, patchDays],
+    [patchDay, loadMonth, dayCellFormDate, dayCellFormRowId],
   );
 
-  const openDayCellForm = useCallback((dateKey, dayEmps, formInitial) => {
+  const openDayCellForm = useCallback((dateKey, rowId, dayEmps, formInitial) => {
     setDayCellFormEmployees(dayEmps);
     setDayCellFormDate(dateKey);
+    setDayCellFormRowId(rowId ?? "");
     setDayCellFormInitial(formInitial);
     setDayCellFormOpen(true);
   }, []);
@@ -984,7 +1026,7 @@ export default function PayrollMonthlyTimesheetModal({
         return;
       }
 
-      openDayCellForm(dateKey, dayEmps, formInitial);
+      openDayCellForm(dateKey, rowId, dayEmps, formInitial);
     },
     [
       user,
@@ -1082,6 +1124,21 @@ export default function PayrollMonthlyTimesheetModal({
     ],
   );
 
+  const handleOffHolidayDaysSaved = useCallback(
+    async (affectedDateKeys) => {
+      if (Array.isArray(affectedDateKeys) && affectedDateKeys.length) {
+        await patchDays(affectedDateKeys);
+        setSummaryDirtyPatch({
+          token: Date.now(),
+          employeeIds: filteredIds,
+        });
+      } else {
+        void loadMonth({ force: true });
+      }
+    },
+    [loadMonth, patchDays, filteredIds],
+  );
+
   const { monthlySummaryById, isSummariesBusy, summaryProgress, summaryCacheRef } =
     usePayrollMonthSummaries({
       enabled: open && !loading && !isDisplayStale,
@@ -1089,6 +1146,8 @@ export default function PayrollMonthlyTimesheetModal({
       chunkByDate,
       filteredIds,
       repById: summaryRepById,
+      monthLoadToken,
+      dirtyPatch: summaryDirtyPatch,
     });
 
   const isGridFullyBusy = isGridBusy || isSummariesBusy;
@@ -1412,7 +1471,7 @@ export default function PayrollMonthlyTimesheetModal({
               ) : null}
               <button
                 type="button"
-                onClick={() => void loadMonth()}
+                onClick={() => void loadMonth({ force: true })}
                 disabled={loading}
                 className="rounded-lg border border-white/40 bg-white/15 px-2.5 py-1 text-xs font-bold text-white transition hover:bg-white/25 disabled:opacity-50"
               >
@@ -1442,7 +1501,7 @@ export default function PayrollMonthlyTimesheetModal({
                   className="rounded border border-amber-400 bg-white px-2 py-1 font-bold hover:bg-amber-100"
                   onClick={() => {
                     setHasRemoteUpdate(false);
-                    void loadMonth();
+                    void loadMonth({ force: true });
                   }}
                 >
                   {tlPage("monthlyTimesheetReload", "Tải lại")}
@@ -1980,10 +2039,7 @@ export default function PayrollMonthlyTimesheetModal({
         userRole={userRole}
         userDepartments={userDepartments}
         onAlert={onAlert}
-        onSaved={(savedDateKey) => {
-          if (savedDateKey) void patchDay(savedDateKey);
-          else void loadMonth();
-        }}
+        onSaved={handleDayCellSaved}
         attendanceRootPath={attendanceRootPath}
         dayIsCompensatory={Boolean(
           dayCellFormDate &&

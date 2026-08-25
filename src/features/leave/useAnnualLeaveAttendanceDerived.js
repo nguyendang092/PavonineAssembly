@@ -1,25 +1,25 @@
 import {
+  useCallback,
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
   startTransition,
 } from "react";
-import { buildAttendanceAnnualLeaveDerivedMaps } from "./annualLeaveBalanceLookup";
 import { resolveAnnualLeaveYearAsOfDateKey } from "./annualLeaveCalculated";
 import {
   buildDerivedMapsFilterKey,
   buildMonthWorkSummaryBucketKey,
-  getCachedAttendanceDerivedMaps,
-  mergeMonthWorkSummaryCache,
   scopeEmpKeySetToCacheKey,
+  syncAttendanceDerivedMaps,
+  syncMonthWorkSummaryMaps,
 } from "./annualLeaveDerivedRuntimeCache";
 import {
   useAttendanceJoinMonthsExternal,
   useAttendanceYearExternal,
 } from "./annualLeaveLiveExternalHooks";
 import {
-  buildAnnualLeaveMonthWorkSummaryByEmpKey,
   listAnnualLeaveAccrualYearMonths,
   mergeAttendanceRootsForPayrollAccrual,
 } from "./annualLeavePayrollAccrual";
@@ -45,8 +45,12 @@ function buildDeductionFilter({
   return Object.keys(filter).length > 0 ? filter : null;
 }
 
+function buildAttendanceScopeKey(attendanceRootPath, year, throughDateKey) {
+  return `${attendanceRootPath}:${year}:${throughDateKey ?? "full"}`;
+}
+
 /**
- * Tải điểm danh + tính derived maps / accrual — dùng chung manager & balance map.
+ * Tải điểm danh + tính derived maps / accrual — diff incremental theo empKey.
  */
 export function useAnnualLeaveAttendanceDerived(
   year,
@@ -106,12 +110,21 @@ export function useAnnualLeaveAttendanceDerived(
         yearMonthPrefix,
         scopeEmpKeySet,
       }),
-    [throughDateKey, yearMonthPrefix, scopeEmpKeyKey, scopeEmpKeySet],
+    [throughDateKey, yearMonthPrefix, scopeEmpKeyKey],
   );
 
   const derivedMapsFilterKey = useMemo(
-    () => buildDerivedMapsFilterKey(deductionFilter ?? {}),
-    [deductionFilter],
+    () =>
+      buildDerivedMapsFilterKey({
+        throughDateKey,
+        yearMonthPrefix,
+      }),
+    [throughDateKey, yearMonthPrefix],
+  );
+
+  const attendanceScopeKey = useMemo(
+    () => buildAttendanceScopeKey(attendanceRootPath, year, throughDateKey),
+    [attendanceRootPath, year, throughDateKey],
   );
 
   const accrualAsOfDateKey = useMemo(
@@ -150,11 +163,37 @@ export function useAnnualLeaveAttendanceDerived(
     useState(EMPTY_SUMMARY);
   const [usageDerived, setUsageDerived] = useState(false);
   const [accrualDerived, setAccrualDerived] = useState(false);
+  const [usageReadyTick, setUsageReadyTick] = useState(0);
+
+  const derivedMapsRef = useRef(EMPTY_DERIVED);
+  const monthSummaryRef = useRef(EMPTY_SUMMARY);
+  const usageReadyEmpKeysRef = useRef(new Set());
+  const accrualReadyEmpKeysRef = useRef(new Set());
+  const lastIncrementalRef = useRef({
+    affectedEmpKeys: new Set(),
+    changedDateKeys: new Set(),
+  });
+
+  derivedMapsRef.current = derivedMaps;
+  monthSummaryRef.current = monthWorkSummaryByEmpKey;
+
+  const resetUsageReadyForScope = useCallback((scopeSet) => {
+    usageReadyEmpKeysRef.current = new Set();
+    accrualReadyEmpKeysRef.current = new Set();
+    if (!(scopeSet instanceof Set) || scopeSet.size === 0) return;
+    setUsageReadyTick((t) => t + 1);
+  }, []);
+
+  useEffect(() => {
+    resetUsageReadyForScope(scopeEmpKeySet);
+  }, [scopeEmpKeyKey, attendanceScopeKey, resetUsageReadyForScope]);
 
   useEffect(() => {
     if (skipAttendance) {
       setDerivedMaps(EMPTY_DERIVED);
       setUsageDerived(true);
+      usageReadyEmpKeysRef.current = new Set();
+      setUsageReadyTick((t) => t + 1);
       return;
     }
 
@@ -166,20 +205,39 @@ export function useAnnualLeaveAttendanceDerived(
 
     let cancelled = false;
     startTransition(() => {
-      const next = getCachedAttendanceDerivedMaps(
-        deferredAttendanceRoot,
-        derivedMapsFilterKey,
-        () =>
-          buildAttendanceAnnualLeaveDerivedMaps(
-            deferredAttendanceRoot,
-            year,
-            deductionFilter,
-          ),
-      );
-      if (!cancelled) {
-        setDerivedMaps(next);
-        setUsageDerived(true);
+      const { maps, recomputedEmpKeys } = syncAttendanceDerivedMaps({
+        attendanceRoot: deferredAttendanceRoot,
+        year,
+        filterKey: derivedMapsFilterKey,
+        deductionFilter,
+        scopeEmpKeySet,
+        attendanceScopeKey,
+        prevMaps: derivedMapsRef.current,
+      });
+
+      if (cancelled) return;
+
+      for (const empKey of recomputedEmpKeys) {
+        usageReadyEmpKeysRef.current.add(empKey);
       }
+      if (
+        scopeEmpKeySet instanceof Set &&
+        scopeEmpKeySet.size > 0 &&
+        [...scopeEmpKeySet].every((k) => usageReadyEmpKeysRef.current.has(k))
+      ) {
+        for (const empKey of scopeEmpKeySet) {
+          usageReadyEmpKeysRef.current.add(empKey);
+        }
+      } else if (!scopeEmpKeySet && recomputedEmpKeys.size > 0) {
+        for (const empKey of recomputedEmpKeys) {
+          usageReadyEmpKeysRef.current.add(empKey);
+        }
+      }
+
+      lastIncrementalRef.current.affectedEmpKeys = recomputedEmpKeys;
+      setDerivedMaps(maps);
+      setUsageDerived(true);
+      setUsageReadyTick((t) => t + 1);
     });
 
     return () => {
@@ -193,6 +251,8 @@ export function useAnnualLeaveAttendanceDerived(
     year,
     deductionFilter,
     derivedMapsFilterKey,
+    scopeEmpKeyKey,
+    attendanceScopeKey,
   ]);
 
   useEffect(() => {
@@ -228,27 +288,28 @@ export function useAnnualLeaveAttendanceDerived(
 
     let cancelled = false;
     startTransition(() => {
-      const computed = buildAnnualLeaveMonthWorkSummaryByEmpKey(
-        payrollRootForAccrual,
+      const merged = syncMonthWorkSummaryMaps({
+        attendanceRoot: payrollRootForAccrual,
         year,
         yearData,
-        {
-          attendanceRootPath,
-          scopeEmpKeySet:
-            scopeEmpKeySet instanceof Set && scopeEmpKeySet.size > 0
-              ? scopeEmpKeySet
-              : null,
-        },
-      );
-      const merged = mergeMonthWorkSummaryCache(
-        monthWorkSummaryBucketKey,
-        computed,
+        bucketKey: monthWorkSummaryBucketKey,
+        attendanceRootPath,
         scopeEmpKeySet,
-      );
-      if (!cancelled) {
-        setMonthWorkSummaryByEmpKey(merged);
-        setAccrualDerived(true);
+        affectedEmpKeys: lastIncrementalRef.current.affectedEmpKeys,
+        prevScopedMaps: monthSummaryRef.current,
+      });
+
+      if (cancelled) return;
+
+      if (scopeEmpKeySet instanceof Set && scopeEmpKeySet.size > 0) {
+        for (const empKey of scopeEmpKeySet) {
+          accrualReadyEmpKeysRef.current.add(empKey);
+        }
       }
+
+      setMonthWorkSummaryByEmpKey(merged);
+      setAccrualDerived(true);
+      setUsageReadyTick((t) => t + 1);
     });
 
     return () => {
@@ -265,9 +326,42 @@ export function useAnnualLeaveAttendanceDerived(
     usageDerived,
     attendanceRootPath,
     scopeEmpKeyKey,
-    scopeEmpKeySet,
     monthWorkSummaryBucketKey,
   ]);
+
+  const isEmpUsageReady = useCallback(
+    (empKey) => {
+      if (skipAttendance) return true;
+      if (!usageDerived) return false;
+      if (!empKey) return false;
+      if (!(scopeEmpKeySet instanceof Set) || scopeEmpKeySet.size === 0) {
+        return usageDerived;
+      }
+      return usageReadyEmpKeysRef.current.has(empKey);
+    },
+    [skipAttendance, usageDerived, scopeEmpKeySet, usageReadyTick],
+  );
+
+  const isEmpAccrualReady = useCallback(
+    (empKey) => {
+      if (skipPayrollMonthAccrual || accrualYearMonths.length === 0) {
+        return true;
+      }
+      if (!accrualDerived) return false;
+      if (!empKey) return false;
+      if (!(scopeEmpKeySet instanceof Set) || scopeEmpKeySet.size === 0) {
+        return accrualDerived;
+      }
+      return accrualReadyEmpKeysRef.current.has(empKey);
+    },
+    [
+      skipPayrollMonthAccrual,
+      accrualYearMonths.length,
+      accrualDerived,
+      scopeEmpKeySet,
+      usageReadyTick,
+    ],
+  );
 
   const attendanceUsageReady = skipAttendance
     ? true
@@ -297,5 +391,7 @@ export function useAnnualLeaveAttendanceDerived(
     attendanceCalculated,
     payrollEnhancing,
     attendanceReady: skipAttendance || attendanceReady,
+    isEmpUsageReady,
+    isEmpAccrualReady,
   };
 }

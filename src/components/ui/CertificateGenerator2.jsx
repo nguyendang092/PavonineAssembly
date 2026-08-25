@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { useUser } from "@/contexts/UserContext";
+import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
 import { isProductionLayoutPath } from "@/features/production/productionSidebarConfig";
 import CertificateGeneratorFormShell from "./CertificateGeneratorFormShell";
@@ -8,7 +8,8 @@ import CertificateGeneratorFormShell from "./CertificateGeneratorFormShell";
 export default function CertificateGenerator2() {
   const { pathname } = useLocation();
   const inProductionLayout = isProductionLayoutPath(pathname);
-  const { user, userRole } = useUser();
+  const { user } = useUserIdentity();
+  const { userRole } = useUserPermissions();
   const canEdit = isAdminAccess(user, userRole);
 
   const canvasRef = useRef(null);

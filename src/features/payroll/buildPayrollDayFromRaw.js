@@ -347,6 +347,49 @@ export function buildBaseEmployeesForDay(chunk) {
   return chunk._baseEmployeesCache;
 }
 
+/**
+ * Ghép node NV vừa lưu vào `_rawCache` ngày — tránh get() lại cả ngày sau sửa 1 ô.
+ * @returns {object | null} raw Firebase day object hoặc null nếu không đủ dữ liệu
+ */
+export function patchPayrollMonthDayRawInMemory(
+  existingChunk,
+  firebaseKey,
+  persistedNode,
+) {
+  const key = String(firebaseKey ?? "").trim();
+  if (!existingChunk || !key || persistedNode == null) return null;
+
+  const prevRaw = existingChunk._rawCache;
+  if (prevRaw && typeof prevRaw === "object") {
+    return { ...prevRaw, [key]: persistedNode };
+  }
+
+  const raw = {};
+  for (const emp of buildBaseEmployeesForDay(existingChunk)) {
+    const empKey = String(emp?.id ?? "").trim();
+    if (!empKey || empKey === "_meta") continue;
+    const { monthEmployeeKey, payrollEarlyOtPaperwork, payrollLateOtExcluded, payrollNightOtPaperwork, ...rest } =
+      emp;
+    raw[empKey] = rest;
+  }
+  raw[key] = persistedNode;
+
+  if (
+    existingChunk.isOffDay ||
+    existingChunk.isHolidayDay ||
+    existingChunk.isCompensatoryDay
+  ) {
+    raw._meta = {
+      ...(typeof raw._meta === "object" && raw._meta ? raw._meta : {}),
+      isOffDay: Boolean(existingChunk.isOffDay),
+      isHolidayDay: Boolean(existingChunk.isHolidayDay),
+      isCompensatoryDay: Boolean(existingChunk.isCompensatoryDay),
+    };
+  }
+
+  return raw;
+}
+
 function buildPayrollMonthChunkSkeleton({
   dateKey,
   status,

@@ -476,7 +476,12 @@ export default function AttendanceEmployeeFormModal({
     });
   };
 
-  const finishSaveSuccess = (messageKey, oldRecordForLeave, loaiPhepToSave) => {
+  const finishSaveSuccess = (
+    messageKey,
+    oldRecordForLeave,
+    loaiPhepToSave,
+    savePayload = null,
+  ) => {
     setForm({ ...EMPTY_EMPLOYEE_FORM });
     setEditAttendanceKey(null);
     setSaving(false);
@@ -486,7 +491,11 @@ export default function AttendanceEmployeeFormModal({
       type: "success",
       message: t(messageKey),
     });
-    onSaved?.(selectedDate);
+    if (savePayload && typeof savePayload === "object") {
+      onSaved?.(savePayload);
+    } else {
+      onSaved?.(selectedDate);
+    }
     void syncAnnualLeaveAfterAttendanceSave(oldRecordForLeave, loaiPhepToSave);
   };
 
@@ -577,6 +586,11 @@ export default function AttendanceEmployeeFormModal({
           "attendanceList.updateSuccess",
           { ...existingRaw, id: editAttendanceKey, mnv: form.mnv ?? existing.mnv },
           loaiPhepToSave,
+          {
+            dateKey: selectedDate,
+            firebaseKey: editAttendanceKey,
+            persistedNode,
+          },
         );
       } else {
         if (
@@ -653,6 +667,11 @@ export default function AttendanceEmployeeFormModal({
           "attendanceList.addSuccess",
           { ...existingRaw, id: firebaseKey, mnv: form.mnv },
           loaiPhepToSave,
+          {
+            dateKey: selectedDate,
+            firebaseKey,
+            persistedNode,
+          },
         );
       }
     } catch (err) {

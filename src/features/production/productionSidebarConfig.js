@@ -115,6 +115,12 @@ export const PRODUCTION_SIDEBAR_SECTIONS = [
         appendTodayDate: true,
       },
       {
+        action: "openAttendanceStatistics",
+        labelKey: "attendanceList.sidebarStatistics",
+        labelDefault: "Thống kê",
+        tone: "violet",
+      },
+      {
         path: "/attendance-salary",
         labelKey: "attendanceList.sidebarWorkHours",
         labelDefault: "Giờ công",
