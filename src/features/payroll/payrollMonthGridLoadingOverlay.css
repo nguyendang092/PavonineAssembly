@@ -3,7 +3,7 @@
   top: var(--app-navbar-height, 4rem);
   right: 0;
   bottom: 0;
-  left: var(--att-sb-width, 13.5rem);
+  left: var(--att-sb-width, 17rem);
   z-index: 200;
   display: flex;
   align-items: center;

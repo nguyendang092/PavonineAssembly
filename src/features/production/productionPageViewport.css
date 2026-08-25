@@ -17,6 +17,16 @@ html.production-page-active .production-with-sidebar__main {
   min-height: 0 !important;
 }
 
+.production-route-fallback {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  min-height: min(100%, calc(100dvh - var(--app-navbar-height, 4rem)));
+  padding: 1.5rem 1rem 2rem;
+  box-sizing: border-box;
+}
+
 .production-page-viewport {
   display: flex;
   flex-direction: column;

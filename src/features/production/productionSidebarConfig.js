@@ -1,4 +1,4 @@
-/** Route dùng layout sidebar Sản xuất (khớp menu Báo cáo → Sản xuất). */
+/** Route dùng layout sidebar Sản xuất (menu ứng dụng thống nhất). */
 export const PRODUCTION_LAYOUT_PATHS = [
   "/nhietdo",
   "/mold",
@@ -10,6 +10,16 @@ export const PRODUCTION_LAYOUT_PATHS = [
   "/stock-variance",
   "/mc-defect-report",
   "/attendance-daily-report",
+  "/attendance-list",
+  "/seasonal-staff-attendance",
+  "/attendance-salary",
+  "/annual-leave",
+  "/attendance-dashboard",
+  "/korean-timesheet",
+  "/bangkhen1",
+  "/bangkhen2",
+  "/user-department",
+  "/permission-catalog",
 ];
 
 export function isProductionLayoutPath(pathname) {
@@ -18,7 +28,7 @@ export function isProductionLayoutPath(pathname) {
   );
 }
 
-/** Mục sidebar — `labelKey` = `navbar.*` trong i18n. */
+/** Mục sidebar — `labelKey` = i18n (navbar.* hoặc attendanceList.*). */
 export const PRODUCTION_SIDEBAR_SECTIONS = [
   {
     sectionKey: "productionSidebar.sectionReports",
@@ -49,12 +59,6 @@ export const PRODUCTION_SIDEBAR_SECTIONS = [
         tone: "emerald",
       },
       {
-        path: "/stock-variance",
-        labelKey: "navbar.inventoryDashboard",
-        labelDefault: "Báo cáo chênh lệch kiểm kê",
-        tone: "teal",
-      },
-      {
         path: "/mc-defect-report",
         labelKey: "navbar.mcDefectReport",
         labelDefault: "Báo cáo hàng lỗi",
@@ -71,7 +75,7 @@ export const PRODUCTION_SIDEBAR_SECTIONS = [
   },
   {
     sectionKey: "productionSidebar.sectionManagement",
-    sectionDefault: "Quản lý",
+    sectionDefault: "Quản lý sản xuất",
     items: [
       {
         path: "/nhietdo",
@@ -90,6 +94,106 @@ export const PRODUCTION_SIDEBAR_SECTIONS = [
         labelKey: "navbar.qrCodeGenerator",
         labelDefault: "Quản lý mã QR",
         tone: "violet",
+      },
+    ],
+  },
+  {
+    sectionKey: "productionSidebar.sectionHr",
+    sectionDefault: "Nhân sự",
+    items: [
+      {
+        path: "/attendance-list",
+        labelKey: "attendanceList.sidebarAttendance",
+        labelDefault: "Điểm danh",
+        tone: "blue",
+      },
+      {
+        path: "/seasonal-staff-attendance",
+        labelKey: "attendanceList.sidebarSeasonal",
+        labelDefault: "Thời vụ",
+        tone: "teal",
+        appendTodayDate: true,
+      },
+      {
+        path: "/attendance-salary",
+        labelKey: "attendanceList.sidebarWorkHours",
+        labelDefault: "Giờ công",
+        tone: "emerald",
+        resolvePayrollPath: true,
+      },
+      {
+        path: "/annual-leave",
+        labelKey: "attendanceList.sidebarAnnualLeave",
+        labelDefault: "Phép năm",
+        tone: "amber",
+        resolveAnnualLeavePath: true,
+      },
+      {
+        path: "/attendance-dashboard",
+        labelKey: "attendanceList.sidebarDashboard",
+        labelDefault: "Dashboard",
+        tone: "indigo",
+        appendTodayDate: true,
+      },
+      {
+        path: "/korean-timesheet",
+        labelKey: "attendanceList.sidebarKoreanTimesheet",
+        labelDefault: "Korean Timesheet",
+        tone: "sky",
+        appendTodayDate: true,
+        koreanOnly: true,
+      },
+    ],
+  },
+  {
+    sectionKey: "productionSidebar.sectionInventory",
+    sectionDefault: "Kiểm kê",
+    items: [
+      {
+        path: "/stock-variance",
+        labelKey: "navbar.inventoryDashboard",
+        labelDefault: "Báo cáo chênh lệch kiểm kê",
+        tone: "teal",
+      },
+    ],
+  },
+  {
+    sectionKey: "productionSidebar.sectionOther",
+    sectionDefault: "Khác",
+    items: [
+      {
+        path: "/bangkhen1",
+        labelKey: "navbar.certificate1",
+        labelDefault: "Bằng khen ưu tú nhất",
+        tone: "violet",
+        adminOnly: true,
+      },
+      {
+        path: "/bangkhen2",
+        labelKey: "navbar.certificate2",
+        labelDefault: "Bằng khen ưu tú",
+        tone: "rose",
+        adminOnly: true,
+      },
+    ],
+  },
+  {
+    sectionKey: "productionSidebar.sectionSystem",
+    sectionDefault: "Hệ thống",
+    items: [
+      {
+        path: "/user-department",
+        labelKey: "navbar.userDepartment",
+        labelDefault: "Phân quyền User",
+        tone: "indigo",
+        adminOnly: true,
+      },
+      {
+        path: "/permission-catalog",
+        labelKey: "navbar.permissionCatalog",
+        labelDefault: "Phân quyền & chức năng",
+        tone: "sky",
+        adminOnly: true,
       },
     ],
   },

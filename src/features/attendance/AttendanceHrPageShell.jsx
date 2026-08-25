@@ -1,7 +1,8 @@
 import { memo, useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import AttendanceListShell from "./AttendanceListShell";
 import { attendanceListDateForAnnualLeaveYear } from "@/features/leave/annualLeaveCrossLinks";
+import { isProductionLayoutPath } from "@/features/production/productionSidebarConfig";
 import "./attendanceSidebar.css";
 import "./hrPageViewport.css";
 
@@ -11,7 +12,9 @@ function AttendanceHrPageShell({
   statisticsOpen,
   onOpenStatistics,
 }) {
+  const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
+  const inProductionLayout = isProductionLayoutPath(pathname);
 
   useEffect(() => {
     const root = document.getElementById("app-main-scroll");
@@ -38,6 +41,10 @@ function AttendanceHrPageShell({
     }
     return new Date().toISOString().slice(0, 10);
   }, [contextDate, searchParams]);
+
+  if (inProductionLayout) {
+    return <div className="hr-page-body">{children}</div>;
+  }
 
   return (
     <AttendanceListShell

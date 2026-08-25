@@ -39,8 +39,8 @@ describe("exportAnnualLeaveExcel", () => {
     expect(sheet.getRow(3).getCell(8).value).toBe(8);
     expect(sheet.getRow(3).getCell(9).value).toBe(1.5);
     expect(sheet.getRow(3).getCell(10).value).toBe(6.5);
-    expect(sheet.getRow(3).getCell(11).value).toBe("1.00");
-    expect(sheet.getRow(3).getCell(16).value).toBe("0.50");
+    expect(sheet.getRow(3).getCell(11).value).toBe(1);
+    expect(sheet.getRow(3).getCell(16).value).toBe(0.5);
     expect(sheet.getRow(3).getCell(23).value).toBe(1);
   });
 

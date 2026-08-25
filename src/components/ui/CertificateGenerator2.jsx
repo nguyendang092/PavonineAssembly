@@ -1,9 +1,13 @@
 import { useRef, useState, useEffect } from "react";
-import Sidebar from "@/components/layout/Sidebar";
+import { useLocation } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
+import { isProductionLayoutPath } from "@/features/production/productionSidebarConfig";
+import CertificateGeneratorFormShell from "./CertificateGeneratorFormShell";
 
 export default function CertificateGenerator2() {
+  const { pathname } = useLocation();
+  const inProductionLayout = isProductionLayoutPath(pathname);
   const { user, userRole } = useUser();
   const canEdit = isAdminAccess(user, userRole);
 
@@ -189,18 +193,16 @@ export default function CertificateGenerator2() {
     <div
       style={{
         display: "flex",
-        height: "90vh",
+        height: inProductionLayout
+          ? "min(90vh, calc(100dvh - var(--app-navbar-height, 4rem) - 2rem))"
+          : "90vh",
         background: "#f7f7fa",
         borderRadius: 12,
         boxShadow: "0 2px 8px #0001",
         overflow: "hidden",
       }}
     >
-      {/* Sidebar nhập liệu */}
-      <Sidebar
-        isOpen={true}
-        className="!static !top-0 !h-full rounded-l-lg !space-y-0"
-      >
+      <CertificateGeneratorFormShell inAppLayout={inProductionLayout}>
         <div
           style={{
             display: "flex",
@@ -316,7 +318,7 @@ export default function CertificateGenerator2() {
             Tải về
           </button>
         </div>
-      </Sidebar>
+      </CertificateGeneratorFormShell>
       {/* Preview bên phải */}
       <div
         style={{

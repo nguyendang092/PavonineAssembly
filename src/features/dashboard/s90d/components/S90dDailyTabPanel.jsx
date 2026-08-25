@@ -6,7 +6,6 @@ import { useProductionReportContext } from "../../productionReport/ProductionRep
 import { useReportT } from "../../productionReport/useReportTranslation";
 import {
   buildMonthDailyRollup,
-  pickDefaultDailyDateKey,
   resolveNgRateTone,
   S90D_ALL_DAYS_KEY,
 } from "../lib/buildS90dDailyRollup";
@@ -380,9 +379,7 @@ export default function S90dDailyTabPanel({
   const rt = useReportT();
   const { defaultProductCode } = useProductionReportContext();
   const isTotalView = variant === "total";
-  const [selectedDateKey, setSelectedDateKey] = useState(() =>
-    pickDefaultDailyDateKey(monthDailySummaries),
-  );
+  const [selectedDateKey, setSelectedDateKey] = useState(S90D_ALL_DAYS_KEY);
   const rollup = useMemo(
     () => buildMonthDailyRollup(monthDailySummaries),
     [monthDailySummaries],
@@ -395,7 +392,7 @@ export default function S90dDailyTabPanel({
       if (monthDailySummaries.some((daily) => daily.dateKey === current)) {
         return current;
       }
-      return pickDefaultDailyDateKey(monthDailySummaries);
+      return S90D_ALL_DAYS_KEY;
     });
   }, [isTotalView, monthDailySummaries]);
 

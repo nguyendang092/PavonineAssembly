@@ -1,7 +1,16 @@
 import { memo, useMemo } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import SidebarNavLink from "@/features/attendance/SidebarNavLink";
 import { useTranslation } from "react-i18next";
+import { useUser } from "@/contexts/UserContext";
+import { isAdminAccess } from "@/config/authRoles";
+import { canViewKoreanTimesheet } from "@/config/featurePermissions";
+import {
+  annualLeavePathForDateKey,
+  payrollPathForDateKey,
+} from "@/features/leave/annualLeaveCrossLinks";
 import AttendanceSidebarClock from "@/features/attendance/AttendanceSidebarClock";
+import useAttendanceSidebarCollapse from "@/features/attendance/useAttendanceSidebarCollapse";
 import { PRODUCTION_SIDEBAR_SECTIONS } from "./productionSidebarConfig";
 
 function SidebarItemContent({ icon, label, tone }) {
@@ -73,6 +82,62 @@ const ICONS = {
       <path d="M8 14h2M14 14h2M8 17h6" />
     </svg>
   ),
+  seasonal: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+      <circle cx="3" cy="6" r="1" fill="currentColor" stroke="none" />
+      <circle cx="3" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="3" cy="18" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  ),
+  workHours: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  ),
+  annualLeave: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+      <path d="M8 14h2M14 14h2M8 17h6" />
+    </svg>
+  ),
+  dashboard: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <rect x="3" y="3" width="8" height="8" rx="1.5" />
+      <rect x="13" y="3" width="8" height="5" rx="1.5" />
+      <rect x="13" y="10" width="8" height="11" rx="1.5" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" />
+    </svg>
+  ),
+  koreanTimesheet: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <path d="M3 9h18M8 2v4M16 2v4" />
+      <path d="M7 13h3M14 13h3M7 17h10" />
+    </svg>
+  ),
+  certificate: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M8 14h8l-1 7-3-2-3 2-1-7Z" />
+    </svg>
+  ),
+  users: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 19c0-2.2 2.7-4 6-4s6 1.8 6 4" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M21 19c0-1.5-1.8-2.8-4-3" />
+    </svg>
+  ),
+  permissions: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M12 3 4 7v6c0 5 3.5 7.7 8 8 4.5-.3 8-3 8-8V7l-8-4Z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  ),
 };
 
 const ITEM_ICONS = {
@@ -86,11 +151,28 @@ const ITEM_ICONS = {
   "/stock-variance": ICONS.inventory,
   "/mc-defect-report": ICONS.defect,
   "/attendance-daily-report": ICONS.attendance,
+  "/attendance-list": ICONS.attendance,
+  "/seasonal-staff-attendance": ICONS.seasonal,
+  "/attendance-salary": ICONS.workHours,
+  "/annual-leave": ICONS.annualLeave,
+  "/attendance-dashboard": ICONS.dashboard,
+  "/korean-timesheet": ICONS.koreanTimesheet,
+  "/bangkhen1": ICONS.certificate,
+  "/bangkhen2": ICONS.certificate,
+  "/user-department": ICONS.users,
+  "/permission-catalog": ICONS.permissions,
 };
+
+function isItemVisible(item, user, userRole) {
+  if (item.adminOnly && !isAdminAccess(user, userRole)) return false;
+  if (item.koreanOnly && !canViewKoreanTimesheet(user, userRole)) return false;
+  return true;
+}
 
 function ProductionSidebarShell({ children }) {
   const { pathname } = useLocation();
   const { t, i18n } = useTranslation();
+  const { user, userRole } = useUser();
 
   const displayLocale = useMemo(() => {
     const lang = (i18n.language || "vi").toLowerCase();
@@ -111,47 +193,71 @@ function ProductionSidebarShell({ children }) {
     pathname === path || pathname.startsWith(`${path}/`);
 
   const resolveTo = (item) => {
+    if (item.resolvePayrollPath) {
+      return payrollPathForDateKey(todayKey);
+    }
+    if (item.resolveAnnualLeavePath) {
+      return annualLeavePathForDateKey(todayKey);
+    }
     if (item.appendTodayDate) {
       return `${item.path}?date=${encodeURIComponent(todayKey)}`;
     }
     return item.path;
   };
 
+  const visibleSections = useMemo(
+    () =>
+      PRODUCTION_SIDEBAR_SECTIONS.map((section) => ({
+        ...section,
+        items: section.items.filter((item) => isItemVisible(item, user, userRole)),
+      })).filter((section) => section.items.length > 0),
+    [user, userRole],
+  );
+
+  const {
+    navRef,
+    forceCollapsed,
+    handleNavClick,
+    handleNavMouseLeave,
+    handleMainMouseEnter,
+  } = useAttendanceSidebarCollapse();
+
   return (
-    <div className="attendance-with-sidebar production-with-sidebar">
+    <div
+      className={`attendance-with-sidebar production-with-sidebar${
+        forceCollapsed ? " attendance-with-sidebar--force-collapsed" : ""
+      }`}
+    >
       <aside
+        ref={navRef}
+        onClickCapture={handleNavClick}
+        onMouseLeave={handleNavMouseLeave}
         className="attendance-with-sidebar__nav"
         aria-label={t("productionSidebar.aria", "Menu sản xuất")}
       >
         <div className="attendance-with-sidebar__brand production-with-sidebar__brand">
-          <AttendanceSidebarClock displayLocale={displayLocale} />
-          <div className="attendance-with-sidebar__brand-row">
-            <span className="attendance-with-sidebar__brand-mark" aria-hidden>
-              P
+          <span className="attendance-with-sidebar__brand-mark" aria-hidden>
+            P
+          </span>
+          <div className="attendance-with-sidebar__brand-copy">
+            <span className="attendance-with-sidebar__brand-title">
+              Pavonine
             </span>
-            <div className="attendance-with-sidebar__brand-text">
-              <span className="attendance-with-sidebar__brand-title">
-                Pavonine
-              </span>
-              <span className="attendance-with-sidebar__brand-sub">
-                {t("productionSidebar.brand", "Production")}
-              </span>
-            </div>
+            <span className="attendance-with-sidebar__brand-sub">
+              {t("productionSidebar.brand", "Production")}
+            </span>
           </div>
+          <AttendanceSidebarClock displayLocale={displayLocale} />
         </div>
 
-        <p className="attendance-with-sidebar__section">
-          {t("productionSidebar.section", "Sản xuất")}
-        </p>
-
         <nav className="attendance-with-sidebar__links production-with-sidebar__links">
-          {PRODUCTION_SIDEBAR_SECTIONS.map((section) => (
+          {visibleSections.map((section) => (
             <div key={section.sectionKey} className="production-with-sidebar__group">
               <p className="production-with-sidebar__group-title">
                 {t(section.sectionKey, section.sectionDefault)}
               </p>
               {section.items.map((item) => (
-                <Link
+                <SidebarNavLink
                   key={item.path}
                   to={resolveTo(item)}
                   className={itemClass(isPathActive(item.path), item.tone)}
@@ -161,7 +267,7 @@ function ProductionSidebarShell({ children }) {
                     icon={ITEM_ICONS[item.path]}
                     label={t(item.labelKey, item.labelDefault)}
                   />
-                </Link>
+                </SidebarNavLink>
               ))}
             </div>
           ))}
@@ -174,7 +280,10 @@ function ProductionSidebarShell({ children }) {
           </span>
         </div>
       </aside>
-      <div className="attendance-with-sidebar__main production-with-sidebar__main">
+      <div
+        className="attendance-with-sidebar__main production-with-sidebar__main"
+        onMouseEnter={handleMainMouseEnter}
+      >
         {children}
       </div>
     </div>

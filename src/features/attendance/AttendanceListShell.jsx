@@ -1,6 +1,9 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, Suspense } from "react";
 import AttendanceSidebarClock from "./AttendanceSidebarClock";
-import { Link, useLocation } from "react-router-dom";
+import useAttendanceSidebarCollapse from "./useAttendanceSidebarCollapse";
+import SidebarNavLink from "./SidebarNavLink";
+import ProductionRouteFallback from "@/features/production/ProductionRouteFallback";
+import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/contexts/UserContext";
 import { canViewKoreanTimesheet } from "@/config/featurePermissions";
@@ -85,6 +88,13 @@ function AttendanceListShell({
   const { t, i18n } = useTranslation();
   const { user, userRole } = useUser();
   const canAccessKoreanTimesheet = canViewKoreanTimesheet(user, userRole);
+  const {
+    navRef,
+    forceCollapsed,
+    handleNavClick,
+    handleNavMouseLeave,
+    handleMainMouseEnter,
+  } = useAttendanceSidebarCollapse();
 
   const displayLocale = useMemo(() => {
     const lang = (i18n.language || "vi").toLowerCase();
@@ -127,26 +137,31 @@ function AttendanceListShell({
     }`;
 
   return (
-    <div className="attendance-with-sidebar">
+    <div
+      className={`attendance-with-sidebar${
+        forceCollapsed ? " attendance-with-sidebar--force-collapsed" : ""
+      }`}
+    >
       <aside
+        ref={navRef}
+        onClickCapture={handleNavClick}
+        onMouseLeave={handleNavMouseLeave}
         className="attendance-with-sidebar__nav"
         aria-label={t("attendanceList.sidebarAria", "Menu nhân sự")}
       >
         <div className="attendance-with-sidebar__brand">
-          <AttendanceSidebarClock displayLocale={displayLocale} />
-          <div className="attendance-with-sidebar__brand-row">
-            <span className="attendance-with-sidebar__brand-mark" aria-hidden>
-              P
+          <span className="attendance-with-sidebar__brand-mark" aria-hidden>
+            P
+          </span>
+          <div className="attendance-with-sidebar__brand-copy">
+            <span className="attendance-with-sidebar__brand-title">
+              Pavonine
             </span>
-            <div className="attendance-with-sidebar__brand-text">
-              <span className="attendance-with-sidebar__brand-title">
-                Pavonine
-              </span>
-              <span className="attendance-with-sidebar__brand-sub">
-                {t("attendanceList.sidebarBrand", "HR Management")}
-              </span>
-            </div>
+            <span className="attendance-with-sidebar__brand-sub">
+              {t("attendanceList.sidebarBrand", "HR Management")}
+            </span>
           </div>
+          <AttendanceSidebarClock displayLocale={displayLocale} />
         </div>
 
         <p className="attendance-with-sidebar__section">
@@ -154,7 +169,7 @@ function AttendanceListShell({
         </p>
 
         <nav className="attendance-with-sidebar__links">
-          <Link
+          <SidebarNavLink
             to="/attendance-list"
             className={itemClass(isAttendanceActive, "blue")}
           >
@@ -163,9 +178,9 @@ function AttendanceListShell({
               icon={ICONS.attendance}
               label={t("attendanceList.sidebarAttendance", "Điểm danh")}
             />
-          </Link>
+          </SidebarNavLink>
 
-          <Link
+          <SidebarNavLink
             to={`/seasonal-staff-attendance?date=${encodeURIComponent(dateKey)}`}
             className={itemClass(isSeasonalActive, "teal")}
           >
@@ -174,7 +189,7 @@ function AttendanceListShell({
               icon={ICONS.seasonal}
               label={t("attendanceList.sidebarSeasonal", "Thời vụ")}
             />
-          </Link>
+          </SidebarNavLink>
 
           {onOpenStatistics ? (
             <button
@@ -189,7 +204,7 @@ function AttendanceListShell({
               />
             </button>
           ) : (
-            <Link
+            <SidebarNavLink
               to={`/attendance-list?date=${encodeURIComponent(dateKey)}`}
               className={itemClass(false, "violet")}
             >
@@ -198,10 +213,10 @@ function AttendanceListShell({
                 icon={ICONS.statistics}
                 label={t("attendanceList.sidebarStatistics", "Thống kê")}
               />
-            </Link>
+            </SidebarNavLink>
           )}
 
-          <Link
+          <SidebarNavLink
             to={payrollPathForDateKey(dateKey)}
             className={itemClass(isWorkHoursActive, "emerald")}
           >
@@ -210,9 +225,9 @@ function AttendanceListShell({
               icon={ICONS.workHours}
               label={t("attendanceList.sidebarWorkHours", "Giờ công")}
             />
-          </Link>
+          </SidebarNavLink>
 
-          <Link
+          <SidebarNavLink
             to={annualLeavePathForDateKey(dateKey)}
             className={itemClass(isAnnualLeaveActive, "amber")}
           >
@@ -221,9 +236,9 @@ function AttendanceListShell({
               icon={ICONS.annualLeave}
               label={t("attendanceList.sidebarAnnualLeave", "Phép năm")}
             />
-          </Link>
+          </SidebarNavLink>
 
-          <Link
+          <SidebarNavLink
             to={`/attendance-dashboard?date=${encodeURIComponent(dateKey)}`}
             className={itemClass(isDashboardActive, "indigo")}
           >
@@ -232,10 +247,10 @@ function AttendanceListShell({
               icon={ICONS.dashboard}
               label={t("attendanceList.sidebarDashboard", "Dashboard")}
             />
-          </Link>
+          </SidebarNavLink>
 
           {canAccessKoreanTimesheet ? (
-            <Link
+            <SidebarNavLink
               to={`/korean-timesheet?date=${encodeURIComponent(dateKey)}`}
               className={itemClass(isKoreanTimesheetActive, "sky")}
             >
@@ -247,7 +262,7 @@ function AttendanceListShell({
                   "Korean Timesheet",
                 )}
               />
-            </Link>
+            </SidebarNavLink>
           ) : (
             <span
               className={`${itemClass(false, "sky")} attendance-with-sidebar__item--disabled`}
@@ -275,7 +290,14 @@ function AttendanceListShell({
           <span>{t("attendanceList.sidebarFooter", "Hệ thống quản lý")}</span>
         </div>
       </aside>
-      <div className="attendance-with-sidebar__main">{children}</div>
+      <div
+        className="attendance-with-sidebar__main"
+        onMouseEnter={handleMainMouseEnter}
+      >
+        <Suspense fallback={<ProductionRouteFallback />}>
+          {children}
+        </Suspense>
+      </div>
     </div>
   );
 }

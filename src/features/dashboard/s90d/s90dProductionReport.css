@@ -33,7 +33,7 @@
 /* Trong layout sidebar Sản xuất — không tràn sang vùng nav bên trái */
 @media (min-width: 1024px) {
   .production-with-sidebar__main .s90d-report-sticky {
-    left: var(--att-sb-width, 13.5rem);
+    left: var(--att-sb-width, 17rem);
   }
 }
 

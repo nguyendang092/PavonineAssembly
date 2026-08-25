@@ -1,7 +1,6 @@
 import ExcelJS from "exceljs";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import {
-  formatAnnualLeaveDecimal,
   formatAnnualLeaveDisplayDate,
   parseAnnualLeaveAdjustment,
   roundAnnualLeaveHours,
@@ -22,6 +21,12 @@ const ANNUAL_LEAVE_DECIMAL_FMT = "0.00";
 function annualLeaveExcelNumeric(value) {
   const n = roundAnnualLeaveHours(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+function annualLeaveExcelMonthUsage(value) {
+  const n = roundAnnualLeaveHours(value);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  return n;
 }
 
 function annualLeaveExcelAdjustment(value) {
@@ -54,7 +59,7 @@ function applyHeaderCellStyle(cell, colNumber) {
   }
 }
 
-function applyDataCellStyle(cell, colNumber) {
+function applyDataCellStyle(cell, colNumber, monthColumnCount = 12) {
   cell.border = {
     top: { style: "thin" },
     left: { style: "thin" },
@@ -77,10 +82,15 @@ function applyDataCellStyle(cell, colNumber) {
   ) {
     cell.numFmt = ANNUAL_LEAVE_DECIMAL_FMT;
   }
+  const monthStartCol = ANNUAL_LEAVE_EXCEL_COL.MONTHS_START + 1;
+  const monthEndCol = monthStartCol + monthColumnCount - 1;
+  if (colNumber >= monthStartCol && colNumber <= monthEndCol) {
+    cell.numFmt = ANNUAL_LEAVE_DECIMAL_FMT;
+  }
 }
 
-function applyAdjustDataCellStyle(cell, adjustColNumber) {
-  applyDataCellStyle(cell, adjustColNumber);
+function applyAdjustDataCellStyle(cell, adjustColNumber, monthColumnCount = 12) {
+  applyDataCellStyle(cell, adjustColNumber, monthColumnCount);
   if (cell.value !== "" && cell.value != null) {
     cell.numFmt = ANNUAL_LEAVE_DECIMAL_FMT;
   }
@@ -149,17 +159,15 @@ export async function exportAnnualLeaveExcel(rows, year, options = {}) {
       annualDisplay,
       annualLeaveExcelNumeric(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]),
       annualLeaveExcelNumeric(row[ANNUAL_LEAVE_EMP.BALANCE]),
-      ...monthValues.map((value) =>
-        value > 0 ? formatAnnualLeaveDecimal(value) : "-",
-      ),
+      ...monthValues.map((value) => annualLeaveExcelMonthUsage(value)),
       annualLeaveExcelAdjustment(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]),
     ]);
     dataRow.eachCell((cell, colNumber) => {
       if (colNumber === adjustColIndex + 1) {
-        applyAdjustDataCellStyle(cell, adjustColIndex + 1);
+        applyAdjustDataCellStyle(cell, adjustColIndex + 1, monthColumnLabels.length);
         return;
       }
-      applyDataCellStyle(cell, colNumber);
+      applyDataCellStyle(cell, colNumber, monthColumnLabels.length);
     });
   });
 
