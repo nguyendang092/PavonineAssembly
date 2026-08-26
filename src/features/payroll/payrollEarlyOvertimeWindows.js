@@ -38,17 +38,6 @@ export const NIGHT_EARLY_OT_SEGMENT_START_MINUTES = Object.freeze([
 export const NIGHT_EARLY_OT_SECOND_TIER_MIN = 18 * 60;
 export const NIGHT_EARLY_OT_MAX_HOURS = 2;
 
-/** @deprecated alias — mốc khung đầu (17:40). */
-export const NIGHT_EARLY_OT_MARKER_FIRST_MIN =
-  NIGHT_EARLY_OT_SEGMENT_START_MINUTES[0];
-/** @deprecated alias — mốc khung thứ hai (18:40). */
-export const NIGHT_EARLY_OT_MARKER_SECOND_MIN =
-  NIGHT_EARLY_OT_SEGMENT_START_MINUTES[1];
-/** @deprecated alias — tier 18:00. */
-export const NIGHT_EARLY_OT_TIER_START_MINUTES = Object.freeze([
-  NIGHT_EARLY_OT_SECOND_TIER_MIN,
-]);
-
 /** Ca đêm: hai khung TC sớm (mỗi khung 1h), tối đa 2h. */
 export const NIGHT_EARLY_OT_SEGMENTS = Object.freeze(
   NIGHT_EARLY_OT_SEGMENT_START_MINUTES.map((start, i) =>

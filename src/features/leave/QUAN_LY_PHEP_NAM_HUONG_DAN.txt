@@ -110,8 +110,8 @@ useAnnualLeaveAttendanceEnhancement
   - Wrapper cho bảng manager
   - Bật payroll accrual, throughDateKey, scopeEmpKeySet (chỉ NV đang hiển thị)
 
-useAnnualLeaveLiveData / useAnnualLeaveBalanceMap
-  - Dùng cho balance live ở nơi khác (nếu cần)
+annualLeaveLiveExternalHooks / useAnnualLeaveYearData / useAnnualLeaveAttendanceDerived
+  - Nguồn dữ liệu phép năm live (thay hook balance map cũ đã gỡ)
 
 ================================================================================
 5. CÔNG THỨC TÍNH PHÉP

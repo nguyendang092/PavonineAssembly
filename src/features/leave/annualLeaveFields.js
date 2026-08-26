@@ -196,10 +196,3 @@ export function listAnnualLeaveDetailRecentMonths(
 ) {
   return listAnnualLeaveDetailHistoryMonths(year, throughDateKey).slice(0, limit);
 }
-
-/**
- * @deprecated Dùng `listAnnualLeaveDetailRecentMonths` — giữ tương thích test cũ.
- */
-export function listAnnualLeaveDetailDisplayMonths(year, throughDateKey = null) {
-  return listAnnualLeaveDetailRecentMonths(year, throughDateKey, 2);
-}

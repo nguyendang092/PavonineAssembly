@@ -27,6 +27,7 @@ import {
 } from "react-router-dom";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import { lazyImport } from "@/utils/lazyImport";
+import { HR_PAGE_MAIN_SCROLL_ID, ensureAppWheelScrollForwarding, resolveActiveScrollRoot } from "@/utils/appScroll";
 const AttendanceList = lazyImport(
   () => import("@/features/attendance/AttendanceList"),
 );
@@ -186,18 +187,40 @@ const App = () => {
     const el = mainScrollRef.current;
     if (!el) return undefined;
     el.scrollTo({ top: 0, behavior: "auto" });
-    const handleScroll = () => {
+
+    const handleScroll = (event) => {
+      const target = event?.target;
+      const hrMain =
+        target instanceof Element && target.id === HR_PAGE_MAIN_SCROLL_ID
+          ? target
+          : document.getElementById(HR_PAGE_MAIN_SCROLL_ID);
+      const activeRoot = resolveActiveScrollRoot(mainScrollRef);
+      const scrollTop =
+        activeRoot && activeRoot.scrollTop > 0
+          ? activeRoot.scrollTop
+          : (hrMain?.scrollTop ?? 0) > 0
+            ? hrMain.scrollTop
+            : (el?.scrollTop ?? 0);
       const scrolled =
-        (el?.scrollTop ?? 0) > 4 ||
-        (window.scrollY ?? window.pageYOffset ?? 0) > 4;
+        scrollTop > 4 || (window.scrollY ?? window.pageYOffset ?? 0) > 4;
       setIsScrolled(scrolled);
     };
+
     handleScroll();
     el.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("scroll", handleScroll, { passive: true });
+    document.addEventListener("scroll", handleScroll, {
+      passive: true,
+      capture: true,
+    });
+    const stopWheelForwarding = ensureAppWheelScrollForwarding(() =>
+      resolveActiveScrollRoot(mainScrollRef),
+    );
     return () => {
       el.removeEventListener("scroll", handleScroll);
       window.removeEventListener("scroll", handleScroll);
+      document.removeEventListener("scroll", handleScroll, true);
+      stopWheelForwarding();
     };
   }, []);
 
@@ -284,10 +307,8 @@ const App = () => {
                 />
               </Routes>
             </Suspense>
+            <Footer />
           </MainScrollShell>
-
-          {/* Footer */}
-          <Footer />
 
           <ScrollActionPortal scrollContainerRef={mainScrollRef} />
         </div>

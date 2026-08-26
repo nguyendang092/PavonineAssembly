@@ -199,41 +199,6 @@ export function syncAttendanceDerivedMaps({
   return { maps, recomputedEmpKeys, isInitial };
 }
 
-/** @deprecated — dùng syncAttendanceDerivedMaps */
-export function getCachedAttendanceDerivedMaps(
-  attendanceRoot,
-  filterKey,
-  compute,
-) {
-  if (
-    attendanceRoot &&
-    empDerivedBuckets.has(filterKey) &&
-    lastAttendanceRoots.get(filterKey) === attendanceRoot
-  ) {
-    return assembleDerivedMapsFromBucket(
-      getEmpDerivedBucket(filterKey),
-      null,
-    );
-  }
-
-  const result = compute();
-  if (attendanceRoot) {
-    const bucket = getEmpDerivedBucket(filterKey);
-    bucket.clear();
-    for (const [empKey, deductions] of Object.entries(
-      result.deductionsByEmpKey ?? {},
-    )) {
-      bucket.set(empKey, {
-        deductions,
-        attendanceMonthly:
-          result.attendanceMonthlyByEmpKey?.[empKey] ?? EMPTY_MONTH,
-      });
-    }
-    lastAttendanceRoots.set(filterKey, attendanceRoot);
-  }
-  return result;
-}
-
 export function buildMonthWorkSummaryBucketKey(year, asOfDateKey) {
   return `${year}:${asOfDateKey ?? "full"}`;
 }

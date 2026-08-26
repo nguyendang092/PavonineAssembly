@@ -326,16 +326,6 @@ export function formatMcDefectChartFullDate(dateKey, locale = "vi") {
   return `${day}/${month}/${parsed.year}`;
 }
 
-/** @deprecated Dùng formatMcDefectChartDayTick + formatMcDefectChartMonthTick */
-export function formatMcDefectChartDayMonth(dateKey) {
-  const parsed = parseMcDefectIsoDate(dateKey);
-  if (parsed) {
-    return `${String(Number(parsed.day)).padStart(2, "0")}/${parsed.month}`;
-  }
-  const s = String(dateKey || "").trim();
-  return s.length > 5 ? s.slice(5).replace(/-/g, "/") : s;
-}
-
 export function formatMcDefectEmployeeAxisLabel(name) {
   const s = String(name || "");
   return s.length > 40 ? `${s.slice(0, 40)}...` : s;

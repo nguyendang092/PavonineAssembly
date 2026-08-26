@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { toPng } from "html-to-image";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import { db, ref, set } from "@/services/firebase";
 import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
@@ -42,7 +41,7 @@ export default function PerformanceChart() {
   const [saving, setSaving] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
 
-  const { setYearDataStore, data, setData, loading } =
+  const { setYearDataStore, data, setData, loading, isRefreshing, refresh } =
     usePerformanceYearData(selectedYear);
 
   const chartRef = useRef(null);
@@ -130,12 +129,15 @@ export default function PerformanceChart() {
   const downloadChartAsPNG = useCallback(() => {
     const node = cardRef.current;
     if (!node) return;
-    toPng(node, {
-      backgroundColor: "#ffffff",
-      pixelRatio: Math.max(2, window.devicePixelRatio || 1),
-      cacheBust: true,
-      filter: (n) => !(n.dataset && n.dataset.noExport === "true"),
-    })
+    void import("html-to-image")
+      .then(({ toPng }) =>
+        toPng(node, {
+          backgroundColor: "#ffffff",
+          pixelRatio: Math.max(2, window.devicePixelRatio || 1),
+          cacheBust: true,
+          filter: (n) => !(n.dataset && n.dataset.noExport === "true"),
+        }),
+      )
       .then((dataUrl) => {
         const a = document.createElement("a");
         a.download = `performance-chart-${ymdStamp()}.png`;
@@ -225,7 +227,7 @@ export default function PerformanceChart() {
           sidebarOpen ? "ml-72" : "ml-0"
         }`}
       >
-        {loading ? (
+        {loading && data.length === 0 ? (
           <div className="flex h-full min-h-[40vh] items-center justify-center">
             <LoadingBlock
               size="lg"
@@ -245,6 +247,19 @@ export default function PerformanceChart() {
               <p className="mx-auto mt-1 max-w-2xl text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                 {t("performanceChart.pageSubtitle")}
               </p>
+              <div className="mt-3 flex justify-center">
+                <button
+                  type="button"
+                  onClick={refresh}
+                  disabled={loading && data.length === 0}
+                  aria-busy={isRefreshing}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                >
+                  {isRefreshing
+                    ? t("performanceChart.refreshing", "Đang làm mới…")
+                    : t("performanceChart.refresh", "Làm mới")}
+                </button>
+              </div>
             </header>
 
             <PerformanceDataTable

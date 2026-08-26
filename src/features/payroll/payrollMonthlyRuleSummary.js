@@ -61,11 +61,6 @@ export function fmtPayrollMonthlyNightShiftAllowanceCell(n) {
   return Math.round(n).toLocaleString("vi-VN");
 }
 
-/** @deprecated Dùng `normalizePayrollProfileDateKey`. */
-export function normalizeProfileDateKey(raw, monthKeys = []) {
-  return normalizePayrollProfileDateKey(raw, monthKeys);
-}
-
 /**
  * Giai đoạn làm việc của một ngày trong tháng:
  * - Có ngày HĐ: [ngày vào làm, ngày HĐ) → thử việc; từ ngày HĐ → hợp đồng.

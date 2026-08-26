@@ -5,7 +5,7 @@
 html.production-page-active #app-main-scroll.production-page-scroll-root {
   overflow-x: hidden !important;
   overflow-y: auto !important;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 

@@ -15,7 +15,7 @@ import { createImageUploadMiddleware } from "./server/imageUpload/createImageUpl
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   if (env.IMGBB_API_KEY) process.env.IMGBB_API_KEY = env.IMGBB_API_KEY;
   if (env.IMGBB_UPLOAD_URL) process.env.IMGBB_UPLOAD_URL = env.IMGBB_UPLOAD_URL;
@@ -26,19 +26,33 @@ export default defineConfig(({ mode }) => {
 
   const imageUploadMiddleware = createImageUploadMiddleware();
 
-  return {
-    plugins: [
-      react(),
-      {
-        name: "image-upload-api",
-        configureServer(server) {
-          server.middlewares.use(imageUploadMiddleware);
-        },
-        configurePreviewServer(server) {
-          server.middlewares.use(imageUploadMiddleware);
-        },
+  const plugins = [
+    react(),
+    {
+      name: "image-upload-api",
+      configureServer(server) {
+        server.middlewares.use(imageUploadMiddleware);
       },
-    ],
+      configurePreviewServer(server) {
+        server.middlewares.use(imageUploadMiddleware);
+      },
+    },
+  ];
+
+  if (mode === "analyze") {
+    const { visualizer } = await import("rollup-plugin-visualizer");
+    plugins.push(
+      visualizer({
+        filename: "dist/bundle-stats.html",
+        gzipSize: true,
+        brotliSize: true,
+        open: false,
+      }),
+    );
+  }
+
+  return {
+    plugins,
     base: "/",
     server: {
       watch: {
@@ -55,7 +69,8 @@ export default defineConfig(({ mode }) => {
       // Không dùng manualChunks tùy ý: tách react/vendor/charts dễ tạo circular chunks
       // và lỗi runtime "Cannot access before initialization" trên bản production.
       // AttendanceList + SeasonalStaff import tĩnh trong App (tránh lỗi fetch lazy trong dev).
-      chunkSizeWarningLimit: 3200,
+      // Cảnh báo chunk >1MB — exceljs/xlsx/recharts lazy vẫn có thể vượt ngưỡng (chấp nhận được).
+      chunkSizeWarningLimit: 1000,
     },
     test: {
       environment: "node",

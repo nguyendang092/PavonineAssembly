@@ -10,4 +10,4 @@ export const WAREHOUSE_INV_CHART_COLORS = [
 ];
 
 export const WAREHOUSE_INV_LATEST_PATH = "warehouseInventoryDashboard/latestSnapshot";
-export const WAREHOUSE_INV_TABLE_PAGE_SIZE = 100;
+export const WAREHOUSE_INV_TABLE_PAGE_SIZE = 50;

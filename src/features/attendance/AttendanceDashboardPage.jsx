@@ -264,6 +264,8 @@ function AttendanceDashboardPage() {
 
   const {
     loading: dataLoading,
+    isRevalidating: dataRevalidating,
+    refresh: refreshDashboardData,
     employees,
     rosterEmployees,
     trendPoints,
@@ -631,6 +633,17 @@ function AttendanceDashboardPage() {
             <div className="attendance-dashboard__hero-actions">
               <button
                 type="button"
+                className="attendance-dashboard__btn attendance-dashboard__btn--outline"
+                onClick={refreshDashboardData}
+                disabled={dataLoading && !employees.length}
+                aria-busy={dataRevalidating}
+              >
+                {dataRevalidating
+                  ? tl("dashboardRefreshing", "Đang làm mới…")
+                  : tl("dashboardRefresh", "Làm mới")}
+              </button>
+              <button
+                type="button"
                 className="attendance-dashboard__btn attendance-dashboard__btn--gold"
                 onClick={() => void handleExportExcel()}
                 disabled={exportBusy}
@@ -649,7 +662,7 @@ function AttendanceDashboardPage() {
           </div>
 
           <PayrollMonthGridLoadingOverlay
-            active={dataLoading}
+            active={dataLoading && employees.length === 0 && rosterEmployees.length === 0}
             mode="viewport"
             message={tl("dashboardLoading", "Đang tải dữ liệu…")}
           />

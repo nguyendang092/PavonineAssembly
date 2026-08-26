@@ -323,11 +323,6 @@ export function isOtCheckFieldDisabled({
   return isAttendanceHalfPnLeaveType(leaveType) && !hasOvertimeHours;
 }
 
-/** @deprecated Dùng `attendanceRowCheckHighlightClassName` trên cả dòng. */
-export function attendanceHoVaTenYellowCellClassName(enabled) {
-  return enabled ? "" : "";
-}
-
 /**
  * Form điểm danh: đồng bộ `duocNghiBu` với cờ ngày nghỉ bù lịch.
  * @returns {"" | "NO" | "YES"}

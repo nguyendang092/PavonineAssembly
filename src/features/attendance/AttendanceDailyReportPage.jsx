@@ -53,8 +53,15 @@ function AttendanceDailyReportPage() {
     [t],
   );
 
-  const { loading, error, regularEmployees, seasonalEmployees, dayMeta } =
-    useAttendanceDailyReportData(selectedDate);
+  const {
+    loading,
+    isRevalidating,
+    refresh,
+    error,
+    regularEmployees,
+    seasonalEmployees,
+    dayMeta,
+  } = useAttendanceDailyReportData(selectedDate);
 
   const report = useMemo(
     () =>
@@ -237,6 +244,17 @@ function AttendanceDailyReportPage() {
                 <button
                   type="button"
                   className="adr-export-btn"
+                  onClick={refresh}
+                  disabled={loading && !regularEmployees.length && !seasonalEmployees.length}
+                  aria-busy={isRevalidating}
+                >
+                  {isRevalidating
+                    ? tl("dailyReportRefreshing", "Đang làm mới…")
+                    : tl("dailyReportRefresh", "Làm mới")}
+                </button>
+                <button
+                  type="button"
+                  className="adr-export-btn"
                   onClick={() => void handleExportImage()}
                   disabled={loading || !!error || exportingImage}
                   aria-busy={exportingImage}
@@ -268,16 +286,23 @@ function AttendanceDailyReportPage() {
             </div>
           ) : null}
 
-          {!loading && !error ? (
+          {(regularEmployees.length ||
+            seasonalEmployees.length ||
+            !loading) &&
+          !error ? (
             <AttendanceDailyReportMetrics metrics={metrics} labels={labels} />
           ) : null}
 
           <div className="adr-table-panel">
             <PayrollMonthGridLoadingOverlay
-              active={loading}
+              active={
+                loading &&
+                regularEmployees.length === 0 &&
+                seasonalEmployees.length === 0
+              }
               message={tl("dailyReportLoading", "Đang tải báo cáo…")}
             />
-            {!loading ? (
+            {!loading || regularEmployees.length || seasonalEmployees.length ? (
               <AttendanceDailyReportTable
                 rows={report.rows}
                 summary={report.summary}
@@ -290,6 +315,7 @@ function AttendanceDailyReportPage() {
         </div>
       </div>
     </div>
-  );}
+  );
+}
 
 export default memo(AttendanceDailyReportPage);

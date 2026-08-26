@@ -127,3 +127,22 @@
   gap: 0.5rem;
   padding: 0.25rem 0.375rem 0.25rem 0.5rem;
 }
+
+/* Virtual scroll bảng lớn — tbody chỉ mount hàng trong viewport + overscan */
+.hr-table-virtual-scroll {
+  max-height: min(70vh, 720px);
+}
+
+.hr-vt-spacer td {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.mold-table-wrap.hr-table-virtual-scroll,
+.wah-inv-table-scroll.hr-table-virtual-scroll {
+  display: block;
+  max-height: min(70vh, 720px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

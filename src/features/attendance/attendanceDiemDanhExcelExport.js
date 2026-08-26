@@ -1,4 +1,3 @@
-import ExcelJS from "exceljs";
 import {
   formatAttendanceTimeInColumnDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
@@ -343,6 +342,7 @@ export async function writeAttendanceDiemDanhWorksheet(worksheet, opts) {
  */
 export async function downloadAttendanceDiemDanhTemplate(opts = {}) {
   const { selectedDate, fileNamePrefix = "PAVONINE_mauDiemDanh" } = opts;
+  const ExcelJS = (await import("exceljs")).default;
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Attendance");
   await writeAttendanceDiemDanhWorksheet(worksheet, {

@@ -92,6 +92,8 @@ export default function WarehouseInventoryPage() {
         tl={data.tl}
         rows={data.rows}
         loading={data.loading}
+        isRevalidatingCloud={data.isRevalidatingCloud}
+        onRefreshCloud={data.refreshCloudSnapshot}
         error={data.error}
         handleFile={data.handleFile}
         clearData={data.clearData}

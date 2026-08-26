@@ -17,6 +17,13 @@ import {
   summarizeStructuredRows,
 } from "../lib/filterStructuredRows";
 import { makeWarehouseInvAmountBarGradient } from "../lib/chartBarGradient";
+import {
+  DASHBOARD_QUERY_CACHE_TTL_MS,
+  getCached,
+  invalidateCached,
+  setCached,
+  WAREHOUSE_INVENTORY_SNAPSHOT_CACHE_KEY,
+} from "@/utils/queryCache";
 
 export function useWarehouseInventoryDashboard() {
   const { t } = useTranslation();
@@ -40,27 +47,61 @@ export function useWarehouseInventoryDashboard() {
   const [softSortMode, setSoftSortMode] = useState("month");
   const [tablePage, setTablePage] = useState(1);
   const [hasTriedCloudLoad, setHasTriedCloudLoad] = useState(false);
+  const [isRevalidatingCloud, setIsRevalidatingCloud] = useState(false);
 
-  // Khi đổi mode "soft", reset về trang 1 để người dùng thấy thay đổi ngay.
+  const applyCloudSnapshot = useCallback((payload) => {
+    const cloudRows = Array.isArray(payload?.rows) ? payload.rows : [];
+    setRows(cloudRows);
+    setFileName(String(payload?.fileName ?? "").trim() || "Cloud Snapshot");
+    setWhFilter("");
+    return cloudRows.length > 0;
+  }, []);
+
+  const loadLatestSnapshotFromCloud = useCallback(
+    async ({ force = false } = {}) => {
+      const cached = !force
+        ? getCached(
+            WAREHOUSE_INVENTORY_SNAPSHOT_CACHE_KEY,
+            DASHBOARD_QUERY_CACHE_TTL_MS,
+          )
+        : null;
+
+      if (cached?.data) {
+        applyCloudSnapshot(cached.data);
+        if (cached.isFresh) return true;
+        setIsRevalidatingCloud(true);
+      } else {
+        setLoading(true);
+      }
+
+      try {
+        const snap = await get(ref(db, WAREHOUSE_INV_LATEST_PATH));
+        const payload = snap?.val?.() ?? snap.val();
+        const normalized = {
+          rows: Array.isArray(payload?.rows) ? payload.rows : [],
+          fileName: String(payload?.fileName ?? "").trim() || "Cloud Snapshot",
+        };
+        setCached(WAREHOUSE_INVENTORY_SNAPSHOT_CACHE_KEY, normalized);
+        return applyCloudSnapshot(normalized);
+      } catch (err) {
+        console.error("loadLatestSnapshotFromCloud failed:", err);
+        return Boolean(cached?.data?.rows?.length);
+      } finally {
+        setLoading(false);
+        setIsRevalidatingCloud(false);
+      }
+    },
+    [applyCloudSnapshot],
+  );
+
+  const refreshCloudSnapshot = useCallback(() => {
+    invalidateCached(WAREHOUSE_INVENTORY_SNAPSHOT_CACHE_KEY);
+    void loadLatestSnapshotFromCloud({ force: true });
+  }, [loadLatestSnapshotFromCloud]);
+
   useEffect(() => {
     setTablePage(1);
   }, [softSortMode]);
-
-  const loadLatestSnapshotFromCloud = useCallback(async () => {
-    try {
-      const snap = await get(ref(db, WAREHOUSE_INV_LATEST_PATH));
-      const payload = snap?.val?.();
-      const cloudRows = Array.isArray(payload?.rows) ? payload.rows : [];
-      if (cloudRows.length === 0) return false;
-      setRows(cloudRows);
-      setFileName(String(payload?.fileName ?? "").trim() || "Cloud Snapshot");
-      setWhFilter("");
-      return true;
-    } catch (err) {
-      console.error("loadLatestSnapshotFromCloud failed:", err);
-      return false;
-    }
-  }, []);
 
   useEffect(() => {
     if (hasTriedCloudLoad) return;
@@ -145,7 +186,6 @@ export function useWarehouseInventoryDashboard() {
     [filteredStructuredRows],
   );
 
-  const WAREHOUSE_INV_TABLE_PAGE_SIZE = 100;
   const tableTotalPages = Math.max(
     1,
     Math.ceil(filteredStructuredRows.length / WAREHOUSE_INV_TABLE_PAGE_SIZE),
@@ -370,6 +410,8 @@ export function useWarehouseInventoryDashboard() {
     fileName,
     error,
     loading,
+    isRevalidatingCloud,
+    refreshCloudSnapshot,
     whFilter,
     setWhFilter,
     categoryFilter,

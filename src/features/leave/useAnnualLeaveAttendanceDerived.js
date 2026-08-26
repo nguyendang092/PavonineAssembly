@@ -220,16 +220,25 @@ export function useAnnualLeaveAttendanceDerived(
       for (const empKey of recomputedEmpKeys) {
         usageReadyEmpKeysRef.current.add(empKey);
       }
-      if (
-        scopeEmpKeySet instanceof Set &&
-        scopeEmpKeySet.size > 0 &&
-        [...scopeEmpKeySet].every((k) => usageReadyEmpKeysRef.current.has(k))
-      ) {
+      // Bucket cache hit: derived maps đã có nhưng empKey không nằm recomputedEmpKeys
+      // (vd. quay lại trang sau resetUsageReadyForScope) — vẫn phải coi là ready.
+      if (scopeEmpKeySet instanceof Set && scopeEmpKeySet.size > 0) {
         for (const empKey of scopeEmpKeySet) {
-          usageReadyEmpKeysRef.current.add(empKey);
+          if (
+            Object.prototype.hasOwnProperty.call(
+              maps.deductionsByEmpKey,
+              empKey,
+            ) ||
+            Object.prototype.hasOwnProperty.call(
+              maps.attendanceMonthlyByEmpKey,
+              empKey,
+            )
+          ) {
+            usageReadyEmpKeysRef.current.add(empKey);
+          }
         }
-      } else if (!scopeEmpKeySet && recomputedEmpKeys.size > 0) {
-        for (const empKey of recomputedEmpKeys) {
+      } else if (!scopeEmpKeySet) {
+        for (const empKey of Object.keys(maps.deductionsByEmpKey)) {
           usageReadyEmpKeysRef.current.add(empKey);
         }
       }

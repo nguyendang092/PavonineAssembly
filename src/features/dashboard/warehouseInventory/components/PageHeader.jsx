@@ -4,6 +4,8 @@ export default function PageHeader({
   tl,
   rows,
   loading,
+  isRevalidatingCloud,
+  onRefreshCloud,
   error,
   handleFile,
   clearData,
@@ -25,9 +27,24 @@ export default function PageHeader({
         accept=".xlsx,.xls"
         className="hidden"
         onChange={handleFile}
-        disabled={loading}
+        disabled={loading && rows.length === 0}
       />
     </label>
+    <button
+      type="button"
+      onClick={onRefreshCloud}
+      disabled={loading && rows.length === 0}
+      aria-busy={isRevalidatingCloud}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-bold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+    >
+      <FiRefreshCw
+        className={isRevalidatingCloud ? "animate-spin" : ""}
+        aria-hidden
+      />
+      {isRevalidatingCloud
+        ? tl("refreshingCloud", "Đang làm mới…")
+        : tl("refreshCloud", "Làm mới")}
+    </button>
     {rows.length > 0 ? (
       <>
         <button
@@ -51,7 +68,7 @@ export default function PageHeader({
   </div>
 ) : null}
 
-{loading ? (
+{loading && rows.length === 0 ? (
   <p className="dashboard-no-print text-sm font-medium text-slate-600 dark:text-slate-400">
     {tl("loading", "파일을 읽는 중…")}
   </p>

@@ -1,6 +1,4 @@
 import React, { memo, useCallback } from "react";
-import ExcelJS from "exceljs";
-import { toPng } from "html-to-image";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -158,6 +156,7 @@ function AttendanceComboChartModal({
     try {
       const node = detailTableCaptureRef.current;
       if (!node) return;
+      const { toPng } = await import("html-to-image");
       const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: Math.min(2, window.devicePixelRatio || 1.5),
@@ -173,6 +172,7 @@ function AttendanceComboChartModal({
 
   const handleExportDetailExcel = async () => {
     try {
+      const ExcelJS = (await import("exceljs")).default;
       const workbook = new ExcelJS.Workbook();
       const ws = workbook.addWorksheet("Detail");
       ws.addRow([

@@ -1,9 +1,23 @@
-import { useEffect, useMemo, useRef, useState, startTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  startTransition,
+} from "react";
 import { db, ref, get } from "@/services/firebase";
 import {
   bumpFirebaseGeneration,
   isFirebaseGenerationStale,
 } from "@/hooks/firebaseGeneration";
+import {
+  buildAttendanceDashboardCacheKey,
+  DASHBOARD_QUERY_CACHE_TTL_MS,
+  getCached,
+  invalidateCached,
+  setCached,
+} from "@/utils/queryCache";
 import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 import { countAttendanceDashboardDaySummary } from "./attendanceDashboardMetrics";
 import {
@@ -23,9 +37,9 @@ import {
 
 const DASHBOARD_FETCH_BATCH_SIZE = 7;
 
-async function fetchDashboardDayRow(attendanceRootPath, dateKey, cache) {
-  const cacheKey = `${attendanceRootPath}/${dateKey}`;
-  if (cache.has(cacheKey)) return cache.get(cacheKey);
+async function fetchDashboardDayRow(attendanceRootPath, dateKey, sessionCache) {
+  const sessionKey = `${attendanceRootPath}/${dateKey}`;
+  if (sessionCache.has(sessionKey)) return sessionCache.get(sessionKey);
 
   const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
   const raw = snap.val();
@@ -40,7 +54,7 @@ async function fetchDashboardDayRow(attendanceRootPath, dateKey, cache) {
     isOffDay: getIsOffDayFromRaw(raw),
     isHolidayDay: getIsHolidayDayFromRaw(raw),
   };
-  cache.set(cacheKey, row);
+  sessionCache.set(sessionKey, row);
   return row;
 }
 
@@ -54,6 +68,20 @@ function waitAnimationFrame() {
   });
 }
 
+function summarizeDashboardRows(rows, normalizedPeriod, anchorDateKey) {
+  const periodSet = new Set(
+    listDashboardPeriodDateKeys(normalizedPeriod, anchorDateKey),
+  );
+  let off = 0;
+  let hol = 0;
+  for (const row of rows) {
+    if (!periodSet.has(row.dateKey)) continue;
+    if (row.isOffDay) off += 1;
+    if (row.isHolidayDay) hol += 1;
+  }
+  return { offDayCount: off, holidayCount: hol };
+}
+
 /**
  * Tải dữ liệu dashboard theo kỳ (ngày / tuần / tháng / năm).
  */
@@ -64,12 +92,32 @@ export function useAttendanceDashboardData(
   locale = "vi-VN",
 ) {
   const normalizedPeriod = normalizeDashboardPeriod(period);
-  const [loading, setLoading] = useState(false);
-  const [dayResults, setDayResults] = useState([]);
-  const [offDayCount, setOffDayCount] = useState(0);
-  const [holidayCount, setHolidayCount] = useState(0);
+  const cacheKey = buildAttendanceDashboardCacheKey(
+    attendanceRootPath,
+    anchorDateKey,
+    normalizedPeriod,
+  );
+  const cachedInit = getCached(cacheKey, DASHBOARD_QUERY_CACHE_TTL_MS);
+
+  const [loading, setLoading] = useState(() => !cachedInit?.data);
+  const [isRevalidating, setIsRevalidating] = useState(false);
+  const [dayResults, setDayResults] = useState(
+    () => cachedInit?.data?.dayResults ?? [],
+  );
+  const [offDayCount, setOffDayCount] = useState(
+    () => cachedInit?.data?.offDayCount ?? 0,
+  );
+  const [holidayCount, setHolidayCount] = useState(
+    () => cachedInit?.data?.holidayCount ?? 0,
+  );
+  const [refreshToken, setRefreshToken] = useState(0);
   const dayCacheRef = useRef(new Map());
   const fetchGenerationRef = useRef(0);
+
+  const refresh = useCallback(() => {
+    invalidateCached(cacheKey);
+    setRefreshToken((token) => token + 1);
+  }, [cacheKey]);
 
   const periodRange = useMemo(
     () => getDashboardPeriodRange(normalizedPeriod, anchorDateKey),
@@ -87,10 +135,27 @@ export function useAttendanceDashboardData(
       normalizedPeriod,
       anchorDateKey,
     );
-    const cache = dayCacheRef.current;
+    const sessionCache = dayCacheRef.current;
+    const cached = getCached(cacheKey, DASHBOARD_QUERY_CACHE_TTL_MS);
 
-    setLoading(true);
-    setDayResults([]);
+    if (cached?.data?.dayResults?.length) {
+      setDayResults(cached.data.dayResults);
+      setOffDayCount(cached.data.offDayCount ?? 0);
+      setHolidayCount(cached.data.holidayCount ?? 0);
+      if (cached.isFresh) {
+        setLoading(false);
+        setIsRevalidating(false);
+        return undefined;
+      }
+      setLoading(false);
+      setIsRevalidating(true);
+    } else {
+      setLoading(true);
+      setDayResults([]);
+      setOffDayCount(0);
+      setHolidayCount(0);
+      setIsRevalidating(false);
+    }
 
     void (async () => {
       const rows = [];
@@ -100,7 +165,7 @@ export function useAttendanceDashboardData(
           const batchKeys = fetchKeys.slice(i, i + DASHBOARD_FETCH_BATCH_SIZE);
           const batchRows = await Promise.all(
             batchKeys.map((dateKey) =>
-              fetchDashboardDayRow(attendanceRootPath, dateKey, cache),
+              fetchDashboardDayRow(attendanceRootPath, dateKey, sessionCache),
             ),
           );
           if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
@@ -115,33 +180,40 @@ export function useAttendanceDashboardData(
         }
 
         if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
-        const periodSet = new Set(
-          listDashboardPeriodDateKeys(normalizedPeriod, anchorDateKey),
+        const summary = summarizeDashboardRows(
+          rows,
+          normalizedPeriod,
+          anchorDateKey,
         );
-        let off = 0;
-        let hol = 0;
-        for (const row of rows) {
-          if (!periodSet.has(row.dateKey)) continue;
-          if (row.isOffDay) off += 1;
-          if (row.isHolidayDay) hol += 1;
-        }
+        setCached(cacheKey, {
+          dayResults: rows,
+          offDayCount: summary.offDayCount,
+          holidayCount: summary.holidayCount,
+        });
         startTransition(() => {
           if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
-          setOffDayCount(off);
-          setHolidayCount(hol);
+          setOffDayCount(summary.offDayCount);
+          setHolidayCount(summary.holidayCount);
         });
       } finally {
-        if (isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) return;
-        setLoading(false);
+        if (!isFirebaseGenerationStale(myGeneration, fetchGenerationRef)) {
+          setLoading(false);
+          setIsRevalidating(false);
+        }
       }
     })();
 
     return undefined;
-  }, [attendanceRootPath, anchorDateKey, normalizedPeriod]);
+  }, [
+    attendanceRootPath,
+    anchorDateKey,
+    cacheKey,
+    normalizedPeriod,
+    refreshToken,
+  ]);
 
   const periodDayResults = useMemo(
-    () =>
-      dayResults.filter((row) => periodDateKeys.includes(row.dateKey)),
+    () => dayResults.filter((row) => periodDateKeys.includes(row.dateKey)),
     [dayResults, periodDateKeys],
   );
 
@@ -182,6 +254,8 @@ export function useAttendanceDashboardData(
 
   return {
     loading,
+    isRevalidating,
+    refresh,
     employees,
     rosterEmployees,
     trendPoints,

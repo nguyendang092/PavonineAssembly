@@ -4,7 +4,8 @@ import { push, remove, update } from "firebase/database";
 import * as XLSX from "@e965/xlsx";
 import AlertMessage from "@/components/ui/AlertMessage";
 import { useUserIdentity } from "@/contexts/UserContext";
-import { db, onValue, ref, set } from "@/services/firebase";
+import { db, ref, set } from "@/services/firebase";
+import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import MoldFormModal from "./components/MoldFormModal";
 import MoldDetailModal from "./components/MoldDetailModal";
 import MoldImageLightbox from "./components/MoldImageLightbox";
@@ -50,13 +51,46 @@ export default function MoldManagerPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
-  const [molds, setMolds] = useState([]);
   const [form, setForm] = useState({ ...emptyForm });
   const [editing, setEditing] = useState(null);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [imageZoom, setImageZoom] = useState({ show: false, src: "", alt: "" });
   const [failedImages, setFailedImages] = useState(new Set());
   const [detailModal, setDetailModal] = useState({ show: false, mold: null });
+
+  const { data: moldsRaw } = useFirebaseValue("molds");
+
+  const molds = useMemo(() => {
+    if (!moldsRaw || typeof moldsRaw !== "object") return [];
+    const arr = Object.entries(moldsRaw).map(([id, mold]) => {
+      const obj = { id };
+      Object.keys(mold).forEach((k) => {
+        obj[fromSafeKey(k, columns)] = mold[k];
+      });
+
+      const now = new Date();
+      let year = now.getFullYear();
+      let month = now.getMonth();
+      if (month === 0) {
+        year -= 1;
+        month = 11;
+      } else {
+        month -= 1;
+      }
+      const prevKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+      let prevShots = "";
+      if (mold.monthlyShots && typeof mold.monthlyShots === "object") {
+        prevShots = mold.monthlyShots[prevKey] ?? "";
+      }
+      if (!prevShots && (mold.prev_month_shots || mold.prevMonthShots)) {
+        prevShots = mold.prev_month_shots ?? mold.prevMonthShots ?? "";
+      }
+      obj[getPrevMonthLabel()] = prevShots;
+      return obj;
+    });
+    arr.sort((a, b) => (a.No ?? 0) - (b.No ?? 0));
+    return arr;
+  }, [moldsRaw, columns]);
 
   const getTranslatedColumn = useCallback(
     (col) => {
@@ -82,46 +116,6 @@ export default function MoldManagerPage() {
       root?.classList.remove("mold-page-scroll-root");
     };
   }, []);
-
-  useEffect(() => {
-    const moldsRef = ref(db, "molds");
-    const unsubscribe = onValue(moldsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, mold]) => {
-          const obj = { id };
-          Object.keys(mold).forEach((k) => {
-            obj[fromSafeKey(k, columns)] = mold[k];
-          });
-
-          const now = new Date();
-          let year = now.getFullYear();
-          let month = now.getMonth();
-          if (month === 0) {
-            year -= 1;
-            month = 11;
-          } else {
-            month -= 1;
-          }
-          const prevKey = `${year}-${String(month + 1).padStart(2, "0")}`;
-          let prevShots = "";
-          if (mold.monthlyShots && typeof mold.monthlyShots === "object") {
-            prevShots = mold.monthlyShots[prevKey] ?? "";
-          }
-          if (!prevShots && (mold.prev_month_shots || mold.prevMonthShots)) {
-            prevShots = mold.prev_month_shots ?? mold.prevMonthShots ?? "";
-          }
-          obj[getPrevMonthLabel()] = prevShots;
-          return obj;
-        });
-        arr.sort((a, b) => (a.No ?? 0) - (b.No ?? 0));
-        setMolds(arr);
-      } else {
-        setMolds([]);
-      }
-    });
-    return () => unsubscribe();
-  }, [columns]);
 
   const filterOptions = useMemo(
     () => ({

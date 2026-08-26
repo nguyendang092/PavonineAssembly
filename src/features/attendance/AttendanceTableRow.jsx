@@ -1,7 +1,6 @@
 /**
- * Compatibility entry for stale Vite/browser module graphs.
- *
- * New code should import from `@/features/attendance/attendanceTableRow`.
+ * Compatibility entry — Vite/HMR có thể vẫn resolve path cũ sau khi tách folder.
+ * Import mới: `@/features/attendance/attendanceTableRow`.
  */
 export {
   default,

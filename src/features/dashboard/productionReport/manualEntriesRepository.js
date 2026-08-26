@@ -12,6 +12,10 @@ import {
   endAt,
   update,
 } from "@/services/firebase";
+import {
+  bumpFirebaseGeneration,
+  isFirebaseGenerationStale,
+} from "@/hooks/firebaseGeneration";
 import { normalizeManualStore } from "../s90d/lib/s90dManualEntries";
 import { buildArchiveMonthPatch, applyArchiveMonthLocally } from "./manualEntriesArchive";
 import {
@@ -74,6 +78,7 @@ export function createManualEntriesRepository({
   const monthChecksumCache = {};
   /** @type {Record<string, number>} */
   const dayRevisionCache = {};
+  const subscribeGenerationRef = { current: 0 };
 
   function loadLocalStore() {
     return normalizeManualStore(loadLocalStoreRaw(storageKey), manualEntryConfig);
@@ -110,7 +115,7 @@ export function createManualEntriesRepository({
     return parseMonthSnapshot(snapshot.val(), monthKey);
   }
 
-  function subscribeMonth(monthKey, onMonthSlice) {
+  function subscribeMonth(monthKey, onMonthSlice, myGeneration) {
     const existing = monthUnsubs.get(monthKey);
     if (existing) existing();
 
@@ -124,6 +129,7 @@ export function createManualEntriesRepository({
 
     const handleValue = (snapshot) => {
       if (skipRemote) return;
+      if (isFirebaseGenerationStale(myGeneration, subscribeGenerationRef)) return;
       const slice = parseMonthSnapshot(snapshot.val(), monthKey);
       const checksum = computeMonthChecksum(slice);
       if (monthChecksumCache[monthKey] === checksum) return;
@@ -132,17 +138,19 @@ export function createManualEntriesRepository({
     };
 
     onValue(monthQuery, handleValue, () => {
+      if (isFirebaseGenerationStale(myGeneration, subscribeGenerationRef)) return;
       onMonthSlice(monthKey, {});
     });
 
     monthUnsubs.set(monthKey, () => off(monthQuery, "value", handleValue));
   }
 
-  function subscribeMeta() {
+  function subscribeMeta(myGeneration) {
     if (metaUnsub) metaUnsub();
     const metaRef = ref(db, `${firebaseRoot}/_meta`);
     const handleValue = (snapshot) => {
       if (skipRemote) return;
+      if (isFirebaseGenerationStale(myGeneration, subscribeGenerationRef)) return;
       const months = snapshot.val()?.months ?? {};
       for (const [monthKey, payload] of Object.entries(months)) {
         if (payload?.checksum) {
@@ -156,17 +164,19 @@ export function createManualEntriesRepository({
 
   function subscribeMonths(selectedMonthKey, onMonthSlice) {
     unsubscribeMonths();
-    subscribeMeta();
+    const myGeneration = bumpFirebaseGeneration(subscribeGenerationRef);
+    subscribeMeta(myGeneration);
 
     const months = subscriptionMonthKeys(selectedMonthKey);
     for (const monthKey of months) {
-      subscribeMonth(monthKey, onMonthSlice);
+      subscribeMonth(monthKey, onMonthSlice, myGeneration);
     }
 
     const adjacent = months.filter((key) => key !== selectedMonthKey);
     for (const monthKey of adjacent) {
       fetchMonthSlice(monthKey)
         .then((slice) => {
+          if (isFirebaseGenerationStale(myGeneration, subscribeGenerationRef)) return;
           const checksum = computeMonthChecksum(slice);
           if (monthChecksumCache[monthKey] === checksum) return;
           monthChecksumCache[monthKey] = checksum;
@@ -177,6 +187,7 @@ export function createManualEntriesRepository({
   }
 
   function unsubscribeMonths() {
+    bumpFirebaseGeneration(subscribeGenerationRef);
     for (const unsub of monthUnsubs.values()) unsub();
     monthUnsubs.clear();
     if (metaUnsub) {

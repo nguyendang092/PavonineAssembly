@@ -169,7 +169,11 @@
   flex-direction: column;
   gap: 0.08rem;
   padding: 0 var(--att-sb-inset-x);
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior-x: none;
+  scrollbar-width: thin;
 }
 
 /* —— Menu item tones —— */
@@ -540,6 +544,7 @@ html.hr-page-active .attendance-with-sidebar {
     align-items: center;
     padding-left: 0;
     padding-right: 0;
+    overflow-y: hidden;
   }
 
   .attendance-with-sidebar__item {
@@ -565,6 +570,7 @@ html.hr-page-active .attendance-with-sidebar {
     padding: 0;
     justify-content: center;
     align-items: center;
+    overflow: hidden;
   }
 
   .attendance-with-sidebar--force-collapsed

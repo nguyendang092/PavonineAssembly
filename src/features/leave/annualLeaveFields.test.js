@@ -6,7 +6,6 @@ import {
   isAttendanceDateCountedForAnnualLeave,
   isAttendanceDateDisplayOnlyForAnnualLeave,
   listAnnualLeaveCountYearMonths,
-  listAnnualLeaveDetailDisplayMonths,
   listAnnualLeaveDetailHistoryMonths,
   listAnnualLeaveDetailRecentMonths,
   listAnnualLeavePreCountDisplayMonthKeys,
@@ -91,12 +90,6 @@ describe("annualLeave attendance count start", () => {
       "2027-04",
       "2027-03",
     ]);
-  });
-
-  it("legacy detail display months keeps two-month slice", () => {
-    expect(
-      listAnnualLeaveDetailDisplayMonths(2026, "2026-08-15"),
-    ).toEqual(["2026-08", "2026-07"]);
   });
 
   it("resolve detail through date defaults to today in current year", () => {

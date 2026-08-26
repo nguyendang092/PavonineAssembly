@@ -1,5 +1,4 @@
 import React from "react";
-import ExcelJS from "exceljs";
 import { writeAttendanceDiemDanhWorksheet } from "@/features/attendance/attendanceDiemDanhExcelExport";
 
 export default function ExportExcelButton({
@@ -16,6 +15,7 @@ export default function ExportExcelButton({
 }) {
   const handleClick = async () => {
     try {
+      const ExcelJS = (await import("exceljs")).default;
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet(sheetName);
       await writeAttendanceDiemDanhWorksheet(worksheet, {

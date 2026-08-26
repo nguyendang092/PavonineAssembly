@@ -7,6 +7,10 @@ import {
   startAt,
   endAt,
 } from "@/services/firebase";
+import {
+  bumpFirebaseGeneration,
+  isFirebaseGenerationStale,
+} from "@/hooks/firebaseGeneration";
 import { ANNUAL_LEAVE_RTDB_ROOT } from "./annualLeaveFields";
 
 /** @typedef {{ data: object | null, ready: boolean, listeners: Set<() => void>, unsub: (() => void) | null }} LiveEntry */
@@ -26,6 +30,7 @@ function createEntry() {
     ready: false,
     listeners: new Set(),
     unsub: null,
+    generationRef: { current: 0 },
   };
 }
 
@@ -62,8 +67,10 @@ function attendanceYearQuery(attendanceRootPath, year, throughDateKey = null) {
 }
 
 function attachAnnualLeaveYear(entry, year) {
+  const myGeneration = bumpFirebaseGeneration(entry.generationRef);
   const yearRef = ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`);
   return onValue(yearRef, (snapshot) => {
+    if (isFirebaseGenerationStale(myGeneration, entry.generationRef)) return;
     entry.data = snapshot.val();
     entry.ready = true;
     notifyEntry(entry);
@@ -96,7 +103,9 @@ function attachAttendanceJoinMonths(entry, attendanceRootPath, range) {
     notifyEntry(entry);
     return () => {};
   }
+  const myGeneration = bumpFirebaseGeneration(entry.generationRef);
   return onValue(q, (snapshot) => {
+    if (isFirebaseGenerationStale(myGeneration, entry.generationRef)) return;
     entry.data = snapshot.val();
     entry.ready = true;
     notifyEntry(entry);
@@ -109,9 +118,11 @@ function attachAttendanceYear(
   year,
   throughDateKey = null,
 ) {
+  const myGeneration = bumpFirebaseGeneration(entry.generationRef);
   return onValue(
     attendanceYearQuery(attendanceRootPath, year, throughDateKey),
     (snapshot) => {
+      if (isFirebaseGenerationStale(myGeneration, entry.generationRef)) return;
       entry.data = snapshot.val();
       entry.ready = true;
       notifyEntry(entry);
@@ -133,6 +144,7 @@ function subscribeMapEntry(map, key, attach, onChange) {
   return () => {
     entry.listeners.delete(onChange);
     if (entry.listeners.size === 0) {
+      bumpFirebaseGeneration(entry.generationRef);
       entry.unsub?.();
       map.delete(key);
     }

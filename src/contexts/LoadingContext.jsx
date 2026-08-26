@@ -1,9 +1,7 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useState } from "react";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 
 const LoadingContext = createContext();
-
-export const useLoading = () => useContext(LoadingContext);
 
 export const LoadingProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);

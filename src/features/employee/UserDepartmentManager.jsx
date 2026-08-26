@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import {
@@ -7,15 +7,14 @@ import {
   normalizeRole,
   ROLES,
 } from "@/config/authRoles";
-import { db, ref, set, onValue, remove } from "@/services/firebase";
+import { db, ref, set, remove } from "@/services/firebase";
+import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import AlertMessage from "@/components/ui/AlertMessage";
 
 function UserDepartmentManager() {
   const { t } = useTranslation();
   const { user } = useUserIdentity();
   const { userRole } = useUserPermissions();
-  const [mappings, setMappings] = useState([]);
-  const [availableDepartments, setAvailableDepartments] = useState([]);
   const [form, setForm] = useState({
     email: "",
     role: ROLES.MANAGER,
@@ -25,43 +24,29 @@ function UserDepartmentManager() {
   const [editing, setEditing] = useState(null);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
 
-  // Bộ phận: lấy từ attendance theo ngày
-  useEffect(() => {
-    const attendanceRef = ref(db, "attendance");
-    const unsubscribe = onValue(attendanceRef, (snapshot) => {
-      const attendanceRoot = snapshot.val();
-      const depts = new Set();
-      if (attendanceRoot && typeof attendanceRoot === "object") {
-        Object.values(attendanceRoot).forEach((dateData) => {
-          if (dateData && typeof dateData === "object") {
-            Object.values(dateData).forEach((emp) => {
-              if (emp.boPhan) depts.add(emp.boPhan);
-            });
-          }
-        });
-      }
-      setAvailableDepartments(Array.from(depts).sort());
-    });
-    return () => unsubscribe();
-  }, []);
+  const { data: attendanceRoot } = useFirebaseValue("attendance");
+  const availableDepartments = useMemo(() => {
+    const depts = new Set();
+    if (attendanceRoot && typeof attendanceRoot === "object") {
+      Object.values(attendanceRoot).forEach((dateData) => {
+        if (dateData && typeof dateData === "object") {
+          Object.values(dateData).forEach((emp) => {
+            if (emp.boPhan) depts.add(emp.boPhan);
+          });
+        }
+      });
+    }
+    return Array.from(depts).sort();
+  }, [attendanceRoot]);
 
-  // Load user-department mappings from Firebase
-  useEffect(() => {
-    const userDeptsRef = ref(db, "userDepartments");
-    const unsubscribe = onValue(userDeptsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && typeof data === "object") {
-        const arr = Object.entries(data).map(([id, dept]) => ({
-          id,
-          ...dept,
-        }));
-        setMappings(arr);
-      } else {
-        setMappings([]);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+  const { data: userDeptsRaw } = useFirebaseValue("userDepartments");
+  const mappings = useMemo(() => {
+    if (!userDeptsRaw || typeof userDeptsRaw !== "object") return [];
+    return Object.entries(userDeptsRaw).map(([id, dept]) => ({
+      id,
+      ...dept,
+    }));
+  }, [userDeptsRaw]);
 
   const canManageMappings = canManageUserDepartmentMappings(user, userRole);
 

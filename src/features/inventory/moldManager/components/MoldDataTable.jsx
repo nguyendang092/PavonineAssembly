@@ -1,6 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { MOLD_PAGE_SIZE } from "../lib/moldConstants";
+import {
+  useHrTableRowVirtualizer,
+  HrVirtualTableSpacerRow,
+  shouldHrTableVirtualize,
+} from "@/hooks/hrTableVirtualization.jsx";
 import { MOLD_STATUS_OPTIONS } from "../lib/moldConstants";
 import {
   getMoldStatus,
@@ -161,17 +166,138 @@ export default function MoldDataTable({
   onStatusChange,
 }) {
   const { t } = useTranslation();
+  const scrollRef = useRef(null);
+  const shouldVirtualize = shouldHrTableVirtualize(molds.length);
 
   const totalPages = Math.max(1, Math.ceil(molds.length / MOLD_PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
 
   const pageRows = useMemo(() => {
+    if (shouldVirtualize) return molds;
     const start = (safePage - 1) * MOLD_PAGE_SIZE;
     return molds.slice(start, start + MOLD_PAGE_SIZE);
-  }, [molds, safePage]);
+  }, [molds, safePage, shouldVirtualize]);
 
-  const rangeStart = molds.length ? (safePage - 1) * MOLD_PAGE_SIZE + 1 : 0;
-  const rangeEnd = Math.min(safePage * MOLD_PAGE_SIZE, molds.length);
+  const getVirtualItemKey = useCallback(
+    (index) => molds[index]?.id ?? index,
+    [molds],
+  );
+
+  const { virtualItems, paddingTop, paddingBottom } = useHrTableRowVirtualizer({
+    rowCount: molds.length,
+    enabled: shouldVirtualize,
+    scrollRef,
+    estimateRowHeight: 56,
+    getItemKey: getVirtualItemKey,
+  });
+
+  const displayRows = useMemo(() => {
+    if (!shouldVirtualize) return pageRows;
+    return virtualItems
+      .map((item) => molds[item.index])
+      .filter(Boolean);
+  }, [molds, pageRows, shouldVirtualize, virtualItems]);
+
+  const rangeStart = molds.length
+    ? shouldVirtualize
+      ? 1
+      : (safePage - 1) * MOLD_PAGE_SIZE + 1
+    : 0;
+  const rangeEnd = shouldVirtualize
+    ? molds.length
+    : Math.min(safePage * MOLD_PAGE_SIZE, molds.length);
+
+  const renderMoldRow = (mold) => {
+    const shots = parseShotCount(mold);
+    const progress = getShotProgress(shots);
+    const status = getMoldStatus(mold);
+    const typeStyle = resolveTypeStyle(mold.Type);
+    const imagePath = getImagePath(mold.NamePlate);
+    const imageKey = `${mold.id}-NamePlate`;
+
+    return (
+      <tr key={mold.id}>
+        <td className="mold-cell-mono">{mold.No ?? "—"}</td>
+        <td className="mold-cell-model">
+          <strong>
+            <HighlightText text={mold.Model} query={searchTerm} />
+          </strong>
+          <span>
+            <HighlightText text={mold["Production Name"]} query={searchTerm} />
+          </span>
+        </td>
+        <td>
+          <span className="mold-code-badge">
+            <HighlightText text={mold["Mold Code"]} query={searchTerm} />
+          </span>
+        </td>
+        <td className="mold-cell-mono">
+          <HighlightText text={mold["Asset No."]} query={searchTerm} />
+        </td>
+        <td className="mold-cell-mono">{mold["Mold Size (W*D*H)"] || "—"}</td>
+        <td className="mold-cell-mono">{mold["Tooling Weight"] || "—"}</td>
+        <td>
+          <div>{mold.Location || "—"}</div>
+          {mold.Type ? (
+            <span className={`mold-type-pill mold-type-pill--${typeStyle}`}>
+              {mold.Type}
+            </span>
+          ) : null}
+        </td>
+        <td className="mold-cell-mono">
+          <HighlightText text={mold["Pavonine Model"]} query={searchTerm} />
+        </td>
+        <td className="mold-shot-cell">
+          <div className="mold-shot-value">{formatMoldNumber(shots)}</div>
+          <div className="mold-shot-bar" aria-hidden="true">
+            <div
+              className={`mold-shot-bar-fill${
+                isShotNearMaintenance(shots) ? " mold-shot-bar-fill--warn" : ""
+              }`}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </td>
+        <td>
+          <MoldStatusCell
+            mold={mold}
+            status={status}
+            canEdit={Boolean(user)}
+            onStatusChange={onStatusChange}
+            t={t}
+          />
+        </td>
+        <td>
+          {imagePath && !failedImages.has(imageKey) ? (
+            <img
+              src={imagePath}
+              alt={t("moldManager.columns.namePlate")}
+              className="mold-thumb"
+              loading="lazy"
+              onClick={() =>
+                onImageZoom({
+                  show: true,
+                  src: imagePath,
+                  alt: mold["Mold Code"],
+                })
+              }
+              onError={() => onImageError(imageKey)}
+            />
+          ) : (
+            <span className="mold-thumb mold-thumb--empty">—</span>
+          )}
+        </td>
+        <td>
+          <MoldRowActionsMenu
+            canMutate={Boolean(user)}
+            onView={() => onViewDetail(mold)}
+            onEdit={() => onEdit(mold.id)}
+            onDelete={() => onRequestDelete(mold.id)}
+          />
+        </td>
+      </tr>
+    );
+  };
 
   return (
     <div className="mold-table-shell">
@@ -180,15 +306,20 @@ export default function MoldDataTable({
           {t("moldManager.tableTitle", "Bảng khuôn — Pavonine")}
         </h2>
         <span className="mold-table-headbar-meta">
-          {molds.length} {t("moldManager.tableRows", "dòng")} ·{" "}
-          {t("moldManager.tablePage", "trang {{current}}/{{total}}", {
-            current: safePage,
-            total: totalPages,
-          })}
+          {molds.length} {t("moldManager.tableRows", "dòng")}
+          {shouldVirtualize
+            ? ` · ${t("moldManager.virtualScroll", "cuộn ảo")}`
+            : ` · ${t("moldManager.tablePage", "trang {{current}}/{{total}}", {
+                current: safePage,
+                total: totalPages,
+              })}`}
         </span>
       </div>
 
-      <div className="mold-table-wrap">
+      <div
+        ref={shouldVirtualize ? scrollRef : null}
+        className={`mold-table-wrap${shouldVirtualize ? " hr-table-virtual-scroll" : ""}`}
+      >
         <table className="mold-table">
           <thead>
             <tr>
@@ -207,106 +338,16 @@ export default function MoldDataTable({
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((mold) => {
-              const shots = parseShotCount(mold);
-              const progress = getShotProgress(shots);
-              const status = getMoldStatus(mold);
-              const typeStyle = resolveTypeStyle(mold.Type);
-              const imagePath = getImagePath(mold.NamePlate);
-              const imageKey = `${mold.id}-NamePlate`;
-
-              return (
-                <tr key={mold.id}>
-                  <td className="mold-cell-mono">{mold.No ?? "—"}</td>
-                  <td className="mold-cell-model">
-                    <strong>
-                      <HighlightText text={mold.Model} query={searchTerm} />
-                    </strong>
-                    <span>
-                      <HighlightText
-                        text={mold["Production Name"]}
-                        query={searchTerm}
-                      />
-                    </span>
-                  </td>
-                  <td>
-                    <span className="mold-code-badge">
-                      <HighlightText text={mold["Mold Code"]} query={searchTerm} />
-                    </span>
-                  </td>
-                  <td className="mold-cell-mono">
-                    <HighlightText text={mold["Asset No."]} query={searchTerm} />
-                  </td>
-                  <td className="mold-cell-mono">{mold["Mold Size (W*D*H)"] || "—"}</td>
-                  <td className="mold-cell-mono">{mold["Tooling Weight"] || "—"}</td>
-                  <td>
-                    <div>{mold.Location || "—"}</div>
-                    {mold.Type ? (
-                      <span className={`mold-type-pill mold-type-pill--${typeStyle}`}>
-                        {mold.Type}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="mold-cell-mono">
-                    <HighlightText
-                      text={mold["Pavonine Model"]}
-                      query={searchTerm}
-                    />
-                  </td>
-                  <td className="mold-shot-cell">
-                    <div className="mold-shot-value">{formatMoldNumber(shots)}</div>
-                    <div className="mold-shot-bar" aria-hidden="true">
-                      <div
-                        className={`mold-shot-bar-fill${
-                          isShotNearMaintenance(shots)
-                            ? " mold-shot-bar-fill--warn"
-                            : ""
-                        }`}
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </td>
-                  <td>
-                    <MoldStatusCell
-                      mold={mold}
-                      status={status}
-                      canEdit={Boolean(user)}
-                      onStatusChange={onStatusChange}
-                      t={t}
-                    />
-                  </td>
-                  <td>
-                    {imagePath && !failedImages.has(imageKey) ? (
-                      <img
-                        src={imagePath}
-                        alt={t("moldManager.columns.namePlate")}
-                        className="mold-thumb"
-                        loading="lazy"
-                        onClick={() =>
-                          onImageZoom({
-                            show: true,
-                            src: imagePath,
-                            alt: mold["Mold Code"],
-                          })
-                        }
-                        onError={() => onImageError(imageKey)}
-                      />
-                    ) : (
-                      <span className="mold-thumb mold-thumb--empty">—</span>
-                    )}
-                  </td>
-                  <td>
-                    <MoldRowActionsMenu
-                      canMutate={Boolean(user)}
-                      onView={() => onViewDetail(mold)}
-                      onEdit={() => onEdit(mold.id)}
-                      onDelete={() => onRequestDelete(mold.id)}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-            {!pageRows.length ? (
+            {shouldVirtualize ? (
+              <>
+                <HrVirtualTableSpacerRow colSpan={12} heightPx={paddingTop} />
+                {displayRows.map((mold) => renderMoldRow(mold))}
+                <HrVirtualTableSpacerRow colSpan={12} heightPx={paddingBottom} />
+              </>
+            ) : (
+              pageRows.map((mold) => renderMoldRow(mold))
+            )}
+            {!molds.length ? (
               <tr>
                 <td colSpan={12} style={{ textAlign: "center", padding: "32px" }}>
                   {t("moldManager.noResults", "Không có bản ghi phù hợp.")}
@@ -325,12 +366,14 @@ export default function MoldDataTable({
             total: molds.length,
           })}
         </span>
-        <MoldPagination
-          page={safePage}
-          totalPages={totalPages}
-          onPageChange={onPageChange}
-          t={t}
-        />
+        {!shouldVirtualize ? (
+          <MoldPagination
+            page={safePage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            t={t}
+          />
+        ) : null}
       </div>
     </div>
   );

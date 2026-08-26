@@ -27,6 +27,11 @@ function AttendanceHrPageShell({
     };
   }, []);
 
+  useEffect(() => {
+    document.getElementById("hr-page-main-scroll")?.scrollTo(0, 0);
+    document.getElementById("app-main-scroll")?.scrollTo(0, 0);
+  }, [pathname]);
+
   const resolvedContextDate = useMemo(() => {
     if (contextDate && /^\d{4}-\d{2}-\d{2}$/.test(contextDate)) {
       return contextDate;

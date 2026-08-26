@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toPng } from "html-to-image";
 import { FiDownload } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
@@ -242,6 +241,7 @@ function S90dDailyBoardCard({
 
       await waitForPaint();
 
+      const { toPng } = await import("html-to-image");
       const dataUrl = await toPng(boardExportRef.current, {
         cacheBust: true,
         pixelRatio: 2,

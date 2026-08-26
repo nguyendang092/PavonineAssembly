@@ -62,9 +62,6 @@ function AttendanceListContentSection() {
     resetDeps: [selectedDate, deferredFilteredEmployees.length],
   });
 
-  const tableEmployees = tablePagination.pagedItems;
-  const tableRowIndexOffset = tablePagination.rowIndexOffset;
-
   const {
     comboProductionDeptCatalog,
     comboProductionDeptOrder,
@@ -188,8 +185,9 @@ function AttendanceListContentSection() {
         <div className="relative">
           <AttendanceListTableSection
           columnPlan={columnPlan}
-          deferredFilteredEmployees={tableEmployees}
-          rowIndexOffset={tableRowIndexOffset}
+          deferredFilteredEmployees={tablePagination.pagedItems}
+          rowIndexOffset={tablePagination.rowIndexOffset}
+          virtualizeRows={false}
           showRowModalActions={showRowModalActions}
           canDeleteDayRecord={canDeleteDayRecord}
           tl={tl}

@@ -17,8 +17,6 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from "recharts";
-import * as XLSX from "@e965/xlsx";
-import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 import { getMachineDisplayName } from "@/features/dashboard/temperatureMachineDisplay";
 
@@ -116,7 +114,11 @@ const ChartView = ({ selectedArea, selectedMonth, machines, type }) => {
     void fetchData();
   }, [selectedArea, selectedMonth, machines, type, t, threshold.max, threshold.min]);
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const [{ default: XLSX }, { saveAs }] = await Promise.all([
+      import("@e965/xlsx"),
+      import("file-saver"),
+    ]);
     const ws = XLSX.utils.json_to_sheet(chartData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Chart");

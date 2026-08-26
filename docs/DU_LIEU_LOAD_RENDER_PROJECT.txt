@@ -174,7 +174,7 @@ Tài liệu HR chi tiết (đã gộp trong file này):
     runTransaction, off
     storageRef, uploadBytes, getDownloadURL, deleteObject
 
-  Upload ảnh: src/services/firebaseImageUpload.js, src/services/imageUpload/
+  Upload ảnh: src/services/imageUpload/
 
 3.2 Cây dữ liệu RTDB (tóm tắt)
 ──────────────────────────────
@@ -1200,8 +1200,8 @@ useAnnualLeaveAttendanceEnhancement
   - Wrapper cho bảng manager
   - Bật payroll accrual, throughDateKey, scopeEmpKeySet (chỉ NV đang hiển thị)
 
-useAnnualLeaveLiveData / useAnnualLeaveBalanceMap
-  - Dùng cho balance live ở nơi khác (nếu cần)
+annualLeaveLiveExternalHooks / useAnnualLeaveYearData / useAnnualLeaveAttendanceDerived
+  - Nguồn dữ liệu phép năm live (thay hook balance map cũ đã gỡ)
 
 ────────────────────────────────────────────────────────────────────────────────
 A.5 CÔNG THỨC TÍNH PHÉP
@@ -1637,6 +1637,67 @@ B.16 GỢI Ý DEBUG
   3. Giờ sai vs bảng ngày: so sánh parsePayrollDayFromAttendanceRaw pipeline
   4. Cột chi tiết chậm: Web Worker ≥72 NV
   5. Sau sửa không cập nhật: cần loadMonth() — không realtime
+
+────────────────────────────────────────────────────────────────────────────────
+B.17 CACHE LIÊN TRANG — DASHBOARD get() ONE-SHOT (SWR 3 phút)
+────────────────────────────────────────────────────────────────────────────────
+
+  Module: src/utils/queryCache.js
+    getCached(key, ttlMs) → { data, isFresh, ageMs } | null
+    setCached(key, data)
+    invalidateCached(key) — đánh dấu stale, vẫn trả data cũ lần đọc tiếp
+    TTL mặc định: DASHBOARD_QUERY_CACHE_TTL_MS = 3 phút
+
+  Hook nền: src/hooks/useFirebaseOnce.js
+    cacheKey + ttlMs → hydrate cache ngay, fetch ngầm nếu stale/miss
+    refresh() → invalidate + bump refreshToken
+    isRevalidating → true khi có cache cũ + đang get() lại
+
+  Đã áp dụng:
+    useAttendanceDashboardData   key: attendanceDashboard:{root}:{date}:{period}
+    useAttendanceDailyReportData key: attendanceDailyReport:{root}:{dateKey}
+    useWarehouseInventoryDashboard key: warehouseInventory:latestSnapshot
+    usePerformanceYearData       key: performanceChart:performanceData (+ listener)
+
+  UI nút «Làm mới» (bỏ qua cache):
+    AttendanceDashboardPage      refresh + isRevalidating
+    AttendanceDailyReportPage    refresh + isRevalidating
+    WarehouseInventory PageHeader refreshCloudSnapshot + isRevalidatingCloud
+    PerformanceChart             refresh + isRefreshing
+
+  Overlay loading: chỉ full-screen khi chưa có data (loading && !cachedRows)
+    Quay lại trang trong TTL → render gần tức thì, 0 GET nếu cache fresh
+
+  Cách đo: DevTools Network — chuyển trang rồi Back trong <3 phút,
+    kỳ vọng không lặp lại burst get() Firebase.
+
+────────────────────────────────────────────────────────────────────────────────
+B.18 BUNDLE SPLITTING — LAZY CHUNK & PHÂN TÍCH KÍCH THƯỚC
+────────────────────────────────────────────────────────────────────────────────
+
+  Phân tích: npm run build:analyze → dist/bundle-stats.html (treemap gzip/brotli)
+  chunkSizeWarningLimit: 1000 kB (vite.config.js) — cảnh báo sớm chunk >1MB
+
+  JS tải ngay khi mở app (index.html):
+    index-*.js ~826 KB raw / ~232 KB gzip
+    Gồm: React, router, i18n, Firebase (auth+RTDB+storage), App shell (Navbar, routes map)
+    KHÔNG chứa: exceljs, xlsx, chart.js, recharts, jspdf, html-to-image
+
+  Chunk lazy riêng (chỉ tải khi vào route / bấm export):
+    exceljs.min-*.js     ~940 KB — export Excel (payroll, attendance, leave…)
+    xlsx-*.js            ~488 KB — upload/import Excel
+    generateCategoricalChart-*.js ~373 KB — Recharts core
+    jspdf.es.min-*.js    ~381 KB — export PDF MC Defect (dynamic import)
+    html2canvas.esm-*.js ~202 KB — html-to-image / jsPDF dependency
+    index-3p3YAhy5.js    ~185 KB — Chart.js (warehouse/workplace registerChartJs)
+
+  Quy tắc tránh leak vào main:
+    import tĩnh exceljs/xlsx/jspdf/html-to-image CHỈ ở module lazy route
+    Export handler → await import("exceljs") / import("html-to-image") / import("jspdf")
+    Đã chuyển dynamic: ExportExcelButton, AttendanceComboChartModal export,
+      useMcDefectDashboard export, PerformanceChart PNG, S90dDailyTabPanel, ChartView xlsx
+
+  Không dùng manualChunks tùy ý (đã gây circular chunk + runtime error trước đây).
 
 ================================================================================
   Hết tài liệu ALL-IN-ONE — docs/DU_LIEU_LOAD_RENDER_PROJECT.txt

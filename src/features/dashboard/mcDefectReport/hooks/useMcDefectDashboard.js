@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { toPng } from "html-to-image";
-import { jsPDF } from "jspdf";
 import { db, ref, remove, set } from "@/services/firebase";
 import { useFirebaseValue } from "@/hooks/useFirebaseValue";
 import {
@@ -452,6 +450,7 @@ export function useMcDefectDashboard() {
   const handleDownloadImage = useCallback(async () => {
     if (!dashboardExportRef.current) return;
     try {
+      const { toPng } = await import("html-to-image");
       const dataUrl = await toPng(dashboardExportRef.current, {
         cacheBust: true,
         pixelRatio: 2,
@@ -473,6 +472,10 @@ export function useMcDefectDashboard() {
   const handleDownloadPdf = useCallback(async () => {
     if (!dashboardExportRef.current) return;
     try {
+      const [{ toPng }, { jsPDF }] = await Promise.all([
+        import("html-to-image"),
+        import("jspdf"),
+      ]);
       const dataUrl = await toPng(dashboardExportRef.current, {
         cacheBust: true,
         pixelRatio: 2,

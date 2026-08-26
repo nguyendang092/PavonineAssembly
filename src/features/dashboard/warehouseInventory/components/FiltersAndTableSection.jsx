@@ -1,6 +1,13 @@
-import React, { memo } from "react";
+import React, { memo, useRef, useCallback, useMemo } from "react";
 import { FiFilter } from "react-icons/fi";
 import { formatKRW } from "../lib/parse";
+import {
+  useHrTableRowVirtualizer,
+  HrVirtualTableSpacerRow,
+  shouldHrTableVirtualize,
+} from "@/hooks/hrTableVirtualization.jsx";
+
+const WAREHOUSE_TABLE_COL_SPAN = 12;
 function FiltersAndTableSection(props) {
   const {
     tl,
@@ -29,6 +36,116 @@ function FiltersAndTableSection(props) {
     tableTotalPages,
     codeDiffSoftScale,
   } = props;
+
+  const scrollRef = useRef(null);
+  const shouldVirtualize = shouldHrTableVirtualize(filteredStructuredRows.length);
+  const tableRows = shouldVirtualize ? filteredStructuredRows : pagedStructuredRows;
+
+  const getVirtualItemKey = useCallback(
+    (index) => {
+      const r = filteredStructuredRows[index];
+      return `${r?.whCode}-${r?.monthKey}-${r?.code}-${index}`;
+    },
+    [filteredStructuredRows],
+  );
+
+  const { virtualItems, paddingTop, paddingBottom } = useHrTableRowVirtualizer({
+    rowCount: filteredStructuredRows.length,
+    enabled: shouldVirtualize,
+    scrollRef,
+    estimateRowHeight: 34,
+    getItemKey: getVirtualItemKey,
+  });
+
+  const visibleRows = useMemo(() => {
+    if (!shouldVirtualize) return tableRows;
+    return virtualItems
+      .map((item) => filteredStructuredRows[item.index])
+      .filter(Boolean);
+  }, [filteredStructuredRows, shouldVirtualize, tableRows, virtualItems]);
+
+  const renderWarehouseRow = useCallback(
+    (r, idx) => (
+      <tr
+        key={`${r.whCode}-${r.warehouseName}-${r.category}-${r.monthKey}-${r.code}-${idx}`}
+        className="border-b border-indigo-100/90 transition-colors hover:bg-indigo-100/55 dark:border-indigo-900/50 dark:hover:bg-indigo-900/45"
+        style={{
+          backgroundColor: (() => {
+            const ratio = Math.min(
+              1,
+              Math.abs(r.codeDelta ?? 0) / codeDiffSoftScale,
+            );
+            const alpha = 0.06 + ratio * 0.16;
+            if ((r.codeDelta ?? 0) > 0) {
+              return `rgba(254, 226, 226, ${alpha})`;
+            }
+            if ((r.codeDelta ?? 0) < 0) {
+              return `rgba(219, 234, 254, ${alpha})`;
+            }
+            return idx % 2 === 0
+              ? "rgba(255,255,255,0.8)"
+              : "rgba(238,242,255,0.45)";
+          })(),
+        }}
+      >
+        <td className="px-2 py-1.5 font-mono text-xs font-bold text-indigo-950 dark:text-indigo-100">
+          {r.whCode}
+        </td>
+        <td
+          className="max-w-[220px] truncate px-2 py-1.5 text-slate-800 dark:text-slate-200"
+          title={r.warehouseName !== "—" ? String(r.warehouseName) : undefined}
+        >
+          {r.warehouseName}
+        </td>
+        <td className="px-2 py-1.5 text-slate-800 dark:text-slate-200">
+          {r.category}
+        </td>
+        <td className="px-2 py-1.5 font-semibold text-indigo-900 dark:text-indigo-200">
+          {r.month}
+        </td>
+        <td className="px-2 py-1.5 font-mono text-slate-800 dark:text-slate-200">
+          {r.code === "∅" ? tl("codeEmptyLabel", "(코드 없음)") : r.code}
+        </td>
+        <td
+          className="max-w-[160px] truncate px-2 py-1.5 text-[11px] font-semibold text-cyan-900 dark:text-cyan-200"
+          title={r.reason !== "—" ? String(r.reason) : undefined}
+        >
+          {r.reason}
+        </td>
+        <td
+          className="max-w-[100px] truncate px-2 py-1.5 text-[11px] font-semibold text-sky-900 dark:text-sky-200"
+          title={r.unit !== "—" ? String(r.unit) : undefined}
+        >
+          {r.unit}
+        </td>
+        <td className="px-2 py-1.5 tabular-nums font-semibold text-amber-900 dark:text-amber-200">
+          {r.actualQty.toLocaleString("vi-VN", {
+            maximumFractionDigits: 4,
+          })}
+        </td>
+        <td className="px-2 py-1.5 tabular-nums text-slate-800 dark:text-slate-200">
+          {r.sysQty.toLocaleString("vi-VN", {
+            maximumFractionDigits: 4,
+          })}
+        </td>
+        <td className="px-2 py-1.5 tabular-nums font-bold text-orange-700 dark:text-orange-400">
+          {r.monthlyDiff.toLocaleString("vi-VN", {
+            maximumFractionDigits: 4,
+          })}
+        </td>
+        <td className="px-2 py-1.5 tabular-nums font-bold text-rose-700 dark:text-rose-400">
+          {r.codeDelta.toLocaleString("vi-VN", {
+            maximumFractionDigits: 4,
+          })}
+        </td>
+        <td className="px-2 py-1.5 tabular-nums text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+          {formatKRW(r.amountDelta ?? 0)}
+        </td>
+      </tr>
+    ),
+    [codeDiffSoftScale, tl],
+  );
+
   return (
     <>
       <div className="dashboard-no-print mt-6 rounded-2xl border-2 border-indigo-400/55 bg-gradient-to-br from-white via-indigo-50/80 to-violet-50/70 p-4 dark:border-indigo-500/40 dark:from-slate-950 dark:via-indigo-950/50 dark:to-violet-950/35">
@@ -245,7 +362,10 @@ function FiltersAndTableSection(props) {
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border-2 border-indigo-400/55 bg-gradient-to-br from-white via-indigo-50/70 to-violet-50/60 dark:border-indigo-500/40 dark:from-slate-950 dark:via-indigo-950/45 dark:to-violet-950/30">
-        <div className="overflow-x-auto">
+        <div
+          ref={shouldVirtualize ? scrollRef : null}
+          className={`overflow-x-auto${shouldVirtualize ? " wah-inv-table-scroll hr-table-virtual-scroll" : ""}`}
+        >
           <table className="wah-inv-data-table min-w-[1640px] w-full border-collapse text-center text-xs sm:text-sm">
             <thead>
               <tr className="border-b-2 border-indigo-400/90 bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-600 text-white dark:border-indigo-500 dark:from-indigo-700 dark:via-violet-700 dark:to-indigo-700">
@@ -288,107 +408,43 @@ function FiltersAndTableSection(props) {
               </tr>
             </thead>
             <tbody className="bg-white/90 dark:bg-slate-950/75">
-              {pagedStructuredRows.map((r, idx) => (
-                <tr
-                  key={`${r.whCode}-${r.warehouseName}-${r.category}-${r.monthKey}-${r.code}-${tablePage}-${idx}`}
-                  className="border-b border-indigo-100/90 transition-colors hover:bg-indigo-100/55 dark:border-indigo-900/50 dark:hover:bg-indigo-900/45"
-                  style={{
-                    backgroundColor: (() => {
-                      const ratio = Math.min(
-                        1,
-                        Math.abs(r.codeDelta ?? 0) / codeDiffSoftScale,
-                      );
-                      const alpha = 0.06 + ratio * 0.16;
-                      if ((r.codeDelta ?? 0) > 0) {
-                        return `rgba(254, 226, 226, ${alpha})`;
-                      }
-                      if ((r.codeDelta ?? 0) < 0) {
-                        return `rgba(219, 234, 254, ${alpha})`;
-                      }
-                      return idx % 2 === 0
-                        ? "rgba(255,255,255,0.8)"
-                        : "rgba(238,242,255,0.45)";
-                    })(),
-                  }}
-                >
-                  <td className="px-2 py-1.5 font-mono text-xs font-bold text-indigo-950 dark:text-indigo-100">
-                    {r.whCode}
-                  </td>
-                  <td
-                    className="max-w-[220px] truncate px-2 py-1.5 text-slate-800 dark:text-slate-200"
-                    title={
-                      r.warehouseName !== "—"
-                        ? String(r.warehouseName)
-                        : undefined
-                    }
-                  >
-                    {r.warehouseName}
-                  </td>
-                  <td className="px-2 py-1.5 text-slate-800 dark:text-slate-200">
-                    {r.category}
-                  </td>
-                  <td className="px-2 py-1.5 font-semibold text-indigo-900 dark:text-indigo-200">
-                    {r.month}
-                  </td>
-                  <td className="px-2 py-1.5 font-mono text-slate-800 dark:text-slate-200">
-                    {r.code === "∅"
-                      ? tl("codeEmptyLabel", "(코드 없음)")
-                      : r.code}
-                  </td>
-                  <td
-                    className="max-w-[160px] truncate px-2 py-1.5 text-[11px] font-semibold text-cyan-900 dark:text-cyan-200"
-                    title={
-                      r.reason !== "—" ? String(r.reason) : undefined
-                    }
-                  >
-                    {r.reason}
-                  </td>
-                  <td
-                    className="max-w-[100px] truncate px-2 py-1.5 text-[11px] font-semibold text-sky-900 dark:text-sky-200"
-                    title={r.unit !== "—" ? String(r.unit) : undefined}
-                  >
-                    {r.unit}
-                  </td>
-                  <td className="px-2 py-1.5 tabular-nums font-semibold text-amber-900 dark:text-amber-200">
-                    {r.actualQty.toLocaleString("vi-VN", {
-                      maximumFractionDigits: 4,
-                    })}
-                  </td>
-                  <td className="px-2 py-1.5 tabular-nums text-slate-800 dark:text-slate-200">
-                    {r.sysQty.toLocaleString("vi-VN", {
-                      maximumFractionDigits: 4,
-                    })}
-                  </td>
-                  <td className="px-2 py-1.5 tabular-nums font-bold text-orange-700 dark:text-orange-400">
-                    {r.monthlyDiff.toLocaleString("vi-VN", {
-                      maximumFractionDigits: 4,
-                    })}
-                  </td>
-                  <td className="px-2 py-1.5 tabular-nums font-bold text-rose-700 dark:text-rose-400">
-                    {r.codeDelta.toLocaleString("vi-VN", {
-                      maximumFractionDigits: 4,
-                    })}
-                  </td>
-                  <td className="px-2 py-1.5 tabular-nums text-xs font-semibold text-emerald-900 dark:text-emerald-200">
-                    {formatKRW(r.amountDelta ?? 0)}
-                  </td>
-                </tr>
-              ))}
+              {shouldVirtualize ? (
+                <>
+                  <HrVirtualTableSpacerRow
+                    colSpan={WAREHOUSE_TABLE_COL_SPAN}
+                    heightPx={paddingTop}
+                  />
+                  {visibleRows.map((r, idx) => renderWarehouseRow(r, idx))}
+                  <HrVirtualTableSpacerRow
+                    colSpan={WAREHOUSE_TABLE_COL_SPAN}
+                    heightPx={paddingBottom}
+                  />
+                </>
+              ) : (
+                visibleRows.map((r, idx) => renderWarehouseRow(r, idx))
+              )}
             </tbody>
           </table>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t-2 border-indigo-200/80 bg-white/85 px-3 py-2 text-[11px] font-bold text-indigo-950 dark:border-indigo-800/90 dark:bg-slate-950/85 dark:text-indigo-100">
           <span className="tabular-nums">
-            {tl(
-              "tablePageSummary",
-              "페이지 {{page}}/{{total}} · {{count}}행",
-              {
-                page: tablePage,
-                total: tableTotalPages,
-                count: filteredStructuredRows.length,
-              },
-            )}
+            {shouldVirtualize
+              ? tl(
+                  "tableVirtualSummary",
+                  "Cuộn ảo · {{count}} dòng",
+                  { count: filteredStructuredRows.length },
+                )
+              : tl(
+                  "tablePageSummary",
+                  "페이지 {{page}}/{{total}} · {{count}}행",
+                  {
+                    page: tablePage,
+                    total: tableTotalPages,
+                    count: filteredStructuredRows.length,
+                  },
+                )}
           </span>
+          {!shouldVirtualize ? (
           <div className="dashboard-no-print flex items-center gap-2">
             <button
               type="button"
@@ -409,6 +465,7 @@ function FiltersAndTableSection(props) {
               {tl("paginationNext", "다음")}
             </button>
           </div>
+          ) : null}
         </div>
       </div>
     </>

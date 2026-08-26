@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useFirebaseOnce } from "@/hooks/useFirebaseOnce";
+import { buildAttendanceDailyReportCacheKey } from "@/utils/queryCache";
 import { reconcileAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
 import {
   getIsCompensatoryDayFromRaw,
@@ -14,11 +15,32 @@ export function useAttendanceDailyReportData(dateKey) {
   const regularPath = dateKey ? `attendance/${dateKey}` : null;
   const seasonalPath = dateKey ? `seasonalAttendance/${dateKey}` : null;
 
-  const regularFetch = useFirebaseOnce(regularPath, [dateKey]);
-  const seasonalFetch = useFirebaseOnce(seasonalPath, [dateKey]);
+  const regularFetch = useFirebaseOnce(regularPath, [dateKey], {
+    cacheKey: dateKey
+      ? buildAttendanceDailyReportCacheKey("attendance", dateKey)
+      : undefined,
+  });
+  const seasonalFetch = useFirebaseOnce(seasonalPath, [dateKey], {
+    cacheKey: dateKey
+      ? buildAttendanceDailyReportCacheKey("seasonalAttendance", dateKey)
+      : undefined,
+  });
 
-  const loading = Boolean(dateKey) && (regularFetch.loading || seasonalFetch.loading);
+  const loading =
+    Boolean(dateKey) &&
+    regularFetch.loading &&
+    seasonalFetch.loading &&
+    regularFetch.data === undefined &&
+    seasonalFetch.data === undefined;
+  const isRevalidating =
+    Boolean(dateKey) &&
+    (regularFetch.isRevalidating || seasonalFetch.isRevalidating);
   const error = regularFetch.error || seasonalFetch.error || "";
+
+  const refresh = useCallback(() => {
+    regularFetch.refresh();
+    seasonalFetch.refresh();
+  }, [regularFetch, seasonalFetch]);
 
   const regularEmployees = useMemo(
     () =>
@@ -51,6 +73,8 @@ export function useAttendanceDailyReportData(dateKey) {
 
   return {
     loading,
+    isRevalidating,
+    refresh,
     error,
     regularEmployees: error ? [] : regularEmployees,
     seasonalEmployees: error ? [] : seasonalEmployees,

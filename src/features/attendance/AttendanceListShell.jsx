@@ -292,6 +292,7 @@ function AttendanceListShell({
         </div>
       </aside>
       <div
+        id="hr-page-main-scroll"
         className="attendance-with-sidebar__main"
         onMouseEnter={handleMainMouseEnter}
       >

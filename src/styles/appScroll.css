@@ -1,0 +1,19 @@
+/**
+ * Scroll toàn app — wheel hoạt động trên nội dung, không cần trỏ vào thanh scroll.
+ */
+
+#app-main-scroll,
+#hr-page-main-scroll,
+.mold-main-scroll {
+  overscroll-behavior-y: auto;
+}
+
+#app-main-scroll :is(
+  .attendance-table-scroll,
+  .payroll-salary-table-scroll,
+  .annual-leave-table-scroll,
+  .overflow-x-auto
+) {
+  overscroll-behavior: auto;
+  overscroll-behavior-y: auto;
+}
