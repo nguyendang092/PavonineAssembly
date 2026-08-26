@@ -26,6 +26,9 @@ export const ANNUAL_LEAVE_EMP = {
 
 export const ANNUAL_LEAVE_META_KEY = "_meta";
 
+/** `_meta.migrated` — đã chuyển hết key legacy sang `emp_{mnv}`; bỏ qua scan migrate. */
+export const ANNUAL_LEAVE_META_MIGRATED = "migrated";
+
 /**
  * Ngày bắt đầu tính PN/1/2PN từ điểm danh — theo năm.
  * 2026: từ 01/06 (tháng trước là thử nghiệm). Các năm sau: từ 01/01.
@@ -36,6 +39,9 @@ export const ANNUAL_LEAVE_ATTENDANCE_COUNT_START_BY_YEAR = {
 
 /** Năm nhỏ nhất trong dropdown quản lý phép năm. */
 export const ANNUAL_LEAVE_MANAGER_MIN_YEAR = 2026;
+
+/** Trên ngưỡng này — bắt buộc chọn bộ phận hoặc tìm kiếm trước khi render bảng. */
+export const ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD = 500;
 
 /** ISO `yyyy-mm-dd` — ngày đầu tiên được trừ phép từ điểm danh trong năm. */
 export function annualLeaveAttendanceCountStartDate(year) {

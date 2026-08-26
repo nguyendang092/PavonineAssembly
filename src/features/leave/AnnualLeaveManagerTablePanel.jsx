@@ -53,6 +53,8 @@ function AnnualLeaveManagerTablePanel({
   filteredEntries,
   entries = [],
   deptIndex = {},
+  lazyLoadRequired = false,
+  totalEmployeeCount = 0,
   storedMonthlyByEmpKey = {},
   yearData = null,
   year,
@@ -435,7 +437,20 @@ function AnnualLeaveManagerTablePanel({
               </tr>
             </thead>
             <tbody>
-              {filteredEntries.length === 0 ? (
+              {lazyLoadRequired ? (
+                <tr>
+                  <td
+                    colSpan={tableColCount}
+                    className="px-4 py-10 text-center text-sm text-black dark:text-slate-300"
+                  >
+                    {t("annualLeave.lazyLoadDeptRequired", {
+                      defaultValue:
+                        "Có {{count}} nhân viên — chọn bộ phận hoặc tìm MNV/tên để xem bảng (giảm tải dữ liệu).",
+                      count: totalEmployeeCount,
+                    })}
+                  </td>
+                </tr>
+              ) : filteredEntries.length === 0 ? (
                 <tr>
                   <td
                     colSpan={tableColCount}
@@ -471,7 +486,8 @@ function AnnualLeaveManagerTablePanel({
       </div>
 
       <div className="annual-leave-pagination shrink-0">
-        <HrTablePagination
+        {!lazyLoadRequired ? (
+          <HrTablePagination
           rangeStart={tablePagination.rangeStart}
           rangeEnd={tablePagination.rangeEnd}
           totalItems={tablePagination.totalItems}
@@ -482,6 +498,7 @@ function AnnualLeaveManagerTablePanel({
           onPageChange={tablePagination.setPage}
           onPageSizeChange={tablePagination.setPageSize}
         />
+        ) : null}
       </div>
     </>
   );
@@ -490,6 +507,8 @@ function AnnualLeaveManagerTablePanel({
 function areTablePanelPropsEqual(prev, next) {
   return (
     prev.filteredEntries === next.filteredEntries &&
+    prev.lazyLoadRequired === next.lazyLoadRequired &&
+    prev.totalEmployeeCount === next.totalEmployeeCount &&
     prev.entries === next.entries &&
     prev.deptIndex === next.deptIndex &&
     prev.storedMonthlyByEmpKey === next.storedMonthlyByEmpKey &&

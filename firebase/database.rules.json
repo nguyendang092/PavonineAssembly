@@ -60,6 +60,19 @@
       }
     },
 
+    "attendanceLeaveAgg": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$year": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$empKey": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+
     "userDepartments": {
       ".read": "auth != null",
       ".write": "auth != null",

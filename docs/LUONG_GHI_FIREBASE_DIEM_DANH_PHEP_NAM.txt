@@ -1,0 +1,998 @@
+================================================================================
+  PAVONINE ASSEMBLY — LUỒNG GHI FIREBASE
+  Sửa điểm danh · Điều chỉnh phép năm · Sync phép năm
+  Cập nhật: 2026-08-26
+================================================================================
+
+Mục lục
+  0.  Tóm tắt nhanh (1 trang)
+  1.  Hai nhánh dữ liệu Firebase liên quan
+  2.  Điều kiện bỏ qua sync phép năm
+  3.  Luồng A — Sửa / thêm điểm danh (form modal)
+  4.  Luồng B — Xóa điểm danh
+  5.  Luồng C — Upload Excel điểm danh
+  6.  Luồng D — Đánh dấu ngày off / lễ / nghỉ bù (_meta)
+  7.  Luồng E — Điều chỉnh phép năm (cột HR)
+  8.  Luồng F — Sync phép năm (core)
+  9.  Queue debounce (ghi 1 NV sau sửa liên tiếp)
+  10. Bảng path & trường ghi Firebase
+  11. Phân quyền ghi
+  12. Công thức tính khi persist phép năm
+  13. Sơ đồ ASCII tổng hợp
+  14. File nguồn trong codebase
+  15. Liên kết tài liệu khác
+
+================================================================================
+0. TÓM TẮT NHANH (1 TRANG)
+================================================================================
+
+Hai root RTDB chính:
+
+  attendance/{yyyy-mm-dd}/{emp_{mnv}}     Bản ghi điểm danh theo ngày
+  annualLeave/{year}/emp_{mnv}          Bản ghi phép năm (stored)
+  annualLeave/{year}/_meta                Metadata năm (updatedAt, rowCount, …)
+
+Nguyên tắc:
+
+  • Sửa điểm danh → LUÔN ghi attendance trước (update 1 node).
+  • Phép năm KHÔNG tự ghi mỗi lần render UI — chỉ ghi khi có trigger sync.
+  • Sau sửa loại phép điểm danh → queue sync 1 NV (debounce 450 ms).
+  • Sau xóa / upload Excel điểm danh → sync cả năm (quét attendance).
+  • HR sửa cột «Điều chỉnh» → ghi thẳng annualLeave 1 NV (không qua queue).
+  • Nút «Tính lại» / upload Excel phép → sync cả năm.
+
+Bảng trigger → hàm → phạm vi:
+
+  Trigger                              Hàm chính                         Ghi gì
+  ─────────────────────────────────────────────────────────────────────────────────
+  Lưu form điểm danh                   update attendance                 attendance
+                                       + applyAnnualLeaveDeductionDelta  annualLeave (1 NV, queue)
+  Thêm NV mới (form)                   update attendance                 attendance
+                                       + applyAnnualLeaveDeductionDelta  annualLeave (1 NV, queue)
+  Xóa 1 dòng điểm danh                 remove attendance                 attendance
+                                       + persistAnnualLeaveYear…         annualLeave (cả năm)
+  Xóa cả ngày (Admin)                  persistAnnualLeaveYear…           annualLeave (cả năm)
+                                       + remove attendance/{date}        attendance
+  Upload Excel điểm danh               set attendance/{date}             attendance
+                                       + persistAnnualLeaveYear…         annualLeave (cả năm)
+  Ngày off / lễ / nghỉ bù             update …/{date}/_meta             _meta only (không sync phép)
+  HR sửa «Điều chỉnh» phép             persistAnnualLeaveEmployeeAdj…    annualLeave (1 NV)
+  Nút «Tính lại» phép năm              persistAnnualLeaveYear…           annualLeave (cả năm)
+  Upload Excel phép năm                update annualLeave/{year}         annualLeave (merge)
+                                       + persistAnnualLeaveYear…         annualLeave (recalc)
+  Xóa dữ liệu năm phép                 remove annualLeave/{year}         xóa cả năm
+
+Skip sync phép (chỉ ghi attendance):
+
+  attendanceRootPath = seasonalAttendance   (điểm danh thời vụ)
+  attendanceRootPath = koreanAttendance     (điểm danh Hàn)
+
+================================================================================
+1. HAI NHÁNH DỮ LIỆU FIREBASE LIÊN QUAN
+================================================================================
+
+1.1 Điểm danh — attendance root
+─────────────────────────────────
+
+  Path node NV:
+    {attendanceRootPath}/{yyyy-mm-dd}/{emp_{mnv}}
+
+  attendanceRootPath theo trang:
+    /attendance-list              → attendance
+    /seasonal-staff-attendance    → seasonalAttendance
+    /attendance-salary (giờ công) → attendance (đọc; form sửa qua modal điểm danh)
+    Korean timesheet              → koreanAttendance
+
+  Khóa NV chuẩn: emp_{mnv}  (vd. emp_12345)
+  Hàm: attendanceFirebaseKeyFromMnv(), annualLeaveEmpFirebaseKey()
+
+  Metadata ngày (không phải bản ghi NV):
+    {attendanceRootPath}/{yyyy-mm-dd}/_meta
+    Trường: isOffDay, isHolidayDay, isCompensatoryDay, earlyOtPaperwork, …
+
+1.2 Phép năm — annualLeave root
+─────────────────────────────────
+
+  Path node NV:
+    annualLeave/{year}/emp_{mnv}
+
+  Metadata năm:
+    annualLeave/{year}/_meta
+    Trường: updatedAt, updatedBy, rowCount
+
+  Hằng số: ANNUAL_LEAVE_RTDB_ROOT = "annualLeave"
+           ANNUAL_LEAVE_META_KEY = "_meta"
+
+================================================================================
+2. ĐIỀU KIỆN BỎ QUA SYNC PHÉP NĂM
+================================================================================
+
+File: src/features/attendance/attendanceSeasonalStt.js
+
+  shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)
+    → true nếu root là seasonalAttendance hoặc koreanAttendance
+
+  Khi skip:
+    • Form điểm danh vẫn ghi attendance bình thường.
+    • syncAnnualLeaveAfterAttendanceSave trả { applied: false, reason: "isolated" }.
+    • Upload / xóa điểm danh thời vụ / Hàn không gọi persistAnnualLeaveYearFromAttendance.
+
+  Ngày bắt đầu trừ phép từ điểm danh (chỉ attendance chính):
+    File: src/features/leave/annualLeaveFields.js
+    • 2026: từ 2026-06-01 (tháng 1–5 = display-only, không trừ phép khi sync)
+    • Năm > 2026: từ {year}-01-01
+
+  Loại phép trừ phép năm khi quét attendance:
+    File: src/features/leave/annualLeaveBalanceLookup.js
+    • «Phép năm» (PN)     → −1
+    • «1/2 Phép năm»      → −0.5
+    • Các loại khác       → 0 (không trừ)
+
+================================================================================
+3. LUỒNG A — SỬA / THÊM ĐIỂM DANH (FORM MODAL)
+================================================================================
+
+UI:     AttendanceEmployeeFormModal.jsx
+        (mở từ AttendanceList, SeasonalStaffAttendance, PayrollSalaryCalculator, …)
+
+Quyền:  canEditAttendanceForEmployee() — Admin/HR mọi NV; manager chỉ bộ phận được gán
+        Thêm NV: canAddAttendanceForDepartment()
+
+3.1 Chuỗi xử lý khi bấm Lưu
+────────────────────────────
+
+  handleSubmit()
+    │
+    ├─ [Sửa dòng] editAttendanceKey có giá trị
+    │     buildEmployeeAttendanceDayDocument(form, existing, isSeasonal)
+    │     mergeAttendanceDayNodeForPersist(existingRaw, dayDoc, editAttendanceKey)
+    │     path = `{attendanceRootPath}/{selectedDate}/{editAttendanceKey}`
+    │     await update(ref(db), { [path]: persistedNode })
+    │     finishSaveSuccess(..., oldRecordForLeave, loaiPhepToSave, savePayload)
+    │
+    └─ [Thêm mới]
+          resolveAttendanceFormPersistTarget() → firebaseKey = emp_{mnv}
+          buildEmployeeAttendanceDayDocument + merge
+          path = `{attendanceRootPath}/{selectedDate}/{firebaseKey}`
+          await update(ref(db), { [path]: persistedNode })
+          finishSaveSuccess(...)
+
+  finishSaveSuccess()
+    → đóng modal, toast thành công, onSaved callback
+    → void syncAnnualLeaveAfterAttendanceSave(oldRecord, loaiPhepToSave)
+
+3.2 Ghi attendance — path & payload
+────────────────────────────────────
+
+  API Firebase:  update(ref(db), { [path]: persistedNode })
+  Không dùng set() toàn node ngày — chỉ patch 1 NV.
+
+  persistedNode = merge(existing, dayDoc):
+    • Trường trong dayDoc ghi đè.
+    • Trường không có trong form giữ nguyên (vd. chamCong, phepNam, link ảnh, …).
+    • Luôn có id = firebaseKey.
+
+  Trường chính từ form (attendanceEmployeeFields.js + payrollEmployeeFieldKeys):
+    stt / sttThoiVu (thời vụ), mnv, mvt, hoVaTen, gioiTinh, ngayVaoLam, ngayHopDong,
+    maBoPhan, boPhan, gioVao, gioRa, caLamViec, loaiPhep, boPhanChuaDung,
+    hoVaTenNenVang, loaiPhepCheck, linkHinhPhepNam, linkGiayTangCa, …
+
+  Build logic: src/utils/attendanceEmployeeRecord.js
+    buildEmployeeAttendanceDayDocument()
+    mergeAttendanceDayNodeForPersist()
+
+3.3 Sync phép sau lưu điểm danh
+────────────────────────────────
+
+  syncAnnualLeaveAfterAttendanceSave(oldRecord, newLoaiPhep)
+    │
+    ├─ shouldSkipAnnualLeaveForAttendanceRoot? → return (không sync)
+    │
+    └─ applyAnnualLeaveDeductionDelta(db, {
+         year: annualLeaveYearFromDateKey(selectedDate),
+         attendanceRootPath,
+         updatedBy: user.email,
+         oldRecord,
+         newLoaiPhep,
+       })
+
+  applyAnnualLeaveDeductionDelta (annualLeaveAttendanceSync.js):
+    1. oldLp = loại phép cũ (từ oldRecord hoặc oldLoaiPhep)
+    2. newLp = loại phép mới (từ newRecord hoặc newLoaiPhep)
+    3. delta = deduction(newLp) − deduction(oldLp)
+    4. delta === 0 → { applied: false, reason: "no_delta" }  (KHÔNG ghi phép năm)
+    5. Có empKey từ oldRecord/newRecord
+         → queueSingleEmployeeAnnualLeavePersist (debounce 450 ms)
+    6. Không resolve được empKey
+         → fallback persistAnnualLeaveYearFromAttendance (cả năm)
+
+  Lưu ý:
+    • Đổi giờ vào/ra, ca, tên, … KHÔNG trigger sync nếu loại phép không đổi.
+    • Đổi loại phép PN ↔ 1/2PN ↔ khác → có delta → queue sync 1 NV.
+
+3.4 Sơ đồ ASCII — Luồng A
+──────────────────────────
+
+  [User: Lưu form điểm danh]
+            │
+            ▼
+  buildEmployeeAttendanceDayDocument + mergeAttendanceDayNodeForPersist
+            │
+            ▼
+  update(ref(db), { attendance/{date}/emp_{mnv}: persistedNode })
+            │
+            ▼
+  finishSaveSuccess → UI đóng / toast
+            │
+            ▼
+  applyAnnualLeaveDeductionDelta
+            │
+     delta=0? ──yes──► (dừng — không ghi annualLeave)
+            │
+           no
+            ▼
+  queueSingleEmployeeAnnualLeavePersist (450ms debounce)
+            │
+            ▼
+  persistSingleEmployeeAnnualLeaveFromAttendance
+            │
+            ▼
+  update(ref(db), annualLeave/{year}/emp_{mnv}: { used, balance, … })
+  touchAnnualLeaveYearMeta → _meta.updatedAt
+
+================================================================================
+4. LUỒNG B — XÓA ĐIỂM DANH
+================================================================================
+
+Hook: src/features/attendance/useAttendanceListMutations.js
+
+4.1 Xóa một nhân viên (handleDelete)
+─────────────────────────────────────
+
+  Quyền: canDeleteEmployeeData (Admin/HR) + canEditAttendanceForEmployee
+
+  Thứ tự ghi:
+    1. remove(ref(db, `{attendanceRootPath}/{selectedDate}/{id}`))
+    2. Nếu KHÔNG skip phép:
+         persistAnnualLeaveYearFromAttendance(db, {
+           year: annualLeaveYearFromDateKey(selectedDate),
+           attendanceRootPath,
+           updatedBy: user.email,
+         })
+
+  Sync cả năm vì xóa 1 ngày có thể ảnh hưởng attendanceMonthly / deductions
+  toàn bộ tính toán lại từ quét attendance.
+
+4.2 Xóa cả ngày (handleDeleteAllData)
+──────────────────────────────────────
+
+  Quyền: isAdminAccess (Admin/HR) + xác nhận 2 bước (prompt «XOA»)
+
+  Thứ tự ghi (quan trọng — sync TRƯỚC khi xóa):
+    1. persistAnnualLeaveYearFromAttendance(...)   ← attendance còn nguyên
+    2. remove(ref(db, `{attendanceRootPath}/{selectedDate}`))
+
+  Lý do: persist đọc attendance hiện tại để tính used/balance đúng trước khi node ngày biến mất.
+
+4.3 Sơ đồ ASCII — Luồng B
+──────────────────────────
+
+  [Xóa 1 NV]
+      remove attendance/{date}/{id}
+      → persistAnnualLeaveYearFromAttendance (cả năm)
+
+  [Xóa cả ngày — Admin]
+      persistAnnualLeaveYearFromAttendance (cả năm)
+      → remove attendance/{date}
+
+================================================================================
+5. LUỒNG C — UPLOAD EXCEL ĐIỂM DANH
+================================================================================
+
+File: src/features/attendance/AttendanceUploadHandler.js
+      handleUploadExcel({ db, selectedDate, attendanceRootPath, user, … })
+
+5.1 Chuỗi xử lý
+────────────────
+
+  1. Parse Excel → map emp_{mnv} → object từng NV
+  2. get(ref(db, `{attendanceRootPath}/{selectedDate}`))
+  3. mergeAttendanceExcelUploadIntoDaySnapshot(existing, dataToUpload, { seasonal })
+  4. set(ref(db, `{attendanceRootPath}/{selectedDate}`), payload)
+     → GHI TOÀN BỘ node ngày (khác update từng NV ở form)
+  5. Nếu KHÔNG skip phép:
+       persistAnnualLeaveYearFromAttendance(db, {
+         year: annualLeaveYearFromDateKey(selectedDate),
+         attendanceRootPath,
+         updatedBy: user.email,
+       })
+
+5.2 Ghi attendance
+──────────────────
+
+  Path:   {attendanceRootPath}/{yyyy-mm-dd}
+  API:    set() — thay thế toàn bộ children của ngày (merge logic trong code trước set)
+  Trường: giống form (stt, mnv, hoVaTen, gioVao, gioRa, loaiPhep, …)
+          Thời vụ: sttThoiVu thay vì stt
+
+5.3 Sync phép
+─────────────
+
+  Luôn sync cả năm (không queue 1 NV) vì upload hàng loạt.
+
+================================================================================
+6. LUỒNG D — ĐÁNH DẤU NGÀY OFF / LỄ / NGHỈ BÙ (_meta)
+================================================================================
+
+UI:   AttendanceOffDaysModal.jsx
+Quyền: canManageAttendanceOffHolidayDays → Admin/HR
+
+  Path ghi:
+    {attendanceRootPath}/{yyyy-mm-dd}/_meta
+
+  API: update(ref(db), updates) — nhiều ngày một lần
+
+  Trường patch (mergeAttendanceDayMeta):
+    isOffDay, isHolidayDay, isCompensatoryDay
+    (giữ earlyOtPaperwork, nightOtPaperwork, … nếu đã có)
+
+  KHÔNG gọi persistAnnualLeave* sau lưu.
+  Ảnh hưởng phép năm gián tiếp: meta đổi loại hiển thị ngày (OFF/HOLIDAY/NB),
+  nhưng trừ phép chỉ theo loaiPhep trên bản ghi NV, không theo _meta.
+
+================================================================================
+7. LUỒNG E — ĐIỀU CHỈNH PHÉP NĂM (CỘT HR)
+================================================================================
+
+UI:   AnnualLeaveManagerTablePanel → AnnualLeaveAdjustmentCell
+      handleAdjustmentSave(empKey, adjustment, raw)
+
+Quyền: canManageAnnualLeave → Admin/HR (canManage trong AnnualLeaveManager)
+
+7.1 Chuỗi xử lý
+────────────────
+
+  persistAnnualLeaveEmployeeAdjustment(db, {
+    year,
+    empKey,                    // emp_{mnv}
+    raw,                       // bản ghi hiện tại từ state UI
+    adjustment,                // số user nhập (+1, -1, 0, …)
+    deductionsByEmpKey,          // derived từ attendance (cache UI)
+    attendanceMonthlyByEmpKey,
+    monthWorkSummaryByEmpKey,    // accrual từ lưới giờ công
+    updatedBy: user.email,
+  })
+
+7.2 Ghi Firebase
+────────────────
+
+  Path: annualLeave/{year}/emp_{mnv}
+
+  API: update(ref(db), payload)
+
+  Trường ghi (một lần update):
+    annualLeaveAdjustment     ← điều chỉnh HR (null nếu = 0)
+    hrAnnualLeaveUsed
+    attendanceAnnualLeaveUsed
+    annualLeaveUsed
+    annualLeaveCurrentYear
+    totalAnnualLeave
+    balance
+    startWorkingDate          ← chỉ nếu chuẩn hóa khác bản cũ
+    id                        ← emp_{mnv}
+
+  Sau đó: touchAnnualLeaveYearMeta → _meta.updatedAt, _meta.updatedBy
+
+7.3 Khác với sync từ điểm danh
+──────────────────────────────
+
+  • Ghi TRỰC TIẾP, không qua queue debounce.
+  • Luôn ghi annualLeaveAdjustment (user chủ đích sửa cột này).
+  • Vẫn tính lại used/balance/total từ attendance + payroll accrual + adjustment.
+
+7.4 Sơ đồ ASCII — Luồng E
+──────────────────────────
+
+  [HR: sửa cột Điều chỉnh → Lưu]
+            │
+            ▼
+  parseAnnualLeaveAdjustment(adjustment)
+            │
+            ▼
+  computePersistStateForRaw(updatedRaw, …)
+            │
+            ▼
+  update annualLeave/{year}/emp_{mnv}
+    + annualLeaveAdjustment
+    + used / balance / total / …
+            │
+            ▼
+  touchAnnualLeaveYearMeta
+
+================================================================================
+8. LUỒNG F — SYNC PHÉP NĂM (CORE)
+================================================================================
+
+File trung tâm: src/features/leave/annualLeaveAttendanceSync.js
+
+8.1 persistAnnualLeaveYearFromAttendance — sync cả năm
+──────────────────────────────────────────────────────
+
+  Call sites:
+    • AnnualLeaveManager.handleRecalculate (nút «Tính lại»)
+    • AnnualLeaveManager.handleUpload (sau merge Excel phép)
+    • useAttendanceListMutations (xóa NV / xóa cả ngày)
+    • AttendanceUploadHandler (upload Excel điểm danh)
+    • applyAnnualLeaveDeductionDelta (fallback khi không có empKey)
+
+  Tham số:
+    db, year, attendanceRootPath = "attendance", updatedBy, attendanceRootOverride?
+
+  Các bước:
+    1. get(attendanceRootPath) — toàn bộ cây attendance (hoặc override)
+    2. buildAttendanceAnnualLeaveDerivedMaps(data, year)
+         → deductionsByEmpKey, attendanceMonthlyByEmpKey
+    3. get(annualLeave/{year})
+    4. migrateAnnualLeaveYearToEmpKeys() nếu _meta.migrated !== true (legacy → emp_{mnv})
+    5. indexAnnualLeaveYearByEmpKey(yearData)
+    6. buildAnnualLeaveMonthWorkSummaryByEmpKey(...) — accrual +1/tháng từ giờ công
+    7. Với MỖI empKey trong yearData:
+         state = computePersistStateForRaw(raw, empKey, year, maps)
+         needsPersistUpdate(raw, state)? → skip nếu không đổi
+         Gom payload vào batch (bước 6)
+    7b. 1 NV đổi → runTransaction; ≥2 NV → update(ref(db), multi-path) — 1 round-trip
+    8. Nếu có ít nhất 1 NV đổi → touchAnnualLeaveYearMeta
+
+  Trả về: { results[], appliedCount }
+
+8.2 persistSingleEmployeeAnnualLeaveFromAttendance — sync 1 NV
+────────────────────────────────────────────────────────────
+
+  Gọi từ: annualLeavePersistQueue (sau debounce)
+
+  Giống sync cả năm nhưng:
+    • Chỉ 1 empKey
+    • monthWorkSummary scopeEmpKeySet = { empKey }
+    • Luôn touch _meta nếu có thay đổi
+
+8.3 applyAnnualLeaveDeductionDelta — sau đổi loại phép form
+─────────────────────────────────────────────────────────────
+
+  Xem mục 3.3. Chỉ queue 1 NV khi delta ≠ 0.
+
+8.4 migrateAnnualLeaveYearToEmpKeys — migration key
+───────────────────────────────────────────────────
+
+  Chỉ chạy nếu annualLeave/{year}/_meta/migrated !== true (bước 7).
+  Tự chạy đầu persistAnnualLeaveYearFromAttendance / persistAnnualLeaveMonth…
+
+  Ghi:
+    annualLeave/{year}/emp_{mnv} = { ...raw, id: empKey }
+    annualLeave/{year}/{recordId} = null   (xóa key cũ)
+    annualLeave/{year}/_meta/migrated = true   (sau lần đầu — bỏ scan legacy)
+
+8.5 touchAnnualLeaveYearMeta
+────────────────────────────
+
+  Path: annualLeave/{year}/_meta
+  Chỉ update nếu _meta đã tồn tại:
+    updatedAt: ISO string
+    updatedBy: email (nếu có)
+
+8.6 Upload Excel phép năm (AnnualLeaveManager.handleUpload)
+─────────────────────────────────────────────────────────────
+
+  Bước 1 — merge upload (annualLeaveYearDataOps.js):
+    buildAnnualLeaveMergeUploadUpdates({ year, records, existingYearData, updatedBy })
+    → updates[path] cho từng NV trong file + _meta (rowCount, updatedAt, updatedBy)
+    await update(ref(db), updates)
+    Chỉ ghi NV có trong file; NV khác trong năm giữ nguyên.
+
+  Bước 2 — recalc từ điểm danh:
+    persistAnnualLeaveYearFromAttendance(db, {
+      year,
+      attendanceRootPath: "attendance",
+      updatedBy,
+    })
+
+8.7 Xóa dữ liệu năm phép (handleDeleteYearData)
+─────────────────────────────────────────────────
+
+  remove(ref(db, annualLeave/{year}))
+  Không đụng attendance.
+
+8.8 needsPersistUpdate — khi nào thực sự ghi
+──────────────────────────────────────────────
+
+  So sánh state tính mới với raw trên Firebase:
+    annualLeaveUsed, attendanceAnnualLeaveUsed, hrAnnualLeaveUsed,
+    balance, annualLeaveCurrentYear, totalAnnualLeave, startWorkingDate
+  Hoặc hrAnnualLeaveUsed == null trên Firebase → bắt buộc ghi.
+
+8.9 buildAnnualLeavePersistPayload — trường ghi khi sync
+──────────────────────────────────────────────────────────
+
+  id, startWorkingDate (nếu chuẩn hóa đổi),
+  hrAnnualLeaveUsed,
+  attendanceAnnualLeaveUsed,
+  annualLeaveUsed,
+  annualLeaveCurrentYear,
+  totalAnnualLeave,
+  balance
+
+  KHÔNG ghi đè annualLeaveAdjustment / monthlyLeaveUsage / fullName / …
+  trừ khi persistAnnualLeaveEmployeeAdjustment (mục 7).
+
+8.10 computePersistStateForRaw — nguồn số liệu
+───────────────────────────────────────────────
+
+  • stored monthlyLeaveUsage (Excel HR) + attendanceMonthlyByEmpKey (điểm danh)
+  • deductionsByEmpKey (tổng PN/1/2PN cả năm)
+  • monthWorkSummaryByEmpKey (½ ngày công thực tế → +1 phép/tháng)
+  • computeLiveAnnualLeaveState(raw, liveAttendanceUsed, year, …)
+
+8.11 Sơ đồ ASCII — persistAnnualLeaveYearFromAttendance
+──────────────────────────────────────────────────────────
+
+  [Trigger: Tính lại / xóa DD / upload Excel / fallback delta]
+            │
+            ▼
+  get(attendance) ──► buildAttendanceAnnualLeaveDerivedMaps
+            │
+            ▼
+  get(annualLeave/{year}) ──► migrate legacy keys?
+            │
+            ▼
+  buildAnnualLeaveMonthWorkSummaryByEmpKey
+            │
+            ▼
+  FOR EACH emp_{mnv} in yearData:
+      computeLiveAnnualLeaveState
+      needsPersistUpdate? ──no──► skip
+            │
+           yes
+            ▼
+      update(annualLeave/{year}/emp_{mnv}, payload)
+            │
+            ▼
+  touchAnnualLeaveYearMeta (nếu có thay đổi)
+
+================================================================================
+9. QUEUE DEBOUNCE (GHI 1 NV SAU SỬA LIÊN TIẾP)
+================================================================================
+
+File: src/features/leave/annualLeavePersistQueue.js
+
+  queueSingleEmployeeAnnualLeavePersist(db, params)
+    • Key: `${year}:${empKey}` — ghi đè pending cùng NV
+    • Debounce: FLUSH_DELAY_MS = 450 ms
+    • flush → gọi tuần tự persistSingleEmployeeAnnualLeaveFromAttendance từng entry
+
+  flushAnnualLeavePersistQueueNow()
+    • Test / ép flush ngay (không đợi timer)
+
+  Mục đích: User sửa nhiều lần loại phép liên tiếp → chỉ 1 lần quét + ghi Firebase.
+
+================================================================================
+10. BẢNG PATH & TRƯỜNG GHI FIREBASE
+================================================================================
+
+10.1 Điểm danh — 1 nhân viên (form)
+────────────────────────────────────
+
+  Path:   {attendanceRootPath}/{yyyy-mm-dd}/{emp_{mnv}}
+  API:    update
+  Nguồn:  mergeAttendanceDayNodeForPersist
+
+  Trường thường ghi (không exhaustive):
+    id, stt | sttThoiVu, mnv, mvt, hoVaTen, gioiTinh, ngayVaoLam, ngayHopDong,
+    maBoPhan, boPhan, gioVao, gioRa, caLamViec, loaiPhep, boPhanChuaDung,
+    hoVaTenNenVang, loaiPhepCheck, linkHinhPhepNam, linkGiayTangCa, …
+
+10.2 Điểm danh — cả ngày (upload Excel / xóa)
+───────────────────────────────────────────────
+
+  Path:   {attendanceRootPath}/{yyyy-mm-dd}
+  API:    set (upload) | remove (xóa cả ngày)
+
+10.3 Điểm danh — _meta ngày
+─────────────────────────────
+
+  Path:   {attendanceRootPath}/{yyyy-mm-dd}/_meta
+  API:    update
+  Trường: isOffDay, isHolidayDay, isCompensatoryDay (+ merge giữ trường khác)
+
+10.4 Phép năm — sync / điều chỉnh 1 NV
+──────────────────────────────────────
+
+  Path:   annualLeave/{year}/emp_{mnv}
+  API:    update
+
+  Trường sync (persistAnnualLeave*):
+    id, startWorkingDate?,
+    hrAnnualLeaveUsed,
+    attendanceAnnualLeaveUsed,
+    annualLeaveUsed,
+    annualLeaveCurrentYear,
+    totalAnnualLeave,
+    balance
+
+  Thêm khi điều chỉnh HR:
+    annualLeaveAdjustment
+
+10.5 Phép năm — upload Excel merge
+──────────────────────────────────
+
+  Path:   annualLeave/{year}/{emp_{mnv}}  (từng dòng file)
+          annualLeave/{year}/_meta
+
+  _meta:  updatedAt, updatedBy, rowCount
+
+10.6 Phép năm — xóa năm
+───────────────────────
+
+  Path:   annualLeave/{year}
+  API:    remove (xóa toàn bộ subtree)
+
+10.7 Phép năm — migration key
+─────────────────────────────
+
+  Tạo: annualLeave/{year}/emp_{mnv}
+  Xóa: annualLeave/{year}/{legacyId}  (= null trong multi-path update)
+
+================================================================================
+11. PHÂN QUYỀN GHI
+================================================================================
+
+  Hành động                          Quyền (authRoles.js)
+  ─────────────────────────────────────────────────────────────
+  Sửa điểm danh (form)               canEditAttendanceForEmployee
+  Thêm NV điểm danh                  canAddAttendanceForDepartment
+  Xóa 1 NV điểm danh                 canDeleteEmployeeData + canEdit…
+  Xóa cả ngày                        isAdminAccess
+  Upload Excel điểm danh             user đăng nhập (handler không chặn thêm)
+  Off / lễ / nghỉ bù                 canManageAttendanceOffHolidayDays
+  Tính lại / upload / xóa năm phép   canManageAnnualLeave
+  Điều chỉnh cột phép                canManageAnnualLeave
+
+  isAdminAccess = Admin hoặc HR (theo userDepartments / userRole).
+
+================================================================================
+12. CÔNG THỨC TÍNH KHI PERSIST PHÉP NĂM
+================================================================================
+
+  (Chi tiết đầy đủ: src/features/leave/QUAN_LY_PHEP_NAM_HUONG_DAN.txt,
+   docs/DU_LIEU_LOAD_RENDER_PROJECT.txt PHỤ LỤC A)
+
+  Accrual (+ phép):
+    • +1 phép năm / tháng nếu đạt ½ «Ngày thực tế làm việc» (lưới giờ công)
+    • T6/2026 trở đi cho mọi NV; tháng trước có thể display-only
+
+  Usage (− phép):
+    • monthlyLeaveUsage từ Excel HR (T1–T5 hoặc override)
+    • Điểm danh: PN −1, 1/2PN −0.5 (từ ngày bắt đầu tính theo năm)
+    • attendanceAnnualLeaveUsed = tổng từ điểm danh
+    • hrAnnualLeaveUsed = từ Excel / monthlyLeaveUsage
+    • annualLeaveUsed = tổng hợp theo computeLiveAnnualLeaveState
+
+  Điều chỉnh HR:
+    annualLeaveAdjustment cộng vào phép năm hiện tại (annualLeaveCurrentYear)
+
+  Balance:
+    balance = totalAnnualLeave − annualLeaveUsed (làm tròn theo rule derived)
+
+  Persist chỉ ghi khi số stored ≠ số tính (needsPersistUpdate).
+
+================================================================================
+13. SƠ ĐỒ ASCII TỔNG HỢP
+================================================================================
+
+                    ┌─────────────────────────────────────┐
+                    │         FIREBASE RTDB               │
+                    └─────────────────────────────────────┘
+                           │                    │
+              attendance/{date}/…      annualLeave/{year}/…
+                           │                    │
+     ┌─────────────────────┼────────────────────┼─────────────────────┐
+     │                     │                    │                     │
+  Form modal           Upload Excel          _meta off/lễ          HR Điều chỉnh
+  update 1 NV          set cả ngày           update _meta          update 1 NV
+     │                     │                    │                     │
+     └──────────┬──────────┘                    │                     │
+                │                               │                     │
+                ▼                               │                     │
+     applyAnnualLeaveDeductionDelta             │                     │
+     (delta loại phép)                          │                     │
+                │                               │                     │
+         queue 450ms                            │                     │
+                │                               │                     │
+                ▼                               ▼                     ▼
+     persistSingleEmployee…          (không auto sync)    persistAnnualLeaveEmployeeAdjustment
+                │                                         │
+                └─────────────────┬───────────────────────┘
+                                  │
+                                  ▼
+                    persistAnnualLeaveYearFromAttendance
+                    (xóa DD, upload DD, Tính lại, upload phép, fallback)
+                                  │
+                                  ▼
+                    update annualLeave/{year}/emp_{mnv}
+                    touch _meta.updatedAt
+
+  SKIP nhánh phép (seasonalAttendance, koreanAttendance):
+    Chỉ nhánh trái (attendance) — không xuống annualLeave.
+
+================================================================================
+14. FILE NGUỒN TRONG CODEBASE
+================================================================================
+
+  Điểm danh — ghi
+    src/features/attendance/AttendanceEmployeeFormModal.jsx
+    src/features/attendance/useAttendanceListMutations.js
+    src/features/attendance/AttendanceUploadHandler.js
+    src/features/attendance/AttendanceOffDaysModal.jsx
+    src/utils/attendanceEmployeeRecord.js
+    src/features/attendance/attendanceEmployeeFields.js
+    src/features/attendance/attendanceDayMeta.js
+
+  Skip sync / root
+    src/features/attendance/attendanceSeasonalStt.js
+
+  Phép năm — sync & persist
+    src/features/leave/annualLeaveAttendanceSync.js
+    src/features/leave/annualLeavePersistQueue.js
+    src/features/leave/annualLeaveYearDataOps.js
+    src/features/leave/AnnualLeaveManager.jsx
+    src/features/leave/AnnualLeaveManagerTablePanel.jsx
+
+  Derived / tính toán (đọc attendance, ghi khi persist)
+    src/features/leave/annualLeaveBalanceLookup.js
+    src/features/leave/annualLeaveDerived.js
+    src/features/leave/annualLeavePayrollAccrual.js
+    src/features/leave/annualLeaveCalculated.js
+    src/features/leave/annualLeaveFields.js
+    src/features/leave/annualLeaveEmpKey.js
+
+  Quyền
+    src/config/authRoles.js
+
+  Tests
+    src/features/leave/annualLeaveAttendanceSync.test.js
+    src/features/leave/annualLeaveYearDataOps.test.js
+    src/features/leave/annualLeaveDerivedRuntimeCache.test.js
+
+================================================================================
+15. LIÊN KẾT TÀI LIỆU KHÁC
+================================================================================
+
+  docs/DU_LIEU_LOAD_RENDER_PROJECT.txt
+    — Load/render UI; mục 8.2 điểm danh, PHỤ LỤC A phép năm
+
+  src/features/leave/QUAN_LY_PHEP_NAM_HUONG_DAN.txt
+    — Công thức accrual/usage/balance; mục 7 trigger ghi Firebase
+
+  src/features/payroll/LUOI_THANG_GIO_CONG_HUONG_DAN.txt
+    — Lưới giờ công (nguồn accrual ½ ngày công cho phép năm)
+
+  docs/FIREBASE_DATABASE.md
+    — Cấu trúc RTDB tổng quát (nếu có)
+
+================================================================================
+16. INDEX PHỤ attendanceLeaveAgg (denormalized, 2026-08-26)
+================================================================================
+
+  Path: attendanceLeaveAgg/{year}/emp_{mnv}
+  Trường:
+    deductionByMonth: { "01": 0.5, "06": 2, … }   — tổng PN/1/2PN theo tháng
+    lastUpdated, updatedBy
+
+  Cập nhật tăng dần:
+    • Sửa loại phép (form)     → runTransaction += delta vào tháng
+    • Upload Excel / xóa dòng    → applyLeaveAggDeltasForDayChange (diff 1 ngày)
+    • Nút «Tính lại» phép năm   → rebuildLeaveAggYearFromAttendance (full scan 1 lần)
+
+  persistAnnualLeaveYearFromAttendance / persistSingleEmployee…:
+    • Đọc attendanceLeaveAgg/{year} (O số NV) thay vì quét attendance cả năm
+    • Accrual giờ công vẫn query attendance theo khoảng tháng cần thiết
+
+  File: src/features/leave/attendanceLeaveAgg.js
+        src/features/leave/attendanceLeaveAggFields.js
+
+================================================================================
+17. CLOUD FUNCTION — sync phép năm server-side (2026-08-26)
+================================================================================
+
+  Trigger RTDB:
+    syncAnnualLeaveOnAttendanceEmpWrite
+    Path: attendance/{dateKey}/{empKey}  (bỏ qua _meta)
+
+  Luồng server (functions/src/annualLeaveSync/):
+    1. computeLoaiPhepDeductionDelta(before, after)
+    2. applyLeaveAggDeductionDelta → attendanceLeaveAgg/{year}/{empKey}
+    3. persistAnnualLeaveEmployeeFromAgg → annualLeave/{year}/{empKey} (transaction)
+
+  Client KHÔNG gọi persist/sync khi:
+    • Lưu form điểm danh (AttendanceEmployeeFormModal)
+    • Xóa NV / xóa cả ngày (useAttendanceListMutations)
+    • Upload Excel điểm danh (AttendanceUploadHandler) — CF fire theo từng empKey
+
+  Client VẪN gọi persistAnnualLeaveYearFromAttendance khi:
+    • Nút «Tính lại» phép năm (rebuildLeaveAgg: true)
+    • Upload Excel phép năm HR
+    • Migration / backfill aggregate lần đầu
+
+  Deploy:
+    cd functions && npm install
+    firebase deploy --only functions:syncAnnualLeaveOnAttendanceEmpWrite,database
+
+  Chi tiết: functions/README.md
+
+================================================================================
+18. CLIENT FALLBACK — phạm vi đọc theo ngày / tháng (2026-08-26)
+================================================================================
+
+  Khi chưa deploy Cloud Function (hoặc song song CF):
+    VITE_CLIENT_ANNUAL_LEAVE_SYNC !== "false"  (mặc định bật)
+    Set VITE_CLIENT_ANNUAL_LEAVE_SYNC=false sau khi CF ổn định.
+
+  Sửa 1 NV (form):
+    applyAnnualLeaveDeductionDelta
+      → transaction agg (delta 1 ngày, không đọc cả năm)
+      → persistSingleEmployeeAnnualLeaveFromAttendance (đọc agg O(N NV))
+
+  Xóa 1 NV / xóa cả ngày:
+    syncAnnualLeaveAfterAttendanceDayChange
+      → applyLeaveAggDeltasForDayChange (diff snapshot UI, 0 read attendance)
+      → persistSingleEmployee (1 NV) HOẶC persistAnnualLeaveMonthFromAttendance
+
+  persistAnnualLeaveMonthFromAttendance(yearMonth):
+    • Query attendance chỉ tháng đó (~28–31 ngày) cho accrual
+    • Đọc attendanceLeaveAgg/{year} cho used/balance (không quét cả năm)
+    • scopeEmpKeySet: chỉ persist NV bị ảnh hưởng
+
+  persistAnnualLeaveYearFromAttendance — CHỈ còn:
+    • Nút «Tính lại» (rebuildLeaveAgg: true)
+    • Upload Excel phép năm HR (AnnualLeaveManager)
+
+  Upload Excel điểm danh 1 ngày:
+    persistAnnualLeaveMonthFromAttendance (tháng của ngày upload)
+
+  File:
+    src/config/annualLeaveClientSync.js
+    src/features/leave/attendanceLeaveScope.js
+    src/features/leave/annualLeaveClientDaySync.js
+    persistAnnualLeaveMonthFromAttendance trong annualLeaveAttendanceSync.js
+
+================================================================================
+  19. Bước 4 — runTransaction cho annualLeave/{year}/{empKey}
+================================================================================
+
+  Vấn đề race condition:
+    Hai luồng ghi (form điểm danh + CF / upload / điều chỉnh HR) có thể cùng
+    đọc snapshot cũ rồi update() — ghi đè lẫn nhau, mất cộng/trừ PN.
+
+  Giải pháp:
+    runAnnualLeaveEmployeePersistTransaction() trong annualLeaveAttendanceSync.js
+    • runTransaction(ref, mutator) trên annualLeave/{year}/{empKey}
+    • Mutator đọc current mới nhất, computeLive → needsPersistUpdate
+    • return undefined → abort (không ghi)
+    • Firebase tự retry khi conflict — không cần client debounce để «đúng số»
+
+  Debounce 450ms (annualLeavePersistQueue.js):
+    Vẫn giữ để giảm số transaction khi user gõ nhanh — tối ưu chi phí, không
+    thay thế cơ chế an toàn của transaction.
+
+  Điểm gọi transaction:
+    • persistAnnualLeaveForEmployeeKeys — 1 NV đổi (xem bước 6 batch khi ≥2)
+    • persistAnnualLeaveEmployeeAdjustment — điều chỉnh HR (patch trong mutator)
+    • attendanceLeaveAgg — đã dùng transaction từ bước 1
+    • Cloud Function persistEmployee.mjs — đã dùng transaction từ bước 2
+
+  _meta và migrate vẫn dùng update() — không cạnh tranh cộng/trừ số dư.
+
+================================================================================
+  20. Bước 5 — Cache buildAnnualLeaveMonthWorkSummaryByEmpKey (persist)
+================================================================================
+
+  Vấn đề:
+    persistAnnualLeaveForEmployeeKeys gọi buildAnnualLeaveMonthWorkSummaryByEmpKey
+    mỗi lần persist — build lưới giờ công tốn CPU khi payroll không đổi trong phiên.
+
+  Giải pháp — annualLeaveMonthWorkSummaryPersistCache.js:
+    getCachedAnnualLeaveMonthWorkSummaryByEmpKey()
+    • Bucket theo {attendanceRootPath}:{year}
+    • TTL 5 phút (PAYROLL_MONTH_CACHE_TTL_MS — cùng lưới tháng giờ công)
+    • Chỉ build empKey chưa có trong bucket (persist liên tiếp cùng năm → cache hit)
+
+  Invalidate (ghi mới lưới giờ công / điểm danh):
+    • syncAnnualLeaveAfterAttendanceDayChange — trước persist (xóa / upload)
+    • applyAnnualLeaveDeductionDelta — empKey sau lưu form điểm danh
+    • PayrollMonthlyTimesheetModal handleDayCellSaved — sau patchDay thành công
+    invalidateAnnualLeaveMonthWorkSummaryPersistCache({ year, empKeys? })
+
+  UI bảng phép năm vẫn dùng annualLeaveDerivedRuntimeCache.syncMonthWorkSummaryMaps
+  (bucket riêng, incremental theo realtime) — không trộn với cache persist.
+
+  File:
+    src/features/leave/annualLeaveMonthWorkSummaryPersistCache.js
+    persistAnnualLeaveForEmployeeKeys → getCached… thay build… trực tiếp
+
+================================================================================
+  21. Bước 6 — Batch multi-path update (≥2 NV thay đổi)
+================================================================================
+
+  Vấn đề:
+    persistAnnualLeaveForEmployeeKeys loop N lần runTransaction/update — N round-trip
+    khi «Tính lại» / sync cả năm nhiều NV đổi cùng lúc.
+
+  Giải pháp — persistAnnualLeaveForEmployeeKeys:
+    1. Tính trước payload từng empKey (resolveAnnualLeaveEmployeePersistWrite)
+    2. 0 thay đổi → skip
+    3. 1 NV → runTransaction (bước 4 — an toàn race condition)
+    4. ≥2 NV → một lần update(ref(db), { "annualLeave/{year}/{empKey}": payload, … })
+
+  Luồng ghi:
+    • persistAnnualLeaveEmployeeAdjustment — luôn transaction 1 NV
+    • persistSingleEmployeeAnnualLeaveFromAttendance — transaction 1 NV
+    • persistAnnualLeaveYearFromAttendance — batch khi nhiều NV đổi
+
+  File:
+    buildAnnualLeaveBatchPersistUpdates() trong annualLeaveAttendanceSync.js
+
+================================================================================
+  22. Bước 7 — _meta.migrated skip scan legacy key
+================================================================================
+
+  Vấn đề:
+    Mỗi lần persist quét toàn bộ yearData tìm recordId legacy ≠ emp_{mnv} — tốn CPU
+    dù năm đã migrate từ lâu.
+
+  Giải pháp:
+    annualLeave/{year}/_meta/migrated = true
+    migrateAnnualLeaveYearToEmpKeys() return ngay nếu cờ đã true — không loop yearData.
+
+  Set cờ (lần đầu):
+    • Có legacy → batch migrate + ghi migrated trong cùng update()
+    • Không còn legacy → update(_meta, { migrated: true })
+    • Chưa có _meta → chỉ migrate legacy (không tạo _meta)
+
+  Constant: ANNUAL_LEAVE_META_MIGRATED trong annualLeaveFields.js
+
+================================================================================
+  23. Bước 8 — Diff field ghi attendance (form merge)
+================================================================================
+
+  Vấn đề:
+    mergeAttendanceDayNodeForPersist → update(path, fullNode) gửi cả field không đổi.
+
+  Giải pháp — attendanceEmployeeRecord.js:
+    buildAttendanceDayNodePersistPatch(existing, merged) — chỉ field khác
+    buildAttendanceDayRootPersistUpdates(path, existing, merged)
+      • Sửa (có existing): multi-path attendance/{date}/{key}/{field}
+      • Tạo mới: update(path, fullNode)
+
+  AttendanceEmployeeFormModal — dùng buildAttendanceDayRootPersistUpdates thay
+  update(path, persistedNode) trực tiếp.
+
+================================================================================
+  24. Bước 9 — Lazy scope bảng phép năm (>500 NV)
+================================================================================
+
+  Vấn đề:
+    annualLeave/{year} vẫn subscribe cả năm; bảng + derived tính cho toàn công ty
+    tốn CPU/bandwidth attendance khi >500 NV.
+
+  Giải pháp:
+    ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD = 500
+    shouldRequireAnnualLeaveManagerDeptScope — >500 và chưa chọn BP/tìm kiếm
+    → bảng trống + thông báo; không gọi derived cho trang (pagedScope rỗng)
+    Chọn bộ phận hoặc search → filter qua deptIndex (O phòng ban), pagination như cũ
+    useAnnualLeaveAttendanceEnhancement(scopeEmpKeySet = trang hiện tại) — giữ nguyên
+
+  File:
+    annualLeaveManagerFilter.js — resolveAnnualLeaveManagerTableEntries
+    AnnualLeaveManager.jsx / AnnualLeaveManagerTablePanel.jsx
+
+================================================================================
+  Hết tài liệu — LUỒNG GHI FIREBASE ĐIỂM DANH / PHÉP NĂM
+================================================================================

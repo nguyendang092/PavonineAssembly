@@ -1,4 +1,4 @@
-import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
+import { ANNUAL_LEAVE_EMP, ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD } from "./annualLeaveFields";
 import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
 import { resolveStoredMonthlyLeaveUsage } from "./annualLeaveDerived";
 
@@ -124,6 +124,33 @@ export function filterAnnualLeaveManagerEntries(
   deptIndex = null,
 ) {
   return filterAnnualLeaveManagerRows(entries, filters, deptIndex);
+}
+
+/** >500 NV và chưa chọn bộ phận / tìm kiếm — không render bảng (lazy scope). */
+export function shouldRequireAnnualLeaveManagerDeptScope(
+  totalCount,
+  { deptFilter = "", search = "" } = {},
+) {
+  if (totalCount <= ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD) return false;
+  const dept = String(deptFilter ?? "").trim();
+  const q = String(search ?? "").trim();
+  return !dept && !q;
+}
+
+export function resolveAnnualLeaveManagerTableEntries(
+  entries,
+  filters = {},
+  deptIndex = null,
+) {
+  if (
+    shouldRequireAnnualLeaveManagerDeptScope(entries?.length ?? 0, filters)
+  ) {
+    return { entries: [], lazyLoadRequired: true };
+  }
+  return {
+    entries: filterAnnualLeaveManagerEntries(entries, filters, deptIndex),
+    lazyLoadRequired: false,
+  };
 }
 
 /** Danh sách bộ phận duy nhất — tính một lần khi `rows` đổi. */

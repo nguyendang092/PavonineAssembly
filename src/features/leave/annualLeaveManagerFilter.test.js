@@ -4,7 +4,10 @@ import {
   buildAnnualLeaveManagerRowCatalog,
   filterAnnualLeaveManagerRows,
   listAnnualLeaveManagerDepartments,
+  resolveAnnualLeaveManagerTableEntries,
+  shouldRequireAnnualLeaveManagerDeptScope,
 } from "./annualLeaveManagerFilter";
+import { ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD } from "./annualLeaveFields";
 
 describe("annualLeaveManagerFilter", () => {
   const rows = [
@@ -62,5 +65,44 @@ describe("annualLeaveManagerFilter", () => {
     expect(catalog.entries).toHaveLength(2);
     expect(catalog.departments).toEqual(["ASSEMBLY", "PRESS"]);
     expect(catalog.deptIndex.get("PRESS")).toHaveLength(1);
+  });
+
+  it("requires dept scope when employee count exceeds threshold", () => {
+    expect(
+      shouldRequireAnnualLeaveManagerDeptScope(
+        ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD + 1,
+        {},
+      ),
+    ).toBe(true);
+    expect(
+      shouldRequireAnnualLeaveManagerDeptScope(
+        ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD + 1,
+        { deptFilter: "PRESS" },
+      ),
+    ).toBe(false);
+    expect(
+      shouldRequireAnnualLeaveManagerDeptScope(
+        ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD + 1,
+        { search: "100" },
+      ),
+    ).toBe(false);
+  });
+
+  it("resolveAnnualLeaveManagerTableEntries returns empty when lazy required", () => {
+    const bigEntries = Array.from(
+      { length: ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD + 1 },
+      (_, i) => ({
+        id: `emp_${i}`,
+        [ANNUAL_LEAVE_EMP.MNV_PREFIX]: String(i),
+        [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]: "PRESS",
+      }),
+    );
+    const { entries, lazyLoadRequired } = resolveAnnualLeaveManagerTableEntries(
+      bigEntries,
+      {},
+      new Map([["PRESS", bigEntries]]),
+    );
+    expect(lazyLoadRequired).toBe(true);
+    expect(entries).toHaveLength(0);
   });
 });

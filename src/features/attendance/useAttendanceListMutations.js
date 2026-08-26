@@ -5,11 +5,15 @@ import {
   canDeleteEmployeeData,
   isAdminAccess,
 } from "@/config/authRoles";
-import { shouldSkipAnnualLeaveForAttendanceRoot } from "./attendanceSeasonalStt";
-import {
-  persistAnnualLeaveYearFromAttendance,
-} from "@/features/leave/annualLeaveAttendanceSync";
-import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
+import { shouldClientSyncAnnualLeaveForAttendanceRoot } from "@/config/annualLeaveClientSync";
+import { syncAnnualLeaveAfterAttendanceDayChange } from "@/features/leave/annualLeaveClientDaySync";
+
+function attendanceRawFromListRow(row) {
+  if (!row || typeof row !== "object") return {};
+  const raw = { ...row };
+  delete raw.firebaseKey;
+  return raw;
+}
 
 export function useAttendanceListMutations({
   user,
@@ -59,15 +63,22 @@ export function useAttendanceListMutations({
       if (!window.confirm(t("attendanceList.deleteConfirm"))) return;
 
       try {
-        await remove(ref(db, `${attendanceRootPath}/${selectedDate}/${id}`));
-        if (!shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
-          const year = annualLeaveYearFromDateKey(selectedDate);
-          await persistAnnualLeaveYearFromAttendance(db, {
-            year,
+        const clientSync = shouldClientSyncAnnualLeaveForAttendanceRoot(
+          attendanceRootPath,
+        );
+        if (clientSync) {
+          await syncAnnualLeaveAfterAttendanceDayChange(db, {
+            dateKey: selectedDate,
             attendanceRootPath,
+            previousDayData: {
+              [id]: attendanceRawFromListRow(emp),
+            },
+            nextDayData: {},
+            scopeEmpKeySet: new Set([id]),
             updatedBy: user?.email ?? "",
           });
         }
+        await remove(ref(db, `${attendanceRootPath}/${selectedDate}/${id}`));
         setAlert({
           show: true,
           type: "success",
@@ -128,11 +139,22 @@ export function useAttendanceListMutations({
       return;
     }
     try {
-      if (!shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
-        const year = annualLeaveYearFromDateKey(selectedDate);
-        await persistAnnualLeaveYearFromAttendance(db, {
-          year,
+      const clientSync = shouldClientSyncAnnualLeaveForAttendanceRoot(
+        attendanceRootPath,
+      );
+      if (clientSync) {
+        const previousDayData = Object.fromEntries(
+          employeesRef.current.map((row) => [
+            row.id,
+            attendanceRawFromListRow(row),
+          ]),
+        );
+        await syncAnnualLeaveAfterAttendanceDayChange(db, {
+          dateKey: selectedDate,
           attendanceRootPath,
+          previousDayData,
+          nextDayData: {},
+          scopeEmpKeySet: new Set(Object.keys(previousDayData)),
           updatedBy: user?.email ?? "",
         });
       }
@@ -162,6 +184,7 @@ export function useAttendanceListMutations({
     employeesLength,
     t,
     attendanceRootPath,
+    employeesRef,
     setAlert,
   ]);
 

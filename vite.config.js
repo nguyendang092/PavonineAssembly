@@ -74,7 +74,11 @@ export default defineConfig(async ({ mode }) => {
     },
     test: {
       environment: "node",
-      include: ["src/**/*.test.js", "server/**/*.test.mjs"],
+      include: [
+        "src/**/*.test.js",
+        "server/**/*.test.mjs",
+        "functions/**/*.test.mjs",
+      ],
     },
   };
 });

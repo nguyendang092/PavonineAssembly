@@ -715,3 +715,68 @@ export function mergeAttendanceDayNodeForPersist(existing, dayDoc, recordId) {
   delete merged.birthDate;
   return normalizeAttendanceDayRecord(merged);
 }
+
+function attendancePersistFieldEqual(prev, next) {
+  if (prev === next) return true;
+  if (prev == null && next == null) return true;
+  if (typeof prev === "object" && prev !== null && typeof next === "object" && next !== null) {
+    return JSON.stringify(prev) === JSON.stringify(next);
+  }
+  return false;
+}
+
+/**
+ * Diff node điểm danh đã merge — chỉ field thay đổi (giảm bandwidth update).
+ * @param {Record<string, unknown>} existing
+ * @param {Record<string, unknown>} mergedNode — kết quả mergeAttendanceDayNodeForPersist
+ */
+export function buildAttendanceDayNodePersistPatch(existing, mergedNode) {
+  const ex = normalizeAttendanceDayRecord(
+    existing && typeof existing === "object" ? { ...existing } : {},
+  );
+  delete ex.firebaseKey;
+  const merged =
+    mergedNode && typeof mergedNode === "object" ? { ...mergedNode } : {};
+  delete merged.firebaseKey;
+
+  const patch = {};
+  const keys = new Set([...Object.keys(ex), ...Object.keys(merged)]);
+
+  for (const key of keys) {
+    if (key === "id") continue;
+    const nextVal = merged[key];
+    const prevVal = ex[key];
+    if (attendancePersistFieldEqual(prevVal, nextVal)) continue;
+    patch[key] = nextVal === undefined ? null : nextVal;
+  }
+
+  return patch;
+}
+
+/**
+ * Multi-path updates cho Firebase — node mới ghi full object, sửa chỉ gửi diff.
+ */
+export function buildAttendanceDayRootPersistUpdates(
+  attendancePath,
+  existing,
+  mergedNode,
+  { writeFullNode = false } = {},
+) {
+  if (
+    writeFullNode ||
+    !existing ||
+    typeof existing !== "object" ||
+    Object.keys(existing).length === 0
+  ) {
+    return mergedNode ? { [attendancePath]: mergedNode } : {};
+  }
+
+  const patch = buildAttendanceDayNodePersistPatch(existing, mergedNode);
+  if (!Object.keys(patch).length) return {};
+
+  const updates = {};
+  for (const [field, value] of Object.entries(patch)) {
+    updates[`${attendancePath}/${field}`] = value;
+  }
+  return updates;
+}

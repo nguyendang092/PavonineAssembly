@@ -10,6 +10,7 @@
     "build:analyze": "vite build --mode analyze",
     "test": "vitest run",
     "test:watch": "vitest",
+    "functions:install": "npm install --prefix functions",
     "preview": "vite preview",
     "build:all": "npm run build && npm run cap:sync",
     "cap:add:ios": "npx cap add ios",

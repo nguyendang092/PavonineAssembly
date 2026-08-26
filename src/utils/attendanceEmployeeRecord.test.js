@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   attendanceFirebaseKeyFromMnv,
   attendanceMnvStorageKey,
+  buildAttendanceDayNodePersistPatch,
+  buildAttendanceDayRootPersistUpdates,
   buildEmployeeAttendanceDayDocument,
   formSliceForAttendanceDayDocument,
   isEmpFirebaseKey,
@@ -199,5 +201,52 @@ describe("buildEmployeeAttendanceDayDocument loaiPhep (form save)", () => {
     expect(saved.loaiPhep).toBe("Vào trễ");
     expect(saved.gioVao).toBe("08:20");
     expect(saved.gioRa).toBe("17:00");
+  });
+});
+
+describe("buildAttendanceDayNodePersistPatch", () => {
+  it("only includes changed fields on edit", () => {
+    const existing = {
+      mnv: "1",
+      hoVaTen: "A",
+      loaiPhep: "Phép năm",
+      gioVao: "07:30",
+      gioRa: "17:00",
+      caLamViec: "S1",
+    };
+    const merged = mergeAttendanceDayNodeForPersist(existing, {
+      loaiPhep: "Phép năm",
+      gioVao: "08:00",
+    }, "emp_1");
+
+    expect(buildAttendanceDayNodePersistPatch(existing, merged)).toEqual({
+      gioVao: "08:00",
+    });
+  });
+
+  it("buildAttendanceDayRootPersistUpdates uses multi-path for edits", () => {
+    const path = "attendance/2026-06-01/emp_1";
+    const existing = { mnv: "1", loaiPhep: "Phép năm", gioVao: "07:30" };
+    const merged = mergeAttendanceDayNodeForPersist(
+      existing,
+      { loaiPhep: "Phép năm", gioVao: "08:15" },
+      "emp_1",
+    );
+
+    expect(
+      buildAttendanceDayRootPersistUpdates(path, existing, merged),
+    ).toEqual({
+      [`${path}/gioVao`]: "08:15",
+    });
+  });
+
+  it("writes full node for new records", () => {
+    const path = "attendance/2026-06-01/emp_1";
+    const node = { mnv: "1", loaiPhep: "PN", id: "emp_1" };
+    expect(
+      buildAttendanceDayRootPersistUpdates(path, null, node, {
+        writeFullNode: true,
+      }),
+    ).toEqual({ [path]: node });
   });
 });

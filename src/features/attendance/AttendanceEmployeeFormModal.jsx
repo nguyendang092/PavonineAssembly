@@ -7,6 +7,7 @@ import {
   attendanceMnvStorageKey,
   formSliceForAttendanceDayDocument,
   mergeAttendanceDayNodeForPersist,
+  buildAttendanceDayRootPersistUpdates,
   resolveAttendanceFormPersistTarget,
 } from "@/utils/attendanceEmployeeRecord";
 import {
@@ -38,10 +39,11 @@ import {
   isOtCheckFieldDisabled,
   isAttendanceHalfPnLeaveType,
 } from "@/features/attendance/attendanceDayMeta";
-import { isSeasonalAttendanceRoot, shouldSkipAnnualLeaveForAttendanceRoot } from "./attendanceSeasonalStt";
+import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import { shouldClientSyncAnnualLeaveForAttendanceRoot } from "@/config/annualLeaveClientSync";
 import {
   applyAnnualLeaveDeductionDelta,
-} from "@/features/leave/annualLeaveAttendanceSync";
+} from "@/features/leave/annualLeaveClientDaySync";
 import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
 import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
 import {
@@ -460,18 +462,19 @@ export default function AttendanceEmployeeFormModal({
   };
 
   const syncAnnualLeaveAfterAttendanceSave = (oldRecord, newLoaiPhep) => {
-    if (shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
-      return Promise.resolve({ applied: false, reason: "isolated" });
+    if (!shouldClientSyncAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
+      return Promise.resolve({ applied: false, reason: "disabled" });
     }
     const year = annualLeaveYearFromDateKey(selectedDate);
     return applyAnnualLeaveDeductionDelta(db, {
       year,
       attendanceRootPath,
       updatedBy: user?.email ?? "",
+      dateKey: selectedDate,
       oldRecord,
       newLoaiPhep,
     }).catch((err) => {
-      console.error("annualLeaveAttendanceSync failed:", err);
+      console.error("annualLeaveClientDaySync failed:", err);
       return { applied: false, reason: "error" };
     });
   };
@@ -578,10 +581,15 @@ export default function AttendanceEmployeeFormModal({
           dayDoc,
           editAttendanceKey,
         );
+        const updates = buildAttendanceDayRootPersistUpdates(
+          attendancePath,
+          existingRaw,
+          persistedNode,
+        );
 
-        await update(ref(db), {
-          [attendancePath]: persistedNode,
-        });
+        if (Object.keys(updates).length > 0) {
+          await update(ref(db), updates);
+        }
         finishSaveSuccess(
           "attendanceList.updateSuccess",
           { ...existingRaw, id: editAttendanceKey, mnv: form.mnv ?? existing.mnv },
@@ -662,7 +670,15 @@ export default function AttendanceEmployeeFormModal({
               )
             : { ...dayDoc, id: firebaseKey };
 
-        await update(ref(db), { [path]: persistedNode });
+        const updates = buildAttendanceDayRootPersistUpdates(
+          path,
+          addTarget?.mode === "add-merge" ? existingRaw : null,
+          persistedNode,
+          { writeFullNode: addTarget?.mode !== "add-merge" },
+        );
+        if (Object.keys(updates).length > 0) {
+          await update(ref(db), updates);
+        }
         finishSaveSuccess(
           "attendanceList.addSuccess",
           { ...existingRaw, id: firebaseKey, mnv: form.mnv },

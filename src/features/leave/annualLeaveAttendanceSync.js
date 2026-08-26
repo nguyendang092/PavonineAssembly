@@ -1,16 +1,35 @@
-import { get, ref, update } from "@/services/firebase";
+import { endAt, get, query, orderByKey, ref, runTransaction, startAt, update } from "@/services/firebase";
 import {
-  buildAttendanceAnnualLeaveDerivedMaps,
   attendanceAnnualLeaveDeductionForLoaiPhep,
   attendanceEffectiveLoaiPhepFromRaw,
 } from "./annualLeaveBalanceLookup";
+import {
+  applyLeaveAggDeductionDeltaTransaction,
+  applyLeaveAggDeltasForDayChange,
+  buildDerivedMapsFromLeaveAggYear,
+  leaveAggYearHasEmployeeData,
+  loadLeaveAggYearData,
+  rebuildLeaveAggYearFromAttendance,
+  syncLeaveAggMonthSliceFromAttendance,
+} from "./attendanceLeaveAgg";
+import {
+  loadAttendanceRootForYearMonth,
+  resolveYearMonthFromDateKey,
+} from "./attendanceLeaveScope";
 import {
   computeLiveAnnualLeaveState,
   resolveEffectiveMonthlyLeaveUsage,
   resolveStoredMonthlyLeaveUsage,
   sumAnnualLeaveMonthlyUsageValues,
 } from "./annualLeaveDerived";
-import { buildAnnualLeaveMonthWorkSummaryByEmpKey } from "./annualLeavePayrollAccrual";
+import {
+  listAnnualLeaveAccrualYearMonths,
+  resolveAccrualYearMonthsAttendanceRange,
+} from "./annualLeavePayrollAccrual";
+import {
+  getCachedAnnualLeaveMonthWorkSummaryByEmpKey,
+  invalidateAnnualLeaveMonthWorkSummaryPersistCache,
+} from "./annualLeaveMonthWorkSummaryPersistCache";
 import {
   indexAnnualLeaveYearByEmpKey,
   resolveAnnualLeaveEmpFirebaseKey,
@@ -18,6 +37,7 @@ import {
 import {
   ANNUAL_LEAVE_EMP,
   ANNUAL_LEAVE_META_KEY,
+  ANNUAL_LEAVE_META_MIGRATED,
   ANNUAL_LEAVE_RTDB_ROOT,
 } from "./annualLeaveFields";
 import {
@@ -32,8 +52,12 @@ import { queueSingleEmployeeAnnualLeavePersist } from "./annualLeavePersistQueue
 export async function migrateAnnualLeaveYearToEmpKeys(db, year, yearData) {
   if (!yearData || typeof yearData !== "object") return false;
 
+  const meta = yearData[ANNUAL_LEAVE_META_KEY];
+  if (meta?.[ANNUAL_LEAVE_META_MIGRATED] === true) return false;
+
   const updates = {};
   const basePath = `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`;
+  const metaPath = `${basePath}/${ANNUAL_LEAVE_META_KEY}`;
 
   for (const [recordId, raw] of Object.entries(yearData)) {
     if (recordId === ANNUAL_LEAVE_META_KEY || !raw || typeof raw !== "object") {
@@ -47,8 +71,27 @@ export async function migrateAnnualLeaveYearToEmpKeys(db, year, yearData) {
     updates[`${basePath}/${recordId}`] = null;
   }
 
-  if (!Object.keys(updates).length) return false;
-  await update(ref(db), updates);
+  const hasMeta = meta && typeof meta === "object";
+  if (!hasMeta) {
+    if (!Object.keys(updates).length) return false;
+    await update(ref(db), updates);
+    return true;
+  }
+
+  if (!Object.keys(updates).length) {
+    await update(ref(db, metaPath), {
+      [ANNUAL_LEAVE_META_MIGRATED]: true,
+    });
+    return true;
+  }
+
+  await update(ref(db), {
+    ...updates,
+    [metaPath]: {
+      ...meta,
+      [ANNUAL_LEAVE_META_MIGRATED]: true,
+    },
+  });
   return true;
 }
 
@@ -119,8 +162,363 @@ async function touchAnnualLeaveYearMeta(db, year, updatedBy = "") {
   });
 }
 
+async function loadAttendanceRootData(db, attendanceRootPath) {
+  const rootSnap = await get(ref(db, attendanceRootPath));
+  return rootSnap.val();
+}
+
+/** Chỉ tải các ngày trong khoảng accrual giờ công — tránh get() cả năm. */
+async function loadAttendanceRootForAccrual(
+  db,
+  attendanceRootPath,
+  year,
+  yearData,
+  { scopeEmpKeySet = null } = {},
+) {
+  const yearMonths = listAnnualLeaveAccrualYearMonths(yearData, year, {
+    scopeEmpKeySet,
+  });
+  const range = resolveAccrualYearMonthsAttendanceRange(yearMonths);
+  if (!range) return null;
+
+  const accrualQuery = query(
+    ref(db, attendanceRootPath),
+    orderByKey(),
+    startAt(range.startAt),
+    endAt(range.endAt),
+  );
+  const snap = await get(accrualQuery);
+  return snap.val();
+}
+
+async function resolvePersistDerivedMaps(
+  db,
+  year,
+  {
+    attendanceRootPath = "attendance",
+    attendanceRootOverride = null,
+    rebuildLeaveAgg = false,
+  },
+) {
+  let attendanceRootData = attendanceRootOverride;
+
+  if (rebuildLeaveAgg && attendanceRootData == null) {
+    attendanceRootData = await loadAttendanceRootData(db, attendanceRootPath);
+  }
+
+  if (rebuildLeaveAgg && attendanceRootData) {
+    await rebuildLeaveAggYearFromAttendance(db, {
+      year,
+      attendanceRootData,
+    });
+  }
+
+  let yearAggData = await loadLeaveAggYearData(db, year);
+  if (!leaveAggYearHasEmployeeData(yearAggData)) {
+    if (attendanceRootData == null) {
+      attendanceRootData = await loadAttendanceRootData(db, attendanceRootPath);
+    }
+    if (attendanceRootData) {
+      await rebuildLeaveAggYearFromAttendance(db, {
+        year,
+        attendanceRootData,
+      });
+      yearAggData = await loadLeaveAggYearData(db, year);
+    }
+  }
+
+  return {
+    yearAggData,
+    ...buildDerivedMapsFromLeaveAggYear(yearAggData, year),
+  };
+}
+
+async function resolvePersistDerivedMapsForMonth(
+  db,
+  year,
+  yearMonth,
+  {
+    monthAttendanceData = null,
+    updatedBy = "",
+    resyncAggFromMonth = false,
+  },
+) {
+  let yearAggData = await loadLeaveAggYearData(db, year);
+
+  const shouldSyncMonthSlice =
+    monthAttendanceData &&
+    typeof monthAttendanceData === "object" &&
+    (resyncAggFromMonth || !leaveAggYearHasEmployeeData(yearAggData));
+
+  if (shouldSyncMonthSlice) {
+    await syncLeaveAggMonthSliceFromAttendance(db, {
+      year,
+      yearMonth,
+      monthAttendanceData,
+      updatedBy,
+    });
+    yearAggData = await loadLeaveAggYearData(db, year);
+  }
+
+  return {
+    yearAggData,
+    ...buildDerivedMapsFromLeaveAggYear(yearAggData, year),
+  };
+}
+
+function resolvePersistScopeEmpKeys(indexed, scopeEmpKeySet) {
+  if (scopeEmpKeySet instanceof Set && scopeEmpKeySet.size > 0) {
+    return [...scopeEmpKeySet].filter((empKey) => indexed[empKey]?.raw);
+  }
+  return Object.keys(indexed);
+}
+
+function buildPersistContextMaps({
+  deductionsByEmpKey,
+  attendanceMonthlyByEmpKey,
+  monthWorkSummaryByEmpKey,
+  empKey,
+}) {
+  return {
+    deductionsByEmpKey,
+    attendanceMonthlyByEmpKey,
+    monthWorkSummaryByEmpKey: {
+      [empKey]: monthWorkSummaryByEmpKey[empKey] ?? null,
+    },
+  };
+}
+
+function persistStateFromPayload(payload) {
+  return {
+    hrUsed: parseAnnualLeaveNumber(
+      payload?.[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED],
+    ),
+    attendanceUsed: parseAnnualLeaveNumber(
+      payload?.[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED],
+    ),
+    used: parseAnnualLeaveNumber(payload?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]),
+    balance: parseAnnualLeaveNumber(payload?.[ANNUAL_LEAVE_EMP.BALANCE]),
+    totalAnnualLeave: parseAnnualLeaveNumber(
+      payload?.[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
+    ),
+    annualLeaveCurrentYear: parseAnnualLeaveNumber(
+      payload?.[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
+    ),
+  };
+}
+
+function resolveAnnualLeaveEmployeePersistWrite(
+  raw,
+  empKey,
+  year,
+  {
+    deductionsByEmpKey = {},
+    attendanceMonthlyByEmpKey = {},
+    monthWorkSummaryByEmpKey = {},
+  },
+  { applyRawPatch = null } = {},
+) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const mergedRaw =
+    typeof applyRawPatch === "function" ? applyRawPatch(raw) : raw;
+  if (!mergedRaw || typeof mergedRaw !== "object") return null;
+
+  const state = computePersistStateForRaw(
+    mergedRaw,
+    empKey,
+    year,
+    buildPersistContextMaps({
+      deductionsByEmpKey,
+      attendanceMonthlyByEmpKey,
+      monthWorkSummaryByEmpKey,
+      empKey,
+    }),
+  );
+
+  if (!needsPersistUpdate(mergedRaw, state)) return null;
+
+  const payload = buildAnnualLeavePersistPayload(empKey, mergedRaw, state);
+  if (typeof applyRawPatch === "function") {
+    payload[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT] =
+      mergedRaw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT] ?? null;
+  }
+
+  return {
+    payload,
+    state: {
+      hrUsed: state.hrUsed,
+      attendanceUsed: state.attendanceUsed,
+      used: state.used,
+      balance: state.balance,
+      totalAnnualLeave: state.totalAnnualLeave,
+      annualLeaveCurrentYear: state.annualLeaveCurrentYear,
+    },
+  };
+}
+
+function buildAnnualLeaveBatchPersistUpdates(year, writesByEmpKey) {
+  const updates = {};
+  for (const [empKey, { payload }] of Object.entries(writesByEmpKey)) {
+    if (!empKey || !payload) continue;
+    updates[`${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${empKey}`] = payload;
+  }
+  return updates;
+}
+
 /**
- * Ghi `annualLeave/{year}/emp_{mnv}` từ quét điểm danh + phép HR.
+ * Ghi `annualLeave/{year}/{empKey}` bằng transaction — retry khi conflict, tránh ghi đè.
+ */
+async function runAnnualLeaveEmployeePersistTransaction(
+  db,
+  {
+    year,
+    empKey,
+    deductionsByEmpKey = {},
+    attendanceMonthlyByEmpKey = {},
+    monthWorkSummaryByEmpKey = {},
+    applyRawPatch = null,
+  },
+) {
+  const empRef = ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${empKey}`);
+
+  const tx = await runTransaction(empRef, (current) => {
+    if (!current || typeof current !== "object") return undefined;
+
+    const write = resolveAnnualLeaveEmployeePersistWrite(
+      current,
+      empKey,
+      year,
+      {
+        deductionsByEmpKey,
+        attendanceMonthlyByEmpKey,
+        monthWorkSummaryByEmpKey,
+      },
+      { applyRawPatch },
+    );
+    if (!write) return undefined;
+
+    return {
+      ...current,
+      ...write.payload,
+    };
+  });
+
+  if (!tx.committed) {
+    return { applied: false, reason: "no_change" };
+  }
+
+  const persisted = tx.snapshot.val();
+  return {
+    applied: true,
+    state: persistStateFromPayload(persisted),
+  };
+}
+
+async function persistAnnualLeaveForEmployeeKeys(
+  db,
+  {
+    year,
+    yearData,
+    empKeys,
+    deductionsByEmpKey,
+    attendanceMonthlyByEmpKey,
+    attendanceRootPath,
+    attendanceRootForAccrual,
+    updatedBy = "",
+  },
+) {
+  const indexed = indexAnnualLeaveYearByEmpKey(yearData);
+  const scopeEmpKeySet =
+    empKeys instanceof Set ? empKeys : new Set(empKeys ?? []);
+  const scopedIndexed =
+    scopeEmpKeySet.size > 0
+      ? Object.fromEntries(
+          [...scopeEmpKeySet]
+            .filter((empKey) => indexed[empKey])
+            .map((empKey) => [empKey, indexed[empKey]]),
+        )
+      : indexed;
+
+  const monthWorkSummaryByEmpKey = getCachedAnnualLeaveMonthWorkSummaryByEmpKey(
+    attendanceRootForAccrual,
+    year,
+    yearData,
+    {
+      attendanceRootPath,
+      scopeEmpKeySet: scopeEmpKeySet.size > 0 ? scopeEmpKeySet : null,
+    },
+  );
+
+  const results = [];
+  const pendingWrites = {};
+
+  for (const [empKey, { raw }] of Object.entries(scopedIndexed)) {
+    const write = resolveAnnualLeaveEmployeePersistWrite(
+      raw,
+      empKey,
+      year,
+      {
+        deductionsByEmpKey,
+        attendanceMonthlyByEmpKey,
+        monthWorkSummaryByEmpKey,
+      },
+    );
+    if (!write) continue;
+    pendingWrites[empKey] = write;
+  }
+
+  const changedEmpKeys = Object.keys(pendingWrites);
+  if (changedEmpKeys.length === 0) {
+    return { results, appliedCount: 0 };
+  }
+
+  if (changedEmpKeys.length === 1) {
+    const empKey = changedEmpKeys[0];
+    const txResult = await runAnnualLeaveEmployeePersistTransaction(db, {
+      year,
+      empKey,
+      deductionsByEmpKey,
+      attendanceMonthlyByEmpKey,
+      monthWorkSummaryByEmpKey,
+    });
+
+    if (txResult.applied) {
+      results.push({
+        recordId: empKey,
+        empKey,
+        hrUsed: txResult.state.hrUsed,
+        attendanceUsed: txResult.state.attendanceUsed,
+        newUsed: txResult.state.used,
+        balance: txResult.state.balance,
+      });
+      await touchAnnualLeaveYearMeta(db, year, updatedBy);
+    }
+
+    return { results, appliedCount: results.length };
+  }
+
+  await update(ref(db), buildAnnualLeaveBatchPersistUpdates(year, pendingWrites));
+
+  for (const empKey of changedEmpKeys) {
+    const { state } = pendingWrites[empKey];
+    results.push({
+      recordId: empKey,
+      empKey,
+      hrUsed: state.hrUsed,
+      attendanceUsed: state.attendanceUsed,
+      newUsed: state.used,
+      balance: state.balance,
+    });
+  }
+
+  await touchAnnualLeaveYearMeta(db, year, updatedBy);
+
+  return { results, appliedCount: results.length };
+}
+
+/**
+ * Ghi `annualLeave/{year}/emp_{mnv}` từ aggregate điểm danh + phép HR.
  */
 export async function persistAnnualLeaveYearFromAttendance(
   db,
@@ -129,16 +527,15 @@ export async function persistAnnualLeaveYearFromAttendance(
     attendanceRootPath = "attendance",
     updatedBy = "",
     attendanceRootOverride = null,
+    rebuildLeaveAgg = false,
   },
 ) {
-  let attendanceRootData = attendanceRootOverride;
-  if (attendanceRootData == null) {
-    const rootSnap = await get(ref(db, attendanceRootPath));
-    attendanceRootData = rootSnap.val();
-  }
-
   const { deductionsByEmpKey, attendanceMonthlyByEmpKey } =
-    buildAttendanceAnnualLeaveDerivedMaps(attendanceRootData, year);
+    await resolvePersistDerivedMaps(db, year, {
+      attendanceRootPath,
+      attendanceRootOverride,
+      rebuildLeaveAgg,
+    });
 
   let yearSnap = await get(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`));
   let yearData = yearSnap.val();
@@ -156,49 +553,106 @@ export async function persistAnnualLeaveYearFromAttendance(
   }
 
   const indexed = indexAnnualLeaveYearByEmpKey(yearData);
-  const monthWorkSummaryByEmpKey = buildAnnualLeaveMonthWorkSummaryByEmpKey(
-    attendanceRootData,
+  const attendanceRootForAccrual =
+    attendanceRootOverride ??
+    (await loadAttendanceRootForAccrual(
+      db,
+      attendanceRootPath,
+      year,
+      yearData,
+    ));
+
+  return persistAnnualLeaveForEmployeeKeys(db, {
     year,
     yearData,
-    { attendanceRootPath },
-  );
-  const results = [];
-  let anyApplied = false;
-
-  for (const [empKey, { raw }] of Object.entries(indexed)) {
-    const state = computePersistStateForRaw(raw, empKey, year, {
-      deductionsByEmpKey,
-      attendanceMonthlyByEmpKey,
-      monthWorkSummaryByEmpKey,
-    });
-
-    if (!needsPersistUpdate(raw, state)) continue;
-
-    await update(
-      ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${empKey}`),
-      buildAnnualLeavePersistPayload(empKey, raw, state),
-    );
-
-    anyApplied = true;
-    results.push({
-      recordId: empKey,
-      empKey,
-      hrUsed: state.hrUsed,
-      attendanceUsed: state.attendanceUsed,
-      newUsed: state.used,
-      balance: state.balance,
-    });
-  }
-
-  if (anyApplied) {
-    await touchAnnualLeaveYearMeta(db, year, updatedBy);
-  }
-
-  return { results, appliedCount: results.length };
+    empKeys: Object.keys(indexed),
+    deductionsByEmpKey,
+    attendanceMonthlyByEmpKey,
+    attendanceRootPath,
+    attendanceRootForAccrual,
+    updatedBy,
+  });
 }
 
 /**
- * Cập nhật phép năm một NV sau điểm danh — tránh quét + ghi toàn bộ năm.
+ * Sync phép năm các NV trong phạm vi một tháng — đọc agg + attendance tháng (không cả năm).
+ * Dùng sau xóa 1 NV / xóa cả ngày / upload Excel 1 ngày.
+ */
+export async function persistAnnualLeaveMonthFromAttendance(
+  db,
+  {
+    year,
+    yearMonth,
+    dateKey = null,
+    attendanceRootPath = "attendance",
+    updatedBy = "",
+    scopeEmpKeySet = null,
+    monthAttendanceOverride = null,
+  },
+) {
+  const resolvedYearMonth =
+    yearMonth ?? resolveYearMonthFromDateKey(dateKey ?? "");
+  if (!resolvedYearMonth) {
+    return { results: [], appliedCount: 0, reason: "invalid_year_month" };
+  }
+
+  const monthAttendanceData =
+    monthAttendanceOverride ??
+    (await loadAttendanceRootForYearMonth(
+      db,
+      attendanceRootPath,
+      resolvedYearMonth,
+    ));
+
+  const { deductionsByEmpKey, attendanceMonthlyByEmpKey } =
+    await resolvePersistDerivedMapsForMonth(db, year, resolvedYearMonth, {
+      monthAttendanceData,
+      updatedBy,
+    });
+
+  const yearSnap = await get(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`));
+  let yearData = yearSnap.val();
+  if (!yearData || typeof yearData !== "object") {
+    return { results: [], appliedCount: 0, reason: "no_year" };
+  }
+
+  if (typeof yearData === "object") {
+    const migrated = await migrateAnnualLeaveYearToEmpKeys(db, year, yearData);
+    if (migrated) {
+      const nextSnap = await get(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`));
+      yearData = nextSnap.val();
+    }
+  }
+
+  const indexed = indexAnnualLeaveYearByEmpKey(yearData);
+  const empKeys = resolvePersistScopeEmpKeys(indexed, scopeEmpKeySet);
+  if (!empKeys.length) {
+    return { results: [], appliedCount: 0, reason: "no_scope" };
+  }
+
+  const scopeSet = new Set(empKeys);
+  const attendanceRootForAccrual = await loadAttendanceRootForAccrual(
+    db,
+    attendanceRootPath,
+    year,
+    yearData,
+    { scopeEmpKeySet: scopeSet },
+  );
+
+  return persistAnnualLeaveForEmployeeKeys(db, {
+    year,
+    yearData,
+    empKeys: scopeSet,
+    deductionsByEmpKey,
+    attendanceMonthlyByEmpKey,
+    attendanceRootPath,
+    attendanceRootForAccrual,
+    updatedBy,
+  });
+}
+
+/**
+ * Cập nhật phép năm một NV sau điểm danh — đọc aggregate thay vì quét cả năm.
  */
 export async function persistSingleEmployeeAnnualLeaveFromAttendance(
   db,
@@ -215,14 +669,12 @@ export async function persistSingleEmployeeAnnualLeaveFromAttendance(
     return { applied: false, reason: "no_emp_key" };
   }
 
-  let attendanceRootData = attendanceRootOverride;
-  if (attendanceRootData == null) {
-    const rootSnap = await get(ref(db, attendanceRootPath));
-    attendanceRootData = rootSnap.val();
-  }
-
   const { deductionsByEmpKey, attendanceMonthlyByEmpKey } =
-    buildAttendanceAnnualLeaveDerivedMaps(attendanceRootData, year);
+    await resolvePersistDerivedMaps(db, year, {
+      attendanceRootPath,
+      attendanceRootOverride,
+      rebuildLeaveAgg: false,
+    });
 
   const yearSnap = await get(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`));
   const yearData = yearSnap.val();
@@ -237,30 +689,32 @@ export async function persistSingleEmployeeAnnualLeaveFromAttendance(
   }
 
   const scopeEmpKeySet = new Set([resolvedEmpKey]);
-  const monthWorkSummaryByEmpKey = buildAnnualLeaveMonthWorkSummaryByEmpKey(
-    attendanceRootData,
+  const attendanceRootForAccrual =
+    attendanceRootOverride ??
+    (await loadAttendanceRootForAccrual(
+      db,
+      attendanceRootPath,
+      year,
+      yearData,
+      { scopeEmpKeySet },
+    ));
+
+  const { appliedCount, results } = await persistAnnualLeaveForEmployeeKeys(db, {
     year,
     yearData,
-    { attendanceRootPath, scopeEmpKeySet },
-  );
-
-  const state = computePersistStateForRaw(entry.raw, resolvedEmpKey, year, {
+    empKeys: scopeEmpKeySet,
     deductionsByEmpKey,
     attendanceMonthlyByEmpKey,
-    monthWorkSummaryByEmpKey,
+    attendanceRootPath,
+    attendanceRootForAccrual,
+    updatedBy,
   });
 
-  if (!needsPersistUpdate(entry.raw, state)) {
+  if (appliedCount === 0) {
     return { applied: false, reason: "no_change" };
   }
 
-  await update(
-    ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${resolvedEmpKey}`),
-    buildAnnualLeavePersistPayload(resolvedEmpKey, entry.raw, state),
-  );
-
-  await touchAnnualLeaveYearMeta(db, year, updatedBy);
-  return { applied: true, state };
+  return { applied: true, state: results[0] };
 }
 
 function computePersistStateForRaw(
@@ -302,7 +756,7 @@ export async function persistAnnualLeaveEmployeeAdjustment(
   {
     year,
     empKey,
-    raw,
+    raw: _raw,
     adjustment,
     deductionsByEmpKey = {},
     attendanceMonthlyByEmpKey = {},
@@ -310,31 +764,31 @@ export async function persistAnnualLeaveEmployeeAdjustment(
     updatedBy = "",
   },
 ) {
-  if (!empKey || !raw || typeof raw !== "object") {
+  if (!empKey) {
     return { applied: false };
   }
 
   const parsedAdj = parseAnnualLeaveAdjustment(adjustment);
-  const updatedRaw = {
-    ...raw,
-    id: empKey,
-    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]:
-      parsedAdj === 0 ? null : parsedAdj,
-  };
-  const state = computePersistStateForRaw(updatedRaw, empKey, year, {
+  const txResult = await runAnnualLeaveEmployeePersistTransaction(db, {
+    year,
+    empKey,
     deductionsByEmpKey,
     attendanceMonthlyByEmpKey,
     monthWorkSummaryByEmpKey,
+    applyRawPatch: (current) => ({
+      ...current,
+      id: empKey,
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]:
+        parsedAdj === 0 ? null : parsedAdj,
+    }),
   });
 
-  await update(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${empKey}`), {
-    ...buildAnnualLeavePersistPayload(empKey, updatedRaw, state),
-    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]:
-      parsedAdj === 0 ? null : parsedAdj,
-  });
+  if (!txResult.applied) {
+    return { applied: false, reason: "no_change" };
+  }
 
   await touchAnnualLeaveYearMeta(db, year, updatedBy);
-  return { applied: true, state };
+  return { applied: true, state: txResult.state };
 }
 
 function annualLeaveDeductionDelta(oldLoaiPhep, newLoaiPhep) {
@@ -344,13 +798,14 @@ function annualLeaveDeductionDelta(oldLoaiPhep, newLoaiPhep) {
   );
 }
 
-/** Sau khi điểm danh đổi loại phép — ghi lại phép năm của NV liên quan. */
+/** Client fallback khi chưa có Cloud Function — delta 1 ngày → agg → persist 1 NV. */
 export async function applyAnnualLeaveDeductionDelta(
   db,
   {
     year,
     attendanceRootPath = "attendance",
     updatedBy = "",
+    dateKey = "",
     oldRecord = null,
     newRecord = null,
     oldLoaiPhep = "",
@@ -364,7 +819,6 @@ export async function applyAnnualLeaveDeductionDelta(
     ? attendanceEffectiveLoaiPhepFromRaw(newRecord)
     : String(newLoaiPhep ?? "").trim();
   const delta = annualLeaveDeductionDelta(oldLp, newLp);
-  if (delta === 0) return { applied: false, reason: "no_delta", delta: 0 };
 
   const sourceRecord = oldRecord ?? newRecord;
   const empKey = resolveAnnualLeaveEmpFirebaseKey({
@@ -373,7 +827,24 @@ export async function applyAnnualLeaveDeductionDelta(
     mnv: sourceRecord?.mnv,
   });
 
-  if (empKey) {
+  if (empKey && year) {
+    invalidateAnnualLeaveMonthWorkSummaryPersistCache({
+      year,
+      attendanceRootPath,
+      empKeys: [empKey],
+    });
+  }
+
+  if (delta === 0) return { applied: false, reason: "no_delta", delta: 0 };
+
+  if (empKey && dateKey) {
+    await applyLeaveAggDeductionDeltaTransaction(db, {
+      year,
+      empKey,
+      dateKey,
+      delta,
+      updatedBy,
+    });
     queueSingleEmployeeAnnualLeavePersist(db, {
       year,
       empKey,
@@ -387,15 +858,42 @@ export async function applyAnnualLeaveDeductionDelta(
     };
   }
 
-  const { appliedCount } = await persistAnnualLeaveYearFromAttendance(db, {
-    year,
-    attendanceRootPath,
-    updatedBy,
-  });
+  if (empKey) {
+    const single = await persistSingleEmployeeAnnualLeaveFromAttendance(db, {
+      year,
+      empKey,
+      attendanceRootPath,
+      updatedBy,
+    });
+    return {
+      applied: single.applied,
+      reason: single.reason,
+      delta,
+    };
+  }
 
-  return {
-    applied: appliedCount > 0,
-    reason: appliedCount > 0 ? undefined : "no_change",
-    delta,
-  };
+  const yearMonth = resolveYearMonthFromDateKey(dateKey);
+  if (yearMonth) {
+    const { appliedCount } = await persistAnnualLeaveMonthFromAttendance(db, {
+      year,
+      yearMonth,
+      dateKey,
+      attendanceRootPath,
+      updatedBy,
+    });
+    return {
+      applied: appliedCount > 0,
+      reason: appliedCount > 0 ? undefined : "no_change",
+      delta,
+    };
+  }
+
+  return { applied: false, reason: "no_target", delta };
 }
+
+export {
+  applyLeaveAggDeltasForDayChange,
+  rebuildLeaveAggYearFromAttendance,
+  runAnnualLeaveEmployeePersistTransaction,
+  invalidateAnnualLeaveMonthWorkSummaryPersistCache,
+};

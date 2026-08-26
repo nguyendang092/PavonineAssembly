@@ -19,12 +19,10 @@ import {
   attendanceFirebaseKeyFromMnv,
   attendanceMnvStorageKey,
 } from "@/utils/attendanceEmployeeRecord";
-import { isSeasonalAttendanceRoot, shouldSkipAnnualLeaveForAttendanceRoot } from "./attendanceSeasonalStt";
+import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
-import {
-  persistAnnualLeaveYearFromAttendance,
-} from "@/features/leave/annualLeaveAttendanceSync";
-import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
+import { shouldClientSyncAnnualLeaveForAttendanceRoot } from "@/config/annualLeaveClientSync";
+import { syncAnnualLeaveAfterAttendanceDayChange } from "@/features/leave/annualLeaveClientDaySync";
 
 function trimCell(value) {
   return value === undefined || value === null ? "" : String(value).trim();
@@ -276,14 +274,18 @@ export const handleUploadExcel = async ({
     });
     await set(attendanceRef, payload);
 
-    if (!shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
-      const year = annualLeaveYearFromDateKey(selectedDate);
-      await persistAnnualLeaveYearFromAttendance(db, {
-        year,
+    if (shouldClientSyncAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
+      await syncAnnualLeaveAfterAttendanceDayChange(db, {
+        dateKey: selectedDate,
         attendanceRootPath,
+        previousDayData: existingData,
+        nextDayData: payload,
+        scopeEmpKeySet: new Set(Object.keys(payload)),
         updatedBy: user?.email ?? "",
       });
     }
+
+    // Cloud Function syncAnnualLeaveOnAttendanceEmpWrite (when client sync disabled)
 
     // Show result message
     let message = `✅ Upload thành công ${uploadedCount} nhân viên mới`;

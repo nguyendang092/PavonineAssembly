@@ -16,6 +16,7 @@ import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridL
 import {
   buildAnnualLeaveManagerRowCatalog,
   filterAnnualLeaveManagerEntries,
+  resolveAnnualLeaveManagerTableEntries,
 } from "./annualLeaveManagerFilter";
 import AnnualLeaveManagerActionsMenu from "./AnnualLeaveManagerActionsMenu";
 import AnnualLeaveManagerTableSection from "./AnnualLeaveManagerTableSection";
@@ -131,20 +132,25 @@ export default function AnnualLeaveManager() {
   const exportFiltersRef = useRef({ search: "", deptFilter: "" });
   exportFiltersRef.current = { search: debouncedSearch, deptFilter };
 
-  const filteredEntries = useMemo(
-    () =>
-      filterAnnualLeaveManagerEntries(
-        entries,
-        {
-          search: debouncedSearch,
-          deptFilter,
-        },
-        deptIndex,
-      ),
-    [entries, debouncedSearch, deptFilter, deptIndex],
-  );
+  const { tableEntries: filteredEntries, lazyLoadRequired } = useMemo(() => {
+    const resolved = resolveAnnualLeaveManagerTableEntries(
+      entries,
+      {
+        search: debouncedSearch,
+        deptFilter,
+      },
+      deptIndex,
+    );
+    return {
+      tableEntries: resolved.entries,
+      lazyLoadRequired: resolved.lazyLoadRequired,
+    };
+  }, [entries, debouncedSearch, deptFilter, deptIndex]);
 
-  const displayRowCount = filteredEntries.length;
+  const totalEmployeeCount = entries.length;
+  const displayRowCount = lazyLoadRequired
+    ? totalEmployeeCount
+    : filteredEntries.length;
   const detailThroughDateKey = useMemo(
     () => resolveAnnualLeaveManagerThroughDateKey(year, monthFilter),
     [year, monthFilter],
@@ -191,6 +197,7 @@ export default function AnnualLeaveManager() {
         year,
         attendanceRootPath: "attendance",
         updatedBy: user?.email ?? "",
+        rebuildLeaveAgg: true,
       });
       setAlert({
         show: true,
@@ -465,6 +472,8 @@ export default function AnnualLeaveManager() {
             entries={entries}
             deptIndex={deptIndex}
             filteredEntries={filteredEntries}
+            lazyLoadRequired={lazyLoadRequired}
+            totalEmployeeCount={totalEmployeeCount}
             storedMonthlyByEmpKey={storedMonthlyByEmpKey}
             detailThroughDateKey={detailThroughDateKey}
             exportRef={exportRef}

@@ -84,6 +84,8 @@ import {
 import { isKoreanAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 import { usePayrollMonthDayChunks } from "@/features/payroll/usePayrollMonthDayChunks";
 import { invalidatePayrollMonthCache } from "@/features/payroll/payrollMonthCache";
+import { invalidateAnnualLeaveMonthWorkSummaryPersistCache } from "@/features/leave/annualLeaveMonthWorkSummaryPersistCache";
+import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
 import { usePayrollMonthEmployeeIndex } from "@/features/payroll/usePayrollMonthEmployeeIndex";
 import { usePayrollMonthSummaries } from "@/features/payroll/usePayrollMonthSummaries";
 import { computePayrollMonthSummariesForIds } from "@/features/payroll/payrollMonthSummaryCompute";
@@ -951,13 +953,20 @@ export default function PayrollMonthlyTimesheetModal({
       });
 
       if (result?.success && result.affectedRowIds?.length) {
+        const year = annualLeaveYearFromDateKey(dateKey);
+        if (year) {
+          invalidateAnnualLeaveMonthWorkSummaryPersistCache({
+            year,
+            attendanceRootPath,
+          });
+        }
         setSummaryDirtyPatch({
           token: Date.now(),
           employeeIds: result.affectedRowIds,
         });
       }
     },
-    [patchDay, loadMonth, dayCellFormDate, dayCellFormRowId],
+    [patchDay, loadMonth, dayCellFormDate, dayCellFormRowId, attendanceRootPath],
   );
 
   const openDayCellForm = useCallback((dateKey, rowId, dayEmps, formInitial) => {
