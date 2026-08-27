@@ -4,7 +4,7 @@ import {
   employeeMatchesLoaiPhepFilterSet,
   isEmployeeQuickUnattended,
 } from "./attendanceListShared";
-import { sortEmployeesStableAsc } from "./attendanceListSort";
+import { sortEmployeesByDepartmentAsc, sortEmployeesStableAsc } from "./attendanceListSort";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 
 function normalizeDepartmentListFilter(departmentListFilter) {
@@ -23,6 +23,20 @@ function buildSelectedDeptKeys(departmentListFilter, normalizeDepartment) {
 
 function buildLoaiPhepFilterSet(loaiPhepFilter) {
   return new Set(loaiPhepFilter);
+}
+
+function hasAdvancedListFilters({
+  departmentListFilter,
+  loaiPhepFilter,
+  joinDateYearFilter,
+  joinDateMonthFilter,
+}) {
+  return (
+    normalizeDepartmentListFilter(departmentListFilter).length > 0 ||
+    loaiPhepFilter.length > 0 ||
+    Boolean(String(joinDateYearFilter || "").trim()) ||
+    Boolean(String(joinDateMonthFilter || "").trim())
+  );
 }
 
 function applyAttendanceListFiltersCore(
@@ -159,22 +173,26 @@ export function useAttendanceListFilters({
   );
 
   const filteredEmployees = useMemo(
-    () =>
-      sortEmployeesStableAsc(
-        applyAttendanceListFiltersCore(
-          employees,
-          {
-            searchQuery: searchTerm,
-            departmentListFilter,
-            loaiPhepFilter,
-            joinDateYearFilter,
-            joinDateMonthFilter,
-            showOnlyUnattendedFilter,
-            normalizeDepartment,
-          },
-        ),
-        { seasonal },
-      ),
+    () => {
+      const filtered = applyAttendanceListFiltersCore(employees, {
+        searchQuery: searchTerm,
+        departmentListFilter,
+        loaiPhepFilter,
+        joinDateYearFilter,
+        joinDateMonthFilter,
+        showOnlyUnattendedFilter,
+        normalizeDepartment,
+      });
+      const advancedActive = hasAdvancedListFilters({
+        departmentListFilter,
+        loaiPhepFilter,
+        joinDateYearFilter,
+        joinDateMonthFilter,
+      });
+      return advancedActive
+        ? sortEmployeesByDepartmentAsc(filtered, { seasonal })
+        : sortEmployeesStableAsc(filtered, { seasonal });
+    },
     [
       employees,
       searchTerm,

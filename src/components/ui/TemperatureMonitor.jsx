@@ -15,39 +15,47 @@ import Modal from "react-modal";
 import { ref, set, remove, update, get } from "firebase/database";
 import { db } from "@/services/firebase";
 import { useFirebaseValue } from "@/hooks/useFirebaseValue";
-import AlertMessage from "./AlertMessage";
-import LoadingBlock from "./LoadingBlock";
-import SingleMachineTable from "@/features/dashboard/SingleMachineTable";
+import AlertMessage from "@/components/ui/AlertMessage";
+import LoadingBlock from "@/components/ui/LoadingBlock";
 import { useTranslation } from "react-i18next";
-import TemperatureFilterPanel from "@/features/dashboard/temperature/TemperatureFilterPanel";
+import TemperatureMonitorTopbar from "@/features/dashboard/temperature/TemperatureMonitorTopbar";
+import TemperatureAreaCard from "@/features/dashboard/temperature/TemperatureAreaCard";
+import TemperatureDeviceNav from "@/features/dashboard/temperature/TemperatureDeviceNav";
+import TemperatureEntryPanel from "@/features/dashboard/temperature/TemperatureEntryPanel";
+import TemperatureInsightsPanel from "@/features/dashboard/temperature/TemperatureInsightsPanel";
+import { useTemperatureMachineSummaries } from "@/features/dashboard/temperature/useTemperatureMachineSummaries";
+import { validateMetricInput } from "@/features/dashboard/temperature/temperatureMonitorUtils";
 import "@/features/dashboard/temperature/temperatureMonitor.css";
 
 Modal.setAppElement("#root");
 
-const PAGE_SIZE = 6;
 const ChartView = lazy(() => import("@/features/dashboard/ChartView"));
+
+const emptyData = () => ({ temperature: {}, humidity: {} });
 
 const TemperatureMonitor = () => {
   const { user } = useUserIdentity();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [toastMessage, setToastMessage] = useState("");
   const [editingMachine, setEditingMachine] = useState(null);
   const [editMachineName, setEditMachineName] = useState("");
   const [selectedArea, setSelectedArea] = useState(null);
+  const [selectedMachine, setSelectedMachine] = useState(null);
   const [searchMachine, setSearchMachine] = useState("");
   const { data: areasRaw, loading: areasLoading } = useFirebaseValue("areas");
   const areas = areasRaw || {};
   const [selectedMonth, setSelectedMonth] = useState(() =>
     format(new Date(), "yyyy-MM"),
   );
-  const [showMachinePanel, setShowMachinePanel] = useState(false);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("temperature");
   const [modalSelectedArea, setModalSelectedArea] = useState(null);
   const [newMachineName, setNewMachineName] = useState("");
   const [isAddingMachine, setIsAddingMachine] = useState(false);
+  const [data, setData] = useState(emptyData);
+  const [baseline, setBaseline] = useState(emptyData);
+  const [saving, setSaving] = useState(false);
 
-  // Toast timeout cleanup
   const toastTimeoutRef = useRef();
   const showToast = useCallback((message) => {
     setToastMessage(message);
@@ -64,10 +72,7 @@ const TemperatureMonitor = () => {
     setSelectedArea((prev) => (prev && !areas[prev] ? null : prev));
   }, [areas]);
 
-  // Chunk load máy (pagination)
-  const [machinePage, setMachinePage] = useState(1);
   const deferredSearchMachine = useDeferredValue(searchMachine);
-
   const areaKeys = useMemo(() => Object.keys(areas), [areas]);
   const selectedAreaMachines = useMemo(
     () => (selectedArea ? areas[selectedArea]?.machines || [] : []),
@@ -81,28 +86,100 @@ const TemperatureMonitor = () => {
       m.toLowerCase().includes(normalizedSearch),
     );
   }, [selectedAreaMachines, deferredSearchMachine]);
-  const totalMachinePages = useMemo(
-    () => Math.ceil(filteredMachines.length / PAGE_SIZE),
-    [filteredMachines.length],
-  );
-  const pagedMachines = useMemo(
-    () =>
-      filteredMachines.slice(
-        (machinePage - 1) * PAGE_SIZE,
-        machinePage * PAGE_SIZE,
-      ),
-    [filteredMachines, machinePage],
+
+  const summariesByMachine = useTemperatureMachineSummaries(
+    selectedArea,
+    selectedMonth,
+    selectedAreaMachines,
   );
 
   useEffect(() => {
-    setMachinePage(1);
-  }, [selectedArea, filteredMachines.length]);
+    setSelectedMachine((prev) => {
+      if (prev && filteredMachines.includes(prev)) return prev;
+      return filteredMachines[0] ?? null;
+    });
+  }, [selectedArea, selectedMonth, filteredMachines]);
+
+  const machineDataPath =
+    selectedArea && selectedMachine && selectedMonth
+      ? `temperature_monitor/${selectedArea}/${selectedMachine}/${selectedMonth}`
+      : null;
+  const { data: machineRaw, loading: machineLoading } =
+    useFirebaseValue(machineDataPath);
 
   useEffect(() => {
-    setShowMachinePanel(false);
-  }, [selectedArea]);
+    const next = machineRaw || emptyData();
+    setData(next);
+    setBaseline(next);
+  }, [machineRaw, selectedArea, selectedMachine, selectedMonth]);
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleMetricChange = useCallback((type, day, value) => {
+    if (!validateMetricInput(value)) return;
+    setData((prev) => {
+      const updated = { ...prev, [type]: { ...(prev[type] ?? {}) } };
+      updated[type][day] = value;
+      return updated;
+    });
+  }, []);
+
+  const handleCopyPrevious = useCallback((day, prevDay) => {
+    if (!prevDay) return;
+    setData((prev) => {
+      const next = {
+        temperature: { ...(prev.temperature ?? {}) },
+        humidity: { ...(prev.humidity ?? {}) },
+      };
+      const prevTemp = prev.temperature?.[prevDay];
+      const prevHum = prev.humidity?.[prevDay];
+      if (prevTemp !== "" && prevTemp != null) next.temperature[day] = prevTemp;
+      if (prevHum !== "" && prevHum != null) next.humidity[day] = prevHum;
+      return next;
+    });
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!selectedArea || !selectedMachine || !selectedMonth) return;
+    setSaving(true);
+    try {
+      const promises = [];
+      for (const type of ["temperature", "humidity"]) {
+        const entries = data[type] || {};
+        for (const [day, val] of Object.entries(entries)) {
+          const path = `temperature_monitor/${selectedArea}/${selectedMachine}/${selectedMonth}/${type}/${day}`;
+          const valueToSave = val === "" ? null : parseFloat(val);
+          promises.push(set(ref(db, path), valueToSave));
+        }
+      }
+      await Promise.all(promises);
+      setBaseline(data);
+      if (user?.email) {
+        await logUserAction(
+          user.email,
+          "save_temperature_humidity",
+          `Lưu dữ liệu máy: ${selectedMachine}, khu vực: ${selectedArea}, tháng: ${selectedMonth}`,
+        );
+      }
+      showToast(
+        t("temperatureMonitor.saveSuccess", { machine: selectedMachine }),
+      );
+    } catch (error) {
+      console.error("Lỗi lưu dữ liệu:", error);
+      showToast(t("temperatureMonitor.saveFail"));
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    data,
+    selectedArea,
+    selectedMachine,
+    selectedMonth,
+    showToast,
+    t,
+    user,
+  ]);
+
   const handleEditMachine = useCallback(
     async (oldName, newName) => {
       const trimmedNew = newName.trim();
@@ -113,7 +190,6 @@ const TemperatureMonitor = () => {
         setEditingMachine(null);
         return;
       }
-      // Kiểm tra trùng tên không phân biệt hoa thường
       if (
         currentMachines.some(
           (m) => m.trim().toLowerCase() === trimmedNew.toLowerCase(),
@@ -143,21 +219,19 @@ const TemperatureMonitor = () => {
         if (snapshot.exists()) {
           await set(newRef, snapshot.val());
           await remove(oldRef);
-          setEditingMachine(null);
-          setEditMachineName("");
-          showToast(
-            t("temperatureMonitor.renamed", { oldName, newName: trimmedNew }),
+        }
+        if (selectedMachine === oldName) setSelectedMachine(trimmedNew);
+        setEditingMachine(null);
+        setEditMachineName("");
+        showToast(
+          t("temperatureMonitor.renamed", { oldName, newName: trimmedNew }),
+        );
+        if (user?.email) {
+          await logUserAction(
+            user.email,
+            "edit_machine",
+            `Đổi tên máy từ ${oldName} sang ${trimmedNew} tại khu vực ${selectedArea}`,
           );
-          // Ghi log đổi tên máy
-          if (user && user.email) {
-            await logUserAction(
-              user.email,
-              "edit_machine",
-              `Đổi tên máy từ ${oldName} sang ${trimmedNew} tại khu vực ${selectedArea}`,
-            );
-          }
-        } else {
-          alert(t("temperatureMonitor.dataNotFound"));
         }
       } catch (error) {
         alert(t("temperatureMonitor.editError"));
@@ -165,7 +239,7 @@ const TemperatureMonitor = () => {
       }
       setIsLoading(false);
     },
-    [areas, selectedArea, showToast, t, user],
+    [areas, selectedArea, selectedMachine, showToast, t, user],
   );
 
   const handleDeleteMachine = useCallback(
@@ -173,8 +247,9 @@ const TemperatureMonitor = () => {
       if (!selectedArea) return;
       if (
         !window.confirm(t("temperatureMonitor.confirmDelete", { machineName }))
-      )
+      ) {
         return;
+      }
       setIsLoading(true);
       try {
         const updatedMachines = areas[selectedArea]?.machines.filter(
@@ -186,8 +261,10 @@ const TemperatureMonitor = () => {
         await remove(
           ref(db, `temperature_monitor/${selectedArea}/${machineName}`),
         );
-        // Ghi log xóa máy
-        if (user && user.email) {
+        if (selectedMachine === machineName) {
+          setSelectedMachine(null);
+        }
+        if (user?.email) {
           await logUserAction(
             user.email,
             "delete_machine",
@@ -199,10 +276,9 @@ const TemperatureMonitor = () => {
       }
       setIsLoading(false);
     },
-    [areas, selectedArea, t, user],
+    [areas, selectedArea, selectedMachine, t, user],
   );
 
-  // Validate tên máy: không ký tự đặc biệt, không rỗng, tối đa 30 ký tự
   const isValidMachineName = (name) => {
     if (!name) return false;
     if (name.length > 30) return false;
@@ -218,7 +294,6 @@ const TemperatureMonitor = () => {
       return;
     }
     const existingMachines = areas[selectedArea]?.machines || [];
-    // Kiểm tra trùng tên không phân biệt hoa thường
     if (
       existingMachines.some(
         (m) => m.trim().toLowerCase() === trimmedMachine.toLowerCase(),
@@ -237,10 +312,10 @@ const TemperatureMonitor = () => {
         ref(db, `temperature_monitor/${selectedArea}/${trimmedMachine}`),
         {},
       );
+      setSelectedMachine(trimmedMachine);
       setNewMachineName("");
       setIsAddingMachine(false);
-      // Ghi log thêm máy
-      if (user && user.email) {
+      if (user?.email) {
         await logUserAction(
           user.email,
           "add_machine",
@@ -252,90 +327,101 @@ const TemperatureMonitor = () => {
     }
     setIsLoading(false);
   }, [areas, newMachineName, selectedArea, t, user]);
+
   return (
     <div className="temperature-monitor-page">
-      <TemperatureFilterPanel
-        areaKeys={areaKeys}
+      <TemperatureMonitorTopbar
         selectedArea={selectedArea}
-        onSelectArea={setSelectedArea}
         selectedMonth={selectedMonth}
         onSelectMonth={setSelectedMonth}
+        searchMachine={searchMachine}
+        onSearchMachineChange={setSearchMachine}
         onOpenChart={() => {
           setModalSelectedArea(selectedArea);
           setIsChartModalOpen(true);
         }}
-        searchMachine={searchMachine}
-        onSearchMachineChange={setSearchMachine}
-        filteredMachines={filteredMachines}
-        pagedMachines={pagedMachines}
-        machinePage={machinePage}
-        totalMachinePages={totalMachinePages}
-        onPrevMachinePage={() => setMachinePage((p) => Math.max(1, p - 1))}
-        onNextMachinePage={() =>
-          setMachinePage((p) => Math.min(totalMachinePages, p + 1))
-        }
-        showMachinePanel={showMachinePanel}
-        onToggleMachinePanel={() => setShowMachinePanel((prev) => !prev)}
-        editingMachine={editingMachine}
-        editMachineName={editMachineName}
-        onEditMachineNameChange={setEditMachineName}
-        onStartEditMachine={(machine) => {
-          setEditingMachine(machine);
-          setEditMachineName(machine);
-        }}
-        onCancelEditMachine={() => setEditingMachine(null)}
-        onConfirmEditMachine={handleEditMachine}
-        onDeleteMachine={handleDeleteMachine}
-        canManageMachines={Boolean(user)}
-        isAddingMachine={isAddingMachine}
-        onStartAddMachine={() => setIsAddingMachine(true)}
-        onCancelAddMachine={() => {
-          setIsAddingMachine(false);
-          setNewMachineName("");
-        }}
-        newMachineName={newMachineName}
-        onNewMachineNameChange={setNewMachineName}
-        onAddMachine={handleAddMachine}
-        isLoading={isLoading}
       />
 
-      <div className="temperature-monitor-main">
-        <h2 className="temperature-monitor-main__title">
-          {t("temperatureMonitor.header")} ·{" "}
-          {selectedArea
-            ? t(`areas.${selectedArea}`)
-            : t("temperatureMonitor.noArea")}
-        </h2>
-
+      <div className="tm-container">
         {areasLoading ? (
-          <div className="py-8 text-center text-lg text-gray-500 dark:text-slate-400">
-            {t("temperatureMonitor.loading", "Đang tải dữ liệu...")}
-          </div>
-        ) : !selectedArea ? (
-          <div className="py-8 text-center text-lg text-gray-500 dark:text-slate-400">
-            {t("temperatureMonitor.noAreaGuide")}
-          </div>
-        ) : filteredMachines.length === 0 ? (
-          <p className="text-center text-gray-600 dark:text-slate-400">
-            {t("temperatureMonitor.noMachine")}
-          </p>
+          <LoadingBlock
+            className="py-16"
+            message={t("temperatureMonitor.loading")}
+          />
         ) : (
-          <div className="temperature-monitor-grid">
-            {pagedMachines.map((machine) => (
-              <div key={machine} className="min-w-0 overflow-x-auto">
-                <SingleMachineTable
-                  machine={machine}
+          <div className="tm-layout">
+            <TemperatureAreaCard
+              areaKeys={areaKeys}
+              selectedArea={selectedArea}
+              onSelectArea={setSelectedArea}
+            />
+            <TemperatureDeviceNav
+              selectedArea={selectedArea}
+              machines={filteredMachines}
+              summariesByMachine={summariesByMachine}
+              selectedMachine={selectedMachine}
+              onSelectMachine={setSelectedMachine}
+              canManageMachines={Boolean(user)}
+              isLoading={isLoading}
+              editingMachine={editingMachine}
+              editMachineName={editMachineName}
+              onEditMachineNameChange={setEditMachineName}
+              onStartEditMachine={(machine) => {
+                setEditingMachine(machine);
+                setEditMachineName(machine);
+              }}
+              onCancelEditMachine={() => setEditingMachine(null)}
+              onConfirmEditMachine={handleEditMachine}
+              onDeleteMachine={handleDeleteMachine}
+              isAddingMachine={isAddingMachine}
+              onStartAddMachine={() => setIsAddingMachine(true)}
+              onCancelAddMachine={() => {
+                setIsAddingMachine(false);
+                setNewMachineName("");
+              }}
+              newMachineName={newMachineName}
+              onNewMachineNameChange={setNewMachineName}
+              onAddMachine={handleAddMachine}
+            />
+
+            {!selectedArea ? (
+              <section className="tm-card tm-panel">
+                <p className="tm-empty-state">{t("temperatureMonitor.noAreaGuide")}</p>
+              </section>
+            ) : selectedMachine ? (
+              <>
+                <TemperatureEntryPanel
+                  machine={selectedMachine}
                   selectedMonth={selectedMonth}
-                  showToast={showToast}
-                  area={selectedArea}
+                  data={data}
+                  baseline={baseline}
+                  loading={machineLoading}
+                  canEdit={Boolean(user)}
+                  saving={saving}
+                  onTemperatureChange={(day, value) =>
+                    handleMetricChange("temperature", day, value)
+                  }
+                  onHumidityChange={(day, value) =>
+                    handleMetricChange("humidity", day, value)
+                  }
+                  onCopyPrevious={handleCopyPrevious}
+                  onSave={handleSave}
+                  i18nLanguage={i18n.language}
                 />
-              </div>
-            ))}
+                <TemperatureInsightsPanel
+                  data={data}
+                  selectedMonth={selectedMonth}
+                />
+              </>
+            ) : (
+              <section className="tm-card tm-panel">
+                <p className="tm-empty-state">{t("temperatureMonitor.noMachine")}</p>
+              </section>
+            )}
           </div>
         )}
       </div>
 
-      {/* Modal biểu đồ */}
       <Modal
         isOpen={isChartModalOpen}
         onRequestClose={() => setIsChartModalOpen(false)}
@@ -348,19 +434,19 @@ const TemperatureMonitor = () => {
               📈 {t("temperatureMonitor.chartTitle")} - {selectedMonth}
             </h3>
             <select
-              value={modalSelectedArea}
-              onChange={(e) => setModalSelectedArea(e.target.value)}
+              value={modalSelectedArea ?? ""}
+              onChange={(e) => setModalSelectedArea(e.target.value || null)}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
               {areaKeys.map((areaKey) => (
                 <option key={areaKey} value={areaKey}>
-                  {t(`areas.${areaKey}`)}{" "}
-                  {/* ✅ dịch tên hiển thị, nhưng giữ key gốc làm value */}
+                  {t(`areas.${areaKey}`)}
                 </option>
               ))}
             </select>
           </div>
           <button
+            type="button"
             onClick={() => setIsChartModalOpen(false)}
             className="font-bold text-red-600 hover:text-red-800"
           >
@@ -370,6 +456,7 @@ const TemperatureMonitor = () => {
 
         <div className="mb-6 flex space-x-4">
           <button
+            type="button"
             onClick={() => setActiveTab("temperature")}
             className={`px-5 py-2 rounded-md font-bold border ${
               activeTab === "temperature"
@@ -377,9 +464,12 @@ const TemperatureMonitor = () => {
                 : "border-slate-300 text-slate-700 dark:border-slate-600 dark:text-slate-300"
             }`}
           >
-            {t("temperatureMonitor.temperature")}
+            {t("temperatureMonitor.temperatureLabel", {
+              defaultValue: "Nhiệt độ",
+            })}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("humidity")}
             className={`px-5 py-2 rounded-md font-bold border ${
               activeTab === "humidity"
@@ -387,7 +477,7 @@ const TemperatureMonitor = () => {
                 : "border-slate-300 text-slate-700 dark:border-slate-600 dark:text-slate-300"
             }`}
           >
-            {t("temperatureMonitor.humidity")}
+            {t("temperatureMonitor.humidityLabel", { defaultValue: "Độ ẩm" })}
           </button>
         </div>
 
