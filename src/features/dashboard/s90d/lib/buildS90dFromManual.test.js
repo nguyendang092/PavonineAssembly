@@ -134,6 +134,73 @@ describe("buildS90dFromManual", () => {
     expect(daily.totalRow.yieldPct).not.toBe(daily.totalRow.cumulativeYieldPct);
   });
 
+  it("computes grand total chain yield from aggregated process quantities", () => {
+    const fillDay = (dayEntry) => {
+      dayEntry.PRESS.boards[0].shifts["08~10"] = {
+        okQty: 100,
+        ngQty: 0,
+        defects: {},
+      };
+      dayEntry.PRESS.boards[1].shifts["08~10"] = {
+        okQty: 50,
+        ngQty: 50,
+        defects: { scratch: 50 },
+      };
+      dayEntry.HAIRLINE.boards[0].shifts["08~10"] = {
+        okQty: 95,
+        ngQty: 5,
+        defects: { scratch: 5 },
+      };
+      dayEntry.HAIRLINE.boards[1].shifts["08~10"] = {
+        okQty: 40,
+        ngQty: 10,
+        defects: { scratch: 10 },
+      };
+    };
+
+    const dayOne = createEmptyDayEntry();
+    fillDay(dayOne);
+
+    const dayTwo = createEmptyDayEntry();
+    dayTwo.PRESS.boards[0].shifts["08~10"] = {
+      okQty: 100,
+      ngQty: 0,
+      defects: {},
+    };
+    dayTwo.PRESS.boards[1].shifts["08~10"] = {
+      okQty: 100,
+      ngQty: 0,
+      defects: {},
+    };
+    dayTwo.HAIRLINE.boards[0].shifts["08~10"] = {
+      okQty: 90,
+      ngQty: 10,
+      defects: { scratch: 10 },
+    };
+    dayTwo.HAIRLINE.boards[1].shifts["08~10"] = {
+      okQty: 45,
+      ngQty: 5,
+      defects: { scratch: 5 },
+    };
+
+    const dailySummaries = [
+      buildDailySummaryFromManual({ dayEntry: dayOne, dateKey: "2026-07-01" }),
+      buildDailySummaryFromManual({ dayEntry: dayTwo, dateKey: "2026-07-02" }),
+    ];
+    const grand = buildGrandTotalSummaryFromManual(dailySummaries);
+
+    const pressRow = grand.processRows.find((row) => row.process === "PRESS");
+    const hairlineRow = grand.processRows.find((row) => row.process === "HAIRLINE");
+
+    expect(pressRow?.okQty).toBe(350);
+    expect(pressRow?.totalQty).toBe(400);
+    expect(pressRow?.yieldPct).toBe(87.5);
+    expect(hairlineRow?.okQty).toBe(270);
+    expect(hairlineRow?.totalQty).toBe(300);
+    expect(hairlineRow?.yieldPct).toBe(100);
+    expect(hairlineRow?.cumulativeYieldPct).toBe(87.5);
+  });
+
   it("aggregates grand total from daily summaries", () => {
     const dayOne = createEmptyDayEntry();
     dayOne.PRESS.boards[0].shifts["08~10"] = { okQty: 5, ngQty: 0, defects: {} };

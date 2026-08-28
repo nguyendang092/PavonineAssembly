@@ -20,7 +20,11 @@ import {
   createEmptyDefectImageLists,
   normalizeDefectImageUrls,
 } from "./s90dDefectImages";
-import { applyS90dReportYieldMetrics, roundYieldPct } from "./s90dCumulativeYield";
+import {
+  applyS90dProcessYieldMetrics,
+  applyS90dReportYieldMetrics,
+  roundYieldPct,
+} from "./s90dCumulativeYield";
 import {
   applyBrokenChainBoardYieldInvalidation,
   applyBrokenChainYieldInvalidation,
@@ -904,17 +908,8 @@ export function buildGrandTotalSummaryFromManual(
     config,
   );
 
-  applyS90dReportYieldMetrics(
-    {
-      processDetails,
-      processRows,
-      processes: config.processes,
-      usesProductSubCodes: config.usesProductSubCodes,
-      fixedBoardSpecsAllProcesses: config.fixedBoardSpecsAllProcesses,
-      fixedBoardSpecs: config.fixedBoardSpecs,
-    },
-    { emptyAsNull: true },
-  );
+  // Tab Tổng: tỷ lệ đạt / tỷ lệ đạt thẳng tính từ SL gom theo công đoạn (không trung bình Code D/E hay mã AP5).
+  applyS90dProcessYieldMetrics(processRows, { emptyAsNull: true });
 
   if (config.fixedBoardSpecsAllProcesses) {
     applyBrokenChainYieldInvalidation(processRows, config.processes);

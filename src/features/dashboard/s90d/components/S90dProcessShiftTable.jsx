@@ -4,10 +4,12 @@ import { useReportT } from "../../productionReport/useReportTranslation";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
 import {
   formatS90dDefectQty,
+  formatS90dYieldPct,
   formatShiftLineLabel,
   formatShortDateLabel,
   formatS90dTypeSlotLabel,
   isHighDefectCell,
+  resolveS90dTotalYieldPct,
 } from "../lib/s90dDisplayUtils";
 import { isLateShiftSlot } from "../lib/s90dShiftSlots";
 import S90dBilingualHeader from "./S90dBilingualHeader";
@@ -16,7 +18,7 @@ import S90dDefectImageThumbs from "./S90dDefectImageThumbs";
 import S90dKpiCards from "./S90dKpiCards";
 
 const INFO_COL_COUNT_BASE = 4;
-const QTY_COL_COUNT = 4;
+const QTY_COL_COUNT = 5;
 
 function formatQty(value, isPercentRow, useDash) {
   if (isPercentRow) {
@@ -187,6 +189,14 @@ const ShiftRow = memo(function ShiftRow({
       </td>
       <td className={`s90d-num s90d-col-ng ${isTotal ? "s90d-ng-total" : ""}`}>
         {isPercent ? "" : formatQty(row.ngQty, false, useDash)}
+      </td>
+      <td className="s90d-num s90d-col-yield">
+        {isPercent
+          ? ""
+          : formatS90dYieldPct(
+              isTotal ? resolveS90dTotalYieldPct(row) : row.yieldPct,
+              useDash ? "-" : "0%",
+            )}
       </td>
       <td
         className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}
@@ -402,6 +412,9 @@ export default memo(function S90dProcessShiftTable({
               </th>
               <th className="s90d-head-qty s90d-head-ng">
                 <S90dBilingualHeader ko="불량수량" vi="SL NG" />
+              </th>
+              <th className="s90d-head-qty">
+                <S90dBilingualHeader ko="수율" vi="Tỷ lệ đạt" />
               </th>
               <th className="s90d-head-qty s90d-head-ng-rate">
                 <S90dBilingualHeader ko="불량율" vi="Tỷ lệ NG" />
