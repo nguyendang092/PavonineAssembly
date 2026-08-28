@@ -222,60 +222,85 @@ export function applyS90dDisplayYieldPct(
 }
 
 /**
- * Tích lũy S90D (cột Tích lũy) — tính trên hiệu suất bước (SL đạt/Tổng SL).
+ * Tỷ lệ đạt thẳng (직진율) — nhân chuỗi theo cột Tỷ lệ đạt:
+ * - PRESS = tỷ lệ đạt PRESS
+ * - MC = tỷ lệ đạt MC × tỷ lệ đạt PRESS (AP5)
+ * - HAIRLINE = tỷ lệ đạt HAIRLINE × tỷ lệ đạt thẳng công đoạn trước (MC hoặc PRESS)
+ * - ANODIZING = tỷ lệ đạt ANODIZING × tỷ lệ đạt thẳng HAIRLINE
+ * - ASSEMBLY = tỷ lệ đạt ASSEMBLY × tỷ lệ đạt thẳng ANODIZING
+ * - TOTAL = tỷ lệ đạt thẳng ASSEMBLY
  */
-export function computeS90dCumulativeYieldPct(
-  currentYield,
-  previousCumulative,
-  index,
-) {
-  if (index === 0) {
-    return roundYieldPct(currentYield ?? 0) ?? 0;
+export const S90D_STRAIGHT_YIELD_PROCESSES = Object.freeze([
+  "PRESS",
+  "MC",
+  "HAIRLINE",
+  "ANODIZING",
+  "ASSEMBLY",
+]);
+export function computeS90dStraightYieldPct(chainYield, previousStraightYield) {
+  if (
+    chainYield == null ||
+    previousStraightYield == null ||
+    chainYield === "" ||
+    previousStraightYield === ""
+  ) {
+    return null;
   }
-  if (!previousCumulative) return 0;
-  return roundYieldPct(((currentYield ?? 0) / previousCumulative) * 100);
+  return roundYieldPct((Number(chainYield) * Number(previousStraightYield)) / 100);
+}
+
+/** @deprecated Dùng {@link computeS90dStraightYieldPct}. Giữ alias cho test cũ. */
+export function computeS90dCumulativeYieldPct(
+  chainYield,
+  previousStraightYield,
+) {
+  if (previousStraightYield == null) {
+    return roundYieldPct(chainYield ?? 0) ?? 0;
+  }
+  return computeS90dStraightYieldPct(chainYield, previousStraightYield) ?? 0;
+}
+
+function resolveRowChainYield(row, { emptyAsNull = false } = {}) {
+  if (!row?.totalQty) return null;
+  if (emptyAsNull && !row.totalQty) return null;
+  return row.yieldPct ?? row.stepYieldPct ?? computeStepYieldPct(row);
 }
 
 export function applyS90dCumulativeYieldPct(
   processRows,
   { emptyAsNull = false } = {},
 ) {
-  let previousCumulative = null;
-  let hadEmptyProcessSinceLastCumulative = false;
+  let previousStraight = null;
 
-  (processRows ?? []).forEach((row) => {
+  for (const row of processRows ?? []) {
     if (!row.totalQty) {
       row.cumulativeYieldPct = null;
-      hadEmptyProcessSinceLastCumulative = true;
-      return;
+      continue;
     }
 
-    const stepYield =
-      row.stepYieldPct ?? computeStepYieldPct(row) ?? row.yieldPct;
+    const chainYield = resolveRowChainYield(row, { emptyAsNull });
 
-    if (previousCumulative == null) {
-      if (emptyAsNull && hadEmptyProcessSinceLastCumulative) {
-        row.cumulativeYieldPct = null;
-        return;
-      }
-      row.cumulativeYieldPct = computeS90dCumulativeYieldPct(
-        stepYield,
-        null,
-        0,
-      );
-    } else {
-      row.cumulativeYieldPct = computeS90dCumulativeYieldPct(
-        stepYield,
-        previousCumulative,
-        1,
-      );
+    if (row.process === "PRESS") {
+      row.cumulativeYieldPct =
+        chainYield != null ? roundYieldPct(chainYield) : null;
+      previousStraight = row.cumulativeYieldPct;
+      continue;
     }
 
-    if (row.totalQty > 0 && row.cumulativeYieldPct != null) {
-      previousCumulative = row.cumulativeYieldPct;
-      hadEmptyProcessSinceLastCumulative = false;
+    if (!S90D_STRAIGHT_YIELD_PROCESSES.includes(row.process)) {
+      row.cumulativeYieldPct = null;
+      continue;
     }
-  });
+
+    row.cumulativeYieldPct = computeS90dStraightYieldPct(
+      chainYield,
+      previousStraight,
+    );
+
+    if (row.cumulativeYieldPct != null) {
+      previousStraight = row.cumulativeYieldPct;
+    }
+  }
 }
 
 export function applyS90dProcessYieldMetrics(processRows, options = {}) {

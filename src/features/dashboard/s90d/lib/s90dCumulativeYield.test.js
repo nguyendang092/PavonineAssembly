@@ -6,15 +6,20 @@ import {
   applyS90dProcessYieldMetrics,
   applyS90dProductBoardYieldMetrics,
   computeS90dCumulativeYieldPct,
+  computeS90dStraightYieldPct,
   roundYieldPct,
 } from "./s90dCumulativeYield";
 
 describe("s90dCumulativeYield", () => {
-  it("computes cumulative yield from previous stage cumulative ratio", () => {
-    expect(computeS90dCumulativeYieldPct(100, null, 0)).toBe(100);
-    expect(computeS90dCumulativeYieldPct(90, 100, 1)).toBe(90);
-    expect(computeS90dCumulativeYieldPct(88, 94.7, 2)).toBe(92.9);
-    expect(computeS90dCumulativeYieldPct(91, 92.9, 3)).toBe(98);
+  it("computes straight yield as chain yield times previous straight yield", () => {
+    expect(computeS90dStraightYieldPct(95, 94.7)).toBeCloseTo(90, 1);
+    expect(computeS90dStraightYieldPct(92.9, 90)).toBeCloseTo(83.6, 1);
+    expect(computeS90dStraightYieldPct(98, 83.6)).toBeCloseTo(81.9, 1);
+  });
+
+  it("keeps legacy cumulative helper for first-stage fallback", () => {
+    expect(computeS90dCumulativeYieldPct(100, null)).toBe(100);
+    expect(computeS90dCumulativeYieldPct(94.7, 95)).toBeCloseTo(90, 1);
   });
 
   it("applies display yield: PRESS step, HAIRLINE+ divided by previous", () => {
@@ -35,20 +40,20 @@ describe("s90dCumulativeYield", () => {
     expect(processRows[3].yieldPct).toBe(98);
   });
 
-  it("applies cumulative yield from step yields", () => {
+  it("applies straight yield from chain yields on summary tabs", () => {
     const processRows = [
       { process: "PRESS", yieldPct: 95, stepYieldPct: 95, totalQty: 100 },
       { process: "HAIRLINE", yieldPct: 94.7, stepYieldPct: 90, totalQty: 100 },
-      { process: "ANODIZING", yieldPct: 97.8, stepYieldPct: 88, totalQty: 100 },
-      { process: "ASSEMBLY", yieldPct: 93.1, stepYieldPct: 91, totalQty: 100 },
+      { process: "ANODIZING", yieldPct: 92.9, stepYieldPct: 88, totalQty: 100 },
+      { process: "ASSEMBLY", yieldPct: 98, stepYieldPct: 91, totalQty: 100 },
     ];
 
     applyS90dCumulativeYieldPct(processRows);
 
     expect(processRows[0].cumulativeYieldPct).toBe(95);
-    expect(processRows[1].cumulativeYieldPct).toBe(94.7);
-    expect(processRows[2].cumulativeYieldPct).toBe(92.9);
-    expect(processRows[3].cumulativeYieldPct).toBe(98);
+    expect(processRows[1].cumulativeYieldPct).toBeCloseTo(90, 1);
+    expect(processRows[2].cumulativeYieldPct).toBeCloseTo(83.6, 1);
+    expect(processRows[3].cumulativeYieldPct).toBeCloseTo(81.9, 1);
   });
 
   it("applies full process yield metrics for daily/total tabs", () => {
@@ -63,8 +68,8 @@ describe("s90dCumulativeYield", () => {
 
     expect(processRows[0].yieldPct).toBe(95);
     expect(processRows[1].yieldPct).toBe(94.7);
-    expect(processRows[1].cumulativeYieldPct).toBe(94.7);
-    expect(processRows[3].cumulativeYieldPct).toBe(98);
+    expect(processRows[1].cumulativeYieldPct).toBeCloseTo(90, 1);
+    expect(processRows[3].cumulativeYieldPct).toBeCloseTo(81.9, 1);
   });
 
   it("skips empty processes when chaining cumulative yield", () => {
@@ -78,8 +83,26 @@ describe("s90dCumulativeYield", () => {
 
     expect(processRows[0].cumulativeYieldPct).toBe(95);
     expect(processRows[1].cumulativeYieldPct).toBeNull();
-    expect(processRows[2].cumulativeYieldPct).toBe(94.7);
+    expect(processRows[2].cumulativeYieldPct).toBeCloseTo(90, 1);
     expect(processRows[2].yieldPct).toBe(94.7);
+  });
+
+  it("chains straight yield through MC for AP5", () => {
+    const processRows = [
+      { process: "PRESS", yieldPct: 95, totalQty: 100 },
+      { process: "MC", yieldPct: 94.7, totalQty: 100 },
+      { process: "HAIRLINE", yieldPct: 94.7, totalQty: 100 },
+      { process: "ANODIZING", yieldPct: 92.9, totalQty: 100 },
+      { process: "ASSEMBLY", yieldPct: 98, totalQty: 100 },
+    ];
+
+    applyS90dCumulativeYieldPct(processRows);
+
+    expect(processRows[0].cumulativeYieldPct).toBe(95);
+    expect(processRows[1].cumulativeYieldPct).toBeCloseTo(90, 1);
+    expect(processRows[2].cumulativeYieldPct).toBeCloseTo(85.2, 1);
+    expect(processRows[3].cumulativeYieldPct).toBeCloseTo(79.2, 1);
+    expect(processRows[4].cumulativeYieldPct).toBeCloseTo(77.6, 1);
   });
 
   it("uses null for empty daily rows when requested", () => {

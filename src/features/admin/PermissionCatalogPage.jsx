@@ -1,40 +1,70 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
 import { PERMISSION_CATALOG } from "@/config/featurePermissions";
+import PermissionCatalogCard from "./PermissionCatalogCard";
+import {
+  PERMISSION_ROLE_LEVELS,
+  PERMISSION_ROLE_META,
+  buildPermissionCatalogStats,
+  enrichPermissionCatalogEntry,
+  filterPermissionCatalog,
+} from "./permissionCatalogUtils";
+import "./permissionCatalog.css";
+
+const ROLE_FILTER_ORDER = [
+  PERMISSION_ROLE_LEVELS.ADMIN,
+  PERMISSION_ROLE_LEVELS.MANAGER,
+  PERMISSION_ROLE_LEVELS.STAFF,
+  PERMISSION_ROLE_LEVELS.SYSTEM,
+];
 
 export default function PermissionCatalogPage() {
   const { t } = useTranslation();
   const { user } = useUserIdentity();
   const { userRole } = useUserPermissions();
   const [q, setQ] = useState("");
+  const [roleFilters, setRoleFilters] = useState([]);
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
 
-  const rows = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return [...PERMISSION_CATALOG];
-    return PERMISSION_CATALOG.filter((r) => {
-      const blob = [
-        r.id,
-        r.labelVi,
-        r.quyTac,
-        ...r.routes,
-        ...r.modules,
-        ...r.authRolesHelpers,
-      ]
-        .join(" ")
-        .toLowerCase();
-      return blob.includes(s);
+  const stats = useMemo(
+    () => buildPermissionCatalogStats(PERMISSION_CATALOG),
+    [],
+  );
+
+  const rows = useMemo(
+    () => filterPermissionCatalog(PERMISSION_CATALOG, { query: q, roleFilters }),
+    [q, roleFilters],
+  );
+
+  const enrichedRows = useMemo(
+    () => rows.map((row) => enrichPermissionCatalogEntry(row)),
+    [rows],
+  );
+
+  const toggleRoleFilter = useCallback((role) => {
+    setRoleFilters((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+    );
+  }, []);
+
+  const toggleExpanded = useCallback((id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
-  }, [q]);
+  }, []);
 
   const allowed = Boolean(user && isAdminAccess(user, userRole));
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-slate-950">
-        <div className="rounded-lg bg-white p-8 text-center shadow-lg dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-          <p className="text-gray-600 dark:text-slate-300">
+      <div className="permission-catalog-page pc-gate">
+        <div className="pc-gate__card">
+          <p>
             {t(
               "permissionCatalog.pleaseLogin",
               "Vui lòng đăng nhập để tiếp tục.",
@@ -47,9 +77,9 @@ export default function PermissionCatalogPage() {
 
   if (!allowed) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-slate-950">
-        <div className="mx-auto max-w-lg rounded-lg border border-amber-200 bg-amber-50 p-8 text-center shadow-lg dark:border-amber-800 dark:bg-amber-950/40 dark:ring-1 dark:ring-amber-900">
-          <p className="text-amber-900 dark:text-amber-100">
+      <div className="permission-catalog-page pc-gate">
+        <div className="pc-gate__card pc-gate__card--warn">
+          <p>
             {t(
               "permissionCatalog.forbidden",
               "Chỉ tài khoản Admin hoặc HR mới xem được trang tra cứu phân quyền.",
@@ -61,111 +91,117 @@ export default function PermissionCatalogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 pb-10 dark:bg-slate-950">
-      <div className="mx-auto max-w-[100rem]">
-        <div className="mb-6 rounded-lg bg-white p-6 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-          <h1 className="mb-2 text-2xl font-bold text-gray-800 dark:text-slate-100 md:text-3xl">
-            {t(
-              "permissionCatalog.title",
-              "Tra cứu phân quyền & chức năng",
-            )}
-          </h1>
-          <p className="mb-4 text-sm text-gray-600 dark:text-slate-400">
-            {t(
-              "permissionCatalog.subtitle",
-              "Dữ liệu lấy từ PERMISSION_CATALOG (src/config/featurePermissions.js). Cập nhật catalog khi thêm màn hoặc đổi quyền.",
-            )}
-          </p>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
-            {t("permissionCatalog.filterLabel", "Lọc nhanh")}
+    <div className="permission-catalog-page">
+      <div className="pc-shell">
+        <header className="pc-header">
+          <div>
+            <p className="pc-eyebrow">
+              <span className="pc-eyebrow__dot" aria-hidden />
+              {t("permissionCatalog.eyebrow", "PERMISSION_CATALOG · nội bộ")}
+            </p>
+            <h1 className="pc-title">
+              {t(
+                "permissionCatalog.title",
+                "Tra cứu phân quyền & chức năng",
+              )}
+            </h1>
+            <p className="pc-subtitle">
+              {t(
+                "permissionCatalog.subtitle",
+                "Dữ liệu lấy từ PERMISSION_CATALOG (src/config/featurePermissions.js). Cập nhật catalog khi thêm màn hoặc đổi quyền.",
+              )}
+            </p>
+          </div>
+
+          <div className="pc-stats" aria-label={t("permissionCatalog.statsAria", "Thống kê")}>
+            <div className="pc-stat">
+              <span className="pc-stat__value">{stats.entries}</span>
+              <span className="pc-stat__label">
+                {t("permissionCatalog.statEntries", "Mục")}
+              </span>
+            </div>
+            <div className="pc-stat">
+              <span className="pc-stat__value">{stats.routes}</span>
+              <span className="pc-stat__label">
+                {t("permissionCatalog.statRoutes", "Route")}
+              </span>
+            </div>
+            <div className="pc-stat">
+              <span className="pc-stat__value">{stats.modules}</span>
+              <span className="pc-stat__label">
+                {t("permissionCatalog.statModules", "File")}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <section className="pc-controls" aria-label={t("permissionCatalog.filterLabel", "Lọc nhanh")}>
+          <div className="pc-controls__row">
             <input
               type="search"
+              className="pc-search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t(
                 "permissionCatalog.filterPlaceholder",
                 "ID, đường dẫn, tên file, quy tắc…",
               )}
-              className="mt-1 w-full max-w-xl rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
             />
-          </label>
-        </div>
 
-        <div className="overflow-x-auto rounded-lg bg-white shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-          <table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-slate-700">
-            <thead className="bg-gray-100 dark:bg-slate-800">
-              <tr>
-                <th
-                  scope="col"
-                  className="whitespace-nowrap px-3 py-3 font-semibold text-gray-700 dark:text-slate-200"
+            {ROLE_FILTER_ORDER.map((role) => {
+              const meta = PERMISSION_ROLE_META[role];
+              const active = roleFilters.includes(role);
+              return (
+                <button
+                  key={role}
+                  type="button"
+                  className={`pc-chip pc-chip--${role}${active ? " pc-chip--active" : ""}`}
+                  onClick={() => toggleRoleFilter(role)}
+                  aria-pressed={active}
                 >
-                  {t("permissionCatalog.colId", "ID")}
-                </th>
-                <th
-                  scope="col"
-                  className="min-w-[12rem] px-3 py-3 font-semibold text-gray-700 dark:text-slate-200"
-                >
-                  {t("permissionCatalog.colFeature", "Chức năng")}
-                </th>
-                <th
-                  scope="col"
-                  className="min-w-[14rem] px-3 py-3 font-semibold text-gray-700 dark:text-slate-200"
-                >
-                  {t("permissionCatalog.colRule", "Quy tắc")}
-                </th>
-                <th
-                  scope="col"
-                  className="min-w-[8rem] px-3 py-3 font-semibold text-gray-700 dark:text-slate-200"
-                >
-                  {t("permissionCatalog.colRoutes", "Route")}
-                </th>
-                <th
-                  scope="col"
-                  className="min-w-[14rem] px-3 py-3 font-semibold text-gray-700 dark:text-slate-200"
-                >
-                  {t("permissionCatalog.colModules", "File / module")}
-                </th>
-                <th
-                  scope="col"
-                  className="min-w-[10rem] px-3 py-3 font-semibold text-gray-700 dark:text-slate-200"
-                >
-                  {t("permissionCatalog.colHelpers", "authRoles / helpers")}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-              {rows.map((r) => (
-                <tr
-                  key={r.id}
-                  className="align-top hover:bg-indigo-50/50 dark:hover:bg-slate-800/60"
-                >
-                  <td className="px-3 py-3 font-mono text-xs text-gray-800 dark:text-slate-200">
-                    {r.id}
-                  </td>
-                  <td className="px-3 py-3 font-medium text-gray-900 dark:text-slate-100">
-                    {r.labelVi}
-                  </td>
-                  <td className="px-3 py-3 text-gray-700 dark:text-slate-300">
-                    {r.quyTac}
-                  </td>
-                  <td className="px-3 py-3 font-mono text-xs text-gray-600 dark:text-slate-400">
-                    {r.routes.length ? r.routes.join(", ") : "—"}
-                  </td>
-                  <td className="px-3 py-3 font-mono text-xs text-gray-600 dark:text-slate-400">
-                    {r.modules.join(", ")}
-                  </td>
-                  <td className="px-3 py-3 font-mono text-xs text-gray-600 dark:text-slate-400">
-                    {r.authRolesHelpers.join(", ")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  {meta.labelVi}
+                </button>
+              );
+            })}
+          </div>
 
-        <p className="mt-4 text-center text-xs text-gray-500 dark:text-slate-500">
+          <div className="pc-legend" aria-hidden>
+            {ROLE_FILTER_ORDER.map((role) => {
+              const meta = PERMISSION_ROLE_META[role];
+              return (
+                <span key={role} className="pc-legend__item">
+                  <span
+                    className="pc-legend__swatch"
+                    style={{ background: meta.color }}
+                  />
+                  {meta.labelVi}
+                </span>
+              );
+            })}
+          </div>
+        </section>
+
+        {enrichedRows.length === 0 ? (
+          <p className="pc-empty">
+            {t("permissionCatalog.noResults", "Không có mục phù hợp bộ lọc.")}
+          </p>
+        ) : (
+          <div className="pc-list">
+            {enrichedRows.map((row) => (
+              <PermissionCatalogCard
+                key={row.id}
+                entry={row}
+                roleLevel={row.roleLevel}
+                expanded={expandedIds.has(row.id)}
+                onToggle={() => toggleExpanded(row.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        <p className="pc-footer">
           {t("permissionCatalog.footerCount", "{{shown}} / {{total}} mục", {
-            shown: rows.length,
+            shown: enrichedRows.length,
             total: PERMISSION_CATALOG.length,
           })}
         </p>

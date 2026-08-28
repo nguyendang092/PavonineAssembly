@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
 import { buildProductCodeYieldItems } from "../lib/s90dChartData";
-import { formatS90dYieldPct, resolveS90dTotalYieldPct } from "../lib/s90dDisplayUtils";
+import { formatS90dYieldPct, resolveS90dCumulativeYieldPct } from "../lib/s90dDisplayUtils";
 
 function formatQty(value) {
   return Number(value || 0).toLocaleString("vi-VN");
@@ -83,7 +83,9 @@ export default function S90dKpiCards({
 
   const showProductYieldCharts =
     showProductYieldBreakdown && productYieldItems.length >= 2;
-  const aggregateYieldPct = resolveS90dTotalYieldPct(totalRow);
+  const aggregateYieldPct = resolveS90dCumulativeYieldPct(totalRow, {
+    isTotal: true,
+  });
   const aggregateYieldValid = aggregateYieldPct != null;
   const ngRatePct = totalRow?.ngRatePct ?? null;
 

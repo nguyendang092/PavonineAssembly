@@ -12,6 +12,8 @@ function AnnualLeaveManagerTableSection({
   entries,
   deptIndex,
   filteredEntries,
+  tableFilterKey = "",
+  filterPending = false,
   lazyLoadRequired = false,
   totalEmployeeCount = 0,
   storedMonthlyByEmpKey = {},
@@ -33,6 +35,8 @@ function AnnualLeaveManagerTableSection({
   return (
     <AnnualLeaveManagerTablePanel
       filteredEntries={filteredEntries}
+      tableFilterKey={tableFilterKey}
+      filterPending={filterPending}
       lazyLoadRequired={lazyLoadRequired}
       totalEmployeeCount={totalEmployeeCount}
       entries={entries}
@@ -59,6 +63,8 @@ function areTableSectionPropsEqual(prev, next) {
     prev.entries === next.entries &&
     prev.deptIndex === next.deptIndex &&
     prev.filteredEntries === next.filteredEntries &&
+    prev.tableFilterKey === next.tableFilterKey &&
+    prev.filterPending === next.filterPending &&
     prev.lazyLoadRequired === next.lazyLoadRequired &&
     prev.totalEmployeeCount === next.totalEmployeeCount &&
     prev.storedMonthlyByEmpKey === next.storedMonthlyByEmpKey &&

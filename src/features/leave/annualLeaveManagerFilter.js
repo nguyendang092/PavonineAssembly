@@ -1,18 +1,26 @@
-import { ANNUAL_LEAVE_EMP, ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD } from "./annualLeaveFields";
+import {
+  ANNUAL_LEAVE_EMP,
+  ANNUAL_LEAVE_MANAGER_LAZY_LOAD_THRESHOLD,
+} from "./annualLeaveFields";
 import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
 import { resolveStoredMonthlyLeaveUsage } from "./annualLeaveDerived";
+import { normalizeAnnualLeaveRawProfile } from "./annualLeaveRawProfile";
 
 /** Dòng nhẹ cho lọc / phân trang — chưa tính balance live. */
 export function buildAnnualLeaveManagerEntry(empKey, raw) {
   if (!raw || typeof raw !== "object") return null;
+  const profiledRaw = normalizeAnnualLeaveRawProfile(raw, empKey);
   return {
     id: empKey,
-    rowNo: raw.rowNo,
-    [ANNUAL_LEAVE_EMP.MNV_PREFIX]: raw[ANNUAL_LEAVE_EMP.MNV_PREFIX],
-    [ANNUAL_LEAVE_EMP.MNV_SUFFIX]: raw[ANNUAL_LEAVE_EMP.MNV_SUFFIX],
-    [ANNUAL_LEAVE_EMP.FULL_NAME]: raw[ANNUAL_LEAVE_EMP.FULL_NAME],
-    [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]: raw[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT],
-    _raw: raw,
+    rowNo: profiledRaw.rowNo,
+    [ANNUAL_LEAVE_EMP.MNV_PREFIX]:
+      profiledRaw[ANNUAL_LEAVE_EMP.MNV_PREFIX],
+    [ANNUAL_LEAVE_EMP.MNV_SUFFIX]:
+      profiledRaw[ANNUAL_LEAVE_EMP.MNV_SUFFIX],
+    [ANNUAL_LEAVE_EMP.FULL_NAME]: profiledRaw[ANNUAL_LEAVE_EMP.FULL_NAME],
+    [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]:
+      profiledRaw[ANNUAL_LEAVE_EMP.SUB_DEPARTMENT],
+    _raw: profiledRaw,
   };
 }
 
@@ -55,9 +63,13 @@ export function buildAnnualLeaveManagerRowCatalog(yearData) {
     const na = Number(a.rowNo);
     const nb = Number(b.rowNo);
     if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-    return String(a.rowNo ?? "").localeCompare(String(b.rowNo ?? ""), undefined, {
-      numeric: true,
-    });
+    return String(a.rowNo ?? "").localeCompare(
+      String(b.rowNo ?? ""),
+      undefined,
+      {
+        numeric: true,
+      },
+    );
   });
 
   return {
@@ -142,9 +154,7 @@ export function resolveAnnualLeaveManagerTableEntries(
   filters = {},
   deptIndex = null,
 ) {
-  if (
-    shouldRequireAnnualLeaveManagerDeptScope(entries?.length ?? 0, filters)
-  ) {
+  if (shouldRequireAnnualLeaveManagerDeptScope(entries?.length ?? 0, filters)) {
     return { entries: [], lazyLoadRequired: true };
   }
   return {

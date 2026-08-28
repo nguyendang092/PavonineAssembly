@@ -162,7 +162,7 @@ export function resolveS90dStepYieldPct(row) {
   return capYieldPct((Number(row.okQty ?? 0) / Number(row.totalQty)) * 100);
 }
 
-/** Tích lũy (cột 직진율) — luôn lấy cumulativeYieldPct của đúng công đoạn. */
+/** Tỷ lệ đạt thẳng (직진율) — lấy cumulativeYieldPct đã nhân chuỗi theo công thức S90D. */
 export function resolveS90dCumulativeYieldPct(row, { isTotal = false } = {}) {
   if (!row) return null;
   if (isTotal) {

@@ -35,6 +35,10 @@ import {
   resolveAnnualLeaveEmpFirebaseKey,
 } from "./annualLeaveEmpKey";
 import {
+  buildAttendanceProfileByEmpKey,
+  resolveAnnualLeaveRawWithProfiles,
+} from "./annualLeaveRawProfile";
+import {
   ANNUAL_LEAVE_EMP,
   ANNUAL_LEAVE_META_KEY,
   ANNUAL_LEAVE_META_MIGRATED,
@@ -359,9 +363,14 @@ function resolveAnnualLeaveEmployeePersistWrite(
 
 function buildAnnualLeaveBatchPersistUpdates(year, writesByEmpKey) {
   const updates = {};
-  for (const [empKey, { payload }] of Object.entries(writesByEmpKey)) {
+  for (const [empKey, { payload, raw }] of Object.entries(writesByEmpKey)) {
     if (!empKey || !payload) continue;
-    updates[`${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${empKey}`] = payload;
+    // RTDB update() replaces the whole child node — merge with existing raw
+    // (same as runTransaction) so profile / monthlyLeaveUsage are not wiped.
+    updates[`${ANNUAL_LEAVE_RTDB_ROOT}/${year}/${empKey}`] = {
+      ...(raw && typeof raw === "object" ? raw : {}),
+      ...payload,
+    };
   }
   return updates;
 }
@@ -450,12 +459,22 @@ async function persistAnnualLeaveForEmployeeKeys(
     },
   );
 
+  const attendanceProfiles = buildAttendanceProfileByEmpKey(
+    attendanceRootForAccrual,
+    scopeEmpKeySet.size > 0 ? scopeEmpKeySet : null,
+  );
+
   const results = [];
   const pendingWrites = {};
 
   for (const [empKey, { raw }] of Object.entries(scopedIndexed)) {
-    const write = resolveAnnualLeaveEmployeePersistWrite(
+    const enrichedRaw = resolveAnnualLeaveRawWithProfiles(
       raw,
+      empKey,
+      attendanceProfiles,
+    );
+    const write = resolveAnnualLeaveEmployeePersistWrite(
+      enrichedRaw,
       empKey,
       year,
       {
@@ -465,7 +484,7 @@ async function persistAnnualLeaveForEmployeeKeys(
       },
     );
     if (!write) continue;
-    pendingWrites[empKey] = write;
+    pendingWrites[empKey] = { ...write, raw: enrichedRaw };
   }
 
   const changedEmpKeys = Object.keys(pendingWrites);

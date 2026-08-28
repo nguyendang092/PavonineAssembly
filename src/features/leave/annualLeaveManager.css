@@ -11,6 +11,46 @@
   opacity: 0.72;
 }
 
+.annual-leave-table--filter-pending {
+  opacity: 0.92;
+  transition: opacity 0.15s ease;
+}
+
+.annual-leave-table--filter-pending .annual-leave-table-scroll {
+  pointer-events: none;
+}
+
+.annual-leave-table-loading-overlay {
+  animation: annual-leave-loading-overlay-in 0.2s ease;
+}
+
+@keyframes annual-leave-loading-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.annual-leave-toolbar-loading {
+  animation: annual-leave-toolbar-loading-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes annual-leave-toolbar-loading-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.annual-leave-table-compact {
+  min-height: 12rem;
+}
+
 .annual-leave-table {
   --al-w-0: 2.5rem;
   --al-w-1: 4rem;

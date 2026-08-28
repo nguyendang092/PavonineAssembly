@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useUserIdentity } from "@/contexts/UserContext";
 import { db } from "@/services/firebase";
 import HrTablePagination from "@/components/ui/HrTablePagination";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import AnnualLeaveManagerTableRow from "./AnnualLeaveManagerTableRow";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
@@ -11,12 +13,11 @@ import {
   annualLeaveStickyColClass,
   annualLeaveTableThClass,
 } from "./annualLeaveTableStyles";
-import {
-  buildAnnualLeaveMonthlyUsageByEmpKey,
-} from "./annualLeaveDerived";
+import { buildAnnualLeaveMonthlyUsageByEmpKey } from "./annualLeaveDerived";
 import { buildAnnualLeaveManagerDisplayRow } from "./annualLeaveManagerDisplayRow";
 import { filterAnnualLeaveManagerEntries } from "./annualLeaveManagerFilter";
 import { persistAnnualLeaveEmployeeAdjustment } from "./annualLeaveAttendanceSync";
+import { resolveAnnualLeaveRawWithProfiles } from "./annualLeaveRawProfile";
 import { useAnnualLeaveAttendanceEnhancement } from "./useAnnualLeaveAttendanceEnhancement";
 import {
   filterAnnualLeaveManagerMonthValues,
@@ -51,6 +52,8 @@ function annualLeaveRowDisplayEqual(prevRow, nextRow) {
 
 function AnnualLeaveManagerTablePanel({
   filteredEntries,
+  tableFilterKey = "",
+  filterPending = false,
   entries = [],
   deptIndex = {},
   lazyLoadRequired = false,
@@ -69,11 +72,10 @@ function AnnualLeaveManagerTablePanel({
   const { t } = useTranslation();
   const { user } = useUserIdentity();
   const [adjustmentSavingId, setAdjustmentSavingId] = useState("");
-  const tableColCount =
-    10 + monthColumnLabels.length + 1 + (canManage ? 1 : 0);
+  const tableColCount = 10 + monthColumnLabels.length + 1 + (canManage ? 1 : 0);
 
   const tablePagination = useHrTablePagination(filteredEntries, {
-    resetDeps: [year, monthFilter, filteredEntries.length],
+    resetDeps: [year, monthFilter, tableFilterKey],
   });
 
   const pagedScopeEmpKeyKey = useMemo(
@@ -91,12 +93,14 @@ function AnnualLeaveManagerTablePanel({
     [pagedScopeEmpKeyKey, tablePagination.pagedItems],
   );
 
-  const usageThroughMonthIndex = resolveAnnualLeaveManagerMonthIndex(monthFilter);
+  const usageThroughMonthIndex =
+    resolveAnnualLeaveManagerMonthIndex(monthFilter);
 
   const {
     deductionsByEmpKey,
     attendanceMonthlyByEmpKey,
     monthWorkSummaryByEmpKey,
+    attendanceProfileByEmpKey,
     accrualAsOfDateKey,
     attendanceEnhancing,
     attendanceUsageReady,
@@ -121,13 +125,24 @@ function AnnualLeaveManagerTablePanel({
   );
 
   const buildDisplayRowForEntry = useCallback(
-    (entry, { usageReady = attendanceUsageReady, accrualReady = attendanceAccrualReady } = {}) => {
+    (
+      entry,
+      {
+        usageReady = attendanceUsageReady,
+        accrualReady = attendanceAccrualReady,
+      } = {},
+    ) => {
       const monthValues =
         monthlyByEmpKey[entry.id] ??
         storedMonthlyByEmpKey[entry.id] ??
         EMPTY_MONTH_VALUES;
+      const profiledRaw = resolveAnnualLeaveRawWithProfiles(
+        entry._raw,
+        entry.id,
+        attendanceProfileByEmpKey,
+      );
       return buildAnnualLeaveManagerDisplayRow({
-        entry,
+        entry: { ...entry, _raw: profiledRaw },
         year,
         monthValues,
         usageThroughMonthIndex,
@@ -141,6 +156,7 @@ function AnnualLeaveManagerTablePanel({
     [
       accrualAsOfDateKey,
       attendanceAccrualReady,
+      attendanceProfileByEmpKey,
       attendanceUsageReady,
       deductionsByEmpKey,
       monthWorkSummaryByEmpKey,
@@ -205,8 +221,8 @@ function AnnualLeaveManagerTablePanel({
         const map = {};
         for (const entry of filtered) {
           const rawValues = attendanceUsageReady
-            ? monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES
-            : storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
+            ? (monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES)
+            : (storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES);
           map[entry.id] = filterAnnualLeaveManagerMonthValues(
             rawValues,
             monthFilter,
@@ -277,8 +293,8 @@ function AnnualLeaveManagerTablePanel({
     for (const entry of tablePagination.pagedItems) {
       const rowReady = isEmpUsageReady(entry.id);
       const rawValues = rowReady
-        ? monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES
-        : storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES;
+        ? (monthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES)
+        : (storedMonthlyByEmpKey[entry.id] ?? EMPTY_MONTH_VALUES);
       map.set(
         entry.id,
         filterAnnualLeaveManagerMonthValues(rawValues, monthFilter),
@@ -322,13 +338,35 @@ function AnnualLeaveManagerTablePanel({
     tablePagination.rowIndexOffset,
   ]);
 
+  const tableLoadingActive =
+    !lazyLoadRequired && (filterPending || attendanceEnhancing);
+  const tableLoadingMessage = filterPending
+    ? t("annualLeave.tableLoadingFilter", {
+        defaultValue: "Đang lọc dữ liệu…",
+      })
+    : t("annualLeave.tableLoadingAttendance", {
+        defaultValue: "Đang tính phép từ điểm danh…",
+      });
+  const tableLoadingSubtitle = t("annualLeave.tableLoadingSubtitle", {
+    defaultValue: "Vui lòng chờ trong giây lát",
+  });
+
   return (
     <>
       <div
-        className={`annual-leave-table-compact w-full max-w-none rounded-md bg-white shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700${
+        className={`annual-leave-table-compact relative w-full max-w-none rounded-md bg-white shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700${
+          filterPending ? " annual-leave-table--filter-pending" : ""
+        }${
           attendanceEnhancing ? " annual-leave-table--attendance-pending" : ""
         }`}
       >
+        <PayrollMonthGridLoadingOverlay
+          active={tableLoadingActive}
+          message={tableLoadingMessage}
+          subtitle={tableLoadingSubtitle}
+          mode="overlay"
+          className="annual-leave-table-loading-overlay rounded-md"
+        />
         <div className="annual-leave-table-scroll w-full min-w-0 max-w-full">
           <table className="annual-leave-table w-max min-w-full max-w-none border-separate border-spacing-0">
             <colgroup>
@@ -488,16 +526,16 @@ function AnnualLeaveManagerTablePanel({
       <div className="annual-leave-pagination shrink-0">
         {!lazyLoadRequired ? (
           <HrTablePagination
-          rangeStart={tablePagination.rangeStart}
-          rangeEnd={tablePagination.rangeEnd}
-          totalItems={tablePagination.totalItems}
-          page={tablePagination.page}
-          totalPages={tablePagination.totalPages}
-          pageNumbers={tablePagination.pageNumbers}
-          pageSize={tablePagination.pageSize}
-          onPageChange={tablePagination.setPage}
-          onPageSizeChange={tablePagination.setPageSize}
-        />
+            rangeStart={tablePagination.rangeStart}
+            rangeEnd={tablePagination.rangeEnd}
+            totalItems={tablePagination.totalItems}
+            page={tablePagination.page}
+            totalPages={tablePagination.totalPages}
+            pageNumbers={tablePagination.pageNumbers}
+            pageSize={tablePagination.pageSize}
+            onPageChange={tablePagination.setPage}
+            onPageSizeChange={tablePagination.setPageSize}
+          />
         ) : null}
       </div>
     </>
@@ -507,6 +545,8 @@ function AnnualLeaveManagerTablePanel({
 function areTablePanelPropsEqual(prev, next) {
   return (
     prev.filteredEntries === next.filteredEntries &&
+    prev.tableFilterKey === next.tableFilterKey &&
+    prev.filterPending === next.filterPending &&
     prev.lazyLoadRequired === next.lazyLoadRequired &&
     prev.totalEmployeeCount === next.totalEmployeeCount &&
     prev.entries === next.entries &&

@@ -39,11 +39,7 @@ export {
 /**
  * Khóa `emp_{mnv}` từ MNV, `mnvPrefix`, `recordId` hoặc bản ghi NV.
  */
-export function resolveAnnualLeaveEmpFirebaseKey({
-  mnv,
-  recordId,
-  raw,
-} = {}) {
+export function resolveAnnualLeaveEmpFirebaseKey({ mnv, recordId, raw } = {}) {
   const fromEmployee = resolveEmpFirebaseKeyFromEmployee({
     mnv: mnv ?? raw?.[ANNUAL_LEAVE_EMP.MNV_PREFIX],
     id: recordId ?? raw?.id,

@@ -324,10 +324,7 @@ export function buildLiveAnnualLeaveBalanceByMnv(
   usageDetailByEmpKey = {},
   attendanceMonthlyByEmpKey = {},
   monthWorkSummaryByEmpKey = {},
-  {
-    scopeEmpKeySet = null,
-    asOfDateKey = null,
-  } = {},
+  { scopeEmpKeySet = null, asOfDateKey = null } = {},
 ) {
   const map = {};
   if (!yearData || typeof yearData !== "object") return map;
@@ -368,10 +365,7 @@ export function normalizeAnnualLeaveRowLive(
   year = null,
   monthValues = null,
   monthWorkSummaryByYearMonth = null,
-  {
-    asOfDateKey = null,
-    usageThroughMonthIndex = null,
-  } = {},
+  { asOfDateKey = null, usageThroughMonthIndex = null } = {},
 ) {
   if (!raw || typeof raw !== "object") return null;
   const empKey = resolveAnnualLeaveEmpFirebaseKey({ recordId: id, raw }) || id;

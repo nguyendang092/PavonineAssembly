@@ -9,15 +9,13 @@ import {
   formatS90dYieldPct,
   formatShortDateLabel,
   isHighDefectCell,
-  resolveS90dChainYieldPct,
   resolveS90dCumulativeYieldPct,
-  resolveS90dTotalYieldPct,
 } from "../lib/s90dDisplayUtils";
 import S90dBilingualHeader from "./S90dBilingualHeader";
 import S90dDefectImageThumbs from "./S90dDefectImageThumbs";
 
 const INFO_COL_COUNT_BASE = 4;
-const QTY_COL_COUNT = 6;
+const QTY_COL_COUNT = 5;
 
 function resolveClassificationCell({ processLabel, isTotal, isPercent, rt }) {
   if (isPercent) return "";
@@ -74,6 +72,7 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
   row,
   dateLabel,
   processLabel,
+  processKey = "",
   totalNgQty,
   isBoardSubRow = false,
 }) {
@@ -111,8 +110,9 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
     isPercent,
     rt,
   });
-  const chainYieldPct = resolveS90dChainYieldPct(row, { isTotal });
   const cumulativeYieldPct = resolveS90dCumulativeYieldPct(row, { isTotal });
+  const hideStraightYieldCell =
+    !isPercent && !isTotal && processKey === "PRESS";
 
   return (
     <tr className={trClass}>
@@ -133,11 +133,10 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
       <td className="s90d-num s90d-col-ok">
         {isPercent ? "" : formatQty(row.okQty, false)}
       </td>
-      <td className="s90d-num s90d-col-yield">
-        {isPercent ? "" : formatS90dYieldPct(chainYieldPct, "-")}
-      </td>
       <td className="s90d-num s90d-col-cumulative">
-        {isPercent ? "" : formatS90dYieldPct(cumulativeYieldPct, "-")}
+        {isPercent || hideStraightYieldCell
+          ? ""
+          : formatS90dYieldPct(cumulativeYieldPct, "-")}
       </td>
       <td className={`s90d-num s90d-col-ng ${isTotal ? "s90d-ng-total" : ""}`}>
         {isPercent ? "" : formatQty(row.ngQty, false)}
@@ -205,6 +204,7 @@ function renderSummaryProcessDetailRows({
           row={summaryRow}
           dateLabel={dateLabel}
           processLabel={processLabel}
+          processKey={process}
           totalNgQty={totalNgQty}
         />
         {hasMultipleBoards
@@ -218,6 +218,7 @@ function renderSummaryProcessDetailRows({
                 }}
                 dateLabel={dateLabel}
                 processLabel={processLabel}
+                processKey={process}
                 totalNgQty={totalNgQty}
                 isBoardSubRow
               />
@@ -277,9 +278,6 @@ export default function S90dSummaryProcessTable({
             </th>
             <th className="s90d-head-qty s90d-head-ok">
               <S90dBilingualHeader ko="양품수량" vi="SL đạt" />
-            </th>
-            <th className="s90d-head-qty">
-              <S90dBilingualHeader ko="수율" vi="Tỷ lệ đạt" />
             </th>
             <th className="s90d-head-qty s90d-head-cumulative">
               <S90dBilingualHeader ko="직진율" vi="Tỷ lệ đạt thẳng" />

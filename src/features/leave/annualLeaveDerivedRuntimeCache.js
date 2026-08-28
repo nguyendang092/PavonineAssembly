@@ -39,6 +39,20 @@ export function buildDerivedMapsFilterKey({
   return [throughDateKey ?? "", yearMonthPrefix ?? ""].join(":");
 }
 
+/** empKey nào đã có derived cache trong bucket (tránh flash pending khi đổi trang/bộ phận). */
+export function listEmpDerivedBucketCacheHits(filterKey, scopeEmpKeySet) {
+  if (!(scopeEmpKeySet instanceof Set) || scopeEmpKeySet.size === 0) {
+    return [];
+  }
+  const bucket = empDerivedBuckets.get(filterKey);
+  if (!bucket) return [];
+  const hits = [];
+  for (const empKey of scopeEmpKeySet) {
+    if (bucket.has(empKey)) hits.push(empKey);
+  }
+  return hits;
+}
+
 function getEmpDerivedBucket(filterKey) {
   let bucket = empDerivedBuckets.get(filterKey);
   if (!bucket) {
@@ -66,8 +80,7 @@ function computeEmpDerivedEntry(attendanceRoot, year, deductionFilter, empKey) {
   );
   return {
     deductions: partial.deductionsByEmpKey[empKey] ?? 0,
-    attendanceMonthly:
-      partial.attendanceMonthlyByEmpKey[empKey] ?? EMPTY_MONTH,
+    attendanceMonthly: partial.attendanceMonthlyByEmpKey[empKey] ?? EMPTY_MONTH,
   };
 }
 
@@ -107,7 +120,11 @@ function updateDayFingerprints(attendanceScopeKey, attendanceRoot, year) {
   return store;
 }
 
-function assembleDerivedMapsFromBucket(bucket, scopeEmpKeySet, prevMaps = null) {
+function assembleDerivedMapsFromBucket(
+  bucket,
+  scopeEmpKeySet,
+  prevMaps = null,
+) {
   const prevDeductions = prevMaps?.deductionsByEmpKey ?? {};
   const prevMonthly = prevMaps?.attendanceMonthlyByEmpKey ?? {};
   const deductionsByEmpKey = { ...prevDeductions };
@@ -147,7 +164,11 @@ export function syncAttendanceDerivedMaps({
   forceFullScope = false,
 }) {
   if (!attendanceRoot || !year) {
-    return { maps: EMPTY_DERIVED, recomputedEmpKeys: new Set(), isInitial: false };
+    return {
+      maps: EMPTY_DERIVED,
+      recomputedEmpKeys: new Set(),
+      isInitial: false,
+    };
   }
 
   const bucket = getEmpDerivedBucket(filterKey);
@@ -155,7 +176,12 @@ export function syncAttendanceDerivedMaps({
   const prevRoot = lastAttendanceRoots.get(attendanceScopeKey) ?? null;
 
   const { changedDateKeys, affectedEmpKeys, isInitial } =
-    diffAttendanceYearSnapshots(prevRoot, attendanceRoot, year, fingerprintStore);
+    diffAttendanceYearSnapshots(
+      prevRoot,
+      attendanceRoot,
+      year,
+      fingerprintStore,
+    );
 
   lastAttendanceRoots.set(attendanceScopeKey, attendanceRoot);
   updateDayFingerprints(attendanceScopeKey, attendanceRoot, year);
@@ -190,11 +216,7 @@ export function syncAttendanceDerivedMaps({
     for (const empKey of keysToCompute) recomputedEmpKeys.add(empKey);
   }
 
-  const maps = assembleDerivedMapsFromBucket(
-    bucket,
-    scopeEmpKeySet,
-    prevMaps,
-  );
+  const maps = assembleDerivedMapsFromBucket(bucket, scopeEmpKeySet, prevMaps);
 
   return { maps, recomputedEmpKeys, isInitial };
 }

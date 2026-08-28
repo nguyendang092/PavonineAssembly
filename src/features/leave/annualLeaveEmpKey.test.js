@@ -43,8 +43,8 @@ describe("annualLeaveEmpKey", () => {
       },
     });
     expect(indexed.emp_251205.recordId).toBe("emp_251205");
-    expect(indexed.emp_251205.raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]).toBe(
-      5,
-    );
+    expect(
+      indexed.emp_251205.raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
+    ).toBe(5);
   });
 });

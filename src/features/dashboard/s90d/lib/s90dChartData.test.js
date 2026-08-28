@@ -210,9 +210,9 @@ describe("buildProductCodeYieldItems", () => {
 
     expect(ap5ff?.isValid).toBe(true);
 
-    expect(ap5ff?.yieldPct).toBe(90.2);
+    expect(ap5ff?.yieldPct).toBeCloseTo(80.9, 1);
 
-    expect(ap5ff?.cumulativeYieldPct).toBe(90.2);
+    expect(ap5ff?.cumulativeYieldPct).toBeCloseTo(80.9, 1);
 
   });
 

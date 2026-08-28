@@ -98,6 +98,7 @@ describe("applyAnnualLeaveDeductionDelta", () => {
     expect(mockGet).not.toHaveBeenCalledWith("attendance");
     expect(annualLeaveStore.emp_PAVO1).toEqual(
       expect.objectContaining({
+        [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "PAVO1",
         [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: 3,
         [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 3,
         [ANNUAL_LEAVE_EMP.BALANCE]: 1.5,
@@ -106,6 +107,72 @@ describe("applyAnnualLeaveDeductionDelta", () => {
     expect(mockRunTransaction).toHaveBeenCalledWith(
       "annualLeave/2026/emp_PAVO1",
       expect.any(Function),
+    );
+  });
+
+  it("batch persist merges profile fields instead of replacing the whole node", async () => {
+    mockYearWithLeaveAgg(
+      {
+        emp_A: {
+          rowNo: 1,
+          [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "A001",
+          [ANNUAL_LEAVE_EMP.FULL_NAME]: "Employee A",
+          [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]: "PRESS",
+          [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 4.5,
+          [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 1,
+        },
+        emp_B: {
+          rowNo: 2,
+          [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "B002",
+          [ANNUAL_LEAVE_EMP.FULL_NAME]: "Employee B",
+          [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]: "ASSEMBLY",
+          [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 4.5,
+          [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 0,
+        },
+      },
+      {
+        emp_A: {
+          [ATTENDANCE_LEAVE_AGG_EMP.DEDUCTION_BY_MONTH]: { "06": 2 },
+        },
+        emp_B: {
+          [ATTENDANCE_LEAVE_AGG_EMP.DEDUCTION_BY_MONTH]: { "06": 1 },
+        },
+      },
+    );
+
+    mockUpdate.mockImplementation((_ref, updates) => {
+      for (const [path, value] of Object.entries(updates ?? {})) {
+        const match = /^annualLeave\/2026\/(emp_[^/]+)$/.exec(path);
+        if (match && value && typeof value === "object") {
+          annualLeaveStore[match[1]] = value;
+        }
+      }
+      return Promise.resolve();
+    });
+
+    const { appliedCount } = await persistAnnualLeaveYearFromAttendance({}, {
+      year: 2026,
+    });
+
+    expect(appliedCount).toBe(2);
+    expect(mockUpdate).toHaveBeenCalled();
+    expect(annualLeaveStore.emp_A).toEqual(
+      expect.objectContaining({
+        rowNo: 1,
+        [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "A001",
+        [ANNUAL_LEAVE_EMP.FULL_NAME]: "Employee A",
+        [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]: "PRESS",
+        [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 2,
+      }),
+    );
+    expect(annualLeaveStore.emp_B).toEqual(
+      expect.objectContaining({
+        rowNo: 2,
+        [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "B002",
+        [ANNUAL_LEAVE_EMP.FULL_NAME]: "Employee B",
+        [ANNUAL_LEAVE_EMP.SUB_DEPARTMENT]: "ASSEMBLY",
+        [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 1,
+      }),
     );
   });
 

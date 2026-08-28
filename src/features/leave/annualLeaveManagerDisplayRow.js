@@ -35,7 +35,7 @@ export function buildAnnualLeaveManagerDisplayRow({
       year,
       monthValues,
       attendanceAccrualReady
-        ? monthWorkSummaryByEmpKey[entry.id] ?? null
+        ? (monthWorkSummaryByEmpKey[entry.id] ?? null)
         : null,
       {
         asOfDateKey: accrualAsOfDateKey,

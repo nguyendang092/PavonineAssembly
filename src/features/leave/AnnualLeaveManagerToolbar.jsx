@@ -1,5 +1,6 @@
 import { memo } from "react";
 import HrDebouncedSearchField from "@/components/ui/HrDebouncedSearchField";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 function AnnualLeaveManagerToolbar({
   t,
@@ -12,6 +13,7 @@ function AnnualLeaveManagerToolbar({
   deptFilter,
   departments,
   displayRowCount,
+  deptFilterPending = false,
   onYearChange,
   onMonthFilterChange,
   onDeptFilterChange,
@@ -71,18 +73,33 @@ function AnnualLeaveManagerToolbar({
           className="h-8 w-full min-w-0 rounded-md border px-2 text-sm text-black focus:ring-2 focus:ring-blue-200 sm:w-44 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
         />
 
-        <select
-          className="h-8 max-w-full rounded-md border bg-white px-2 text-xs font-medium text-black dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 sm:max-w-[11rem]"
-          value={deptFilter}
-          onChange={onDeptFilterChange}
-        >
-          <option value="">{t("annualLeave.allDepartments")}</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
+        <label className="flex h-7 items-center gap-1">
+          <select
+            className={`h-8 max-w-full rounded-md border bg-white px-2 text-xs font-medium text-black dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 sm:max-w-[11rem]${deptFilterPending ? " opacity-90" : ""}`}
+            value={deptFilter}
+            onChange={onDeptFilterChange}
+            aria-busy={deptFilterPending || undefined}
+            aria-describedby={
+              deptFilterPending ? "annual-leave-dept-loading" : undefined
+            }
+          >
+            <option value="">{t("annualLeave.allDepartments")}</option>
+            {departments.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+          {deptFilterPending ? (
+            <span
+              id="annual-leave-dept-loading"
+              className="annual-leave-toolbar-loading inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-blue-600 dark:text-blue-300"
+              aria-live="polite"
+            >
+              <LoadingSpinner size="xs" className="shrink-0" />
+            </span>
+          ) : null}
+        </label>
       </div>
 
       <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto">
@@ -106,6 +123,7 @@ function areToolbarPropsEqual(prev, next) {
     prev.deptFilter === next.deptFilter &&
     prev.departments === next.departments &&
     prev.displayRowCount === next.displayRowCount &&
+    prev.deptFilterPending === next.deptFilterPending &&
     prev.onYearChange === next.onYearChange &&
     prev.onMonthFilterChange === next.onMonthFilterChange &&
     prev.onDebouncedSearchChange === next.onDebouncedSearchChange &&

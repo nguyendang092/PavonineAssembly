@@ -8,9 +8,11 @@ import {
   startTransition,
 } from "react";
 import { resolveAnnualLeaveYearAsOfDateKey } from "./annualLeaveCalculated";
+import { buildAttendanceProfileByEmpKey } from "./annualLeaveRawProfile";
 import {
   buildDerivedMapsFilterKey,
   buildMonthWorkSummaryBucketKey,
+  listEmpDerivedBucketCacheHits,
   scopeEmpKeySetToCacheKey,
   syncAttendanceDerivedMaps,
   syncMonthWorkSummaryMaps,
@@ -178,15 +180,38 @@ export function useAnnualLeaveAttendanceDerived(
   monthSummaryRef.current = monthWorkSummaryByEmpKey;
 
   const resetUsageReadyForScope = useCallback((scopeSet) => {
-    usageReadyEmpKeysRef.current = new Set();
-    accrualReadyEmpKeysRef.current = new Set();
-    if (!(scopeSet instanceof Set) || scopeSet.size === 0) return;
-    setUsageReadyTick((t) => t + 1);
+    if (!(scopeSet instanceof Set) || scopeSet.size === 0) {
+      usageReadyEmpKeysRef.current = new Set();
+      accrualReadyEmpKeysRef.current = new Set();
+      setUsageReadyTick((t) => t + 1);
+      return;
+    }
+
+    let changed = false;
+    for (const empKey of usageReadyEmpKeysRef.current) {
+      if (!scopeSet.has(empKey)) {
+        usageReadyEmpKeysRef.current.delete(empKey);
+        changed = true;
+      }
+    }
+    for (const empKey of accrualReadyEmpKeysRef.current) {
+      if (!scopeSet.has(empKey)) {
+        accrualReadyEmpKeysRef.current.delete(empKey);
+        changed = true;
+      }
+    }
+    if (changed) setUsageReadyTick((t) => t + 1);
   }, []);
 
   useEffect(() => {
     resetUsageReadyForScope(scopeEmpKeySet);
-  }, [scopeEmpKeyKey, attendanceScopeKey, resetUsageReadyForScope]);
+  }, [scopeEmpKeyKey, resetUsageReadyForScope]);
+
+  useEffect(() => {
+    usageReadyEmpKeysRef.current = new Set();
+    accrualReadyEmpKeysRef.current = new Set();
+    setUsageReadyTick((t) => t + 1);
+  }, [attendanceScopeKey]);
 
   useEffect(() => {
     if (skipAttendance) {
@@ -201,6 +226,15 @@ export function useAnnualLeaveAttendanceDerived(
       setDerivedMaps(EMPTY_DERIVED);
       setUsageDerived(false);
       return;
+    }
+
+    if (scopeEmpKeySet instanceof Set && scopeEmpKeySet.size > 0) {
+      for (const empKey of listEmpDerivedBucketCacheHits(
+        derivedMapsFilterKey,
+        scopeEmpKeySet,
+      )) {
+        usageReadyEmpKeysRef.current.add(empKey);
+      }
     }
 
     let cancelled = false;
@@ -286,10 +320,7 @@ export function useAnnualLeaveAttendanceDerived(
       setMonthWorkSummaryByEmpKey(EMPTY_SUMMARY);
       setAccrualDerived(false);
       return;
-    } else if (
-      accrualYearMonths.length > 0 &&
-      !payrollMonthAttendanceReady
-    ) {
+    } else if (accrualYearMonths.length > 0 && !payrollMonthAttendanceReady) {
       setMonthWorkSummaryByEmpKey(EMPTY_SUMMARY);
       setAccrualDerived(false);
       return;
@@ -377,9 +408,7 @@ export function useAnnualLeaveAttendanceDerived(
     : usageDerived && attendanceReady && Boolean(yearData);
 
   const attendanceAccrualReady =
-    skipPayrollMonthAccrual ||
-    accrualYearMonths.length === 0 ||
-    accrualDerived;
+    skipPayrollMonthAccrual || accrualYearMonths.length === 0 || accrualDerived;
 
   const attendanceCalculated = attendanceUsageReady && attendanceAccrualReady;
   const attendanceEnhancing = !attendanceCalculated;
@@ -388,10 +417,19 @@ export function useAnnualLeaveAttendanceDerived(
     accrualYearMonths.length > 0 &&
     !payrollMonthAttendanceReady;
 
+  const attendanceProfileByEmpKey = useMemo(() => {
+    if (skipAttendance || !deferredAttendanceRoot) return {};
+    return buildAttendanceProfileByEmpKey(
+      deferredAttendanceRoot,
+      scopeEmpKeySet,
+    );
+  }, [skipAttendance, deferredAttendanceRoot, scopeEmpKeyKey, scopeEmpKeySet]);
+
   return {
     deductionsByEmpKey: derivedMaps.deductionsByEmpKey,
     attendanceMonthlyByEmpKey: derivedMaps.attendanceMonthlyByEmpKey,
     monthWorkSummaryByEmpKey,
+    attendanceProfileByEmpKey,
     accrualAsOfDateKey,
     accrualYearMonths,
     attendanceEnhancing,

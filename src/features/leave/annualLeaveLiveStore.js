@@ -50,7 +50,11 @@ function attendanceScopeKey(year, throughDateKey) {
   return "full";
 }
 
-function attendanceYearEntryKey(attendanceRootPath, year, throughDateKey = null) {
+function attendanceYearEntryKey(
+  attendanceRootPath,
+  year,
+  throughDateKey = null,
+) {
   return `${attendanceRootPath}:${year}:${attendanceScopeKey(year, throughDateKey)}`;
 }
 
@@ -77,11 +81,7 @@ function attachAnnualLeaveYear(entry, year) {
   });
 }
 
-function attendanceJoinMonthsEntryKey(
-  attendanceRootPath,
-  year,
-  yearMonthsKey,
-) {
+function attendanceJoinMonthsEntryKey(attendanceRootPath, year, yearMonthsKey) {
   return `${attendanceRootPath}:join:${year}:${yearMonthsKey}`;
 }
 

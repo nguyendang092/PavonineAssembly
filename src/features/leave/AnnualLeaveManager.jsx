@@ -4,7 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
-  startTransition,
+  useDeferredValue,
 } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -83,6 +83,8 @@ export default function AnnualLeaveManager() {
   const { query: debouncedSearch, onDebouncedSearchChange } =
     useDebouncedSearchQuery(year);
   const [deptFilter, setDeptFilter] = useState("");
+  const deferredDeptFilter = useDeferredValue(deptFilter);
+  const deptFilterPending = deptFilter !== deferredDeptFilter;
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [actionsOpen, setActionsOpen] = useState(false);
   const fileInputRef = useRef(null);
@@ -126,13 +128,33 @@ export default function AnnualLeaveManager() {
     () => buildAnnualLeaveManagerRowCatalog(yearData),
     [yearData],
   );
-  const { entries, deptIndex, departments, storedMonthlyByEmpKey } =
-    rowCatalog;
+  const { entries, deptIndex, departments, storedMonthlyByEmpKey } = rowCatalog;
 
   const exportFiltersRef = useRef({ search: "", deptFilter: "" });
-  exportFiltersRef.current = { search: debouncedSearch, deptFilter };
+  exportFiltersRef.current = {
+    search: debouncedSearch,
+    deptFilter: deferredDeptFilter,
+  };
+
+  const tableFilterKey = `${deferredDeptFilter}\0${debouncedSearch}`;
 
   const { tableEntries: filteredEntries, lazyLoadRequired } = useMemo(() => {
+    const resolved = resolveAnnualLeaveManagerTableEntries(
+      entries,
+      {
+        search: debouncedSearch,
+        deptFilter: deferredDeptFilter,
+      },
+      deptIndex,
+    );
+    return {
+      tableEntries: resolved.entries,
+      lazyLoadRequired: resolved.lazyLoadRequired,
+    };
+  }, [entries, debouncedSearch, deferredDeptFilter, deptIndex]);
+
+  const totalEmployeeCount = entries.length;
+  const displayRowCount = useMemo(() => {
     const resolved = resolveAnnualLeaveManagerTableEntries(
       entries,
       {
@@ -141,16 +163,9 @@ export default function AnnualLeaveManager() {
       },
       deptIndex,
     );
-    return {
-      tableEntries: resolved.entries,
-      lazyLoadRequired: resolved.lazyLoadRequired,
-    };
-  }, [entries, debouncedSearch, deptFilter, deptIndex]);
-
-  const totalEmployeeCount = entries.length;
-  const displayRowCount = lazyLoadRequired
-    ? totalEmployeeCount
-    : filteredEntries.length;
+    if (resolved.lazyLoadRequired) return totalEmployeeCount;
+    return resolved.entries.length;
+  }, [entries, debouncedSearch, deptFilter, deptIndex, totalEmployeeCount]);
   const detailThroughDateKey = useMemo(
     () => resolveAnnualLeaveManagerThroughDateKey(year, monthFilter),
     [year, monthFilter],
@@ -186,7 +201,7 @@ export default function AnnualLeaveManager() {
   );
 
   const handleDeptFilterChange = useCallback((event) => {
-    startTransition(() => setDeptFilter(event.target.value));
+    setDeptFilter(event.target.value);
   }, []);
 
   const handleRecalculate = useCallback(async () => {
@@ -439,50 +454,56 @@ export default function AnnualLeaveManager() {
         />
 
         <div className="hr-page-body">
-        <AnnualLeaveManagerToolbar
-          t={t}
-          year={year}
-          yearOptions={YEAR_OPTIONS}
-          monthFilter={monthFilter}
-          monthOptions={ANNUAL_LEAVE_MANAGER_MONTH_VALUES}
-          searchResetKey={year}
-          onDebouncedSearchChange={onDebouncedSearchChange}
-          deptFilter={deptFilter}
-          departments={departments}
-          displayRowCount={displayRowCount}
-          onYearChange={handleYearChange}
-          onMonthFilterChange={handleMonthFilterChange}
-          onDeptFilterChange={handleDeptFilterChange}
-          actionsSlot={actionsMenu}
-        />
-
-        <div className="hr-page-main">
-        <PayrollMonthGridLoadingOverlay active={yearLoading} mode="viewport" />
-
-        {yearLoading ? (
-          <div
-            className="annual-leave-table-compact min-h-0 flex-1"
-            aria-hidden="true"
-          />
-        ) : (
-          <AnnualLeaveManagerTableSection
+          <AnnualLeaveManagerToolbar
+            t={t}
             year={year}
+            yearOptions={YEAR_OPTIONS}
             monthFilter={monthFilter}
-            yearData={yearData}
-            entries={entries}
-            deptIndex={deptIndex}
-            filteredEntries={filteredEntries}
-            lazyLoadRequired={lazyLoadRequired}
-            totalEmployeeCount={totalEmployeeCount}
-            storedMonthlyByEmpKey={storedMonthlyByEmpKey}
-            detailThroughDateKey={detailThroughDateKey}
-            exportRef={exportRef}
-            canManage={canManage}
-            onAdjustmentSaved={handleAdjustmentSaved}
-            onAdjustmentSaveError={handleAdjustmentSaveError}
+            monthOptions={ANNUAL_LEAVE_MANAGER_MONTH_VALUES}
+            searchResetKey={year}
+            onDebouncedSearchChange={onDebouncedSearchChange}
+            deptFilter={deptFilter}
+            departments={departments}
+            displayRowCount={displayRowCount}
+            deptFilterPending={deptFilterPending}
+            onYearChange={handleYearChange}
+            onMonthFilterChange={handleMonthFilterChange}
+            onDeptFilterChange={handleDeptFilterChange}
+            actionsSlot={actionsMenu}
           />
-        )}
-        </div>
+
+          <div className="hr-page-main">
+            <PayrollMonthGridLoadingOverlay
+              active={yearLoading}
+              mode="viewport"
+            />
+
+            {yearLoading ? (
+              <div
+                className="annual-leave-table-compact min-h-0 flex-1"
+                aria-hidden="true"
+              />
+            ) : (
+              <AnnualLeaveManagerTableSection
+                year={year}
+                monthFilter={monthFilter}
+                yearData={yearData}
+                entries={entries}
+                deptIndex={deptIndex}
+                filteredEntries={filteredEntries}
+                tableFilterKey={tableFilterKey}
+                filterPending={deptFilterPending}
+                lazyLoadRequired={lazyLoadRequired}
+                totalEmployeeCount={totalEmployeeCount}
+                storedMonthlyByEmpKey={storedMonthlyByEmpKey}
+                detailThroughDateKey={detailThroughDateKey}
+                exportRef={exportRef}
+                canManage={canManage}
+                onAdjustmentSaved={handleAdjustmentSaved}
+                onAdjustmentSaveError={handleAdjustmentSaveError}
+              />
+            )}
+          </div>
         </div>
       </div>
     </AttendanceHrPageShell>
