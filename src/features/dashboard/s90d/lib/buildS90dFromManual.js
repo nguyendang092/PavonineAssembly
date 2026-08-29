@@ -484,7 +484,9 @@ function buildDailyTotalRow(
       outputProcess,
       processes,
     );
-    total.yieldPct = finalProcessRow?.yieldPct ?? null;
+    total.yieldPct = total.totalQty
+      ? yieldPctOrZero(total.okQty, total.totalQty)
+      : null;
     total.cumulativeYieldPct = finalProcessRow?.cumulativeYieldPct ?? null;
     total.ngRatePct = pctOrZero(total.ngQty, total.totalQty);
   }
@@ -763,7 +765,9 @@ function buildGrandTotalRow(
       outputProcess,
       processes,
     );
-    total.yieldPct = finalProcessRow?.yieldPct ?? null;
+    total.yieldPct = total.totalQty
+      ? yieldPctOrZero(total.okQty, total.totalQty)
+      : null;
     total.cumulativeYieldPct = finalProcessRow?.cumulativeYieldPct ?? 0;
     total.ngRatePct = pctOrZero(total.ngQty, total.totalQty);
   }

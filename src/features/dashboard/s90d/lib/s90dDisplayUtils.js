@@ -190,15 +190,9 @@ export function resolveS90dChainYieldPct(row, { isTotal = false } = {}) {
   return resolveS90dStepYieldPct(row);
 }
 
-/** Hiệu suất dòng TOTAL — lấy từ công đoạn cuối (ASSEMBLY), khớp dòng ASSEMBLY. */
+/** Hiệu suất dòng TOTAL — SL đạt / Tổng SL (không lấy hiệu suất chuỗi ASSEMBLY). */
 export function resolveS90dTotalYieldPct(row) {
   if (!row) return null;
-  if (row.yieldPct != null && row.yieldPct !== "") {
-    return capYieldPct(row.yieldPct);
-  }
-  if (row.cumulativeYieldPct != null && row.cumulativeYieldPct !== "") {
-    return capYieldPct(row.cumulativeYieldPct);
-  }
   if (Number(row.totalQty) > 0) {
     return capYieldPct((Number(row.okQty) / Number(row.totalQty)) * 100);
   }

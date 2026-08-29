@@ -47,7 +47,7 @@ export function mergeDailyDefectTotals(monthDailySummaries) {
   return { totalQty, defects };
 }
 
-/** Hiệu suất hiển thị trên biểu đồ — ưu tiên công đoạn cuối (ASSEMBLY), giới hạn 0–100%. */
+/** Hiệu suất hiển thị trên biểu đồ — ưu tiên yieldPct dòng TOTAL (SL đạt/Tổng SL). */
 export function resolveS90dChartYieldPct(row) {
   if (!row) return 0;
   const raw =

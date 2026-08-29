@@ -135,7 +135,7 @@ describe("resolveS90dChainYieldPct", () => {
     ).toBe(94.4);
   });
 
-  it("uses resolveS90dTotalYieldPct for TOTAL rows", () => {
+  it("uses okQty over totalQty for TOTAL rows", () => {
     expect(
       resolveS90dChainYieldPct(
         {
@@ -146,12 +146,12 @@ describe("resolveS90dChainYieldPct", () => {
         },
         { isTotal: true },
       ),
-    ).toBe(94.4);
+    ).toBeCloseTo(97.6, 1);
   });
 });
 
 describe("resolveS90dTotalYieldPct", () => {
-  it("prefers final-process yieldPct for TOTAL rows", () => {
+  it("uses okQty over totalQty for TOTAL rows", () => {
     expect(
       resolveS90dTotalYieldPct({
         yieldPct: 94.4,
@@ -159,17 +159,17 @@ describe("resolveS90dTotalYieldPct", () => {
         totalQty: 6124,
         okQty: 5974,
       }),
-    ).toBe(94.4);
+    ).toBeCloseTo(97.6, 1);
   });
 
-  it("falls back to cumulative when yieldPct is missing", () => {
+  it("returns null when totalQty is zero", () => {
     expect(
       resolveS90dTotalYieldPct({
         cumulativeYieldPct: 89.9,
-        totalQty: 100,
-        okQty: 90,
+        totalQty: 0,
+        okQty: 0,
       }),
-    ).toBe(89.9);
+    ).toBeNull();
   });
 });
 

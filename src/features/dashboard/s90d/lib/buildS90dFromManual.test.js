@@ -110,7 +110,7 @@ describe("buildS90dFromManual", () => {
     expect(hairlineDetail?.boardRows[1].yieldPct).toBeCloseTo(68.6, 1);
   });
 
-  it("sets S90D total yield from final ASSEMBLY process row", () => {
+  it("sets S90D total yield from total okQty over totalQty", () => {
     const dayEntry = createEmptyDayEntry();
     dayEntry.PRESS.boards[0].shifts["08~10"] = { okQty: 100, ngQty: 0, defects: {} };
     dayEntry.PRESS.boards[1].shifts["08~10"] = { okQty: 80, ngQty: 20, defects: { scratch: 20 } };
@@ -130,8 +130,14 @@ describe("buildS90dFromManual", () => {
     );
 
     expect(assemblyRow?.yieldPct).not.toBeNull();
-    expect(daily.totalRow.yieldPct).toBe(assemblyRow?.yieldPct);
-    expect(daily.totalRow.yieldPct).not.toBe(daily.totalRow.cumulativeYieldPct);
+    expect(daily.totalRow.yieldPct).toBeCloseTo(
+      (daily.totalRow.okQty / daily.totalRow.totalQty) * 100,
+      1,
+    );
+    expect(daily.totalRow.yieldPct).not.toBe(assemblyRow?.yieldPct);
+    expect(daily.totalRow.cumulativeYieldPct).toBe(
+      assemblyRow?.cumulativeYieldPct,
+    );
   });
 
   it("computes grand total chain yield from aggregated process quantities", () => {
