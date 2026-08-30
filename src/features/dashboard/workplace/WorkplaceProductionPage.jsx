@@ -2,33 +2,21 @@
  * Shell trang sản lượng workplace — hook + layout; JSX chi tiết trong components/.
  */
 import React, { memo, useMemo } from "react";
-import DetailedModal from "@/components/modals/DetailedModal";
+import WorkplaceProductionDetailModal from "./components/WorkplaceProductionDetailModal";
 import { useWorkplaceProductionDashboard } from "./hooks/useWorkplaceProductionDashboard";
+import { useWorkplaceDetailModalLayoutGuard } from "./hooks/useWorkplaceDetailModalLayoutGuard";
 import { DEFAULT_WORKPLACE_PRODUCTION_PATHS } from "./workplaceProductionPaths";
 import WorkplaceProductionSidebar from "./components/WorkplaceProductionSidebar";
 import WorkplaceProductionMainPanel from "./components/WorkplaceProductionMainPanel";
-import WorkplaceProductionDataTableModal from "./components/WorkplaceProductionDataTableModal";
 
 const WorkplaceProductionShell = memo(function WorkplaceProductionShell({
   sidebarProps,
   mainPanelProps,
-  dataTableModalProps,
-  isModalOpen,
-  closeDetailModal,
-  modalArea,
-  detailsRoot,
 }) {
   return (
-    <div className="workplace-production-viewport relative flex flex-col overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60">
+    <div className="wpd-viewport workplace-production-viewport">
       <WorkplaceProductionSidebar {...sidebarProps} />
       <WorkplaceProductionMainPanel {...mainPanelProps} />
-      <WorkplaceProductionDataTableModal {...dataTableModalProps} />
-      <DetailedModal
-        isOpen={isModalOpen}
-        onClose={closeDetailModal}
-        area={modalArea}
-        detailsRoot={detailsRoot}
-      />
     </div>
   );
 });
@@ -44,53 +32,41 @@ export default function WorkplaceProductionPage({
     isModalOpen,
     modalArea,
     closeDetailModal,
-    selectedArea,
-    setSelectedArea,
     weekData,
     selectedWeek,
     setSelectedWeek,
     selectedYear,
     setSelectedYear,
     chartData,
-    dataMap,
-    tableView,
-    setTableView,
-    dataTableOpen,
-    setDataTableOpen,
-    sidebarOpen,
-    setSidebarOpen,
     isReadingTotalFile,
     isReadingDetailFile,
     isUploadingTotal,
     isUploadingDetail,
+    isUploadingNgFaulty,
     totalFileInputRef,
     detailFileInputRef,
-    pendingNgFaultyFile,
-    setPendingNgFaultyFile,
-    isUploadingNgFaulty,
+    ngFaultyFileInputRef,
     handleFileUpload,
     handleDetailUpload,
-    handleDetailUploadToFirebase,
+    handleNgFaultyFileUpload,
     openDetailModal,
-    exportToExcel,
     dashboardStats,
     weekMeta,
     areaComboDataByArea,
+    areaMetricsByArea,
     comboChartOptions,
     chartAreasOrdered,
     handleWorkplaceAreaReorder,
-    handleNgFaultyUpload,
-    handleTotalUploadClick,
-    getCurrentWeekNumber,
-    detailData,
   } = useWorkplaceProductionDashboard(pathsConfig);
+
+  useWorkplaceDetailModalLayoutGuard(isModalOpen);
+
+  const hasChartData = Boolean(chartData?.labels?.length);
 
   const sidebarProps = useMemo(
     () => ({
       t,
       user,
-      sidebarOpen,
-      setSidebarOpen,
       selectedYear,
       setSelectedYear,
       selectedWeek,
@@ -101,22 +77,17 @@ export default function WorkplaceProductionPage({
       isReadingDetailFile,
       isUploadingDetail,
       isUploadingNgFaulty,
-      pendingNgFaultyFile,
-      setPendingNgFaultyFile,
       totalFileInputRef,
       detailFileInputRef,
+      ngFaultyFileInputRef,
       handleFileUpload,
       handleDetailUpload,
-      handleDetailUploadToFirebase,
-      handleTotalUploadClick,
-      handleNgFaultyUpload,
-      detailData,
+      handleNgFaultyFileUpload,
+      hasChartData,
     }),
     [
       t,
       user,
-      sidebarOpen,
-      setSidebarOpen,
       selectedYear,
       setSelectedYear,
       selectedWeek,
@@ -127,16 +98,13 @@ export default function WorkplaceProductionPage({
       isReadingDetailFile,
       isUploadingDetail,
       isUploadingNgFaulty,
-      pendingNgFaultyFile,
-      setPendingNgFaultyFile,
       totalFileInputRef,
       detailFileInputRef,
+      ngFaultyFileInputRef,
       handleFileUpload,
       handleDetailUpload,
-      handleDetailUploadToFirebase,
-      handleTotalUploadClick,
-      handleNgFaultyUpload,
-      detailData,
+      handleNgFaultyFileUpload,
+      hasChartData,
     ],
   );
 
@@ -146,9 +114,10 @@ export default function WorkplaceProductionPage({
       weekMeta,
       dashboardStats,
       chartData,
-      setDataTableOpen,
       chartAreasOrdered,
+      openDetailModal,
       areaComboDataByArea,
+      areaMetricsByArea,
       comboChartOptions,
       workplaceDragOverArea,
       setWorkplaceDragOverArea,
@@ -159,9 +128,10 @@ export default function WorkplaceProductionPage({
       weekMeta,
       dashboardStats,
       chartData,
-      setDataTableOpen,
       chartAreasOrdered,
+      openDetailModal,
       areaComboDataByArea,
+      areaMetricsByArea,
       comboChartOptions,
       workplaceDragOverArea,
       setWorkplaceDragOverArea,
@@ -169,46 +139,20 @@ export default function WorkplaceProductionPage({
     ],
   );
 
-  const dataTableModalProps = useMemo(
-    () => ({
-      t,
-      dataTableOpen,
-      setDataTableOpen,
-      tableView,
-      setTableView,
-      selectedArea,
-      setSelectedArea,
-      dataMap,
-      chartData,
-      openDetailModal,
-      exportToExcel,
-      getCurrentWeekNumber,
-    }),
-    [
-      t,
-      dataTableOpen,
-      setDataTableOpen,
-      tableView,
-      setTableView,
-      selectedArea,
-      setSelectedArea,
-      dataMap,
-      chartData,
-      openDetailModal,
-      exportToExcel,
-      getCurrentWeekNumber,
-    ],
-  );
-
   return (
-    <WorkplaceProductionShell
-      sidebarProps={sidebarProps}
-      mainPanelProps={mainPanelProps}
-      dataTableModalProps={dataTableModalProps}
-      isModalOpen={isModalOpen}
-      closeDetailModal={closeDetailModal}
-      modalArea={modalArea}
-      detailsRoot={pathsConfig.detailsRoot}
-    />
+    <>
+      <WorkplaceProductionShell
+        sidebarProps={sidebarProps}
+        mainPanelProps={mainPanelProps}
+      />
+      <WorkplaceProductionDetailModal
+        isOpen={isModalOpen}
+        onClose={closeDetailModal}
+        area={modalArea}
+        detailsRoot={pathsConfig.detailsRoot}
+        selectedYear={selectedYear}
+        selectedWeek={selectedWeek}
+      />
+    </>
   );
 }

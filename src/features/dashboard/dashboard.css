@@ -3,19 +3,24 @@
  * Complements Tailwind utilities in dashboard components.
  */
 
-/* Workplace production — một scroll trong vùng biểu đồ, không scroll ngoài */
+/* Workplace production — cuộn trên #app-main-scroll như trang production khác */
 #app-main-scroll:has(.workplace-production-viewport) {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  display: block;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .workplace-production-viewport {
   display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  min-height: min(100%, calc(100dvh - var(--app-navbar-height, 4rem)));
+}
+
+.production-with-sidebar__main > .workplace-production-viewport {
+  width: 100%;
 }
 
 @media print {

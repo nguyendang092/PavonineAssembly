@@ -16,9 +16,13 @@ import { barSnapshotToRows, sanitizeFirebaseKey } from "../lib/barFirebase";
 import { buildWeekDataFromRows } from "../lib/processExcelData";
 import { buildChartFromWeekRows } from "../lib/buildChartFromWeekRows";
 import { dayNormalTotal, dayNGTotal, formatDayLabelShort } from "../lib/dayTotals";
-import { exportProductionToExcel } from "../lib/exportProductionExcel";
 import { getCurrentWeekNumber } from "../lib/constants";
 import { DEFAULT_WORKPLACE_PRODUCTION_PATHS } from "../workplaceProductionPaths";
+import {
+  buildWorkplaceAreaMetrics,
+  resolveWorkplaceAreaTheme,
+  resolveWorkplaceNgLineTheme,
+} from "../lib/workplaceAreaTheme";
 
 /**
  * State + effects + handlers sản lượng workplace — logic giữ nguyên WorkplaceDashboard.
@@ -36,27 +40,22 @@ export function useWorkplaceProductionDashboard(
 
   const [workplaceAreaOrder, setWorkplaceAreaOrder] = useState([]);
   const [workplaceDragOverArea, setWorkplaceDragOverArea] = useState(null);
-  const [detailData, setDetailData] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalArea, setModalArea] = useState("");
-  const [selectedArea, setSelectedArea] = useState("");
   const [weekData, setWeekData] = useState({});
   const [selectedWeek, setSelectedWeek] = useState("");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [chartData, setChartData] = useState(null);
   const [dataMap, setDataMap] = useState({});
-  const [tableView, setTableView] = useState("detailed");
   const [rawData, setRawData] = useState(null);
-  const [dataTableOpen, setDataTableOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isReadingTotalFile, setIsReadingTotalFile] = useState(false);
   const [isReadingDetailFile, setIsReadingDetailFile] = useState(false);
   const [isUploadingTotal, setIsUploadingTotal] = useState(false);
   const [isUploadingDetail, setIsUploadingDetail] = useState(false);
+  const [isUploadingNgFaulty, setIsUploadingNgFaulty] = useState(false);
   const totalFileInputRef = useRef(null);
   const detailFileInputRef = useRef(null);
-  const [pendingNgFaultyFile, setPendingNgFaultyFile] = useState(null);
-  const [isUploadingNgFaulty, setIsUploadingNgFaulty] = useState(false);
+  const ngFaultyFileInputRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,26 +70,6 @@ export function useWorkplaceProductionDashboard(
       cancelled = true;
     };
   }, [userEmailKey, pathsConfig.chartOrderKind]);
-
-  useEffect(() => {
-    if (!dataTableOpen) return undefined;
-    const onKey = (e) => {
-      if (e.key === "Escape") setDataTableOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-
-    const scrollRoot = document.getElementById("app-main-scroll");
-    const prevMainOverflow = scrollRoot?.style.overflow ?? "";
-    const prevBodyOverflow = document.body.style.overflow;
-    if (scrollRoot) scrollRoot.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      if (scrollRoot) scrollRoot.style.overflow = prevMainOverflow;
-      document.body.style.overflow = prevBodyOverflow;
-    };
-  }, [dataTableOpen]);
 
   const processExcelData = useCallback((data, filterYear) => {
     const { grouped, selectedWeekKey } = buildWeekDataFromRows(data, filterYear);
@@ -118,11 +97,13 @@ export function useWorkplaceProductionDashboard(
     loadDataFromFirebase();
   }, [selectedYear, processExcelData, pathsConfig.barRoot]);
 
-  const openDetailModal = useCallback((area) => {
-    setDataTableOpen(false);
-    setModalArea(area);
-    setIsModalOpen(true);
-  }, []);
+  const openDetailModal = useCallback(
+    (area) => {
+      setModalArea(area || chartData?.areas?.[0] || "Assembly");
+      setIsModalOpen(true);
+    },
+    [chartData?.areas],
+  );
 
   const closeDetailModal = useCallback(() => setIsModalOpen(false), []);
 
@@ -189,9 +170,9 @@ export function useWorkplaceProductionDashboard(
 
   const handleFileUpload = useCallback(
     async (e) => {
-      const file = e.target.files[0];
+      const file = e.target.files?.[0];
       if (!file) return;
-      if (isReadingTotalFile) return;
+      if (isReadingTotalFile || isUploadingTotal) return;
 
       setIsReadingTotalFile(true);
       try {
@@ -206,21 +187,99 @@ export function useWorkplaceProductionDashboard(
         const jsonData = XLSX.utils.sheet_to_json(sheet);
         setRawData(jsonData);
         processExcelData(jsonData, selectedYear);
+        await uploadToFirebase(jsonData);
+        alert(t("workplaceChart.uploadSuccess"));
       } catch (err) {
-        alert("❌ Lỗi khi đọc file: " + (err?.message || "Không thể đọc file"));
+        alert(
+          t("workplaceChart.uploadError") + (err?.message || "Không thể xử lý file"),
+        );
       } finally {
         setIsReadingTotalFile(false);
         if (e.target) e.target.value = "";
       }
     },
-    [isReadingTotalFile, processExcelData, selectedYear],
+    [
+      isReadingTotalFile,
+      isUploadingTotal,
+      processExcelData,
+      selectedYear,
+      uploadToFirebase,
+      t,
+    ],
+  );
+
+  const persistDetailRowsToFirebase = useCallback(
+    async (rows) => {
+      if (isUploadingDetail) return;
+      if (!rows?.length) {
+        throw new Error("File Excel không có dữ liệu");
+      }
+
+      setIsUploadingDetail(true);
+
+      try {
+        const chunkSize = 500;
+        let hasValidData = false;
+
+        for (let i = 0; i < rows.length; i += chunkSize) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+
+          const chunk = rows.slice(i, i + chunkSize);
+          const updates = {};
+
+          chunk.forEach((row, index) => {
+            const model = row["ItemCode"];
+            const area = row["WorkplaceName"];
+            const week = row["Week"];
+            const date = row["ProductionEfficiencyDate"];
+            const total = row["GoodProductEfficiency"];
+
+            if (!model || !area || !week || !date) {
+              console.warn(`⚠️ Bỏ qua dòng ${i + index + 2}: thiếu dữ liệu`, {
+                model,
+                area,
+                week,
+                date,
+              });
+              return;
+            }
+
+            const safeArea = sanitizeFirebaseKey(area);
+            const safeModel = sanitizeFirebaseKey(model);
+            const path = `${pathsConfig.detailsRoot}/${safeArea}/${week}/${safeModel}/${date}`;
+            const totalValue = Number(total);
+            updates[path] = Number.isNaN(totalValue) ? 0 : totalValue;
+            hasValidData = true;
+          });
+
+          if (Object.keys(updates).length > 0) {
+            await update(ref(db), updates);
+          }
+        }
+
+        if (!hasValidData) {
+          throw new Error("Không có dữ liệu hợp lệ để upload");
+        }
+
+        if (user && user.email) {
+          await logUserAction(
+            user.email,
+            "upload_detail_output",
+            `Upload chi tiết sản lượng tuần ${selectedWeek}`,
+          );
+        }
+      } finally {
+        setIsUploadingDetail(false);
+      }
+    },
+    [isUploadingDetail, selectedWeek, user, pathsConfig.detailsRoot],
   );
 
   const handleDetailUpload = useCallback(
     async (e) => {
-      const file = e.target.files[0];
+      const file = e.target.files?.[0];
       if (!file) return;
-      if (isReadingDetailFile) return;
+      if (isReadingDetailFile || isUploadingDetail) return;
 
       setIsReadingDetailFile(true);
       try {
@@ -233,87 +292,42 @@ export function useWorkplaceProductionDashboard(
 
         const sheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(sheet);
-        setDetailData(jsonData);
-        alert("📁 Đã đọc file chi tiết, sẵn sàng upload.");
+        await persistDetailRowsToFirebase(jsonData);
+        alert(t("workplaceChart.uploadSuccess"));
       } catch (err) {
-        alert("❌ Lỗi khi đọc file: " + (err?.message || "Không thể đọc file"));
+        alert(
+          t("workplaceChart.uploadError") + (err?.message || "Không thể xử lý file"),
+        );
       } finally {
         setIsReadingDetailFile(false);
         if (e.target) e.target.value = "";
       }
     },
-    [isReadingDetailFile],
+    [isReadingDetailFile, isUploadingDetail, persistDetailRowsToFirebase, t],
   );
 
-  const handleDetailUploadToFirebase = useCallback(async () => {
-    if (!detailData) {
-      alert("❗ Vui lòng chọn file chi tiết trước khi upload.");
-      return;
-    }
-    if (isUploadingDetail) return;
+  const handleNgFaultyFileUpload = useCallback(
+    async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (isUploadingNgFaulty) return;
 
-    setIsUploadingDetail(true);
-
-    try {
-      const chunkSize = 500;
-      let hasValidData = false;
-
-      for (let i = 0; i < detailData.length; i += chunkSize) {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
-        const chunk = detailData.slice(i, i + chunkSize);
-        const updates = {};
-
-        chunk.forEach((row, index) => {
-          const model = row["ItemCode"];
-          const area = row["WorkplaceName"];
-          const week = row["Week"];
-          const date = row["ProductionEfficiencyDate"];
-          const total = row["GoodProductEfficiency"];
-
-          if (!model || !area || !week || !date) {
-            console.warn(`⚠️ Bỏ qua dòng ${i + index + 2}: thiếu dữ liệu`, {
-              model,
-              area,
-              week,
-              date,
-            });
-            return;
-          }
-
-          const safeArea = sanitizeFirebaseKey(area);
-          const safeModel = sanitizeFirebaseKey(model);
-          const path = `${pathsConfig.detailsRoot}/${safeArea}/${week}/${safeModel}/${date}`;
-          const totalValue = Number(total);
-          updates[path] = Number.isNaN(totalValue) ? 0 : totalValue;
-          hasValidData = true;
+      try {
+        await uploadNgFaultyExcel(file, {
+          db,
+          user,
+          logUserAction,
+          onLoading: setIsUploadingNgFaulty,
+          ngRoot: pathsConfig.ngRoot,
         });
-
-        if (Object.keys(updates).length > 0) {
-          await update(ref(db), updates);
-        }
+      } catch {
+        // uploadNgFaultyExcel đã hiển thị alert lỗi
+      } finally {
+        if (e.target) e.target.value = "";
       }
-
-      if (!hasValidData) {
-        alert("❌ Không có dữ liệu hợp lệ để upload.");
-        return;
-      }
-
-      if (user && user.email) {
-        await logUserAction(
-          user.email,
-          "upload_detail_output",
-          `Upload chi tiết sản lượng tuần ${selectedWeek}`,
-        );
-      }
-      alert("✅ Upload chi tiết thành công!");
-      setDetailData(null);
-    } catch (error) {
-      alert("❌ Lỗi khi upload: " + error.message);
-    } finally {
-      setIsUploadingDetail(false);
-    }
-  }, [detailData, isUploadingDetail, selectedWeek, user, pathsConfig.detailsRoot]);
+    },
+    [isUploadingNgFaulty, user, pathsConfig.ngRoot],
+  );
 
   useEffect(() => {
     const { chartData: nextChart, dataMap: nextMap } = buildChartFromWeekRows(
@@ -323,15 +337,6 @@ export function useWorkplaceProductionDashboard(
     setChartData(nextChart);
     setDataMap(nextMap);
   }, [selectedWeek, weekData]);
-
-  const exportToExcel = useCallback(() => {
-    exportProductionToExcel({
-      chartData,
-      dataMap,
-      selectedArea,
-      selectedWeek,
-    });
-  }, [chartData, dataMap, selectedArea, selectedWeek]);
 
   const dashboardStats = useMemo(() => {
     if (!chartData?.labels?.length || !Object.keys(dataMap).length) {
@@ -366,8 +371,34 @@ export function useWorkplaceProductionDashboard(
     return { weekNum: w, year: y };
   }, [selectedWeek]);
 
+  const areaMetricsByArea = useMemo(
+    () =>
+      buildWorkplaceAreaMetrics(
+        chartData,
+        dataMap,
+        dayNormalTotal,
+        dayNGTotal,
+        formatDayLabelShort,
+      ),
+    [chartData, dataMap],
+  );
+
   const areaComboDataByArea = useMemo(() => {
     if (!chartData?.labels?.length || !chartData?.areas?.length) return {};
+    const ngLine = resolveWorkplaceNgLineTheme();
+    const barValueDatalabels = {
+      display: false,
+      anchor: "end",
+      align: "bottom",
+      offset: -16,
+      clip: false,
+      color: "#111827",
+      font: {
+        size: 12,
+        weight: "600",
+        family: '"Inter", "Segoe UI", ui-sans-serif, system-ui, sans-serif',
+      },
+    };
     const out = {};
     chartData.areas.forEach((area) => {
       const dayArr = dataMap[area];
@@ -375,6 +406,7 @@ export function useWorkplaceProductionDashboard(
       const normals = labels.map((_, idx) => dayNormalTotal(area, dayArr, idx));
       const ngs = labels.map((_, idx) => dayNGTotal(area, dayArr, idx));
       const shortLabels = labels.map(formatDayLabelShort);
+      const theme = resolveWorkplaceAreaTheme(area);
       out[area] = {
         labels: shortLabels,
         datasets: [
@@ -383,30 +415,34 @@ export function useWorkplaceProductionDashboard(
             label: t("workplaceChart.comboBarLabel"),
             data: normals,
             order: 1,
-            backgroundColor: "rgba(14, 165, 233, 0.82)",
-            borderColor: "rgb(2, 132, 199)",
+            backgroundColor: theme.bar,
+            borderColor: theme.barBorder,
             borderWidth: 0,
-            borderRadius: 3,
+            borderRadius: 4,
             borderSkipped: false,
-            maxBarThickness: 26,
+            maxBarThickness: 28,
             yAxisID: "y",
+            datalabels: barValueDatalabels,
           },
           {
             type: "line",
             label: t("workplaceChart.comboLineLabel"),
             data: ngs,
             order: 2,
-            borderColor: "rgb(225, 29, 72)",
-            backgroundColor: "rgba(225, 29, 72, 0.06)",
+            borderColor: ngLine.color,
+            backgroundColor: ngLine.fill,
             tension: 0.35,
             pointRadius: 4,
             pointHoverRadius: 6,
-            pointBackgroundColor: "rgb(225, 29, 72)",
+            pointBackgroundColor: ngLine.color,
             pointBorderColor: "#fff",
             pointBorderWidth: 2,
             yAxisID: "y1",
-            borderWidth: 3,
+            borderWidth: 2.5,
             fill: false,
+            datalabels: {
+              display: false,
+            },
           },
         ],
       };
@@ -419,9 +455,16 @@ export function useWorkplaceProductionDashboard(
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 420, easing: "easeOutCubic" },
+      transitions: {
+        resize: {
+          animation: {
+            duration: 0,
+          },
+        },
+      },
       interaction: { mode: "index", intersect: false },
       layout: {
-        padding: { top: 16, right: 4, bottom: 0, left: 2 },
+        padding: { top: 42, right: 4, bottom: 8, left: 2 },
       },
       plugins: {
         legend: {
@@ -430,12 +473,17 @@ export function useWorkplaceProductionDashboard(
           labels: {
             boxWidth: 8,
             boxHeight: 8,
-            padding: 10,
+            padding: 6,
             usePointStyle: true,
             pointStyle: "rectRounded",
-            font: { size: 10, weight: "500", family: "system-ui, sans-serif" },
-            color: "#475569",
+            font: {
+              size: 10,
+              weight: "500",
+              family: '"Inter", ui-sans-serif, system-ui, sans-serif',
+            },
+            color: "#64748b",
           },
+          padding: { top: 6, bottom: 0 },
         },
         tooltip: {
           backgroundColor: "rgba(15, 23, 42, 0.92)",
@@ -455,18 +503,11 @@ export function useWorkplaceProductionDashboard(
         workplaceComboLineOnTop: true,
         datalabels: {
           display: (ctx) => {
+            if (ctx.dataset.type === "line") return false;
             const v = Number(ctx.dataset.data[ctx.dataIndex]);
             return Number.isFinite(v) && v > 0;
           },
-          anchor: (ctx) => (ctx.dataset.type === "line" ? "center" : "end"),
-          align: (ctx) => (ctx.dataset.type === "line" ? "top" : "end"),
-          offset: (ctx) => (ctx.dataset.type === "line" ? 5 : 2),
-          clamp: true,
-          color: (ctx) =>
-            ctx.dataset.type === "line"
-              ? "rgb(225, 29, 72)"
-              : "rgb(2, 132, 199)",
-          font: { size: 9, weight: "700" },
+          clamp: false,
           formatter: (value) => {
             const n = Number(value);
             return Number.isFinite(n) && n > 0 ? n.toLocaleString() : "";
@@ -482,9 +523,13 @@ export function useWorkplaceProductionDashboard(
             minRotation: 0,
             autoSkip: true,
             maxTicksLimit: 8,
-            font: { size: 9, weight: "500" },
-            color: "#64748b",
-            padding: 4,
+            font: {
+              size: 11,
+              weight: "700",
+              family: '"IBM Plex Mono", ui-monospace, monospace',
+            },
+            color: "#0f172a",
+            padding: 14,
           },
         },
         y: {
@@ -494,12 +539,17 @@ export function useWorkplaceProductionDashboard(
           border: { display: false },
           grid: { display: false },
           ticks: {
-            font: { size: 9, weight: "500" },
+            font: {
+              size: 9,
+              weight: "500",
+              family: '"IBM Plex Mono", ui-monospace, monospace',
+            },
             color: "#64748b",
             padding: 6,
             maxTicksLimit: 5,
           },
           beginAtZero: true,
+          grace: "12%",
         },
         y1: {
           type: "linear",
@@ -508,12 +558,10 @@ export function useWorkplaceProductionDashboard(
           border: { display: false },
           grid: { display: false, drawOnChartArea: false },
           ticks: {
-            font: { size: 9, weight: "500" },
-            color: "#94a3b8",
-            padding: 6,
-            maxTicksLimit: 5,
+            display: false,
           },
           beginAtZero: true,
+          grace: "12%",
         },
       },
     }),
@@ -551,42 +599,6 @@ export function useWorkplaceProductionDashboard(
     [chartData?.areas, workplaceAreaOrder, userEmailKey, pathsConfig.chartOrderKind],
   );
 
-  const handleNgFaultyUpload = useCallback(() => {
-    if (isUploadingNgFaulty) return;
-    if (!pendingNgFaultyFile) {
-      alert(t("workplaceChart.pleaseSelectNgExcel"));
-      return;
-    }
-    uploadNgFaultyExcel(pendingNgFaultyFile, {
-      db,
-      user,
-      logUserAction,
-      onLoading: setIsUploadingNgFaulty,
-      ngRoot: pathsConfig.ngRoot,
-    })
-      .then(() => setPendingNgFaultyFile(null))
-      .catch(() => {});
-  }, [isUploadingNgFaulty, pendingNgFaultyFile, t, user, pathsConfig.ngRoot]);
-
-  const handleTotalUploadClick = useCallback(() => {
-    if (isUploadingTotal || isReadingTotalFile) return;
-    if (!rawData) {
-      alert(t("workplaceChart.pleaseSelectExcel"));
-      return;
-    }
-    uploadToFirebase(rawData)
-      .then(() => alert("✅ Upload dữ liệu thành công!"))
-      .catch((error) =>
-        alert(t("workplaceChart.uploadError") + error.message),
-      );
-  }, [
-    isUploadingTotal,
-    isReadingTotalFile,
-    rawData,
-    uploadToFirebase,
-    t,
-  ]);
-
   return {
     t,
     user,
@@ -595,8 +607,6 @@ export function useWorkplaceProductionDashboard(
     isModalOpen,
     modalArea,
     closeDetailModal,
-    selectedArea,
-    setSelectedArea,
     weekData,
     selectedWeek,
     setSelectedWeek,
@@ -604,37 +614,25 @@ export function useWorkplaceProductionDashboard(
     setSelectedYear,
     chartData,
     dataMap,
-    tableView,
-    setTableView,
-    dataTableOpen,
-    setDataTableOpen,
-    sidebarOpen,
-    setSidebarOpen,
     isReadingTotalFile,
     isReadingDetailFile,
     isUploadingTotal,
     isUploadingDetail,
+    isUploadingNgFaulty,
     totalFileInputRef,
     detailFileInputRef,
-    pendingNgFaultyFile,
-    setPendingNgFaultyFile,
-    isUploadingNgFaulty,
+    ngFaultyFileInputRef,
     handleFileUpload,
     handleDetailUpload,
-    handleDetailUploadToFirebase,
+    handleNgFaultyFileUpload,
     openDetailModal,
-    exportToExcel,
     dashboardStats,
     weekMeta,
     areaComboDataByArea,
+    areaMetricsByArea,
     comboChartOptions,
     chartAreasOrdered,
     handleWorkplaceAreaReorder,
-    handleNgFaultyUpload,
-    handleTotalUploadClick,
     getCurrentWeekNumber,
-    detailData,
-    rawData,
-    uploadToFirebase,
   };
 }

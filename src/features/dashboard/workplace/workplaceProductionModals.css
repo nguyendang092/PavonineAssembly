@@ -1,0 +1,820 @@
+/* Workplace production modals — Bảng số liệu & Chi tiết sản lượng */
+
+.wpm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal-backdrop, 1200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  background: rgba(10, 26, 43, 0.55);
+}
+
+.wpm-backdrop--nested {
+  z-index: calc(var(--z-modal-backdrop, 1200) + 100);
+}
+
+.wpm-backdrop__hit {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.wpm-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 88vh;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow:
+    0 24px 48px rgba(10, 26, 43, 0.18),
+    0 2px 8px rgba(10, 26, 43, 0.08);
+  overflow: hidden;
+}
+
+.wpm-card--data {
+  max-width: 920px;
+}
+
+.wpm-card--detail {
+  max-width: 1180px;
+}
+
+.wpm-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.15rem 0.85rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.wpm-head__title {
+  margin: 0;
+  font-family: var(--wpd-font-display, "Space Grotesk", sans-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0a1a2b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wpm-head__mark {
+  width: 4px;
+  height: 1.05rem;
+  border-radius: 2px;
+  background: #e8871e;
+  flex-shrink: 0;
+}
+
+.wpm-head__desc,
+.wpm-head__crumb {
+  margin: 0.35rem 0 0;
+  max-width: 36rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.wpm-head__crumb {
+  font-family: var(--wpd-font-mono, "IBM Plex Mono", monospace);
+  font-size: 0.72rem;
+}
+
+.wpm-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.wpm-close:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+}
+
+.wpm-controls {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.75rem 1.15rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+}
+
+.wpm-segment {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: #e8edf2;
+}
+
+.wpm-segment__btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.42rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.wpm-segment__btn--active {
+  background: #0a1a2b;
+  color: #ffffff;
+}
+
+.wpm-controls__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.wpm-controls__actions--full {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.wpm-select {
+  min-width: 160px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.75rem;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.wpm-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+.wpm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wpm-btn--steel {
+  background: #1c8c99;
+  color: #ffffff;
+}
+
+.wpm-btn--steel:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.wpm-btn--green {
+  background: #059669;
+  color: #ffffff;
+}
+
+.wpm-btn--green:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.wpm-btn--ghost {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.wpm-btn--ghost:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.wpm-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.85rem 1.15rem 1rem;
+}
+
+.wpm-section {
+  margin-bottom: 1rem;
+}
+
+.wpm-section:last-child {
+  margin-bottom: 0;
+}
+
+.wpm-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.wpm-section__title {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.wpm-section__tools {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.wpm-table-wrap {
+  overflow: auto;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+}
+
+.wpm-table-wrap--scroll {
+  max-height: 46vh;
+}
+
+.wpm-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.wpm-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+  background: #f1f5f9;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.wpm-table thead th.wpm-num {
+  text-align: right;
+}
+
+.wpm-table tbody td {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.78rem;
+  color: #0f172a;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.wpm-table tbody td.wpm-num {
+  text-align: right;
+  font-family: var(--wpd-font-mono, "IBM Plex Mono", monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+.wpm-area-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.wpm-area-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.wpm-rework {
+  color: #e8871e;
+  font-weight: 600;
+}
+
+.wpm-table thead th.wpm-ng,
+.wpm-table tbody td.wpm-ng {
+  color: #e8871e;
+  font-weight: 600;
+}
+
+.wpm-total {
+  color: #0a1a2b;
+  font-weight: 700;
+}
+
+.wpm-group-row {
+  background: #eef2f6;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wpm-group-row td {
+  font-weight: 700;
+  font-size: 0.76rem;
+}
+
+.wpm-group-toggle {
+  display: inline-block;
+  width: 1rem;
+  margin-right: 0.35rem;
+  color: #64748b;
+}
+
+.wpm-day-row td:first-child {
+  padding-left: 2.3rem;
+  position: relative;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.wpm-day-row td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 1.15rem;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(15, 23, 42, 0.12);
+}
+
+.wpm-day-row--alt {
+  background: rgba(248, 250, 252, 0.85);
+}
+
+.wpm-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* —— Detail modal —— */
+
+.wpm-filter-panel {
+  flex-shrink: 0;
+  padding: 0.85rem 1.15rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--wpm-area-accent, #1c8c99) 9%, #f8fafc) 0%,
+    #f8fafc 52%,
+    #ffffff 100%
+  );
+}
+
+.wpm-filter-panel__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: flex-end;
+}
+
+.wpm-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: flex-end;
+  padding: 0.62rem 0.72rem;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.wpm-filter-group--time {
+  flex: 1.4;
+  min-width: min(100%, 380px);
+  border-top: 3px solid #0ea5e9;
+}
+
+.wpm-filter-group--area {
+  flex: 0.9;
+  min-width: min(100%, 200px);
+  border-top: 3px solid var(--wpm-area-accent, #1c8c99);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--wpm-area-accent, #1c8c99) 7%, #ffffff) 0%,
+    rgba(255, 255, 255, 0.92) 100%
+  );
+}
+
+.wpm-filter-group--tools {
+  flex: 1.1;
+  min-width: min(100%, 280px);
+  border-top: 3px solid #059669;
+}
+
+.wpm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.wpm-field--chip {
+  flex: 1;
+  min-width: 6.5rem;
+}
+
+.wpm-field--area {
+  width: 100%;
+}
+
+.wpm-field--search {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.wpm-btn--export {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: flex-end;
+}
+
+.wpm-field--static {
+  flex: 0 1 auto;
+}
+
+.wpm-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--wpd-font-mono, "IBM Plex Mono", monospace);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.wpm-field--chip .wpm-field__label {
+  color: var(--wpm-field-accent, #64748b);
+}
+
+.wpm-field__input,
+.wpm-field__static {
+  width: 100%;
+  border: 1px solid
+    color-mix(in srgb, var(--wpm-field-accent, #64748b) 24%, rgba(15, 23, 42, 0.12));
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.75rem;
+  color: #0f172a;
+  background: #ffffff;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.wpm-field__input:focus {
+  outline: none;
+  border-color: var(--wpm-field-accent, #1c8c99);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--wpm-field-accent, #1c8c99) 18%, transparent);
+}
+
+.wpm-field__static {
+  background: color-mix(in srgb, var(--wpm-field-accent, #64748b) 8%, #f8fafc);
+  color: #0f172a;
+  font-family: var(--wpd-font-mono, "IBM Plex Mono", monospace);
+  font-weight: 600;
+}
+
+.wpm-stats {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0.75rem 1.15rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+}
+
+.wpm-stat {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  padding: 0.65rem 0.8rem 0.7rem;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.wpm-stat::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--wpm-stat-accent, #1c8c99);
+}
+
+.wpm-stat__head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.35rem;
+}
+
+.wpm-stat__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wpm-stat-accent, #1c8c99) 12%, transparent);
+  color: var(--wpm-stat-accent, #1c8c99);
+  flex-shrink: 0;
+}
+
+.wpm-stat__label {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.wpm-stat__value {
+  margin: 0;
+  padding-left: 2.1rem;
+  font-family: var(--wpd-font-mono, "IBM Plex Mono", monospace);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0a1a2b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wpm-detail-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1.15rem 1rem;
+}
+
+.wpm-leaderboard-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.wpm-leaderboard-toolbar__title {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--wpd-font-display, "Space Grotesk", sans-serif);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: #0a1a2b;
+}
+
+.wpm-leaderboard-toolbar__mark {
+  width: 3px;
+  height: 1rem;
+  border-radius: 2px;
+  background: var(--wpm-area-accent, #1c8c99);
+  flex-shrink: 0;
+}
+
+.wpm-leaderboard-toolbar__info {
+  font-size: 0.72rem;
+  color: #475569;
+  font-family: var(--wpd-font-mono, "IBM Plex Mono", monospace);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding: 0 0.15rem;
+  min-width: 4.75rem;
+  text-align: center;
+}
+
+.wpm-leaderboard-toolbar__pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.wpm-leaderboard {
+  flex: 1;
+  min-height: 0;
+  max-height: 52vh;
+  overflow: auto;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+}
+
+.wpm-leaderboard__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 44px 1fr 120px 130px;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #64748b;
+  background: #f1f5f9;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.wpm-leaderboard__head span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wpm-leaderboard__row {
+  display: grid;
+  grid-template-columns: 44px 1fr 120px 130px;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.wpm-leaderboard__row:hover {
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.wpm-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  font-family: var(--wpd-font-mono, "IBM Plex Mono", monospace);
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #0a1a2b;
+  color: #ffffff;
+}
+
+.wpm-rank--1 {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.wpm-rank--2 {
+  background: linear-gradient(135deg, #fcd34d, #ca8a04);
+  color: #422006;
+}
+
+.wpm-rank--3 {
+  background: linear-gradient(135deg, #fde68a, #a16207);
+  color: #422006;
+}
+
+.wpm-model-block {
+  min-width: 0;
+}
+
+.wpm-model-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wpm-model-bar {
+  margin-top: 0.35rem;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.wpm-model-bar__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--wpm-area-accent, #1c8c99);
+}
+
+.wpm-leaderboard__date {
+  font-family: var(--wpd-font-mono, "IBM Plex Mono", monospace);
+  font-size: 0.72rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.wpm-qty-block {
+  text-align: center;
+}
+
+.wpm-qty-main {
+  font-family: var(--wpd-font-mono, "IBM Plex Mono", monospace);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0a1a2b;
+  font-variant-numeric: tabular-nums;
+}
+
+.wpm-qty-sub {
+  margin-top: 0.12rem;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--wpm-area-accent, #1c8c99);
+  font-variant-numeric: tabular-nums;
+}
+
+.wpm-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+}
+
+@media (max-width: 900px) {
+  .wpm-filter-panel__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wpm-filter-group,
+  .wpm-filter-group--time,
+  .wpm-filter-group--area,
+  .wpm-filter-group--tools {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .wpm-field--chip,
+  .wpm-field--search {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .wpm-btn--export {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .wpm-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .wpm-leaderboard__head,
+  .wpm-leaderboard__row {
+    grid-template-columns: 36px 1fr 96px;
+  }
+
+  .wpm-leaderboard__head span:last-child {
+    grid-column: 2 / -1;
+    margin-top: 0.15rem;
+  }
+
+  .wpm-leaderboard__row .wpm-qty-block {
+    grid-column: 2 / -1;
+    text-align: center;
+    margin-top: 0.15rem;
+  }
+}

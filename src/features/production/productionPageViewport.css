@@ -7,6 +7,7 @@ html.production-page-active #app-main-scroll.production-page-scroll-root {
   overflow-y: auto !important;
   overscroll-behavior-y: auto;
   -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
 }
 
 html.production-page-active .production-with-sidebar {

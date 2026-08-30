@@ -1,6 +1,10 @@
 import React, { memo } from "react";
 import { Chart } from "react-chartjs-2";
 import { CHART_DRAG_MIME } from "@/utils/chartOrderStorage";
+import {
+  resolveWorkplaceAreaStatus,
+  resolveWorkplaceAreaTheme,
+} from "../lib/workplaceAreaTheme";
 
 function WorkplaceAreaChartCard({
   area,
@@ -9,17 +13,34 @@ function WorkplaceAreaChartCard({
   workplaceDragOverArea,
   setWorkplaceDragOverArea,
   handleWorkplaceAreaReorder,
-  panelLabel,
   chartDragHandleTitle,
   areaLabel,
+  areaMetrics,
+  statusStableLabel,
+  statusWatchLabel,
+  statusWarningLabel,
+  footerGoodLabel,
+  footerNgLabel,
+  footerPeakLabel,
+  panelDesc,
 }) {
+  const theme = resolveWorkplaceAreaTheme(area);
+  const status = resolveWorkplaceAreaStatus(areaMetrics?.ngRate);
+  const statusLabel =
+    status === "stable"
+      ? statusStableLabel
+      : status === "watch"
+        ? statusWatchLabel
+        : status === "warning"
+          ? statusWarningLabel
+          : null;
+
   return (
-    <div
-      className={`dashboard-chart-panel flex flex-col rounded-xl border border-slate-300/85 bg-slate-50 p-2 transition dark:border-slate-700/90 dark:bg-slate-900/90 ${
-        workplaceDragOverArea === area
-          ? "ring-2 ring-sky-400 ring-offset-1 dark:ring-offset-slate-950"
-          : ""
+    <article
+      className={`wpd-chart-card${
+        workplaceDragOverArea === area ? " wpd-chart-card--drag-over" : ""
       }`}
+      style={{ "--wpd-area-accent": theme.accent }}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
@@ -37,33 +58,63 @@ function WorkplaceAreaChartCard({
         if (from) handleWorkplaceAreaReorder(from, area);
       }}
     >
-      <div
+      <header
         draggable
         onDragStart={(e) => {
           e.dataTransfer.setData(CHART_DRAG_MIME, area);
           e.dataTransfer.effectAllowed = "move";
         }}
         onDragEnd={() => setWorkplaceDragOverArea(null)}
-        className="mb-1 flex cursor-grab items-center justify-between gap-2 border-b border-slate-200/90 pb-1.5 active:cursor-grabbing dark:border-slate-700/80"
+        className="wpd-chart-card__header"
+        title={chartDragHandleTitle}
       >
-        <span
-          className="shrink-0 select-none text-slate-400"
-          aria-hidden
-          title={chartDragHandleTitle}
-        >
-          ⋮⋮
-        </span>
-        <h3 className="min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-800 dark:text-slate-50">
-          {areaLabel}
-        </h3>
-        <span className="shrink-0 rounded bg-slate-200/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-          {panelLabel}
-        </span>
-      </div>
-      <div className="relative h-[200px] w-full sm:h-[200px] xl:h-[250px]">
+        <div className="wpd-chart-card__title-wrap">
+          <h3 className="wpd-chart-card__title">
+            <span className="wpd-chart-card__drag" aria-hidden>
+              ⋮⋮
+            </span>
+            <span className="wpd-chart-card__title-dot" aria-hidden />
+            <span className="wpd-chart-card__title-main truncate">{areaLabel}</span>
+            <span className="wpd-chart-card__title-sep" aria-hidden>
+              ·
+            </span>
+            <span className="wpd-chart-card__title-sub">{panelDesc}</span>
+          </h3>
+        </div>
+        {statusLabel ? (
+          <span className={`wpd-status-badge wpd-status-badge--${status}`}>
+            {statusLabel}
+          </span>
+        ) : null}
+      </header>
+
+      <div className="wpd-chart-card__canvas">
         <Chart type="bar" data={combo} options={comboChartOptions} />
       </div>
-    </div>
+
+      <footer className="wpd-chart-card__footer">
+        <div className="wpd-chart-foot">
+          <p className="wpd-chart-foot__label">{footerGoodLabel}</p>
+          <p className="wpd-chart-foot__value">
+            {(areaMetrics?.totalGood ?? 0).toLocaleString("vi-VN")}
+          </p>
+        </div>
+        <div className="wpd-chart-foot">
+          <p className="wpd-chart-foot__label">{footerNgLabel}</p>
+          <p className="wpd-chart-foot__value">
+            {(areaMetrics?.totalNG ?? 0).toLocaleString("vi-VN")}
+          </p>
+        </div>
+        <div className="wpd-chart-foot">
+          <p className="wpd-chart-foot__label">{footerPeakLabel}</p>
+          <p className="wpd-chart-foot__value">
+            {areaMetrics?.peakDay
+              ? `${areaMetrics.peakDay} · ${(areaMetrics.peakGood ?? 0).toLocaleString("vi-VN")}`
+              : "—"}
+          </p>
+        </div>
+      </footer>
+    </article>
   );
 }
 

@@ -76,7 +76,7 @@ export function resolveActiveScrollRoot(scrollContainerRef) {
     if (inner instanceof HTMLElement && inner.isConnected) return inner;
 
     const workplacePanel = appMain.querySelector(
-      ".workplace-production-viewport .overflow-y-auto",
+      ".workplace-production-viewport .wpd-main__scroll, .workplace-production-viewport .overflow-y-auto",
     );
     if (workplacePanel instanceof HTMLElement && workplacePanel.isConnected) {
       return workplacePanel;
@@ -162,6 +162,131 @@ function runScrollAnimation(durationMs, onFrame, onComplete) {
 /** Vùng scroll chính (`#app-main-scroll`). */
 export function getAppScrollContainer(scrollContainerRef) {
   return resolveMainScrollEl(scrollContainerRef);
+}
+
+function measureScrollbarWidth(el) {
+  if (!(el instanceof HTMLElement)) return 0;
+  return Math.max(0, el.offsetWidth - el.clientWidth);
+}
+
+const MODAL_SCROLL_LOCK_KEYS = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "PageUp",
+  "PageDown",
+  "Home",
+  "End",
+  " ",
+  "Spacebar",
+]);
+
+/**
+ * Khóa cuộn nền khi modal mở:
+ * - overflow hidden (chặn scrollbar / kéo nền)
+ * - bù padding scrollbar khi cần (tránh layout shift)
+ * - chặn wheel / touch / phím cuộn bên ngoài modal
+ */
+export function lockAppMainScrollForModal(options = {}) {
+  const modalSelector = options.modalSelector ?? ".wpm-backdrop--nested";
+  const scrollRoot = document.getElementById(APP_MAIN_SCROLL_ID);
+  const body = document.body;
+  const html = document.documentElement;
+  const savedScrollTop = scrollRoot?.scrollTop ?? 0;
+  const savedWinY = window.scrollY;
+
+  const gutterStable =
+    scrollRoot &&
+    getComputedStyle(scrollRoot).scrollbarGutter.includes("stable");
+  const scrollbarWidth = measureScrollbarWidth(scrollRoot);
+  const paddingCompensation = gutterStable ? 0 : scrollbarWidth;
+
+  const saved = {
+    prevMainOverflow: scrollRoot?.style.overflow ?? "",
+    prevMainPaddingRight: scrollRoot?.style.paddingRight ?? "",
+    prevMainOverscroll: scrollRoot?.style.overscrollBehavior ?? "",
+    prevBodyOverflow: body.style.overflow,
+    prevHtmlOverflow: html.style.overflow,
+    prevHtmlOverscroll: html.style.overscrollBehavior,
+  };
+
+  if (scrollRoot) {
+    scrollRoot.style.overflow = "hidden";
+    scrollRoot.style.overscrollBehavior = "none";
+    if (paddingCompensation > 0) {
+      const currentPadding =
+        Number.parseFloat(getComputedStyle(scrollRoot).paddingRight) || 0;
+      scrollRoot.style.paddingRight = `${currentPadding + paddingCompensation}px`;
+    }
+  }
+  html.style.overflow = "hidden";
+  html.style.overscrollBehavior = "none";
+  body.style.overflow = "hidden";
+
+  const isInsideModal = (target) => {
+    if (!(target instanceof Node)) return false;
+    const modal = document.querySelector(modalSelector);
+    return Boolean(modal?.contains(target));
+  };
+
+  const shouldBlock = (target) => !isInsideModal(target);
+
+  const onWheel = (event) => {
+    if (!shouldBlock(event.target)) return;
+    event.preventDefault();
+  };
+
+  const onTouchMove = (event) => {
+    if (!shouldBlock(event.target)) return;
+    event.preventDefault();
+  };
+
+  const onKeyDown = (event) => {
+    if (!shouldBlock(event.target)) return;
+    if (!MODAL_SCROLL_LOCK_KEYS.has(event.key)) return;
+    event.preventDefault();
+  };
+
+  const onScrollLock = () => {
+    if (scrollRoot && scrollRoot.scrollTop !== savedScrollTop) {
+      scrollRoot.scrollTop = savedScrollTop;
+    }
+    if (window.scrollY !== savedWinY) {
+      window.scrollTo(0, savedWinY);
+    }
+  };
+
+  const listenerOptions = { passive: false, capture: true };
+  document.addEventListener("wheel", onWheel, listenerOptions);
+  document.addEventListener("touchmove", onTouchMove, listenerOptions);
+  document.addEventListener("keydown", onKeyDown, listenerOptions);
+  scrollRoot?.addEventListener("scroll", onScrollLock, { passive: true });
+  window.addEventListener("scroll", onScrollLock, { passive: true });
+
+  return () => {
+    document.removeEventListener("wheel", onWheel, listenerOptions);
+    document.removeEventListener("touchmove", onTouchMove, listenerOptions);
+    document.removeEventListener("keydown", onKeyDown, listenerOptions);
+    scrollRoot?.removeEventListener("scroll", onScrollLock);
+    window.removeEventListener("scroll", onScrollLock);
+
+    if (scrollRoot) {
+      scrollRoot.style.overflow = saved.prevMainOverflow;
+      scrollRoot.style.paddingRight = saved.prevMainPaddingRight;
+      scrollRoot.style.overscrollBehavior = saved.prevMainOverscroll;
+      scrollRoot.scrollTop = savedScrollTop;
+    }
+    html.style.overflow = saved.prevHtmlOverflow;
+    html.style.overscrollBehavior = saved.prevHtmlOverscroll;
+    body.style.overflow = saved.prevBodyOverflow;
+    if (window.scrollY !== savedWinY) window.scrollTo(0, savedWinY);
+  };
+}
+
+/** @deprecated Kept for callers that still compensate scrollbar width manually. */
+export function getAppMainScrollScrollbarWidth() {
+  return measureScrollbarWidth(document.getElementById(APP_MAIN_SCROLL_ID));
 }
 
 /** Cuộn lên đầu: main + window */

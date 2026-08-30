@@ -1,178 +1,179 @@
-import React, { memo } from "react";
+import React, { memo, useCallback } from "react";
 import {
   FiCalendar,
   FiLayers,
   FiTrendingUp,
   FiAlertTriangle,
-  FiTable,
+  FiEye,
 } from "react-icons/fi";
 import WorkplaceAreaChartCard from "./WorkplaceAreaChartCard";
+
+function formatPct(value) {
+  if (!value) return "0%";
+  return `${Number(value).toLocaleString("vi-VN", {
+    maximumFractionDigits: 1,
+  })}%`;
+}
 
 export const WorkplaceProductionMainPanel = memo(function WorkplaceProductionMainPanel({
   t,
   weekMeta,
   dashboardStats,
   chartData,
-  setDataTableOpen,
   chartAreasOrdered,
+  openDetailModal,
   areaComboDataByArea,
   comboChartOptions,
   workplaceDragOverArea,
   setWorkplaceDragOverArea,
   handleWorkplaceAreaReorder,
+  areaMetricsByArea,
 }) {
+  const ngShare =
+    dashboardStats.grandTotal > 0
+      ? (dashboardStats.totalNG / dashboardStats.grandTotal) * 100
+      : 0;
+
+  const handleOpenDetail = useCallback(() => {
+    const area = chartAreasOrdered[0] || chartData?.areas?.[0];
+    if (area) openDetailModal(area);
+  }, [chartAreasOrdered, chartData?.areas, openDetailModal]);
+
   return (
-    <>
-      <div className="dashboard-print-fill flex min-h-0 flex-1 flex-col px-3 pb-3 sm:px-5">
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="dashboard-chart-panel dashboard-report-surface flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-300/90 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
-            <div className="shrink-0 border-b border-slate-300/80 bg-gradient-to-b from-slate-200/95 to-slate-100 px-4 pt-4 pb-3 dark:border-slate-800 dark:from-slate-950 dark:to-slate-950">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-700 dark:text-sky-400">
-                    {t("workplaceChart.dashboardBadge")}
-                  </p>
-                  <h1 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl dark:text-slate-50">
-                    {t("workplaceChart.dashboardTitle")}
-                  </h1>
-                  <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-600 dark:text-slate-400">
-                    {t("workplaceChart.dashboardSubtitle")}
-                  </p>
-                </div>
-                {weekMeta.weekNum ? (
-                  <div className="shrink-0 sm:text-right">
-                    <span className="inline-flex items-center rounded-full border border-slate-300/80 bg-slate-50/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm tabular-nums dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-200">
-                      {t("workplaceChart.weekPeriod", {
-                        week: weekMeta.weekNum,
-                        year: weekMeta.year,
-                      })}
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                    <FiTrendingUp
-                      className="shrink-0 text-emerald-600 dark:text-emerald-400"
-                      size={14}
-                    />
-                    {t("workplaceChart.kpiTotalGood")}
-                  </div>
-                  <p className="mt-0.5 text-base font-bold tabular-nums leading-tight text-slate-900 dark:text-slate-50">
-                    {dashboardStats.totalGood.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                    <FiAlertTriangle
-                      className="shrink-0 text-rose-600 dark:text-rose-400"
-                      size={14}
-                    />
-                    {t("workplaceChart.kpiTotalNG")}
-                  </div>
-                  <p className="mt-0.5 text-base font-bold tabular-nums leading-tight text-slate-900 dark:text-slate-50">
-                    {dashboardStats.totalNG.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                    <FiLayers
-                      className="shrink-0 text-indigo-600 dark:text-indigo-400"
-                      size={14}
-                    />
-                    {t("workplaceChart.kpiAreas")}
-                  </div>
-                  <p className="mt-0.5 text-base font-bold tabular-nums leading-tight text-slate-900 dark:text-slate-50">
-                    {dashboardStats.areaCount}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-300/80 bg-slate-50/90 px-2.5 py-2 shadow-sm dark:border-slate-700/90 dark:bg-slate-900/95">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                    <FiCalendar
-                      className="shrink-0 text-sky-600 dark:text-sky-400"
-                      size={14}
-                    />
-                    {t("workplaceChart.kpiDays")}
-                  </div>
-                  <p className="mt-0.5 text-base font-bold tabular-nums leading-tight text-slate-900 dark:text-slate-50">
-                    {dashboardStats.dayCount}
-                  </p>
-                </div>
-              </div>
-            </div>
+    <main className="wpd-main dashboard-print-fill">
+      <div className="wpd-main__scroll">
+        <header className="wpd-topbar">
+          <div className="min-w-0">
+            <p className="wpd-topbar__eyebrow">{t("workplaceChart.dashboardBadge")}</p>
+            <h1 className="wpd-topbar__title">{t("workplaceChart.dashboardTitle")}</h1>
+          </div>
+          {weekMeta.weekNum ? (
+            <span className="wpd-week-pill">
+              {t("workplaceChart.weekPeriod", {
+                week: weekMeta.weekNum,
+                year: weekMeta.year,
+              })}
+            </span>
+          ) : null}
+        </header>
 
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-300/80 bg-slate-200/35 px-4 py-2 dark:border-slate-800 dark:bg-black/20">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-800 dark:text-slate-200">
-                  {t("workplaceChart.chartSectionTitle")}
-                </h2>
-                <p className="text-[11px] leading-snug text-slate-600 dark:text-slate-400">
-                  {t("workplaceChart.chartSectionHint")}
-                </p>
-                <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-500">
-                  {t("workplaceChart.chartDragHint")}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDataTableOpen(true)}
-                  disabled={!chartData?.labels?.length}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-sky-600 dark:hover:bg-sky-500"
-                >
-                  <FiTable size={14} strokeWidth={2.5} />
-                  {t("workplaceChart.openDataTable")}
-                </button>
-                {chartData?.areas?.length ? (
-                  <span className="inline-flex items-baseline gap-1.5 rounded-md border border-slate-300/80 bg-slate-50/90 px-2.5 py-1 text-[11px] font-medium text-slate-600 tabular-nums dark:border-slate-700/90 dark:bg-slate-900/95 dark:text-slate-300">
-                    <span className="text-slate-600 dark:text-slate-400">
-                      {t("workplaceChart.grandTotal")}
-                    </span>
-                    <span className="font-semibold text-slate-900 dark:text-slate-50">
-                      {dashboardStats.grandTotal.toLocaleString()}
-                    </span>
-                  </span>
-                ) : null}
-              </div>
+        <div className="wpd-kpi-grid">
+          <article
+            className="wpd-kpi-card"
+            style={{ "--wpd-kpi-accent": "var(--wpd-accent-ok)" }}
+          >
+            <div className="wpd-kpi-card__head">
+              <span className="wpd-kpi-card__icon">
+                <FiTrendingUp size={15} />
+              </span>
+              <span className="wpd-kpi-card__label">{t("workplaceChart.kpiTotalGood")}</span>
             </div>
+            <p className="wpd-kpi-card__value">
+              {dashboardStats.totalGood.toLocaleString("vi-VN")}
+            </p>
+            <p className="wpd-kpi-card__note">{t("workplaceChart.kpiGoodNote")}</p>
+          </article>
 
+          <article
+            className="wpd-kpi-card"
+            style={{ "--wpd-kpi-accent": "var(--wpd-accent-ng)" }}
+          >
+            <div className="wpd-kpi-card__head">
+              <span className="wpd-kpi-card__icon">
+                <FiAlertTriangle size={15} />
+              </span>
+              <span className="wpd-kpi-card__label">{t("workplaceChart.kpiTotalNG")}</span>
+            </div>
+            <p className="wpd-kpi-card__value">
+              {dashboardStats.totalNG.toLocaleString("vi-VN")}
+            </p>
+            <p className="wpd-kpi-card__note">
+              {t("workplaceChart.kpiNgNote", { rate: formatPct(ngShare) })}
+            </p>
+          </article>
+
+          <article className="wpd-kpi-card" style={{ "--wpd-kpi-accent": "#6366F1" }}>
+            <div className="wpd-kpi-card__head">
+              <span className="wpd-kpi-card__icon">
+                <FiLayers size={15} />
+              </span>
+              <span className="wpd-kpi-card__label">{t("workplaceChart.kpiAreas")}</span>
+            </div>
+            <p className="wpd-kpi-card__value">{dashboardStats.areaCount}</p>
+            <p className="wpd-kpi-card__note">{t("workplaceChart.kpiAreasNote")}</p>
+          </article>
+
+          <article className="wpd-kpi-card" style={{ "--wpd-kpi-accent": "#0EA5E9" }}>
+            <div className="wpd-kpi-card__head">
+              <span className="wpd-kpi-card__icon">
+                <FiCalendar size={15} />
+              </span>
+              <span className="wpd-kpi-card__label">{t("workplaceChart.kpiDays")}</span>
+            </div>
+            <p className="wpd-kpi-card__value">{dashboardStats.dayCount}</p>
+            <p className="wpd-kpi-card__note">{t("workplaceChart.kpiDaysNote")}</p>
+          </article>
+        </div>
+
+        <div className="wpd-section-head">
+          <div>
+            <h2 className="wpd-section-head__title">{t("workplaceChart.chartSectionTitle")}</h2>
+            <p className="wpd-section-head__hint">
+              {t("workplaceChart.chartSectionHint")}
+            </p>
+          </div>
+          <div className="wpd-section-head__actions">
+            <button
+              type="button"
+              onClick={handleOpenDetail}
+              disabled={!chartData?.labels?.length}
+              className="wpd-action-btn dashboard-no-print"
+            >
+              <FiEye size={14} strokeWidth={2.5} />
+              {t("workplaceChart.viewDetail")}
+            </button>
             {chartData?.areas?.length ? (
-              <div className="min-h-0 flex-1 overflow-y-auto bg-slate-200/35 p-3 dark:bg-black/35 sm:p-5">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {chartAreasOrdered.map((area) => {
-                    const combo = areaComboDataByArea[area];
-                    if (!combo) return null;
-                    return (
-                      <WorkplaceAreaChartCard
-                        key={area}
-                        area={area}
-                        combo={combo}
-                        comboChartOptions={comboChartOptions}
-                        workplaceDragOverArea={workplaceDragOverArea}
-                        setWorkplaceDragOverArea={setWorkplaceDragOverArea}
-                        handleWorkplaceAreaReorder={handleWorkplaceAreaReorder}
-                        panelLabel={t("workplaceChart.panelLabel")}
-                        chartDragHandleTitle={t(
-                          "workplaceChart.chartDragHandle",
-                        )}
-                        areaLabel={t(`areas.${area}`)}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-200/35 px-4 py-10 dark:bg-black/35">
-                <p className="max-w-sm text-center text-sm text-slate-600 dark:text-slate-400">
-                  {t("workplaceChart.pleaseSelectExcel")}
-                </p>
-              </div>
-            )}
+              <span className="wpd-grand-total">
+                {t("workplaceChart.grandTotal")}
+                <strong>{dashboardStats.grandTotal.toLocaleString("vi-VN")}</strong>
+              </span>
+            ) : null}
           </div>
         </div>
+
+        {chartData?.areas?.length ? (
+          <div className="wpd-chart-grid">
+            {chartAreasOrdered.map((area) => {
+              const combo = areaComboDataByArea[area];
+              if (!combo) return null;
+              return (
+                <WorkplaceAreaChartCard
+                  key={area}
+                  area={area}
+                  combo={combo}
+                  comboChartOptions={comboChartOptions}
+                  workplaceDragOverArea={workplaceDragOverArea}
+                  setWorkplaceDragOverArea={setWorkplaceDragOverArea}
+                  handleWorkplaceAreaReorder={handleWorkplaceAreaReorder}
+                  chartDragHandleTitle={t("workplaceChart.chartDragHandle")}
+                  areaLabel={t(`areas.${area}`)}
+                  areaMetrics={areaMetricsByArea[area]}
+                  statusStableLabel={t("workplaceChart.statusStable")}
+                  statusWatchLabel={t("workplaceChart.statusWatch")}
+                  statusWarningLabel={t("workplaceChart.statusWarning")}
+                  footerGoodLabel={t("workplaceChart.chartFooterGood")}
+                  footerNgLabel={t("workplaceChart.chartFooterNG")}
+                  footerPeakLabel={t("workplaceChart.chartFooterPeak")}
+                  panelDesc={t("workplaceChart.panelLabel")}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <div className="wpd-empty">{t("workplaceChart.pleaseSelectExcel")}</div>
+        )}
       </div>
-    </>
+    </main>
   );
 });
 

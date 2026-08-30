@@ -1,4 +1,5 @@
 import "../dashboard.css";
+import "./workplaceProductionDashboard.css";
 import "./registerChartJs";
 import WorkplaceProductionPage from "./WorkplaceProductionPage";
 
