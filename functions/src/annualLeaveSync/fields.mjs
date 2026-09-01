@@ -5,6 +5,7 @@ export const ATTENDANCE_LEAVE_AGG_ROOT = "attendanceLeaveAgg";
 
 export const ANNUAL_LEAVE_EMP = {
   START_WORKING_DATE: "startWorkingDate",
+  MNV_PREFIX: "mnvPrefix",
   ANNUAL_LEAVE_CURRENT_YEAR: "annualLeaveCurrentYear",
   ANNUAL_LEAVE_ADJUSTMENT: "annualLeaveAdjustment",
   BONUS_ANNUAL_LEAVE_ENV: "bonusAnnualLeaveEnv",

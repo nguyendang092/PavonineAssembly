@@ -159,16 +159,19 @@ function computePersistStateForRaw(raw, year, attendanceMonthly) {
   );
   const monthlySum = sumAnnualLeaveMonthlyUsageValues(monthValues);
   const hasStored = storedMonthly != null;
-  const hasAttendanceMonthly =
-    Array.isArray(attendanceMonthly) &&
-    attendanceMonthly.some((value) => parseAnnualLeaveNumber(value) !== 0);
+  const hasAttendanceMonthly = Array.isArray(attendanceMonthly);
   const usedFromMonthlySum =
     hasStored || hasAttendanceMonthly ? monthlySum : null;
+  const persistMonthValues =
+    hasAttendanceMonthly && monthValues.length === 12 ? monthValues : null;
 
-  return computeLiveAnnualLeaveState(raw, 0, year, { usedFromMonthlySum });
+  return {
+    state: computeLiveAnnualLeaveState(raw, 0, year, { usedFromMonthlySum }),
+    monthValues: persistMonthValues,
+  };
 }
 
-function needsPersistUpdate(raw, state) {
+function needsPersistUpdate(raw, state, { monthValues = null } = {}) {
   const prevUsed = parseAnnualLeaveNumber(
     raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED],
   );
@@ -183,6 +186,19 @@ function needsPersistUpdate(raw, state) {
     raw[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
   );
 
+  if (Array.isArray(monthValues) && monthValues.length === 12) {
+    const prevMonthly = resolveStoredMonthlyLeaveUsage(raw);
+    const nextMonthly = monthValues.map((value) =>
+      roundAnnualLeaveHours(parseAnnualLeaveNumber(value)),
+    );
+    if (
+      !prevMonthly ||
+      nextMonthly.some((value, index) => value !== prevMonthly[index])
+    ) {
+      return true;
+    }
+  }
+
   return (
     state.used !== prevUsed ||
     state.attendanceUsed !== prevAttendance ||
@@ -193,8 +209,8 @@ function needsPersistUpdate(raw, state) {
   );
 }
 
-function buildPersistPayload(empKey, raw, state) {
-  return {
+function buildPersistPayload(empKey, raw, state, { monthValues = null } = {}) {
+  const payload = {
     id: empKey,
     [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: state.hrUsed,
     [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: state.attendanceUsed,
@@ -203,6 +219,14 @@ function buildPersistPayload(empKey, raw, state) {
     [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: state.totalAnnualLeave,
     [ANNUAL_LEAVE_EMP.BALANCE]: state.balance,
   };
+
+  if (Array.isArray(monthValues) && monthValues.length === 12) {
+    payload[ANNUAL_LEAVE_EMP.MONTHLY_LEAVE_USAGE] = monthValues.map((value) =>
+      roundAnnualLeaveHours(parseAnnualLeaveNumber(value)),
+    );
+  }
+
+  return payload;
 }
 
 async function touchAnnualLeaveYearMeta(db, year) {
@@ -230,20 +254,28 @@ export async function persistAnnualLeaveEmployeeFromAgg(db, { year, empKey }) {
 
   const aggNode = await loadLeaveAggEmpNode(db, year, empKey);
   const attendanceMonthly = buildMonthlyRowFromLeaveAggNode(aggNode);
-  const state = computePersistStateForRaw(raw, year, attendanceMonthly);
+  const { state, monthValues } = computePersistStateForRaw(
+    raw,
+    year,
+    attendanceMonthly,
+  );
 
-  if (!needsPersistUpdate(raw, state)) {
+  if (!needsPersistUpdate(raw, state, { monthValues })) {
     return { applied: false, reason: "no_change" };
   }
 
-  const payload = buildPersistPayload(empKey, raw, state);
+  const payload = buildPersistPayload(empKey, raw, state, { monthValues });
   const tx = await empRef.transaction((current) => {
     if (!current || typeof current !== "object") return undefined;
-    const nextState = computePersistStateForRaw(current, year, attendanceMonthly);
-    if (!needsPersistUpdate(current, nextState)) return undefined;
+    const next = computePersistStateForRaw(current, year, attendanceMonthly);
+    if (!needsPersistUpdate(current, next.state, { monthValues: next.monthValues })) {
+      return undefined;
+    }
     return {
       ...current,
-      ...buildPersistPayload(empKey, current, nextState),
+      ...buildPersistPayload(empKey, current, next.state, {
+        monthValues: next.monthValues,
+      }),
     };
   });
 

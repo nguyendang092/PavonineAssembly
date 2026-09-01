@@ -4,12 +4,15 @@ import {
   getAnnualLeaveYearSnapshot,
   getAttendanceJoinMonthsSnapshot,
   getAttendanceYearSnapshot,
+  getLeaveAggYearSnapshot,
   isAnnualLeaveYearSnapshotReady,
   isAttendanceJoinMonthsSnapshotReady,
   isAttendanceYearSnapshotReady,
+  isLeaveAggYearSnapshotReady,
   subscribeAnnualLeaveYear,
   subscribeAttendanceJoinMonths,
   subscribeAttendanceYear,
+  subscribeLeaveAggYear,
 } from "./annualLeaveLiveStore";
 
 export function useAnnualLeaveYearExternal(year, enabled = true) {
@@ -135,6 +138,34 @@ export function useAttendanceJoinMonthsExternal(
     skipJoinMonthAccrual,
     yearMonths.length,
   ]);
+
+  const data = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const ready = useSyncExternalStore(subscribe, getReady, getReady);
+
+  return { data, ready };
+}
+
+export function useLeaveAggYearExternal(year, enabled = true) {
+  const subscribe = useMemo(() => {
+    if (!enabled || !year || !Number.isFinite(Number(year))) {
+      return () => () => {};
+    }
+    return (onChange) => subscribeLeaveAggYear(year, onChange);
+  }, [year, enabled]);
+
+  const getSnapshot = useMemo(() => {
+    if (!enabled || !year || !Number.isFinite(Number(year))) {
+      return () => null;
+    }
+    return () => getLeaveAggYearSnapshot(year);
+  }, [year, enabled]);
+
+  const getReady = useMemo(() => {
+    if (!enabled || !year || !Number.isFinite(Number(year))) {
+      return () => true;
+    }
+    return () => isLeaveAggYearSnapshotReady(year);
+  }, [year, enabled]);
 
   const data = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const ready = useSyncExternalStore(subscribe, getReady, getReady);

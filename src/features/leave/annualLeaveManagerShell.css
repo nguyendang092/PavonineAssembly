@@ -1,0 +1,447 @@
+/* Shell + filterbar — quản lý phép năm (xanh rêu) */
+
+.annual-leave-viewport {
+  --bg: #f3f6f3;
+  --surface: #ffffff;
+  --ink: #16221d;
+  --ink-soft: #5e6e65;
+  --ink-faint: #93a199;
+  --line: #e2e8e3;
+  --primary: #1f5c4e;
+  --primary-dark: #153f35;
+  --primary-soft: #e4f0ec;
+  --green-soft: #e7f4ec;
+  --green: #2e7d4f;
+  --amber-soft: #fbeedd;
+  --amber: #c97a2b;
+  --red-soft: #fbeae5;
+  --red: #b94a36;
+  --radius: 14px;
+  --shadow-neutral: 0 1px 2px rgb(22 34 29 / 0.04);
+
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, "Segoe UI", Arial, Helvetica, "Liberation Sans", sans-serif;
+  font-size: 13.5px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.dark .annual-leave-viewport {
+  --bg: #101814;
+  --surface: #16221d;
+  --ink: #eef4f0;
+  --ink-soft: #93a199;
+  --ink-faint: #5e6e65;
+  --line: #2a3832;
+  --primary: #4a8f7c;
+  --primary-dark: #1f5c4e;
+  --primary-soft: rgb(31 92 78 / 0.22);
+  --green-soft: rgb(46 125 79 / 0.2);
+  --green: #7ecf9a;
+  --amber-soft: rgb(201 122 43 / 0.18);
+  --amber: #e6b56a;
+  --red-soft: rgb(185 74 54 / 0.18);
+  --red: #e08a78;
+  --shadow-neutral: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+.annual-leave-wrap {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 28px 0 60px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.annual-leave-topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 30;
+  margin-bottom: 22px;
+}
+
+.annual-leave-topbar-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  position: relative;
+  z-index: 31;
+}
+
+.annual-leave-topbar-title {
+  margin: 0;
+  font-family: Manrope, Inter, "Segoe UI", sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--primary-dark);
+}
+
+.dark .annual-leave-topbar-title {
+  color: var(--ink);
+}
+
+.annual-leave-topbar-sub {
+  margin: 8px 0 0;
+  max-width: 42rem;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.annual-leave-topbar-text {
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.annual-leave-export-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  box-shadow: var(--shadow-neutral);
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.annual-leave-export-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.annual-leave-export-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.annual-leave-actions-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  box-shadow: var(--shadow-neutral);
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.annual-leave-actions-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.annual-leave-actions-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.annual-leave-actions-dropdown {
+  position: fixed;
+  z-index: var(--z-modal-content, 1210);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(22 34 29 / 0.12);
+}
+
+.annual-leave-actions-dropdown-header {
+  border-bottom: 1px solid rgb(255 255 255 / 0.12);
+  background: var(--primary-dark);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.annual-leave-actions-dropdown-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  transition: background 0.15s ease;
+}
+
+.annual-leave-actions-dropdown-item:hover:not(:disabled) {
+  background: var(--primary-soft);
+}
+
+.annual-leave-actions-dropdown-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.annual-leave-actions-dropdown-item--danger {
+  color: var(--red);
+}
+
+.annual-leave-actions-dropdown-item--danger:hover:not(:disabled) {
+  background: var(--red-soft);
+}
+
+.annual-leave-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-neutral);
+  overflow: hidden;
+}
+
+.annual-leave-filter-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 18px;
+  min-height: 52px;
+}
+
+.annual-leave-filter-group--period,
+.annual-leave-filter-group--dept {
+  padding-left: 28px;
+}
+
+.annual-leave-filter-group--dept .annual-leave-filter-body {
+  padding-left: 6px;
+}
+
+.annual-leave-filter-group--period .annual-leave-fvalue-row {
+  padding-left: 4px;
+}
+
+.annual-leave-filter-group--dept .annual-leave-fselect {
+  width: 100%;
+  min-width: 10rem;
+  padding: 4px 14px 4px 10px;
+}
+
+.annual-leave-filter-group--dept .annual-leave-fselect option {
+  padding: 6px 10px;
+}
+
+.annual-leave-filter-group:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 1px;
+  background: var(--line);
+}
+
+.annual-leave-filter-icon {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
+  text-align: center;
+}
+
+.annual-leave-filter-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.annual-leave-flabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  line-height: 1;
+}
+
+.annual-leave-fvalue-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.annual-leave-fselect {
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0 14px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2393A199' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right center;
+}
+
+.annual-leave-fselect:focus {
+  outline: none;
+}
+
+.annual-leave-fselect:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.annual-leave-fslash {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.annual-leave-filter-search {
+  flex: 1 1 12rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  min-width: 10rem;
+}
+
+.annual-leave-filter-search .annual-leave-filter-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.annual-leave-search-input {
+  width: 100%;
+  border: none;
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.annual-leave-search-input::placeholder {
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+.annual-leave-search-input:focus {
+  outline: none;
+}
+
+.annual-leave-search-input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.annual-leave-filter-count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  margin-right: 14px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.annual-leave-table-shell {
+  position: relative;
+  z-index: 1;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-neutral);
+  overflow: visible;
+}
+
+.annual-leave-pagination {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.annual-leave-dept-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .annual-leave-wrap {
+    padding: 28px 0 48px 18px;
+  }
+
+  .annual-leave-topbar-title {
+    font-size: 22px;
+  }
+
+  .annual-leave-filterbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .annual-leave-filter-group,
+  .annual-leave-filter-search,
+  .annual-leave-filter-count {
+    flex-shrink: 0;
+  }
+
+  .annual-leave-filter-search {
+    flex: 1 0 14rem;
+  }
+}

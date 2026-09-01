@@ -60,6 +60,17 @@ html.hr-page-active #hr-page-main-scroll {
   overflow: visible;
 }
 
+/* Bảng phép năm: cuộn dọc theo #hr-page-main-scroll, ngang trong .annual-leave-table-scroll */
+.annual-leave-viewport .annual-leave-table-scroll {
+  max-height: none !important;
+  overflow-x: auto;
+  overflow-y: visible !important;
+}
+
+.annual-leave-viewport .annual-leave-table-compact {
+  overflow: visible;
+}
+
 /* Bảng: chỉ cuộn ngang — dọc theo #hr-page-main-scroll */
 .hr-page-viewport .attendance-table-scroll,
 .hr-page-viewport .payroll-salary-table-scroll,

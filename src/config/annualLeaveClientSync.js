@@ -13,3 +13,12 @@ export function shouldClientSyncAnnualLeaveForAttendanceRoot(attendanceRootPath)
     attendanceRootPath === "attendance"
   );
 }
+
+/**
+ * Hiển thị phép năm từ Firebase (`annualLeave/{year}`) — không quét lại cả năm điểm danh khi mở trang.
+ * Tính từ điểm danh chỉ khi ghi (Cloud Function / client sync) hoặc bấm «Tính lại».
+ * Set `VITE_ANNUAL_LEAVE_LIVE_DISPLAY=true` để bật lại overlay live cũ trên UI.
+ */
+export function isAnnualLeaveStoredDisplayEnabled() {
+  return import.meta.env.VITE_ANNUAL_LEAVE_LIVE_DISPLAY !== "true";
+}

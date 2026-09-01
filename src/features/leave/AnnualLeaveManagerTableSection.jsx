@@ -1,9 +1,24 @@
 import { memo, useMemo } from "react";
-import { listAnnualLeaveManagerMonthColumnLabels } from "./annualLeaveCalculated";
+import { useTranslation } from "react-i18next";
+import { listAnnualLeaveCalendarYearMonths } from "./annualLeaveCalculated";
 import {
   filterAnnualLeaveManagerMonthColumnLabels,
 } from "./annualLeaveManagerMonthFilter";
 import AnnualLeaveManagerTablePanel from "./AnnualLeaveManagerTablePanel";
+
+function buildLocalizedMonthColumnLabels(year, t) {
+  const y = Number(year);
+  if (!Number.isFinite(y)) return [];
+  const yy = String(y).slice(2);
+  return listAnnualLeaveCalendarYearMonths(y).map((yearMonth) => {
+    const month = Number(String(yearMonth).slice(5, 7));
+    return t("annualLeave.tableMonthColumn", {
+      month,
+      year: yy,
+      defaultValue: `T${month}-${yy}`,
+    });
+  });
+}
 
 function AnnualLeaveManagerTableSection({
   year,
@@ -23,13 +38,14 @@ function AnnualLeaveManagerTableSection({
   onAdjustmentSaved,
   onAdjustmentSaveError,
 }) {
+  const { t } = useTranslation();
   const monthColumnLabels = useMemo(
     () =>
       filterAnnualLeaveManagerMonthColumnLabels(
-        listAnnualLeaveManagerMonthColumnLabels(year),
+        buildLocalizedMonthColumnLabels(year, t),
         monthFilter,
       ),
-    [year, monthFilter],
+    [year, monthFilter, t],
   );
 
   return (

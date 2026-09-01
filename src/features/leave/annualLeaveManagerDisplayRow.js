@@ -14,6 +14,7 @@ export function buildAnnualLeaveManagerDisplayRow({
   deductionsByEmpKey = {},
   monthWorkSummaryByEmpKey = {},
   accrualAsOfDateKey = null,
+  preferStoredOnly = false,
 }) {
   if (!entry?._raw) return null;
 
@@ -25,7 +26,7 @@ export function buildAnnualLeaveManagerDisplayRow({
     { usageThroughMonthIndex },
   );
   if (!storedRow) return null;
-  if (!attendanceUsageReady) return storedRow;
+  if (preferStoredOnly || !attendanceUsageReady) return storedRow;
 
   return (
     normalizeAnnualLeaveRowLive(

@@ -10,6 +10,7 @@ import {
   buildStoredAnnualLeaveBalanceByMnv,
   normalizeAnnualLeaveRowLive,
   normalizeAnnualLeaveRowStored,
+  resolveStoredAnnualLeaveUsed,
   sumAnnualLeaveMonthlyUsageValues,
 } from "./annualLeaveDerived";
 
@@ -173,10 +174,74 @@ describe("annualLeaveDerived", () => {
       [ANNUAL_LEAVE_EMP.BALANCE]: 5,
       [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "X",
     };
-    const row = normalizeAnnualLeaveRowStored("emp_X", raw, 2026);
+    const row = normalizeAnnualLeaveRowStored("emp_X", raw, null);
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]).toBe(7);
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(2);
     expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(5);
+  });
+
+  it("normalizeAnnualLeaveRowStored uses persisted split when monthlyLeaveUsage stops at May", () => {
+    const raw = {
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 12,
+      [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: 12,
+      [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 2,
+      [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: 1.5,
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 3.5,
+      [ANNUAL_LEAVE_EMP.MONTHLY_LEAVE_USAGE]: [
+        1, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      ],
+    };
+    const row = normalizeAnnualLeaveRowStored("emp_X", raw, 2026);
+    expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(3.5);
+    expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(8.5);
+  });
+
+  it("normalizeAnnualLeaveRowStored prefers merged monthly sum over stale persisted split", () => {
+    const raw = {
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 12,
+      [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: 12,
+      [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 2,
+      [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: 0,
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 2,
+      [ANNUAL_LEAVE_EMP.MONTHLY_LEAVE_USAGE]: [
+        1, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      ],
+    };
+    const mergedMonths = [1, 0.5, 0, 0, 0, 1, 0.5, 0, 0, 0, 0, 0];
+    const row = normalizeAnnualLeaveRowStored("emp_X", raw, 2026, mergedMonths);
+    expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(3);
+    expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(9);
+  });
+
+  it("normalizeAnnualLeaveRowStored keeps stored total instead of live accrual recalc", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 15));
+
+    const raw = {
+      [ANNUAL_LEAVE_EMP.START_WORKING_DATE]: "2016-01-10",
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 12,
+      [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: 12,
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 2,
+      [ANNUAL_LEAVE_EMP.BALANCE]: 10,
+    };
+    const row = normalizeAnnualLeaveRowStored("emp_X", raw, 2026);
+    expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(10);
+  });
+
+  it("normalizeAnnualLeaveRowStored uses merged month columns for month filter", () => {
+    const raw = {
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 12,
+      [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 2,
+      [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: 1.5,
+      [ANNUAL_LEAVE_EMP.MONTHLY_LEAVE_USAGE]: [
+        1, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      ],
+    };
+    const mergedMonths = [1, 0.5, 0, 0, 0, 1, 0.5, 0, 0, 0, 0, 0];
+    const row = normalizeAnnualLeaveRowStored("emp_X", raw, 2026, mergedMonths, {
+      usageThroughMonthIndex: 6,
+    });
+    expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(3);
   });
 
   it("always recalculates annual leave accrual from payroll summary", () => {

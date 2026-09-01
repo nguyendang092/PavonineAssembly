@@ -10,6 +10,15 @@
 - Ghi `attendanceLeaveAgg/{year}/{empKey}` (transaction)
 - Ghi `annualLeave/{year}/{empKey}` (transaction)
 
+## Lịch tự động
+
+`scheduledAnnualLeaveRecalculate`
+
+- **00:00 mỗi ngày** (múi giờ `Asia/Ho_Chi_Minh`)
+- Rebuild `attendanceLeaveAgg/{năm hiện tại}` từ toàn bộ điểm danh năm đó
+- Sync `annualLeave/{năm hiện tại}` cho mọi NV (tương đương nút **Tính lại**)
+- Ghi `annualLeave/{year}/_meta.lastScheduledRecalculateAt`
+
 ## Client
 
 Sau khi deploy function, client **không** gọi sync phép năm khi:
@@ -30,7 +39,7 @@ Client **vẫn** gọi `persistAnnualLeaveYearFromAttendance` cho:
 cd functions
 npm install
 cd ..
-firebase deploy --only functions:syncAnnualLeaveOnAttendanceEmpWrite,database
+firebase deploy --only functions:syncAnnualLeaveOnAttendanceEmpWrite,functions:scheduledAnnualLeaveRecalculate,database
 ```
 
 ## Emulator (dev)
@@ -49,5 +58,5 @@ Lưu ý: dev local (`npm run dev`) **không** chạy Cloud Function — phép n�
 ## Tests
 
 ```bash
-npm test -- --run functions/src/annualLeaveSync/handler.test.mjs
+npm test -- --run functions/src/annualLeaveSync/handler.test.mjs functions/src/annualLeaveSync/reconcileYear.test.mjs
 ```

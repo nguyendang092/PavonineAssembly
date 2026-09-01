@@ -39,6 +39,21 @@ describe("buildAnnualLeaveManagerDisplayRow", () => {
     });
 
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(2);
-    expect(row[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]).toBe(0);
+    expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(10);
+    expect(row[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]).toBeUndefined();
+  });
+
+  it("keeps stored Firebase row when preferStoredOnly is set", () => {
+    const row = buildAnnualLeaveManagerDisplayRow({
+      entry,
+      year: 2026,
+      monthValues: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      attendanceUsageReady: true,
+      preferStoredOnly: true,
+      deductionsByEmpKey: { emp_100: 1.5 },
+    });
+
+    expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(2);
+    expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(10);
   });
 });

@@ -9,15 +9,17 @@ import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import AnnualLeaveManagerTableRow from "./AnnualLeaveManagerTableRow";
 import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
 import {
-  ANNUAL_LEAVE_TABLE_HEADER_GRADIENT,
   annualLeaveStickyColClass,
   annualLeaveTableThClass,
 } from "./annualLeaveTableStyles";
 import { buildAnnualLeaveMonthlyUsageByEmpKey } from "./annualLeaveDerived";
+import { buildDerivedMapsFromLeaveAggYear } from "./attendanceLeaveAgg";
+import { useLeaveAggYearExternal } from "./annualLeaveLiveExternalHooks";
 import { buildAnnualLeaveManagerDisplayRow } from "./annualLeaveManagerDisplayRow";
 import { filterAnnualLeaveManagerEntries } from "./annualLeaveManagerFilter";
 import { persistAnnualLeaveEmployeeAdjustment } from "./annualLeaveAttendanceSync";
 import { resolveAnnualLeaveRawWithProfiles } from "./annualLeaveRawProfile";
+import { isAnnualLeaveStoredDisplayEnabled } from "@/config/annualLeaveClientSync";
 import { useAnnualLeaveAttendanceEnhancement } from "./useAnnualLeaveAttendanceEnhancement";
 import {
   filterAnnualLeaveManagerMonthValues,
@@ -72,7 +74,7 @@ function AnnualLeaveManagerTablePanel({
   const { t } = useTranslation();
   const { user } = useUserIdentity();
   const [adjustmentSavingId, setAdjustmentSavingId] = useState("");
-  const tableColCount = 10 + monthColumnLabels.length + 1 + (canManage ? 1 : 0);
+  const tableColCount = 8 + monthColumnLabels.length + 1 + (canManage ? 1 : 0);
 
   const tablePagination = useHrTablePagination(filteredEntries, {
     resetDeps: [year, monthFilter, tableFilterKey],
@@ -95,6 +97,18 @@ function AnnualLeaveManagerTablePanel({
 
   const usageThroughMonthIndex =
     resolveAnnualLeaveManagerMonthIndex(monthFilter);
+  const preferStoredOnly = isAnnualLeaveStoredDisplayEnabled();
+
+  const { data: leaveAggYearData } = useLeaveAggYearExternal(
+    year,
+    preferStoredOnly,
+  );
+
+  const leaveAggMonthlyByEmpKey = useMemo(() => {
+    if (!preferStoredOnly || !leaveAggYearData) return {};
+    return buildDerivedMapsFromLeaveAggYear(leaveAggYearData, year)
+      .attendanceMonthlyByEmpKey;
+  }, [leaveAggYearData, preferStoredOnly, year]);
 
   const {
     deductionsByEmpKey,
@@ -112,6 +126,7 @@ function AnnualLeaveManagerTablePanel({
     throughDateKey: detailThroughDateKey,
     scopeEmpKeySet: pagedScopeEmpKeySet,
     accrualThroughMonthIndex: usageThroughMonthIndex,
+    storedOnlyDisplay: preferStoredOnly,
   });
 
   const { monthlyByEmpKey } = useMemo(
@@ -119,9 +134,17 @@ function AnnualLeaveManagerTablePanel({
       buildAnnualLeaveMonthlyUsageByEmpKey(
         year,
         storedMonthlyByEmpKey,
-        attendanceMonthlyByEmpKey,
+        preferStoredOnly
+          ? leaveAggMonthlyByEmpKey
+          : attendanceMonthlyByEmpKey,
       ),
-    [attendanceMonthlyByEmpKey, year, storedMonthlyByEmpKey],
+    [
+      attendanceMonthlyByEmpKey,
+      leaveAggMonthlyByEmpKey,
+      preferStoredOnly,
+      year,
+      storedMonthlyByEmpKey,
+    ],
   );
 
   const buildDisplayRowForEntry = useCallback(
@@ -151,6 +174,7 @@ function AnnualLeaveManagerTablePanel({
         deductionsByEmpKey,
         monthWorkSummaryByEmpKey,
         accrualAsOfDateKey,
+        preferStoredOnly,
       });
     },
     [
@@ -161,6 +185,7 @@ function AnnualLeaveManagerTablePanel({
       deductionsByEmpKey,
       monthWorkSummaryByEmpKey,
       monthlyByEmpKey,
+      preferStoredOnly,
       storedMonthlyByEmpKey,
       usageThroughMonthIndex,
       year,
@@ -339,7 +364,8 @@ function AnnualLeaveManagerTablePanel({
   ]);
 
   const tableLoadingActive =
-    !lazyLoadRequired && (filterPending || attendanceEnhancing);
+    !lazyLoadRequired &&
+    (filterPending || (!preferStoredOnly && attendanceEnhancing));
   const tableLoadingMessage = filterPending
     ? t("annualLeave.tableLoadingFilter", {
         defaultValue: "Đang lọc dữ liệu…",
@@ -354,7 +380,7 @@ function AnnualLeaveManagerTablePanel({
   return (
     <>
       <div
-        className={`annual-leave-table-compact relative w-full max-w-none rounded-md bg-white shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700${
+        className={`annual-leave-table-compact relative w-full max-w-none${
           filterPending ? " annual-leave-table--filter-pending" : ""
         }${
           attendanceEnhancing ? " annual-leave-table--attendance-pending" : ""
@@ -365,112 +391,88 @@ function AnnualLeaveManagerTablePanel({
           message={tableLoadingMessage}
           subtitle={tableLoadingSubtitle}
           mode="overlay"
-          className="annual-leave-table-loading-overlay rounded-md"
+          className="annual-leave-table-loading-overlay"
         />
-        <div className="annual-leave-table-scroll w-full min-w-0 max-w-full">
-          <table className="annual-leave-table w-max min-w-full max-w-none border-separate border-spacing-0">
+        <div className="annual-leave-table-scroll">
+          <table className="annual-leave-table border-separate border-spacing-0">
             <colgroup>
-              <col className="annual-leave-col-no annual-leave-sticky-col annual-leave-sticky-col-0" />
-              <col className="annual-leave-col-code annual-leave-sticky-col annual-leave-sticky-col-1" />
-              <col className="annual-leave-col-code annual-leave-sticky-col annual-leave-sticky-col-2" />
-              <col className="annual-leave-name annual-leave-sticky-col annual-leave-sticky-col-3" />
-              <col className="annual-leave-sticky-col annual-leave-sticky-col-4" />
-              <col className="annual-leave-sticky-col annual-leave-sticky-col-5" />
-              <col className="annual-leave-sticky-col annual-leave-sticky-col-6" />
-              <col className="annual-leave-sticky-col annual-leave-sticky-col-7" />
-              <col className="annual-leave-sticky-col annual-leave-sticky-col-8" />
-              <col className="annual-leave-sticky-col annual-leave-sticky-col-9" />
+              <col className="annual-leave-col-no" />
+              <col className="annual-leave-col-mnv" />
+              <col className="annual-leave-name" />
+              <col className="annual-leave-col-dept" />
+              <col className="annual-leave-col-start" />
+              <col className="annual-leave-col-current" />
+              <col className="annual-leave-col-used" />
+              <col className="annual-leave-col-balance" />
               {monthColumnLabels.map((label) => (
                 <col key={label} className="annual-leave-col-month" />
               ))}
               {canManage ? <col className="annual-leave-col-adjust" /> : null}
               <col className="annual-leave-col-detail" />
             </colgroup>
-            <thead className="sticky top-0 z-20">
-              <tr style={{ background: ANNUAL_LEAVE_TABLE_HEADER_GRADIENT }}>
+            <thead>
+              <tr>
                 <th
-                  rowSpan={2}
                   className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(0, { header: true })}`}
                 >
-                  No
-                </th>
-                <th colSpan={2} className={annualLeaveTableThClass}>
-                  EMPL. CODE
+                  {t("annualLeave.tableColNo", { defaultValue: "STT" })}
                 </th>
                 <th
-                  rowSpan={2}
-                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(3, { header: true })}`}
+                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(1, { header: true })}`}
                 >
-                  Full Name
+                  {t("annualLeave.tableColMnv", { defaultValue: "Mã NV" })}
                 </th>
                 <th
-                  rowSpan={2}
-                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(4, { header: true })}`}
+                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(2, { header: true })}`}
                 >
-                  Date of Birth
+                  {t("annualLeave.tableColFullName", {
+                    defaultValue: "Họ và tên",
+                  })}
+                </th>
+                <th className={annualLeaveTableThClass}>
+                  {t("annualLeave.tableColDepartment", {
+                    defaultValue: "Bộ phận",
+                  })}
+                </th>
+                <th className={annualLeaveTableThClass}>
+                  {t("annualLeave.tableColStartDate", {
+                    defaultValue: "Ngày vào làm",
+                  })}
+                </th>
+                <th className={annualLeaveTableThClass}>
+                  {t("annualLeave.tableColCurrentYearLeave", {
+                    defaultValue: "Phép năm",
+                  })}
+                </th>
+                <th className={annualLeaveTableThClass}>
+                  {t("annualLeave.tableColUsedLeave", {
+                    defaultValue: "Đã dùng",
+                  })}
                 </th>
                 <th
-                  rowSpan={2}
-                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(5, { header: true })}`}
+                  className={`${annualLeaveTableThClass} annual-leave-balance-col-header`}
                 >
-                  SUB-DEPARTMENT
-                </th>
-                <th
-                  rowSpan={2}
-                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(6, { header: true })}`}
-                >
-                  START WORKING DATE
-                </th>
-                <th
-                  rowSpan={2}
-                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(7, { header: true })}`}
-                >
-                  ANNUAL LEAVE IN CURRENT YEAR
-                </th>
-                <th
-                  rowSpan={2}
-                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(8, { header: true })}`}
-                >
-                  ANNUAL LEAVE USED
-                </th>
-                <th
-                  rowSpan={2}
-                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(9, { header: true })} annual-leave-balance-col-header`}
-                >
-                  BALANCE
+                  {t("annualLeave.tableColBalance", { defaultValue: "Còn lại" })}
                 </th>
                 {monthColumnLabels.map((label) => (
                   <th
                     key={label}
-                    rowSpan={2}
                     className={`${annualLeaveTableThClass} min-w-[4.25rem] whitespace-nowrap`}
                   >
                     {label}
                   </th>
                 ))}
                 {canManage ? (
-                  <th rowSpan={2} className={annualLeaveTableThClass}>
+                  <th className={annualLeaveTableThClass}>
                     {t("annualLeave.adjustmentColumn", {
-                      defaultValue: "ADJUST",
+                      defaultValue: "Điều chỉnh",
                     })}
                   </th>
                 ) : null}
-                <th rowSpan={2} className={annualLeaveTableThClass}>
+                <th className={annualLeaveTableThClass}>
                   {t("annualLeave.detailColumn", {
-                    defaultValue: "DETAIL",
+                    defaultValue: "Chi tiết",
                   })}
-                </th>
-              </tr>
-              <tr style={{ background: ANNUAL_LEAVE_TABLE_HEADER_GRADIENT }}>
-                <th
-                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(1, { header: true })}`}
-                >
-                  MNV
-                </th>
-                <th
-                  className={`${annualLeaveTableThClass} ${annualLeaveStickyColClass(2, { header: true })}`}
-                >
-                  MVT
                 </th>
               </tr>
             </thead>

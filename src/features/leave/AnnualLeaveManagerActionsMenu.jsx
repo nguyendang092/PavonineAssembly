@@ -1,5 +1,6 @@
 import { memo, useEffect } from "react";
 import { createPortal } from "react-dom";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { useAttendanceFilterDropdownPlacement } from "@/features/attendance/useAttendanceToolbarDropdownPlacement";
 import { useCloseDropdownOnScroll } from "@/features/attendance/useCloseDropdownOnScroll";
 
@@ -18,7 +19,6 @@ function AnnualLeaveManagerActionsMenu({
   onRecalculate,
   onUpload,
   onDelete,
-  onExport,
 }) {
   const closeActionsMenu = () => setActionsOpen(false);
   const actionsPlacement = useAttendanceFilterDropdownPlacement(
@@ -63,13 +63,21 @@ function AnnualLeaveManagerActionsMenu({
       <button
         ref={actionsAnchorRef}
         type="button"
-        className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-[#1a73e8] px-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#1557b0] sm:text-sm"
+        className="annual-leave-actions-btn"
         onClick={() => setActionsOpen((open) => !open)}
         aria-expanded={actionsOpen}
         aria-haspopup="menu"
+        aria-busy={syncing}
+        disabled={syncing}
       >
-        <span aria-hidden>⚙️</span>
-        {t("annualLeave.actionsMenu", { defaultValue: "Chức năng" })}
+        {syncing ? (
+          <LoadingSpinner size="xs" className="text-white" aria-label="" />
+        ) : (
+          <span aria-hidden>⚙️</span>
+        )}
+        {syncing
+          ? t("annualLeave.recalculating", { defaultValue: "Đang tính lại…" })
+          : t("annualLeave.actionsMenu", { defaultValue: "Chức năng" })}
         <span className="text-[10px] opacity-90" aria-hidden>
           {actionsOpen ? "▲" : "▼"}
         </span>
@@ -80,9 +88,9 @@ function AnnualLeaveManagerActionsMenu({
             <div
               ref={actionsPanelRef}
               role="menu"
-              className="attendance-tools-dropdown attendance-toolbar-controls fixed flex flex-col overflow-hidden overscroll-contain rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900"
+              className="annual-leave-actions-dropdown attendance-tools-dropdown attendance-toolbar-controls fixed flex flex-col overflow-hidden overscroll-contain"
               style={{
-                zIndex: "var(--z-navbar-dropdown, 110)",
+                zIndex: "var(--z-modal-content, 1210)",
                 top: actionsPlacement.top,
                 left: actionsPlacement.left,
                 width: actionsPlacement.width,
@@ -90,7 +98,7 @@ function AnnualLeaveManagerActionsMenu({
                 minHeight: Math.min(actionsPlacement.maxHeight, 420),
               }}
             >
-              <div className="shrink-0 border-b border-[#1557b0] bg-[#1a73e8] px-4 py-2 text-sm font-bold text-white">
+              <div className="annual-leave-actions-dropdown-header shrink-0">
                 {t("annualLeave.actionsMenu", {
                   defaultValue: "Chức năng",
                 })}
@@ -101,22 +109,26 @@ function AnnualLeaveManagerActionsMenu({
                     type="button"
                     role="menuitem"
                     disabled={syncing}
-                    className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-black transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="annual-leave-actions-dropdown-item"
                     onClick={() => {
                       setActionsOpen(false);
                       onRecalculate();
                     }}
                   >
-                    <span className="shrink-0 text-lg" aria-hidden>
-                      🔄
-                    </span>
+                    {syncing ? (
+                      <LoadingSpinner size="xs" aria-label="" />
+                    ) : (
+                      <span className="shrink-0 text-lg" aria-hidden>
+                        🔄
+                      </span>
+                    )}
                     <span className="text-sm font-semibold">
                       {syncing
                         ? t("annualLeave.recalculating", {
                             defaultValue: "Đang tính lại…",
                           })
                         : t("annualLeave.recalculate", {
-                            defaultValue: "Tính lại từ điểm danh",
+                            defaultValue: "Tính toán lại",
                           })}
                     </span>
                   </button>
@@ -138,7 +150,7 @@ function AnnualLeaveManagerActionsMenu({
                       type="button"
                       role="menuitem"
                       disabled={uploading}
-                      className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-black transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
+                      className="annual-leave-actions-dropdown-item"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <span className="shrink-0 text-lg" aria-hidden>
@@ -154,7 +166,7 @@ function AnnualLeaveManagerActionsMenu({
                       type="button"
                       role="menuitem"
                       disabled={deleting || !hasEntries}
-                      className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-950/40"
+                      className="annual-leave-actions-dropdown-item annual-leave-actions-dropdown-item--danger"
                       onClick={() => {
                         setActionsOpen(false);
                         onDelete();
@@ -175,24 +187,6 @@ function AnnualLeaveManagerActionsMenu({
                     </button>
                   </>
                 ) : null}
-
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-black transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200 dark:hover:bg-slate-800"
-                  onClick={() => {
-                    setActionsOpen(false);
-                    onExport();
-                  }}
-                  disabled={!hasEntries}
-                >
-                  <span className="shrink-0 text-lg" aria-hidden>
-                    📥
-                  </span>
-                  <span className="text-sm font-semibold">
-                    {t("annualLeave.exportExcel")}
-                  </span>
-                </button>
               </div>
             </div>,
             document.body,

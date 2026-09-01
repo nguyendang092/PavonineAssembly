@@ -243,6 +243,39 @@ export function computeLiveAnnualLeaveState(
   };
 }
 
+/** Phép đã dùng khi hiển thị từ Firebase — ưu tiên cột tháng đã merge, không bỏ qua Jun–Dec. */
+export function resolveStoredAnnualLeaveUsed({
+  raw,
+  storedMonths,
+  monthlyUsed,
+  usageThroughMonthIndex,
+}) {
+  const hrUsed = resolveHrAnnualLeaveUsed(raw);
+  const storedAttendanceUsed = parseAnnualLeaveNumber(
+    raw[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED],
+  );
+  const storedUsed = parseAnnualLeaveNumber(
+    raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED],
+  );
+  const hasPersistedSplit =
+    raw[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED] != null ||
+    raw[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED] != null;
+
+  if (usageThroughMonthIndex != null && storedMonths != null) {
+    return monthlyUsed;
+  }
+
+  const candidates = [storedUsed];
+  if (monthlyUsed != null && storedMonths != null) {
+    candidates.push(monthlyUsed);
+  }
+  if (hasPersistedSplit) {
+    candidates.push(roundAnnualLeaveHours(hrUsed + storedAttendanceUsed));
+  }
+
+  return roundAnnualLeaveHours(Math.max(...candidates));
+}
+
 /** Chuẩn hóa một dòng từ Firebase — hiển thị ngay, không cần điểm danh live. */
 export function normalizeAnnualLeaveRowStored(
   id,
@@ -263,13 +296,40 @@ export function normalizeAnnualLeaveRowStored(
           usageThroughMonthIndex,
         )
       : sumAnnualLeaveMonthlyUsageValues(resolvedMonthValues);
-  const totals = computeAnnualLeaveTotals(raw, year);
   const hrUsed = resolveHrAnnualLeaveUsed(raw);
-  const storedUsed = parseAnnualLeaveNumber(
-    raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED],
+  const storedAttendanceUsed = parseAnnualLeaveNumber(
+    raw[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED],
   );
-  const used =
-    monthlyUsed != null && storedMonths != null ? monthlyUsed : storedUsed;
+  const hasPersistedSplit =
+    raw[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED] != null ||
+    raw[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED] != null;
+  const used = resolveStoredAnnualLeaveUsed({
+    raw,
+    storedMonths,
+    monthlyUsed,
+    usageThroughMonthIndex,
+  });
+
+  const totalsInput = {
+    ...raw,
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: used,
+  };
+  if (hasPersistedSplit) {
+    totalsInput[ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED] = hrUsed;
+    totalsInput[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED] =
+      storedAttendanceUsed;
+  }
+
+  const computedTotals = computeAnnualLeaveTotals(totalsInput, null);
+  const storedTotal = parseAnnualLeaveNumber(
+    raw[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
+  );
+  const totalAnnualLeave =
+    raw[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE] != null &&
+    Number.isFinite(storedTotal)
+      ? storedTotal
+      : computedTotals[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE];
+  const balance = roundAnnualLeaveHours(totalAnnualLeave - used);
 
   return {
     id: empKey,
@@ -277,17 +337,19 @@ export function normalizeAnnualLeaveRowStored(
     annualLeaveCurrentYearBase: parseAnnualLeaveNumber(
       raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
     ),
-    [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: hrUsed,
-    [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: parseAnnualLeaveNumber(
-      raw[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED],
-    ),
+    ...(hasPersistedSplit
+      ? {
+          [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: hrUsed,
+          [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]:
+            storedAttendanceUsed,
+        }
+      : {}),
     [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: used,
-    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]:
-      totals[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR] ??
-      parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]),
-    [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]:
-      totals[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE],
-    [ANNUAL_LEAVE_EMP.BALANCE]: totals[ANNUAL_LEAVE_EMP.BALANCE],
+    [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: parseAnnualLeaveNumber(
+      raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR],
+    ),
+    [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: totalAnnualLeave,
+    [ANNUAL_LEAVE_EMP.BALANCE]: balance,
     [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT]: parseAnnualLeaveAdjustment(
       raw[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_ADJUSTMENT],
     ),

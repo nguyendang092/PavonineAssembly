@@ -38,7 +38,6 @@ import {
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
 import { useDebouncedSearchQuery } from "@/hooks/useDebouncedSearchQuery";
 import "@/features/attendance/attendanceToolbarFocus.css";
-import "@/features/attendance/hrPageCompact.css";
 import "./annualLeaveManager.css";
 
 function currentYear() {
@@ -402,7 +401,6 @@ export default function AnnualLeaveManager() {
         onRecalculate={handleRecalculate}
         onUpload={handleUpload}
         onDelete={() => void handleDeleteYearData()}
-        onExport={() => void handleExport()}
       />
     ),
     [
@@ -416,7 +414,6 @@ export default function AnnualLeaveManager() {
       handleRecalculate,
       handleUpload,
       handleDeleteYearData,
-      handleExport,
     ],
   );
 
@@ -425,10 +422,12 @@ export default function AnnualLeaveManager() {
       <AttendanceHrPageShell
         contextDate={resolveAnnualLeaveManagerThroughDateKey(year, monthFilter)}
       >
-        <div className="annual-leave-viewport hr-page-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
-          <p className="text-sm text-black dark:text-slate-300">
-            {t("annualLeave.pleaseLogin")}
-          </p>
+        <div className="annual-leave-viewport w-full max-w-none">
+          <div className="annual-leave-wrap">
+            <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+              {t("annualLeave.pleaseLogin")}
+            </p>
+          </div>
         </div>
       </AttendanceHrPageShell>
     );
@@ -438,22 +437,33 @@ export default function AnnualLeaveManager() {
     <AttendanceHrPageShell
       contextDate={resolveAnnualLeaveManagerThroughDateKey(year, monthFilter)}
     >
-      <div className="annual-leave-viewport hr-page-viewport hr-page-compact attendance-list-viewport w-full max-w-none">
-        <div className="mb-1 shrink-0">
-          <div className="w-full border-t-4 border-blue-600 bg-white px-2 py-0.5 shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
-            <h1 className="text-sm font-bold uppercase leading-snug tracking-wide text-black md:text-base dark:text-slate-100">
-              {t("annualLeave.title")}
-            </h1>
-          </div>
-        </div>
-
+      <div className="annual-leave-viewport w-full max-w-none">
         <AlertMessage
           alert={alert}
           autoHideMs={4000}
           onClose={() => setAlert((a) => ({ ...a, show: false }))}
         />
 
-        <div className="hr-page-body">
+        <div className="annual-leave-wrap">
+          <header className="annual-leave-topbar">
+            <div className="annual-leave-topbar-text">
+              <h1 className="annual-leave-topbar-title">{t("annualLeave.title")}</h1>
+              <p className="annual-leave-topbar-sub">{t("annualLeave.subtitle")}</p>
+            </div>
+            <div className="annual-leave-topbar-actions">
+              <button
+                type="button"
+                className="annual-leave-export-btn"
+                onClick={() => void handleExport()}
+                disabled={entries.length === 0}
+              >
+                <span aria-hidden>📥</span>
+                {t("annualLeave.exportExcel")}
+              </button>
+              {actionsMenu}
+            </div>
+          </header>
+
           <AnnualLeaveManagerToolbar
             t={t}
             year={year}
@@ -469,20 +479,32 @@ export default function AnnualLeaveManager() {
             onYearChange={handleYearChange}
             onMonthFilterChange={handleMonthFilterChange}
             onDeptFilterChange={handleDeptFilterChange}
-            actionsSlot={actionsMenu}
           />
 
-          <div className="hr-page-main">
+          <div className="annual-leave-table-shell">
             <PayrollMonthGridLoadingOverlay
-              active={yearLoading}
-              mode="viewport"
+              active={yearLoading || syncing}
+              mode="overlay"
+              message={
+                syncing
+                  ? t("annualLeave.recalculating", {
+                      defaultValue: "Đang tính lại…",
+                    })
+                  : undefined
+              }
+              subtitle={
+                syncing
+                  ? t("annualLeave.recalculatingSubtitle", {
+                      defaultValue:
+                        "Đang đồng bộ phép năm từ điểm danh, vui lòng chờ…",
+                    })
+                  : undefined
+              }
+              className="rounded-[14px]"
             />
 
             {yearLoading ? (
-              <div
-                className="annual-leave-table-compact min-h-0 flex-1"
-                aria-hidden="true"
-              />
+              <div className="annual-leave-table-compact min-h-[20rem]" aria-hidden="true" />
             ) : (
               <AnnualLeaveManagerTableSection
                 year={year}

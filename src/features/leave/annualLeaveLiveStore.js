@@ -11,6 +11,7 @@ import {
   bumpFirebaseGeneration,
   isFirebaseGenerationStale,
 } from "@/hooks/firebaseGeneration";
+import { ATTENDANCE_LEAVE_AGG_ROOT } from "./attendanceLeaveAggFields";
 import { ANNUAL_LEAVE_RTDB_ROOT } from "./annualLeaveFields";
 
 /** @typedef {{ data: object | null, ready: boolean, listeners: Set<() => void>, unsub: (() => void) | null }} LiveEntry */
@@ -23,6 +24,9 @@ const attendanceYearEntries = new Map();
 
 /** @type {Map<string, LiveEntry>} */
 const attendanceJoinMonthsEntries = new Map();
+
+/** @type {Map<string, LiveEntry>} */
+const leaveAggYearEntries = new Map();
 
 function createEntry() {
   return {
@@ -68,6 +72,17 @@ function attendanceYearQuery(attendanceRootPath, year, throughDateKey = null) {
     startAt(`${y}-01-01`),
     endAt(endAtKey),
   );
+}
+
+function attachLeaveAggYear(entry, year) {
+  const myGeneration = bumpFirebaseGeneration(entry.generationRef);
+  const yearRef = ref(db, `${ATTENDANCE_LEAVE_AGG_ROOT}/${year}`);
+  return onValue(yearRef, (snapshot) => {
+    if (isFirebaseGenerationStale(myGeneration, entry.generationRef)) return;
+    entry.data = snapshot.val();
+    entry.ready = true;
+    notifyEntry(entry);
+  });
 }
 
 function attachAnnualLeaveYear(entry, year) {
@@ -259,4 +274,25 @@ export function subscribeAttendanceYear(
       attachAttendanceYear(entry, attendanceRootPath, year, throughDateKey),
     onChange,
   );
+}
+
+/** @returns {() => void} */
+export function subscribeLeaveAggYear(year, onChange) {
+  const key = String(year);
+  return subscribeMapEntry(
+    leaveAggYearEntries,
+    key,
+    (entry) => attachLeaveAggYear(entry, year),
+    onChange,
+  );
+}
+
+export function getLeaveAggYearSnapshot(year) {
+  const entry = leaveAggYearEntries.get(String(year));
+  return entry?.ready ? entry.data : null;
+}
+
+export function isLeaveAggYearSnapshotReady(year) {
+  const entry = leaveAggYearEntries.get(String(year));
+  return entry?.ready ?? false;
 }

@@ -1,4 +1,5 @@
 import { shouldSkipAnnualLeaveForAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
+import { isAnnualLeaveStoredDisplayEnabled } from "@/config/annualLeaveClientSync";
 import { useAnnualLeaveAttendanceDerived } from "./useAnnualLeaveAttendanceDerived";
 
 export { useAnnualLeaveAttendanceDerived };
@@ -17,12 +18,16 @@ export function useAnnualLeaveAttendanceEnhancement(
     includePayrollMonthAccrual = true,
     scopeEmpKeySet = null,
     accrualThroughMonthIndex = null,
+    storedOnlyDisplay = isAnnualLeaveStoredDisplayEnabled(),
   } = {},
 ) {
-  const skipAttendance =
-    !enabled || shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
-  const skipPayrollMonthAccrual =
+  const skipLiveAttendance =
+    storedOnlyDisplay ||
     !enabled ||
+    shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
+  const skipAttendance = skipLiveAttendance;
+  const skipPayrollMonthAccrual =
+    skipLiveAttendance ||
     !includePayrollMonthAccrual ||
     shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath);
 

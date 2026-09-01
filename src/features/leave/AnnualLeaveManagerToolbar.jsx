@@ -17,65 +17,75 @@ function AnnualLeaveManagerToolbar({
   onYearChange,
   onMonthFilterChange,
   onDeptFilterChange,
-  actionsSlot,
 }) {
+  const periodMonthLabel = monthFilter
+    ? t("annualLeave.workHoursMonthOption", {
+        defaultValue: "{{month}}/{{year}}",
+        month: monthFilter,
+        year,
+      })
+    : t("annualLeave.workHoursAllMonths", { defaultValue: "Tất cả" });
+
   return (
-    <div className="attendance-toolbar-controls sticky top-0 z-30 mb-1 flex shrink-0 flex-col gap-1 border-b border-slate-200/90 bg-white px-1.5 py-1 shadow-sm sm:mb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2 md:px-2 dark:border-slate-700/90 dark:bg-slate-900">
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-        <label className="flex h-7 items-center gap-1">
-          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-black dark:text-blue-400">
-            {t("annualLeave.year")}
+    <div className="annual-leave-filterbar" role="toolbar" aria-label={t("annualLeave.title")}>
+      <div className="annual-leave-filter-group annual-leave-filter-group--period">
+        <span className="annual-leave-filter-icon" aria-hidden>
+          📅
+        </span>
+        <div className="annual-leave-filter-body">
+          <span className="annual-leave-flabel">
+            {t("annualLeave.filterPeriodLabel", { defaultValue: "Kỳ xem" })}
+          </span>
+          <div className="annual-leave-fvalue-row">
+            <select
+              className="annual-leave-fselect"
+              value={year}
+              onChange={onYearChange}
+              aria-label={t("annualLeave.year")}
+            >
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+            <span className="annual-leave-fslash">/</span>
+            <select
+              className="annual-leave-fselect"
+              value={monthFilter}
+              onChange={onMonthFilterChange}
+              aria-label={t("annualLeave.workHoursMonthLabel", {
+                defaultValue: "Tháng",
+              })}
+            >
+              <option value="">
+                {t("annualLeave.workHoursAllMonths", { defaultValue: "Tất cả" })}
+              </option>
+              {monthOptions.map((month) => (
+                <option key={month} value={month}>
+                  {t("annualLeave.workHoursMonthOption", {
+                    defaultValue: "{{month}}/{{year}}",
+                    month,
+                    year,
+                  })}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="sr-only">{periodMonthLabel}</span>
+        </div>
+      </div>
+
+      <div className="annual-leave-filter-group annual-leave-filter-group--dept">
+        <span className="annual-leave-filter-icon" aria-hidden>
+          🏢
+        </span>
+        <div className="annual-leave-filter-body">
+          <span className="annual-leave-flabel">
+            {t("annualLeave.filterDeptLabel", { defaultValue: "Bộ phận" })}
           </span>
           <select
-            className="h-8 min-w-[4.5rem] rounded-md border bg-white px-2 text-sm font-semibold text-black focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300"
-            value={year}
-            onChange={onYearChange}
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex h-7 items-center gap-1">
-          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-black dark:text-blue-400">
-            {t("annualLeave.workHoursMonthLabel", { defaultValue: "Tháng" })}
-          </span>
-          <select
-            className="h-8 min-w-[5.5rem] rounded-md border bg-white px-2 text-sm font-semibold text-black focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-300"
-            value={monthFilter}
-            onChange={onMonthFilterChange}
-            aria-label={t("annualLeave.workHoursMonthLabel", {
-              defaultValue: "Tháng",
-            })}
-          >
-            <option value="">
-              {t("annualLeave.workHoursAllMonths", { defaultValue: "Tất cả" })}
-            </option>
-            {monthOptions.map((month) => (
-              <option key={month} value={month}>
-                {t("annualLeave.workHoursMonthOption", {
-                  defaultValue: "{{month}}/{{year}}",
-                  month,
-                  year,
-                })}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <HrDebouncedSearchField
-          resetKey={searchResetKey}
-          onDebouncedChange={onDebouncedSearchChange}
-          placeholder={t("annualLeave.searchPlaceholder")}
-          className="h-8 w-full min-w-0 rounded-md border px-2 text-sm text-black focus:ring-2 focus:ring-blue-200 sm:w-44 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-        />
-
-        <label className="flex h-7 items-center gap-1">
-          <select
-            className={`h-8 max-w-full rounded-md border bg-white px-2 text-xs font-medium text-black dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 sm:max-w-[11rem]${deptFilterPending ? " opacity-90" : ""}`}
+            className="annual-leave-fselect"
             value={deptFilter}
             onChange={onDeptFilterChange}
             aria-busy={deptFilterPending || undefined}
@@ -93,20 +103,34 @@ function AnnualLeaveManagerToolbar({
           {deptFilterPending ? (
             <span
               id="annual-leave-dept-loading"
-              className="annual-leave-toolbar-loading inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-blue-600 dark:text-blue-300"
+              className="annual-leave-toolbar-loading inline-flex shrink-0 items-center"
               aria-live="polite"
             >
               <LoadingSpinner size="xs" className="shrink-0" />
             </span>
           ) : null}
-        </label>
+        </div>
       </div>
 
-      <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto">
-        <span className="inline-flex h-8 items-center rounded-md border border-blue-200/80 bg-blue-50 px-2 text-xs font-semibold text-black dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200">
-          {t("annualLeave.rowCount", { count: displayRowCount })}
+      <div className="annual-leave-filter-group annual-leave-filter-search">
+        <span className="annual-leave-filter-icon" aria-hidden>
+          🔍
         </span>
-        {actionsSlot}
+        <div className="annual-leave-filter-body">
+          <span className="annual-leave-flabel">
+            {t("annualLeave.searchLabel", { defaultValue: "Tìm kiếm" })}
+          </span>
+          <HrDebouncedSearchField
+            resetKey={searchResetKey}
+            onDebouncedChange={onDebouncedSearchChange}
+            placeholder={t("annualLeave.searchPlaceholder")}
+            className="annual-leave-search-input"
+          />
+        </div>
+      </div>
+
+      <div className="annual-leave-filter-count" aria-live="polite">
+        {t("annualLeave.rowCount", { count: displayRowCount })}
       </div>
     </div>
   );
@@ -127,8 +151,7 @@ function areToolbarPropsEqual(prev, next) {
     prev.onYearChange === next.onYearChange &&
     prev.onMonthFilterChange === next.onMonthFilterChange &&
     prev.onDebouncedSearchChange === next.onDebouncedSearchChange &&
-    prev.onDeptFilterChange === next.onDeptFilterChange &&
-    prev.actionsSlot === next.actionsSlot
+    prev.onDeptFilterChange === next.onDeptFilterChange
   );
 }
 
