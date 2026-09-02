@@ -87,6 +87,13 @@
   z-index: 4;
 }
 
+html:has(.annual-leave-actions-btn[aria-expanded="true"]) .annual-leave-table thead th,
+html:has(.annual-leave-actions-btn[aria-expanded="true"])
+  .annual-leave-table
+  .annual-leave-sticky-col {
+  z-index: 0;
+}
+
 .annual-leave-sticky-col {
   position: sticky;
 }

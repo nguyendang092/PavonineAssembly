@@ -11,12 +11,6 @@ import {
   sumAnnualLeaveMonthlyUsageValues,
 } from "./annualLeaveDerived";
 import { buildAnnualLeaveMonthWorkSummaryByEmpKey } from "./annualLeavePayrollAccrual";
-import {
-  getAnnualLeaveYearSnapshot,
-  getAttendanceYearSnapshot,
-  isAnnualLeaveYearSnapshotReady,
-  isAttendanceYearSnapshotReady,
-} from "./annualLeaveLiveStore";
 
 function mergeProfileFields(row, raw) {
   if (!raw) return row;
@@ -184,58 +178,4 @@ export function computeAnnualLeaveDetailLiveTotals(
       asOfDateKey: throughDateKey,
     },
   );
-}
-
-/**
- * Hàng hiển thị modal Chi tiết phép năm — khớp số live trên bảng / cột phép năm.
- */
-export function buildAnnualLeaveDetailDisplayRow({
-  row,
-  yearRowRaw,
-  selectedYear,
-  openYear,
-  empKey = null,
-  attendanceRootPath = "attendance",
-  throughDateKey = null,
-}) {
-  if (!row) return null;
-  if (!yearRowRaw) return row;
-
-  const canComputeLive =
-    empKey &&
-    isAttendanceYearSnapshotReady(
-      attendanceRootPath,
-      selectedYear,
-      throughDateKey,
-    ) &&
-    isAnnualLeaveYearSnapshotReady(selectedYear);
-
-  if (canComputeLive) {
-    const attendanceRoot =
-      getAttendanceYearSnapshot(
-        attendanceRootPath,
-        selectedYear,
-        throughDateKey,
-      ) ?? {};
-    const yearData = getAnnualLeaveYearSnapshot(selectedYear) ?? {};
-    const state = computeAnnualLeaveDetailLiveTotals(
-      yearRowRaw,
-      empKey,
-      attendanceRoot,
-      yearData,
-      selectedYear,
-      { attendanceRootPath, throughDateKey },
-    );
-    if (state) {
-      return applyAnnualLeaveDetailLiveState(row, yearRowRaw, state);
-    }
-  }
-
-  return buildAnnualLeaveDetailDisplayRowSnapshot({
-    row,
-    yearRowRaw,
-    selectedYear,
-    openYear,
-    throughDateKey,
-  });
 }

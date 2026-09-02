@@ -43,12 +43,3 @@ export function queueSingleEmployeeAnnualLeavePersist(db, params) {
   scheduleFlush();
   return flushChain;
 }
-
-export function flushAnnualLeavePersistQueueNow() {
-  if (flushTimer) {
-    clearTimeout(flushTimer);
-    flushTimer = null;
-  }
-  flushChain = flushChain.then(() => flushPendingAnnualLeavePersists());
-  return flushChain;
-}

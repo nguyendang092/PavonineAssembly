@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { ANNUAL_LEAVE_EMP } from "./annualLeaveFields";
-import { buildLiveAnnualLeaveBalanceByMnv } from "./annualLeaveDerived";
 import {
   buildAttendanceAnnualLeaveDeductionsByMnv,
   buildAttendanceAnnualLeaveDerivedMaps,
@@ -8,71 +6,11 @@ import {
   buildAttendanceAnnualLeaveUsageDetailForEmpKey,
   createEmptyAnnualLeaveUsageDetail,
   attendanceMnvKeyFromDayRecord,
-  getAnnualLeaveBalanceForEmployee,
-  getDisplayAnnualLeaveBalanceForAttendance,
   annualLeaveYearFromDateKey,
   attendanceAnnualLeaveDeductionForLoaiPhep,
-  annualLeaveFirebaseKeyForMnv,
 } from "./annualLeaveBalanceLookup";
 
 describe("annualLeaveBalanceLookup", () => {
-  it("maps emp_{mnv} to balance via live builder", () => {
-    const yearData = {
-      emp_PAVO: {
-        [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "PAVO",
-        [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 12,
-        [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 3,
-      },
-    };
-    const map = buildLiveAnnualLeaveBalanceByMnv(yearData, {});
-    expect(map.emp_PAVO).toBe(9);
-    expect(getAnnualLeaveBalanceForEmployee({ mnv: "PAVO" }, map)).toBe(9);
-  });
-
-  it("matches attendance MNV to emp_{mnv}", () => {
-    const map = buildLiveAnnualLeaveBalanceByMnv(
-      {
-        emp_12: {
-          [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "12",
-          [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 10,
-          [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 2,
-        },
-      },
-      {},
-    );
-    expect(annualLeaveFirebaseKeyForMnv("12")).toBe("emp_12");
-    expect(getAnnualLeaveBalanceForEmployee({ mnv: "12" }, map)).toBe(8);
-  });
-
-  it("looks up balance by emp id when mnv field empty", () => {
-    const map = buildLiveAnnualLeaveBalanceByMnv(
-      {
-        emp_160701: {
-          [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "160701",
-          [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 5,
-          [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 1,
-        },
-      },
-      {},
-    );
-    expect(getAnnualLeaveBalanceForEmployee({ id: "emp_160701" }, map)).toBe(4);
-  });
-
-  it("display uses live balance map", () => {
-    const map = buildLiveAnnualLeaveBalanceByMnv(
-      {
-        emp_ABC: {
-          [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "ABC",
-          [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 10,
-          [ANNUAL_LEAVE_EMP.HR_ANNUAL_LEAVE_USED]: 2,
-        },
-      },
-      { emp_ABC: 5 },
-    );
-    const emp = { mnv: "ABC", loaiPhep: "Phép năm" };
-    expect(getDisplayAnnualLeaveBalanceForAttendance(emp, map)).toBe(3);
-  });
-
   it("sums PN across attendance days in year by emp key", () => {
     const totals = buildAttendanceAnnualLeaveDeductionsByMnv(
       {

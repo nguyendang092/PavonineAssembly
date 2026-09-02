@@ -4,11 +4,6 @@ import {
 } from "./annualLeaveFields";
 import { indexAnnualLeaveYearByEmpKey } from "./annualLeaveEmpKey";
 
-export function countAnnualLeaveEmployeesInYearData(yearData) {
-  if (!yearData || typeof yearData !== "object") return 0;
-  return Object.keys(indexAnnualLeaveYearByEmpKey(yearData)).length;
-}
-
 /**
  * Gộp upload Excel vào `annualLeave/{year}` — chỉ cập nhật NV có trong file, giữ NV khác.
  * @returns {{ updates: Record<string, object>, mergedCount: number, importedCount: number }}

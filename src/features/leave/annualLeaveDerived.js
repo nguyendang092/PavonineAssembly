@@ -356,69 +356,6 @@ export function normalizeAnnualLeaveRowStored(
   };
 }
 
-function assignBalanceEmpKey(map, empKey, balance) {
-  if (!empKey) return;
-  map[empKey] = balance;
-}
-
-/** Map `emp_{mnv}` → BALANCE đã lưu trên Firebase (hiển thị ngay trước khi tính live). */
-export function buildStoredAnnualLeaveBalanceByMnv(yearData) {
-  const map = {};
-  if (!yearData || typeof yearData !== "object") return map;
-
-  const indexed = indexAnnualLeaveYearByEmpKey(yearData);
-  for (const [empKey, { raw }] of Object.entries(indexed)) {
-    const balance = parseAnnualLeaveNumber(raw[ANNUAL_LEAVE_EMP.BALANCE]);
-    if (Number.isFinite(balance)) {
-      assignBalanceEmpKey(map, empKey, balance);
-    }
-  }
-  return map;
-}
-
-/**
- * Map `emp_{mnv}` → BALANCE tính live (HR + quét điểm danh).
- */
-export function buildLiveAnnualLeaveBalanceByMnv(
-  yearData,
-  deductionsByEmpKey = {},
-  year = null,
-  usageDetailByEmpKey = {},
-  attendanceMonthlyByEmpKey = {},
-  monthWorkSummaryByEmpKey = {},
-  { scopeEmpKeySet = null, asOfDateKey = null } = {},
-) {
-  const map = {};
-  if (!yearData || typeof yearData !== "object") return map;
-
-  const indexed = indexAnnualLeaveYearByEmpKey(yearData);
-  for (const [empKey, { raw }] of Object.entries(indexed)) {
-    if (scopeEmpKeySet && !scopeEmpKeySet.has(empKey)) continue;
-    const storedMonthly = resolveStoredMonthlyLeaveUsage(raw);
-    const monthValues = resolveEffectiveMonthlyLeaveUsage(
-      raw,
-      usageDetailByEmpKey[empKey],
-      year,
-      attendanceMonthlyByEmpKey[empKey],
-    );
-    const monthlySum = sumAnnualLeaveMonthlyUsageValues(monthValues);
-    const hasStored = storedMonthly != null;
-    const hasAttendanceMonthly = attendanceMonthlyByEmpKey[empKey] != null;
-    const hasUsageDetail = usageDetailByEmpKey[empKey] != null;
-    const usedFromMonthlySum =
-      hasStored || hasAttendanceMonthly || hasUsageDetail ? monthlySum : null;
-    const liveAtt = usedFromMonthlySum ?? deductionsByEmpKey[empKey] ?? 0;
-    const { balance } = computeLiveAnnualLeaveState(raw, liveAtt, year, {
-      usedFromMonthlySum,
-      monthWorkSummaryByYearMonth: monthWorkSummaryByEmpKey[empKey] ?? null,
-      asOfDateKey,
-    });
-    assignBalanceEmpKey(map, empKey, balance);
-  }
-
-  return map;
-}
-
 /** Chuẩn hóa một dòng cho UI — khóa `emp_{mnv}`. */
 export function normalizeAnnualLeaveRowLive(
   id,

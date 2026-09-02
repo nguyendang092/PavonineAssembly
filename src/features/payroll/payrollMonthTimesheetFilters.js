@@ -1,7 +1,10 @@
 import { getAttendanceLeaveTypeRaw } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { employeeHasPayrollOvertimeHours, isAttendanceHalfPnLeaveType } from "@/features/attendance/attendanceDayMeta";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
-import { getAttendanceWorkingHoursHours } from "@/features/attendance/attendanceWorkingHours";
+import {
+  getAttendanceWorkingHoursHours,
+  isNightShiftCaLamViec,
+} from "@/features/attendance/attendanceWorkingHours";
 import { buildMonthlyRuleSummary } from "@/features/payroll/payrollMonthlyRuleSummary";
 import {
   comparePayrollMonthRowsByDepartment,
@@ -46,6 +49,7 @@ export function matchesPayrollMonthTimesheetPresenceFilter(
     leaveTypeFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
     overtimeFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
     shortHoursFilter = PAYROLL_SHORT_HOURS_FILTER.ALL,
+    nightShiftFilter = PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
   } = {},
 ) {
   if (workHoursFilter === PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH && !flags?.hasWorkHours) {
@@ -78,6 +82,18 @@ export function matchesPayrollMonthTimesheetPresenceFilter(
   if (
     shortHoursFilter === PAYROLL_SHORT_HOURS_FILTER.UNDER_STANDARD &&
     !flags?.hasShortHours
+  ) {
+    return false;
+  }
+  if (
+    nightShiftFilter === PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH &&
+    !flags?.hasNightShift
+  ) {
+    return false;
+  }
+  if (
+    nightShiftFilter === PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT &&
+    flags?.hasNightShift
   ) {
     return false;
   }
@@ -165,12 +181,17 @@ export function buildPayrollMonthTimesheetFlagsById({
     let hasLeaveType = false;
     let hasOvertime = false;
     let hasShortHours = false;
+    let hasNightShift = false;
 
     for (const dateKey of monthKeys) {
       const ch = chunkByDate?.get(dateKey);
       if (!ch) continue;
       const emp = resolvePayrollMonthDayEmployee(ch, id, rep);
       if (!emp) continue;
+
+      if (!hasNightShift && isNightShiftCaLamViec(emp?.caLamViec)) {
+        hasNightShift = true;
+      }
 
       if (!hasLeaveType && String(getAttendanceLeaveTypeRaw(emp) ?? "").trim()) {
         hasLeaveType = true;
@@ -218,7 +239,7 @@ export function buildPayrollMonthTimesheetFlagsById({
         }
       }
 
-      if (hasLeaveType && hasOvertime && hasShortHours) break;
+      if (hasLeaveType && hasOvertime && hasShortHours && hasNightShift) break;
     }
 
     let hasWorkHours = false;
@@ -237,6 +258,7 @@ export function buildPayrollMonthTimesheetFlagsById({
       hasLeaveType,
       hasOvertime,
       hasShortHours,
+      hasNightShift,
     });
   }
 

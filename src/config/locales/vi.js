@@ -1,8 +1,3 @@
-import {
-  workforcePayrollSharedVi,
-  workforceSearchUiVi,
-} from "./shared/workforcePayrollTerms";
-
 const vi = {
   loading: {
     loading: "Đang tải dữ liệu...",
@@ -203,7 +198,7 @@ const vi = {
     close: "Đóng",
     dayUnit: "Ngày",
     totalAnnualLeave: "Tổng phép năm",
-    totalAnnualLeaveSub: "Lấy dữ liệu từ TOTAL ANNUAL LEAVE",
+    totalAnnualLeaveSub: "Tổng phép năm đến tháng hiện tại",
     annualLeaveUsed: "Phép năm đã sử dụng",
     annualLeaveUsedClickHint: "Bấm để xem chi tiết",
     subDepartmentShort: "BP",
@@ -1815,7 +1810,8 @@ const vi = {
     monthlyGridMenuTimeInOutDesc: "Giờ vào & giờ ra mỗi ngày",
     monthlyTimeInOutButton: "Xem giờ vào & ra",
     monthlyTimeInOutTitle: "Giờ vào / ra tháng",
-    monthlyTimeInOutSubtitle: "Mỗi ô: giờ vào (trên) · giờ ra (dưới).",
+    monthlyTimeInOutFilterNightShift: "Ca đêm",
+    monthlyTimeInOutFilterNightShiftHint: "Lọc nhân viên có ca đêm trong tháng đang xem",
     monthlyTimeInOutLegendIn: "Vào",
     monthlyTimeInOutCellEditHint: "Bấm để sửa giờ vào/ra ngày này.",
     monthlyTimesheetReload: "Tải lại",

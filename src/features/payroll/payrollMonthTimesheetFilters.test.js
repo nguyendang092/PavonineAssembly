@@ -126,6 +126,7 @@ describe("payrollMonthTimesheetFilters", () => {
       hasLeaveType: true,
       hasOvertime: false,
       hasShortHours: true,
+      hasNightShift: false,
     });
   });
 
@@ -189,6 +190,7 @@ describe("payrollMonthTimesheetFilters", () => {
       hasLeaveType: false,
       hasOvertime: false,
       hasShortHours: true,
+      hasNightShift: false,
     });
   });
 
@@ -252,7 +254,78 @@ describe("payrollMonthTimesheetFilters", () => {
       hasLeaveType: true,
       hasOvertime: false,
       hasShortHours: false,
+      hasNightShift: false,
     });
+  });
+
+  it("detects night shift S2 from month chunks", () => {
+    const monthKeys = ["2026-08-01"];
+    const chunkByDate = new Map([
+      [
+        "2026-08-01",
+        {
+          employees: [
+            {
+              id: "emp-4",
+              mnv: "004",
+              hoVaTen: "D",
+              gioVao: "22:00",
+              gioRa: "06:00",
+              caLamViec: "S2",
+              loaiPhep: "",
+            },
+          ],
+          byId: new Map([
+            [
+              "emp-4",
+              {
+                id: "emp-4",
+                mnv: "004",
+                hoVaTen: "D",
+                gioVao: "22:00",
+                gioRa: "06:00",
+                caLamViec: "S2",
+                loaiPhep: "",
+              },
+            ],
+          ]),
+          rowLookup: new Map(),
+          byMonthEmployeeKey: new Map(),
+        },
+      ],
+    ]);
+    const repById = new Map([
+      [
+        "004",
+        {
+          id: "emp-4",
+          mnv: "004",
+          hoVaTen: "D",
+          ngayVaoLam: "2026-01-01",
+        },
+      ],
+    ]);
+
+    const flagsById = buildPayrollMonthTimesheetFlagsById({
+      monthKeys,
+      chunkByDate,
+      sortedIds: ["004"],
+      repById,
+    });
+
+    expect(flagsById.get("004")).toMatchObject({
+      hasNightShift: true,
+    });
+    expect(
+      matchesPayrollMonthTimesheetPresenceFilter(flagsById.get("004"), {
+        nightShiftFilter: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH,
+      }),
+    ).toBe(true);
+    expect(
+      matchesPayrollMonthTimesheetPresenceFilter(flagsById.get("004"), {
+        nightShiftFilter: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT,
+      }),
+    ).toBe(false);
   });
 
   it("needs presence flags only when filter active", () => {

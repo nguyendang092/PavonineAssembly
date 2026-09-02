@@ -3,9 +3,6 @@ import {
   listAnnualLeaveCalendarYearMonths,
 } from "./annualLeaveCalculated";
 
-/** Số cột cố định trước 12 tháng (No → BALANCE). */
-export const ANNUAL_LEAVE_EXCEL_FIXED_COLUMN_COUNT = 10;
-
 /** Chỉ số cột (0-based) trong sheet. */
 export const ANNUAL_LEAVE_EXCEL_COL = {
   NO: 0,
@@ -53,10 +50,6 @@ export function buildAnnualLeaveExcelHeaderRow1(year) {
 export function buildAnnualLeaveExcelHeaderRow2(year) {
   const monthCount = buildAnnualLeaveExcelMonthColumnLabels(year).length;
   return ["", "MNV", "MVT", ...Array(7 + monthCount + 1).fill("")];
-}
-
-export function annualLeaveExcelMonthColumnCount(year) {
-  return buildAnnualLeaveExcelMonthColumnLabels(year).length;
 }
 
 export function isAnnualLeaveExcelMonthHeader(headerNorm, year) {

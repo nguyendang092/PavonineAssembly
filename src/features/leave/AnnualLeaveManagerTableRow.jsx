@@ -34,8 +34,6 @@ function AnnualLeaveManagerTableRow({
   canManage = false,
   adjustmentSaving = false,
   onAdjustmentSave,
-  attendanceUsageReady = false,
-  attendanceAccrualReady = false,
 }) {
   const sticky = (colIndex) =>
     annualLeaveStickyColClass(colIndex, { rowIndex: index });
@@ -102,25 +100,13 @@ function AnnualLeaveManagerTableRow({
           fullYear: true,
         })}
       </td>
-      <td
-        className={`${tdBase} font-semibold${
-          !attendanceAccrualReady ? " annual-leave-cell--pending" : ""
-        }`}
-      >
+      <td className={`${tdBase} font-semibold`}>
         {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR])}
       </td>
-      <td
-        className={`${tdBase} font-semibold${
-          !attendanceUsageReady ? " annual-leave-cell--pending" : ""
-        }`}
-      >
+      <td className={`${tdBase} font-semibold`}>
         {formatAnnualLeaveDecimal(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED])}
       </td>
-      <td
-        className={`${tdBase}${
-          !attendanceUsageReady ? " annual-leave-cell--pending" : ""
-        }`}
-      >
+      <td className={tdBase}>
         <span
           className={`annual-leave-balance-tag annual-leave-balance-tag--${balanceStatus}`}
         >
@@ -132,9 +118,7 @@ function AnnualLeaveManagerTableRow({
         return (
           <td
             key={monthIdx}
-            className={`${tdBase} annual-leave-month-cell min-w-[4.25rem] whitespace-nowrap${
-              !attendanceUsageReady ? " annual-leave-cell--pending" : ""
-            }`}
+            className={`${tdBase} annual-leave-month-cell min-w-[4.25rem] whitespace-nowrap`}
             style={heatmapStyle ?? undefined}
           >
             {hasAnnualLeaveMonthUsage(value) ? (
@@ -181,9 +165,7 @@ function areAnnualLeaveManagerTableRowPropsEqual(prev, next) {
     prev.monthValues === next.monthValues &&
     prev.canManage === next.canManage &&
     prev.adjustmentSaving === next.adjustmentSaving &&
-    prev.onAdjustmentSave === next.onAdjustmentSave &&
-    prev.attendanceUsageReady === next.attendanceUsageReady &&
-    prev.attendanceAccrualReady === next.attendanceAccrualReady
+    prev.onAdjustmentSave === next.onAdjustmentSave
   );
 }
 

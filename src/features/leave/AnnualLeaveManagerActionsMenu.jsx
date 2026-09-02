@@ -59,7 +59,7 @@ function AnnualLeaveManagerActionsMenu({
   }, [actionsOpen, actionsAnchorRef, actionsPanelRef]);
 
   return (
-    <div className="relative shrink-0">
+    <div className="annual-leave-actions-menu relative shrink-0">
       <button
         ref={actionsAnchorRef}
         type="button"
@@ -88,22 +88,21 @@ function AnnualLeaveManagerActionsMenu({
             <div
               ref={actionsPanelRef}
               role="menu"
-              className="annual-leave-actions-dropdown attendance-tools-dropdown attendance-toolbar-controls fixed flex flex-col overflow-hidden overscroll-contain"
+              className="annual-leave-actions-dropdown"
               style={{
-                zIndex: "var(--z-modal-content, 1210)",
+                zIndex: 1210,
                 top: actionsPlacement.top,
                 left: actionsPlacement.left,
                 width: actionsPlacement.width,
                 maxHeight: actionsPlacement.maxHeight,
-                minHeight: Math.min(actionsPlacement.maxHeight, 420),
               }}
             >
-              <div className="annual-leave-actions-dropdown-header shrink-0">
+              <div className="annual-leave-actions-dropdown-header">
                 {t("annualLeave.actionsMenu", {
                   defaultValue: "Chức năng",
                 })}
               </div>
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+              <div className="annual-leave-actions-dropdown-body">
                 {canManage ? (
                   <button
                     type="button"

@@ -37,6 +37,12 @@ import AttendanceEmployeeFormModal from "@/features/attendance/AttendanceEmploye
 import { canEditPayrollMonthTimesheetGridCell } from "@/config/featurePermissions";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import PayrollDepartmentMultiSelect from "@/features/payroll/PayrollDepartmentMultiSelect";
+import PayrollMonthNavigator from "@/features/payroll/PayrollMonthNavigator";
+import {
+  buildPayrollMonthTimesheetFlagsById,
+  matchesPayrollMonthTimesheetPresenceFilter,
+  PAYROLL_TIMESHEET_PRESENCE_FILTER,
+} from "@/features/payroll/payrollMonthTimesheetFilters";
 import {
   buildPayrollMonthGridOverlayCopy,
   usePayrollMonthModalScrollLock,
@@ -311,10 +317,7 @@ const TimeInOutEmployeeRow = memo(function TimeInOutEmployeeRow({
   openDayCellEditor,
   tlPage,
 }) {
-  const sttDisp =
-    rep.stt != null && String(rep.stt).trim() !== ""
-      ? rep.stt
-      : empBlockIdx + 1;
+  const sttDisp = empBlockIdx + 1;
   const rowBg =
     empBlockIdx % 2 === 0
       ? "bg-white dark:bg-slate-900"
@@ -398,22 +401,52 @@ export default function PayrollMonthlyTimeInOutModal({
   const [dayCellFormRowId, setDayCellFormRowId] = useState("");
   const [dayCellFormInitial, setDayCellFormInitial] = useState(null);
   const [dayCellFormEmployees, setDayCellFormEmployees] = useState([]);
+  const [viewMonthFirstKey, setViewMonthFirstKey] = useState(() =>
+    getFirstDayOfMonthKey(anchorDateKey),
+  );
+  const [nightShiftFilter, setNightShiftFilter] = useState(
+    PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+  );
 
   const monthRange = useMemo(() => {
-    const first = getFirstDayOfMonthKey(anchorDateKey);
-    const last = getLastDayOfMonthKey(anchorDateKey);
+    const first = getFirstDayOfMonthKey(viewMonthFirstKey);
+    const last = getLastDayOfMonthKey(viewMonthFirstKey);
     const keys = enumerateDateKeysInclusive(first, last);
     return { first, last, keys };
-  }, [anchorDateKey]);
+  }, [viewMonthFirstKey]);
 
   const monthTitle = useMemo(() => {
     const d = parseLocalDateKey(monthRange.first);
-    if (!d) return anchorDateKey;
+    if (!d) return viewMonthFirstKey;
     return d.toLocaleDateString(displayLocale, {
       month: "long",
       year: "numeric",
     });
-  }, [monthRange.first, anchorDateKey, displayLocale]);
+  }, [monthRange.first, viewMonthFirstKey, displayLocale]);
+
+  useEffect(() => {
+    if (!open) return;
+    setViewMonthFirstKey(getFirstDayOfMonthKey(anchorDateKey));
+  }, [open, anchorDateKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    setNightShiftFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+  }, [open, viewMonthFirstKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    setDayCellFormOpen(false);
+    setDayCellFormDate("");
+    setDayCellFormRowId("");
+    setDayCellFormInitial(null);
+    setDayCellFormEmployees([]);
+  }, [open, viewMonthFirstKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    tableBodyScrollRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [open, viewMonthFirstKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -490,19 +523,47 @@ export default function PayrollMonthlyTimeInOutModal({
   );
 
   const effectiveSearchTerm = localNameFilter || searchTerm || "";
+  const needsNightShiftFlags =
+    nightShiftFilter !== PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL;
+
+  const nightShiftFlagsById = useMemo(() => {
+    if (!needsNightShiftFlags) return null;
+    return buildPayrollMonthTimesheetFlagsById({
+      monthKeys: monthRange.keys,
+      chunkByDate,
+      sortedIds,
+      repById,
+      resolveWorkHours: false,
+    });
+  }, [
+    needsNightShiftFlags,
+    monthRange.keys,
+    chunkByDate,
+    sortedIds,
+    repById,
+  ]);
 
   const filteredIds = useMemo(() => {
     return sortedIds
       .filter((id) => {
         const rep = repById.get(id);
-        return (
-          rep &&
-          matchesPayrollMonthRowFilter(rep, {
+        if (
+          !rep ||
+          !matchesPayrollMonthRowFilter(rep, {
             searchTerm: effectiveSearchTerm,
             departmentFilters: selectedDepartments,
             normalizeDepartment,
           })
-        );
+        ) {
+          return false;
+        }
+        if (needsNightShiftFlags) {
+          return matchesPayrollMonthTimesheetPresenceFilter(
+            nightShiftFlagsById?.get(id),
+            { nightShiftFilter },
+          );
+        }
+        return true;
       })
       .sort((a, b) => {
         const aRep = repById.get(a);
@@ -518,6 +579,9 @@ export default function PayrollMonthlyTimeInOutModal({
     effectiveSearchTerm,
     selectedDepartments,
     normalizeDepartment,
+    needsNightShiftFlags,
+    nightShiftFlagsById,
+    nightShiftFilter,
   ]);
 
   const monthDayMeta = useMemo(
@@ -737,12 +801,6 @@ export default function PayrollMonthlyTimeInOutModal({
                 {tlPage("monthlyTimeInOutTitle", "Giờ vào / ra tháng")}
                 {` (${monthTitle})`}
               </h2>
-              <p className="text-[10px] font-medium text-teal-50/90">
-                {tlPage(
-                  "monthlyTimeInOutSubtitle",
-                  "Mỗi ô: giờ vào (trên) · giờ ra (dưới).",
-                )}
-              </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <button
@@ -765,27 +823,13 @@ export default function PayrollMonthlyTimeInOutModal({
 
           <div className="min-h-0 flex flex-1 flex-col p-2 sm:p-3">
             <div className="pm-tio-toolbar mb-2">
-              <div className="pm-tio-legend">
-                <span className="pm-tio-legend-chip pm-tio-legend-chip--note">
-                  {tlPage(
-                    "monthlyTimeInOutSubtitle",
-                    "Mỗi ô: giờ vào (trên) · giờ ra (dưới).",
-                  )}
-                </span>
-                <span className="pm-tio-legend-chip pm-tio-legend-chip--in">
-                  <span className="pm-tio-time-label pm-tio-time-label--in">
-                    {tlPage("monthlyTimeInOutLegendIn", "Vào")}
-                  </span>
-                  <span className="pm-tio-legend-arrow">→</span>
-                  <span className="pm-tio-legend-sample">08:00</span>
-                </span>
-                <span className="pm-tio-legend-chip pm-tio-legend-chip--out">
-                  <span className="pm-tio-time-label pm-tio-time-label--out">
-                    {tlPage("timeOutShortLabel", "Ra")}
-                  </span>
-                  <span className="pm-tio-legend-arrow">→</span>
-                  <span className="pm-tio-legend-sample">17:30</span>
-                </span>
+              <div className="mr-auto flex shrink-0 flex-wrap items-center gap-2">
+                <PayrollMonthNavigator
+                  monthFirstKey={monthRange.first}
+                  onMonthFirstKeyChange={setViewMonthFirstKey}
+                  disabled={loading && !displayDayChunks.length}
+                  tlPage={tlPage}
+                />
               </div>
               <div className="pm-tio-filters">
               <input
@@ -803,7 +847,7 @@ export default function PayrollMonthlyTimeInOutModal({
                 selected={selectedDepartments}
                 onChange={setSelectedDepartments}
                 disabled={isGridBusy}
-                className="pm-tio-filter-input pm-tio-filter-input--select"
+                className="pm-tio-dept-select"
                 allLabel={tlPage("monthlyTimesheetDeptAll", "Tất cả bộ phận")}
                 selectedLabel={tlPage(
                   "exportDepartmentSelected",
@@ -819,6 +863,37 @@ export default function PayrollMonthlyTimeInOutModal({
                   "Không chọn = xuất tất cả bộ phận",
                 )}
               />
+              <label
+                className="pm-tio-filter-inline"
+                title={tlPage(
+                  "monthlyTimeInOutFilterNightShiftHint",
+                  "Lọc nhân viên có ca đêm trong tháng đang xem",
+                )}
+              >
+                <span className="pm-tio-filter-inline-label">
+                  {tlPage("monthlyTimeInOutFilterNightShift", "Ca đêm")}
+                </span>
+                <select
+                  value={nightShiftFilter}
+                  onChange={(e) => setNightShiftFilter(e.target.value)}
+                  disabled={isGridBusy}
+                  aria-label={tlPage(
+                    "monthlyTimeInOutFilterNightShift",
+                    "Ca đêm",
+                  )}
+                  className="pm-tio-filter-input pm-tio-filter-input--night-shift"
+                >
+                  <option value={PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL}>
+                    {tlPage("monthlyTimesheetFilterAll", "Tất cả")}
+                  </option>
+                  <option value={PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH}>
+                    {tlPage("monthlyTimesheetFilterWith", "Có")}
+                  </option>
+                  <option value={PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT}>
+                    {tlPage("monthlyTimesheetFilterWithout", "Không")}
+                  </option>
+                </select>
+              </label>
               {ZOOM_CSS_OK ? (
                 <div className="flex items-center gap-1">
                   <button

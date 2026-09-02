@@ -1,21 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ANNUAL_LEAVE_EMP, ANNUAL_LEAVE_META_KEY } from "./annualLeaveFields";
-import {
-  buildAnnualLeaveMergeUploadUpdates,
-  countAnnualLeaveEmployeesInYearData,
-} from "./annualLeaveYearDataOps";
+import { buildAnnualLeaveMergeUploadUpdates } from "./annualLeaveYearDataOps";
 
 describe("annualLeaveYearDataOps", () => {
-  it("counts employees excluding meta", () => {
-    expect(
-      countAnnualLeaveEmployeesInYearData({
-        [ANNUAL_LEAVE_META_KEY]: { rowCount: 2 },
-        "emp_001": { mnvPrefix: "001" },
-        "emp_002": { mnvPrefix: "002" },
-      }),
-    ).toBe(2);
-  });
-
   it("merges upload without dropping employees missing from Excel", () => {
     const existing = {
       [ANNUAL_LEAVE_META_KEY]: { rowCount: 2 },

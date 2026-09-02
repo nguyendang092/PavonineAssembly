@@ -200,9 +200,8 @@ function PayrollToolsMenu({
                 zIndex: "var(--z-navbar-dropdown, 110)",
                 top: placement.top,
                 left: placement.left,
-                width: placement.width,
+                width: Math.max(placement.width, 280),
                 maxHeight: placement.maxHeight,
-                minHeight: Math.min(placement.maxHeight, 420),
               }}
             >
               <div className="shrink-0 border-b border-[#1557b0] bg-[#1a73e8] px-4 py-2 text-sm font-bold text-white">

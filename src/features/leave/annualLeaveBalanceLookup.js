@@ -1,4 +1,4 @@
-import { attendanceMnvStorageKey, mnvFromEmpFirebaseKey, resolveEmpFirebaseKeyFromEmployee } from "@/utils/attendanceEmployeeRecord";
+import { attendanceMnvStorageKey, mnvFromEmpFirebaseKey } from "@/utils/attendanceEmployeeRecord";
 import {
   canonicalAttendanceLoaiPhepValue,
   getAttendanceLeaveTypeRaw,
@@ -12,11 +12,8 @@ import {
 } from "./annualLeaveFields";
 import {
   annualLeaveEmpFirebaseKey,
-  annualLeaveFirebaseKeyForMnv,
 } from "./annualLeaveEmpKey";
 import { roundAnnualLeaveHours } from "./annualLeaveCalculated";
-
-export { annualLeaveFirebaseKeyForMnv } from "./annualLeaveEmpKey";
 
 /** Loại phép hiệu lực từ node ngày (loaiPhep, phepNam, chamCong…). */
 export function attendanceEffectiveLoaiPhepFromRaw(raw) {
@@ -487,19 +484,4 @@ export function buildAttendanceAnnualLeaveUsageDetailForEmpKey(
     map[empKey] ??
     createEmptyAnnualLeaveUsageDetail(year, filterOrYearMonth)
   );
-}
-
-/** Tra BALANCE theo `emp_{mnv}`. */
-export function getAnnualLeaveBalanceForEmployee(emp, balanceByEmpKey) {
-  if (!balanceByEmpKey || !emp) return null;
-
-  const empKey = resolveEmpFirebaseKeyFromEmployee(emp);
-  if (!empKey) return null;
-
-  const balance = balanceByEmpKey[empKey];
-  return balance != null && balance !== undefined ? balance : null;
-}
-
-export function getDisplayAnnualLeaveBalanceForAttendance(emp, balanceByEmpKey) {
-  return getAnnualLeaveBalanceForEmployee(emp, balanceByEmpKey);
 }

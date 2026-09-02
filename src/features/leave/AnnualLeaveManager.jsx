@@ -509,7 +509,6 @@ export default function AnnualLeaveManager() {
               <AnnualLeaveManagerTableSection
                 year={year}
                 monthFilter={monthFilter}
-                yearData={yearData}
                 entries={entries}
                 deptIndex={deptIndex}
                 filteredEntries={filteredEntries}

@@ -22,10 +22,6 @@ export function annualLeaveFirebaseKeyForMnv(mnv) {
   return annualLeaveEmpFirebaseKey(mnv);
 }
 
-export function isAnnualLeaveEmpFirebaseKey(key) {
-  return isEmpFirebaseKey(key);
-}
-
 /** MNV / khóa lưới giờ công từ khóa phép năm `emp_{mnv}`. */
 export function resolvePayrollMonthRowIdFromAnnualLeaveEmpKey(empKey) {
   return resolvePayrollMonthRowIdFromEmpKey(empKey);

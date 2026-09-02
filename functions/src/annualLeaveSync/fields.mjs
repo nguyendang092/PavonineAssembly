@@ -20,9 +20,63 @@ export const ANNUAL_LEAVE_EMP = {
 
 export const ATTENDANCE_LEAVE_AGG_EMP = {
   DEDUCTION_BY_MONTH: "deductionByMonth",
+  USAGE_DETAIL: "usageDetail",
   LAST_UPDATED: "lastUpdated",
   UPDATED_BY: "updatedBy",
 };
+
+function nextYearMonth(yearMonth) {
+  const y = Number(yearMonth.slice(0, 4));
+  const m = Number(yearMonth.slice(5, 7));
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return yearMonth;
+  if (m >= 12) return `${y + 1}-01`;
+  return `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
+/** Các tháng trước kỳ tính phép (mới → cũ), vd. 2026: 05…01. */
+export function listAnnualLeavePreCountDisplayMonthKeys(year) {
+  const start = annualLeaveAttendanceCountStartDate(year);
+  const y = Number(year);
+  if (!start || !Number.isFinite(y)) return [];
+
+  const startYearMonth = start.slice(0, 7);
+  const months = [];
+  let cursor = `${y}-01`;
+
+  while (cursor < startYearMonth) {
+    months.push(cursor);
+    cursor = nextYearMonth(cursor);
+  }
+
+  return months.reverse();
+}
+
+/** Các tháng `yyyy-mm` từ ngày bắt đầu tính đến cuối năm. */
+export function listAnnualLeaveCountYearMonths(year) {
+  const start = annualLeaveAttendanceCountStartDate(year);
+  if (!start) return [];
+
+  const y = Number(year);
+  if (!Number.isFinite(y)) return [];
+
+  const startYearMonth = start.slice(0, 7);
+  const endYearMonth = `${y}-12`;
+  if (endYearMonth < startYearMonth) return [];
+
+  const months = [];
+  let cursor = startYearMonth;
+
+  while (cursor <= endYearMonth) {
+    months.push(cursor);
+    cursor = nextYearMonth(cursor);
+  }
+
+  return months;
+}
+
+export function listAnnualLeaveDetailHistoryMonths(year) {
+  return listAnnualLeaveCountYearMonths(year).slice().reverse();
+}
 
 /** 2026: PN từ điểm danh tính từ 01/06. */
 export const ANNUAL_LEAVE_ATTENDANCE_COUNT_START_BY_YEAR = {

@@ -1,25 +1,10 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-
 import { createPortal } from "react-dom";
-
 import { formatAnnualLeaveDecimal } from "./annualLeaveCalculated";
-
-import { buildAttendanceAnnualLeaveUsageDetailForEmpKey } from "./annualLeaveBalanceLookup";
-
 import { ANNUAL_LEAVE_EMP, ANNUAL_LEAVE_MANAGER_MIN_YEAR } from "./annualLeaveFields";
-
-import {
-
-  getAttendanceYearSnapshot,
-
-  isAttendanceYearSnapshotReady,
-
-  subscribeAttendanceYear,
-
-} from "./annualLeaveLiveStore";
-
+import { useLeaveAggYearExternal } from "./annualLeaveLiveExternalHooks";
+import { readAnnualLeaveUsageDetailFromLeaveAggEmp } from "./annualLeaveStoredUsageDetail";
 import { buildAnnualLeaveUsedDayRows } from "./annualLeaveUsedDaysRows";
-
 import "./annualLeaveUsedDaysPopup.css";
 
 
@@ -122,8 +107,6 @@ export default function AnnualLeaveUsedDaysPopup({
 
   empKey = null,
 
-  attendanceRootPath = "attendance",
-
   throughDateKey = null,
 
   t,
@@ -131,172 +114,46 @@ export default function AnnualLeaveUsedDaysPopup({
 }) {
 
   const [selectedYear, setSelectedYear] = useState(Number(year));
-
   const [selectedMonth, setSelectedMonth] = useState("");
-
-  const [yearDetail, setYearDetail] = useState(detail);
-
-  const [loading, setLoading] = useState(false);
-
-
+  const { data: leaveAggYearData, ready: leaveAggYearReady } =
+    useLeaveAggYearExternal(selectedYear, open && !!empKey);
 
   const yearOptions = useMemo(() => buildYearOptions(year), [year]);
 
-
-
   useEffect(() => {
-
     if (!open) return;
-
     setSelectedYear(Number(year));
-
     setSelectedMonth("");
-
-    setYearDetail(detail);
-
-  }, [open, year, detail]);
-
-
+  }, [open, year]);
 
   const effectiveThroughDateKey = useMemo(() => {
-
     if (Number(selectedYear) !== Number(year)) return null;
-
     return throughDateKey;
-
   }, [selectedYear, year, throughDateKey]);
 
-
-
-  useEffect(() => {
-
-    if (!open) {
-
-      setLoading(false);
-
-      return;
-
-    }
-
-
-
-    if (!empKey) {
-
-      setYearDetail(detail);
-
-      setLoading(false);
-
-      return;
-
-    }
-
-
-
-    let cancelled = false;
-
-
-
-    const rebuild = () => {
-
-      if (
-
-        !isAttendanceYearSnapshotReady(
-
-          attendanceRootPath,
-
-          selectedYear,
-
-          effectiveThroughDateKey,
-
-        )
-
-      ) {
-
-        return;
-
-      }
-
-      if (cancelled) return;
-
-
-
-      const attendanceRoot =
-
-        getAttendanceYearSnapshot(
-
-          attendanceRootPath,
-
-          selectedYear,
-
-          effectiveThroughDateKey,
-
-        ) ?? {};
-
-
-
-      setYearDetail(
-
-        buildAttendanceAnnualLeaveUsageDetailForEmpKey(
-
-          attendanceRoot,
-
-          selectedYear,
-
-          empKey,
-
-        ),
-
-      );
-
-      setLoading(false);
-
-    };
-
-
-
-    setLoading(true);
-
-    rebuild();
-
-
-
-    const unsubscribe = subscribeAttendanceYear(
-
-      attendanceRootPath,
-
+  const yearDetail = useMemo(() => {
+    if (!open) return detail;
+    if (!empKey) return detail;
+    if (!leaveAggYearReady) return null;
+    const empNode = leaveAggYearData?.[empKey];
+    return readAnnualLeaveUsageDetailFromLeaveAggEmp(
+      empNode,
       selectedYear,
-
-      rebuild,
-
-      effectiveThroughDateKey,
-
+      effectiveThroughDateKey
+        ? { throughDateKey: effectiveThroughDateKey }
+        : null,
     );
-
-
-
-    return () => {
-
-      cancelled = true;
-
-      unsubscribe();
-
-    };
-
   }, [
-
     open,
-
     empKey,
-
     detail,
-
-    attendanceRootPath,
-
+    leaveAggYearData,
+    leaveAggYearReady,
     selectedYear,
-
     effectiveThroughDateKey,
-
   ]);
+
+  const loading = open && !!empKey && !leaveAggYearReady;
 
 
 

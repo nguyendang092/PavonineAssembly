@@ -5,7 +5,9 @@ import {
   attendanceEffectiveLoaiPhepFromRaw,
   attendanceMnvKeyFromDayRecord,
   buildAttendanceAnnualLeaveDerivedMaps,
+  buildAttendanceAnnualLeaveUsageDetailByEmpKey,
 } from "./annualLeaveBalanceLookup";
+import { serializeAnnualLeaveUsageDetailForLeaveAgg } from "./annualLeaveStoredUsageDetail";
 import { roundAnnualLeaveHours } from "./annualLeaveCalculated";
 import { annualLeaveEmpFirebaseKey } from "./annualLeaveEmpKey";
 import {
@@ -163,15 +165,22 @@ export function computeLeaveAggDeltasForDayChange(
   return deltas;
 }
 
-function buildLeaveAggEmpNode(monthMap, updatedBy = "") {
+function buildLeaveAggEmpNode(monthMap, updatedBy = "", usageDetail = null) {
   const deductionByMonth = normalizeLeaveAggMonthMap(monthMap);
-  if (!Object.keys(deductionByMonth).length) return null;
+  if (!Object.keys(deductionByMonth).length && !usageDetail) return null;
 
-  return {
+  const node = {
     [ATTENDANCE_LEAVE_AGG_EMP.DEDUCTION_BY_MONTH]: deductionByMonth,
     [ATTENDANCE_LEAVE_AGG_EMP.LAST_UPDATED]: new Date().toISOString(),
     ...(updatedBy ? { [ATTENDANCE_LEAVE_AGG_EMP.UPDATED_BY]: updatedBy } : {}),
   };
+
+  const serializedDetail = serializeAnnualLeaveUsageDetailForLeaveAgg(usageDetail);
+  if (serializedDetail) {
+    node[ATTENDANCE_LEAVE_AGG_EMP.USAGE_DETAIL] = serializedDetail;
+  }
+
+  return node;
 }
 
 /**
@@ -251,6 +260,10 @@ export async function rebuildLeaveAggYearFromAttendance(
     attendanceRootData,
     year,
   );
+  const usageDetailByEmpKey = buildAttendanceAnnualLeaveUsageDetailByEmpKey(
+    attendanceRootData,
+    year,
+  );
 
   const payload = {};
   for (const [empKey, monthRow] of Object.entries(attendanceMonthlyByEmpKey)) {
@@ -261,7 +274,11 @@ export async function rebuildLeaveAggYearFromAttendance(
       monthMap[String(index + 1).padStart(2, "0")] = rounded;
     });
 
-    const node = buildLeaveAggEmpNode(monthMap, updatedBy);
+    const node = buildLeaveAggEmpNode(
+      monthMap,
+      updatedBy,
+      usageDetailByEmpKey[empKey] ?? null,
+    );
     if (node) payload[empKey] = node;
   }
 

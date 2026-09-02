@@ -115,10 +115,10 @@ function PayrollTimesheetPresenceFilterFields({
         {rows.map((row) => (
           <label
             key={row.key}
-            className="flex w-full shrink-0 items-center gap-3 border-b border-gray-100 px-4 py-2.5 text-left dark:border-slate-700"
+            className="flex w-full shrink-0 flex-col gap-1.5 border-b border-gray-100 px-4 py-2.5 text-left dark:border-slate-700"
             title={row.title}
           >
-            <span className="min-w-0 flex-1 text-sm font-semibold text-gray-700 dark:text-slate-200">
+            <span className="text-xs font-semibold leading-snug text-gray-700 dark:text-slate-200">
               {row.label}
             </span>
             <select
@@ -126,7 +126,7 @@ function PayrollTimesheetPresenceFilterFields({
               onChange={(e) => row.onChange?.(e.target.value)}
               disabled={disabled}
               title={row.title}
-              className={`${toolsMenuSelectClass} w-[7.25rem] shrink-0`}
+              className={toolsMenuSelectClass}
             >
               {row.options.map((option) => (
                 <option key={option.value} value={option.value}>

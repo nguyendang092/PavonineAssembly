@@ -39,6 +39,5 @@ export function getAttendanceDayEmployeePresenceFlags(emp, dayCtx = {}) {
     hours,
     getAttendanceLeaveTypeRaw(emp),
   );
-
   return { hasWorkHours, hasLeaveType, hasOvertime, hasShortHours };
 }

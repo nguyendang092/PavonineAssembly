@@ -23,7 +23,6 @@ function buildLocalizedMonthColumnLabels(year, t) {
 function AnnualLeaveManagerTableSection({
   year,
   monthFilter = "",
-  yearData,
   entries,
   deptIndex,
   filteredEntries,
@@ -58,7 +57,6 @@ function AnnualLeaveManagerTableSection({
       entries={entries}
       deptIndex={deptIndex}
       storedMonthlyByEmpKey={storedMonthlyByEmpKey}
-      yearData={yearData}
       year={year}
       monthFilter={monthFilter}
       monthColumnLabels={monthColumnLabels}
@@ -75,7 +73,6 @@ function areTableSectionPropsEqual(prev, next) {
   return (
     prev.year === next.year &&
     prev.monthFilter === next.monthFilter &&
-    prev.yearData === next.yearData &&
     prev.entries === next.entries &&
     prev.deptIndex === next.deptIndex &&
     prev.filteredEntries === next.filteredEntries &&

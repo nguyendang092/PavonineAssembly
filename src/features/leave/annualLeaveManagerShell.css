@@ -69,7 +69,7 @@
   gap: 16px 24px;
   flex-wrap: wrap;
   position: relative;
-  z-index: 30;
+  z-index: 20;
   margin-bottom: 22px;
 }
 
@@ -80,8 +80,6 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  position: relative;
-  z-index: 31;
 }
 
 .annual-leave-topbar-title {
@@ -169,20 +167,46 @@
 
 .annual-leave-actions-dropdown {
   position: fixed;
-  z-index: var(--z-modal-content, 1210);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: 0 8px 24px rgb(22 34 29 / 0.12);
+  z-index: 1210;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e2e8e3;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #16221d;
+  box-shadow:
+    0 12px 32px rgb(22 34 29 / 0.16),
+    0 0 0 1px rgb(22 34 29 / 0.04);
+  isolation: isolate;
+}
+
+html.dark .annual-leave-actions-dropdown {
+  border-color: #2a3832;
+  background: #16221d;
+  color: #eef4f0;
+  box-shadow:
+    0 12px 32px rgb(0 0 0 / 0.45),
+    0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+.annual-leave-actions-dropdown-body {
+  display: flex;
+  flex-direction: column;
+  background: inherit;
 }
 
 .annual-leave-actions-dropdown-header {
   border-bottom: 1px solid rgb(255 255 255 / 0.12);
-  background: var(--primary-dark);
+  background: #153f35;
   padding: 8px 16px;
   font-size: 13px;
   font-weight: 700;
   color: #fff;
+}
+
+html.dark .annual-leave-actions-dropdown-header {
+  background: #1f5c4e;
 }
 
 .annual-leave-actions-dropdown-item {
@@ -190,17 +214,34 @@
   width: 100%;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid var(--line);
+  border: none;
+  border-bottom: 1px solid #e2e8e3;
   padding: 10px 16px;
   text-align: left;
   font-size: 14px;
   font-weight: 600;
-  color: var(--ink);
+  color: #16221d;
+  background: #ffffff;
+  cursor: pointer;
   transition: background 0.15s ease;
 }
 
+html.dark .annual-leave-actions-dropdown-item {
+  border-bottom-color: #2a3832;
+  color: #eef4f0;
+  background: #16221d;
+}
+
+.annual-leave-actions-dropdown-item:last-child {
+  border-bottom: none;
+}
+
 .annual-leave-actions-dropdown-item:hover:not(:disabled) {
-  background: var(--primary-soft);
+  background: #e4f0ec;
+}
+
+html.dark .annual-leave-actions-dropdown-item:hover:not(:disabled) {
+  background: rgb(31 92 78 / 0.22);
 }
 
 .annual-leave-actions-dropdown-item:disabled {
@@ -209,11 +250,19 @@
 }
 
 .annual-leave-actions-dropdown-item--danger {
-  color: var(--red);
+  color: #b94a36;
+}
+
+html.dark .annual-leave-actions-dropdown-item--danger {
+  color: #e08a78;
 }
 
 .annual-leave-actions-dropdown-item--danger:hover:not(:disabled) {
-  background: var(--red-soft);
+  background: #fbeae5;
+}
+
+html.dark .annual-leave-actions-dropdown-item--danger:hover:not(:disabled) {
+  background: rgb(185 74 54 / 0.18);
 }
 
 .annual-leave-filterbar {
@@ -391,7 +440,6 @@
 
 .annual-leave-table-shell {
   position: relative;
-  z-index: 1;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);

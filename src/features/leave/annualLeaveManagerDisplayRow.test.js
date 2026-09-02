@@ -16,44 +16,15 @@ describe("buildAnnualLeaveManagerDisplayRow", () => {
     },
   };
 
-  it("uses live totals when attendance usage is ready", () => {
+  it("uses stored Firebase row values", () => {
     const row = buildAnnualLeaveManagerDisplayRow({
       entry,
       year: 2026,
       monthValues: [1, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      attendanceUsageReady: true,
-      attendanceAccrualReady: false,
-      deductionsByEmpKey: { emp_100: 1.5 },
-    });
-
-    expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(1.5);
-    expect(row[ANNUAL_LEAVE_EMP.BALANCE]).not.toBe(10);
-  });
-
-  it("falls back to stored Firebase row before attendance is ready", () => {
-    const row = buildAnnualLeaveManagerDisplayRow({
-      entry,
-      year: 2026,
-      monthValues: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      attendanceUsageReady: false,
     });
 
     expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(2);
     expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(10);
     expect(row[ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]).toBeUndefined();
-  });
-
-  it("keeps stored Firebase row when preferStoredOnly is set", () => {
-    const row = buildAnnualLeaveManagerDisplayRow({
-      entry,
-      year: 2026,
-      monthValues: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      attendanceUsageReady: true,
-      preferStoredOnly: true,
-      deductionsByEmpKey: { emp_100: 1.5 },
-    });
-
-    expect(row[ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]).toBe(2);
-    expect(row[ANNUAL_LEAVE_EMP.BALANCE]).toBe(10);
   });
 });
