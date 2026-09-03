@@ -25,6 +25,7 @@ export default function AttendanceOffDaysModal({
   userRole,
   tl,
   onSaved,
+  onAlert,
   attendanceRootPath = "attendance",
   /** Mở từ modal cha (lưới tháng): portal + nền mờ mạnh hơn. */
   elevatedOverlay = false,
@@ -148,6 +149,14 @@ export default function AttendanceOffDaysModal({
       if (Object.keys(updates).length > 0) {
         await update(ref(db), updates);
       }
+      onAlert?.({
+        show: true,
+        type: "success",
+        message: tl(
+          "dayOffMultiSaveSuccess",
+          "Đã lưu ngày off / lễ / nghỉ bù lên Firebase.",
+        ),
+      });
       onClose();
       onSaved?.(affectedDateKeys);
     } catch (err) {
@@ -155,7 +164,7 @@ export default function AttendanceOffDaysModal({
     } finally {
       setBusy(false);
     }
-  }, [user, canManage, draft, snapshot, onClose, onSaved, attendanceRootPath]);
+  }, [user, canManage, draft, snapshot, onClose, onSaved, onAlert, attendanceRootPath, tl]);
 
   if (!open || !canManage) return null;
 

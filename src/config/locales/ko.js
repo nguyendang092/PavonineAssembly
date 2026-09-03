@@ -1526,6 +1526,7 @@ const ko = {
     dayOffMultiRemove: "날짜 제거",
     dayOffMultiCancel: "취소",
     dayOffMultiSave: "저장",
+    dayOffMultiSaveSuccess: "휴무/공휴/대체휴무가 Firebase에 저장되었습니다.",
     dayOffMultiSaving: "저장 중…",
     dayOffMultiLoadingList: "월간 휴무/공휴/대체휴무 불러오는 중…",
     dayOffHolidayDropdownTrigger: "휴무 / 공휴 / 대체휴무",

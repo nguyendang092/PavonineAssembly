@@ -1,7 +1,8 @@
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import {
   PAYROLL_TIMESHEET_PRESENCE_FILTER,
   PAYROLL_SHORT_HOURS_FILTER,
+  buildPayrollMonthLeaveTypeFilterOptions,
 } from "@/features/payroll/payrollMonthTimesheetFilters";
 
 const selectClass =
@@ -22,7 +23,29 @@ function PayrollTimesheetPresenceFilterFields({
   tl,
   disabled = false,
   layout = "inline",
+  /** `"presence"` = Có/Không (menu Công cụ ngày); `"attendanceTypes"` = danh mục loại phép Điểm danh (lưới tháng). */
+  leaveTypeFilterMode = "presence",
 }) {
+  const leaveTypeOptions = useMemo(() => {
+    if (leaveTypeFilterMode === "attendanceTypes") {
+      return buildPayrollMonthLeaveTypeFilterOptions(tl);
+    }
+    return [
+      {
+        value: PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+        label: tl("monthlyTimesheetFilterAll", "Tất cả"),
+      },
+      {
+        value: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH,
+        label: tl("monthlyTimesheetFilterWith", "Có"),
+      },
+      {
+        value: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT,
+        label: tl("monthlyTimesheetFilterWithout", "Không"),
+      },
+    ];
+  }, [leaveTypeFilterMode, tl]);
+
   if (layout === "toolsMenu") {
     const rows = [
       {
@@ -50,20 +73,7 @@ function PayrollTimesheetPresenceFilterFields({
         label: tl("monthlyTimesheetFilterLeaveType", "Loại phép"),
         value: leaveTypeFilter,
         onChange: onLeaveTypeFilterChange,
-        options: [
-          {
-            value: PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
-            label: tl("monthlyTimesheetFilterAll", "Tất cả"),
-          },
-          {
-            value: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH,
-            label: tl("monthlyTimesheetFilterWith", "Có"),
-          },
-          {
-            value: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT,
-            label: tl("monthlyTimesheetFilterWithout", "Không"),
-          },
-        ],
+        options: leaveTypeOptions,
       },
       {
         key: "overtime",
@@ -175,15 +185,11 @@ function PayrollTimesheetPresenceFilterFields({
           disabled={disabled}
           className={`${selectClass} ${selectLayoutClass}`}
         >
-          <option value={PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL}>
-            {tl("monthlyTimesheetFilterAll", "Tất cả")}
-          </option>
-          <option value={PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH}>
-            {tl("monthlyTimesheetFilterWith", "Có")}
-          </option>
-          <option value={PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT}>
-            {tl("monthlyTimesheetFilterWithout", "Không")}
-          </option>
+          {leaveTypeOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
       </label>
       <label className={labelClass}>
@@ -246,6 +252,7 @@ function PayrollTimesheetPresenceFilters({
   tl,
   disabled = false,
   layout = "inline",
+  leaveTypeFilterMode = "presence",
 }) {
   return (
     <PayrollTimesheetPresenceFilterFields
@@ -260,6 +267,7 @@ function PayrollTimesheetPresenceFilters({
       tl={tl}
       disabled={disabled}
       layout={layout}
+      leaveTypeFilterMode={leaveTypeFilterMode}
     />
   );
 }

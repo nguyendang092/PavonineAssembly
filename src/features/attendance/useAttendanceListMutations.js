@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { db, ref, remove } from "@/services/firebase";
+import { db, ref, remove, update, get } from "@/services/firebase";
 import {
   canEditAttendanceForEmployee,
   canDeleteEmployeeData,
@@ -7,6 +7,7 @@ import {
 } from "@/config/authRoles";
 import { shouldClientSyncAnnualLeaveForAttendanceRoot } from "@/config/annualLeaveClientSync";
 import { syncAnnualLeaveAfterAttendanceDayChange } from "@/features/leave/annualLeaveClientDaySync";
+import { buildAttendanceDeleteAllEmployeesFirebaseUpdates } from "@/features/attendance/attendanceDayMeta";
 
 function attendanceRawFromListRow(row) {
   if (!row || typeof row !== "object") return {};
@@ -139,6 +140,9 @@ export function useAttendanceListMutations({
       return;
     }
     try {
+      const dayRef = ref(db, `${attendanceRootPath}/${selectedDate}`);
+      const daySnap = await get(dayRef);
+      const dayData = daySnap.val() || {};
       const clientSync = shouldClientSyncAnnualLeaveForAttendanceRoot(
         attendanceRootPath,
       );
@@ -158,7 +162,14 @@ export function useAttendanceListMutations({
           updatedBy: user?.email ?? "",
         });
       }
-      await remove(ref(db, `${attendanceRootPath}/${selectedDate}`));
+      const updates = buildAttendanceDeleteAllEmployeesFirebaseUpdates(
+        attendanceRootPath,
+        selectedDate,
+        dayData,
+      );
+      if (Object.keys(updates).length > 0) {
+        await update(ref(db), updates);
+      }
       setAlert({
         show: true,
         type: "success",

@@ -152,6 +152,7 @@ function PayrollTimesheetPresenceFiltersMenu({
                   tl={tl}
                   disabled={disabled}
                   layout="stack"
+                  leaveTypeFilterMode="attendanceTypes"
                 />
               </div>
             </div>,

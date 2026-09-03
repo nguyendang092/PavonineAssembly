@@ -391,3 +391,95 @@ export function mergeAttendanceDayMeta(existing, patch) {
       : {};
   return { ...base, ...patch };
 }
+
+/**
+ * @param {Record<string, unknown> | null | undefined} daySnapshot
+ * @returns {Record<string, unknown> | null}
+ */
+export function getAttendanceDayMetaFromSnapshot(daySnapshot) {
+  if (!daySnapshot || typeof daySnapshot !== "object") return null;
+  const meta = daySnapshot[ATTENDANCE_DAY_META_KEY];
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+  return { ...meta };
+}
+
+/**
+ * Giữ `_meta` khi ghi đè snapshot ngày (upload Excel, set cả ngày, …).
+ * @param {Record<string, unknown> | null | undefined} existingSnapshot
+ * @param {Record<string, unknown>} nextPayload
+ */
+export function preserveAttendanceDayMetaInDayPayload(existingSnapshot, nextPayload) {
+  const meta = getAttendanceDayMetaFromSnapshot(existingSnapshot);
+  if (!meta) return nextPayload;
+  return {
+    ...nextPayload,
+    [ATTENDANCE_DAY_META_KEY]: meta,
+  };
+}
+
+/** Key nhân viên trên node ngày — bỏ qua `_meta` và key nội bộ. */
+export function isAttendanceDayEmployeeKey(key) {
+  return Boolean(key) && !isAttendanceDayMetaKey(key);
+}
+
+/**
+ * Upload Excel: chỉ cập nhật bản ghi NV — không ghi đè `_meta` off/lễ/NB.
+ * @param {string} attendanceRootPath
+ * @param {string} dateKey
+ * @param {Record<string, unknown> | null | undefined} existingSnapshot
+ * @param {Record<string, unknown>} mergedData
+ * @param {(record: unknown) => unknown} [stripRecord]
+ * @returns {Record<string, unknown | null>}
+ */
+export function buildAttendanceExcelUploadFirebaseUpdates(
+  attendanceRootPath,
+  dateKey,
+  existingSnapshot,
+  mergedData,
+  stripRecord = (record) => record,
+) {
+  const existing =
+    existingSnapshot && typeof existingSnapshot === "object"
+      ? existingSnapshot
+      : {};
+  const merged = mergedData && typeof mergedData === "object" ? mergedData : {};
+  const updates = {};
+  const nextEmpKeys = new Set();
+
+  for (const [key, record] of Object.entries(merged)) {
+    if (!isAttendanceDayEmployeeKey(key)) continue;
+    nextEmpKeys.add(key);
+    updates[`${attendanceRootPath}/${dateKey}/${key}`] = stripRecord(record);
+  }
+
+  for (const key of Object.keys(existing)) {
+    if (!isAttendanceDayEmployeeKey(key)) continue;
+    if (!nextEmpKeys.has(key)) {
+      updates[`${attendanceRootPath}/${dateKey}/${key}`] = null;
+    }
+  }
+
+  return updates;
+}
+
+/**
+ * Xóa toàn bộ NV trong ngày nhưng giữ `_meta` off/lễ/NB / giấy TC.
+ * @param {string} attendanceRootPath
+ * @param {string} dateKey
+ * @param {Record<string, unknown> | null | undefined} daySnapshot
+ * @returns {Record<string, null>}
+ */
+export function buildAttendanceDeleteAllEmployeesFirebaseUpdates(
+  attendanceRootPath,
+  dateKey,
+  daySnapshot,
+) {
+  const day =
+    daySnapshot && typeof daySnapshot === "object" ? daySnapshot : {};
+  const updates = {};
+  for (const key of Object.keys(day)) {
+    if (!isAttendanceDayEmployeeKey(key)) continue;
+    updates[`${attendanceRootPath}/${dateKey}/${key}`] = null;
+  }
+  return updates;
+}

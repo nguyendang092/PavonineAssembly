@@ -126,6 +126,7 @@ function AttendanceListContentSection() {
           userRole={userRole}
           tl={tl}
           onSaved={refreshMonthOffDays}
+          onAlert={setAlert}
           attendanceRootPath={attendanceRootPath}
         />
         </Suspense>

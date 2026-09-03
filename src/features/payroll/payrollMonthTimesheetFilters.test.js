@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { ATTENDANCE_LEAVE_FILTER_NONE } from "@/features/attendance/attendanceListShared";
 import {
   buildPayrollMonthTimesheetFlagsById,
   countActivePayrollTimesheetPresenceFilters,
+  matchesPayrollLeaveTypeFilter,
   matchesPayrollMonthTimesheetPresenceFilter,
   PAYROLL_TIMESHEET_PRESENCE_FILTER,
   PAYROLL_SHORT_HOURS_FILTER,
@@ -30,6 +32,27 @@ describe("payrollMonthTimesheetFilters", () => {
     expect(
       matchesPayrollMonthTimesheetPresenceFilter(flags, {
         leaveTypeFilter: PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT,
+      }),
+    ).toBe(true);
+  });
+
+  it("matches specific attendance leave types in month", () => {
+    const flags = {
+      hasLeaveType: true,
+      hasLeaveTypeNone: true,
+      leaveTypeValues: new Set(["Phép năm", "Không lương"]),
+    };
+    expect(
+      matchesPayrollLeaveTypeFilter(flags, PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL),
+    ).toBe(true);
+    expect(matchesPayrollLeaveTypeFilter(flags, "Phép năm")).toBe(true);
+    expect(matchesPayrollLeaveTypeFilter(flags, "Phép ốm")).toBe(false);
+    expect(
+      matchesPayrollLeaveTypeFilter(flags, ATTENDANCE_LEAVE_FILTER_NONE),
+    ).toBe(true);
+    expect(
+      matchesPayrollMonthTimesheetPresenceFilter(flags, {
+        leaveTypeFilter: "Không lương",
       }),
     ).toBe(true);
   });
@@ -121,13 +144,17 @@ describe("payrollMonthTimesheetFilters", () => {
       repById,
     });
 
-    expect(flagsById.get("001")).toEqual({
+    expect(flagsById.get("001")).toMatchObject({
       hasWorkHours: true,
       hasLeaveType: true,
+      hasLeaveTypeNone: true,
       hasOvertime: false,
       hasShortHours: true,
       hasNightShift: false,
     });
+    expect(flagsById.get("001")?.leaveTypeValues).toEqual(
+      new Set(["Phép năm"]),
+    );
   });
 
   it("detects short hours from month chunks", () => {
@@ -185,13 +212,15 @@ describe("payrollMonthTimesheetFilters", () => {
       repById,
     });
 
-    expect(flagsById.get("002")).toEqual({
+    expect(flagsById.get("002")).toMatchObject({
       hasWorkHours: true,
       hasLeaveType: false,
+      hasLeaveTypeNone: true,
       hasOvertime: false,
       hasShortHours: true,
       hasNightShift: false,
     });
+    expect(flagsById.get("002")?.leaveTypeValues?.size).toBe(0);
   });
 
   it("excludes 1/2PN from short-hours flag", () => {
@@ -249,13 +278,17 @@ describe("payrollMonthTimesheetFilters", () => {
       repById,
     });
 
-    expect(flagsById.get("003")).toEqual({
+    expect(flagsById.get("003")).toMatchObject({
       hasWorkHours: true,
       hasLeaveType: true,
+      hasLeaveTypeNone: false,
       hasOvertime: false,
       hasShortHours: false,
       hasNightShift: false,
     });
+    expect(flagsById.get("003")?.leaveTypeValues).toEqual(
+      new Set(["1/2 Phép năm"]),
+    );
   });
 
   it("detects night shift S2 from month chunks", () => {

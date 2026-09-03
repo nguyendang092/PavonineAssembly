@@ -18,6 +18,8 @@ describe("attendanceDayPresenceFilters", () => {
     ).toEqual({
       hasWorkHours: true,
       hasLeaveType: false,
+      hasLeaveTypeNone: true,
+      leaveTypeRaw: "",
       hasOvertime: false,
       hasShortHours: true,
     });
@@ -32,6 +34,8 @@ describe("attendanceDayPresenceFilters", () => {
     ).toEqual({
       hasWorkHours: false,
       hasLeaveType: true,
+      hasLeaveTypeNone: false,
+      leaveTypeRaw: "Phép năm",
       hasOvertime: false,
       hasShortHours: false,
     });
@@ -46,6 +50,8 @@ describe("attendanceDayPresenceFilters", () => {
     ).toEqual({
       hasWorkHours: true,
       hasLeaveType: false,
+      hasLeaveTypeNone: true,
+      leaveTypeRaw: "",
       hasOvertime: true,
       hasShortHours: false,
     });
@@ -60,6 +66,8 @@ describe("attendanceDayPresenceFilters", () => {
     ).toEqual({
       hasWorkHours: true,
       hasLeaveType: true,
+      hasLeaveTypeNone: false,
+      leaveTypeRaw: "1/2 Phép năm",
       hasOvertime: false,
       hasShortHours: false,
     });

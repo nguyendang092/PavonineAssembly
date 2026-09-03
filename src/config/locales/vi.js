@@ -1548,6 +1548,7 @@ const vi = {
     dayOffMultiRemove: "Bỏ ngày",
     dayOffMultiCancel: "Hủy",
     dayOffMultiSave: "Lưu",
+    dayOffMultiSaveSuccess: "Đã lưu ngày off / lễ / nghỉ bù lên Firebase.",
     dayOffMultiSaving: "Đang lưu…",
     dayOffMultiLoadingList: "Đang tải các ngày off / lễ / nghỉ bù trong tháng…",
     dayOffHolidayDropdownTrigger: "Ngày OFF / LỄ / NGHỈ BÙ",

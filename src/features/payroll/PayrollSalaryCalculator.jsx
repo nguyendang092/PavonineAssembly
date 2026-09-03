@@ -51,6 +51,10 @@ import { useHrTablePagination } from "@/hooks/useHrTablePagination";
 import PayrollMonthGridLoadingOverlay from "@/features/payroll/PayrollMonthGridLoadingOverlay";
 import PayrollToolsMenu from "@/features/payroll/PayrollToolsMenu";
 import AttendanceOffHolidayDaysControl from "@/features/attendance/AttendanceOffHolidayDaysControl";
+import {
+  buildPayrollMonthCacheKey,
+  invalidatePayrollMonthCache,
+} from "@/features/payroll/payrollMonthCache";
 import { getTodayDateKeyLocal } from "@/utils/dateKey";
 import { executePayrollSalaryExcelExportRange } from "@/features/payroll/payrollSalaryExcelExportRange";
 import {
@@ -207,6 +211,20 @@ export default function PayrollSalaryCalculator() {
     (key, defaultValue, options = {}) =>
       t(`attendanceList.${key}`, { defaultValue, ...options }),
     [t],
+  );
+
+  const handleOffHolidayDaysSaved = useCallback(
+    (affectedDateKeys) => {
+      const dateKeys =
+        Array.isArray(affectedDateKeys) && affectedDateKeys.length
+          ? affectedDateKeys
+          : [selectedDate];
+      const cacheKeys = new Set(
+        dateKeys.map((dk) => buildPayrollMonthCacheKey("attendance", [dk])),
+      );
+      cacheKeys.forEach(invalidatePayrollMonthCache);
+    },
+    [selectedDate],
   );
 
   const normalizeDepartment = useCallback((value) => {
@@ -898,6 +916,8 @@ export default function PayrollSalaryCalculator() {
               isHolidayDay={isHolidayDay}
               isCompensatoryDay={isCompensatoryDay}
               tl={tlAttendance}
+              onSaved={handleOffHolidayDaysSaved}
+              onAlert={setAlert}
               className="min-w-0 flex-1"
             />
             <HrDebouncedSearchField
@@ -1142,11 +1162,9 @@ export default function PayrollSalaryCalculator() {
           payrollDepartmentOptions={departments}
           onDepartmentFilterChange={setDepartmentFilter}
           workHoursFilter={workHoursFilter}
-          leaveTypeFilter={leaveTypeFilter}
           overtimeFilter={overtimeFilter}
           shortHoursFilter={shortHoursFilter}
           onWorkHoursFilterChange={setWorkHoursFilter}
-          onLeaveTypeFilterChange={setLeaveTypeFilter}
           onOvertimeFilterChange={setOvertimeFilter}
           onShortHoursFilterChange={setShortHoursFilter}
           normalizeDepartment={normalizeDepartment}

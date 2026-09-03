@@ -117,6 +117,22 @@ describe("mergeAttendanceExcelUploadIntoDaySnapshot", () => {
     expect(mergedData.emp_12.hoVaTen).toBe("X");
   });
 
+  it("keeps _meta off/lễ/NB when merging new employees", () => {
+    const existing = {
+      _meta: {
+        isOffDay: false,
+        isHolidayDay: true,
+        isCompensatoryDay: false,
+      },
+      emp_1: { id: "emp_1", mnv: "1", hoVaTen: "A" },
+    };
+    const { mergedData } = mergeAttendanceExcelUploadIntoDaySnapshot(existing, {
+      emp_2: row("2"),
+    });
+    expect(mergedData._meta).toEqual(existing._meta);
+    expect(mergedData.emp_2.mnv).toBe("2");
+  });
+
   it("clears loaiPhep when second upload adds gioVao clock time", () => {
     const existing = {
       emp_123: {

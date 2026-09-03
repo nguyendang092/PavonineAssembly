@@ -1,4 +1,9 @@
-import { getAttendanceLeaveTypeRaw } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import {
+  ATTENDANCE_LOAI_PHEP_OPTIONS,
+  getAttendanceLeaveTypeRaw,
+  rawMatchesAttendanceTypeOption,
+} from "@/features/attendance/attendanceGioVaoTypeOptions";
+import { ATTENDANCE_LEAVE_FILTER_NONE } from "@/features/attendance/attendanceListShared";
 import { employeeHasPayrollOvertimeHours, isAttendanceHalfPnLeaveType } from "@/features/attendance/attendanceDayMeta";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
 import {
@@ -27,6 +32,72 @@ export const PAYROLL_SHORT_HOURS_FILTER = Object.freeze({
   ALL: "all",
   UNDER_STANDARD: "underStandard",
 });
+
+/** @param {string} filterValue */
+export function findPayrollLeaveTypeFilterOption(filterValue) {
+  const s = String(filterValue ?? "").trim();
+  if (!s || s === PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL) return null;
+  if (s === ATTENDANCE_LEAVE_FILTER_NONE) return { value: ATTENDANCE_LEAVE_FILTER_NONE };
+  return (
+    ATTENDANCE_LOAI_PHEP_OPTIONS.find(
+      (o) => o.value === s || o.shortLabel === s,
+    ) ?? null
+  );
+}
+
+/** Tuỳ chọn dropdown «Loại phép» trên lưới tháng — cùng danh mục Điểm danh. */
+export function buildPayrollMonthLeaveTypeFilterOptions(tl = (k, d) => d) {
+  return [
+    {
+      value: PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL,
+      label: tl("monthlyTimesheetFilterAll", "Tất cả"),
+    },
+    {
+      value: ATTENDANCE_LEAVE_FILTER_NONE,
+      label: tl(
+        "leaveTypeFilterNone",
+        "Không có loại phép (chỉ giờ / trống)",
+      ),
+    },
+    ...ATTENDANCE_LOAI_PHEP_OPTIONS.map((opt) => ({
+      value: opt.value,
+      label: `${opt.shortLabel} — ${opt.value}`,
+    })),
+  ];
+}
+
+/**
+ * @param {{
+ *   hasLeaveType?: boolean,
+ *   hasLeaveTypeNone?: boolean,
+ *   leaveTypeValues?: Set<string>,
+ *   leaveTypeRaw?: unknown,
+ * }} flags
+ * @param {string} leaveTypeFilter
+ */
+export function matchesPayrollLeaveTypeFilter(flags, leaveTypeFilter) {
+  const filter = String(leaveTypeFilter ?? PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
+  if (filter === PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL) return true;
+
+  if (filter === PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH) {
+    return Boolean(flags?.hasLeaveType);
+  }
+  if (filter === PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT) {
+    return !flags?.hasLeaveType;
+  }
+  if (filter === ATTENDANCE_LEAVE_FILTER_NONE) {
+    return Boolean(flags?.hasLeaveTypeNone);
+  }
+
+  const opt = findPayrollLeaveTypeFilterOption(filter);
+  if (!opt || opt.value === ATTENDANCE_LEAVE_FILTER_NONE) return true;
+
+  if (flags?.leaveTypeValues instanceof Set) {
+    return flags.leaveTypeValues.has(opt.value);
+  }
+
+  return rawMatchesAttendanceTypeOption(flags?.leaveTypeRaw, opt);
+}
 
 export function isPayrollUnderStandardWorkHours(hours) {
   return (
@@ -61,13 +132,7 @@ export function matchesPayrollMonthTimesheetPresenceFilter(
   ) {
     return false;
   }
-  if (leaveTypeFilter === PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH && !flags?.hasLeaveType) {
-    return false;
-  }
-  if (
-    leaveTypeFilter === PAYROLL_TIMESHEET_PRESENCE_FILTER.WITHOUT &&
-    flags?.hasLeaveType
-  ) {
+  if (!matchesPayrollLeaveTypeFilter(flags, leaveTypeFilter)) {
     return false;
   }
   if (overtimeFilter === PAYROLL_TIMESHEET_PRESENCE_FILTER.WITH && !flags?.hasOvertime) {
@@ -179,6 +244,8 @@ export function buildPayrollMonthTimesheetFlagsById({
   for (const id of sortedIds) {
     const rep = repById?.get(id);
     let hasLeaveType = false;
+    let hasLeaveTypeNone = false;
+    const leaveTypeValues = new Set();
     let hasOvertime = false;
     let hasShortHours = false;
     let hasNightShift = false;
@@ -193,8 +260,17 @@ export function buildPayrollMonthTimesheetFlagsById({
         hasNightShift = true;
       }
 
-      if (!hasLeaveType && String(getAttendanceLeaveTypeRaw(emp) ?? "").trim()) {
+      const leaveRaw = getAttendanceLeaveTypeRaw(emp);
+      const leaveTrimmed = String(leaveRaw ?? "").trim();
+      if (!leaveTrimmed) {
+        hasLeaveTypeNone = true;
+      } else {
         hasLeaveType = true;
+        for (const opt of ATTENDANCE_LOAI_PHEP_OPTIONS) {
+          if (rawMatchesAttendanceTypeOption(leaveRaw, opt)) {
+            leaveTypeValues.add(opt.value);
+          }
+        }
       }
 
       if (!hasShortHours) {
@@ -256,6 +332,8 @@ export function buildPayrollMonthTimesheetFlagsById({
     map.set(id, {
       hasWorkHours,
       hasLeaveType,
+      hasLeaveTypeNone,
+      leaveTypeValues,
       hasOvertime,
       hasShortHours,
       hasNightShift,

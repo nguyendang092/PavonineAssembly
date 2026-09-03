@@ -22,6 +22,7 @@ export default function AttendanceOffHolidayDaysControl({
   showDateInput = true,
   elevatedOverlay = false,
   onSaved,
+  onAlert,
   className = "",
 }) {
   const [offDaysModalOpen, setOffDaysModalOpen] = useState(false);
@@ -98,6 +99,7 @@ export default function AttendanceOffHolidayDaysControl({
         userRole={userRole}
         tl={tl}
         onSaved={handleSaved}
+        onAlert={onAlert}
         attendanceRootPath={attendanceRootPath}
         elevatedOverlay={elevatedOverlay}
       />

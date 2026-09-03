@@ -5,6 +5,9 @@ import {
   isLeaveTypeCheckFieldDisabled,
   isLeaveTypeCheckPurpleHighlight,
   isOtCheckFieldDisabled,
+  preserveAttendanceDayMetaInDayPayload,
+  buildAttendanceExcelUploadFirebaseUpdates,
+  buildAttendanceDeleteAllEmployeesFirebaseUpdates,
 } from "./attendanceDayMeta";
 
 describe("attendanceRowCheckHighlightClassName", () => {
@@ -145,5 +148,48 @@ describe("isLeaveTypeCheckPurpleHighlight", () => {
         hasOvertimeHours: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("attendance day _meta preservation", () => {
+  it("preserveAttendanceDayMetaInDayPayload keeps off/lễ/NB flags", () => {
+    const existing = {
+      _meta: {
+        isOffDay: true,
+        isHolidayDay: false,
+        isCompensatoryDay: false,
+        earlyOtPaperwork: { emp_1: true },
+      },
+      emp_1: { mnv: "1" },
+    };
+
+    expect(
+      preserveAttendanceDayMetaInDayPayload(existing, { emp_2: { mnv: "2" } }),
+    ).toEqual({
+      emp_2: { mnv: "2" },
+      _meta: existing._meta,
+    });
+
+    const uploadUpdates = buildAttendanceExcelUploadFirebaseUpdates(
+      "attendance",
+      "2026-06-01",
+      existing,
+      { emp_1: { mnv: "1", gioVao: "08:00" }, emp_2: { mnv: "2" } },
+    );
+    expect(uploadUpdates).toEqual({
+      "attendance/2026-06-01/emp_1": { mnv: "1", gioVao: "08:00" },
+      "attendance/2026-06-01/emp_2": { mnv: "2" },
+    });
+    expect(uploadUpdates["attendance/2026-06-01/_meta"]).toBeUndefined();
+
+    const deleteUpdates = buildAttendanceDeleteAllEmployeesFirebaseUpdates(
+      "attendance",
+      "2026-06-01",
+      existing,
+    );
+    expect(deleteUpdates).toEqual({
+      "attendance/2026-06-01/emp_1": null,
+    });
+    expect(deleteUpdates["attendance/2026-06-01/_meta"]).toBeUndefined();
   });
 });

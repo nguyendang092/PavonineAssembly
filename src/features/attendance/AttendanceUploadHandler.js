@@ -1,7 +1,7 @@
 // AttendanceUploadHandler.js
 // Upload Excel: merge (1) `{attendanceRootPath}/{ngày}` đã có + (2) dòng Excel.
 import * as XLSX from "@e965/xlsx";
-import { ref, set, get } from "firebase/database";
+import { ref, update, get } from "firebase/database";
 import { getUploadErrorMessage } from "@/utils/uploadErrorMessage";
 import {
   mergeAttendanceExcelUploadIntoDaySnapshot,
@@ -23,6 +23,11 @@ import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
 import { shouldClientSyncAnnualLeaveForAttendanceRoot } from "@/config/annualLeaveClientSync";
 import { syncAnnualLeaveAfterAttendanceDayChange } from "@/features/leave/annualLeaveClientDaySync";
+import {
+  buildAttendanceExcelUploadFirebaseUpdates,
+  isAttendanceDayEmployeeKey,
+  preserveAttendanceDayMetaInDayPayload,
+} from "@/features/attendance/attendanceDayMeta";
 
 function trimCell(value) {
   return value === undefined || value === null ? "" : String(value).trim();
@@ -268,19 +273,33 @@ export const handleUploadExcel = async ({
         seasonal: isSeasonalAttendanceRoot(attendanceRootPath),
       });
 
-    const payload = {};
+    const employeePayload = {};
     Object.entries(mergedData).forEach(([k, v]) => {
-      payload[k] = stripAttendanceExcelUploadInternalFields(v);
+      if (!isAttendanceDayEmployeeKey(k)) return;
+      employeePayload[k] = stripAttendanceExcelUploadInternalFields(v);
     });
-    await set(attendanceRef, payload);
+    const updates = buildAttendanceExcelUploadFirebaseUpdates(
+      attendanceRootPath,
+      selectedDate,
+      existingData,
+      mergedData,
+      stripAttendanceExcelUploadInternalFields,
+    );
+    if (Object.keys(updates).length > 0) {
+      await update(ref(db), updates);
+    }
+    const nextDayData = preserveAttendanceDayMetaInDayPayload(
+      existingData,
+      employeePayload,
+    );
 
     if (shouldClientSyncAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
       await syncAnnualLeaveAfterAttendanceDayChange(db, {
         dateKey: selectedDate,
         attendanceRootPath,
         previousDayData: existingData,
-        nextDayData: payload,
-        scopeEmpKeySet: new Set(Object.keys(payload)),
+        nextDayData,
+        scopeEmpKeySet: new Set(Object.keys(employeePayload)),
         updatedBy: user?.email ?? "",
       });
     }
