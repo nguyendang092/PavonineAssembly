@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
+import { useTodayDateKeyLocal } from "@/hooks/useTodayDateKeyLocal";
 import AttendanceListShell from "./AttendanceListShell";
 import { attendanceListDateForAnnualLeaveYear } from "@/features/leave/annualLeaveCrossLinks";
 import { isProductionLayoutPath } from "@/features/production/productionSidebarConfig";
@@ -14,6 +15,7 @@ function AttendanceHrPageShell({
 }) {
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
+  const todayKey = useTodayDateKeyLocal();
   const inProductionLayout = isProductionLayoutPath(pathname);
 
   useEffect(() => {
@@ -42,10 +44,10 @@ function AttendanceHrPageShell({
     }
     const yearRaw = searchParams.get("year");
     if (yearRaw && /^\d{4}$/.test(yearRaw)) {
-      return attendanceListDateForAnnualLeaveYear(Number(yearRaw));
+      return attendanceListDateForAnnualLeaveYear(Number(yearRaw), todayKey);
     }
-    return new Date().toISOString().slice(0, 10);
-  }, [contextDate, searchParams]);
+    return todayKey;
+  }, [contextDate, searchParams, todayKey]);
 
   if (inProductionLayout) {
     return <div className="hr-page-body">{children}</div>;

@@ -37,6 +37,7 @@ import {
 } from "./annualLeaveYearDataOps";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
 import { useDebouncedSearchQuery } from "@/hooks/useDebouncedSearchQuery";
+import { useTodayDateKeyLocal } from "@/hooks/useTodayDateKeyLocal";
 import "@/features/attendance/attendanceToolbarFocus.css";
 import "./annualLeaveManager.css";
 
@@ -92,6 +93,7 @@ export default function AnnualLeaveManager() {
   const actionsPanelRef = useRef(null);
 
   const canManage = canManageAnnualLeave(user, userRole);
+  const todayKey = useTodayDateKeyLocal();
   const { yearData, yearLoading } = useAnnualLeaveYearData(year);
 
   useEffect(() => {
@@ -166,8 +168,8 @@ export default function AnnualLeaveManager() {
     return resolved.entries.length;
   }, [entries, debouncedSearch, deptFilter, deptIndex, totalEmployeeCount]);
   const detailThroughDateKey = useMemo(
-    () => resolveAnnualLeaveManagerThroughDateKey(year, monthFilter),
-    [year, monthFilter],
+    () => resolveAnnualLeaveManagerThroughDateKey(year, monthFilter, todayKey),
+    [year, monthFilter, todayKey],
   );
 
   const syncSearchParams = useCallback(
@@ -420,7 +422,7 @@ export default function AnnualLeaveManager() {
   if (!user) {
     return (
       <AttendanceHrPageShell
-        contextDate={resolveAnnualLeaveManagerThroughDateKey(year, monthFilter)}
+        contextDate={detailThroughDateKey}
       >
         <div className="annual-leave-viewport w-full max-w-none">
           <div className="annual-leave-wrap">
@@ -435,7 +437,7 @@ export default function AnnualLeaveManager() {
 
   return (
     <AttendanceHrPageShell
-      contextDate={resolveAnnualLeaveManagerThroughDateKey(year, monthFilter)}
+      contextDate={detailThroughDateKey}
     >
       <div className="annual-leave-viewport w-full max-w-none">
         <AlertMessage

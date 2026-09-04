@@ -105,16 +105,14 @@ export function annualLeaveEmployeeAvatarStyle(fullName, deptName) {
   };
 }
 
-/** @returns {"neutral" | "green" | "amber" | "red"} */
+/**
+ * Màu cột «Còn lại»: đỏ < 1 ngày, cam 1–6, xanh > 6.
+ * @returns {"neutral" | "green" | "amber" | "red"}
+ */
 export function resolveAnnualLeaveBalanceStatus(row) {
-  const total = Number(row?.[ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]);
   const balance = Number(row?.[ANNUAL_LEAVE_EMP.BALANCE]);
-  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(balance)) {
-    return "neutral";
-  }
-
-  const remainingPct = balance / total;
-  if (remainingPct > 0.7) return "red";
-  if (remainingPct > 0.5) return "amber";
+  if (!Number.isFinite(balance)) return "neutral";
+  if (balance < 1) return "red";
+  if (balance <= 6) return "amber";
   return "green";
 }

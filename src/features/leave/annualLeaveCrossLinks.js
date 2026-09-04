@@ -1,13 +1,17 @@
+import { getTodayDateKeyLocal } from "@/utils/dateKey";
 import { annualLeaveAttendanceCountStartDate } from "./annualLeaveFields";
 import { annualLeaveYearFromDateKey } from "./annualLeaveBalanceLookup";
 
 /** Ngày mặc định khi mở điểm danh từ quản lý phép năm (năm đang chọn). */
-export function attendanceListDateForAnnualLeaveYear(year) {
+export function attendanceListDateForAnnualLeaveYear(
+  year,
+  todayKey = getTodayDateKeyLocal(),
+) {
   const y = Number(year);
   if (!Number.isFinite(y)) {
-    return new Date().toISOString().slice(0, 10);
+    return todayKey;
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey;
   if (today.startsWith(`${y}-`)) return today;
   const start = annualLeaveAttendanceCountStartDate(y);
   return start || `${y}-01-01`;

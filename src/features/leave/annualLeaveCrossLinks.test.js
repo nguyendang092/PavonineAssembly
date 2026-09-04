@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
+import * as dateKey from "@/utils/dateKey";
 import {
   annualLeavePathForDateKey,
   attendanceListDateForAnnualLeaveYear,
@@ -16,7 +17,7 @@ describe("annualLeaveCrossLinks", () => {
   });
 
   it("uses today when year matches current calendar year", () => {
-    vi.spyOn(Date.prototype, "toISOString").mockReturnValue("2026-03-10T12:00:00.000Z");
+    vi.spyOn(dateKey, "getTodayDateKeyLocal").mockReturnValue("2026-03-10");
     expect(attendanceListDateForAnnualLeaveYear(2026)).toBe("2026-03-10");
     expect(attendanceListPathForAnnualLeaveYear(2026)).toBe(
       "/attendance-list?date=2026-03-10",
@@ -24,8 +25,9 @@ describe("annualLeaveCrossLinks", () => {
   });
 
   it("uses count start when year differs from today", () => {
-    vi.spyOn(Date.prototype, "toISOString").mockReturnValue("2026-03-10T12:00:00.000Z");
-    expect(attendanceListDateForAnnualLeaveYear(2025)).toBe("2025-01-01");
+    expect(attendanceListDateForAnnualLeaveYear(2025, "2026-03-10")).toBe(
+      "2025-01-01",
+    );
   });
 
   it("builds payroll path with encoded date", () => {

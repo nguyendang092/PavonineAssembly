@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
 import { canViewKoreanTimesheet } from "@/config/featurePermissions";
+import { useTodayDateKeyLocal } from "@/hooks/useTodayDateKeyLocal";
 import {
   annualLeavePathForDateKey,
   payrollPathForDateKey,
@@ -193,10 +194,7 @@ function ProductionSidebarShell({ children }) {
     return lang.startsWith("ko") ? "ko-KR" : "vi-VN";
   }, [i18n.language]);
 
-  const todayKey = useMemo(
-    () => new Date().toISOString().slice(0, 10),
-    [],
-  );
+  const todayKey = useTodayDateKeyLocal();
 
   const itemClass = (active, tone) =>
     `attendance-with-sidebar__item attendance-with-sidebar__item--${tone}${

@@ -1,3 +1,4 @@
+import { getTodayDateKeyLocal } from "@/utils/dateKey";
 import { attendanceListDateForAnnualLeaveYear } from "./annualLeaveCrossLinks";
 
 export const ANNUAL_LEAVE_MANAGER_MONTH_VALUES = Object.freeze(
@@ -20,21 +21,25 @@ export function resolveAnnualLeaveManagerMonthIndex(monthFilter) {
 }
 
 /** Ngày chốt hiển thị / điểm danh khi lọc theo tháng. */
-export function resolveAnnualLeaveManagerThroughDateKey(year, monthFilter = "") {
+export function resolveAnnualLeaveManagerThroughDateKey(
+  year,
+  monthFilter = "",
+  todayKey = getTodayDateKeyLocal(),
+) {
   const y = Number(year);
   if (!Number.isFinite(y)) {
-    return new Date().toISOString().slice(0, 10);
+    return todayKey;
   }
 
   const monthIndex = resolveAnnualLeaveManagerMonthIndex(monthFilter);
   if (monthIndex == null) {
-    return attendanceListDateForAnnualLeaveYear(y);
+    return attendanceListDateForAnnualLeaveYear(y, todayKey);
   }
 
   const mm = String(monthIndex + 1).padStart(2, "0");
   const lastDay = new Date(y, monthIndex + 1, 0).getDate();
   const endKey = `${y}-${mm}-${String(lastDay).padStart(2, "0")}`;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey;
   if (today.startsWith(`${y}-`) && today <= endKey) return today;
   return endKey;
 }

@@ -56,28 +56,40 @@ describe("annualLeaveDeptPillStyle", () => {
 });
 
 describe("resolveAnnualLeaveBalanceStatus", () => {
-  it("flags high remaining leave as amber or red", () => {
+  it("colors balance by absolute days: red < 1, amber 1–6, green > 6", () => {
     expect(
       resolveAnnualLeaveBalanceStatus({
-        [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: 10,
+        [ANNUAL_LEAVE_EMP.BALANCE]: 0,
+      }),
+    ).toBe("red");
+    expect(
+      resolveAnnualLeaveBalanceStatus({
+        [ANNUAL_LEAVE_EMP.BALANCE]: 0.5,
+      }),
+    ).toBe("red");
+    expect(
+      resolveAnnualLeaveBalanceStatus({
+        [ANNUAL_LEAVE_EMP.BALANCE]: 1,
+      }),
+    ).toBe("amber");
+    expect(
+      resolveAnnualLeaveBalanceStatus({
         [ANNUAL_LEAVE_EMP.BALANCE]: 6,
       }),
     ).toBe("amber");
-
     expect(
       resolveAnnualLeaveBalanceStatus({
-        [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: 10,
-        [ANNUAL_LEAVE_EMP.BALANCE]: 8,
-      }),
-    ).toBe("red");
-  });
-
-  it("marks reasonable remaining leave as green", () => {
-    expect(
-      resolveAnnualLeaveBalanceStatus({
-        [ANNUAL_LEAVE_EMP.TOTAL_ANNUAL_LEAVE]: 10,
-        [ANNUAL_LEAVE_EMP.BALANCE]: 4,
+        [ANNUAL_LEAVE_EMP.BALANCE]: 6.5,
       }),
     ).toBe("green");
+    expect(
+      resolveAnnualLeaveBalanceStatus({
+        [ANNUAL_LEAVE_EMP.BALANCE]: 12,
+      }),
+    ).toBe("green");
+  });
+
+  it("returns neutral when balance is missing", () => {
+    expect(resolveAnnualLeaveBalanceStatus({})).toBe("neutral");
   });
 });

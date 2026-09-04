@@ -66,7 +66,7 @@ const PayrollMonthlyTimesheetModal = lazy(
 const PayrollRangeExcelExportModal = lazy(
   () => import("@/features/payroll/PayrollRangeExcelExportModal"),
 );
-import { getTodayDateKeyLocal } from "@/utils/dateKey";
+import { useSelectedDateWithTodayRollover } from "@/hooks/useSelectedDateWithTodayRollover";
 import { db, get, ref } from "@/services/firebase";
 import {
   isKoreanAttendanceRoot,
@@ -82,7 +82,24 @@ const AttendanceList = memo(function AttendanceList({
   counterpartLinkLabelKey = "seasonalActiveEmployeesTitleShort",
   counterpartLinkLabelDefault = "Điểm danh nhân viên thời vụ",
 }) {
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlDateKey = searchParams.get("date");
+  const { selectedDate, setSelectedDate, todayKey } =
+    useSelectedDateWithTodayRollover(
+      urlDateKey && /^\d{4}-\d{2}-\d{2}$/.test(urlDateKey) ? urlDateKey : null,
+    );
+
+  useEffect(() => {
+    if (selectedDate === urlDateKey) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("date", selectedDate);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [selectedDate, urlDateKey, setSearchParams]);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [employeeModalRecord, setEmployeeModalRecord] = useState(null);
@@ -91,7 +108,6 @@ const AttendanceList = memo(function AttendanceList({
   const clearSearch = useCallback(() => {
     setSearchResetNonce((nonce) => nonce + 1);
   }, []);
-  const [selectedDate, setSelectedDate] = useState(todayKey);
   const searchResetKey = `${selectedDate}:${searchResetNonce}`;
   const { query: debouncedSearchTerm, onDebouncedSearchChange } =
     useDebouncedSearchQuery(searchResetKey);
@@ -184,7 +200,6 @@ const AttendanceList = memo(function AttendanceList({
     [user?.email],
   );
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { tl, tlComboStat, displayLocale } = useAttendanceListI18n(t, i18n);
   const tlPayrollPage = useCallback(
     (key, defaultValue, options = {}) =>
@@ -453,7 +468,6 @@ const AttendanceList = memo(function AttendanceList({
     userDepartments,
     searchParams,
     setSearchParams,
-    setSelectedDate,
     employees,
     handleEdit,
   });
@@ -1020,7 +1034,7 @@ const AttendanceList = memo(function AttendanceList({
               if (!koreanExportBusy) setKoreanExportModalOpen(false);
             }}
             onExport={handleKoreanPayrollExport}
-            todayKey={getTodayDateKeyLocal()}
+            todayKey={todayKey}
             singleDayKey={
               koreanExportModalMode === "single" ? selectedDate : null
             }

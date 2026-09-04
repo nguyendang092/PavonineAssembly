@@ -5,7 +5,6 @@ import {
   ROLES,
 } from "@/config/authRoles";
 import { useAttendanceColumnPlan } from "./useAttendanceBirthDeptColumns";
-import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 
 /**
  * Quyền, cột bảng, đồng bộ ?date= và ?edit=.
@@ -16,15 +15,9 @@ export function useAttendanceListSetup({
   userDepartments,
   searchParams,
   setSearchParams,
-  setSelectedDate,
   employees,
   handleEdit,
 }) {
-  useEffect(() => {
-    const d = searchParams.get("date");
-    if (d && ISO_DATE_KEY_RE.test(d)) setSelectedDate(d);
-  }, [searchParams, setSelectedDate]);
-
   const canEditEmployee = useCallback(
     (employee) =>
       canEditAttendanceForEmployee({

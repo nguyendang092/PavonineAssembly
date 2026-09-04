@@ -28,6 +28,20 @@ export function getTodayDateKeyLocal() {
   return formatDateKeyLocal(new Date());
 }
 
+/** Milliseconds until next local midnight — dùng lên lịch refresh sau 00:00. */
+export function msUntilNextLocalMidnight(now = new Date()) {
+  const next = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1,
+    0,
+    0,
+    0,
+    0,
+  );
+  return Math.max(50, next.getTime() - now.getTime());
+}
+
 /** Trừ N ngày theo lịch local (đúng “hôm qua” so với selectedDate). */
 export function getDateKeyBySubtractDays(dateStr, daysBack = 1) {
   const date = parseLocalDateKey(dateStr);

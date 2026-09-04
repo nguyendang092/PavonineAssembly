@@ -35,7 +35,7 @@ import {
   getAttendanceLeaveTypeHexColor,
 } from "./attendanceGioVaoTypeOptions";
 import { ISO_DATE_KEY_RE } from "./attendanceListShared";
-import { getTodayDateKeyLocal } from "@/utils/dateKey";
+import { useSelectedDateWithTodayRollover } from "@/hooks/useSelectedDateWithTodayRollover";
 import "./attendanceDashboard.css";
 import "./hrPageCompact.css";
 
@@ -219,10 +219,22 @@ function AttendanceDashboardPage() {
 
   const dateFromUrl = searchParams.get("date");
   const periodFromUrl = searchParams.get("period");
-  const selectedDate = useMemo(() => {
-    if (dateFromUrl && ISO_DATE_KEY_RE.test(dateFromUrl)) return dateFromUrl;
-    return getTodayDateKeyLocal();
-  }, [dateFromUrl]);
+  const urlDateKey =
+    dateFromUrl && ISO_DATE_KEY_RE.test(dateFromUrl) ? dateFromUrl : null;
+  const { selectedDate, setSelectedDate } =
+    useSelectedDateWithTodayRollover(urlDateKey);
+
+  useEffect(() => {
+    if (selectedDate === dateFromUrl) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("date", selectedDate);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [selectedDate, dateFromUrl, setSearchParams]);
 
   const selectedPeriod = useMemo(
     () => normalizeDashboardPeriod(periodFromUrl),
@@ -304,6 +316,7 @@ function AttendanceDashboardPage() {
   const handleDateChange = (e) => {
     const v = e.target.value;
     if (!ISO_DATE_KEY_RE.test(v)) return;
+    setSelectedDate(v);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("date", v);

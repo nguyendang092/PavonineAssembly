@@ -14,7 +14,7 @@ import {
 } from "./attendanceDailyReportExport";
 import { useAttendanceDailyReportData } from "./useAttendanceDailyReportData";
 import { ISO_DATE_KEY_RE } from "./attendanceListShared";
-import { getTodayDateKeyLocal } from "@/utils/dateKey";
+import { useSelectedDateWithTodayRollover } from "@/hooks/useSelectedDateWithTodayRollover";
 import "./attendanceDailyReport.css";
 import "./hrPageCompact.css";
 
@@ -25,13 +25,13 @@ function AttendanceDailyReportPage() {
   const [exportingImage, setExportingImage] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const dateFromUrl = searchParams.get("date");
-  const selectedDate = useMemo(() => {
-    if (dateFromUrl && ISO_DATE_KEY_RE.test(dateFromUrl)) return dateFromUrl;
-    return getTodayDateKeyLocal();
-  }, [dateFromUrl]);
+  const urlDateKey =
+    dateFromUrl && ISO_DATE_KEY_RE.test(dateFromUrl) ? dateFromUrl : null;
+  const { selectedDate, setSelectedDate } =
+    useSelectedDateWithTodayRollover(urlDateKey);
 
   useEffect(() => {
-    if (dateFromUrl && ISO_DATE_KEY_RE.test(dateFromUrl)) return;
+    if (selectedDate === dateFromUrl) return;
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -40,7 +40,7 @@ function AttendanceDailyReportPage() {
       },
       { replace: true },
     );
-  }, [dateFromUrl, selectedDate, setSearchParams]);
+  }, [selectedDate, dateFromUrl, setSearchParams]);
 
   const displayLocale = useMemo(() => {
     const lang = (i18n.language || "vi").toLowerCase();
@@ -196,6 +196,7 @@ function AttendanceDailyReportPage() {
   const handleDateChange = (e) => {
     const v = e.target.value;
     if (!ISO_DATE_KEY_RE.test(v)) return;
+    setSelectedDate(v);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("date", v);

@@ -55,7 +55,7 @@ import {
   buildPayrollMonthCacheKey,
   invalidatePayrollMonthCache,
 } from "@/features/payroll/payrollMonthCache";
-import { getTodayDateKeyLocal } from "@/utils/dateKey";
+import { useSelectedDateWithTodayRollover } from "@/hooks/useSelectedDateWithTodayRollover";
 import { executePayrollSalaryExcelExportRange } from "@/features/payroll/payrollSalaryExcelExportRange";
 import {
   getOvertimeHoursFromGioRa,
@@ -130,14 +130,24 @@ export default function PayrollSalaryCalculator() {
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [employeeModalRecord, setEmployeeModalRecord] = useState(null);
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const [selectedDate, setSelectedDate] = useState(todayKey);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlDateKey = searchParams.get("date");
+  const { selectedDate, setSelectedDate, todayKey } =
+    useSelectedDateWithTodayRollover(
+      urlDateKey && /^\d{4}-\d{2}-\d{2}$/.test(urlDateKey) ? urlDateKey : null,
+    );
 
   useEffect(() => {
-    const d = searchParams.get("date");
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(d);
-  }, [searchParams]);
+    if (selectedDate === urlDateKey) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("date", selectedDate);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [selectedDate, urlDateKey, setSearchParams]);
 
   useEffect(() => {
     setWorkHoursFilter(PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL);
@@ -1074,7 +1084,7 @@ export default function PayrollSalaryCalculator() {
           if (!rangeExportBusy) setRangeExportModalOpen(false);
         }}
         onExport={handleExportPayrollExcelFromModal}
-        todayKey={getTodayDateKeyLocal()}
+        todayKey={todayKey}
         singleDayKey={exportModalMode === "single" ? selectedDate : null}
         departmentOptions={departments}
         initialDepartmentFilter={departmentFilter}
