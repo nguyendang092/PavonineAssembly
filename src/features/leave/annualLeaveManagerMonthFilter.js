@@ -39,7 +39,7 @@ export function resolveAnnualLeaveManagerThroughDateKey(
   const mm = String(monthIndex + 1).padStart(2, "0");
   const lastDay = new Date(y, monthIndex + 1, 0).getDate();
   const endKey = `${y}-${mm}-${String(lastDay).padStart(2, "0")}`;
-  const today = todayKey;
+  const today = String(todayKey ?? getTodayDateKeyLocal()).trim();
   if (today.startsWith(`${y}-`) && today <= endKey) return today;
   return endKey;
 }

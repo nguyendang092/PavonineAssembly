@@ -35,4 +35,10 @@ describe("annualLeaveCrossLinks", () => {
       "/attendance-salary?date=2026-06-01",
     );
   });
+
+  it("falls back when todayKey is missing", () => {
+    expect(attendanceListDateForAnnualLeaveYear(2026, undefined)).toMatch(
+      /^2026-/,
+    );
+  });
 });

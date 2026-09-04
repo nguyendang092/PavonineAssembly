@@ -43,7 +43,9 @@ import { useAttendanceListHandlers } from "./useAttendanceListHandlers";
 import { useAttendanceListSetup } from "./useAttendanceListSetup";
 import { useAttendanceListI18n } from "./useAttendanceListI18n";
 import { useDebouncedSearchQuery } from "@/hooks/useDebouncedSearchQuery";
+import { useSelectedDateWithTodayRollover } from "@/hooks/useSelectedDateWithTodayRollover";
 import { useAttendanceCompareEmployees } from "./useAttendanceCompareEmployees";
+import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 import {
   AttendanceListToolbarBranchContext,
   AttendanceListContentBranchContext,
@@ -66,7 +68,6 @@ const PayrollMonthlyTimesheetModal = lazy(
 const PayrollRangeExcelExportModal = lazy(
   () => import("@/features/payroll/PayrollRangeExcelExportModal"),
 );
-import { useSelectedDateWithTodayRollover } from "@/hooks/useSelectedDateWithTodayRollover";
 import { db, get, ref } from "@/services/firebase";
 import {
   isKoreanAttendanceRoot,
@@ -84,22 +85,28 @@ const AttendanceList = memo(function AttendanceList({
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlDateKey = searchParams.get("date");
+  const pinnedUrlDateKey =
+    urlDateKey && ISO_DATE_KEY_RE.test(urlDateKey) ? urlDateKey : null;
   const { selectedDate, setSelectedDate, todayKey } =
-    useSelectedDateWithTodayRollover(
-      urlDateKey && /^\d{4}-\d{2}-\d{2}$/.test(urlDateKey) ? urlDateKey : null,
-    );
+    useSelectedDateWithTodayRollover(pinnedUrlDateKey);
 
   useEffect(() => {
-    if (selectedDate === urlDateKey) return;
+    if (!selectedDate || !ISO_DATE_KEY_RE.test(selectedDate)) return;
+    const currentDate = searchParams.get("date");
+    const hasAnnualLeaveParams =
+      searchParams.has("year") || searchParams.has("month");
+    if (currentDate === selectedDate && !hasAnnualLeaveParams) return;
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
         next.set("date", selectedDate);
+        next.delete("year");
+        next.delete("month");
         return next;
       },
       { replace: true },
     );
-  }, [selectedDate, urlDateKey, setSearchParams]);
+  }, [selectedDate, searchParams, setSearchParams]);
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [employeeModalRecord, setEmployeeModalRecord] = useState(null);

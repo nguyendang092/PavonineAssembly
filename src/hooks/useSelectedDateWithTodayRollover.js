@@ -31,10 +31,11 @@ export function useSelectedDateWithTodayRollover(urlDateKey = null) {
 
   const setSelectedDate = useCallback((next) => {
     setSelectedDateState((prev) => {
-      const value =
+      const raw =
         typeof next === "function"
           ? next(prev)
           : String(next ?? "").trim();
+      const value = ISO_DATE_KEY_RE.test(raw) ? raw : getTodayDateKeyLocal();
       followTodayRef.current = value === getTodayDateKeyLocal();
       return value;
     });

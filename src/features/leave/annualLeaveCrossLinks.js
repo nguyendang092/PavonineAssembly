@@ -8,10 +8,10 @@ export function attendanceListDateForAnnualLeaveYear(
   todayKey = getTodayDateKeyLocal(),
 ) {
   const y = Number(year);
+  const today = String(todayKey ?? getTodayDateKeyLocal()).trim();
   if (!Number.isFinite(y)) {
-    return todayKey;
+    return today || getTodayDateKeyLocal();
   }
-  const today = todayKey;
   if (today.startsWith(`${y}-`)) return today;
   const start = annualLeaveAttendanceCountStartDate(y);
   return start || `${y}-01-01`;

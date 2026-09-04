@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Sidebar from "@/components/layout/Sidebar";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import {
   BarChart,
@@ -18,12 +17,58 @@ import {
   calculatePercentage,
   isRemovableTeam,
 } from "@/utils/performanceChartData";
+import {
+  PERF_THEME,
+  buildPerformanceKpiSummary,
+  resolveAchievementStatus,
+} from "./performanceChartTheme";
 
-const INPUT_CLASS =
-  "w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/30 dark:disabled:bg-slate-800";
+function formatPct(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0.0";
+  return n.toFixed(1);
+}
 
-const INPUT_WEEK_CLASS =
-  "w-12 md:w-16 px-1 md:px-2 py-0.5 md:py-1 text-center text-[10px] md:text-xs border border-gray-200 rounded focus:border-pink-400 focus:ring-1 focus:ring-pink-200 transition-all outline-none font-medium text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:focus:border-pink-500 dark:focus:ring-pink-500/30 dark:disabled:bg-slate-800";
+function AchievementPctCell({ pctRaw }) {
+  const pct = Number(pctRaw);
+  const status = resolveAchievementStatus(pct);
+  const barPct = Math.min(100, Math.max(0, pct));
+
+  return (
+    <div className="perf-board__pct-cell">
+      <div className="perf-board__pct-row">
+        <span
+          className="perf-board__pct-value"
+          style={{ color: status.color }}
+        >
+          {formatPct(pct)}%
+        </span>
+        <div className="perf-board__progress" aria-hidden>
+          <div
+            className="perf-board__progress-fill"
+            style={{
+              width: `${barPct}%`,
+              background: status.color,
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AchievementStatusCell({ pctRaw, t }) {
+  const status = resolveAchievementStatus(Number(pctRaw));
+
+  return (
+    <span
+      className="perf-board__badge"
+      style={{ color: status.color, background: status.bg }}
+    >
+      {t(status.labelKey, status.labelDefault)}
+    </span>
+  );
+}
 
 export function PerformanceYearSidebar({
   open,
@@ -34,46 +79,106 @@ export function PerformanceYearSidebar({
   currentCalendarYear,
 }) {
   const { t } = useTranslation();
-  return (
-    <Sidebar isOpen={open} onClose={onClose}>
-      <div className="flex h-full flex-col p-4">
-        <div className="mb-4 text-center">
-          <h2 className="mb-1 text-sm font-bold text-white">
-            {t("performanceChart.sidebarTitle")}
-          </h2>
-          <p className="text-[10px] text-gray-300">
-            {t("performanceChart.sidebarSubtitle")}
-          </p>
-        </div>
 
-        <div className="grid flex-1 grid-cols-2 gap-2 space-y-2 overflow-y-auto md:block md:space-y-2">
-          {years.map((year) => (
-            <button
-              key={year}
-              type="button"
-              onClick={() => {
-                onSelectYear(year);
-                if (window.innerWidth < 768) onClose();
-              }}
-              className={`w-full rounded-lg px-3 py-2 text-left text-sm font-semibold transition-all ${
-                selectedYear === year
-                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
-                  : "bg-white/10 text-gray-300 hover:bg-white/20"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span>{year}</span>
-                {year === currentCalendarYear && (
-                  <span className="shrink-0 rounded bg-white/20 px-1.5 py-0.5 text-[10px]">
-                    {t("performanceChart.currentYearBadge")}
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
+  return (
+    <aside
+      className={`perf-board__sidebar${open ? " perf-board__sidebar--open" : ""}`}
+      aria-label={t("performanceChart.sidebarTitle")}
+    >
+      <div className="perf-board__sidebar-head">
+        <h2 className="perf-board__sidebar-title">
+          {t("performanceChart.sidebarTitle")}
+        </h2>
+        <p className="perf-board__sidebar-sub">
+          {t("performanceChart.sidebarSubtitle")}
+        </p>
       </div>
-    </Sidebar>
+      <div className="perf-board__year-list">
+        {years.map((year) => (
+          <button
+            key={year}
+            type="button"
+            onClick={() => {
+              onSelectYear(year);
+              if (window.innerWidth < 1024) onClose();
+            }}
+            className={`perf-board__year-btn${
+              selectedYear === year ? " perf-board__year-btn--active" : ""
+            }`}
+          >
+            {year}
+            {year === currentCalendarYear ? (
+              <span className="perf-board__year-badge">
+                {t("performanceChart.currentYearBadge")}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+export function PerformanceKpiCards({ data, currentWeekNumber }) {
+  const { t } = useTranslation();
+  const summary = useMemo(
+    () => buildPerformanceKpiSummary(data, currentWeekNumber),
+    [data, currentWeekNumber],
+  );
+
+  const cards = [
+    {
+      label: t("performanceChart.kpiAvgAchievement", "Tỷ lệ đạt TB"),
+      value: `${formatPct(summary.avgPct)}%`,
+      meta: t("performanceChart.kpiAvgHint", {
+        defaultValue: "{{count}} team",
+        count: summary.teamCount,
+      }),
+      accent: summary.avgStatus.color,
+    },
+    {
+      label: t("performanceChart.kpiGoodTeams", "Team đạt tốt"),
+      value: String(summary.goodTeams),
+      meta: t("performanceChart.kpiGoodTeamsHint", {
+        defaultValue: "/ {{total}} team ≥ 100%",
+        total: summary.teamCount,
+      }),
+      accent: PERF_THEME.good,
+    },
+    {
+      label: t("performanceChart.kpiCumulative", "Lũy kế / Mục tiêu"),
+      value: `${summary.cumulativeTotal}`,
+      meta: t("performanceChart.kpiCumulativeHint", {
+        defaultValue: "Mục tiêu {{target}}",
+        target: summary.cumulativeTarget,
+      }),
+      accent: PERF_THEME.accent,
+    },
+    {
+      label: t("performanceChart.kpiWeekOutput", {
+        defaultValue: "Tuần W{{week}}",
+        week: summary.prevWeek,
+      }),
+      value: String(summary.weekTotal),
+      meta: t("performanceChart.kpiWeekHint", "Tổng sản lượng tuần gần nhất"),
+      accent: PERF_THEME.warn,
+    },
+  ];
+
+  return (
+    <section className="perf-board__kpi-grid" aria-label={t("performanceChart.kpiSection", "Chỉ số tổng quan")}>
+      {cards.map((card) => (
+        <article
+          key={card.label}
+          className="perf-board__kpi-card"
+          style={{ "--kpi-accent": card.accent }}
+        >
+          <p className="perf-board__kpi-label">{card.label}</p>
+          <p className="perf-board__kpi-value">{card.value}</p>
+          <p className="perf-board__kpi-meta">{card.meta}</p>
+        </article>
+      ))}
+    </section>
   );
 }
 
@@ -95,19 +200,14 @@ export function PerformanceDataTable({
   const prevWeek = currentWeekNumber - 1;
 
   return (
-    <div className="dashboard-chart-panel dashboard-report-surface mb-2 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white dark:border-slate-700 dark:bg-slate-900 md:mb-4">
-      <div className="flex flex-col gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 px-2 py-2 md:flex-row md:items-center md:justify-between md:px-4">
-        <h3 className="text-xs font-semibold text-white md:text-sm">
-          <span className="hidden sm:inline">
-            {t("performanceChart.tableToolbar")}
-          </span>
-          <span className="sm:hidden">
-            {t("performanceChart.tableToolbarShort")}
-          </span>
+    <section className="perf-board__panel">
+      <div className="perf-board__panel-head">
+        <h3 className="perf-board__panel-title">
+          {t("performanceChart.tableToolbar")}
         </h3>
-        <div className="flex w-full flex-wrap items-center justify-start gap-1.5 md:w-auto md:justify-end md:gap-2">
+        <div className="perf-board__panel-tools">
           {canEdit ? (
-            <div className="flex max-w-full flex-wrap items-center gap-1.5 text-[10px] md:text-xs">
+            <>
               <input
                 type="text"
                 value={newTeamName}
@@ -119,29 +219,23 @@ export function PerformanceDataTable({
                   }
                 }}
                 placeholder={t("performanceChart.addTeamPlaceholder")}
-                className="min-w-[8rem] max-w-[12rem] rounded-md border border-white/40 bg-white/95 px-2 py-1 text-gray-800 placeholder:text-gray-400 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/50 dark:bg-slate-900/90 dark:text-slate-100 dark:placeholder:text-slate-500"
-                title="Tên team mới (chỉ admin)"
-                aria-label="Tên team cải tiến mới"
+                className="perf-board__input"
+                aria-label={t("performanceChart.addTeamPlaceholder")}
               />
               <button
                 type="button"
                 onClick={() => onAddTeam?.()}
-                className="shrink-0 rounded bg-white/90 px-2 py-1 font-semibold text-indigo-700 shadow hover:bg-white dark:bg-slate-200/90 dark:text-indigo-900 dark:hover:bg-white"
-                title="Thêm team vào danh sách (chưa lưu — bấm Lưu)"
+                className="perf-board__btn perf-board__btn--ghost"
               >
                 + Team
               </button>
-            </div>
+            </>
           ) : null}
           <button
             type="button"
             onClick={onSave}
             disabled={!hasUnsavedChanges || saving || !canEdit}
-            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-all md:gap-2 md:px-3 md:py-1.5 md:text-xs ${
-              hasUnsavedChanges && !saving && canEdit
-                ? "bg-white text-indigo-600 shadow-md hover:bg-gray-100 dark:bg-slate-100 dark:text-indigo-700 dark:hover:bg-white"
-                : "cursor-not-allowed bg-white/20 text-white/50"
-            }`}
+            className="perf-board__btn perf-board__btn--accent"
             title={
               !canEdit
                 ? "Chỉ admin mới có quyền lưu dữ liệu"
@@ -152,45 +246,26 @@ export function PerformanceDataTable({
           >
             {saving ? (
               <>
-                <LoadingSpinner size="xs" className="text-white/90" />
-                <span className="hidden sm:inline">
-                  {t("performanceChart.saving")}
-                </span>
-                <span className="sm:hidden">...</span>
+                <LoadingSpinner size="xs" className="inline-block" />
+                <span>{t("performanceChart.saving")}</span>
               </>
             ) : (
               <>
-                <span aria-hidden>💾</span>
-                <span className="hidden sm:inline">
-                  {t("performanceChart.saveButton")}
-                </span>
-                {hasUnsavedChanges && (
-                  <span className="rounded-full bg-red-500 px-1 text-[10px] text-white">
-                    ●
-                  </span>
-                )}
+                {t("performanceChart.saveButton")}
+                {hasUnsavedChanges ? " ●" : ""}
               </>
             )}
           </button>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-[10px] md:text-xs">
+      <div className="perf-board__table-wrap">
+        <table className="perf-board__table">
           <thead>
-            <tr className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-slate-800 dark:to-slate-800/90">
-              <th className="border-b border-indigo-200 px-2 py-1 text-left text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
-                {t("performanceChart.colTeam")}
-              </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
-                <span className="hidden sm:inline">
-                  {t("performanceChart.colTarget")}
-                </span>
-                <span className="sm:hidden">
-                  {t("performanceChart.colTarget")}
-                </span>
-              </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
+            <tr>
+              <th>{t("performanceChart.colTeam")}</th>
+              <th>{t("performanceChart.colTarget")}</th>
+              <th>
                 <span className="hidden md:inline">
                   {t("performanceChart.colTotalLong", {
                     prevWeek,
@@ -201,15 +276,9 @@ export function PerformanceDataTable({
                   {t("performanceChart.colTotalShort")}
                 </span>
               </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
-                <span className="hidden sm:inline">
-                  {t("performanceChart.colAchievement")}
-                </span>
-                <span className="sm:hidden">
-                  {t("performanceChart.colAchievementShort")}
-                </span>
-              </th>
-              <th className="border-b border-indigo-200 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:border-indigo-800 dark:text-slate-200 md:px-3 md:py-2 md:text-[10px]">
+              <th>{t("performanceChart.colAchievement")}</th>
+              <th>{t("performanceChart.colStatus", "Tình trạng")}</th>
+              <th>
                 <span className="hidden sm:inline">
                   {t("performanceChart.colWeekLong", {
                     week: prevWeek,
@@ -222,33 +291,28 @@ export function PerformanceDataTable({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+          <tbody>
             {data.map((row, i) => {
               const total = calculateTotal(row, currentWeekNumber);
               const currentWeekValue = row.weeks[`W${prevWeek}`] || 0;
               const pctRaw = calculatePercentage(total, row.target);
-              const pct = Number(pctRaw);
               const canRemove =
                 canEdit &&
                 onRemoveTeam &&
                 isRemovableTeam(selectedYear, row.team);
 
               return (
-                <tr
-                  key={row.team || i}
-                  className="transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-slate-800/60"
-                >
-                  <td className="whitespace-nowrap px-2 py-1 md:px-3 md:py-2">
-                    <div className="flex max-w-[14rem] items-center gap-1">
-                      <span className="inline-flex min-w-0 flex-1 items-center rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-800 dark:from-indigo-900/60 dark:to-purple-900/50 dark:text-indigo-200 md:px-2 md:text-[11px]">
-                        <span className="truncate">{row.team}</span>
-                      </span>
+                <tr key={row.team || i}>
+                  <td>
+                    <div className="perf-board__team">
+                      <span className="truncate">{row.team}</span>
                       {canRemove ? (
                         <button
                           type="button"
                           onClick={() => onRemoveTeam(i)}
-                          className="shrink-0 rounded p-0.5 text-[11px] font-bold leading-none text-red-600 hover:bg-red-50 hover:text-red-700"
-                          title="Xóa team (chỉ team thêm — bấm Lưu)"
+                          className="perf-board__btn perf-board__btn--ghost"
+                          style={{ padding: "2px 6px", minWidth: 0 }}
+                          title="Xóa team"
                           aria-label={`Xóa team ${row.team}`}
                         >
                           ×
@@ -256,7 +320,7 @@ export function PerformanceDataTable({
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-2 py-1 text-center md:px-3 md:py-2">
+                  <td className="text-center">
                     <input
                       type="number"
                       value={row.target}
@@ -264,33 +328,19 @@ export function PerformanceDataTable({
                         onChangeCell(i, "target", e.target.value)
                       }
                       disabled={!canEdit}
-                      title={
-                        !canEdit ? "Chỉ admin mới chỉnh sửa được" : undefined
-                      }
-                      className={INPUT_CLASS}
+                      className="perf-board__input perf-board__input--mono"
                     />
                   </td>
-                  <td className="px-2 py-1 text-center md:px-3 md:py-2">
-                    <div className="mx-auto w-12 rounded bg-purple-50 px-1 py-0.5 text-center text-[10px] font-bold text-purple-600 dark:bg-purple-950/50 dark:text-purple-300 md:w-16 md:px-2 md:py-1 md:text-xs">
-                      {total}
-                    </div>
+                  <td className="text-center">
+                    <span className="perf-board__num">{total}</span>
                   </td>
-                  <td className="px-2 py-1 text-center md:px-3 md:py-2">
-                    <div className="inline-flex items-center gap-1">
-                      <div
-                        className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold md:px-2 md:py-1 md:text-[11px] ${
-                          pct >= 100
-                            ? "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-sm"
-                            : pct >= 75
-                              ? "bg-gradient-to-r from-yellow-400 to-orange-400 text-white shadow-sm"
-                              : "bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm"
-                        }`}
-                      >
-                        {pctRaw}%
-                      </div>
-                    </div>
+                  <td>
+                    <AchievementPctCell pctRaw={pctRaw} />
                   </td>
-                  <td className="px-2 py-1 text-center md:px-3 md:py-2">
+                  <td className="text-center">
+                    <AchievementStatusCell pctRaw={pctRaw} t={t} />
+                  </td>
+                  <td className="text-center">
                     <input
                       type="number"
                       value={currentWeekValue}
@@ -298,10 +348,7 @@ export function PerformanceDataTable({
                         onChangeCell(i, `W${prevWeek}`, e.target.value)
                       }
                       disabled={!canEdit}
-                      title={
-                        !canEdit ? "Chỉ admin mới chỉnh sửa được" : undefined
-                      }
-                      className={INPUT_WEEK_CLASS}
+                      className="perf-board__input perf-board__input--mono"
                     />
                   </td>
                 </tr>
@@ -310,7 +357,7 @@ export function PerformanceDataTable({
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -338,59 +385,40 @@ export function PerformanceBarChartCard({
     return Math.max(560, chartRows.length * 116);
   }, [isMobileChart, chartRows.length]);
 
-  const axisFontSize = isMobileChart ? 10 : 12;
-  const labelFontSize = isMobileChart ? 10 : 12;
+  const axisFontSize = isMobileChart ? 10 : 11;
+  const labelFontSize = isMobileChart ? 10 : 11;
   const xAxisHeight = isMobileChart ? 58 : 36;
-  const barMaxSize = isMobileChart ? 36 : 50;
+  const barMaxSize = isMobileChart ? 32 : 44;
 
   return (
-    <div
-      ref={cardRef}
-      className="dashboard-chart-panel dashboard-report-surface overflow-hidden rounded-xl border border-gray-100 bg-white dark:border-slate-700 dark:bg-slate-900"
-    >
-      <div className="flex flex-col gap-2 bg-gradient-to-r from-slate-700 to-slate-900 px-2 py-2 md:flex-row md:items-center md:justify-between md:px-4">
-        <h3 className="text-xs font-semibold text-white md:text-sm">
-          <span className="hidden sm:inline">
-            {t("performanceChart.chartToolbar")}
-          </span>
-          <span className="sm:hidden">
-            {t("performanceChart.chartToolbarShort")}
-          </span>
+    <section ref={cardRef} className="perf-board__panel">
+      <div className="perf-board__panel-head">
+        <h3 className="perf-board__panel-title">
+          {t("performanceChart.chartToolbar")}
         </h3>
-        <div className="flex w-full items-center gap-1 md:w-auto md:gap-2">
+        <div className="perf-board__panel-tools">
           <button
             type="button"
             onClick={onDownloadPng}
             data-no-export="true"
-            className="flex-1 rounded border border-white/30 bg-white/15 px-1.5 py-0.5 text-[9px] font-semibold text-white transition hover:bg-white/25 md:flex-none md:px-2 md:py-1 md:text-[11px]"
-            title={t("performanceChart.exportPng")}
+            className="perf-board__btn perf-board__btn--ghost"
           >
-            <span className="hidden sm:inline">
-              ⬇️ {t("performanceChart.exportPng")}
-            </span>
-            <span className="sm:hidden">{t("performanceChart.exportPng")}</span>
+            PNG
           </button>
           <button
             type="button"
             onClick={onDownloadSvg}
             data-no-export="true"
-            className="flex-1 rounded border border-white/30 bg-white/15 px-1.5 py-0.5 text-[9px] font-semibold text-white transition hover:bg-white/25 md:flex-none md:px-2 md:py-1 md:text-[11px]"
-            title={t("performanceChart.exportSvg")}
+            className="perf-board__btn perf-board__btn--ghost"
           >
-            <span className="hidden sm:inline">
-              ⬇️ {t("performanceChart.exportSvg")}
-            </span>
-            <span className="sm:hidden">{t("performanceChart.exportSvg")}</span>
+            SVG
           </button>
         </div>
       </div>
 
-      <div
-        ref={chartRef}
-        className="overflow-x-auto rounded-lg bg-gradient-to-br from-slate-50 to-indigo-50 p-2 dark:from-slate-900 dark:to-slate-800 md:p-4"
-      >
+      <div ref={chartRef} className="perf-board__chart-body">
         <div
-          className="h-64 md:h-96"
+          className="perf-board__chart-canvas"
           style={{
             minWidth: isMobileChart ? `${mobileChartMinWidth}px` : undefined,
           }}
@@ -399,168 +427,167 @@ export function PerformanceBarChartCard({
             <BarChart
               data={chartRows}
               margin={{
-                top: 20,
-                right: isMobileChart ? 4 : 10,
-                left: isMobileChart ? 2 : 10,
-                bottom: isMobileChart ? 10 : 20,
+                top: 16,
+                right: isMobileChart ? 4 : 12,
+                left: isMobileChart ? 0 : 4,
+                bottom: isMobileChart ? 8 : 12,
               }}
               barGap={4}
-              barCategoryGap={10}
+              barCategoryGap={12}
             >
-            <defs>
-              <linearGradient id="colorTarget" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.9} />
-                <stop offset="95%" stopColor="#059669" stopOpacity={0.9} />
-              </linearGradient>
-              <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.9} />
-                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.9} />
-              </linearGradient>
-              <linearGradient id="colorPercentage" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.9} />
-                <stop offset="95%" stopColor="#d97706" stopOpacity={0.9} />
-              </linearGradient>
-              <linearGradient id="colorWeek" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#ec4899" stopOpacity={0.9} />
-                <stop offset="95%" stopColor="#db2777" stopOpacity={0.9} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#e2e8f0"
-              strokeOpacity={0.5}
-            />
-            <XAxis
-              dataKey="team"
-              interval={0}
-              height={xAxisHeight}
-              tickMargin={8}
-              tick={{
-                fill: "#1e293b",
-                fontSize: axisFontSize,
-                fontWeight: 700,
-              }}
-              tickFormatter={(value) => {
-                const s = String(value ?? "");
-                return s.length > 12 ? `${s.slice(0, 12)}...` : s;
-              }}
-              axisLine={{ stroke: "#cbd5e1" }}
-            />
-            <YAxis
-              width={isMobileChart ? 34 : 44}
-              tick={{
-                fill: "#1e293b",
-                fontSize: axisFontSize,
-                fontWeight: 700,
-              }}
-              axisLine={{ stroke: "#cbd5e1" }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "rgba(255, 255, 255, 0.95)",
-                border: "1px solid #e2e8f0",
-                borderRadius: "8px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                padding: "8px",
-              }}
-              labelStyle={{
-                fontWeight: "bold",
-                color: "#1e293b",
-                marginBottom: "4px",
-                fontSize: "11px",
-              }}
-              itemStyle={{ padding: "2px 0", fontSize: "10px" }}
-            />
-            <Legend
-              wrapperStyle={{
-                paddingTop: "8px",
-                fontSize: isMobileChart ? "9px" : "10px",
-                fontWeight: 600,
-              }}
-              iconType="circle"
-            />
-            <Bar
-              dataKey="target"
-              fill="url(#colorTarget)"
-              name={t("performanceChart.chartTarget")}
-              radius={[8, 8, 0, 0]}
-              maxBarSize={barMaxSize}
-            >
-              {!isMobileChart ? (
-                <LabelList
-                  dataKey="target"
-                  position="top"
-                  style={{
-                    fill: "#059669",
-                    fontWeight: "bold",
-                    fontSize: labelFontSize,
-                  }}
-                />
-              ) : null}
-            </Bar>
-            <Bar
-              dataKey="total"
-              fill="url(#colorTotal)"
-              name={t("performanceChart.chartTotal")}
-              radius={[8, 8, 0, 0]}
-              maxBarSize={barMaxSize}
-            >
-              {!isMobileChart ? (
-                <LabelList
-                  dataKey="total"
-                  position="top"
-                  style={{
-                    fill: "#4f46e5",
-                    fontWeight: "bold",
-                    fontSize: labelFontSize,
-                  }}
-                />
-              ) : null}
-            </Bar>
-            <Bar
-              dataKey="percentage"
-              fill="url(#colorPercentage)"
-              name={t("performanceChart.chartAchievement")}
-              radius={[8, 8, 0, 0]}
-              maxBarSize={barMaxSize}
-            >
-              {!isMobileChart ? (
-                <LabelList
-                  dataKey="percentage"
-                  position="top"
-                  formatter={(value) => `${value}%`}
-                  style={{
-                    fill: "#d97706",
-                    fontWeight: "bold",
-                    fontSize: labelFontSize,
-                  }}
-                />
-              ) : null}
-            </Bar>
-            <Bar
-              dataKey="currentWeek"
-              fill="url(#colorWeek)"
-              name={t("performanceChart.chartCurrentWeek")}
-              radius={[8, 8, 0, 0]}
-              maxBarSize={barMaxSize}
-            >
-              {!isMobileChart ? (
-                <LabelList
-                  dataKey="currentWeek"
-                  position="top"
-                  style={{
-                    fill: "#db2777",
-                    fontWeight: "bold",
-                    fontSize: labelFontSize,
-                  }}
-                />
-              ) : null}
-            </Bar>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={PERF_THEME.border}
+                strokeOpacity={0.8}
+                vertical={false}
+              />
+              <XAxis
+                dataKey="team"
+                interval={0}
+                height={xAxisHeight}
+                tickMargin={8}
+                tick={{
+                  fill: PERF_THEME.textMuted,
+                  fontSize: axisFontSize,
+                  fontFamily: "IBM Plex Sans, sans-serif",
+                  fontWeight: 600,
+                }}
+                tickFormatter={(value) => {
+                  const s = String(value ?? "");
+                  return s.length > 12 ? `${s.slice(0, 12)}…` : s;
+                }}
+                axisLine={{ stroke: PERF_THEME.border }}
+                tickLine={{ stroke: PERF_THEME.border }}
+              />
+              <YAxis
+                width={isMobileChart ? 34 : 44}
+                tick={{
+                  fill: PERF_THEME.textMuted,
+                  fontSize: axisFontSize,
+                  fontFamily: "IBM Plex Mono, monospace",
+                  fontWeight: 600,
+                }}
+                axisLine={{ stroke: PERF_THEME.border }}
+                tickLine={{ stroke: PERF_THEME.border }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: PERF_THEME.panelHeader,
+                  border: `1px solid ${PERF_THEME.border}`,
+                  borderRadius: "4px",
+                  boxShadow: "0 8px 24px rgb(0 0 0 / 0.35)",
+                  padding: "8px 12px",
+                }}
+                labelStyle={{
+                  fontWeight: 700,
+                  color: PERF_THEME.text,
+                  marginBottom: "4px",
+                  fontSize: "11px",
+                  fontFamily: "IBM Plex Sans, sans-serif",
+                }}
+                itemStyle={{
+                  padding: "2px 0",
+                  fontSize: "11px",
+                  fontFamily: "IBM Plex Mono, monospace",
+                  color: PERF_THEME.text,
+                }}
+              />
+              <Legend
+                wrapperStyle={{
+                  paddingTop: "8px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  fontFamily: "IBM Plex Sans, sans-serif",
+                  color: PERF_THEME.textMuted,
+                }}
+                iconType="square"
+              />
+              <Bar
+                dataKey="target"
+                fill={PERF_THEME.accent}
+                name={t("performanceChart.chartTarget")}
+                radius={[2, 2, 0, 0]}
+                maxBarSize={barMaxSize}
+              >
+                {!isMobileChart ? (
+                  <LabelList
+                    dataKey="target"
+                    position="top"
+                    style={{
+                      fill: PERF_THEME.accent,
+                      fontWeight: 700,
+                      fontSize: labelFontSize,
+                      fontFamily: "IBM Plex Mono, monospace",
+                    }}
+                  />
+                ) : null}
+              </Bar>
+              <Bar
+                dataKey="total"
+                fill={PERF_THEME.good}
+                name={t("performanceChart.chartTotal")}
+                radius={[2, 2, 0, 0]}
+                maxBarSize={barMaxSize}
+              >
+                {!isMobileChart ? (
+                  <LabelList
+                    dataKey="total"
+                    position="top"
+                    style={{
+                      fill: PERF_THEME.good,
+                      fontWeight: 700,
+                      fontSize: labelFontSize,
+                      fontFamily: "IBM Plex Mono, monospace",
+                    }}
+                  />
+                ) : null}
+              </Bar>
+              <Bar
+                dataKey="percentage"
+                fill={PERF_THEME.warn}
+                name={t("performanceChart.chartAchievement")}
+                radius={[2, 2, 0, 0]}
+                maxBarSize={barMaxSize}
+              >
+                {!isMobileChart ? (
+                  <LabelList
+                    dataKey="percentage"
+                    position="top"
+                    formatter={(value) => `${value}%`}
+                    style={{
+                      fill: PERF_THEME.warn,
+                      fontWeight: 700,
+                      fontSize: labelFontSize,
+                      fontFamily: "IBM Plex Mono, monospace",
+                    }}
+                  />
+                ) : null}
+              </Bar>
+              <Bar
+                dataKey="currentWeek"
+                fill={PERF_THEME.textMuted}
+                name={t("performanceChart.chartCurrentWeek")}
+                radius={[2, 2, 0, 0]}
+                maxBarSize={barMaxSize}
+              >
+                {!isMobileChart ? (
+                  <LabelList
+                    dataKey="currentWeek"
+                    position="top"
+                    style={{
+                      fill: PERF_THEME.textMuted,
+                      fontWeight: 700,
+                      fontSize: labelFontSize,
+                      fontFamily: "IBM Plex Mono, monospace",
+                    }}
+                  />
+                ) : null}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 

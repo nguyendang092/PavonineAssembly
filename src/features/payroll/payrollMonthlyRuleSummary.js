@@ -48,6 +48,21 @@ export function fmtPayrollMonthlySummaryHoursCell(n) {
     : " ";
 }
 
+/** Giờ công chuẩn 1 ngày — dùng quy đổi «Tổng ngày công». */
+export const PAYROLL_STANDARD_WORK_HOURS_PER_DAY = 8;
+
+/**
+ * Quy đổi giờ công dòng chính → ngày công: ≥ 8h = 1; < 8h = giờ ÷ 8.
+ * @param {number} hours
+ * @returns {number}
+ */
+export function workDaysCreditFromWorkedHours(hours) {
+  const h = Number(hours);
+  if (!Number.isFinite(h) || h <= 0) return 0;
+  if (h >= PAYROLL_STANDARD_WORK_HOURS_PER_DAY) return 1;
+  return h / PAYROLL_STANDARD_WORK_HOURS_PER_DAY;
+}
+
 /** Ô đếm ngày phép / nghỉ (PN 0,5 · NB/KL/KP 1). */
 export function fmtPayrollMonthlyLeaveDayCell(n) {
   if (!Number.isFinite(n) || n <= 0) return " ";
@@ -116,10 +131,7 @@ export function isPayrollMonthDayCellBeforeJoinWithoutAttendance(
 }
 
 /** Số ngày công chuẩn từ ngày vào làm (trừ CN) — dùng chốt nghỉ không lương / phép năm. */
-export function countEmployedStandardWorkDaysInMonth(
-  monthKeys,
-  joinDateRaw,
-) {
+export function countEmployedStandardWorkDaysInMonth(monthKeys, joinDateRaw) {
   let n = 0;
   for (const dk of monthKeys) {
     if (!isPayrollMonthDayOnOrAfterJoin(dk, joinDateRaw, monthKeys)) continue;
@@ -279,9 +291,6 @@ function sumPayrollMonthlyCoeffHours(coeffMap) {
   return s;
 }
 
-/** 1/2PN mặc định 0,5 ngày; đủ giờ làm thực tế thì được tính trọn 1 ngày công. */
-const HALF_PN_FULL_DAY_WORKED_HOURS = 4;
-
 /**
  * Tổng hợp 3 khối cột chi tiết tháng:
  * - **THỜI GIAN LÀM VIỆC** (`total`): từ ngày vào làm (nếu có) đến hết tháng.
@@ -396,12 +405,7 @@ export function buildMonthlyRuleSummary(
         ? main.workedHours
         : 0;
 
-    const isHalfPnLeave = main.leaveShort === "1/2PN";
-    const dayWorked =
-      workedH > 0 &&
-      (!isHalfPnLeave || workedH >= HALF_PN_FULL_DAY_WORKED_HOURS)
-        ? 1
-        : 0;
+    const dayWorked = workDaysCreditFromWorkedHours(workedH);
 
     let dayLeavePaid = 0;
     if (!leaveExcludedFromIncludedWorkDays(main.leaveShort)) {
@@ -492,7 +496,7 @@ export function buildMonthlyRuleSummary(
       addWorkedHours(main.hours);
       addWorkedHours(coeffSumForWorkHours);
       if (!isPayrollMonthLeaveExcludedFromWorkDaysTotal(emp)) {
-        out.workDays += 1;
+        out.workDays += workDaysCreditFromWorkedHours(main.hours);
         if (saturdayOff) out.satsWorkDays += 1;
       }
     } else {
@@ -521,9 +525,7 @@ export function buildMonthlyRuleSummary(
       out.nightShiftWindowHours += nightH;
     }
 
-    if (
-      isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT] ?? emp.caLamViec)
-    ) {
+    if (isNightShiftCaLamViec(emp[PAYROLL_EMP.SHIFT] ?? emp.caLamViec)) {
       out.nightShiftAllowanceDays += 1;
     }
   };
@@ -545,7 +547,11 @@ export function buildMonthlyRuleSummary(
     }
   }
 
-  const finalizeSummary = (out, capStandardWorkDays, { syncStandardWorkDays = false } = {}) => {
+  const finalizeSummary = (
+    out,
+    capStandardWorkDays,
+    { syncStandardWorkDays = false } = {},
+  ) => {
     if (syncStandardWorkDays) {
       out.standardWorkDays = capStandardWorkDays;
     }
@@ -703,7 +709,14 @@ export function buildMonthlyDetailFlatValues({
   const total = summaries?.total ?? summaries ?? {};
   const trial = summaries?.trial ?? {};
   const official = summaries?.official ?? {};
-  const blockArgs = { si, coeffColBySubrow, fmt, fmtLeave, fmtAllowance, colsPerBlock };
+  const blockArgs = {
+    si,
+    coeffColBySubrow,
+    fmt,
+    fmtLeave,
+    fmtAllowance,
+    colsPerBlock,
+  };
   return [
     ...valuesForDetailBlock({
       ...blockArgs,

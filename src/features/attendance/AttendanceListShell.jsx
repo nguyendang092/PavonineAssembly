@@ -173,7 +173,7 @@ function AttendanceListShell({
 
         <nav className="attendance-with-sidebar__links">
           <SidebarNavLink
-            to="/attendance-list"
+            to={`/attendance-list?date=${encodeURIComponent(dateKey)}`}
             className={itemClass(isAttendanceActive, "blue")}
           >
             <SidebarItemContent

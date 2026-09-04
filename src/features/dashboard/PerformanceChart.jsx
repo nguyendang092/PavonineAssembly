@@ -13,11 +13,13 @@ import {
 } from "@/utils/performanceChartData";
 import {
   PerformanceYearSidebar,
+  PerformanceKpiCards,
   PerformanceDataTable,
   PerformanceBarChartCard,
   buildChartRows,
 } from "./PerformanceChartParts";
-import "./dashboard.css";
+import { PERF_THEME } from "./performanceChartTheme";
+import "./performanceChart.css";
 
 function ymdStamp() {
   const now = new Date();
@@ -132,7 +134,7 @@ export default function PerformanceChart() {
     void import("html-to-image")
       .then(({ toPng }) =>
         toPng(node, {
-          backgroundColor: "#ffffff",
+          backgroundColor: PERF_THEME.bg,
           pixelRatio: Math.max(2, window.devicePixelRatio || 1),
           cacheBust: true,
           filter: (n) => !(n.dataset && n.dataset.noExport === "true"),
@@ -201,7 +203,17 @@ export default function PerformanceChart() {
   }, [user, userRole, selectedYear, data, setYearDataStore]);
 
   return (
-    <div className="flex min-h-screen flex-col overflow-x-hidden bg-[#eef4ff] dark:bg-slate-950 md:h-screen md:flex-row md:overflow-hidden">
+    <div className="perf-board">
+      <button
+        type="button"
+        className="perf-board__mobile-toggle dashboard-no-print"
+        onClick={() => setSidebarOpen((o) => !o)}
+        aria-expanded={sidebarOpen}
+        aria-label={t("workplaceChart.toggleSidebar", "Menu năm")}
+      >
+        {sidebarOpen ? "✕" : "☰"}
+      </button>
+
       <PerformanceYearSidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -211,49 +223,36 @@ export default function PerformanceChart() {
         currentCalendarYear={currentCalendarYear}
       />
 
-      <button
-        type="button"
-        onClick={() => setSidebarOpen((o) => !o)}
-        aria-expanded={sidebarOpen}
-        aria-label={t("workplaceChart.toggleSidebar")}
-        className="dashboard-no-print fixed left-3 top-[calc(var(--app-navbar-height)+0.5rem)] flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-md transition hover:bg-slate-50 hover:shadow-lg focus-visible:outline focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 md:left-4 md:top-20 md:h-11 md:w-11"
-        style={{ zIndex: "var(--z-scroll-actions, 80)" }}
-      >
-        {sidebarOpen ? "✕" : "☰"}
-      </button>
-
-      <div
-        className={`dashboard-print-fill flex-1 overflow-y-auto p-2 pt-16 transition-all duration-300 md:overflow-hidden md:p-4 md:pt-4 ${
-          sidebarOpen ? "ml-72" : "ml-0"
-        }`}
-      >
+      <div className="perf-board__main">
         {loading && data.length === 0 ? (
-          <div className="flex h-full min-h-[40vh] items-center justify-center">
+          <div className="flex min-h-[40vh] items-center justify-center">
             <LoadingBlock
               size="lg"
               message={t("loading.loading")}
-              textClassName="text-lg font-semibold text-blue-700 dark:text-blue-300"
+              textClassName="text-lg font-semibold text-[#3FA9E0]"
             />
           </div>
         ) : (
-          <div className="mx-auto flex h-full max-w-7xl flex-col">
-            <header className="dashboard-report-surface mb-3 rounded-2xl border border-slate-200/90 bg-white/90 px-4 py-3 text-center dark:border-slate-700 dark:bg-slate-900/90 md:mb-4 md:px-6 md:py-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-400">
-                {t("performanceChart.sidebarSubtitle")}
-              </p>
-              <h1 className="mt-1 text-lg font-bold tracking-tight text-slate-900 dark:text-slate-50 md:text-2xl">
-                {t("performanceChart.pageTitle", { year: selectedYear })}
-              </h1>
-              <p className="mx-auto mt-1 max-w-2xl text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                {t("performanceChart.pageSubtitle")}
-              </p>
-              <div className="mt-3 flex justify-center">
+          <>
+            <header className="perf-board__topbar">
+              <div className="perf-board__topbar-copy">
+                <p className="perf-board__eyebrow">
+                  {t("performanceChart.sidebarSubtitle")}
+                </p>
+                <h1 className="perf-board__title">
+                  {t("performanceChart.pageTitle", { year: selectedYear })}
+                </h1>
+                <p className="perf-board__lead">
+                  {t("performanceChart.pageSubtitle")}
+                </p>
+              </div>
+              <div className="perf-board__topbar-actions dashboard-no-print">
                 <button
                   type="button"
                   onClick={refresh}
                   disabled={loading && data.length === 0}
                   aria-busy={isRefreshing}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  className="perf-board__btn perf-board__btn--ghost"
                 >
                   {isRefreshing
                     ? t("performanceChart.refreshing", "Đang làm mới…")
@@ -261,6 +260,11 @@ export default function PerformanceChart() {
                 </button>
               </div>
             </header>
+
+            <PerformanceKpiCards
+              data={data}
+              currentWeekNumber={currentWeekNumber}
+            />
 
             <PerformanceDataTable
               data={data}
@@ -284,7 +288,7 @@ export default function PerformanceChart() {
               onDownloadPng={downloadChartAsPNG}
               onDownloadSvg={downloadChartAsSVG}
             />
-          </div>
+          </>
         )}
       </div>
     </div>

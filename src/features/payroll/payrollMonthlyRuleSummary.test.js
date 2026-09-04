@@ -9,6 +9,8 @@ import {
   isPayrollSaturdayOffWorkDay,
   payrollMonthlyJoinMonthMeetsAnnualLeaveAccrual,
   pickPayrollMonthlyTimesheetTotalWorkColumns,
+  workDaysCreditFromWorkedHours,
+  PAYROLL_STANDARD_WORK_HOURS_PER_DAY,
 } from "@/features/payroll/payrollMonthlyRuleSummary";
 import { listCalendarDateKeysForYearMonth } from "@/features/leave/annualLeavePayrollAccrual";
 import {
@@ -19,6 +21,24 @@ import {
 
 /** 2026-01-10 là thứ Bảy. */
 const SAT_OFF_KEY = "2026-01-10";
+
+describe("workDaysCreditFromWorkedHours", () => {
+  it("≥ 8h → 1 ngày công", () => {
+    expect(PAYROLL_STANDARD_WORK_HOURS_PER_DAY).toBe(8);
+    expect(workDaysCreditFromWorkedHours(8)).toBe(1);
+    expect(workDaysCreditFromWorkedHours(9)).toBe(1);
+  });
+
+  it("< 8h → giờ ÷ 8", () => {
+    expect(workDaysCreditFromWorkedHours(4)).toBe(0.5);
+    expect(workDaysCreditFromWorkedHours(6)).toBe(0.75);
+  });
+
+  it("0 hoặc không hợp lệ → 0", () => {
+    expect(workDaysCreditFromWorkedHours(0)).toBe(0);
+    expect(workDaysCreditFromWorkedHours(null)).toBe(0);
+  });
+});
 
 describe("countMonthlyStandardWorkDays", () => {
   it("counts month days minus Sundays (full calendar month)", () => {
@@ -547,6 +567,48 @@ describe("buildMonthlyRuleSummary — 1/2PN + TC", () => {
     expect(total.workHours).toBe(5);
     expect(total.coeff15).toBe(1);
     expect(total.pnDays).toBe(0.5);
+    expect(total.workDays).toBe(0.5);
+  });
+
+  it("6 ngày đủ giờ + 1/2PN có giờ làm → 6,5 ngày công", () => {
+    const keys = [
+      "2026-03-10",
+      "2026-03-11",
+      "2026-03-12",
+      "2026-03-13",
+      "2026-03-14",
+      "2026-03-16",
+      "2026-03-17",
+    ];
+    const fullDayEmp = {
+      id: empId,
+      gioVao: "08:00",
+      gioRa: "17:00",
+      caLamViec: "S1",
+      loaiPhep: "",
+    };
+    const halfPnEmp = {
+      id: empId,
+      gioVao: "07:30",
+      gioRa: "12:00",
+      caLamViec: "S1",
+      loaiPhep: "1/2PN",
+    };
+    const dayChunks = new Map(
+      keys.map((dateKey, i) => [
+        dateKey,
+        makeChunk({
+          isOffDay: false,
+          isHolidayDay: false,
+          employees: [i === keys.length - 1 ? halfPnEmp : fullDayEmp],
+        }),
+      ]),
+    );
+    const { total } = buildMonthlyRuleSummary(dayChunks, keys, empId, {
+      ngayVaoLam: "2020-01-01",
+    });
+
+    expect(total.workDays).toBe(6.5);
   });
 });
 
@@ -692,11 +754,18 @@ describe("buildMonthlyRuleSummary — Tổng ngày công", () => {
     const cases = [
       { loaiPhep: "Phép năm", gioVao: "", gioRa: "", workDays: 1 },
       { loaiPhep: "1/2 Phép năm", gioVao: "", gioRa: "", workDays: 0.5 },
+      {
+        loaiPhep: "1/2 Phép năm",
+        gioVao: "07:30",
+        gioRa: "12:00",
+        workDays: 0.5,
+      },
       { loaiPhep: "Phép ốm", gioVao: "", gioRa: "", workDays: 0 },
       { loaiPhep: "Không lương", gioVao: "", gioRa: "", workDays: 0 },
       { loaiPhep: "Không phép", gioVao: "", gioRa: "", workDays: 0 },
       { loaiPhep: "Phép cưới", gioVao: "", gioRa: "", workDays: 1 },
-      { loaiPhep: "", gioVao: "07:30", gioRa: "16:30", workDays: 1 },
+      { loaiPhep: "", gioVao: "08:00", gioRa: "17:00", workDays: 1 },
+      { loaiPhep: "", gioVao: "07:30", gioRa: "14:30", workDays: 5.5 / 8 },
     ];
     for (const c of cases) {
       const emp = {
@@ -724,8 +793,8 @@ describe("buildMonthlyRuleSummary — Tổng ngày công", () => {
     const workEmp = {
       id: empId,
       loaiPhep: "",
-      gioVao: "07:30",
-      gioRa: "16:30",
+      gioVao: "08:00",
+      gioRa: "17:00",
       caLamViec: "S1",
     };
     const dayChunks = new Map([
@@ -753,8 +822,8 @@ describe("buildMonthlyRuleSummary — khối THỜI GIAN THỬ VIỆC (ngày và
     const workEmp = {
       id: empId,
       loaiPhep: "",
-      gioVao: "07:30",
-      gioRa: "16:30",
+      gioVao: "08:00",
+      gioRa: "17:00",
       caLamViec: "S1",
     };
     const dayChunks = new Map([
@@ -779,8 +848,8 @@ describe("buildMonthlyRuleSummary — khối THỜI GIAN THỬ VIỆC (ngày và
     const workEmp = {
       id: empId,
       loaiPhep: "",
-      gioVao: "07:30",
-      gioRa: "16:30",
+      gioVao: "08:00",
+      gioRa: "17:00",
       caLamViec: "S1",
     };
     const dayChunks = new Map([
@@ -806,8 +875,8 @@ describe("buildMonthlyRuleSummary — khối THỜI GIAN THỬ VIỆC (ngày và
     const workEmp = {
       id: empId,
       loaiPhep: "",
-      gioVao: "07:30",
-      gioRa: "16:30",
+      gioVao: "08:00",
+      gioRa: "17:00",
       caLamViec: "S1",
     };
     const dayChunks = new Map([
@@ -839,8 +908,8 @@ describe("buildMonthlyRuleSummary — khối THỜI GIAN THỬ VIỆC (ngày và
     const workEmp = {
       id: empId,
       loaiPhep: "",
-      gioVao: "07:30",
-      gioRa: "16:30",
+      gioVao: "08:00",
+      gioRa: "17:00",
       caLamViec: "S1",
     };
     const dayChunks = new Map();
@@ -866,8 +935,8 @@ describe("buildMonthlyRuleSummary — khối THỜI GIAN THỬ VIỆC (ngày và
     const workEmp = {
       id: empId,
       loaiPhep: "",
-      gioVao: "07:30",
-      gioRa: "16:30",
+      gioVao: "08:00",
+      gioRa: "17:00",
       caLamViec: "S1",
       ngayHopDong: officialKey,
     };
@@ -900,8 +969,8 @@ describe("buildMonthlyRuleSummary — khối THỜI GIAN THỬ VIỆC (ngày và
         id: rowId,
         mnv: rowId,
         loaiPhep: "",
-        gioVao: "07:30",
-        gioRa: "16:30",
+        gioVao: "08:00",
+        gioRa: "17:00",
         caLamViec: "S1",
       };
       const dayChunks = new Map();
@@ -938,8 +1007,8 @@ describe("buildMonthlyRuleSummary — khối THỜI GIAN THỬ VIỆC (ngày và
       id: rowId,
       mnv: "260714",
       loaiPhep: "",
-      gioVao: "07:30",
-      gioRa: "16:30",
+      gioVao: "08:00",
+      gioRa: "17:00",
       caLamViec: "S1",
     };
     const dayChunks = new Map();
@@ -973,8 +1042,8 @@ describe("buildMonthlyRuleSummary — khối THỜI GIAN THỬ VIỆC (ngày và
       id: rowId,
       mnv: "260714",
       loaiPhep: "",
-      gioVao: "07:30",
-      gioRa: "16:30",
+      gioVao: "08:00",
+      gioRa: "17:00",
       caLamViec: "S1",
     };
     const dayChunks = new Map();
