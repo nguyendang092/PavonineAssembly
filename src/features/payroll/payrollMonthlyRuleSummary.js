@@ -412,7 +412,12 @@ export function buildMonthlyRuleSummary(
       dayLeavePaid = countedLeaveUnitsForWorkDays(main.leaveShort);
     }
 
-    let dayAdd = Math.max(dayWorked, dayLeavePaid);
+    /** 1/2PN + giờ làm (vd. 4h = 0,5) cộng dồn thành 1 ngày công, không lấy max. */
+    const halfPn = leaveUnitsByCode(main.leaveShort, "PN") === 0.5;
+    let dayAdd =
+      halfPn && dayWorked > 0
+        ? Math.min(1, dayWorked + dayLeavePaid)
+        : Math.max(dayWorked, dayLeavePaid);
 
     if (ch.isHolidayDay && coeffSum <= 0 && dayWorked === 0) {
       dayAdd = Math.max(dayAdd, 1);

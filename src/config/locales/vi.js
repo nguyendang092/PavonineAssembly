@@ -254,8 +254,7 @@ const vi = {
     actionsMenu: "Chức năng",
     recalculate: "Tính toán lại",
     recalculating: "Đang tính lại…",
-    recalculatingSubtitle:
-      "Đang đồng bộ phép năm từ điểm danh, vui lòng chờ…",
+    recalculatingSubtitle: "Đang đồng bộ phép năm từ điểm danh, vui lòng chờ…",
     recalculateSuccess: "Đã cập nhật {{count}} bản ghi phép năm từ điểm danh.",
     recalculateError: "Không thể tính lại phép năm.",
     detailColumn: "Chi tiết",
@@ -1037,6 +1036,12 @@ const vi = {
   },
   warehouseDashboard: {
     pageTitle: "Báo cáo kiểm kê",
+    pageSubtitle:
+      "Tải file Excel tồn kho, lọc theo kho/tháng/mã và so sánh chênh lệch giữa các kỳ.",
+    monthFilterLabel: "Tháng",
+    filterAllMonths: "Tất cả tháng",
+    tableRowsLabel: "dòng",
+    tableEmpty: "Không có dòng phù hợp bộ lọc.",
     uploadBtn: "Chọn file Excel",
     clearBtn: "Xóa dữ liệu",
     printBtn: "In",
@@ -1102,12 +1107,22 @@ const vi = {
     swingSubtitle: "Tháng sau cùng − tháng đầu",
     pivotFootnote:
       "Mỗi ô là tổng Gap (có dấu) của các dòng cùng CODE trong tháng. Δ Gap = kỳ mới nhất − kỳ cũ nhất (theo các tháng có dữ liệu của CODE đó).",
-    hideZeroActualQty: "Ẩn Số lượng Thực tế = 0",
+    hideZeroActualQty: "Ẩn dòng SL thực tế & hệ thống = 0",
     hideZeroMonthlyDiff: "Ẩn GAP = 0",
     filtersSectionTitle: "Bộ lọc báo cáo",
     filtersSectionHint:
-      "Chọn kỳ và điều kiện — KPI, biểu đồ và bảng đều cập nhật theo lọc.",
+      "Chọn kỳ và điều kiện — KPI và bảng cập nhật theo lọc.",
     filtersHideLabel: "Ẩn dòng không cần xem",
+    monthCompareModeButton: "So sánh 12 tháng",
+    monthCompareModeHint:
+      "Chọn 2 tháng — bảng hiển thị chênh lệch (tháng sau − tháng trước) cho các mã trùng khớp (kho + 구분 + CODE).",
+    monthCompareSectionTitle: "So sánh 2 tháng",
+    monthCompareFrom: "Tháng trước",
+    monthCompareTo: "Tháng sau",
+    monthComparePickBoth:
+      "Chọn đủ tháng trước và tháng sau để xem chênh lệch.",
+    monthCompareNoMatches:
+      "Không có mã trùng khớp giữa hai tháng đã chọn.",
     softSortSectionTitle: "Sắp xếp",
     codeDiffSoftTop: "Giá trị tuyệt đối",
     codeDiffSoftPositive: "Lớn -> Nhỏ",
@@ -1117,6 +1132,8 @@ const vi = {
     searchCodePlaceholder: "Nhập CODE...",
     colInventoryAmountPhysicalKr: "Tiền chênh lệch theo tháng",
     colWarehouseCode: "창고 (Mã kho)",
+    colStt: "STT",
+    colItem: "ITEM",
     colWarehouse: "Kho",
     colCategoryKr: "구분",
     colStatus: "STATUS",
@@ -1127,6 +1144,7 @@ const vi = {
     colMonthlyDiffKr: "GAP",
     colCodeDiffKr: "Chênh lệch theo mã",
     colCodeMonthSwingKr: "Chênh lệch theo tháng",
+    colAmount: "Số tiền",
     gapAmountLabel: "Số tiền GAP",
     overviewTopCodeAmountChartTitle: "TOP mã chênh lệch tiền theo tháng",
     overviewTopCodeAmountHint:
@@ -1137,6 +1155,9 @@ const vi = {
     qtyDiffRateLabel: "Tỉ lệ chênh lệch",
     highVarianceBarLabel: "|Δ Gap|",
     tablePageSummary: "Trang {{page}}/{{total}} · {{count}} dòng",
+    tablePageRangeSummary:
+      "Dòng {{from}}–{{to}} / {{count}} · trang {{page}}/{{total}}",
+    rowsPerPage: "Số dòng/trang",
     paginationPrev: "Trước",
     paginationNext: "Sau",
     executiveBadge: "Đọc nhanh cho lãnh đạo",
@@ -1321,9 +1342,11 @@ const vi = {
   attendanceList: {
     searchPlaceholder: "🔍 Tìm theo tên, MNV, bộ phận…",
     workingHours: "Giờ công",
-    payrollWorkingHoursHint: "Ngày thường: GC theo vào–ra. Ngày off: «-» (GC ở TC off).",
+    payrollWorkingHoursHint:
+      "Ngày thường: GC theo vào–ra. Ngày off: «-» (GC ở TC off).",
     dayShiftOvertimeHours: "Giờ công tăng ca (×1.5)",
-    dayShiftOvertimeHoursHint: "Ca ngày: TC sau 17:30. TC sớm có giấy ≤06:40. Ca đêm: «-».",
+    dayShiftOvertimeHoursHint:
+      "Ca ngày: TC sau 17:30. TC sớm có giấy ≤06:40. Ca đêm: «-».",
     offDayOvertimeHours: "Giờ công ngày off (x2.0)",
     offDayColumn: "Ngày off",
     offDayColumnHint: "Ngày off → OFF.",
@@ -1340,7 +1363,8 @@ const vi = {
     shiftEditViaModalHint: "Dùng nút Sửa để chọn ca.",
     holidayDayWorkingHours: "Giờ công ngày lễ (X3.0)",
     payrollOffDayTcHint: "Off + ca ngày: GC+TC gộp; TC ca ngày «-».",
-    payrollHolidayDayWorkingHoursHint: "Lễ + ca ngày: GC+TC gộp; TC ca ngày «-».",
+    payrollHolidayDayWorkingHoursHint:
+      "Lễ + ca ngày: GC+TC gộp; TC ca ngày «-».",
     payrollTotalGcDay: "Tổng GC",
     payrollTotalGcDayHint: "Tổng ca ngày: GC + TC (off/lễ gộp một ô).",
     payrollTotalGcNight: "Tổng GC ca đêm",
@@ -1349,10 +1373,13 @@ const vi = {
     nightShiftWorkingHours: "Giờ công ca đêm",
     nightShiftWorkingHoursHint: "Ca đêm: GC 19:40→05:00, max 8h.",
     nightShiftOvertimeHours: "Giờ công tăng ca ca đêm (×1.5)",
-    nightShiftOvertimeHoursHint: "Ca đêm: sau 05:00, 30' = 0,5h. Off/lễ: gộp GC đêm.",
+    nightShiftOvertimeHoursHint:
+      "Ca đêm: sau 05:00, 30' = 0,5h. Off/lễ: gộp GC đêm.",
     nightShiftOffDayWorkingHours: "Giờ công ca đêm ngày OFF (X2.7)",
-    nightShiftOffDayWorkingHoursHint: "Ngày off + ca đêm S2: GC+TC gộp. Ngày thường đã xác nhận TC đêm (vào 22:00–05:00): giờ khung 22:00–06:00, tối đa 8h.",
-    payrollHolidayNightWorkingHoursHint: "Lễ + ca đêm: GC+TC gộp; TC/GC đêm «-».",
+    nightShiftOffDayWorkingHoursHint:
+      "Ngày off + ca đêm S2: GC+TC gộp. Ngày thường đã xác nhận TC đêm (vào 22:00–05:00): giờ khung 22:00–06:00, tối đa 8h.",
+    payrollHolidayNightWorkingHoursHint:
+      "Lễ + ca đêm: GC+TC gộp; TC/GC đêm «-».",
     sidebarBrand: "HR Management",
     sidebarSection: "Chấm công & nhân sự",
     sidebarFooter: "Hệ thống quản lý",
@@ -1367,7 +1394,8 @@ const vi = {
     sidebarDashboard: "Dashboard",
     dashboardReportTitle: "Báo cáo thống kê điểm danh nhân viên",
     dashboardCompanyName: "CÔNG TY TNHH PAVONINE VINA",
-    dashboardCompanyAddress: "Lots VII-3, VII-2, and part of Lot VII-3, My Xuan B1 - Tien Hung Industrial Park, Phu My Ward, Ho Chi Minh City, Vietnam",
+    dashboardCompanyAddress:
+      "Lots VII-3, VII-2, and part of Lot VII-3, My Xuan B1 - Tien Hung Industrial Park, Phu My Ward, Ho Chi Minh City, Vietnam",
     dashboardReportDateLabel: "NGÀY BÁO CÁO",
     dashboardSignPreparer: "Người lập",
     dashboardSignChecker: "Kiểm tra",
@@ -1383,14 +1411,17 @@ const vi = {
     dailyReportMetricsAbsenceRate: "Tỷ lệ vắng tổng",
     dailyReportMetricsAttention: "Công đoạn cần chú ý",
     dailyReportMetricsAttentionNone: "Không có công đoạn vượt ngưỡng",
-    dailyReportMetricsHeadcountDetail: "{{regular}} chính thức · {{seasonal}} thời vụ",
+    dailyReportMetricsHeadcountDetail:
+      "{{regular}} chính thức · {{seasonal}} thời vụ",
     dailyReportMetricsPresentDetail: "Ca ngày {{day}} · Ca đêm {{night}}",
-    dailyReportMetricsAbsenceDetail: "{{absent}} vắng / phép · {{pending}} chưa điểm danh",
+    dailyReportMetricsAbsenceDetail:
+      "{{absent}} vắng / phép · {{pending}} chưa điểm danh",
     dailyReportDownloadImage: "Tải hình",
     dailyReportExportExcel: "Xuất Excel",
     dailyReportImageExporting: "Đang tải…",
     dailyReportExcelExporting: "Đang xuất…",
-    dailyReportImageExportError: "Không thể tải hình báo cáo. Vui lòng thử lại.",
+    dailyReportImageExportError:
+      "Không thể tải hình báo cáo. Vui lòng thử lại.",
     dailyReportExcelExportError: "Không thể xuất Excel. Vui lòng thử lại.",
     dailyReportDateLabel: "Ngày",
     dailyReportProcess: "Công đoạn",
@@ -1435,8 +1466,10 @@ const vi = {
     dashboardKpiLeave: "Nghỉ có phép",
     dashboardKpiAbsent: "Vắng không lý do",
     dashboardKpiAbsentShort: "Vắng",
-    dashboardInsightWarn: "{{onTimePct}}% nhân viên đúng giờ. Cần theo dõi {{absent}} trường hợp vắng không lý do.",
-    dashboardInsightTenure: "{{pct}}% nhân viên trên 6 tháng thâm niên; trung bình {{years}} năm.",
+    dashboardInsightWarn:
+      "{{onTimePct}}% nhân viên đúng giờ. Cần theo dõi {{absent}} trường hợp vắng không lý do.",
+    dashboardInsightTenure:
+      "{{pct}}% nhân viên trên 6 tháng thâm niên; trung bình {{years}} năm.",
     dashboardMorningChart: "Nhập điểm danh buổi sáng",
     dashboardDeptWatch: "Bộ phận cần theo dõi",
     dashboardDeptWatchSort: "Xếp theo % đúng giờ thấp nhất",
@@ -1501,7 +1534,8 @@ const vi = {
     searchDepartment: "🔍 Tìm bộ phận...",
     female: "YES (Nữ)",
     male: "NO (Nam)",
-    deleteAllConfirm: "⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu chấm công ngày {{date}}?\n\nSố lượng: {{count}} nhân viên\n\nHành động này KHÔNG THỂ HOÀN TÁC!",
+    deleteAllConfirm:
+      "⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu chấm công ngày {{date}}?\n\nSố lượng: {{count}} nhân viên\n\nHành động này KHÔNG THỂ HOÀN TÁC!",
     deleteAllConfirm2: "Nhập 'XOA' (viết hoa) để xác nhận xóa toàn bộ dữ liệu:",
     deleteConfirm: "Bạn có chắc muốn xóa nhân viên này?",
     deleteSuccess: "✅ Đã xóa nhân viên thành công",
@@ -1525,7 +1559,8 @@ const vi = {
     koreanActiveEmployeesSubtitle: "Korean Staff Attendance",
     headerQuickLinks: "Liên kết nhanh",
     unattendedTitle: "Nhân viên chưa điểm danh",
-    unattendedSummary: "Hiện có {{count}} nhân viên chưa có thời gian vào trong ngày {{date}}.",
+    unattendedSummary:
+      "Hiện có {{count}} nhân viên chưa có thời gian vào trong ngày {{date}}.",
     unattendedSuppressSession: "Không hiển thị trong hôm nay.",
     colIndex: "STT",
     colCode: "MNV",
@@ -1553,13 +1588,15 @@ const vi = {
     dayOffToolbarHint: "Off / lễ / nghỉ bù trong tháng.",
     dayOffToolbarTitleDates: "Ngày off trong tháng (YYYY-MM-DD):",
     dayOffToolbarTitleHolidayDates: "Ngày lễ trong tháng (YYYY-MM-DD):",
-    dayOffToolbarTitleCompensatoryDates: "Ngày nghỉ bù trong tháng (YYYY-MM-DD):",
+    dayOffToolbarTitleCompensatoryDates:
+      "Ngày nghỉ bù trong tháng (YYYY-MM-DD):",
     dayOffToolbarLoading: "Đang tải danh sách ngày off trong tháng…",
     dayOffMultiModalTitle: "Chọn nhiều ngày off / lễ / nghỉ bù",
     dayOffMultiModalHint: "Chọn loại, thêm ngày, Lưu.",
     dayOffMultiAddDate: "Thêm",
     dayOffMultiAddCurrent: "Thêm ngày đang xem ({{date}})",
-    dayOffMultiEmpty: "Chưa có ngày nào — chọn loại, thêm bằng lịch hoặc nút trên.",
+    dayOffMultiEmpty:
+      "Chưa có ngày nào — chọn loại, thêm bằng lịch hoặc nút trên.",
     dayOffMultiRemove: "Bỏ ngày",
     dayOffMultiCancel: "Hủy",
     dayOffMultiSave: "Lưu",
@@ -1576,7 +1613,8 @@ const vi = {
     dayOffDropdownSectionCompensatory: "Nghỉ bù",
     dayOffDropdownEmptyCompensatory: "Chưa có ngày nghỉ bù trong tháng này.",
     dayOffDropdownOpenModal: "Chỉnh sửa ngày OFF / LỄ / NGHỈ BÙ",
-    dayOffDropdownViewOnlyHint: "Chỉ Admin/HR được chỉnh sửa ngày OFF / LỄ / NGHỈ BÙ.",
+    dayOffDropdownViewOnlyHint:
+      "Chỉ Admin/HR được chỉnh sửa ngày OFF / LỄ / NGHỈ BÙ.",
     dayOffMultiKindLabel: "Loại ngày",
     dayKindOff: "Ngày off",
     dayKindHoliday: "Ngày lễ",
@@ -1660,12 +1698,16 @@ const vi = {
     cannotEdit: "-",
     totalEmployees: "Tổng số nhân viên",
     noClassification: "Không có phân loại",
-    printWindowBlocked: "❌ Không thể mở cửa sổ in. Vui lòng kiểm tra cài đặt trình duyệt!",
-    printOvertimeOpened: "✅ Mở cửa sổ in danh sách tăng ca ({{count}} nhân viên)",
-    printAttendanceOpened: "✅ Mở cửa sổ in danh sách chấm công ({{count}} nhân viên)",
+    printWindowBlocked:
+      "❌ Không thể mở cửa sổ in. Vui lòng kiểm tra cài đặt trình duyệt!",
+    printOvertimeOpened:
+      "✅ Mở cửa sổ in danh sách tăng ca ({{count}} nhân viên)",
+    printAttendanceOpened:
+      "✅ Mở cửa sổ in danh sách chấm công ({{count}} nhân viên)",
     noCompensationEmployees: "Không có nhân viên bù công nào",
     seasonalKpStreakTitle: "NHÂN VIÊN KP (≥2 NGÀY LIÊN TIẾP)",
-    seasonalKpStreakEmpty: "Không có nhân viên nào ghi KP từ 2 ngày trở lên (kể cả ngày đang chọn).",
+    seasonalKpStreakEmpty:
+      "Không có nhân viên nào ghi KP từ 2 ngày trở lên (kể cả ngày đang chọn).",
     seasonalKpStreakColDays: "Ngày KP liên tiếp",
     seasonalKpStreakLoading: "Đang tải…",
     exportExcelDateRange: "Xuất Excel từ ngày … đến ngày …",
@@ -1676,9 +1718,12 @@ const vi = {
     exportRangeWorking: "Đang tải…",
     exportRangeConfirm: "Xuất file",
     exportRangeFillDates: "Chọn đủ từ ngày và đến ngày (YYYY-MM-DD).",
-    exportRangeInvalid: "Khoảng ngày không hợp lệ hoặc từ ngày lớn hơn đến ngày.",
-    exportRangeTooLong: "Tối đa 366 ngày mỗi lần xuất. Vui lòng thu hẹp khoảng ngày.",
-    exportRangeNoData: "Không có dòng dữ liệu trong khoảng đã chọn (hoặc bộ lọc hiện tại đã loại hết).",
+    exportRangeInvalid:
+      "Khoảng ngày không hợp lệ hoặc từ ngày lớn hơn đến ngày.",
+    exportRangeTooLong:
+      "Tối đa 366 ngày mỗi lần xuất. Vui lòng thu hẹp khoảng ngày.",
+    exportRangeNoData:
+      "Không có dòng dữ liệu trong khoảng đã chọn (hoặc bộ lọc hiện tại đã loại hết).",
     exportRangeSuccess: "✅ Đã xuất Excel: {{days}} ngày, {{rows}} dòng.",
     exportRangeError: "❌ Xuất Excel thất bại: {{error}}",
     exportRangeColDate: "Ngày",
@@ -1711,7 +1756,8 @@ const vi = {
     classification: "Phân loại phép",
     colLeaveType: "Loại phép",
     comboProductionDeptPickerTitle: "Thứ tự bộ phận sản xuất",
-    comboProductionDeptPickerHint: "Chọn và sắp xếp bộ phận hiển thị trên biểu đồ.",
+    comboProductionDeptPickerHint:
+      "Chọn và sắp xếp bộ phận hiển thị trên biểu đồ.",
     comboProductionDeptPickerEmpty: "Chưa chọn bộ phận nào.",
     advancedFilterDraft: "Chưa lưu",
     advancedFilterSaveHint: "Lưu bộ lọc cho lần sau",
@@ -1729,14 +1775,16 @@ const vi = {
     monthlyTimesheetFilterLeaveType: "Loại phép",
     monthlyTimesheetFilterOvertime: "Tăng ca",
     monthlyTimesheetFilterShortHours: "Giờ công < 8",
-    monthlyTimesheetFilterShortHoursHint: "Đi trễ / về sớm — giờ công trong ngày dưới 8 giờ",
+    monthlyTimesheetFilterShortHoursHint:
+      "Đi trễ / về sớm — giờ công trong ngày dưới 8 giờ",
     monthlyTimesheetFilterShortHoursUnder: "Đi trễ / về sớm",
     monthlyTimesheetFilterAll: "Tất cả",
     monthlyTimesheetFilterWith: "Có",
     monthlyTimesheetFilterWithout: "Không",
     monthlyTimesheetFiltersMenu: "Bộ lọc",
     monthlyTimesheetFiltersMenuTitle: "Bộ lọc lưới tháng",
-    monthlyTimesheetFiltersMenuHint: "Giờ công, loại phép, tăng ca, giờ công dưới 8h",
+    monthlyTimesheetFiltersMenuHint:
+      "Giờ công, loại phép, tăng ca, giờ công dưới 8h",
     monthlyTimesheetFiltersClear: "Xóa bộ lọc",
     noShiftStats: "Không có ca làm việc",
     openUnattendedPopup: "Danh sách chưa điểm danh",
@@ -1748,7 +1796,6 @@ const vi = {
     unattendedEmpty: "Không còn nhân viên chưa điểm danh.",
     unknownDepartment: "Bộ phận không xác định",
     workShiftStats: "Thống kê ca làm việc",
-  
   },
   productionSidebar: {
     aria: "Menu sản xuất",
@@ -1799,22 +1846,29 @@ const vi = {
       workShiftColumnHint: "Ca S1 ngày / S2 đêm.",
       offDayColumnHint: "Ngày off → OFF.",
       holidayDayColumnHint: "Ngày lễ → HOLIDAY.",
-      payrollWorkingHoursHint: "Ngày thường: GC theo vào–ra. Ngày off: «-» (GC ở TC off).",
-      dayShiftOvertimeHoursHint: "Ca ngày: TC sau 17:30. TC sớm có giấy ≤06:40. Ca đêm: «-».",
+      payrollWorkingHoursHint:
+        "Ngày thường: GC theo vào–ra. Ngày off: «-» (GC ở TC off).",
+      dayShiftOvertimeHoursHint:
+        "Ca ngày: TC sau 17:30. TC sớm có giấy ≤06:40. Ca đêm: «-».",
       offDayOvertimeHoursHint: "Cột cũ — luôn «-».",
       payrollTotalGcDayHint: "Tổng ca ngày: GC + TC (off/lễ gộp một ô).",
       nightShiftWorkingHoursHint: "Ca đêm: GC 19:40→05:00, max 8h.",
-      nightShiftOvertimeHoursHint: "Ca đêm: sau 05:00, 30' = 0,5h. Off/lễ: gộp GC đêm.",
-      nightShiftOffDayWorkingHoursHint: "Ngày off + ca đêm S2: GC+TC gộp. Ngày thường đã xác nhận TC đêm (vào 22:00–05:00): giờ khung 22:00–06:00, tối đa 8h.",
-      payrollHolidayNightWorkingHoursHint: "Lễ + ca đêm: GC+TC gộp; TC/GC đêm «-».",
+      nightShiftOvertimeHoursHint:
+        "Ca đêm: sau 05:00, 30' = 0,5h. Off/lễ: gộp GC đêm.",
+      nightShiftOffDayWorkingHoursHint:
+        "Ngày off + ca đêm S2: GC+TC gộp. Ngày thường đã xác nhận TC đêm (vào 22:00–05:00): giờ khung 22:00–06:00, tối đa 8h.",
+      payrollHolidayNightWorkingHoursHint:
+        "Lễ + ca đêm: GC+TC gộp; TC/GC đêm «-».",
       payrollTotalGcNightHint: "Tổng ca đêm: GC + TC (off/lễ gộp một ô).",
       actions: "Hành động",
       actionsEditOnly: "Sửa",
     },
     searchPlaceholder: "Tìm theo tên, MNV, bộ phận…",
-    exportExcelHint: "Xuất toàn bộ nhân viên trong ngày (theo điểm danh), đủ các cột giờ như bảng.",
+    exportExcelHint:
+      "Xuất toàn bộ nhân viên trong ngày (theo điểm danh), đủ các cột giờ như bảng.",
     exportExcelEmpty: "Không có dữ liệu điểm danh trong ngày để xuất.",
-    exportToolbarFilteredEmpty: "Không có nhân viên khớp bộ lọc trên toolbar trong ngày này.",
+    exportToolbarFilteredEmpty:
+      "Không có nhân viên khớp bộ lọc trên toolbar trong ngày này.",
     exportExcelSuccess: "✅ Đã xuất Excel ({{rows}} dòng).",
     exportExcelError: "❌ Xuất Excel thất bại: {{error}}",
     exportSheetTitle: "Bảng giờ công nhân viên",
@@ -1827,7 +1881,8 @@ const vi = {
     monthlyTimeInOutButton: "Xem giờ vào & ra",
     monthlyTimeInOutTitle: "Giờ vào / ra tháng",
     monthlyTimeInOutFilterNightShift: "Ca đêm",
-    monthlyTimeInOutFilterNightShiftHint: "Lọc nhân viên có ca đêm trong tháng đang xem",
+    monthlyTimeInOutFilterNightShiftHint:
+      "Lọc nhân viên có ca đêm trong tháng đang xem",
     monthlyTimeInOutLegendIn: "Vào",
     monthlyTimeInOutCellEditHint: "Bấm để sửa giờ vào/ra ngày này.",
     monthlyTimesheetReload: "Tải lại",
@@ -1839,14 +1894,17 @@ const vi = {
     monthlyTimesheetZoomOut: "Thu nhỏ",
     monthlyTimesheetZoomIn: "Phóng to",
     monthlyTimesheetZoomReset: "Mặc định",
-    monthlyTimesheetZoomHint: "Thu nhỏ để xem tổng quan, phóng to để đọc rõ ô từng ngày.",
+    monthlyTimesheetZoomHint:
+      "Thu nhỏ để xem tổng quan, phóng to để đọc rõ ô từng ngày.",
     monthlyTimesheetLoading: "Đang tải dữ liệu...",
     monthlyTimesheetLoadingMore: "Đang tải dữ liệu...",
     monthlyTimesheetRendering: "Đang cập nhật lưới…",
-    monthlyTimesheetSummariesProgress: "Đang tính tổng hợp tháng… ({{done}}/{{total}})",
+    monthlyTimesheetSummariesProgress:
+      "Đang tính tổng hợp tháng… ({{done}}/{{total}})",
     dayDataLoading: "Đang tải dữ liệu...",
     dayDataRendering: "Đang cập nhật bảng…",
-    monthlyTimesheetNoRowsAfterFilter: "Không có nhân viên nào khớp bộ lọc tìm kiếm / bộ phận.",
+    monthlyTimesheetNoRowsAfterFilter:
+      "Không có nhân viên nào khớp bộ lọc tìm kiếm / bộ phận.",
     monthlyTimesheetColStt: "STT",
     monthlyTimesheetColMnv: "MNV",
     monthlyTimesheetColName: "Họ và tên",
@@ -1888,7 +1946,8 @@ const vi = {
     exportCompensatorySuffix: "Nghỉ bù",
     exportExcelOneDay: "Một ngày (ngày đang chọn)",
     exportExcelRange: "Nhiều ngày",
-    exportExcelRangeHint: "Xuất Excel nhiều ngày: chọn khoảng ngày và bộ phận (mặc định hôm nay).",
+    exportExcelRangeHint:
+      "Xuất Excel nhiều ngày: chọn khoảng ngày và bộ phận (mặc định hôm nay).",
     exportDateSectionLabel: "Khoảng ngày",
     exportDepartmentLabel: "Bộ phận",
     exportDepartmentHint: "Không chọn = xuất tất cả bộ phận",
@@ -1898,41 +1957,57 @@ const vi = {
     exportSummaryRange: "{{from}} → {{to}}",
     exportDepartmentSelectAll: "Chọn tất cả",
     exportDepartmentClear: "Bỏ chọn",
-    exportDepartmentFilteredEmpty: "Không có nhân viên thuộc bộ phận đã chọn trong khoảng đã chọn.",
+    exportDepartmentFilteredEmpty:
+      "Không có nhân viên thuộc bộ phận đã chọn trong khoảng đã chọn.",
     monthlyTimesheetExportModalTitle: "Xuất Excel bảng chấm công tháng",
-    monthlyTimesheetExportModalHint: "Chọn một hoặc nhiều bộ phận cần xuất. Không chọn = xuất tất cả bộ phận.",
+    monthlyTimesheetExportModalHint:
+      "Chọn một hoặc nhiều bộ phận cần xuất. Không chọn = xuất tất cả bộ phận.",
     exportMonthSectionLabel: "Tháng xuất",
     exportRangeFrom: "Từ ngày",
     exportRangeTo: "Đến ngày",
     exportRangeSubmit: "Xuất Excel",
     exportRangeCancel: "Hủy",
-    exportRangeInvalid: "Khoảng ngày không hợp lệ hoặc từ ngày lớn hơn đến ngày.",
-    exportRangeTooLong: "Tối đa 366 ngày mỗi lần xuất. Vui lòng thu hẹp khoảng ngày.",
-    exportRangePayrollEmpty: "Không có dữ liệu điểm danh trong khoảng ngày đã chọn.",
+    exportRangeInvalid:
+      "Khoảng ngày không hợp lệ hoặc từ ngày lớn hơn đến ngày.",
+    exportRangeTooLong:
+      "Tối đa 366 ngày mỗi lần xuất. Vui lòng thu hẹp khoảng ngày.",
+    exportRangePayrollEmpty:
+      "Không có dữ liệu điểm danh trong khoảng ngày đã chọn.",
     exportRangeExcelSuccess: "✅ Đã xuất Excel (nhiều ngày).",
     earlyOtPaperworkButton: "Xác nhận tăng ca",
-    earlyOtPaperworkHint: "Xác nhận giấy TC sớm: ca ngày vào ≤ 06:40; ca đêm S2 vào 15:00–18:40.",
+    earlyOtPaperworkHint:
+      "Xác nhận giấy TC sớm: ca ngày vào ≤ 06:40; ca đêm S2 vào 15:00–18:40.",
     lateOtPaperworkButton: "Không TC >17:30",
-    lateOtPaperworkHint: "Đánh dấu những nhân viên ra sau 17:30 nhưng KHÔNG tính tăng ca.",
+    lateOtPaperworkHint:
+      "Đánh dấu những nhân viên ra sau 17:30 nhưng KHÔNG tính tăng ca.",
     nightOtPaperworkButton: "Xác nhận tăng ca đêm",
-    nightOtPaperworkHint: "Giờ vào 22:00–05:00 → hệ số tăng ca ×2.7 (ngày thường).",
-    nightOtModalDescription: "Giờ vào từ 22:00 đến 05:00 — khi tick xác nhận, giờ trong khung 22:00–06:00 được tính hệ số tăng ca ×2.7 (ngày thường).",
+    nightOtPaperworkHint:
+      "Giờ vào 22:00–05:00 → hệ số tăng ca ×2.7 (ngày thường).",
+    nightOtModalDescription:
+      "Giờ vào từ 22:00 đến 05:00 — khi tick xác nhận, giờ trong khung 22:00–06:00 được tính hệ số tăng ca ×2.7 (ngày thường).",
     nightOtModalSave: "Lưu",
     nightOtModalSelectAll: "Chọn tất cả",
     nightOtModalDeselectAll: "Bỏ chọn tất cả",
-    nightOtSaveError: "Không lưu được xác nhận tăng ca đêm. Kiểm tra kết nối hoặc quyền ghi.",
-    earlyOtSaveError: "Không lưu được giấy tăng ca lên Firebase. Kiểm tra kết nối hoặc quyền ghi.",
-    lateOtSaveError: "Không lưu được giấy tăng ca (sau 17:30). Kiểm tra kết nối hoặc quyền ghi.",
-    otPaperworkViewOnlyHint: "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
-    otPaperworkSaveForbidden: "Chỉ Admin / HR / quản lý bộ phận được xác nhận tăng ca.",
+    nightOtSaveError:
+      "Không lưu được xác nhận tăng ca đêm. Kiểm tra kết nối hoặc quyền ghi.",
+    earlyOtSaveError:
+      "Không lưu được giấy tăng ca lên Firebase. Kiểm tra kết nối hoặc quyền ghi.",
+    lateOtSaveError:
+      "Không lưu được giấy tăng ca (sau 17:30). Kiểm tra kết nối hoặc quyền ghi.",
+    otPaperworkViewOnlyHint:
+      "Chỉ Admin / HR / quản lý bộ phận được tick và lưu. Bạn chỉ xem danh sách và trạng thái hiện tại.",
+    otPaperworkSaveForbidden:
+      "Chỉ Admin / HR / quản lý bộ phận được xác nhận tăng ca.",
     earlyOtModalTitle: "Xác nhận đăng ký tăng ca",
-    earlyOtModalDescription: "Ca ngày — vào ≤ 06:40\n• Trước 06:00: 2h (05:40–06:40 + 06:40–07:40)\n• Từ 06:00: 1h (06:40–07:40)\n\nCa đêm\n• TC sớm: 17:40–18:40 + 18:40–19:40 (tối đa 2h)\n• GC: 19:40 → 05:00 (8h)",
+    earlyOtModalDescription:
+      "Ca ngày — vào ≤ 06:40\n• Trước 06:00: 2h (05:40–06:40 + 06:40–07:40)\n• Từ 06:00: 1h (06:40–07:40)\n\nCa đêm\n• TC sớm: 17:40–18:40 + 18:40–19:40 (tối đa 2h)\n• GC: 19:40 → 05:00 (8h)",
     earlyOtModalRulesTitle: "Quy tắc tính giờ",
     earlyOtModalSave: "Lưu",
     earlyOtModalSelectAll: "Chọn tất cả",
     earlyOtModalDeselectAll: "Bỏ chọn tất cả",
     lateOtModalTitle: "Xác nhận không tăng ca sau 17:30",
-    lateOtModalDescription: "Mặc định nhân viên có giờ ra sau 17:30 (ca ngày) vẫn được tính tăng ca. Hãy tick những người KHÔNG tính tăng ca.",
+    lateOtModalDescription:
+      "Mặc định nhân viên có giờ ra sau 17:30 (ca ngày) vẫn được tính tăng ca. Hãy tick những người KHÔNG tính tăng ca.",
     lateOtModalSave: "Lưu",
     lateOtModalSelectAll: "Chọn tất cả",
     lateOtModalDeselectAll: "Bỏ chọn tất cả",
@@ -1945,13 +2020,19 @@ const vi = {
     monthlyTimesheetRevalidating: "Đang đồng bộ…",
     monthlyTimesheetRetryErrors: "Thử lại",
     exportSingleDayModalTitle: "Xuất Excel một ngày",
-    exportSingleDayModalHint: "Xuất bảng giờ công của ngày đang chọn. Có thể lọc theo bộ phận.",
-    exportExcelMenuHint: "Xuất Excel: một ngày hoặc nhiều ngày; có thể chọn một hoặc nhiều bộ phận.",
-    monthlyTimesheetFiltersMenuHint: "Giờ công, loại phép, tăng ca, giờ công dưới 8h",
-    monthlyTimesheetFilterShortHoursHint: "Đi trễ / về sớm — giờ công trong ngày dưới 8 giờ",
+    exportSingleDayModalHint:
+      "Xuất bảng giờ công của ngày đang chọn. Có thể lọc theo bộ phận.",
+    exportExcelMenuHint:
+      "Xuất Excel: một ngày hoặc nhiều ngày; có thể chọn một hoặc nhiều bộ phận.",
+    monthlyTimesheetFiltersMenuHint:
+      "Giờ công, loại phép, tăng ca, giờ công dưới 8h",
+    monthlyTimesheetFilterShortHoursHint:
+      "Đi trễ / về sớm — giờ công trong ngày dưới 8 giờ",
     monthlyTimesheetDayCellViewHint: "Bấm để xem thông tin điểm danh ngày này.",
-    monthlyTimesheetNoViewPermission: "Bạn không có quyền xem điểm danh nhân viên này.",
-    monthlyTimesheetAdminHrOnlyEdit: "Chỉ Admin / HR được sửa điểm danh từ lưới tháng.",
+    monthlyTimesheetNoViewPermission:
+      "Bạn không có quyền xem điểm danh nhân viên này.",
+    monthlyTimesheetAdminHrOnlyEdit:
+      "Chỉ Admin / HR được sửa điểm danh từ lưới tháng.",
     monthlyTimesheetColJoinDate: "Ngày vào làm",
     monthlyTimesheetColContract: "Ngày HĐ",
     monthlyTimesheetContractDash: "—",
@@ -1959,7 +2040,8 @@ const vi = {
     monthlyTimeInOutError: "Không tải được dữ liệu: {{error}}",
     monthlyTimesheetError: "Không tải được dữ liệu: {{error}}",
     monthlyTimesheetEmpty: "Không có dữ liệu điểm danh nào trong tháng này.",
-    monthlyTimesheetCoeffLegendTitle: "Quy ước hệ số tăng ca / ca đêm / ngày off & lễ",
+    monthlyTimesheetCoeffLegendTitle:
+      "Quy ước hệ số tăng ca / ca đêm / ngày off & lễ",
     monthlyRuleColWorkHours: "Tổng GC thực tế",
     monthlyRuleColSatsWorkDays: "Sat.S ngày công / (×2.0)",
     monthlyRuleColSats27: "Sat.S (×2.7)",
@@ -1967,7 +2049,6 @@ const vi = {
     lateOtModalSkipAll: "Tất cả đều có tăng ca",
     pleaseLogin: "Vui lòng đăng nhập.",
     error: "Không tải dữ liệu điểm danh. Thử lại sau.",
-  
   },
   permissionCatalog: {
     title: "Tra cứu phân quyền & chức năng",

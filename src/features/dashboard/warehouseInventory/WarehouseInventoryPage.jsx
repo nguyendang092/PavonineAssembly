@@ -1,33 +1,12 @@
 import React, { useMemo } from "react";
 import "../dashboard.css";
-import "./registerChartJs";
+import "./warehouseInventory.css";
 import PageHeader from "./components/PageHeader";
 import ReportKpiSection from "./components/ReportKpiSection";
 import { useWarehouseInventoryDashboard } from "./hooks/useWarehouseInventoryDashboard";
 
 export default function WarehouseInventoryPage() {
   const data = useWarehouseInventoryDashboard();
-
-  const chartSectionProps = useMemo(
-    () => ({
-      tl: data.tl,
-      statusChart: data.statusChart,
-      whBar: data.whBar,
-      whBarChartHeightPx: data.whBarChartHeightPx,
-      overviewTopCodeDiffChart: data.overviewTopCodeDiffChart,
-      overviewTopCodeAmountChart: data.overviewTopCodeAmountChart,
-      overviewTopCodeAmountChartHeightPx: data.overviewTopCodeAmountChartHeightPx,
-    }),
-    [
-      data.tl,
-      data.statusChart,
-      data.whBar,
-      data.whBarChartHeightPx,
-      data.overviewTopCodeDiffChart,
-      data.overviewTopCodeAmountChart,
-      data.overviewTopCodeAmountChartHeightPx,
-    ],
-  );
 
   const tableSectionProps = useMemo(
     () => ({
@@ -38,14 +17,18 @@ export default function WarehouseInventoryPage() {
       setCategoryFilter: data.setCategoryFilter,
       monthFilter: data.monthFilter,
       setMonthFilter: data.setMonthFilter,
+      monthCompareMode: data.monthCompareMode,
+      setMonthCompareMode: data.setMonthCompareMode,
+      monthCompareFrom: data.monthCompareFrom,
+      setMonthCompareFrom: data.setMonthCompareFrom,
+      monthCompareTo: data.monthCompareTo,
+      setMonthCompareTo: data.setMonthCompareTo,
       codeSearch: data.codeSearch,
       setCodeSearch: data.setCodeSearch,
       hideZeroMonthlyDiff: data.hideZeroMonthlyDiff,
       setHideZeroMonthlyDiff: data.setHideZeroMonthlyDiff,
       hideZeroActualQty: data.hideZeroActualQty,
       setHideZeroActualQty: data.setHideZeroActualQty,
-      softSortMode: data.softSortMode,
-      setSoftSortMode: data.setSoftSortMode,
       warehouseOptions: data.warehouseOptions,
       categoryOptions: data.categoryOptions,
       monthTableOptions: data.monthTableOptions,
@@ -54,6 +37,9 @@ export default function WarehouseInventoryPage() {
       pagedStructuredRows: data.pagedStructuredRows,
       tablePage: data.tablePage,
       setTablePage: data.setTablePage,
+      tablePageSize: data.tablePageSize,
+      setTablePageSize: data.setTablePageSize,
+      tablePageSizeOptions: data.tablePageSizeOptions,
       tableTotalPages: data.tableTotalPages,
       codeDiffSoftScale: data.codeDiffSoftScale,
     }),
@@ -65,14 +51,18 @@ export default function WarehouseInventoryPage() {
       data.setCategoryFilter,
       data.monthFilter,
       data.setMonthFilter,
+      data.monthCompareMode,
+      data.setMonthCompareMode,
+      data.monthCompareFrom,
+      data.setMonthCompareFrom,
+      data.monthCompareTo,
+      data.setMonthCompareTo,
       data.codeSearch,
       data.setCodeSearch,
       data.hideZeroMonthlyDiff,
       data.setHideZeroMonthlyDiff,
       data.hideZeroActualQty,
       data.setHideZeroActualQty,
-      data.softSortMode,
-      data.setSoftSortMode,
       data.warehouseOptions,
       data.categoryOptions,
       data.monthTableOptions,
@@ -81,13 +71,16 @@ export default function WarehouseInventoryPage() {
       data.pagedStructuredRows,
       data.tablePage,
       data.setTablePage,
+      data.tablePageSize,
+      data.setTablePageSize,
+      data.tablePageSizeOptions,
       data.tableTotalPages,
       data.codeDiffSoftScale,
     ],
   );
 
   return (
-    <div className="dashboard-print-fill w-full px-2 py-3 sm:px-3">
+    <div className="dashboard-print-fill wah-inv-page w-full px-3 py-4 sm:px-5">
       <PageHeader
         tl={data.tl}
         rows={data.rows}
@@ -105,7 +98,6 @@ export default function WarehouseInventoryPage() {
           fileName={data.fileName}
           stats={data.stats}
           structuredSummary={data.structuredSummary}
-          chartSectionProps={chartSectionProps}
           tableSectionProps={tableSectionProps}
         />
       ) : null}

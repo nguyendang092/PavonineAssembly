@@ -567,10 +567,10 @@ describe("buildMonthlyRuleSummary — 1/2PN + TC", () => {
     expect(total.workHours).toBe(5);
     expect(total.coeff15).toBe(1);
     expect(total.pnDays).toBe(0.5);
-    expect(total.workDays).toBe(0.5);
+    expect(total.workDays).toBe(1);
   });
 
-  it("6 ngày đủ giờ + 1/2PN có giờ làm → 6,5 ngày công", () => {
+  it("6 ngày đủ giờ + 1/2PN có giờ làm → 7 ngày công", () => {
     const keys = [
       "2026-03-10",
       "2026-03-11",
@@ -608,7 +608,7 @@ describe("buildMonthlyRuleSummary — 1/2PN + TC", () => {
       ngayVaoLam: "2020-01-01",
     });
 
-    expect(total.workDays).toBe(6.5);
+    expect(total.workDays).toBe(7);
   });
 });
 
@@ -758,7 +758,7 @@ describe("buildMonthlyRuleSummary — Tổng ngày công", () => {
         loaiPhep: "1/2 Phép năm",
         gioVao: "07:30",
         gioRa: "12:00",
-        workDays: 0.5,
+        workDays: 1,
       },
       { loaiPhep: "Phép ốm", gioVao: "", gioRa: "", workDays: 0 },
       { loaiPhep: "Không lương", gioVao: "", gioRa: "", workDays: 0 },

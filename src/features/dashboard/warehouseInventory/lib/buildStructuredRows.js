@@ -50,6 +50,8 @@ export function buildStructuredMonthCodeRows(analysisRows) {
         amountActual: 0,
         gapAmount: 0,
         monthlyDiff: 0,
+        itemSet: new Set(),
+        statusSet: new Set(),
         reasonSet: new Set(),
         unitSet: new Set(),
       });
@@ -57,6 +59,10 @@ export function buildStructuredMonthCodeRows(analysisRows) {
     const row = grouped.get(key);
     if (row.whCode === "—" && whCodeOnly) row.whCode = whCodeOnly;
     if (row.warehouseName === "—" && whNameOnly) row.warehouseName = whNameOnly;
+    const itemCell = String(r.item ?? "").trim();
+    if (itemCell) row.itemSet.add(itemCell);
+    const statusCell = String(r.status ?? "").trim();
+    if (statusCell) row.statusSet.add(statusCell);
     const reasonCell = String(r.reason ?? "").trim();
     if (reasonCell) row.reasonSet.add(reasonCell);
     const unitCell = String(r.unit ?? "").trim();
@@ -95,9 +101,13 @@ export function buildStructuredMonthCodeRows(analysisRows) {
   }
 
   const rows = [...grouped.values()].map((g) => {
+    const items = [...g.itemSet].sort((a, b) => a.localeCompare(b, "vi"));
+    const statuses = [...g.statusSet].sort((a, b) => a.localeCompare(b, "vi"));
     const reasons = [...g.reasonSet].sort((a, b) => a.localeCompare(b, "vi"));
     const units = [...g.unitSet].sort((a, b) => a.localeCompare(b, "vi"));
     const rest = { ...g };
+    delete rest.itemSet;
+    delete rest.statusSet;
     delete rest.reasonSet;
     delete rest.unitSet;
     const k = `${g.whFilterKey}__${g.category}__${g.code}`;
@@ -106,6 +116,8 @@ export function buildStructuredMonthCodeRows(analysisRows) {
       prevAmountActualByKeyMonth.get(`${k}__${g.monthKey}`) ?? null;
     return {
       ...rest,
+      item: items.length ? items.join(", ") : "—",
+      status: statuses.length ? statuses.join(", ") : "—",
       reason: reasons.length ? reasons.join(", ") : "—",
       unit: units.length ? units.join(", ") : "—",
       codeDelta: prevActual == null ? 0 : (g.actualQty ?? 0) - prevActual,
