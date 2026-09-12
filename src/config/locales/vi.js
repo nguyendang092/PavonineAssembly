@@ -110,6 +110,8 @@ const vi = {
     sanLuong: "Báo cáo sản lượng",
     s90dProductionReport: "Báo cáo sản lượng S90D",
     ap5ProductionReport: "Báo cáo sản lượng AP5",
+    s95hProductionReport: "Báo cáo sản lượng S95H",
+    r95hProductionReport: "Báo cáo sản lượng R95H",
     dangNhap: "Đăng nhập",
     logOut: "Đăng xuất",
     changePassword: "Đổi mật khẩu",
@@ -158,6 +160,10 @@ const vi = {
       "Bảng tổng hợp sản lượng & lỗi S90D theo công đoạn và theo ngày.",
     descAp5ProductionReport:
       "Báo cáo sản lượng AP5FF & AP5FZ & AP5FL theo công đoạn và theo ngày.",
+    descS95hProductionReport:
+      "Báo cáo sản lượng S95H65 & S95H55 theo công đoạn và theo ngày.",
+    descR95hProductionReport:
+      "Báo cáo sản lượng R95H 65 & 75 theo công đoạn (giống S90D).",
     descPerformance: "Biểu đồ và báo cáo cải tiến sản xuất.",
     descTemperature: "Giám sát nhiệt độ thiết bị và khu vực sản xuất.",
     descMold: "Quản lý khuôn, vòng đời và trạng thái sử dụng.",
@@ -788,6 +794,38 @@ const vi = {
     chartReportBadgeAp5: "Báo cáo AP5",
     dailyProcessExpandHint:
       "Bấm ▶ ở đầu mỗi dòng để mở chi tiết AP5FF, AP5FZ, AP5FL",
+    productSummaryTabsLabel: "Xem tổng hoặc theo ngày",
+  },
+  s95hReport: {
+    pageTitle: "BÁO CÁO SẢN LƯỢNG S95H",
+    pageSubtitle: "",
+    tabsLabel: "Loại báo cáo S95H",
+    tabTotal: "TỔNG",
+    tabDaily: "THEO NGÀY",
+    loadingManual: "Đang tải dữ liệu S95H…",
+    dailyBoardTitle: "Bảng sản lượng S95H theo ngày",
+    totalBoardTitle: "Bảng tổng hợp tháng S95H",
+    manualEntryHint:
+      "Chưa có số liệu. Mở tab công đoạn (PRESS, MC, HAIRLINE, ANODIZING, ASSEMBLY) để nhập số lượng theo ngày.",
+    chartReportBadgeS95h: "Báo cáo S95H",
+    dailyProcessExpandHint:
+      "Bấm ▶ ở đầu mỗi dòng để mở chi tiết S95H65, S95H55",
+    productSummaryTabsLabel: "Xem tổng hoặc theo ngày",
+  },
+  r95hReport: {
+    pageTitle: "BÁO CÁO SẢN LƯỢNG R95H",
+    pageSubtitle: "",
+    tabsLabel: "Loại báo cáo R95H",
+    tabTotal: "TỔNG",
+    tabDaily: "THEO NGÀY",
+    loadingManual: "Đang tải dữ liệu R95H…",
+    dailyBoardTitle: "Bảng sản lượng R95H theo ngày",
+    totalBoardTitle: "Bảng tổng hợp tháng R95H",
+    manualEntryHint:
+      "Chưa có số liệu. Mở tab công đoạn (PRESS, HAIRLINE, ANODIZING, ASSEMBLY) để nhập 65 và 75.",
+    chartReportBadgeR95h: "Báo cáo R95H",
+    dailyProcessExpandHint:
+      "Bấm ▶ ở đầu mỗi dòng để mở chi tiết 65 / 75",
     productSummaryTabsLabel: "Xem tổng hoặc theo ngày",
   },
   workplaceChart: {
@@ -1675,10 +1713,12 @@ const vi = {
     employeeRegimeTaiXeTong: "Tài xế tổng",
     timeInClearHint: "Xóa giờ vào (để trống)",
     clearTimeIn: "Xóa giờ vào",
-    lunchOvertimeHours: "Thời gian tăng ca trưa",
+    lunchOvertimeHours: "Thời gian TC trưa",
     lunchOvertimePlaceholder: "— Không chọn —",
-    driverOvertimeMinutes: "Thời gian tăng ca tài xế (phút)",
+    driverOvertimeMinutes: "Thời gian TC - ca ngày",
     driverOvertimeMinutesPlaceholder: "VD: 60",
+    driverNightOvertimeMinutes: "Thời gian TC - ca đêm",
+    driverNightOvertimeMinutesPlaceholder: "VD: 60",
     leaveTypePlaceholder: "— Không chọn —",
     leaveTypeCurrentValue: "(giá trị hiện tại)",
     shiftCurrentValue: "(giá trị hiện tại)",

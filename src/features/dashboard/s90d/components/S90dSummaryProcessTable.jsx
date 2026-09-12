@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
+import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
 import { ASSEMBLY_PROCESS } from "../lib/s90dManualEntryReportConfig";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
@@ -186,13 +187,17 @@ function renderSummaryProcessDetailRows({
   totalNgQty,
   t,
   keyPrefix = "",
+  keepCodeSlots = false,
 }) {
   return processDetails.flatMap((detail) => {
     const { process, processRow, boardRows = [] } = detail;
     const processLabel = t(`areas.${process}`, { defaultValue: process });
-    const aggregatedBoardRows = aggregateBoardRowsByProductGroup(boardRows);
+    const aggregatedBoardRows = aggregateBoardRowsByProductGroup(boardRows, {
+      keepCodeSlots,
+    });
     const hasMultipleBoards =
-      process !== ASSEMBLY_PROCESS && aggregatedBoardRows.length >= 2;
+      aggregatedBoardRows.length >= 2 &&
+      (keepCodeSlots || process !== ASSEMBLY_PROCESS);
     const summaryRow = {
       ...processRow,
       productCode: productCode || processRow.productCode,
@@ -240,6 +245,10 @@ export default function S90dSummaryProcessTable({
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
+  const { usesProductSubCodes, codeSlotLabelPrefix } =
+    useProductionReportContext();
+  const keepCodeSlots =
+    Boolean(usesProductSubCodes) && codeSlotLabelPrefix === "";
   const infoColCount = INFO_COL_COUNT_BASE;
   const totalNgQty = totalRow?.ngQty ?? 0;
 
@@ -315,6 +324,7 @@ export default function S90dSummaryProcessTable({
                   totalNgQty,
                   t,
                   keyPrefix: daily.dateKey,
+                  keepCodeSlots,
                 });
               })
             : renderSummaryProcessDetailRows({
@@ -323,6 +333,7 @@ export default function S90dSummaryProcessTable({
                 productCode,
                 totalNgQty,
                 t,
+                keepCodeSlots,
               })}
           {totalRow ? (
             <SummaryProcessRow

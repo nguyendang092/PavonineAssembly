@@ -5,8 +5,12 @@ import {
   buildProcessShiftSummaryFromManual,
   buildProductScopedDailySummary,
   buildProductScopedGrandTotalSummary,
+  buildCodeSlotScopedDailySummary,
 } from "./buildS90dFromManual";
-import { AP5_MANUAL_ENTRY_CONFIG } from "./s90dManualEntryReportConfig";
+import {
+  AP5_MANUAL_ENTRY_CONFIG,
+  R95H_MANUAL_ENTRY_CONFIG,
+} from "./s90dManualEntryReportConfig";
 import { createEmptyDayEntry } from "./s90dManualEntries";
 
 describe("buildS90dFromManual", () => {
@@ -467,6 +471,62 @@ describe("buildS90dFromManual", () => {
     );
     expect(grandFf.productCode).toBe("AP5FF");
     expect(grandFf.totalRow.okQty).toBe(95);
+  });
+
+  it("scopes R95H daily summary to type 65 and 75 as separate boards", () => {
+    const dayEntry = createEmptyDayEntry(R95H_MANUAL_ENTRY_CONFIG);
+    dayEntry.PRESS.boards[0].shifts["08~10"] = {
+      okQty: 100,
+      ngQty: 0,
+      defects: {},
+    };
+    dayEntry.PRESS.boards[1].shifts["08~10"] = {
+      okQty: 40,
+      ngQty: 10,
+      defects: { scratch: 10 },
+    };
+    dayEntry.ASSEMBLY.boards[0].shifts["08~10"] = {
+      okQty: 90,
+      ngQty: 10,
+      defects: { scratch: 10 },
+    };
+    dayEntry.ASSEMBLY.boards[1].shifts["08~10"] = {
+      okQty: 30,
+      ngQty: 5,
+      defects: { scratch: 5 },
+    };
+
+    const daily = buildDailySummaryFromManual({
+      dayEntry,
+      dateKey: "2026-07-01",
+      manualEntryConfig: R95H_MANUAL_ENTRY_CONFIG,
+    });
+
+    const scoped65 = buildCodeSlotScopedDailySummary(
+      daily,
+      "65",
+      R95H_MANUAL_ENTRY_CONFIG,
+    );
+    const scoped75 = buildCodeSlotScopedDailySummary(
+      daily,
+      "75",
+      R95H_MANUAL_ENTRY_CONFIG,
+    );
+
+    expect(scoped65.productCode).toBe("R95H65");
+    expect(scoped75.productCode).toBe("R95H75");
+    expect(
+      scoped65.processRows.find((row) => row.process === "PRESS")?.okQty,
+    ).toBe(100);
+    expect(
+      scoped75.processRows.find((row) => row.process === "PRESS")?.okQty,
+    ).toBe(40);
+    expect(
+      scoped65.processRows.find((row) => row.process === "ASSEMBLY")?.okQty,
+    ).toBe(90);
+    expect(
+      scoped75.processRows.find((row) => row.process === "ASSEMBLY")?.okQty,
+    ).toBe(30);
   });
 });
 

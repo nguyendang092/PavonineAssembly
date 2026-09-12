@@ -32,6 +32,39 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     expect(coeffHours(lines, 1.5)).toBe(2);
   });
 
+  it("tài xế — phút TC ca đêm cộng hệ số ×2.0 (phút/60)", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "08:00",
+      timeOut: "17:00",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      includeTaiXeInWorkingHours: true,
+      driverNightOtMinutes: 90,
+    });
+    expect(coeffHours(lines, 2.0)).toBe(1.5);
+    expect(coeffHours(lines, 1.5)).toBe(0);
+  });
+
+  it("tài xế — phút TC ca ngày (×1.5) và ca đêm (×2.0) độc lập", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "07:00",
+      timeOut: "19:00",
+      isOffDay: false,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      includeTaiXeInWorkingHours: true,
+      driverOtMinutes: 60,
+      driverNightOtMinutes: 60,
+    });
+    expect(coeffHours(lines, 1.5)).toBe(1);
+    expect(coeffHours(lines, 2.0)).toBe(1);
+  });
+
   it("tangCaTrua chỉ — vẫn ×1.5 khi không có TC chiều", () => {
     const lines = getPayrollMonthlyCoefficientLines({
       timeIn: "08:00",

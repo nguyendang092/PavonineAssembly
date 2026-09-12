@@ -101,6 +101,16 @@ function useThaiSanOnlyDayShiftRules(
   return coerceIncludeWorkingHoursFlag(includeThaiSanInWorkingHours);
 }
 
+function isTaiXeWorkingHoursRegime(
+  includeTaiXeInWorkingHours,
+  includeTaiXeTongInWorkingHours,
+) {
+  return (
+    coerceIncludeWorkingHoursFlag(includeTaiXeInWorkingHours) ||
+    coerceIncludeWorkingHoursFlag(includeTaiXeTongInWorkingHours)
+  );
+}
+
 /** Tài xế hoặc Tài xế tổng (ca ngày). */
 function useTaiXeDayShiftRules(
   caLamViec,
@@ -108,9 +118,9 @@ function useTaiXeDayShiftRules(
   includeTaiXeTongInWorkingHours,
 ) {
   if (isNightShiftCaLamViec(caLamViec)) return false;
-  return (
-    coerceIncludeWorkingHoursFlag(includeTaiXeInWorkingHours) ||
-    coerceIncludeWorkingHoursFlag(includeTaiXeTongInWorkingHours)
+  return isTaiXeWorkingHoursRegime(
+    includeTaiXeInWorkingHours,
+    includeTaiXeTongInWorkingHours,
   );
 }
 
@@ -1285,6 +1295,28 @@ function resolveDriverOtHoursForPayroll(
     return 0;
   }
   return driverOtMinutesToOvertimeHours(parseDriverOtMinutes(driverOtMinutes));
+}
+
+/**
+ * Phút TC ca đêm tài xế (`tangCaTaiXeCaDemPhut`) → giờ, hệ số ×2.0 trên lưới tháng.
+ * Áp dụng chế độ Tài xế / Tài xế tổng, không phụ thuộc ca S1/S2.
+ */
+export function resolveDriverNightOtHoursForPayroll(
+  driverNightOtMinutes,
+  includeTaiXeInWorkingHours,
+  includeTaiXeTongInWorkingHours,
+) {
+  if (
+    !isTaiXeWorkingHoursRegime(
+      includeTaiXeInWorkingHours,
+      includeTaiXeTongInWorkingHours,
+    )
+  ) {
+    return 0;
+  }
+  return driverOtMinutesToOvertimeHours(
+    parseDriverOtMinutes(driverNightOtMinutes),
+  );
 }
 
 /**

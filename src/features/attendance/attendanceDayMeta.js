@@ -10,6 +10,7 @@ import {
   getPayrollDayOvertimeHoursNumeric,
   isNightShiftCaLamViec,
   parseLunchOtHours,
+  resolveDriverNightOtHoursForPayroll,
 } from "@/features/attendance/attendanceWorkingHours";
 
 /**
@@ -218,6 +219,12 @@ export function employeeHasPayrollOvertimeHours(emp, dayCtx = {}) {
   const shiftCode = emp.caLamViec;
   const lunchOtHours = emp.tangCaTrua;
   const driverOtMinutes = emp.tangCaTaiXePhut;
+  const driverNightOtHours = resolveDriverNightOtHoursForPayroll(
+    emp.tangCaTaiXeCaDemPhut,
+    flags.includeTaiXeInWorkingHours,
+    flags.includeTaiXeTongInWorkingHours,
+  );
+  if (driverNightOtHours > 0) return true;
   const payrollEarlyOtPaperwork = effectivePayrollEarlyOtPaperwork(
     timeIn,
     shiftCode,

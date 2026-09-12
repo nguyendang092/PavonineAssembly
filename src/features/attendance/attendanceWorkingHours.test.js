@@ -25,6 +25,7 @@ import {
   isEarlyArrivalForPaperworkOvertime,
   isNightOtPaperworkEligible,
   isNightShiftCaLamViec,
+  resolveDriverNightOtHoursForPayroll,
 } from "@/features/attendance/attendanceWorkingHours";
 
 describe("isNightShiftCaLamViec", () => {
@@ -546,6 +547,16 @@ describe("chế độ Tài xế / Tài xế tổng", () => {
         60,
       ),
     ).toBe(null);
+  });
+});
+
+describe("resolveDriverNightOtHoursForPayroll", () => {
+  it("quy đổi phút → giờ (×2.0 trên lưới tháng)", () => {
+    expect(resolveDriverNightOtHoursForPayroll(60, true, false)).toBe(1);
+    expect(resolveDriverNightOtHoursForPayroll(90, true, false)).toBe(1.5);
+    expect(resolveDriverNightOtHoursForPayroll(20, true, false)).toBe(0.33);
+    expect(resolveDriverNightOtHoursForPayroll(60, false, false)).toBe(0);
+    expect(resolveDriverNightOtHoursForPayroll(60, false, true)).toBe(1);
   });
 });
 

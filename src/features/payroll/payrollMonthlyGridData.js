@@ -853,6 +853,7 @@ export function computePayrollMonthEmployeeFingerprint(
         emp.duocNghiBu,
         emp.tangCaTrua,
         emp.tangCaTaiXePhut,
+        emp.tangCaTaiXeCaDemPhut,
         emp.payrollEarlyOtPaperwork,
         emp.payrollLateOtExcluded,
         emp.payrollNightOtPaperwork,

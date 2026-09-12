@@ -5,9 +5,10 @@ import {
   createEmptyDefectCounts,
   sumDefectCounts,
 } from "./s90dDefectColumns";
-import { AP5_DEFAULT_PRODUCT_CODE } from "./s90dManualEntryReportConfig";
 import {
   inferCodeSlotFromBoardId,
+  isTrackedCodeSlot,
+  formatCodeSlotProductCode,
   shouldShowProductBoardRows,
 } from "./s90dEntryBoardSpecs";
 import { formatS90dDailyDateLabel } from "./s90dDateUtils";
@@ -67,12 +68,12 @@ export function resolveProductCodeFromDayEntry(
       const code = String(board?.productCode ?? "").trim();
       if (!code) continue;
       if (
-        config.defaultProductCode === AP5_DEFAULT_PRODUCT_CODE ||
+        config.fixedBoardSpecsAllProcesses ||
         code !== config.defaultProductCode ||
         config.defaultProductCode === DEFAULT_PRODUCT_CODE
       ) {
-        if (config.defaultProductCode === AP5_DEFAULT_PRODUCT_CODE) {
-          return AP5_DEFAULT_PRODUCT_CODE;
+        if (config.fixedBoardSpecsAllProcesses) {
+          return config.defaultProductCode;
         }
         return code;
       }
@@ -234,8 +235,9 @@ export function buildProcessShiftSummaryFromManual({
     resolveProcessBoards(dayEntry?.[process])[0] ??
     { productCode: DEFAULT_PRODUCT_CODE, shifts: {} };
   const productCode = entry?.productCode || DEFAULT_PRODUCT_CODE;
-  const codeSlot =
-    entry?.codeSlot === "D" || entry?.codeSlot === "E" ? entry.codeSlot : null;
+  const codeSlot = isTrackedCodeSlot(entry?.codeSlot)
+    ? entry.codeSlot
+    : inferCodeSlotFromBoardId(entry?.id);
   const shiftRows = S90D_SHIFT_SLOTS.map((slot) =>
     buildShiftRow(
       slot,
@@ -318,13 +320,13 @@ function buildDisplayBoardRowsFromAggregate(aggregate, process, config) {
           board?.label ||
           "",
       ).trim() || DEFAULT_PRODUCT_CODE;
-    const codeSlot =
-      board?.codeSlot === "D" || board?.codeSlot === "E"
-        ? board.codeSlot
-        : inferCodeSlotFromBoardId(board?.id);
+    const codeSlot = isTrackedCodeSlot(board?.codeSlot, config)
+      ? board.codeSlot
+      : inferCodeSlotFromBoardId(board?.id, config);
 
     return {
       boardId: board?.id ?? `board-${index}`,
+      parentBoardId: board?.parentBoardId ?? board?.id ?? null,
       label: board?.label ?? `Bảng ${index + 1}`,
       productCode,
       codeSlot: codeSlot ?? null,
@@ -553,6 +555,7 @@ export function buildDailySummaryFromManual({
       usesProductSubCodes: config.usesProductSubCodes,
       fixedBoardSpecsAllProcesses: config.fixedBoardSpecsAllProcesses,
       fixedBoardSpecs: config.fixedBoardSpecs,
+      codeSlots: config.codeSlots,
     },
     { emptyAsNull: true },
   );
@@ -657,6 +660,7 @@ export function buildProductScopedDailySummary(
       usesProductSubCodes: config.usesProductSubCodes,
       fixedBoardSpecsAllProcesses: config.fixedBoardSpecsAllProcesses,
       fixedBoardSpecs: config.fixedBoardSpecs,
+      codeSlots: config.codeSlots,
     },
     { emptyAsNull: true },
   );
@@ -713,6 +717,117 @@ export function buildProductScopedGrandTotalSummary(
     normalizeProductCode(productCode),
     config,
   );
+}
+
+function findBoardRowForCodeSlot(detail, codeSlot) {
+  const slot = String(codeSlot ?? "").trim();
+  if (!slot || !detail?.boardRows?.length) return null;
+  return (
+    detail.boardRows.find((row) => String(row.codeSlot ?? "").trim() === slot) ??
+    detail.boardRows.find((row) => String(row.label ?? "").trim() === slot) ??
+    null
+  );
+}
+
+/** Lọc báo cáo ngày theo một type (vd. R95H 65 / 75). */
+export function buildCodeSlotScopedDailySummary(
+  dailySummary,
+  codeSlot,
+  manualEntryConfig,
+) {
+  if (!dailySummary || !codeSlot) return dailySummary;
+
+  const config = resolveManualEntryConfig(manualEntryConfig);
+  const slot = String(codeSlot).trim();
+  const displayProductCode = formatCodeSlotProductCode(
+    config.defaultProductCode,
+    slot,
+  );
+  const processes = config.processes;
+
+  const processDetails = processes.map((process) => {
+    const detail = dailySummary.processDetails?.find(
+      (item) => item.process === process,
+    );
+    const boardRow = findBoardRowForCodeSlot(detail, slot);
+    const processRow = {
+      ...boardRowToProcessRow(process, boardRow),
+      productCode: displayProductCode,
+    };
+
+    return {
+      process,
+      processRow,
+      boardRows: boardRow
+        ? [{ ...boardRow, productCode: displayProductCode, label: displayProductCode }]
+        : [],
+      boardCount: boardRow ? 1 : 0,
+    };
+  });
+
+  const processRows = processDetails.map((detail) => detail.processRow);
+
+  applyS90dReportYieldMetrics(
+    {
+      processDetails,
+      processRows,
+      processes,
+      usesProductSubCodes: true,
+      fixedBoardSpecsAllProcesses: false,
+      fixedBoardSpecs: [],
+      codeSlots: [slot],
+    },
+    { emptyAsNull: true },
+  );
+
+  const outputProcess = processes[processes.length - 1];
+  const totalRow = buildDailyTotalRow(processRows, {
+    outputProcessOnly: false,
+    outputProcess,
+    processes: config.processes,
+  });
+  const percentRow = buildDailyPercentRow(totalRow);
+
+  return {
+    ...dailySummary,
+    productCode: displayProductCode,
+    processRows,
+    processDetails,
+    totalRow: { ...totalRow, productCode: displayProductCode },
+    percentRow,
+    hasData: processRows.some((row) => row.totalQty > 0),
+  };
+}
+
+export function buildCodeSlotScopedMonthDailySummaries(
+  monthDailySummaries,
+  codeSlot,
+  manualEntryConfig,
+) {
+  return (monthDailySummaries ?? []).map((daily) =>
+    buildCodeSlotScopedDailySummary(daily, codeSlot, manualEntryConfig),
+  );
+}
+
+export function buildCodeSlotScopedGrandTotalSummary(
+  monthDailySummaries,
+  codeSlot,
+  manualEntryConfig,
+  defaultProductCode = DEFAULT_PRODUCT_CODE,
+) {
+  const config = resolveManualEntryConfig(manualEntryConfig ?? defaultProductCode);
+  const slot = String(codeSlot ?? "").trim();
+  const displayProductCode = formatCodeSlotProductCode(
+    config.defaultProductCode,
+    slot,
+  );
+  const scopedDailies = buildCodeSlotScopedMonthDailySummaries(
+    monthDailySummaries,
+    slot,
+    config,
+  );
+
+  return buildGrandTotalSummaryFromManual(scopedDailies, displayProductCode, config);
 }
 
 function buildGrandTotalRow(
@@ -839,12 +954,12 @@ export function buildGrandProcessDetailsFromManual(
         if (!boardMap.has(key)) {
           boardMap.set(key, {
             boardId: boardRow.boardId ?? key,
+            parentBoardId: boardRow.parentBoardId ?? boardRow.boardId ?? key,
             label: boardRow.label ?? boardRow.productCode ?? key,
             productCode: boardRow.productCode ?? key,
-            codeSlot:
-              boardRow.codeSlot === "D" || boardRow.codeSlot === "E"
-                ? boardRow.codeSlot
-                : inferCodeSlotFromBoardId(boardRow.boardId ?? key),
+            codeSlot: isTrackedCodeSlot(boardRow.codeSlot, config)
+              ? boardRow.codeSlot
+              : inferCodeSlotFromBoardId(boardRow.boardId ?? key, config),
             totalQty: 0,
             okQty: 0,
             ngQty: 0,

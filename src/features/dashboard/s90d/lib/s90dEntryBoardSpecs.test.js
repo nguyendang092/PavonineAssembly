@@ -3,7 +3,7 @@ import {
   buildS90dEntryBoardSpecs,
   inferCodeSlotFromBoardId,
 } from "./s90dEntryBoardSpecs";
-import { S90D_MANUAL_ENTRY_CONFIG } from "./s90dManualEntryReportConfig";
+import { R95H_MANUAL_ENTRY_CONFIG, S90D_MANUAL_ENTRY_CONFIG } from "./s90dManualEntryReportConfig";
 import { resolveProcessBoards } from "./s90dManualEntries";
 
 describe("s90dEntryBoardSpecs", () => {
@@ -67,5 +67,26 @@ describe("s90dEntryBoardSpecs", () => {
   it("infers code slot from board id suffix", () => {
     expect(inferCodeSlotFromBoardId("assembly-inzi-coded")).toBe("D");
     expect(inferCodeSlotFromBoardId("press-codee")).toBe("E");
+  });
+
+  it("creates R95H PRESS boards labeled 65 and 75", () => {
+    const specs = buildS90dEntryBoardSpecs("PRESS", R95H_MANUAL_ENTRY_CONFIG);
+    expect(specs).toHaveLength(2);
+    expect(specs.map((spec) => spec.label)).toEqual(["65", "75"]);
+    expect(specs.map((spec) => spec.codeSlot)).toEqual(["65", "75"]);
+    expect(specs.map((spec) => spec.id)).toEqual([
+      "press-code65",
+      "press-code75",
+    ]);
+  });
+
+  it("uses the same 65/75 boards on R95H ASSEMBLY", () => {
+    const specs = buildS90dEntryBoardSpecs("ASSEMBLY", R95H_MANUAL_ENTRY_CONFIG);
+    expect(specs).toHaveLength(2);
+    expect(specs.map((spec) => spec.label)).toEqual(["65", "75"]);
+    expect(specs.map((spec) => spec.id)).toEqual([
+      "assembly-code65",
+      "assembly-code75",
+    ]);
   });
 });

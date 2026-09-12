@@ -79,6 +79,7 @@ export function normalizePayrollProfileDateKey(raw, monthKeys = []) {
  *   payrollNightOtPaperwork: boolean | undefined,
  *   lunchOtHours?: unknown,
  *   driverOtMinutes?: unknown,
+ *   driverNightOtMinutes?: unknown,
  *   includeTapVuInWorkingHours?: boolean,
  *   includeThaiSanInWorkingHours?: boolean,
  *   includeTaiXeInWorkingHours?: boolean,

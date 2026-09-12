@@ -388,7 +388,9 @@ Tài liệu HR chi tiết (đã gộp trong file này):
   /login                      LoginRoute                     Fullscreen      Auth
   /normal                     WorkplaceDashboardNormal       Prod sidebar    bar/, ng/
   /s90d-production-report     S90DProductionReportPage       Prod sidebar    s90dManualEntries/
-  /ap5-production-report      AP5ProductionReportPage        Prod sidebar    ap5ManualEntries/
+  /ap5-production-report      AP5ProductionReportPage        Prod sidebar    ap5/manualEntries/
+  /s95h-production-report     S95HProductionReportPage       Prod sidebar    s95h/manualEntries/
+  /r95h-production-report     R95HProductionReportPage       Prod sidebar    r95h/manualEntries/
   /performance                PerformanceChart               Prod sidebar    performanceData/
   /mc-defect-report           MCDefectReportDashboard        Prod sidebar    mcDefectReport/
   /stock-variance             WarehouseInventoryDashboard    Prod sidebar    warehouseInventory…/latestSnapshot
@@ -557,6 +559,8 @@ Tài liệu HR chi tiết (đã gộp trong file này):
   Routes:
     /s90d-production-report  → S90DProductionReportPage.jsx
     /ap5-production-report   → AP5ProductionReportPage.jsx
+    /s95h-production-report  → S95HProductionReportPage.jsx
+    /r95h-production-report  → R95HProductionReportPage.jsx
 
   Kiến trúc dùng chung:
     productionReportConfigs.js — S90D_PRODUCTION_REPORT_CONFIG / AP5_…
@@ -797,7 +801,7 @@ Tài liệu HR chi tiết (đã gộp trong file này):
 
 9.8 S90D & AP5
 ──────────────
-  S90DProductionReportPage / AP5ProductionReportPage
+  S90DProductionReportPage / AP5ProductionReportPage / S95HProductionReportPage / R95HProductionReportPage
            │
            ▼
   ProductionReportProvider(config)

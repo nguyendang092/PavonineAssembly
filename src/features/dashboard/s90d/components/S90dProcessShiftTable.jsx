@@ -11,6 +11,7 @@ import {
   isHighDefectCell,
   resolveS90dTotalYieldPct,
 } from "../lib/s90dDisplayUtils";
+import { codeSlotCssTone, isTrackedCodeSlot } from "../lib/s90dEntryBoardSpecs";
 import { isLateShiftSlot } from "../lib/s90dShiftSlots";
 import S90dBilingualHeader from "./S90dBilingualHeader";
 import S90dDefectCellEditor from "./S90dDefectCellEditor";
@@ -155,11 +156,9 @@ const ShiftRow = memo(function ShiftRow({
       {showCodeSlotColumn ? (
         <td
           className={`s90d-col-code-slot${
-            codeSlot === "D"
-              ? " s90d-col-code-slot--d"
-              : codeSlot === "E"
-                ? " s90d-col-code-slot--e"
-                : ""
+            codeSlotCssTone(codeSlot)
+              ? ` s90d-col-code-slot--${codeSlotCssTone(codeSlot)}`
+              : ""
           }`}
         >
           {codeSlotLabel}
@@ -256,7 +255,7 @@ export default memo(function S90dProcessShiftTable({
     "S90D";
   const displayProductCode = boardLabel || productCode;
   const codeSlot = processSummary.codeSlot;
-  const showCodeSlotColumn = codeSlot === "D" || codeSlot === "E";
+  const showCodeSlotColumn = isTrackedCodeSlot(codeSlot);
   const infoColCount = INFO_COL_COUNT_BASE + (showCodeSlotColumn ? 1 : 0);
   const tableTitle =
     boardLabel ||
@@ -299,11 +298,9 @@ export default memo(function S90dProcessShiftTable({
   return (
     <article
       className={`s90d-board-card${
-        codeSlot === "D"
-          ? " s90d-board-card--coded"
-          : codeSlot === "E"
-            ? " s90d-board-card--codee"
-            : ""
+        codeSlotCssTone(codeSlot)
+          ? ` s90d-board-card--code${codeSlotCssTone(codeSlot) === "d" ? "d" : "e"}`
+          : ""
       }`}
     >
       <header className="s90d-board-head s90d-board-head--compact">

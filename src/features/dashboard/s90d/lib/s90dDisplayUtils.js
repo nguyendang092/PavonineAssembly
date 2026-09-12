@@ -1,6 +1,7 @@
 import {
   inferCodeSlotFromBoardId,
   formatS90dTypeSlotLabel,
+  isTrackedCodeSlot,
   resolveDisplayBoardGroupKey,
 } from "./s90dEntryBoardSpecs";
 import {
@@ -19,7 +20,7 @@ export function formatS90dProductTypeLabel(
   defaultProductCode = DEFAULT_PRODUCT_CODE,
 ) {
   const base = String(productCode ?? "").trim() || defaultProductCode;
-  if (codeSlot === "D" || codeSlot === "E") {
+  if (isTrackedCodeSlot(codeSlot)) {
     return `${base} ${formatS90dTypeSlotLabel(codeSlot)}`;
   }
   return base;
@@ -40,7 +41,7 @@ export function formatShortDateLabel(dateKey, fallback = "") {
 }
 
 function resolveBoardCodeSlot(boardRow) {
-  if (boardRow?.codeSlot === "D" || boardRow?.codeSlot === "E") {
+  if (isTrackedCodeSlot(boardRow?.codeSlot)) {
     return boardRow.codeSlot;
   }
 
@@ -62,9 +63,29 @@ function summaryYieldPct(numerator, denominator) {
   return roundYieldPct((numerator / denominator) * 100);
 }
 
-/** Gộp board Type D/E cùng mã hàng thành một dòng cho tab Tổng/Theo ngày. */
-export function aggregateBoardRowsByProductGroup(boardRows = []) {
+/** Gộp board Type D/E cùng mã hàng thành một dòng cho tab Tổng/Theo ngày.
+ *  `keepCodeSlots`: giữ từng type (vd. R95H 65/75) thành dòng con riêng. */
+export function aggregateBoardRowsByProductGroup(boardRows = [], options = {}) {
   if (!boardRows.length) return [];
+
+  if (options.keepCodeSlots) {
+    return boardRows.map((row) => {
+      const codeSlot = String(row?.codeSlot ?? "").trim() || null;
+      const typeLabel =
+        String(row?.label ?? "").trim() ||
+        formatS90dTypeSlotLabel(codeSlot) ||
+        String(row?.productCode ?? "").trim();
+      return {
+        ...row,
+        boardId: row.boardId ?? row.id ?? typeLabel,
+        productCode: typeLabel,
+        label: typeLabel,
+        codeSlot,
+        defects: { ...createEmptyDefectCounts(), ...(row.defects ?? {}) },
+        defectTotal: row.defectTotal ?? sumDefectCounts(row.defects ?? {}),
+      };
+    });
+  }
 
   const groupMap = new Map();
 

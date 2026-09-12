@@ -1,6 +1,13 @@
 import { S90D_CODE_SLOTS } from "./s90dEntryBoardSpecs";
 import { findBoardRowForProduct, findMergedBoardRowForProduct } from "./s90dProcessChain";
 
+function isTrackedCodeSlotForYield(codeSlot, codeSlots) {
+  const slot = String(codeSlot ?? "").trim();
+  if (!slot) return false;
+  if (codeSlots?.length) return codeSlots.includes(slot);
+  return slot === "D" || slot === "E" || slot === "65" || slot === "75";
+}
+
 /** Công đoạn hiển thị hiệu suất = (SL đạt/Tổng SL) / hiệu suất công đoạn trước (cùng mã/Code). */
 export const S90D_CHAIN_DISPLAY_YIELD_PROCESSES = new Set([
   "MC",
@@ -61,7 +68,9 @@ export function applyS90dCodeSlotYieldMetrics(
   processes,
   options = {},
 ) {
-  for (const codeSlot of S90D_CODE_SLOTS) {
+  for (const codeSlot of options.codeSlots?.length
+    ? options.codeSlots
+    : S90D_CODE_SLOTS) {
     let previousDisplayYield = null;
 
     for (const process of processes ?? []) {
@@ -95,8 +104,8 @@ export function applyS90dCodeSlotYieldMetrics(
       continue;
     }
 
-    const codeBoards = (detail?.boardRows ?? []).filter(
-      (board) => board.codeSlot === "D" || board.codeSlot === "E",
+    const codeBoards = (detail?.boardRows ?? []).filter((board) =>
+      isTrackedCodeSlotForYield(board.codeSlot, options.codeSlots),
     );
 
     if (!S90D_CHAIN_DISPLAY_YIELD_PROCESSES.has(process)) {
@@ -316,6 +325,7 @@ export function applyS90dReportYieldMetrics(
     usesProductSubCodes = false,
     fixedBoardSpecsAllProcesses = false,
     fixedBoardSpecs = [],
+    codeSlots,
   },
   options = {},
 ) {
@@ -324,7 +334,7 @@ export function applyS90dReportYieldMetrics(
       processDetails,
       processRows,
       processes,
-      options,
+      { ...options, codeSlots },
     );
     return;
   }

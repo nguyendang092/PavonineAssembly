@@ -17,6 +17,8 @@ export const PAYROLL_EMP = {
   LUNCH_OT_HOURS: "tangCaTrua",
   /** Phút TC tài xế nhập thủ công — quy đổi tỷ lệ phút/60, cộng vào TC ca ngày. */
   DRIVER_OT_MINUTES: "tangCaTaiXePhut",
+  /** Phút TC ca đêm tài xế — quy đổi phút/60, cộng hệ số ×2.0. */
+  DRIVER_NIGHT_OT_MINUTES: "tangCaTaiXeCaDemPhut",
   SHIFT: "caLamViec",
   LEAVE_TYPE: "loaiPhep",
   COMP_LEAVE_ALLOWED: "duocNghiBu",

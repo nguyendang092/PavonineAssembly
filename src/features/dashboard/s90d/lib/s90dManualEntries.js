@@ -15,6 +15,9 @@ import { S90D_SHIFT_SLOTS, resolveShiftSlotKey } from "./s90dShiftSlots";
 import {
   buildS90dEntryBoardSpecs,
   inferCodeSlotFromBoardId,
+  isTrackedCodeSlot,
+  mapLegacyCodeSlot,
+  resolveCodeSlots,
 } from "./s90dEntryBoardSpecs";
 import {
   DEFAULT_PRODUCT_CODE,
@@ -52,7 +55,7 @@ export function createEmptyProcessBoard(
   codeSlot = null,
   parentBoardId = null,
 ) {
-  const normalizedSlot = codeSlot === "D" || codeSlot === "E" ? codeSlot : null;
+  const normalizedSlot = isTrackedCodeSlot(codeSlot) ? String(codeSlot).trim() : null;
   return {
     id,
     label: label ?? `Bảng ${sequence}`,
@@ -103,7 +106,7 @@ export function createEmptyDayEntry(configInput = DEFAULT_PRODUCT_CODE) {
   );
 }
 
-function normalizeProcessBoard(rawBoard, sequence = 1) {
+function normalizeProcessBoard(rawBoard, sequence = 1, config) {
   const board = createEmptyProcessBoard(sequence);
   if (!rawBoard || typeof rawBoard !== "object") return board;
 
@@ -113,10 +116,10 @@ function normalizeProcessBoard(rawBoard, sequence = 1) {
   board.productCode =
     String(rawBoard.productCode ?? DEFAULT_PRODUCT_CODE).trim() ||
     DEFAULT_PRODUCT_CODE;
-  board.codeSlot =
-    rawBoard.codeSlot === "D" || rawBoard.codeSlot === "E"
-      ? rawBoard.codeSlot
-      : inferCodeSlotFromBoardId(board.id);
+  const inferred = inferCodeSlotFromBoardId(board.id, config);
+  const rawSlot = String(rawBoard.codeSlot ?? "").trim();
+  const mapped = rawSlot ? mapLegacyCodeSlot(rawSlot, config) : inferred;
+  board.codeSlot = isTrackedCodeSlot(mapped, config) ? mapped : inferred;
   board.parentBoardId =
     String(rawBoard.parentBoardId ?? board.parentBoardId ?? board.id).trim() ||
     board.id;
@@ -141,26 +144,38 @@ function findLegacyBoardForEntrySpec(normalizedBoards, spec, config) {
   const direct = normalizedBoards.find((board) => board.id === spec.id);
   if (direct) return direct;
 
+  const aliases = new Set([
+    spec.codeSlot,
+    ...(() => {
+      const slots = resolveCodeSlots(config);
+      if (spec.codeSlot === slots[0]) return ["D"];
+      if (spec.codeSlot === slots[1]) return ["E"];
+      return [];
+    })(),
+  ]);
+
   const bySlot = normalizedBoards.find(
     (board) =>
-      board.codeSlot === spec.codeSlot &&
+      aliases.has(board.codeSlot) &&
       (board.parentBoardId === spec.parentBoardId ||
         board.productCode === spec.productCode),
   );
   if (bySlot) return bySlot;
 
-  if (spec.codeSlot !== "D") return null;
+  const slots = resolveCodeSlots(config);
+  if (spec.codeSlot !== slots[0]) return null;
 
   const legacyParent = normalizedBoards.find(
     (board) =>
       board.id === spec.parentBoardId ||
       (!board.codeSlot && matchesBoardSpec(board, { ...spec, id: spec.parentBoardId }, config)),
   );
-  if (!legacyParent || legacyParent.codeSlot === "E") return null;
+  if (!legacyParent || legacyParent.codeSlot === slots[1]) return null;
   return legacyParent;
 }
 
 function materializeEntryBoard(spec, matchedBoard, index, config) {
+  const slots = resolveCodeSlots(config);
   if (matchedBoard) {
     return {
       ...matchedBoard,
@@ -172,7 +187,7 @@ function materializeEntryBoard(spec, matchedBoard, index, config) {
       shifts:
         matchedBoard.id === spec.id || matchedBoard.codeSlot === spec.codeSlot
           ? matchedBoard.shifts
-          : spec.codeSlot === "E"
+          : spec.codeSlot === slots[1]
             ? Object.fromEntries(
                 S90D_SHIFT_SLOTS.map((slot) => [slot, createEmptyShiftEntry()]),
               )
@@ -194,7 +209,7 @@ function resolveEntryBoards(rawBoards, process, config) {
   const entrySpecs = buildS90dEntryBoardSpecs(process, config);
   const normalizedBoards =
     rawBoards.length > 0
-      ? rawBoards.map((board, index) => normalizeProcessBoard(board, index + 1))
+      ? rawBoards.map((board, index) => normalizeProcessBoard(board, index + 1, config))
       : [];
 
   if (!config.usesProductSubCodes) {
@@ -223,7 +238,10 @@ function matchesBoardSpec(board, spec, config) {
   const label = String(board?.label ?? "").trim().toUpperCase();
   const target = spec.productCode.toUpperCase();
 
-  if (code === target || label === target) return true;
+  const compactCode = code.replace(/\s+/g, "");
+  const compactLabel = label.replace(/\s+/g, "");
+  const compactTarget = target.replace(/\s+/g, "");
+  if (compactCode === compactTarget || compactLabel === compactTarget) return true;
 
   if (config.fixedBoardSpecsAllProcesses) {
     return code.includes(target) || label.includes(target);
@@ -242,7 +260,7 @@ function normalizeFixedBoards(rawBoards, config, process) {
   const boardSpecs = resolveProcessBoardSpecs(process, config);
   const boards =
     rawBoards.length > 0
-      ? rawBoards.map((board, index) => normalizeProcessBoard(board, index + 1))
+      ? rawBoards.map((board, index) => normalizeProcessBoard(board, index + 1, config))
       : [];
 
   const legacySingle =
@@ -311,7 +329,7 @@ export function resolveProcessBoards(
 
   if (Array.isArray(processEntry.boards) && processEntry.boards.length > 0) {
     boards = processEntry.boards.map((board, index) =>
-      normalizeProcessBoard(board, index + 1),
+      normalizeProcessBoard(board, index + 1, config),
     );
   } else if (processEntry.shifts || processEntry.productCode !== undefined) {
     boards = [
@@ -323,6 +341,7 @@ export function resolveProcessBoards(
           shifts: processEntry.shifts,
         },
         1,
+        config,
       ),
     ];
   } else {

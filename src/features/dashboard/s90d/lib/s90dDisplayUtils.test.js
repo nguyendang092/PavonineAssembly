@@ -40,6 +40,39 @@ describe("aggregateBoardRowsByProductGroup", () => {
     expect(merged[0].defects.scratch).toBe(15);
   });
 
+  it("keeps R95H type 65 and 75 as separate rows", () => {
+    const rows = aggregateBoardRowsByProductGroup(
+      [
+        {
+          boardId: "press-code65",
+          productCode: "R95H",
+          label: "65",
+          codeSlot: "65",
+          totalQty: 100,
+          okQty: 90,
+          ngQty: 10,
+          defects: { scratch: 4 },
+        },
+        {
+          boardId: "press-code75",
+          productCode: "R95H",
+          label: "75",
+          codeSlot: "75",
+          totalQty: 50,
+          okQty: 45,
+          ngQty: 5,
+          defects: { scratch: 2 },
+        },
+      ],
+      { keepCodeSlots: true },
+    );
+
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.productCode)).toEqual(["65", "75"]);
+    expect(rows[0].totalQty).toBe(100);
+    expect(rows[1].totalQty).toBe(50);
+  });
+
   it("keeps separate rows for different assembly products", () => {
     const merged = aggregateBoardRowsByProductGroup([
       {

@@ -119,6 +119,7 @@ const EMPTY_EMPLOYEE_FORM = {
   [ATTENDANCE_EMP.TIME_OUT]: "",
   [ATTENDANCE_EMP.LUNCH_OT_HOURS]: "",
   [ATTENDANCE_EMP.DRIVER_OT_MINUTES]: "",
+  [ATTENDANCE_EMP.DRIVER_NIGHT_OT_MINUTES]: "",
   [ATTENDANCE_EMP.SHIFT]: "",
   [ATTENDANCE_EMP.COMP_LEAVE_ALLOWED]: "",
   /** Firebase: `attendance/{ngày}/{key}/boPhanChuaDung` — `"YES"` = sai bộ phận. */
@@ -138,6 +139,9 @@ const employeeModalFieldClass =
 const employeeModalSelectFieldClass = `${employeeModalFieldClass} appearance-none`;
 const employeeModalLabelClass =
   "mb-0 block text-[11px] font-bold uppercase tracking-wide text-purple-600 dark:text-purple-400";
+const employeeModalOtRowFieldClass =
+  `${employeeModalFieldClass} box-border !h-9 w-full appearance-none !px-2.5 !py-0 leading-9 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`;
+const employeeModalOtRowColClass = "flex min-w-0 flex-col gap-0.5";
 const employeeModalClearTimeButtonClass =
   "shrink-0 min-w-[4.25rem] rounded-lg border-2 border-slate-300 bg-slate-100 px-2 py-1 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
 
@@ -412,6 +416,7 @@ export default function AttendanceEmployeeFormModal({
     form[ATTENDANCE_EMP.TIME_OUT],
     form[ATTENDANCE_EMP.LUNCH_OT_HOURS],
     form[ATTENDANCE_EMP.DRIVER_OT_MINUTES],
+    form[ATTENDANCE_EMP.DRIVER_NIGHT_OT_MINUTES],
     form[ATTENDANCE_EMP.SHIFT],
     attendanceDayCtx,
   ]);
@@ -1036,13 +1041,15 @@ export default function AttendanceEmployeeFormModal({
             </div>
           </div>
           <div
-            className={`grid min-w-0 grid-cols-1 gap-1.5 sm:col-span-2 sm:gap-3 ${
-              showDriverOtMinutesField ? "sm:grid-cols-3" : "sm:grid-cols-2"
+            className={`grid min-w-0 items-end gap-1.5 sm:col-span-2 sm:gap-3 ${
+              showDriverOtMinutesField
+                ? "grid-cols-2 md:grid-cols-4"
+                : "grid-cols-1 sm:grid-cols-2"
             }`}
           >
-            <div className="min-w-0">
+            <div className={employeeModalOtRowColClass}>
               <label className={employeeModalLabelClass}>
-                {tl("lunchOvertimeHours", "Thời gian tăng ca trưa")}
+                {tl("lunchOvertimeHours", "Thời gian TC trưa")}
               </label>
               <select
                 name={ATTENDANCE_EMP.LUNCH_OT_HOURS}
@@ -1053,7 +1060,7 @@ export default function AttendanceEmployeeFormModal({
                 }
                 onChange={handleChange}
                 disabled={lunchOtLocked}
-                className={employeeModalSelectFieldClass}
+                className={employeeModalOtRowFieldClass}
               >
                 <option value="">
                   {tl("lunchOvertimePlaceholder", "— Không chọn —")}
@@ -1064,29 +1071,55 @@ export default function AttendanceEmployeeFormModal({
               </select>
             </div>
             {showDriverOtMinutesField ? (
-              <div className="min-w-0">
-                <label className={employeeModalLabelClass}>
-                  {tl("driverOvertimeMinutes", "Thời gian tăng ca tài xế (phút)")}
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  name={ATTENDANCE_EMP.DRIVER_OT_MINUTES}
-                  value={
-                    form[ATTENDANCE_EMP.DRIVER_OT_MINUTES] === "" ||
-                    form[ATTENDANCE_EMP.DRIVER_OT_MINUTES] == null
-                      ? ""
-                      : String(form[ATTENDANCE_EMP.DRIVER_OT_MINUTES])
-                  }
-                  onChange={handleChange}
-                  disabled={fieldsLocked}
-                  placeholder={tl("driverOvertimeMinutesPlaceholder", "VD: 60")}
-                  className={employeeModalFieldClass}
-                />
-              </div>
+              <>
+                <div className={employeeModalOtRowColClass}>
+                  <label className={employeeModalLabelClass}>
+                    {tl("driverOvertimeMinutes", "Thời gian TC - ca ngày")}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    name={ATTENDANCE_EMP.DRIVER_OT_MINUTES}
+                    value={
+                      form[ATTENDANCE_EMP.DRIVER_OT_MINUTES] === "" ||
+                      form[ATTENDANCE_EMP.DRIVER_OT_MINUTES] == null
+                        ? ""
+                        : String(form[ATTENDANCE_EMP.DRIVER_OT_MINUTES])
+                    }
+                    onChange={handleChange}
+                    disabled={fieldsLocked}
+                    placeholder={tl("driverOvertimeMinutesPlaceholder", "VD: 60")}
+                    className={employeeModalOtRowFieldClass}
+                  />
+                </div>
+                <div className={employeeModalOtRowColClass}>
+                  <label className={employeeModalLabelClass}>
+                    {tl("driverNightOvertimeMinutes", "Thời gian TC - ca đêm")}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    name={ATTENDANCE_EMP.DRIVER_NIGHT_OT_MINUTES}
+                    value={
+                      form[ATTENDANCE_EMP.DRIVER_NIGHT_OT_MINUTES] === "" ||
+                      form[ATTENDANCE_EMP.DRIVER_NIGHT_OT_MINUTES] == null
+                        ? ""
+                        : String(form[ATTENDANCE_EMP.DRIVER_NIGHT_OT_MINUTES])
+                    }
+                    onChange={handleChange}
+                    disabled={fieldsLocked}
+                    placeholder={tl(
+                      "driverNightOvertimeMinutesPlaceholder",
+                      "VD: 60",
+                    )}
+                    className={employeeModalOtRowFieldClass}
+                  />
+                </div>
+              </>
             ) : null}
-            <div className="min-w-0">
+            <div className={employeeModalOtRowColClass}>
               <label className={employeeModalLabelClass}>
                 {tl("leaveTypeColumn", "Loại phép")}
               </label>
@@ -1094,7 +1127,7 @@ export default function AttendanceEmployeeFormModal({
                 value={String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim()}
                 onChange={handleLoaiPhepSelect}
                 disabled={isViewOnly}
-                className={employeeModalSelectFieldClass}
+                className={employeeModalOtRowFieldClass}
               >
                 <option value="">
                   {tl("leaveTypePlaceholder", "— Không chọn —")}

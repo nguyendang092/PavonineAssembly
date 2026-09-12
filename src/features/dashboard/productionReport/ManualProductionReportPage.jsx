@@ -12,6 +12,8 @@ import S90dProcessTabPanel from "../s90d/components/S90dProcessTabPanel";
 import S90dDailyTabPanel from "../s90d/components/S90dDailyTabPanel";
 import S90dSummaryChartModal from "../s90d/components/S90dSummaryChartModal";
 import {
+  buildCodeSlotScopedGrandTotalSummary,
+  buildCodeSlotScopedMonthDailySummaries,
   buildProductScopedGrandTotalSummary,
   buildProductScopedMonthDailySummaries,
 } from "../s90d/lib/buildS90dFromManual";
@@ -77,10 +79,48 @@ export default function ManualProductionReportPage({
     return manualEntryConfig.fixedBoardSpecs;
   }, [manualEntryConfig]);
 
-  const usesMultiProductSummary = productBoardSpecs.length >= 2;
+  const typeSlotSpecs = useMemo(() => {
+    const slots = manualEntryConfig?.codeSlots;
+    if (
+      !manualEntryConfig?.usesProductSubCodes ||
+      manualEntryConfig?.codeSlotLabelPrefix !== "" ||
+      !Array.isArray(slots) ||
+      slots.length < 2
+    ) {
+      return [];
+    }
+    return slots.map((codeSlot) => {
+      const slot = String(codeSlot);
+      const productCode = `${String(
+        manualEntryConfig.defaultProductCode ?? "",
+      ).replace(/\s+/g, "")}${slot}`;
+      return {
+        productCode,
+        label: productCode,
+        codeSlot: slot,
+      };
+    });
+  }, [manualEntryConfig]);
 
   const productSummarySections = useMemo(() => {
-    if (!usesMultiProductSummary) return null;
+    if (typeSlotSpecs.length >= 2) {
+      return typeSlotSpecs.map((spec) => ({
+        productCode: spec.productCode,
+        label: spec.label,
+        monthDailySummaries: buildCodeSlotScopedMonthDailySummaries(
+          monthDailySummaries,
+          spec.codeSlot,
+          manualEntryConfig,
+        ),
+        grandTotalSummary: buildCodeSlotScopedGrandTotalSummary(
+          monthDailySummaries,
+          spec.codeSlot,
+          manualEntryConfig,
+        ),
+      }));
+    }
+
+    if (productBoardSpecs.length < 2) return null;
 
     return productBoardSpecs.map((spec) => ({
       productCode: spec.productCode,
@@ -100,7 +140,7 @@ export default function ManualProductionReportPage({
     manualEntryConfig,
     monthDailySummaries,
     productBoardSpecs,
-    usesMultiProductSummary,
+    typeSlotSpecs,
   ]);
 
   const tabOrder = useMemo(

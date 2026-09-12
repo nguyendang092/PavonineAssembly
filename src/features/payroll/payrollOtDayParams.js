@@ -37,6 +37,7 @@ export function payrollOtDayParamsFromEmp(emp, dayCtx) {
     payrollNightOtPaperwork: resolveEffectivePayrollNightOtPaperwork(emp),
     lunchOtHours: emp[PAYROLL_EMP.LUNCH_OT_HOURS],
     driverOtMinutes: emp[PAYROLL_EMP.DRIVER_OT_MINUTES],
+    driverNightOtMinutes: emp[PAYROLL_EMP.DRIVER_NIGHT_OT_MINUTES],
     ...flags,
   };
 }

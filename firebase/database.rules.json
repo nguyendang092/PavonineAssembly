@@ -157,6 +157,32 @@
       }
     },
 
+    "s95h": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "manualEntries": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "manualEntriesArchive": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "r95h": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "manualEntries": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "manualEntriesArchive": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
     "ap5fz": {
       ".read": "auth != null",
       ".write": "auth != null",

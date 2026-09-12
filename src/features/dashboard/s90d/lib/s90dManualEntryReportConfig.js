@@ -2,11 +2,18 @@ import { S90D_PROCESSES } from "./s90dDefectColumns";
 
 export const DEFAULT_PRODUCT_CODE = "S90D";
 export const AP5_DEFAULT_PRODUCT_CODE = "AP5";
+export const S95H_DEFAULT_PRODUCT_CODE = "S95H";
+export const R95H_DEFAULT_PRODUCT_CODE = "R95H";
 export const ASSEMBLY_PROCESS = "ASSEMBLY";
 
 export const S90D_ASSEMBLY_BOARD_SPECS = Object.freeze([
   { id: "assembly-inzi", label: "S90D INZI", productCode: "S90D INZI" },
   { id: "assembly-mxc", label: "S90D MXC", productCode: "S90D MXC" },
+]);
+
+export const R95H_ASSEMBLY_BOARD_SPECS = Object.freeze([
+  { id: "assembly-r95h65", label: "R95H 65", productCode: "R95H 65" },
+  { id: "assembly-r95h75", label: "R95H 75", productCode: "R95H 75" },
 ]);
 
 export const AP5_BOARD_SPECS = Object.freeze([
@@ -33,6 +40,13 @@ export const AP5_PROCESSES = Object.freeze([
   "ASSEMBLY",
 ]);
 
+export const S95H_BOARD_SPECS = Object.freeze([
+  { id: "s95h65", label: "S95H65", productCode: "S95H65" },
+  { id: "s95h55", label: "S95H55", productCode: "S95H55" },
+]);
+
+export const S95H_PROCESSES = AP5_PROCESSES;
+
 export function resolveProcessBoardSpecs(process, config) {
   const processKey = String(process ?? "").trim();
   const override = config.processBoardSpecs?.[processKey];
@@ -50,6 +64,8 @@ export function createManualEntryConfig({
   fixedBoardSpecsAllProcesses = false,
   usesProductSubCodes = false,
   processBoardSpecs = null,
+  codeSlots = null,
+  codeSlotLabelPrefix = "Type",
 } = {}) {
   return Object.freeze({
     defaultProductCode,
@@ -59,6 +75,8 @@ export function createManualEntryConfig({
     usesFixedBoardSpecs: Boolean(fixedBoardSpecs?.length),
     usesProductSubCodes,
     processBoardSpecs,
+    codeSlots,
+    codeSlotLabelPrefix,
   });
 }
 
@@ -70,12 +88,29 @@ export const S90D_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
   usesProductSubCodes: true,
 });
 
+export const R95H_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
+  defaultProductCode: R95H_DEFAULT_PRODUCT_CODE,
+  processes: S90D_PROCESSES,
+  fixedBoardSpecs: null,
+  fixedBoardSpecsAllProcesses: false,
+  usesProductSubCodes: true,
+  codeSlots: ["65", "75"],
+  codeSlotLabelPrefix: "",
+});
+
 export const AP5_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
   defaultProductCode: AP5_DEFAULT_PRODUCT_CODE,
   processes: AP5_PROCESSES,
   fixedBoardSpecs: AP5_BOARD_SPECS,
   fixedBoardSpecsAllProcesses: true,
   processBoardSpecs: AP5_PROCESS_BOARD_SPECS,
+});
+
+export const S95H_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
+  defaultProductCode: S95H_DEFAULT_PRODUCT_CODE,
+  processes: S95H_PROCESSES,
+  fixedBoardSpecs: S95H_BOARD_SPECS,
+  fixedBoardSpecsAllProcesses: true,
 });
 
 export function resolveManualEntryConfig(input) {
@@ -92,6 +127,14 @@ export function resolveManualEntryConfig(input) {
     return AP5_MANUAL_ENTRY_CONFIG;
   }
 
+  if (code === S95H_DEFAULT_PRODUCT_CODE) {
+    return S95H_MANUAL_ENTRY_CONFIG;
+  }
+
+  if (code === R95H_DEFAULT_PRODUCT_CODE) {
+    return R95H_MANUAL_ENTRY_CONFIG;
+  }
+
   return S90D_MANUAL_ENTRY_CONFIG;
 }
 
@@ -105,14 +148,13 @@ export function manualEntryConfigFromReportConfig(reportConfig = {}) {
       reportConfig.fixedBoardSpecsAllProcesses ?? false,
     usesProductSubCodes: reportConfig.usesProductSubCodes ?? false,
     processBoardSpecs: reportConfig.processBoardSpecs ?? null,
+    codeSlots: reportConfig.codeSlots ?? null,
+    codeSlotLabelPrefix: reportConfig.codeSlotLabelPrefix ?? "Type",
   });
 }
 
 export function shouldApplyFixedBoardSpecs(process, config) {
   if (!config?.fixedBoardSpecs?.length) return false;
   if (config.fixedBoardSpecsAllProcesses) return true;
-  return (
-    process === ASSEMBLY_PROCESS &&
-    config.defaultProductCode === DEFAULT_PRODUCT_CODE
-  );
+  return process === ASSEMBLY_PROCESS;
 }

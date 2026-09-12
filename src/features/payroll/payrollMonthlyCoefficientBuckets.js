@@ -12,6 +12,7 @@ import {
   isNightShiftCaLamViec,
   roundHoursToHundredths,
   roundHoursToTenths,
+  resolveDriverNightOtHoursForPayroll,
 } from "@/features/attendance/attendanceWorkingHours";
 import {
   formatAttendanceGioVaoDisplay,
@@ -199,12 +200,41 @@ function payrollMonthCompensatoryOtCoefficientLines(p) {
  *   payrollLateOtExcluded: boolean | undefined,
  *   payrollNightOtPaperwork: boolean | undefined,
  *   lunchOtHours?: unknown,
+ *   driverOtMinutes?: unknown,
+ *   driverNightOtMinutes?: unknown,
  *   leaveType?: unknown,
  *   dateKey?: string | null,
  * }} p
  * @returns {{ coeff: number; hours: number; key: string }[]}
  */
+function appendDriverNightOtCoeff20(lines, p) {
+  const hours = resolveDriverNightOtHoursForPayroll(
+    p?.driverNightOtMinutes,
+    p?.includeTaiXeInWorkingHours,
+    p?.includeTaiXeTongInWorkingHours,
+  );
+  if (!(hours > 0)) return lines;
+  const next = Array.isArray(lines) ? [...lines] : [];
+  const i = next.findIndex((l) => l.coeff === 2.0);
+  if (i >= 0) {
+    next[i] = {
+      ...next[i],
+      hours: roundHoursToHundredths(Number(next[i].hours) + hours),
+    };
+    return next;
+  }
+  next.push({ coeff: 2.0, hours, key: "drv20" });
+  return next;
+}
+
 export function getPayrollMonthlyCoefficientLines(p) {
+  return appendDriverNightOtCoeff20(
+    buildPayrollMonthlyCoefficientLines(p),
+    p,
+  );
+}
+
+function buildPayrollMonthlyCoefficientLines(p) {
   const {
     timeIn,
     timeOut,

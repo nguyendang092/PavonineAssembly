@@ -33,7 +33,6 @@ Hai root RTDB chính:
   annualLeave/{year}/_meta                Metadata năm (updatedAt, rowCount, …)
 
 Nguyên tắc:
-
   • Sửa điểm danh → LUÔN ghi attendance trước (update 1 node).
   • Phép năm KHÔNG tự ghi mỗi lần render UI — chỉ ghi khi có trigger sync.
   • Sau sửa loại phép điểm danh → queue sync 1 NV (debounce 450 ms).
