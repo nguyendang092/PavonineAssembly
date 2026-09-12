@@ -9,7 +9,7 @@ import {
 } from "./buildS90dFromManual";
 import {
   AP5_MANUAL_ENTRY_CONFIG,
-  R95H_MANUAL_ENTRY_CONFIG,
+  R95D_MANUAL_ENTRY_CONFIG,
 } from "./s90dManualEntryReportConfig";
 import { createEmptyDayEntry } from "./s90dManualEntries";
 
@@ -473,8 +473,8 @@ describe("buildS90dFromManual", () => {
     expect(grandFf.totalRow.okQty).toBe(95);
   });
 
-  it("scopes R95H daily summary to type 65 and 75 as separate boards", () => {
-    const dayEntry = createEmptyDayEntry(R95H_MANUAL_ENTRY_CONFIG);
+  it("scopes R95D daily summary to type 65 and 75 as separate boards", () => {
+    const dayEntry = createEmptyDayEntry(R95D_MANUAL_ENTRY_CONFIG);
     dayEntry.PRESS.boards[0].shifts["08~10"] = {
       okQty: 100,
       ngQty: 0,
@@ -499,22 +499,22 @@ describe("buildS90dFromManual", () => {
     const daily = buildDailySummaryFromManual({
       dayEntry,
       dateKey: "2026-07-01",
-      manualEntryConfig: R95H_MANUAL_ENTRY_CONFIG,
+      manualEntryConfig: R95D_MANUAL_ENTRY_CONFIG,
     });
 
     const scoped65 = buildCodeSlotScopedDailySummary(
       daily,
       "65",
-      R95H_MANUAL_ENTRY_CONFIG,
+      R95D_MANUAL_ENTRY_CONFIG,
     );
     const scoped75 = buildCodeSlotScopedDailySummary(
       daily,
       "75",
-      R95H_MANUAL_ENTRY_CONFIG,
+      R95D_MANUAL_ENTRY_CONFIG,
     );
 
-    expect(scoped65.productCode).toBe("R95H65");
-    expect(scoped75.productCode).toBe("R95H75");
+    expect(scoped65.productCode).toBe("R95D65");
+    expect(scoped75.productCode).toBe("R95D75");
     expect(
       scoped65.processRows.find((row) => row.process === "PRESS")?.okQty,
     ).toBe(100);

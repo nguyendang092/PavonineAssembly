@@ -111,7 +111,7 @@ const vi = {
     s90dProductionReport: "Báo cáo sản lượng S90D",
     ap5ProductionReport: "Báo cáo sản lượng AP5",
     s95hProductionReport: "Báo cáo sản lượng S95H",
-    r95hProductionReport: "Báo cáo sản lượng R95H",
+    r95dProductionReport: "Báo cáo sản lượng R95D",
     dangNhap: "Đăng nhập",
     logOut: "Đăng xuất",
     changePassword: "Đổi mật khẩu",
@@ -161,9 +161,9 @@ const vi = {
     descAp5ProductionReport:
       "Báo cáo sản lượng AP5FF & AP5FZ & AP5FL theo công đoạn và theo ngày.",
     descS95hProductionReport:
-      "Báo cáo sản lượng S95H65 & S95H55 theo công đoạn và theo ngày.",
-    descR95hProductionReport:
-      "Báo cáo sản lượng R95H 65 & 75 theo công đoạn (giống S90D).",
+      "Báo cáo sản lượng S95H65 & S95H55 (Deco, Chassis) theo công đoạn và theo ngày.",
+    descR95dProductionReport:
+      "Báo cáo sản lượng R95D 65 & 75 theo công đoạn (giống S90D).",
     descPerformance: "Biểu đồ và báo cáo cải tiến sản xuất.",
     descTemperature: "Giám sát nhiệt độ thiết bị và khu vực sản xuất.",
     descMold: "Quản lý khuôn, vòng đời và trạng thái sử dụng.",
@@ -809,21 +809,24 @@ const vi = {
       "Chưa có số liệu. Mở tab công đoạn (PRESS, MC, HAIRLINE, ANODIZING, ASSEMBLY) để nhập số lượng theo ngày.",
     chartReportBadgeS95h: "Báo cáo S95H",
     dailyProcessExpandHint:
-      "Bấm ▶ ở đầu mỗi dòng để mở chi tiết S95H65, S95H55",
+      "Bấm ▶ ở đầu mỗi dòng để mở chi tiết S95H65 / S95H55 Deco & Chassis",
     productSummaryTabsLabel: "Xem tổng hoặc theo ngày",
+    summaryViewLabel: "Loại xem",
+    summaryViewDeco: "Deco",
+    summaryViewChassis: "Chassis",
   },
-  r95hReport: {
-    pageTitle: "BÁO CÁO SẢN LƯỢNG R95H",
+  r95dReport: {
+    pageTitle: "BÁO CÁO SẢN LƯỢNG R95D",
     pageSubtitle: "",
-    tabsLabel: "Loại báo cáo R95H",
+    tabsLabel: "Loại báo cáo R95D",
     tabTotal: "TỔNG",
     tabDaily: "THEO NGÀY",
-    loadingManual: "Đang tải dữ liệu R95H…",
-    dailyBoardTitle: "Bảng sản lượng R95H theo ngày",
-    totalBoardTitle: "Bảng tổng hợp tháng R95H",
+    loadingManual: "Đang tải dữ liệu R95D…",
+    dailyBoardTitle: "Bảng sản lượng R95D theo ngày",
+    totalBoardTitle: "Bảng tổng hợp tháng R95D",
     manualEntryHint:
       "Chưa có số liệu. Mở tab công đoạn (PRESS, HAIRLINE, ANODIZING, ASSEMBLY) để nhập 65 và 75.",
-    chartReportBadgeR95h: "Báo cáo R95H",
+    chartReportBadgeR95d: "Báo cáo R95D",
     dailyProcessExpandHint:
       "Bấm ▶ ở đầu mỗi dòng để mở chi tiết 65 / 75",
     productSummaryTabsLabel: "Xem tổng hoặc theo ngày",

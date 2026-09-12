@@ -11,6 +11,61 @@ export function resolveNgRateTone(ngRatePct) {
 
 export const S90D_ALL_DAYS_KEY = "__all__";
 
+export function mergeMonthDailySummariesForRollup(sectionDailiesList = []) {
+  const byDate = new Map();
+
+  for (const dailies of sectionDailiesList) {
+    for (const daily of dailies ?? []) {
+      const dateKey = String(daily?.dateKey ?? "").trim();
+      if (!dateKey) continue;
+
+      const prev = byDate.get(dateKey);
+      if (!prev) {
+        byDate.set(dateKey, {
+          dateKey,
+          hasData: Boolean(daily.hasData),
+          totalRow: {
+            totalQty: Number(daily.totalRow?.totalQty) || 0,
+            ngQty: Number(daily.totalRow?.ngQty) || 0,
+          },
+          processRows: (daily.processRows ?? []).map((row) => ({
+            process: row.process,
+            ngQty: Number(row.ngQty) || 0,
+            totalQty: Number(row.totalQty) || 0,
+          })),
+        });
+        continue;
+      }
+
+      prev.hasData = prev.hasData || Boolean(daily.hasData);
+      prev.totalRow.totalQty += Number(daily.totalRow?.totalQty) || 0;
+      prev.totalRow.ngQty += Number(daily.totalRow?.ngQty) || 0;
+
+      const byProcess = new Map(
+        prev.processRows.map((row) => [row.process, row]),
+      );
+      for (const row of daily.processRows ?? []) {
+        if (!row?.process) continue;
+        const existing = byProcess.get(row.process);
+        if (!existing) {
+          const nextRow = {
+            process: row.process,
+            ngQty: Number(row.ngQty) || 0,
+            totalQty: Number(row.totalQty) || 0,
+          };
+          prev.processRows.push(nextRow);
+          byProcess.set(row.process, nextRow);
+          continue;
+        }
+        existing.ngQty += Number(row.ngQty) || 0;
+        existing.totalQty += Number(row.totalQty) || 0;
+      }
+    }
+  }
+
+  return [...byDate.values()];
+}
+
 export function buildMonthDailyRollup(monthDailySummaries = []) {
   const daysWithData = monthDailySummaries.filter((daily) => daily.hasData);
   const processSet = new Set();

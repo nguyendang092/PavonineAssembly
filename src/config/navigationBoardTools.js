@@ -61,10 +61,10 @@ export const NAVIGATION_BOARD_TOOLS = [
   },
   {
     id: "APP-24",
-    path: "/r95h-production-report",
+    path: "/r95d-production-report",
     category: "operations",
-    titleKey: "navbar.r95hProductionReport",
-    descriptionKey: "navigationBoard.descR95hProductionReport",
+    titleKey: "navbar.r95dProductionReport",
+    descriptionKey: "navigationBoard.descR95dProductionReport",
     status: "new",
   },
   {

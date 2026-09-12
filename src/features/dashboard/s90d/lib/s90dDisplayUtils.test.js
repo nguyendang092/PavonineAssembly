@@ -40,12 +40,12 @@ describe("aggregateBoardRowsByProductGroup", () => {
     expect(merged[0].defects.scratch).toBe(15);
   });
 
-  it("keeps R95H type 65 and 75 as separate rows", () => {
+  it("keeps R95D type 65 and 75 as separate rows", () => {
     const rows = aggregateBoardRowsByProductGroup(
       [
         {
           boardId: "press-code65",
-          productCode: "R95H",
+          productCode: "R95D",
           label: "65",
           codeSlot: "65",
           totalQty: 100,
@@ -55,7 +55,7 @@ describe("aggregateBoardRowsByProductGroup", () => {
         },
         {
           boardId: "press-code75",
-          productCode: "R95H",
+          productCode: "R95D",
           label: "75",
           codeSlot: "75",
           totalQty: 50,

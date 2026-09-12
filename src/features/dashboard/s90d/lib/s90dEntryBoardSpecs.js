@@ -6,7 +6,7 @@ import {
 } from "./s90dManualEntryReportConfig";
 
 export const S90D_CODE_SLOTS = Object.freeze(["D", "E"]);
-export const R95H_CODE_SLOTS = Object.freeze(["65", "75"]);
+export const R95D_CODE_SLOTS = Object.freeze(["65", "75"]);
 export const S90D_TYPE_SLOT_LABEL = "Type";
 
 export function resolveCodeSlots(config) {

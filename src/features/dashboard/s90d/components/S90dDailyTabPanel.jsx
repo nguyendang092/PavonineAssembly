@@ -5,6 +5,7 @@ import { useProductionReportContext } from "../../productionReport/ProductionRep
 import { useReportT } from "../../productionReport/useReportTranslation";
 import {
   buildMonthDailyRollup,
+  mergeMonthDailySummariesForRollup,
   resolveNgRateTone,
   S90D_ALL_DAYS_KEY,
 } from "../lib/buildS90dDailyRollup";
@@ -380,21 +381,27 @@ export default function S90dDailyTabPanel({
   const { defaultProductCode } = useProductionReportContext();
   const isTotalView = variant === "total";
   const [selectedDateKey, setSelectedDateKey] = useState(S90D_ALL_DAYS_KEY);
+  const monthSummariesForUi = useMemo(() => {
+    if (!productSections?.length) return monthDailySummaries;
+    return mergeMonthDailySummariesForRollup(
+      productSections.map((section) => section.monthDailySummaries),
+    );
+  }, [monthDailySummaries, productSections]);
   const rollup = useMemo(
-    () => buildMonthDailyRollup(monthDailySummaries),
-    [monthDailySummaries],
+    () => buildMonthDailyRollup(monthSummariesForUi),
+    [monthSummariesForUi],
   );
 
   useEffect(() => {
     if (isTotalView) return;
     setSelectedDateKey((current) => {
       if (current === S90D_ALL_DAYS_KEY) return current;
-      if (monthDailySummaries.some((daily) => daily.dateKey === current)) {
+      if (monthSummariesForUi.some((daily) => daily.dateKey === current)) {
         return current;
       }
       return S90D_ALL_DAYS_KEY;
     });
-  }, [isTotalView, monthDailySummaries]);
+  }, [isTotalView, monthSummariesForUi]);
 
   const isAllDaysView =
     !isTotalView && selectedDateKey === S90D_ALL_DAYS_KEY;
@@ -403,9 +410,9 @@ export default function S90dDailyTabPanel({
     () =>
       isAllDaysView
         ? null
-        : monthDailySummaries.find((daily) => daily.dateKey === selectedDateKey) ??
+        : monthSummariesForUi.find((daily) => daily.dateKey === selectedDateKey) ??
           null,
-    [isAllDaysView, monthDailySummaries, selectedDateKey],
+    [isAllDaysView, monthSummariesForUi, selectedDateKey],
   );
 
   const activeSummary = isTotalView
@@ -415,8 +422,8 @@ export default function S90dDailyTabPanel({
       : selectedSummary;
 
   const daysWithData = useMemo(
-    () => monthDailySummaries.filter((daily) => daily.hasData),
-    [monthDailySummaries],
+    () => monthSummariesForUi.filter((daily) => daily.hasData),
+    [monthSummariesForUi],
   );
 
   const renderBoardContent = () => {
@@ -544,7 +551,7 @@ export default function S90dDailyTabPanel({
 
       {!isTotalView ? (
         <S90dDailyDateStrip
-          monthDailySummaries={monthDailySummaries}
+          monthDailySummaries={monthSummariesForUi}
           selectedDateKey={selectedDateKey}
           onSelect={setSelectedDateKey}
           monthAvgNgRate={rollup.avgNgRate}

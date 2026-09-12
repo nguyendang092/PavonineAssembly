@@ -7,6 +7,7 @@ export const PRODUCTION_LAYOUT_PATHS = [
   "/s90d-production-report",
   "/ap5-production-report",
   "/s95h-production-report",
+  "/r95d-production-report",
   "/r95h-production-report",
   "/performance",
   "/stock-variance",
@@ -61,9 +62,9 @@ export const PRODUCTION_SIDEBAR_SECTIONS = [
         tone: "teal",
       },
       {
-        path: "/r95h-production-report",
-        labelKey: "navbar.r95hProductionReport",
-        labelDefault: "Báo cáo sản lượng R95H",
+        path: "/r95d-production-report",
+        labelKey: "navbar.r95dProductionReport",
+        labelDefault: "Báo cáo sản lượng R95D",
         tone: "violet",
       },
       {

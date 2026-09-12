@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
   AP5_PRODUCTION_REPORT_CONFIG,
-  R95H_PRODUCTION_REPORT_CONFIG,
+  R95D_PRODUCTION_REPORT_CONFIG,
   S90D_PRODUCTION_REPORT_CONFIG,
   S95H_PRODUCTION_REPORT_CONFIG,
 } from "./productionReportConfigs";
@@ -59,9 +59,9 @@ describe("productionReportConfigs firebase paths", () => {
     ).toBe(true);
   });
 
-  it("R95H manualEntries path is covered by database rules", () => {
+  it("R95D manualEntries path is covered by database rules", () => {
     expect(
-      firebaseRulesAllowPath(R95H_PRODUCTION_REPORT_CONFIG.firebaseRoot),
+      firebaseRulesAllowPath(R95D_PRODUCTION_REPORT_CONFIG.firebaseRoot),
     ).toBe(true);
   });
 });

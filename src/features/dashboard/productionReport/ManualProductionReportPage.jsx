@@ -1,5 +1,6 @@
 import React, {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -19,7 +20,9 @@ import {
 } from "../s90d/lib/buildS90dFromManual";
 import { S90D_PROCESSES } from "../s90d/lib/s90dDefectColumns";
 import { formatS90dMonthDisplayLabel } from "../s90d/lib/s90dDateUtils";
+import { filterSpecsBySummaryViewGroup } from "../s90d/lib/s90dManualEntryReportConfig";
 import { useReportT } from "./useReportTranslation";
+import { useProductionReportContext } from "./ProductionReportContext";
 import "../s90d/s90dProductionReport.css";
 
 const BASE_TABS = Object.freeze({
@@ -33,6 +36,7 @@ export default function ManualProductionReportPage({
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
+  const { id: reportId } = useProductionReportContext();
   const excelInputRef = useRef(null);
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -43,6 +47,7 @@ export default function ManualProductionReportPage({
     message: "",
   });
   const [chartModalOpen, setChartModalOpen] = useState(false);
+  const [summaryViewGroup, setSummaryViewGroup] = useState("deco");
   const {
     loading,
     saving,
@@ -143,6 +148,42 @@ export default function ManualProductionReportPage({
     typeSlotSpecs,
   ]);
 
+  const summaryViewGroups = useMemo(
+    () =>
+      Array.isArray(manualEntryConfig?.summaryViewGroups)
+        ? manualEntryConfig.summaryViewGroups
+        : [],
+    [manualEntryConfig],
+  );
+
+  useEffect(() => {
+    if (!summaryViewGroups.length) return;
+    if (!summaryViewGroups.some((group) => group.id === summaryViewGroup)) {
+      setSummaryViewGroup(summaryViewGroups[0].id);
+    }
+  }, [summaryViewGroup, summaryViewGroups]);
+
+  const visibleProductSummarySections = useMemo(() => {
+    if (!productSummarySections?.length || !summaryViewGroups.length) {
+      return productSummarySections;
+    }
+    const allowedCodes = new Set(
+      filterSpecsBySummaryViewGroup(productBoardSpecs, summaryViewGroup).map(
+        (spec) => spec.productCode,
+      ),
+    );
+    if (!allowedCodes.size) return productSummarySections;
+    const filtered = productSummarySections.filter((section) =>
+      allowedCodes.has(section.productCode),
+    );
+    return filtered.length ? filtered : productSummarySections;
+  }, [
+    productBoardSpecs,
+    productSummarySections,
+    summaryViewGroup,
+    summaryViewGroups,
+  ]);
+
   const tabOrder = useMemo(
     () => [BASE_TABS.TOTAL, BASE_TABS.DAILY, ...processes],
     [processes],
@@ -170,7 +211,7 @@ export default function ManualProductionReportPage({
       observer.disconnect();
       window.removeEventListener("resize", syncHeight);
     };
-  }, [syncError, isSummaryTab, activeTab, loading, toolbarExtra]);
+  }, [syncError, isSummaryTab, activeTab, loading, toolbarExtra, summaryViewGroups]);
 
   const handleProcessSave = useCallback(
     async (localByDate) => {
@@ -265,11 +306,15 @@ export default function ManualProductionReportPage({
     monthDailySummaries,
     grandTotalSummary,
     monthDisplayLabel,
-    productSections: productSummarySections,
+    productSections: visibleProductSummarySections,
   };
 
   return (
-    <div className="s90d-report-page">
+    <div
+      className={`s90d-report-page${
+        reportId ? ` s90d-report-page--${reportId}` : ""
+      }`}
+    >
       <AlertMessage
         alert={saveAlert}
         onClose={() => setSaveAlert((prev) => ({ ...prev, show: false }))}
@@ -311,6 +356,43 @@ export default function ManualProductionReportPage({
                   ))}
                 </select>
               </label>
+              {isSummaryTab && summaryViewGroups.length >= 2 ? (
+                <div className="s90d-toolbar-field">
+                  <span className="s90d-toolbar-field-label">
+                    {rt("summaryViewLabel", "Loại xem")}
+                  </span>
+                  <div
+                    className="s90d-view-toggle"
+                    role="group"
+                    aria-label={rt("summaryViewLabel", "Loại xem")}
+                  >
+                    {summaryViewGroups.map((group) => {
+                      const selected = summaryViewGroup === group.id;
+                      const label = rt(
+                        group.id === "deco"
+                          ? "summaryViewDeco"
+                          : group.id === "chassis"
+                            ? "summaryViewChassis"
+                            : `summaryView_${group.id}`,
+                        group.label,
+                      );
+                      return (
+                        <button
+                          key={group.id}
+                          type="button"
+                          aria-pressed={selected}
+                          className={`s90d-view-toggle-btn${
+                            selected ? " s90d-view-toggle-btn--active" : ""
+                          }`}
+                          onClick={() => setSummaryViewGroup(group.id)}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="s90d-toolbar-actions">

@@ -234,6 +234,11 @@ function resolveEntryBoards(rawBoards, process, config) {
 }
 
 function matchesBoardSpec(board, spec, config) {
+  const boardId = String(board?.id ?? "").trim().toLowerCase();
+  const specId = String(spec.id ?? "").trim().toLowerCase();
+  if (boardId && specId && boardId === specId) return true;
+  if (boardId && specId === `${boardId}-deco`) return true;
+
   const code = String(board?.productCode ?? "").trim().toUpperCase();
   const label = String(board?.label ?? "").trim().toUpperCase();
   const target = spec.productCode.toUpperCase();
@@ -242,6 +247,9 @@ function matchesBoardSpec(board, spec, config) {
   const compactLabel = label.replace(/\s+/g, "");
   const compactTarget = target.replace(/\s+/g, "");
   if (compactCode === compactTarget || compactLabel === compactTarget) return true;
+
+  if (compactCode === "S95H65" && specId === "s95h65-deco") return true;
+  if (compactCode === "S95H55" && specId === "s95h55-deco") return true;
 
   if (config.fixedBoardSpecsAllProcesses) {
     return code.includes(target) || label.includes(target);

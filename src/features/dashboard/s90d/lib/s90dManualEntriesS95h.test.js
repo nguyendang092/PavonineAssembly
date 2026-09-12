@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { S95H_MANUAL_ENTRY_CONFIG } from "./s90dManualEntryReportConfig";
+import {
+  S95H_MANUAL_ENTRY_CONFIG,
+  filterSpecsBySummaryViewGroup,
+} from "./s90dManualEntryReportConfig";
 import {
   createEmptyProcessDayEntry,
   resolveProcessBoards,
   updateProcessMonthShiftField,
 } from "./s90dManualEntries";
 
-describe("s90dManualEntries S95H two-board edits", () => {
-  it("keeps S95H65 and S95H55 when updating one board", () => {
+describe("s90dManualEntries S95H Deco/Chassis boards", () => {
+  it("keeps 4 S95H boards when updating one board", () => {
     const config = S95H_MANUAL_ENTRY_CONFIG;
     const localByDate = {
       "2026-09-01": createEmptyProcessDayEntry("PRESS", config),
@@ -17,7 +20,7 @@ describe("s90dManualEntries S95H two-board edits", () => {
       localByDate,
       "2026-09-01",
       "PRESS",
-      "s95h65",
+      "s95h65-deco",
       "08~10",
       "okQty",
       80,
@@ -25,27 +28,89 @@ describe("s90dManualEntries S95H two-board edits", () => {
     );
 
     const boards = resolveProcessBoards(next["2026-09-01"], "PRESS", config);
-    expect(boards).toHaveLength(2);
-    expect(boards.map((board) => board.id)).toEqual(["s95h65", "s95h55"]);
-    expect(boards.find((board) => board.id === "s95h65")?.shifts["08~10"].okQty).toBe(
-      80,
-    );
-    expect(boards.find((board) => board.id === "s95h55")?.shifts["08~10"].okQty).toBe(
-      0,
-    );
+    expect(boards).toHaveLength(4);
+    expect(boards.map((board) => board.id)).toEqual([
+      "s95h65-deco",
+      "s95h65-chassis",
+      "s95h55-deco",
+      "s95h55-chassis",
+    ]);
+    expect(
+      boards.find((board) => board.id === "s95h65-deco")?.shifts["08~10"].okQty,
+    ).toBe(80);
+    expect(
+      boards.find((board) => board.id === "s95h65-chassis")?.shifts["08~10"]
+        .okQty,
+    ).toBe(0);
   });
 
-  it("uses the same two boards on MC (no extra GE board)", () => {
+  it("uses the same 4 boards on MC", () => {
     const config = S95H_MANUAL_ENTRY_CONFIG;
     const boards = resolveProcessBoards(
       createEmptyProcessDayEntry("MC", config),
       "MC",
       config,
     );
-    expect(boards).toHaveLength(2);
+    expect(boards).toHaveLength(4);
     expect(boards.map((board) => board.productCode)).toEqual([
-      "S95H65",
-      "S95H55",
+      "S95H65 Deco",
+      "S95H65 Chassis",
+      "S95H55 Deco",
+      "S95H55 Chassis",
+    ]);
+  });
+
+  it("migrates legacy S95H65 / S95H55 boards onto Deco", () => {
+    const config = S95H_MANUAL_ENTRY_CONFIG;
+    const boards = resolveProcessBoards(
+      {
+        boards: [
+          {
+            id: "s95h65",
+            productCode: "S95H65",
+            shifts: { "08~10": { okQty: 12, ngQty: 0, defects: {} } },
+          },
+          {
+            id: "s95h55",
+            productCode: "S95H55",
+            shifts: { "08~10": { okQty: 7, ngQty: 0, defects: {} } },
+          },
+        ],
+      },
+      "PRESS",
+      config,
+    );
+
+    expect(boards).toHaveLength(4);
+    expect(
+      boards.find((board) => board.id === "s95h65-deco")?.shifts["08~10"].okQty,
+    ).toBe(12);
+    expect(
+      boards.find((board) => board.id === "s95h55-deco")?.shifts["08~10"].okQty,
+    ).toBe(7);
+    expect(
+      boards.find((board) => board.id === "s95h65-chassis")?.shifts["08~10"]
+        .okQty,
+    ).toBe(0);
+  });
+
+  it("filters S95H boards into Deco or Chassis view groups", () => {
+    const deco = filterSpecsBySummaryViewGroup(
+      S95H_MANUAL_ENTRY_CONFIG.fixedBoardSpecs,
+      "deco",
+    );
+    const chassis = filterSpecsBySummaryViewGroup(
+      S95H_MANUAL_ENTRY_CONFIG.fixedBoardSpecs,
+      "chassis",
+    );
+
+    expect(deco.map((spec) => spec.productCode)).toEqual([
+      "S95H65 Deco",
+      "S95H55 Deco",
+    ]);
+    expect(chassis.map((spec) => spec.productCode)).toEqual([
+      "S95H65 Chassis",
+      "S95H55 Chassis",
     ]);
   });
 });
