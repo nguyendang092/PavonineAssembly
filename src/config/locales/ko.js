@@ -112,7 +112,7 @@ const ko = {
     s90dProductionReport: "S90D 생산실적 보고",
     ap5ProductionReport: "AP5FF·AP5FZ·AP5FL 생산실적 입력",
     s95hProductionReport: "S95H65·S95H55 Deco/Chassis 생산실적 입력",
-    r95dProductionReport: "R95D 65·75 생산실적 입력",
+    r95dProductionReport: "R95D 65·55 생산실적 입력",
     dangNhap: "로그인",
     logOut: "로그아웃",
     changePassword: "비밀번호 변경",
@@ -162,7 +162,7 @@ const ko = {
     descS95hProductionReport:
       "S95H65·S95H55(Deco·Chassis) 공정·교대·일별 생산 실적 입력(AP5와 동일 형식).",
     descR95dProductionReport:
-      "R95D 65·75 공정별 생산 실적 입력(S90D와 동일 형식).",
+      "R95D 65·55 공정별 생산 실적 입력(S90D와 동일 형식).",
     descPerformance: "개선 제안 차트 및 보고.",
     descTemperature: "설비·구역 온도 모니터링.",
     descMold: "금형 관리 및 사용 상태.",
@@ -791,6 +791,10 @@ const ko = {
     chartReportBadgeAp5: "AP5 보고",
     dailyProcessExpandHint: "▶를 눌러 AP5FF, AP5FZ, AP5FL 상세 열기",
     productSummaryTabsLabel: "총합 또는 일별 보기",
+    summaryViewLabel: "보기 종류",
+    summaryView_ap5ff: "AP5FF",
+    summaryView_ap5fz: "AP5FZ",
+    summaryView_ap5fl: "AP5FL",
   },
   s95hReport: {
     pageTitle: "S95H 생산실적 보고",
@@ -809,6 +813,8 @@ const ko = {
     summaryViewLabel: "보기 종류",
     summaryViewDeco: "Deco",
     summaryViewChassis: "Chassis",
+    summaryView_deco: "Deco",
+    summaryView_chassis: "Chassis",
   },
   r95dReport: {
     pageTitle: "R95D 생산실적 보고",
@@ -820,10 +826,13 @@ const ko = {
     dailyBoardTitle: "R95D 일별 생산 실적표",
     totalBoardTitle: "R95D 월간 총합표",
     manualEntryHint:
-      "데이터 없음. PRESS, HAIRLINE, ANODIZING, ASSEMBLY 공정 탭에서 65·75를 입력하세요.",
+      "데이터 없음. PRESS, HAIRLINE, ANODIZING, ASSEMBLY 공정 탭에서 65·55를 입력하세요.",
     chartReportBadgeR95d: "R95D 보고",
-    dailyProcessExpandHint: "▶를 눌러 65·75 상세 열기",
+    dailyProcessExpandHint: "▶를 눌러 65·55 상세 열기",
     productSummaryTabsLabel: "총합 또는 일별 보기",
+    summaryViewLabel: "보기 종류",
+    summaryView_65: "65",
+    summaryView_55: "55",
   },
   workplaceChart: {
     sidebarBrand: "생산 보고",

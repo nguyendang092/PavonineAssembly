@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AP5_MANUAL_ENTRY_CONFIG,
+  filterSpecsBySummaryViewGroup,
 } from "./s90dManualEntryReportConfig";
 import {
   createEmptyProcessDayEntry,
@@ -198,5 +199,18 @@ describe("s90dManualEntries AP5 multi-board edits", () => {
         (board) => board.id === "ap5ff",
       )?.shifts["08~10"].okQty,
     ).toBe(99);
+  });
+
+  it("filters AP5 boards into FF / FZ / FL view groups", () => {
+    const specs = AP5_MANUAL_ENTRY_CONFIG.fixedBoardSpecs;
+    expect(
+      filterSpecsBySummaryViewGroup(specs, "ap5ff").map((spec) => spec.productCode),
+    ).toEqual(["AP5FF"]);
+    expect(
+      filterSpecsBySummaryViewGroup(specs, "ap5fz").map((spec) => spec.productCode),
+    ).toEqual(["AP5FZ"]);
+    expect(
+      filterSpecsBySummaryViewGroup(specs, "ap5fl").map((spec) => spec.productCode),
+    ).toEqual(["AP5FL"]);
   });
 });

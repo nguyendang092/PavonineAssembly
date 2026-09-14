@@ -2,7 +2,6 @@ import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
-import { ASSEMBLY_PROCESS } from "../lib/s90dManualEntryReportConfig";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
 import {
   aggregateBoardRowsByProductGroup,
@@ -19,9 +18,15 @@ import S90dDefectImageThumbs from "./S90dDefectImageThumbs";
 const INFO_COL_COUNT_BASE = 4;
 const QTY_COL_COUNT = 6;
 
-function resolveClassificationCell({ processLabel, isTotal, isPercent, rt }) {
+function resolveClassificationCell({
+  processLabel,
+  isTotal,
+  isPercent,
+  rt,
+  useTotalClassification = false,
+}) {
   if (isPercent) return "";
-  if (isTotal) return rt("totalLabel", "TOTAL");
+  if (isTotal || useTotalClassification) return rt("totalLabel", "TOTAL");
   return processLabel;
 }
 
@@ -77,6 +82,7 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
   processKey = "",
   totalNgQty,
   isBoardSubRow = false,
+  useTotalClassification = false,
 }) {
   const rt = useReportT();
   const isTotal = row.isTotal;
@@ -111,6 +117,7 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
     isTotal,
     isPercent,
     rt,
+    useTotalClassification: useTotalClassification && !isBoardSubRow,
   });
   const chainYieldPct = resolveS90dChainYieldPct(row, { isTotal });
   const cumulativeYieldPct = resolveS90dCumulativeYieldPct(row, { isTotal });
@@ -188,6 +195,7 @@ function renderSummaryProcessDetailRows({
   t,
   keyPrefix = "",
   keepCodeSlots = false,
+  useTotalClassification = false,
 }) {
   return processDetails.flatMap((detail) => {
     const { process, processRow, boardRows = [] } = detail;
@@ -196,8 +204,7 @@ function renderSummaryProcessDetailRows({
       keepCodeSlots,
     });
     const hasMultipleBoards =
-      aggregatedBoardRows.length >= 2 &&
-      (keepCodeSlots || process !== ASSEMBLY_PROCESS);
+      keepCodeSlots && aggregatedBoardRows.length >= 2;
     const summaryRow = {
       ...processRow,
       productCode: productCode || processRow.productCode,
@@ -212,6 +219,7 @@ function renderSummaryProcessDetailRows({
           processLabel={processLabel}
           processKey={process}
           totalNgQty={totalNgQty}
+          useTotalClassification={useTotalClassification}
         />
         {hasMultipleBoards
           ? aggregatedBoardRows.map((boardRow) => (
@@ -245,10 +253,14 @@ export default function S90dSummaryProcessTable({
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
-  const { usesProductSubCodes, codeSlotLabelPrefix } =
+  const { usesProductSubCodes, codeSlotLabelPrefix, fixedBoardSpecsAllProcesses } =
     useProductionReportContext();
   const keepCodeSlots =
     Boolean(usesProductSubCodes) && codeSlotLabelPrefix === "";
+  const useTotalClassification =
+    Boolean(usesProductSubCodes) &&
+    !keepCodeSlots &&
+    !fixedBoardSpecsAllProcesses;
   const infoColCount = INFO_COL_COUNT_BASE;
   const totalNgQty = totalRow?.ngQty ?? 0;
 
@@ -325,6 +337,7 @@ export default function S90dSummaryProcessTable({
                   t,
                   keyPrefix: daily.dateKey,
                   keepCodeSlots,
+                  useTotalClassification,
                 });
               })
             : renderSummaryProcessDetailRows({
@@ -334,6 +347,7 @@ export default function S90dSummaryProcessTable({
                 totalNgQty,
                 t,
                 keepCodeSlots,
+                useTotalClassification,
               })}
           {totalRow ? (
             <SummaryProcessRow

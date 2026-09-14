@@ -5,7 +5,7 @@ function isTrackedCodeSlotForYield(codeSlot, codeSlots) {
   const slot = String(codeSlot ?? "").trim();
   if (!slot) return false;
   if (codeSlots?.length) return codeSlots.includes(slot);
-  return slot === "D" || slot === "E" || slot === "65" || slot === "75";
+  return slot === "D" || slot === "E" || slot === "65" || slot === "75" || slot === "55";
 }
 
 /** Công đoạn hiển thị hiệu suất = (SL đạt/Tổng SL) / hiệu suất công đoạn trước (cùng mã/Code). */

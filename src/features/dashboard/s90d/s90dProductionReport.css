@@ -247,6 +247,11 @@
   color: #fff;
 }
 
+.s90d-report-page--ap5 .s90d-view-toggle-btn {
+  min-width: 5.25rem;
+  padding: 0 0.7rem;
+}
+
 @media (max-width: 640px) {
   .s90d-toolbar {
     flex-direction: column;

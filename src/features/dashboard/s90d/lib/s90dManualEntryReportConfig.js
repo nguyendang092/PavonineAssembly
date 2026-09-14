@@ -4,6 +4,11 @@ export const DEFAULT_PRODUCT_CODE = "S90D";
 export const AP5_DEFAULT_PRODUCT_CODE = "AP5";
 export const S95H_DEFAULT_PRODUCT_CODE = "S95H";
 export const R95D_DEFAULT_PRODUCT_CODE = "R95D";
+export const R95D_CODE_SLOTS = Object.freeze(["65", "55"]);
+export const R95D_SUMMARY_VIEW_GROUPS = Object.freeze([
+  { id: "65", label: "65" },
+  { id: "55", label: "55" },
+]);
 export const ASSEMBLY_PROCESS = "ASSEMBLY";
 
 export const S90D_ASSEMBLY_BOARD_SPECS = Object.freeze([
@@ -13,13 +18,19 @@ export const S90D_ASSEMBLY_BOARD_SPECS = Object.freeze([
 
 export const R95D_ASSEMBLY_BOARD_SPECS = Object.freeze([
   { id: "assembly-r95d65", label: "R95D 65", productCode: "R95D 65" },
-  { id: "assembly-r95d75", label: "R95D 75", productCode: "R95D 75" },
+  { id: "assembly-r95d55", label: "R95D 55", productCode: "R95D 55" },
+]);
+
+export const AP5_SUMMARY_VIEW_GROUPS = Object.freeze([
+  { id: "ap5ff", label: "AP5FF" },
+  { id: "ap5fz", label: "AP5FZ" },
+  { id: "ap5fl", label: "AP5FL" },
 ]);
 
 export const AP5_BOARD_SPECS = Object.freeze([
-  { id: "ap5ff", label: "AP5FF", productCode: "AP5FF" },
-  { id: "ap5fz", label: "AP5FZ", productCode: "AP5FZ" },
-  { id: "ap5fl", label: "AP5FL", productCode: "AP5FL" },
+  { id: "ap5ff", label: "AP5FF", productCode: "AP5FF", viewGroup: "ap5ff" },
+  { id: "ap5fz", label: "AP5FZ", productCode: "AP5FZ", viewGroup: "ap5fz" },
+  { id: "ap5fl", label: "AP5FL", productCode: "AP5FL", viewGroup: "ap5fl" },
 ]);
 
 /** Tab MC có thêm 1 bảng AP5FL — tổng 4 bảng nhập liệu. */
@@ -141,8 +152,9 @@ export const R95D_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
   fixedBoardSpecs: null,
   fixedBoardSpecsAllProcesses: false,
   usesProductSubCodes: true,
-  codeSlots: ["65", "75"],
+  codeSlots: R95D_CODE_SLOTS,
   codeSlotLabelPrefix: "",
+  summaryViewGroups: R95D_SUMMARY_VIEW_GROUPS,
 });
 
 export const AP5_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
@@ -151,6 +163,7 @@ export const AP5_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
   fixedBoardSpecs: AP5_BOARD_SPECS,
   fixedBoardSpecsAllProcesses: true,
   processBoardSpecs: AP5_PROCESS_BOARD_SPECS,
+  summaryViewGroups: AP5_SUMMARY_VIEW_GROUPS,
 });
 
 export const S95H_MANUAL_ENTRY_CONFIG = createManualEntryConfig({

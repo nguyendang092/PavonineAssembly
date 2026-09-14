@@ -150,6 +150,7 @@ function findLegacyBoardForEntrySpec(normalizedBoards, spec, config) {
       const slots = resolveCodeSlots(config);
       if (spec.codeSlot === slots[0]) return ["D"];
       if (spec.codeSlot === slots[1]) return ["E"];
+      if (spec.codeSlot === "55") return ["75"];
       return [];
     })(),
   ]);

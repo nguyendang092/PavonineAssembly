@@ -163,7 +163,7 @@ const vi = {
     descS95hProductionReport:
       "Báo cáo sản lượng S95H65 & S95H55 (Deco, Chassis) theo công đoạn và theo ngày.",
     descR95dProductionReport:
-      "Báo cáo sản lượng R95D 65 & 75 theo công đoạn (giống S90D).",
+      "Báo cáo sản lượng R95D 65 & 55 theo công đoạn (giống S90D).",
     descPerformance: "Biểu đồ và báo cáo cải tiến sản xuất.",
     descTemperature: "Giám sát nhiệt độ thiết bị và khu vực sản xuất.",
     descMold: "Quản lý khuôn, vòng đời và trạng thái sử dụng.",
@@ -795,6 +795,10 @@ const vi = {
     dailyProcessExpandHint:
       "Bấm ▶ ở đầu mỗi dòng để mở chi tiết AP5FF, AP5FZ, AP5FL",
     productSummaryTabsLabel: "Xem tổng hoặc theo ngày",
+    summaryViewLabel: "Loại xem",
+    summaryView_ap5ff: "AP5FF",
+    summaryView_ap5fz: "AP5FZ",
+    summaryView_ap5fl: "AP5FL",
   },
   s95hReport: {
     pageTitle: "BÁO CÁO SẢN LƯỢNG S95H",
@@ -814,6 +818,8 @@ const vi = {
     summaryViewLabel: "Loại xem",
     summaryViewDeco: "Deco",
     summaryViewChassis: "Chassis",
+    summaryView_deco: "Deco",
+    summaryView_chassis: "Chassis",
   },
   r95dReport: {
     pageTitle: "BÁO CÁO SẢN LƯỢNG R95D",
@@ -825,11 +831,14 @@ const vi = {
     dailyBoardTitle: "Bảng sản lượng R95D theo ngày",
     totalBoardTitle: "Bảng tổng hợp tháng R95D",
     manualEntryHint:
-      "Chưa có số liệu. Mở tab công đoạn (PRESS, HAIRLINE, ANODIZING, ASSEMBLY) để nhập 65 và 75.",
+      "Chưa có số liệu. Mở tab công đoạn (PRESS, HAIRLINE, ANODIZING, ASSEMBLY) để nhập 65 và 55.",
     chartReportBadgeR95d: "Báo cáo R95D",
     dailyProcessExpandHint:
-      "Bấm ▶ ở đầu mỗi dòng để mở chi tiết 65 / 75",
+      "Bấm ▶ ở đầu mỗi dòng để mở chi tiết 65 / 55",
     productSummaryTabsLabel: "Xem tổng hoặc theo ngày",
+    summaryViewLabel: "Loại xem",
+    summaryView_65: "65",
+    summaryView_55: "55",
   },
   workplaceChart: {
     sidebarBrand: "Báo cáo sản xuất",

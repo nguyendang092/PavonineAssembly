@@ -91,8 +91,8 @@ export function aggregateBoardRowsByProductGroup(boardRows = [], options = {}) {
 
   boardRows.forEach((row) => {
     const groupKey =
-      resolveDisplayBoardGroupKey(row) ||
       String(row.productCode ?? "").trim() ||
+      resolveDisplayBoardGroupKey(row) ||
       String(row.boardId ?? row.id ?? "").trim();
     if (!groupKey) return;
 

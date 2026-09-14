@@ -473,7 +473,7 @@ describe("buildS90dFromManual", () => {
     expect(grandFf.totalRow.okQty).toBe(95);
   });
 
-  it("scopes R95D daily summary to type 65 and 75 as separate boards", () => {
+  it("scopes R95D daily summary to type 65 and 55 as separate boards", () => {
     const dayEntry = createEmptyDayEntry(R95D_MANUAL_ENTRY_CONFIG);
     dayEntry.PRESS.boards[0].shifts["08~10"] = {
       okQty: 100,
@@ -507,25 +507,25 @@ describe("buildS90dFromManual", () => {
       "65",
       R95D_MANUAL_ENTRY_CONFIG,
     );
-    const scoped75 = buildCodeSlotScopedDailySummary(
+    const scoped55 = buildCodeSlotScopedDailySummary(
       daily,
-      "75",
+      "55",
       R95D_MANUAL_ENTRY_CONFIG,
     );
 
     expect(scoped65.productCode).toBe("R95D65");
-    expect(scoped75.productCode).toBe("R95D75");
+    expect(scoped55.productCode).toBe("R95D55");
     expect(
       scoped65.processRows.find((row) => row.process === "PRESS")?.okQty,
     ).toBe(100);
     expect(
-      scoped75.processRows.find((row) => row.process === "PRESS")?.okQty,
+      scoped55.processRows.find((row) => row.process === "PRESS")?.okQty,
     ).toBe(40);
     expect(
       scoped65.processRows.find((row) => row.process === "ASSEMBLY")?.okQty,
     ).toBe(90);
     expect(
-      scoped75.processRows.find((row) => row.process === "ASSEMBLY")?.okQty,
+      scoped55.processRows.find((row) => row.process === "ASSEMBLY")?.okQty,
     ).toBe(30);
   });
 });

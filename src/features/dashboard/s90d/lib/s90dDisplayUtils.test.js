@@ -40,6 +40,35 @@ describe("aggregateBoardRowsByProductGroup", () => {
     expect(merged[0].defects.scratch).toBe(15);
   });
 
+  it("merges Type D and Type E even when parentBoardId differs per slot", () => {
+    const merged = aggregateBoardRowsByProductGroup([
+      {
+        boardId: "press-coded",
+        parentBoardId: "press-coded",
+        productCode: "S90D",
+        codeSlot: "D",
+        totalQty: 100,
+        okQty: 95,
+        ngQty: 5,
+        defects: { scratch: 5 },
+      },
+      {
+        boardId: "press-codee",
+        parentBoardId: "press-codee",
+        productCode: "S90D",
+        codeSlot: "E",
+        totalQty: 80,
+        okQty: 70,
+        ngQty: 10,
+        defects: { scratch: 10 },
+      },
+    ]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].productCode).toBe("S90D");
+    expect(merged[0].totalQty).toBe(180);
+  });
+
   it("keeps R95D type 65 and 75 as separate rows", () => {
     const rows = aggregateBoardRowsByProductGroup(
       [

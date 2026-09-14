@@ -47,7 +47,7 @@ export default function ManualProductionReportPage({
     message: "",
   });
   const [chartModalOpen, setChartModalOpen] = useState(false);
-  const [summaryViewGroup, setSummaryViewGroup] = useState("deco");
+  const [summaryViewGroup, setSummaryViewGroup] = useState("");
   const {
     loading,
     saving,
@@ -112,6 +112,7 @@ export default function ManualProductionReportPage({
       return typeSlotSpecs.map((spec) => ({
         productCode: spec.productCode,
         label: spec.label,
+        codeSlot: spec.codeSlot,
         monthDailySummaries: buildCodeSlotScopedMonthDailySummaries(
           monthDailySummaries,
           spec.codeSlot,
@@ -163,14 +164,25 @@ export default function ManualProductionReportPage({
     }
   }, [summaryViewGroup, summaryViewGroups]);
 
+  const activeSummaryViewGroup =
+    summaryViewGroups.find((group) => group.id === summaryViewGroup)?.id ??
+    summaryViewGroups[0]?.id ??
+    "";
+
   const visibleProductSummarySections = useMemo(() => {
     if (!productSummarySections?.length || !summaryViewGroups.length) {
       return productSummarySections;
     }
+    const byCodeSlot = productSummarySections.filter(
+      (section) => String(section.codeSlot ?? "") === activeSummaryViewGroup,
+    );
+    if (byCodeSlot.length) return byCodeSlot;
+
     const allowedCodes = new Set(
-      filterSpecsBySummaryViewGroup(productBoardSpecs, summaryViewGroup).map(
-        (spec) => spec.productCode,
-      ),
+      filterSpecsBySummaryViewGroup(
+        productBoardSpecs,
+        activeSummaryViewGroup,
+      ).map((spec) => spec.productCode),
     );
     if (!allowedCodes.size) return productSummarySections;
     const filtered = productSummarySections.filter((section) =>
@@ -178,9 +190,9 @@ export default function ManualProductionReportPage({
     );
     return filtered.length ? filtered : productSummarySections;
   }, [
+    activeSummaryViewGroup,
     productBoardSpecs,
     productSummarySections,
-    summaryViewGroup,
     summaryViewGroups,
   ]);
 
@@ -367,15 +379,8 @@ export default function ManualProductionReportPage({
                     aria-label={rt("summaryViewLabel", "Loại xem")}
                   >
                     {summaryViewGroups.map((group) => {
-                      const selected = summaryViewGroup === group.id;
-                      const label = rt(
-                        group.id === "deco"
-                          ? "summaryViewDeco"
-                          : group.id === "chassis"
-                            ? "summaryViewChassis"
-                            : `summaryView_${group.id}`,
-                        group.label,
-                      );
+                      const selected = activeSummaryViewGroup === group.id;
+                      const label = rt(`summaryView_${group.id}`, group.label);
                       return (
                         <button
                           key={group.id}
