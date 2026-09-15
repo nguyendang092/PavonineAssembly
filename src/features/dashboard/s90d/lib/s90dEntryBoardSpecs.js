@@ -37,7 +37,7 @@ export function isTrackedCodeSlot(codeSlot, config) {
   if (!slot) return false;
   const slots = resolveCodeSlots(config);
   if (slots.includes(slot)) return true;
-  return slot === "D" || slot === "E" || slot === "65" || slot === "75" || slot === "55";
+  return slot === "D" || slot === "E" || slot === "65" || slot === "75" || slot === "85" || slot === "55";
 }
 
 export function formatS90dTypeSlotLabel(codeSlot, config) {
@@ -51,7 +51,8 @@ export function formatS90dTypeSlotLabel(codeSlot, config) {
 export function codeSlotCssTone(codeSlot) {
   const slot = String(codeSlot ?? "").trim();
   if (slot === "D" || slot === "65") return "d";
-  if (slot === "E" || slot === "75" || slot === "55") return "e";
+  if (slot === "E" || slot === "75") return "e";
+  if (slot === "85") return "f";
   return "";
 }
 
@@ -68,8 +69,8 @@ export function inferCodeSlotFromBoardId(boardId, config) {
 
   const fromSlots = slots.find((slot) => codeSlotToIdSuffix(slot) === raw);
   if (fromSlots) return fromSlots;
-  if (raw === "75" && slots.includes("55")) return "55";
-  if (raw === "65" || raw === "75" || raw === "55") return raw;
+  if (raw === "55" && slots.includes("75")) return "75";
+  if (raw === "65" || raw === "75" || raw === "85" || raw === "55") return raw;
   return null;
 }
 
@@ -78,7 +79,7 @@ export function mapLegacyCodeSlot(codeSlot, config) {
   const slots = resolveCodeSlots(config);
   if (slot === "D") return slots[0] ?? "D";
   if (slot === "E") return slots[1] ?? "E";
-  if (slot === "75" && slots.includes("55")) return "55";
+  if (slot === "55" && slots.includes("75")) return "75";
   return slot;
 }
 

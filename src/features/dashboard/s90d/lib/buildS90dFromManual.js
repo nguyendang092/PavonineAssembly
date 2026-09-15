@@ -729,7 +729,7 @@ function findBoardRowForCodeSlot(detail, codeSlot) {
   );
 }
 
-/** Lọc báo cáo ngày theo một type (vd. R95D 65 / 75). */
+/** Lọc báo cáo ngày theo một type (vd. R95D 65 / 75 / 85). */
 export function buildCodeSlotScopedDailySummary(
   dailySummary,
   codeSlot,

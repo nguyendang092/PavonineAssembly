@@ -4,10 +4,11 @@ export const DEFAULT_PRODUCT_CODE = "S90D";
 export const AP5_DEFAULT_PRODUCT_CODE = "AP5";
 export const S95H_DEFAULT_PRODUCT_CODE = "S95H";
 export const R95D_DEFAULT_PRODUCT_CODE = "R95D";
-export const R95D_CODE_SLOTS = Object.freeze(["65", "55"]);
+export const R95D_CODE_SLOTS = Object.freeze(["65", "75", "85"]);
 export const R95D_SUMMARY_VIEW_GROUPS = Object.freeze([
   { id: "65", label: "65" },
-  { id: "55", label: "55" },
+  { id: "75", label: "75" },
+  { id: "85", label: "85" },
 ]);
 export const ASSEMBLY_PROCESS = "ASSEMBLY";
 
@@ -18,7 +19,8 @@ export const S90D_ASSEMBLY_BOARD_SPECS = Object.freeze([
 
 export const R95D_ASSEMBLY_BOARD_SPECS = Object.freeze([
   { id: "assembly-r95d65", label: "R95D 65", productCode: "R95D 65" },
-  { id: "assembly-r95d55", label: "R95D 55", productCode: "R95D 55" },
+  { id: "assembly-r95d75", label: "R95D 75", productCode: "R95D 75" },
+  { id: "assembly-r95d85", label: "R95D 85", productCode: "R95D 85" },
 ]);
 
 export const AP5_SUMMARY_VIEW_GROUPS = Object.freeze([

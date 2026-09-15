@@ -247,8 +247,9 @@
   color: #fff;
 }
 
-.s90d-report-page--ap5 .s90d-view-toggle-btn {
-  min-width: 5.25rem;
+.s90d-report-page--ap5 .s90d-view-toggle-btn,
+.s90d-report-page--r95d .s90d-view-toggle-btn {
+  min-width: 4.5rem;
   padding: 0 0.7rem;
 }
 
@@ -1605,12 +1606,20 @@ body.s90d-chart-modal-open {
   color: #a16207;
 }
 
+.s90d-col-code-slot--f {
+  color: #7c3aed;
+}
+
 .s90d-board-card--coded {
   border-color: #fdba74;
 }
 
 .s90d-board-card--codee {
   border-color: #fcd34d;
+}
+
+.s90d-board-card--codef {
+  border-color: #c4b5fd;
 }
 
 .s90d-board-badge--index {

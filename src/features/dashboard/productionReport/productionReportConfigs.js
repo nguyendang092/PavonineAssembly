@@ -75,7 +75,7 @@ export const R95D_PRODUCTION_REPORT_CONFIG = Object.freeze({
   excelSheetName: "R95D_Nhap",
   excelFilePrefix: "R95D",
   chartReportBadgeKey: "chartReportBadgeR95d",
-  codeSlots: ["65", "55"],
+  codeSlots: ["65", "75", "85"],
   codeSlotLabelPrefix: "",
   summaryViewGroups: R95D_SUMMARY_VIEW_GROUPS,
 });

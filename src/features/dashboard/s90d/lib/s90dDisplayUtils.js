@@ -64,7 +64,7 @@ function summaryYieldPct(numerator, denominator) {
 }
 
 /** Gộp board Type D/E cùng mã hàng thành một dòng cho tab Tổng/Theo ngày.
- *  `keepCodeSlots`: giữ từng type (vd. R95D 65/75) thành dòng con riêng. */
+ *  `keepCodeSlots`: giữ từng type (vd. R95D 65/75/85) thành dòng con riêng. */
 export function aggregateBoardRowsByProductGroup(boardRows = [], options = {}) {
   if (!boardRows.length) return [];
 

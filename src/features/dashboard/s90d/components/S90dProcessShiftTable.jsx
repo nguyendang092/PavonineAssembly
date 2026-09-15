@@ -299,7 +299,7 @@ export default memo(function S90dProcessShiftTable({
     <article
       className={`s90d-board-card${
         codeSlotCssTone(codeSlot)
-          ? ` s90d-board-card--code${codeSlotCssTone(codeSlot) === "d" ? "d" : "e"}`
+          ? ` s90d-board-card--code${codeSlotCssTone(codeSlot)}`
           : ""
       }`}
     >

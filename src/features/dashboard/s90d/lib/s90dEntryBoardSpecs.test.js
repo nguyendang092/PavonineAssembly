@@ -69,28 +69,30 @@ describe("s90dEntryBoardSpecs", () => {
     expect(inferCodeSlotFromBoardId("press-codee")).toBe("E");
   });
 
-  it("creates R95D PRESS boards labeled 65 and 55", () => {
+  it("creates R95D PRESS boards labeled 65, 75 and 85", () => {
     const specs = buildS90dEntryBoardSpecs("PRESS", R95D_MANUAL_ENTRY_CONFIG);
-    expect(specs).toHaveLength(2);
-    expect(specs.map((spec) => spec.label)).toEqual(["65", "55"]);
-    expect(specs.map((spec) => spec.codeSlot)).toEqual(["65", "55"]);
+    expect(specs).toHaveLength(3);
+    expect(specs.map((spec) => spec.label)).toEqual(["65", "75", "85"]);
+    expect(specs.map((spec) => spec.codeSlot)).toEqual(["65", "75", "85"]);
     expect(specs.map((spec) => spec.id)).toEqual([
       "press-code65",
-      "press-code55",
+      "press-code75",
+      "press-code85",
     ]);
   });
 
-  it("uses the same 65/55 boards on R95D ASSEMBLY", () => {
+  it("uses the same 65/75/85 boards on R95D ASSEMBLY", () => {
     const specs = buildS90dEntryBoardSpecs("ASSEMBLY", R95D_MANUAL_ENTRY_CONFIG);
-    expect(specs).toHaveLength(2);
-    expect(specs.map((spec) => spec.label)).toEqual(["65", "55"]);
+    expect(specs).toHaveLength(3);
+    expect(specs.map((spec) => spec.label)).toEqual(["65", "75", "85"]);
     expect(specs.map((spec) => spec.id)).toEqual([
       "assembly-code65",
-      "assembly-code55",
+      "assembly-code75",
+      "assembly-code85",
     ]);
   });
 
-  it("migrates legacy R95D 75 boards onto 55", () => {
+  it("migrates legacy R95D 55 boards onto 75", () => {
     const boards = resolveProcessBoards(
       {
         boards: [
@@ -101,9 +103,9 @@ describe("s90dEntryBoardSpecs", () => {
             shifts: { "08~10": { okQty: 10, ngQty: 0, defects: {} } },
           },
           {
-            id: "press-code75",
+            id: "press-code55",
             productCode: "R95D",
-            codeSlot: "75",
+            codeSlot: "55",
             shifts: { "08~10": { okQty: 8, ngQty: 1, defects: {} } },
           },
         ],
@@ -114,11 +116,12 @@ describe("s90dEntryBoardSpecs", () => {
 
     expect(boards.map((board) => board.id)).toEqual([
       "press-code65",
-      "press-code55",
+      "press-code75",
+      "press-code85",
     ]);
-    expect(boards.map((board) => board.codeSlot)).toEqual(["65", "55"]);
-    expect(boards.find((board) => board.id === "press-code55")?.shifts["08~10"].okQty).toBe(
-      8,
-    );
+    expect(boards.map((board) => board.codeSlot)).toEqual(["65", "75", "85"]);
+    expect(
+      boards.find((board) => board.id === "press-code75")?.shifts["08~10"].okQty,
+    ).toBe(8);
   });
 });
