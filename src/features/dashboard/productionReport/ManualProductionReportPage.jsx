@@ -48,6 +48,8 @@ export default function ManualProductionReportPage({
   });
   const [chartModalOpen, setChartModalOpen] = useState(false);
   const [summaryViewGroup, setSummaryViewGroup] = useState("");
+  const [processDirty, setProcessDirty] = useState(false);
+  const processSaveRef = useRef(null);
   const {
     loading,
     saving,
@@ -249,6 +251,10 @@ export default function ManualProductionReportPage({
     [activeTab, monthDayKeys, rt, saveProcessMonth],
   );
 
+  const handleProcessToolbarSave = useCallback(() => {
+    processSaveRef.current?.();
+  }, []);
+
   const handleExportExcel = useCallback(() => {
     exportMonthToExcel(isProcessTab ? activeTab : null);
     setSaveAlert({
@@ -368,7 +374,8 @@ export default function ManualProductionReportPage({
                   ))}
                 </select>
               </label>
-              {isSummaryTab && summaryViewGroups.length >= 2 ? (
+              {(isSummaryTab || isProcessTab) &&
+              summaryViewGroups.length >= 2 ? (
                 <div className="s90d-toolbar-field">
                   <span className="s90d-toolbar-field-label">
                     {rt("summaryViewLabel", "Loại xem")}
@@ -432,6 +439,21 @@ export default function ManualProductionReportPage({
                     onClick={() => setChartModalOpen(true)}
                   >
                     {rt("viewChart", "Xem biểu đồ")}
+                  </button>
+                ) : null}
+
+                {isProcessTab ? (
+                  <button
+                    type="button"
+                    className={`s90d-save-btn${
+                      processDirty ? " s90d-save-btn--dirty" : ""
+                    }`}
+                    disabled={!processDirty || saving || loading}
+                    onClick={handleProcessToolbarSave}
+                  >
+                    {saving
+                      ? rt("savingManual", "Đang lưu…")
+                      : rt("saveManual", "Lưu")}
                   </button>
                 ) : null}
               </div>
@@ -529,6 +551,9 @@ export default function ManualProductionReportPage({
               saveProcessDraft={saveProcessDraft}
               loadProcessDraft={loadProcessDraft}
               clearProcessDraft={clearProcessDraft}
+              viewGroup={activeSummaryViewGroup}
+              onDirtyChange={setProcessDirty}
+              saveRef={processSaveRef}
             />
           ) : null}
         </>

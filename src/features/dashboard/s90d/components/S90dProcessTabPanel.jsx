@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
@@ -15,6 +15,8 @@ import {
   resolveProcessBoards,
   updateProcessMonthShiftField,
 } from "../lib/s90dManualEntries";
+import { filterSpecsBySummaryViewGroup } from "../lib/s90dManualEntryReportConfig";
+import { useS90dInputCellNav } from "./useS90dInputCellNav";
 
 const ProcessBoardCard = memo(function ProcessBoardCard({
   board,
@@ -54,6 +56,9 @@ export default function S90dProcessTabPanel({
   saveProcessDraft,
   loadProcessDraft,
   clearProcessDraft,
+  viewGroup = "",
+  onDirtyChange,
+  saveRef,
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
@@ -64,6 +69,8 @@ export default function S90dProcessTabPanel({
   const [selectedDateKey, setSelectedDateKey] = useState(() =>
     pickDefaultDateKey(monthDayKeys),
   );
+  const navRootRef = useRef(null);
+  useS90dInputCellNav(navRootRef);
 
   const processLabel = t(`areas.${process}`, { defaultValue: process });
   const monthMinDate = monthDayKeys[0] ?? "";
@@ -153,9 +160,14 @@ export default function S90dProcessTabPanel({
     [defaultProductCode, process, selectedDayEntry],
   );
 
+  const visibleBoards = useMemo(
+    () => filterSpecsBySummaryViewGroup(selectedBoards, viewGroup),
+    [selectedBoards, viewGroup],
+  );
+
   const boardSummaries = useMemo(
     () =>
-      selectedBoards.map((board) => ({
+      visibleBoards.map((board) => ({
         board,
         summary: buildProcessShiftSummaryFromManual({
           boardEntry: board,
@@ -163,7 +175,7 @@ export default function S90dProcessTabPanel({
           dateLabel: formatS90dDailyDateLabel(selectedDateKey),
         }),
       })),
-    [process, selectedBoards, selectedDateKey],
+    [process, visibleBoards, selectedDateKey],
   );
 
   const updateShiftField = useCallback(
@@ -206,6 +218,22 @@ export default function S90dProcessTabPanel({
     }
   }, [clearProcessDraft, isDirty, localByDate, monthKey, onSave, process, saving]);
 
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    return () => onDirtyChange?.(false);
+  }, [onDirtyChange]);
+
+  useEffect(() => {
+    if (!saveRef) return undefined;
+    saveRef.current = handleSave;
+    return () => {
+      saveRef.current = null;
+    };
+  }, [handleSave, saveRef]);
+
   const goToAdjacentDay = useCallback(
     (direction) => {
       if (selectedDateIndex < 0) return;
@@ -218,6 +246,7 @@ export default function S90dProcessTabPanel({
 
   return (
     <section
+      ref={navRootRef}
       className="s90d-report-section"
       role="tabpanel"
       aria-label={processLabel}
@@ -265,17 +294,6 @@ export default function S90dProcessTabPanel({
             ›
           </button>
         </div>
-
-        <button
-          type="button"
-          className={`s90d-save-btn${isDirty ? " s90d-save-btn--dirty" : ""}`}
-          disabled={!isDirty || saving}
-          onClick={handleSave}
-        >
-          {saving
-            ? rt("savingManual", "Đang lưu…")
-            : rt("saveManual", "Lưu")}
-        </button>
       </div>
 
       <div className="s90d-daily-grid">
@@ -287,7 +305,7 @@ export default function S90dProcessTabPanel({
             process={process}
             selectedDateKey={selectedDateKey}
             boardIndex={index + 1}
-            boardCount={selectedBoards.length}
+            boardCount={visibleBoards.length}
             onShiftFieldChange={shiftHandlers.get(board.id)}
           />
         ))}

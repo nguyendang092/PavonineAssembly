@@ -7,10 +7,6 @@ export const ROUTE_CHUNK_LOADERS = {
     import("@/features/dashboard/AP5ProductionReportPage"),
   "/s95h-production-report": () =>
     import("@/features/dashboard/S95HProductionReportPage"),
-  "/r95d-production-report": () =>
-    import("@/features/dashboard/R95DProductionReportPage"),
-  "/r95h-production-report": () =>
-    import("@/features/dashboard/R95DProductionReportPage"),
   "/bangkhen1": () => import("@/components/ui/CertificateGenerator1"),
   "/bangkhen2": () => import("@/components/ui/CertificateGenerator2"),
   "/nhietdo": () => import("@/components/ui/TemperatureMonitor"),

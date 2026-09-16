@@ -7,7 +7,6 @@ import {
   S95H_BOARD_SPECS,
   S95H_PROCESSES,
   S95H_SUMMARY_VIEW_GROUPS,
-  R95D_SUMMARY_VIEW_GROUPS,
 } from "../s90d/lib/s90dManualEntryReportConfig";
 import { S90D_PROCESSES } from "../s90d/lib/s90dDefectColumns";
 import { WORKPLACE_PRODUCTION_PATHS_S90D } from "../workplace/workplaceProductionPaths";
@@ -59,23 +58,4 @@ export const S95H_PRODUCTION_REPORT_CONFIG = Object.freeze({
   excelSheetName: "S95H_Nhap",
   excelFilePrefix: "S95H",
   chartReportBadgeKey: "chartReportBadgeS95h",
-});
-
-export const R95D_PRODUCTION_REPORT_CONFIG = Object.freeze({
-  id: "r95d",
-  i18nPrefix: "r95dReport",
-  defaultProductCode: "R95D",
-  processes: S90D_PROCESSES,
-  fixedBoardSpecs: null,
-  fixedBoardSpecsAllProcesses: false,
-  usesFixedBoardSpecs: false,
-  usesProductSubCodes: true,
-  firebaseRoot: "r95d/manualEntries",
-  storageKey: "r95d-manual-entries-v1",
-  excelSheetName: "R95D_Nhap",
-  excelFilePrefix: "R95D",
-  chartReportBadgeKey: "chartReportBadgeR95d",
-  codeSlots: ["65", "75", "85"],
-  codeSlotLabelPrefix: "",
-  summaryViewGroups: R95D_SUMMARY_VIEW_GROUPS,
 });

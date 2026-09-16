@@ -3,7 +3,11 @@ import {
   buildS90dEntryBoardSpecs,
   inferCodeSlotFromBoardId,
 } from "./s90dEntryBoardSpecs";
-import { R95D_MANUAL_ENTRY_CONFIG, S90D_MANUAL_ENTRY_CONFIG } from "./s90dManualEntryReportConfig";
+import {
+  R95D_MANUAL_ENTRY_CONFIG,
+  S90D_MANUAL_ENTRY_CONFIG,
+  filterSpecsBySummaryViewGroup,
+} from "./s90dManualEntryReportConfig";
 import { resolveProcessBoards } from "./s90dManualEntries";
 
 describe("s90dEntryBoardSpecs", () => {
@@ -123,5 +127,22 @@ describe("s90dEntryBoardSpecs", () => {
     expect(
       boards.find((board) => board.id === "press-code75")?.shifts["08~10"].okQty,
     ).toBe(8);
+  });
+
+  it("filters R95D process boards by 65 / 75 / 85 view groups", () => {
+    const boards = resolveProcessBoards(
+      { boards: [] },
+      "PRESS",
+      R95D_MANUAL_ENTRY_CONFIG,
+    );
+    expect(
+      filterSpecsBySummaryViewGroup(boards, "65").map((board) => board.codeSlot),
+    ).toEqual(["65"]);
+    expect(
+      filterSpecsBySummaryViewGroup(boards, "75").map((board) => board.codeSlot),
+    ).toEqual(["75"]);
+    expect(
+      filterSpecsBySummaryViewGroup(boards, "85").map((board) => board.codeSlot),
+    ).toEqual(["85"]);
   });
 });

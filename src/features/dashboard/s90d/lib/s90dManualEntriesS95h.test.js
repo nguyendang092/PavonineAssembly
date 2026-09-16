@@ -113,4 +113,20 @@ describe("s90dManualEntries S95H Deco/Chassis boards", () => {
       "S95H55 Chassis",
     ]);
   });
+
+  it("filters S95H process boards the same way as summary view groups", () => {
+    const boards = resolveProcessBoards(
+      createEmptyProcessDayEntry("PRESS", S95H_MANUAL_ENTRY_CONFIG),
+      "PRESS",
+      S95H_MANUAL_ENTRY_CONFIG,
+    );
+    expect(
+      filterSpecsBySummaryViewGroup(boards, "deco").map((board) => board.productCode),
+    ).toEqual(["S95H65 Deco", "S95H55 Deco"]);
+    expect(
+      filterSpecsBySummaryViewGroup(boards, "chassis").map(
+        (board) => board.productCode,
+      ),
+    ).toEqual(["S95H65 Chassis", "S95H55 Chassis"]);
+  });
 });

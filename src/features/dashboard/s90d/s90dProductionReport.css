@@ -247,8 +247,7 @@
   color: #fff;
 }
 
-.s90d-report-page--ap5 .s90d-view-toggle-btn,
-.s90d-report-page--r95d .s90d-view-toggle-btn {
+.s90d-report-page--ap5 .s90d-view-toggle-btn {
   min-width: 4.5rem;
   padding: 0 0.7rem;
 }
@@ -285,7 +284,8 @@
   }
 
   .s90d-toolbar-actions-row .s90d-excel-btn,
-  .s90d-toolbar-actions-row .s90d-chart-btn {
+  .s90d-toolbar-actions-row .s90d-chart-btn,
+  .s90d-toolbar-actions-row .s90d-save-btn {
     flex: 1 1 auto;
     min-width: 0;
   }
@@ -308,17 +308,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.75rem;
   margin-bottom: 1rem;
   padding: 0.65rem 0.85rem;
   border-radius: 0.625rem;
   border: 1px solid #c7d2fe;
   background: #eef2ff;
-}
-
-.s90d-process-toolbar .s90d-save-btn {
-  margin-left: auto;
 }
 
 .s90d-save-btn {
@@ -333,6 +329,14 @@
   font-weight: 800;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.s90d-toolbar-actions-row .s90d-save-btn {
+  height: var(--s90d-toolbar-control-h);
+  min-height: var(--s90d-toolbar-control-h);
+  padding: 0 0.875rem;
+  font-size: var(--s90d-toolbar-control-font);
+  border-radius: var(--s90d-toolbar-control-radius);
 }
 
 .s90d-save-btn:hover:not(:disabled) {

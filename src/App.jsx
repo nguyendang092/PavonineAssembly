@@ -62,9 +62,6 @@ const AP5ProductionReportPage = lazyImport(
 const S95HProductionReportPage = lazyImport(
   () => import("@/features/dashboard/S95HProductionReportPage"),
 );
-const R95DProductionReportPage = lazyImport(
-  () => import("@/features/dashboard/R95DProductionReportPage"),
-);
 const CertificateGenerator1 = lazyImport(
   () => import("@/components/ui/CertificateGenerator1"),
 );
@@ -112,7 +109,6 @@ const ROUTE_COMPONENTS = {
   S90DProductionReportPage,
   AP5ProductionReportPage,
   S95HProductionReportPage,
-  R95DProductionReportPage,
   CertificateGenerator1,
   CertificateGenerator2,
   TemperatureMonitor,

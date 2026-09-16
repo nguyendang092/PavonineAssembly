@@ -57,11 +57,6 @@ export const menuConfig = [
                 path: "/s95h-production-report",
               },
               {
-                key: "r95dProductionReport",
-                label: "navbar.r95dProductionReport",
-                path: "/r95d-production-report",
-              },
-              {
                 key: "caiTien",
                 label: "navbar.caiTien",
                 path: "/performance",
@@ -178,8 +173,6 @@ export const routeConfig = [
   { path: "/s90d-production-report", element: "S90DProductionReportPage" },
   { path: "/ap5-production-report", element: "AP5ProductionReportPage" },
   { path: "/s95h-production-report", element: "S95HProductionReportPage" },
-  { path: "/r95d-production-report", element: "R95DProductionReportPage" },
-  { path: "/r95h-production-report", element: "R95DProductionReportPage" },
   { path: "/bangkhen1", element: "CertificateGenerator1" },
   { path: "/bangkhen2", element: "CertificateGenerator2" },
   { path: "/nhietdo", element: "TemperatureMonitor" },

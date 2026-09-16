@@ -213,4 +213,24 @@ describe("s90dManualEntries AP5 multi-board edits", () => {
       filterSpecsBySummaryViewGroup(specs, "ap5fl").map((spec) => spec.productCode),
     ).toEqual(["AP5FL"]);
   });
+
+  it("keeps both MC AP5FL boards in the FL view group", () => {
+    const mcBoards = resolveProcessBoards(
+      createEmptyProcessDayEntry("MC", AP5_MANUAL_ENTRY_CONFIG),
+      "MC",
+      AP5_MANUAL_ENTRY_CONFIG,
+    );
+    expect(mcBoards.map((board) => board.id)).toEqual([
+      "ap5ff",
+      "ap5fz",
+      "ap5fl",
+      "ap5fl-mc",
+    ]);
+    expect(
+      filterSpecsBySummaryViewGroup(mcBoards, "ap5fl").map((board) => board.id),
+    ).toEqual(["ap5fl", "ap5fl-mc"]);
+    expect(
+      filterSpecsBySummaryViewGroup(mcBoards, "ap5ff").map((board) => board.id),
+    ).toEqual(["ap5ff"]);
+  });
 });

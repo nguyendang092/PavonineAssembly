@@ -38,7 +38,12 @@ export const AP5_BOARD_SPECS = Object.freeze([
 /** Tab MC có thêm 1 bảng AP5FL — tổng 4 bảng nhập liệu. */
 export const AP5_MC_BOARD_SPECS = Object.freeze([
   ...AP5_BOARD_SPECS,
-  { id: "ap5fl-mc", label: "AP5FL GE", productCode: "AP5FL" },
+  {
+    id: "ap5fl-mc",
+    label: "AP5FL GE",
+    productCode: "AP5FL",
+    viewGroup: "ap5fl",
+  },
 ]);
 
 export const AP5_PROCESS_BOARD_SPECS = Object.freeze({
@@ -100,9 +105,21 @@ export function resolveProcessBoardSpecs(process, config) {
 export function resolveSpecSummaryViewGroup(spec) {
   const explicit = String(spec?.viewGroup ?? "").trim().toLowerCase();
   if (explicit) return explicit;
-  const hay = `${spec?.id ?? ""} ${spec?.productCode ?? ""} ${spec?.label ?? ""}`.toLowerCase();
+
+  const codeSlot = String(spec?.codeSlot ?? "").trim().toLowerCase();
+  if (codeSlot === "55") return "75";
+  if (codeSlot) return codeSlot;
+
+  const hay = `${spec?.id ?? ""} ${spec?.productCode ?? ""} ${spec?.label ?? ""}`
+    .toLowerCase()
+    .replace(/\s+/g, "");
   if (hay.includes("chassis")) return "chassis";
   if (hay.includes("deco")) return "deco";
+  if (hay.includes("ap5ff")) return "ap5ff";
+  if (hay.includes("ap5fz")) return "ap5fz";
+  if (hay.includes("ap5fl")) return "ap5fl";
+  const r95d = hay.match(/r95d(65|75|85|55)/);
+  if (r95d) return r95d[1] === "55" ? "75" : r95d[1];
   return "";
 }
 
