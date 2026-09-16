@@ -1580,8 +1580,35 @@ body.s90d-chart-modal-open {
   white-space: normal;
 }
 
-.s90d-report-page--s95h .s90d-process-table-layout .s90d-col-product {
-  width: 13.25rem;
+.s90d-process-table-layout--wide-product {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.s90d-process-table-layout--wide-product col.s90d-col-product,
+.s90d-process-table-layout--wide-product th.s90d-col-product,
+.s90d-process-table-layout--wide-product td.s90d-col-product {
+  width: 7rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+  letter-spacing: 0;
+}
+
+.s90d-process-table-layout--wide-product col.s90d-col-defect,
+.s90d-process-table-layout--wide-product .s90d-head-defect,
+.s90d-process-table-layout--wide-product .s90d-defect-cell {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.s90d-report-page--s95h
+  .s90d-process-table-layout:not(.s90d-summary-process-table)
+  .s90d-col-product {
+  width: 7rem;
 }
 
 .s90d-report-page--s95h .s90d-summary-process-table .s90d-col-product--full {

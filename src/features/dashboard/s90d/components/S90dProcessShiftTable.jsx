@@ -1,5 +1,6 @@
 import React, { memo, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
 import {
@@ -239,6 +240,7 @@ export default memo(function S90dProcessShiftTable({
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
+  const { id: reportId } = useProductionReportContext();
   const [lateShiftsExpanded, setLateShiftsExpanded] = useState(false);
   const totalRow = processSummary.totalRow;
   const totalNgQty = totalRow?.ngQty ?? 0;
@@ -367,7 +369,26 @@ export default memo(function S90dProcessShiftTable({
       ) : null}
 
       <div className="s90d-table-wrap s90d-table-wrap--board">
-        <table className="s90d-board-table s90d-process-table-layout">
+        <table
+          className={`s90d-board-table s90d-process-table-layout${
+            reportId === "s95h" ? " s90d-process-table-layout--wide-product" : ""
+          }`}
+        >
+          <colgroup>
+            <col className="s90d-col-date" />
+            <col className="s90d-col-line" />
+            <col className="s90d-col-product" />
+            {showCodeSlotColumn ? <col className="s90d-col-code-slot" /> : null}
+            <col className="s90d-col-process" />
+            <col className="s90d-col-total-qty" />
+            <col className="s90d-col-ok" />
+            <col className="s90d-col-ng" />
+            <col className="s90d-col-yield" />
+            <col className="s90d-col-ng-rate" />
+            {S90D_DEFECT_COLUMNS.map(({ key }) => (
+              <col key={key} className="s90d-col-defect" />
+            ))}
+          </colgroup>
           <thead>
             <tr className="s90d-head-group">
               <th colSpan={infoColCount} className="s90d-head-group-shift">
