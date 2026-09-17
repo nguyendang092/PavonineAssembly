@@ -567,7 +567,7 @@ export function buildDailySummaryFromManual({
 
   const outputProcess = config.processes[config.processes.length - 1];
   const totalRow = buildDailyTotalRow(processRows, {
-    outputProcessOnly: config.fixedBoardSpecsAllProcesses,
+    outputProcessOnly: false,
     outputProcess,
     processes: config.processes,
   });
@@ -672,7 +672,7 @@ export function buildProductScopedDailySummary(
 
   const outputProcess = processes[processes.length - 1];
   const totalRow = buildDailyTotalRow(processRows, {
-    outputProcessOnly: config.fixedBoardSpecsAllProcesses,
+    outputProcessOnly: false,
     outputProcess,
     processes: config.processes,
   });
@@ -1037,7 +1037,7 @@ export function buildGrandTotalSummaryFromManual(
 
   const outputProcess = config.processes[config.processes.length - 1];
   const totalRow = buildGrandTotalRow(processRows, {
-    outputProcessOnly: config.fixedBoardSpecsAllProcesses,
+    outputProcessOnly: false,
     outputProcess,
     processes: config.processes,
   });

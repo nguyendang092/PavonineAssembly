@@ -10,6 +10,7 @@ import {
 import {
   AP5_MANUAL_ENTRY_CONFIG,
   R95D_MANUAL_ENTRY_CONFIG,
+  S95H_MANUAL_ENTRY_CONFIG,
 } from "./s90dManualEntryReportConfig";
 import { createEmptyDayEntry } from "./s90dManualEntries";
 
@@ -255,7 +256,7 @@ describe("buildS90dFromManual", () => {
     expect(summary.totalRow.totalQty).toBe(56);
   });
 
-  it("uses assembly output for AP5 total row when full process chain has data", () => {
+  it("sums all process quantities for AP5 total row like S90D", () => {
     const dayEntry = createEmptyDayEntry(AP5_MANUAL_ENTRY_CONFIG);
     const processes = ["PRESS", "MC", "HAIRLINE", "ANODIZING", "ASSEMBLY"];
 
@@ -280,10 +281,34 @@ describe("buildS90dFromManual", () => {
     expect(assemblyRow?.totalQty).toBe(100);
     expect(assemblyRow?.okQty).toBe(95);
     expect(assemblyRow?.yieldPct).toBe(95);
-    expect(daily.totalRow.totalQty).toBe(100);
-    expect(daily.totalRow.okQty).toBe(95);
+    expect(daily.totalRow.totalQty).toBe(500);
+    expect(daily.totalRow.okQty).toBe(495);
+    expect(daily.totalRow.yieldPct).toBeCloseTo(99, 1);
+    expect(daily.totalRow.ngRatePct).toBe(1);
+  });
+
+  it("sums all process quantities for S95H total row like S90D", () => {
+    const dayEntry = createEmptyDayEntry(S95H_MANUAL_ENTRY_CONFIG);
+    dayEntry.PRESS.boards[0].shifts["08~10"] = {
+      okQty: 100,
+      ngQty: 0,
+      defects: {},
+    };
+    dayEntry.ASSEMBLY.boards[0].shifts["08~10"] = {
+      okQty: 90,
+      ngQty: 10,
+      defects: { scratch: 10 },
+    };
+
+    const daily = buildDailySummaryFromManual({
+      dayEntry,
+      dateKey: "2026-07-01",
+      manualEntryConfig: S95H_MANUAL_ENTRY_CONFIG,
+    });
+
+    expect(daily.totalRow.totalQty).toBe(200);
+    expect(daily.totalRow.okQty).toBe(190);
     expect(daily.totalRow.yieldPct).toBe(95);
-    expect(daily.totalRow.ngRatePct).toBe(5);
   });
 
   it("chains AP5 board yields separately per product code", () => {
@@ -377,8 +402,10 @@ describe("buildS90dFromManual", () => {
     expect(mcRow?.totalQty).toBe(0);
     expect(mcRow?.yieldPct).toBeNull();
     expect(assemblyRow?.yieldPct).toBeNull();
-    expect(daily.totalRow.yieldPct).toBeNull();
-    expect(daily.totalRow.ngRatePct).toBeNull();
+    expect(daily.totalRow.totalQty).toBe(200);
+    expect(daily.totalRow.okQty).toBe(195);
+    expect(daily.totalRow.yieldPct).toBeCloseTo(97.5, 1);
+    expect(daily.totalRow.ngRatePct).toBe(2.5);
   });
 
   it("aggregates defect images into daily and grand totals", () => {
@@ -455,11 +482,11 @@ describe("buildS90dFromManual", () => {
     );
 
     expect(scopedFf.productCode).toBe("AP5FF");
-    expect(scopedFf.totalRow.totalQty).toBe(100);
-    expect(scopedFf.totalRow.okQty).toBe(95);
+    expect(scopedFf.totalRow.totalQty).toBe(200);
+    expect(scopedFf.totalRow.okQty).toBe(195);
     expect(scopedFz.productCode).toBe("AP5FZ");
-    expect(scopedFz.totalRow.totalQty).toBe(80);
-    expect(scopedFz.totalRow.okQty).toBe(70);
+    expect(scopedFz.totalRow.totalQty).toBe(180);
+    expect(scopedFz.totalRow.okQty).toBe(150);
     expect(
       scopedFf.processDetails.every((detail) => detail.boardRows.length === 0),
     ).toBe(true);
@@ -470,7 +497,7 @@ describe("buildS90dFromManual", () => {
       AP5_MANUAL_ENTRY_CONFIG,
     );
     expect(grandFf.productCode).toBe("AP5FF");
-    expect(grandFf.totalRow.okQty).toBe(95);
+    expect(grandFf.totalRow.okQty).toBe(195);
   });
 
   it("scopes R95D daily summary to type 65, 75 and 85 as separate boards", () => {
