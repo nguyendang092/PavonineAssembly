@@ -1,4 +1,3 @@
-import * as XLSX from "@e965/xlsx";
 import {
   S90D_DEFECT_COLUMNS,
   S90D_PROCESSES,
@@ -30,6 +29,11 @@ export function buildS90dExcelHeaders() {
   return [...BASE_HEADERS, ...S90D_DEFECT_COLUMNS.map(({ vi }) => vi)];
 }
 
+async function loadXlsx() {
+  const mod = await import("@e965/xlsx");
+  return mod.default ?? mod;
+}
+
 function trimCell(value) {
   return value === undefined || value === null ? "" : String(value).trim();
 }
@@ -39,6 +43,7 @@ function normalizeHeader(value) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
     .replace(/\s+/g, " ");
 }
 
@@ -51,11 +56,15 @@ function parseExcelDate(value, workbook) {
       : "";
 
   if (typeof value === "number" && Number.isFinite(value)) {
-    const parsed = XLSX.SSF.parse_date_code(value, {
-      date1904: workbook?.Workbook?.WBProps?.date1904 || false,
-    });
-    if (parsed?.y && parsed?.m && parsed?.d) {
-      return fmt(parsed.y, parsed.m, parsed.d);
+    const date1904 = Boolean(workbook?.Workbook?.WBProps?.date1904);
+    const utcDays = date1904 ? value : value - 25569;
+    const parsed = new Date(Math.round(utcDays * 86400 * 1000));
+    if (!Number.isNaN(parsed.getTime())) {
+      return fmt(
+        parsed.getUTCFullYear(),
+        parsed.getUTCMonth() + 1,
+        parsed.getUTCDate(),
+      );
     }
   }
 
@@ -116,6 +125,7 @@ function buildHeaderIndexMap(headerRow) {
       defects: Object.fromEntries(
         S90D_DEFECT_COLUMNS.map(({ key }, index) => [key, index + 6]),
       ),
+      legacyTape: -1,
     };
   }
 
@@ -135,6 +145,7 @@ function buildHeaderIndexMap(headerRow) {
       productCode: 3,
       okQty: 4,
       defects: Object.fromEntries(S90D_DEFECT_COLUMNS.map(({ key }) => [key, -1])),
+      legacyTape: -1,
     };
   }
 
@@ -146,6 +157,7 @@ function buildHeaderIndexMap(headerRow) {
     productCode: -1,
     okQty: -1,
     defects: Object.fromEntries(S90D_DEFECT_COLUMNS.map(({ key }) => [key, -1])),
+    legacyTape: -1,
   };
 
   headerRow.forEach((cell, index) => {
@@ -187,6 +199,15 @@ function buildHeaderIndexMap(headerRow) {
         map.defects[key] = index;
       }
     });
+
+    if (
+      header === "loi nhuom" ||
+      header === "nhuom" ||
+      header === "tape" ||
+      header.includes("피막")
+    ) {
+      map.legacyTape = index;
+    }
   });
 
   if (normalizedHeaders.includes("ngay") && map.dateKey < 0) {
@@ -240,7 +261,7 @@ export function buildS90dExcelRowsFromStore(store, monthDayKeys, options = {}) {
   return rows;
 }
 
-export function exportS90dManualMonthToExcel({
+export async function exportS90dManualMonthToExcel({
   store,
   monthDayKeys,
   monthKey,
@@ -248,6 +269,7 @@ export function exportS90dManualMonthToExcel({
   sheetName = "S90D_Nhap",
   filePrefix = "S90D",
 }) {
+  const XLSX = await loadXlsx();
   const headers = buildS90dExcelHeaders();
   const rows = buildS90dExcelRowsFromStore(store, monthDayKeys, { processFilter });
   const guideRows = [
@@ -313,6 +335,9 @@ export function parseS90dManualExcelRows(sheetRows, workbook) {
         return [key, col >= 0 ? parseNonNegativeInt(row[col]) : 0];
       }),
     );
+    if (headerMap.legacyTape >= 0) {
+      defects.stain += parseNonNegativeInt(row[headerMap.legacyTape]);
+    }
 
     const hasQty =
       okQty > 0 || S90D_DEFECT_COLUMNS.some(({ key }) => defects[key] > 0);
@@ -336,6 +361,7 @@ export async function readS90dManualExcelFile(
   file,
   { preferredSheetName = "S90D_Nhap" } = {},
 ) {
+  const XLSX = await loadXlsx();
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheetName =

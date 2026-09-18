@@ -90,7 +90,13 @@ export const S95H_BOARD_SPECS = Object.freeze([
   },
 ]);
 
-export const S95H_PROCESSES = AP5_PROCESSES;
+export const S95H_PROCESSES = Object.freeze([
+  "MC",
+  "PRESS",
+  "HAIRLINE",
+  "ANODIZING",
+  "ASSEMBLY",
+]);
 
 export function resolveProcessBoardSpecs(process, config) {
   const processKey = String(process ?? "").trim();

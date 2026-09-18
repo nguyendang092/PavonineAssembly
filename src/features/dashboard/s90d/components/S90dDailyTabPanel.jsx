@@ -201,6 +201,7 @@ function S90dDailyBoardCard({
   selectedDateKey = "",
   isAllDaysView = false,
   defaultProductCode,
+  targetDayCount = 1,
   rt,
 }) {
   const boardExportRef = useRef(null);
@@ -209,6 +210,8 @@ function S90dDailyBoardCard({
     () => resolveProcessDetails(summary),
     [summary],
   );
+  const { id: reportId } = useProductionReportContext();
+  const showTargetCols = reportId === "s95h" && !isTotalView;
   const dateLabel = isTotalView
     ? monthDisplayLabel
     : formatShortDateLabel(summary?.dateKey, summary?.dateLabel);
@@ -354,6 +357,8 @@ function S90dDailyBoardCard({
             percentRow={summary.percentRow}
             dateLabel={dateLabel}
             productCode={productCode}
+            targetDayCount={targetDayCount}
+            showTargetCols={showTargetCols}
           />
         </>
       ) : (
@@ -438,6 +443,11 @@ export default function S90dDailyTabPanel({
                 isTotalView
                 monthDisplayLabel={monthDisplayLabel}
                 defaultProductCode={section.productCode}
+                targetDayCount={Math.max(
+                  1,
+                  section.monthDailySummaries.filter((daily) => daily.hasData)
+                    .length,
+                )}
                 rt={rt}
               />
             ))}
@@ -537,6 +547,9 @@ export default function S90dDailyTabPanel({
           monthDisplayLabel={monthDisplayLabel}
           selectedDateKey={selectedDateKey}
           defaultProductCode={defaultProductCode}
+          targetDayCount={
+            isTotalView ? Math.max(1, daysWithData.length) : 1
+          }
           rt={rt}
         />
       );

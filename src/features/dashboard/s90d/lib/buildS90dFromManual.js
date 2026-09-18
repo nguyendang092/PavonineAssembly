@@ -3,6 +3,7 @@ import {
   S90D_DEFECT_COLUMNS,
   S90D_PROCESSES,
   createEmptyDefectCounts,
+  normalizeDefectCounts,
   sumDefectCounts,
 } from "./s90dDefectColumns";
 import {
@@ -108,7 +109,7 @@ function buildShiftRow(
   { codeSlot = null } = {},
 ) {
   const okQty = shiftEntry.okQty ?? 0;
-  const defects = { ...createEmptyDefectCounts(), ...shiftEntry.defects };
+  const defects = normalizeDefectCounts(shiftEntry.defects);
   const ngQty = sumDefectCounts(defects);
   const totalQty = okQty + ngQty;
   const defectImages = normalizeDefectImageUrls(shiftEntry.defectImages);

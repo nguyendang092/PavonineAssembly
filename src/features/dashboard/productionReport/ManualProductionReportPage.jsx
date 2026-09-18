@@ -8,7 +8,6 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 import AlertMessage from "@/components/ui/AlertMessage";
-import LoadingBlock from "@/components/ui/LoadingBlock";
 import S90dProcessTabPanel from "../s90d/components/S90dProcessTabPanel";
 import S90dDailyTabPanel from "../s90d/components/S90dDailyTabPanel";
 import S90dSummaryChartModal from "../s90d/components/S90dSummaryChartModal";
@@ -255,13 +254,21 @@ export default function ManualProductionReportPage({
     processSaveRef.current?.();
   }, []);
 
-  const handleExportExcel = useCallback(() => {
-    exportMonthToExcel(isProcessTab ? activeTab : null);
-    setSaveAlert({
-      show: true,
-      type: "success",
-      message: rt("exportSuccess", "✅ Đã xuất file Excel"),
-    });
+  const handleExportExcel = useCallback(async () => {
+    try {
+      await exportMonthToExcel(isProcessTab ? activeTab : null);
+      setSaveAlert({
+        show: true,
+        type: "success",
+        message: rt("exportSuccess", "✅ Đã xuất file Excel"),
+      });
+    } catch {
+      setSaveAlert({
+        show: true,
+        type: "error",
+        message: rt("exportFailed", "❌ Không xuất được file Excel"),
+      });
+    }
   }, [activeTab, exportMonthToExcel, isProcessTab, rt]);
 
   const handleExcelFileChange = useCallback(
@@ -510,54 +517,54 @@ export default function ManualProductionReportPage({
       />
 
       {loading ? (
-        <LoadingBlock label={rt("loadingManual", "Đang tải dữ liệu…")} />
-      ) : (
-        <>
-          {!hasAnyData ? (
-            <div className="s90d-demo-banner dashboard-no-print">
-              {rt(
-                "manualEntryHint",
-                "Chưa có số liệu. Mở tab PRESS, HAIRLINE, ANODIZING hoặc ASSEMBLY để nhập số lượng theo ngày.",
-              )}
-            </div>
-          ) : null}
+        <div className="s90d-sync-banner" role="status">
+          {rt("loadingManual", "Đang tải dữ liệu…")}
+        </div>
+      ) : null}
 
-          {activeTab === BASE_TABS.TOTAL ? (
-            <section
-              className="s90d-report-section"
-              role="tabpanel"
-              aria-label={tabLabels[BASE_TABS.TOTAL]}
-            >
-              <S90dDailyTabPanel variant="total" {...summaryPanelProps} />
-            </section>
-          ) : activeTab === BASE_TABS.DAILY ? (
-            <section
-              className="s90d-report-section"
-              role="tabpanel"
-              aria-label={tabLabels[BASE_TABS.DAILY]}
-            >
-              <S90dDailyTabPanel {...summaryPanelProps} />
-            </section>
-          ) : isProcessTab ? (
-            <S90dProcessTabPanel
-              key={`${activeTab}-${selectedMonthKey}`}
-              process={activeTab}
-              monthKey={selectedMonthKey}
-              monthDayKeys={monthDayKeys}
-              processSyncRevision={processSyncRevision}
-              getProcessEntry={getProcessEntry}
-              onSave={handleProcessSave}
-              saving={saving}
-              saveProcessDraft={saveProcessDraft}
-              loadProcessDraft={loadProcessDraft}
-              clearProcessDraft={clearProcessDraft}
-              viewGroup={activeSummaryViewGroup}
-              onDirtyChange={setProcessDirty}
-              saveRef={processSaveRef}
-            />
-          ) : null}
-        </>
-      )}
+      {!hasAnyData ? (
+        <div className="s90d-demo-banner dashboard-no-print">
+          {rt(
+            "manualEntryHint",
+            "Chưa có số liệu. Mở tab PRESS, HAIRLINE, ANODIZING hoặc ASSEMBLY để nhập số lượng theo ngày.",
+          )}
+        </div>
+      ) : null}
+
+      {activeTab === BASE_TABS.TOTAL ? (
+        <section
+          className="s90d-report-section"
+          role="tabpanel"
+          aria-label={tabLabels[BASE_TABS.TOTAL]}
+        >
+          <S90dDailyTabPanel variant="total" {...summaryPanelProps} />
+        </section>
+      ) : activeTab === BASE_TABS.DAILY ? (
+        <section
+          className="s90d-report-section"
+          role="tabpanel"
+          aria-label={tabLabels[BASE_TABS.DAILY]}
+        >
+          <S90dDailyTabPanel {...summaryPanelProps} />
+        </section>
+      ) : isProcessTab ? (
+        <S90dProcessTabPanel
+          key={`${activeTab}-${selectedMonthKey}`}
+          process={activeTab}
+          monthKey={selectedMonthKey}
+          monthDayKeys={monthDayKeys}
+          processSyncRevision={processSyncRevision}
+          getProcessEntry={getProcessEntry}
+          onSave={handleProcessSave}
+          saving={saving}
+          saveProcessDraft={saveProcessDraft}
+          loadProcessDraft={loadProcessDraft}
+          clearProcessDraft={clearProcessDraft}
+          viewGroup={activeSummaryViewGroup}
+          onDirtyChange={setProcessDirty}
+          saveRef={processSaveRef}
+        />
+      ) : null}
     </div>
   );
 }

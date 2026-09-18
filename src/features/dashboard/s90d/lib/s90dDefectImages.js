@@ -32,6 +32,9 @@ export function normalizeDefectImageUrls(raw) {
   S90D_DEFECT_COLUMNS.forEach(({ key }) => {
     urls[key] = normalizeDefectImageUrl(raw[key]);
   });
+  if (!urls.stain) {
+    urls.stain = normalizeDefectImageUrl(raw.tape);
+  }
   return urls;
 }
 
@@ -45,7 +48,11 @@ export function collectDefectImageLists(entries) {
 
     S90D_DEFECT_COLUMNS.forEach(({ key }) => {
       const raw = map[key];
-      const candidates = Array.isArray(raw) ? raw : [raw];
+      const extra = key === "stain" ? map.tape : undefined;
+      const candidates = [
+        ...(Array.isArray(raw) ? raw : [raw]),
+        ...(extra == null ? [] : Array.isArray(extra) ? extra : [extra]),
+      ];
       candidates.forEach((item) => {
         const url = normalizeDefectImageUrl(item);
         if (url && !lists[key].includes(url)) {

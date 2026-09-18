@@ -17,11 +17,12 @@ export function lazyImport(importFn) {
       const isChunkFail =
         msg.includes("Failed to fetch") ||
         msg.includes("dynamically imported module") ||
-        msg.includes("Importing a module script failed");
+        msg.includes("Importing a module script failed") ||
+        msg.includes("Failed to parse source");
       if (isChunkFail && !sessionStorage.getItem(RELOAD_FLAG)) {
         sessionStorage.setItem(RELOAD_FLAG, "1");
         window.location.reload();
-        return new Promise(() => {});
+        throw e;
       }
       sessionStorage.removeItem(RELOAD_FLAG);
       throw e;

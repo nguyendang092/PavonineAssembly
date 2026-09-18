@@ -803,7 +803,7 @@ const ko = {
     dailyBoardTitle: "S95H 일별 생산 실적표",
     totalBoardTitle: "S95H 월간 총합표",
     manualEntryHint:
-      "데이터 없음. PRESS, MC, HAIRLINE, ANODIZING, ASSEMBLY 공정 탭에서 일별 실적을 입력하세요.",
+      "데이터 없음. MC, PRESS, HAIRLINE, ANODIZING, ASSEMBLY 공정 탭에서 일별 실적을 입력하세요.",
     chartReportBadgeS95h: "S95H 보고",
     dailyProcessExpandHint: "▶를 눌러 S95H65·S95H55 Deco/Chassis 상세 열기",
     productSummaryTabsLabel: "총합 또는 일별 보기",

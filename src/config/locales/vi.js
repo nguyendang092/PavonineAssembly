@@ -807,7 +807,7 @@ const vi = {
     dailyBoardTitle: "Bảng sản lượng S95H theo ngày",
     totalBoardTitle: "Bảng tổng hợp tháng S95H",
     manualEntryHint:
-      "Chưa có số liệu. Mở tab công đoạn (PRESS, MC, HAIRLINE, ANODIZING, ASSEMBLY) để nhập số lượng theo ngày.",
+      "Chưa có số liệu. Mở tab công đoạn (MC, PRESS, HAIRLINE, ANODIZING, ASSEMBLY) để nhập số lượng theo ngày.",
     chartReportBadgeS95h: "Báo cáo S95H",
     dailyProcessExpandHint:
       "Bấm ▶ ở đầu mỗi dòng để mở chi tiết S95H65 / S95H55 Deco & Chassis",

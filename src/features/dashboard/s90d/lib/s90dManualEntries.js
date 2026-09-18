@@ -1,6 +1,7 @@
 import {
   S90D_DEFECT_COLUMNS,
   createEmptyDefectCounts,
+  normalizeDefectCounts,
   sumDefectCounts,
 } from "./s90dDefectColumns";
 import {
@@ -416,9 +417,14 @@ function mergeShiftEntryInto(target, source) {
 
   target.okQty += parseNonNegativeInt(source.okQty);
 
+  const sourceDefects = normalizeDefectCounts(source.defects);
   S90D_DEFECT_COLUMNS.forEach(({ key }) => {
-    target.defects[key] += parseNonNegativeInt(source.defects?.[key]);
-    const imageUrl = normalizeDefectImageUrl(source.defectImages?.[key]);
+    target.defects[key] += sourceDefects[key];
+    const imageUrl =
+      normalizeDefectImageUrl(source.defectImages?.[key]) ||
+      (key === "stain"
+        ? normalizeDefectImageUrl(source.defectImages?.tape)
+        : "");
     if (imageUrl && !target.defectImages[key]) {
       target.defectImages[key] = imageUrl;
     }

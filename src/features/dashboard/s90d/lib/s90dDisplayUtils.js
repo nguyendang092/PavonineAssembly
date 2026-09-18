@@ -6,6 +6,7 @@ import {
 } from "./s90dEntryBoardSpecs";
 import {
   createEmptyDefectCounts,
+  normalizeDefectCounts,
   S90D_DEFECT_COLUMNS,
   sumDefectCounts,
 } from "./s90dDefectColumns";
@@ -81,7 +82,7 @@ export function aggregateBoardRowsByProductGroup(boardRows = [], options = {}) {
         productCode: typeLabel,
         label: typeLabel,
         codeSlot,
-        defects: { ...createEmptyDefectCounts(), ...(row.defects ?? {}) },
+        defects: normalizeDefectCounts(row.defects),
         defectTotal: row.defectTotal ?? sumDefectCounts(row.defects ?? {}),
       };
     });
@@ -122,8 +123,9 @@ export function aggregateBoardRowsByProductGroup(boardRows = [], options = {}) {
     target.totalQty += row.totalQty ?? 0;
     target.okQty += row.okQty ?? 0;
     target.ngQty += row.ngQty ?? 0;
+    const sourceDefects = normalizeDefectCounts(row.defects);
     S90D_DEFECT_COLUMNS.forEach(({ key }) => {
-      target.defects[key] += row.defects?.[key] ?? 0;
+      target.defects[key] += sourceDefects[key];
     });
   });
 

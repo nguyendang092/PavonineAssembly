@@ -129,4 +129,14 @@ describe("s90dManualEntries S95H Deco/Chassis boards", () => {
       ),
     ).toEqual(["S95H65 Chassis", "S95H55 Chassis"]);
   });
+
+  it("lists MC before PRESS on S95H", () => {
+    expect(S95H_MANUAL_ENTRY_CONFIG.processes).toEqual([
+      "MC",
+      "PRESS",
+      "HAIRLINE",
+      "ANODIZING",
+      "ASSEMBLY",
+    ]);
+  });
 });

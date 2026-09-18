@@ -65,7 +65,7 @@ export function useProductionManualEntries(config) {
   storeRef.current = store;
 
   const [processSyncRevision, setProcessSyncRevision] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [syncError, setSyncError] = useState("");
@@ -257,8 +257,8 @@ export function useProductionManualEntries(config) {
   );
 
   const exportMonthToExcel = useCallback(
-    (processFilter = null) => {
-      exportS90dManualMonthToExcel({
+    async (processFilter = null) => {
+      await exportS90dManualMonthToExcel({
         store: storeRef.current,
         monthDayKeys,
         monthKey: selectedMonthKey,

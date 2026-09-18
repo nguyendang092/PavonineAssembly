@@ -1508,6 +1508,14 @@ body.s90d-chart-modal-open {
   border: 1px solid #cbd5e1;
 }
 
+.s90d-summary-process-table .s90d-head-target,
+.s90d-summary-process-table .s90d-col-target,
+.s90d-summary-process-table .s90d-head-efficiency,
+.s90d-summary-process-table .s90d-col-efficiency {
+  width: 4.25rem;
+  min-width: 4.25rem;
+}
+
 .s90d-summary-process-table .s90d-head-total-qty,
 .s90d-summary-process-table .s90d-col-total-qty {
   width: 4.75rem;
@@ -1672,6 +1680,13 @@ body.s90d-chart-modal-open {
 
 .s90d-head-ok,
 .s90d-col-ok {
+  width: 3.25rem;
+}
+
+.s90d-head-target,
+.s90d-col-target,
+.s90d-head-efficiency,
+.s90d-col-efficiency {
   width: 3.25rem;
 }
 

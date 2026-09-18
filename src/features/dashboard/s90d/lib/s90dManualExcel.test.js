@@ -18,6 +18,9 @@ describe("s90dManualExcel", () => {
       "SL đạt",
     ]);
     expect(headers).toContain("Trầy, xước");
+    expect(headers).toContain("Lỗi loang màu");
+    expect(headers).toContain("Lỗi GAP");
+    expect(headers).not.toContain("Lỗi nhuộm");
   });
 
   it("parses spreadsheet rows with board index", () => {
@@ -82,5 +85,25 @@ describe("s90dManualExcel", () => {
     expect(store["2026-07-01"].PRESS.boards[1].productCode).toBe("S90D");
     expect(store["2026-07-01"].PRESS.boards[1].codeSlot).toBe("E");
     expect(store["2026-07-01"].PRESS.boards[1].shifts["08~10"].okQty).toBe(7);
+  });
+
+  it("maps legacy Lỗi nhuộm into Lỗi loang màu", () => {
+    const headers = [
+      "Ngày",
+      "Công đoạn",
+      "Bảng",
+      "Ca",
+      "Mã hàng",
+      "SL đạt",
+      "Lỗi nhuộm",
+      "Lỗi loang màu",
+    ];
+    const rows = parseS90dManualExcelRows(
+      [headers, ["2026-07-01", "PRESS", 1, "08-10", "S90D", 10, 3, 2]],
+      {},
+    );
+
+    expect(rows[0].defects.stain).toBe(5);
+    expect(rows[0].defects.tape).toBeUndefined();
   });
 });

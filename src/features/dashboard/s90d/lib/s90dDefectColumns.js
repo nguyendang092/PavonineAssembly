@@ -22,8 +22,8 @@ export const S90D_DEFECT_COLUMNS = Object.freeze([
   { key: "bendWarp", ko: "휨 불량", vi: "Lỗi cong, vênh", shortVi: "Cong" },
   { key: "hole", ko: "홀 불량", vi: "Lỗi hole", shortVi: "Hole" },
   { key: "sanding", ko: "사상 불량", vi: "Lỗi chà", shortVi: "Chà" },
-  { key: "tape", ko: "피막 불량", vi: "Lỗi nhuộm", shortVi: "Nhuộm" },
   { key: "stain", ko: "얼룩 불량", vi: "Lỗi loang màu", shortVi: "Loang" },
+  { key: "gap", ko: "GAP 불량", vi: "Lỗi GAP", shortVi: "GAP" },
   { key: "corrosion", ko: "부식", vi: "Ăn mòn", shortVi: "Mòn" },
   { key: "color", ko: "컬러", vi: "Màu", shortVi: "Màu" },
   { key: "whiteSpot", ko: "백점 불량", vi: "Lỗi chấm trắng", shortVi: "Chấm" },
@@ -44,6 +44,24 @@ export const S90D_DEFECT_COLUMNS = Object.freeze([
 
 export function createEmptyDefectCounts() {
   return Object.fromEntries(S90D_DEFECT_COLUMNS.map(({ key }) => [key, 0]));
+}
+
+function toNonNegativeInt(value) {
+  const n = Number(String(value ?? "").replace(/,/g, ""));
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.floor(n);
+}
+
+/** Gộp cột cũ `tape` (lỗi nhuộm) vào `stain` (lỗi loang màu). */
+export function normalizeDefectCounts(raw) {
+  const counts = createEmptyDefectCounts();
+  if (!raw || typeof raw !== "object") return counts;
+
+  S90D_DEFECT_COLUMNS.forEach(({ key }) => {
+    counts[key] = toNonNegativeInt(raw[key]);
+  });
+  counts.stain += toNonNegativeInt(raw.tape);
+  return counts;
 }
 
 export function normalizeS90dProcess(workplaceName) {

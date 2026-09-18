@@ -73,6 +73,10 @@ export function createManualEntriesRepository({
   let metaUnsub = null;
   let skipRemote = false;
   let onlineListener = null;
+  /** @type {((monthKey: string, slice: Record<string, unknown>) => void) | null} */
+  let monthSliceListener = null;
+  /** @type {Map<string, Record<string, unknown>>} */
+  const deferredRemoteSlices = new Map();
 
   /** @type {Record<string, string>} */
   const monthChecksumCache = {};
@@ -115,7 +119,29 @@ export function createManualEntriesRepository({
     return parseMonthSnapshot(snapshot.val(), monthKey);
   }
 
-  function subscribeMonth(monthKey, onMonthSlice, myGeneration) {
+  function emitMonthSlice(monthKey, slice) {
+    if (skipRemote) {
+      deferredRemoteSlices.set(monthKey, slice);
+      return;
+    }
+    monthSliceListener?.(monthKey, slice);
+  }
+
+  function flushDeferredRemoteSlices() {
+    if (skipRemote || !monthSliceListener) return;
+    const pending = [...deferredRemoteSlices.entries()];
+    deferredRemoteSlices.clear();
+    pending.forEach(([monthKey, slice]) => {
+      monthSliceListener(monthKey, slice);
+    });
+  }
+
+  function setSkipRemote(next) {
+    skipRemote = next;
+    if (!next) flushDeferredRemoteSlices();
+  }
+
+  function subscribeMonth(monthKey, myGeneration) {
     const existing = monthUnsubs.get(monthKey);
     if (existing) existing();
 
@@ -128,18 +154,15 @@ export function createManualEntriesRepository({
     );
 
     const handleValue = (snapshot) => {
-      if (skipRemote) return;
       if (isFirebaseGenerationStale(myGeneration, subscribeGenerationRef)) return;
       const slice = parseMonthSnapshot(snapshot.val(), monthKey);
-      const checksum = computeMonthChecksum(slice);
-      if (monthChecksumCache[monthKey] === checksum) return;
-      monthChecksumCache[monthKey] = checksum;
-      onMonthSlice(monthKey, slice);
+      monthChecksumCache[monthKey] = computeMonthChecksum(slice);
+      emitMonthSlice(monthKey, slice);
     };
 
     onValue(monthQuery, handleValue, () => {
       if (isFirebaseGenerationStale(myGeneration, subscribeGenerationRef)) return;
-      onMonthSlice(monthKey, {});
+      emitMonthSlice(monthKey, {});
     });
 
     monthUnsubs.set(monthKey, () => off(monthQuery, "value", handleValue));
@@ -164,12 +187,13 @@ export function createManualEntriesRepository({
 
   function subscribeMonths(selectedMonthKey, onMonthSlice) {
     unsubscribeMonths();
+    monthSliceListener = onMonthSlice;
     const myGeneration = bumpFirebaseGeneration(subscribeGenerationRef);
     subscribeMeta(myGeneration);
 
     const months = subscriptionMonthKeys(selectedMonthKey);
     for (const monthKey of months) {
-      subscribeMonth(monthKey, onMonthSlice, myGeneration);
+      subscribeMonth(monthKey, myGeneration);
     }
 
     const adjacent = months.filter((key) => key !== selectedMonthKey);
@@ -180,7 +204,7 @@ export function createManualEntriesRepository({
           const checksum = computeMonthChecksum(slice);
           if (monthChecksumCache[monthKey] === checksum) return;
           monthChecksumCache[monthKey] = checksum;
-          onMonthSlice(monthKey, slice);
+          emitMonthSlice(monthKey, slice);
         })
         .catch(() => {});
     }
@@ -188,6 +212,8 @@ export function createManualEntriesRepository({
 
   function unsubscribeMonths() {
     bumpFirebaseGeneration(subscribeGenerationRef);
+    monthSliceListener = null;
+    deferredRemoteSlices.clear();
     for (const unsub of monthUnsubs.values()) unsub();
     monthUnsubs.clear();
     if (metaUnsub) {
@@ -218,13 +244,13 @@ export function createManualEntriesRepository({
   }
 
   async function bootstrapLocalToRemote(localStore) {
-    skipRemote = true;
+    setSkipRemote(true);
     try {
       await set(ref(db, firebaseRoot), {
         ...serializeManualEntriesForFirebase(localStore),
       });
     } finally {
-      skipRemote = false;
+      setSkipRemote(false);
     }
   }
 
@@ -260,7 +286,7 @@ export function createManualEntriesRepository({
     localByDate,
     fullRemoteWrite = false,
   }) {
-    skipRemote = true;
+    setSkipRemote(true);
     try {
       if (fullRemoteWrite) {
         await set(ref(db, firebaseRoot), {
@@ -290,7 +316,7 @@ export function createManualEntriesRepository({
 
       rememberDayRevisions(store, touchedDateKeys);
     } finally {
-      skipRemote = false;
+      setSkipRemote(false);
     }
   }
 
@@ -357,11 +383,11 @@ export function createManualEntriesRepository({
 
   async function archiveMonth(store, monthKey) {
     const patch = buildArchiveMonthPatch(firebaseRoot, monthKey, store);
-    skipRemote = true;
+    setSkipRemote(true);
     try {
       await update(ref(db), patch);
     } finally {
-      skipRemote = false;
+      setSkipRemote(false);
     }
     return applyArchiveMonthLocally(store, monthKey);
   }
