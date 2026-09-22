@@ -128,7 +128,8 @@
   transition: background 0.15s ease, opacity 0.15s ease;
 }
 
-.annual-leave-export-btn:hover:not(:disabled) {
+.annual-leave-export-btn:hover:not(:disabled),
+.annual-leave-actions-btn:hover:not(:disabled) {
   background: var(--primary-dark);
 }
 
@@ -154,10 +155,6 @@
   cursor: pointer;
   box-shadow: var(--shadow-neutral);
   transition: background 0.15s ease, opacity 0.15s ease;
-}
-
-.annual-leave-actions-btn:hover:not(:disabled) {
-  background: var(--primary-dark);
 }
 
 .annual-leave-actions-btn:disabled {

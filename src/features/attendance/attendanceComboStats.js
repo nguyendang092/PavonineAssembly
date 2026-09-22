@@ -30,7 +30,7 @@ export const normalizeTextValue = (value) => String(value ?? "").trim();
 const CO_DI_LAM_FOLD_SHORT = foldGioVaoCompare("Có");
 
 /** Khớp alias BGC trên giờ vào / ghi chú — rộng hơn `loaiPhep` (thêm ghi tắt «Có»). */
-export function textMatchesBuGioCong(raw) {
+function textMatchesBuGioCong(raw) {
   const t = normalizeTextValue(raw).replace(/\u00a0/g, " ");
   if (!t) return false;
   if (textMatchesAttendanceBuGioCongAlias(t)) return true;
@@ -38,10 +38,10 @@ export function textMatchesBuGioCong(raw) {
 }
 
 /** Giờ chuẩn HH:MM (hoặc HH:MM:SS), không nhận text loại phép / ngoài 24h */
-export const GIO_VAO_HHMM_STRICT = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+const GIO_VAO_HHMM_STRICT = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 
 /** Giờ vào (chuỗi tự do): Thai sản / TS / maternity — bỏ dấu, so khớp chặt hơn token PN. */
-export function gioVaoTextLooksLikeMaternity(raw) {
+function gioVaoTextLooksLikeMaternity(raw) {
   const s = normalizeTextValue(raw)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")

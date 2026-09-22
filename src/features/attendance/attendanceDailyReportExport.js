@@ -140,7 +140,7 @@ function paintGrandTotalRow(sheet, rowNumber, grandLabel) {
   });
 }
 
-export function buildAttendanceDailyReportExportFilename(dateKey, ext) {
+function buildAttendanceDailyReportExportFilename(dateKey, ext) {
   const safeDate = String(dateKey || "report").replace(/[^\d-]/g, "") || "report";
   return `diem-danh-san-xuat_${safeDate}.${ext}`;
 }

@@ -34,7 +34,7 @@ import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
 import { parseLocalDateKey } from "@/utils/dateKey";
 
 /** Chủ nhật trên lưới tháng — giờ công hiển thị ở dòng hệ số tương ứng, không dòng chính. */
-export function isPayrollMonthSundayDateKey(dateKey) {
+function isPayrollMonthSundayDateKey(dateKey) {
   const pd = parseLocalDateKey(String(dateKey ?? ""));
   return Boolean(pd && pd.getDay() === 0);
 }
@@ -411,7 +411,7 @@ function buildPayrollMonthlyCoefficientLines(p) {
 /** Thứ tự hiển thị dòng hệ số trong ô (tăng dần). */
 const COEFF_SORT = [0.3, 1.5, 2.0, 2.7, 3.0, 3.9];
 
-export function sortPayrollMonthlyCoefficientLines(lines) {
+function sortPayrollMonthlyCoefficientLines(lines) {
   const rank = (c) => {
     const i = COEFF_SORT.indexOf(c);
     return i === -1 ? 99 : i;
@@ -423,7 +423,7 @@ export function formatCoeffHoursForDisplay(hours) {
   return formatPayrollHoursForDisplay(hours);
 }
 
-export function formatCoeffLabel(coeff, displayLocale = "vi-VN") {
+function formatCoeffLabel(coeff, displayLocale = "vi-VN") {
   return new Intl.NumberFormat(displayLocale, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
@@ -598,7 +598,7 @@ export function getPayrollMonthlyCoeffHoursMap(p) {
 }
 
 /** Hệ số dòng GC ca đêm (trước khi chuyển giờ lên dòng chính lưới). */
-export function payrollMonthNightShiftGcCoeffForMainRowDisplay(ch, emp) {
+function payrollMonthNightShiftGcCoeffForMainRowDisplay(ch, emp) {
   if (payrollMonthCompensatoryUsesOffSplit(ch)) return null;
   const flags = emp ? employeeRegimeWorkingHoursFlags(emp) : {};
   if (
@@ -619,17 +619,17 @@ export function payrollMonthNightShiftGcCoeffForMainRowDisplay(ch, emp) {
   return 0.3;
 }
 
-export function payrollMonthNightShiftDisplayShiftCode(shiftCode) {
+function payrollMonthNightShiftDisplayShiftCode(shiftCode) {
   const s = String(shiftCode ?? "").trim().toUpperCase();
   return s || "S2";
 }
 
-export function isPayrollMonthNightShiftEmployee(emp) {
+function isPayrollMonthNightShiftEmployee(emp) {
   return isNightShiftCaLamViec(emp?.[PAYROLL_EMP.SHIFT]);
 }
 
 /** GC ca đêm chuyển lên dòng chính (không gồm ngày nghỉ bù — đã có logic riêng). */
-export function getPayrollMonthNightShiftGcHoursForMainRow(emp, ch) {
+function getPayrollMonthNightShiftGcHoursForMainRow(emp, ch) {
   if (!isPayrollMonthNightShiftEmployee(emp)) return null;
   const gcCoeff = payrollMonthNightShiftGcCoeffForMainRowDisplay(ch, emp);
   if (gcCoeff == null) return null;
@@ -642,7 +642,7 @@ export function getPayrollMonthNightShiftGcHoursForMainRow(emp, ch) {
 }
 
 /** Dòng hệ số hiển thị badge ca (S2) thay cho giờ GC đã chuyển lên dòng chính. */
-export function payrollMonthNightShiftShiftBadgeCoeff(ch, main) {
+function payrollMonthNightShiftShiftBadgeCoeff(ch, main) {
   if (payrollMonthCompensatoryUsesOffSplit(ch)) {
     if (main?.kind === "hours" && main.hours > 0) return 0.3;
     return null;
@@ -650,7 +650,7 @@ export function payrollMonthNightShiftShiftBadgeCoeff(ch, main) {
   return payrollMonthNightShiftGcCoeffForMainRowDisplay(ch, null);
 }
 
-export function shouldPayrollMonthNightShiftShowShiftBadgeOnCoeff({
+function shouldPayrollMonthNightShiftShowShiftBadgeOnCoeff({
   emp,
   ch,
   sr,

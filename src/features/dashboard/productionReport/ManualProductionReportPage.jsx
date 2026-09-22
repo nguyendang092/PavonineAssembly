@@ -185,7 +185,7 @@ export default function ManualProductionReportPage({
   const handleProcessSave = useCallback(
     async (localByDate) => {
       try {
-        await saveProcessMonth(activeTab, monthDayKeys, localByDate);
+        await saveProcessMonth(activeTab, localByDate);
         setSaveAlert({
           show: true,
           type: "success",
@@ -203,7 +203,7 @@ export default function ManualProductionReportPage({
         throw new Error("SAVE_FAILED");
       }
     },
-    [activeTab, monthDayKeys, rt, saveProcessMonth],
+    [activeTab, rt, saveProcessMonth],
   );
 
   const handleProcessToolbarSave = useCallback(() => {

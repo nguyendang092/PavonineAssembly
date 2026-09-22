@@ -32,13 +32,13 @@ export const MONTH_DETAIL_SATS_COL_COUNT = 0;
 export const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 
 /** Số cột từng khối chi tiết: tổng 18, thử việc/hợp đồng 17. */
-export const MONTHLY_DETAIL_BLOCK_COL_COUNTS = Object.freeze([
+const MONTHLY_DETAIL_BLOCK_COL_COUNTS = Object.freeze([
   MONTH_DETAIL_TOTAL_COLS_PER_BLOCK,
   MONTH_DETAIL_PHASE_COLS_PER_BLOCK,
   MONTH_DETAIL_PHASE_COLS_PER_BLOCK,
 ]);
 
-export function monthlyDetailBlockColCount(groupIndex) {
+function monthlyDetailBlockColCount(groupIndex) {
   return (
     MONTHLY_DETAIL_BLOCK_COL_COUNTS[groupIndex] ??
     MONTH_DETAIL_TOTAL_COLS_PER_BLOCK
@@ -70,7 +70,7 @@ export function resolveMonthlyDetailGroupAndCol(flatIdx) {
 }
 
 /** Chỉ số cột 0-based — khối chi tiết trên lưới / Excel. */
-export function resolveMonthlyDetailBlockStart(layout, groupIndex) {
+function resolveMonthlyDetailBlockStart(layout, groupIndex) {
   if (groupIndex === 1) return layout.trialDetailStart;
   if (groupIndex === 2) return layout.officialDetailStart;
   return layout.totalDetailStart;
@@ -87,7 +87,7 @@ export function assignMonthlyDetailFlatToExportRow(row, layout, detailFlat) {
 }
 
 /** Nhãn nhóm SAT.S — lưới / in A3. */
-export const PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL = "SAT.S";
+const PAYROLL_MONTHLY_DETAIL_GROUP_SATS_LABEL = "SAT.S";
 
 /** `si` dòng con → chỉ số cột TC (0..5) trong khối chi tiết. */
 export const MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW = {

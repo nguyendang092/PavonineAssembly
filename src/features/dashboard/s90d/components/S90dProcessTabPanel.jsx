@@ -70,6 +70,7 @@ export default function S90dProcessTabPanel({
     pickDefaultDateKey(monthDayKeys),
   );
   const navRootRef = useRef(null);
+  const dirtyDateKeysRef = useRef(new Set());
   useS90dInputCellNav(navRootRef);
 
   const processLabel = t(`areas.${process}`, { defaultValue: process });
@@ -108,10 +109,12 @@ export default function S90dProcessTabPanel({
       setSelectedDateKey(
         draft.selectedDateKey || pickDefaultDateKey(monthDayKeys),
       );
+      dirtyDateKeysRef.current = new Set(Object.keys(draft.localByDate));
       setIsDirty(true);
       return;
     }
 
+    dirtyDateKeysRef.current = new Set();
     setLocalByDate({});
     setIsDirty(false);
     setSelectedDateKey(pickDefaultDateKey(monthDayKeys));
@@ -181,6 +184,7 @@ export default function S90dProcessTabPanel({
   const updateShiftField = useCallback(
     (boardId, shiftSlot, field, value) => {
       setIsDirty(true);
+      dirtyDateKeysRef.current.add(selectedDateKey);
       setLocalByDate((prev) =>
         updateProcessMonthShiftField(
           prev,
@@ -209,8 +213,16 @@ export default function S90dProcessTabPanel({
 
   const handleSave = useCallback(async () => {
     if (!isDirty || saving) return;
+    const payload = {};
+    for (const dateKey of dirtyDateKeysRef.current) {
+      if (localByDate[dateKey] !== undefined) {
+        payload[dateKey] = localByDate[dateKey];
+      }
+    }
+    const toSave = Object.keys(payload).length ? payload : localByDate;
     try {
-      await onSave?.(localByDate);
+      await onSave?.(toSave);
+      dirtyDateKeysRef.current = new Set();
       setIsDirty(false);
       clearProcessDraft?.(process, monthKey);
     } catch {

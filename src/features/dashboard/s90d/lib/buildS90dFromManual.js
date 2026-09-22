@@ -812,26 +812,6 @@ export function buildViewGroupScopedMonthDailySummaries(
   );
 }
 
-export function buildViewGroupScopedGrandTotalSummary(
-  monthDailySummaries,
-  viewGroup,
-  manualEntryConfig,
-  defaultProductCode = DEFAULT_PRODUCT_CODE,
-) {
-  const config = resolveManualEntryConfig(manualEntryConfig ?? defaultProductCode);
-  const displayProductCode =
-    config.summaryBoardSpecs?.find(
-      (spec) => String(spec.viewGroup ?? "") === String(viewGroup ?? ""),
-    )?.productCode ?? defaultProductCode;
-  const scopedDailies = buildViewGroupScopedMonthDailySummaries(
-    monthDailySummaries,
-    viewGroup,
-    config,
-  );
-
-  return buildGrandTotalSummaryFromManual(scopedDailies, displayProductCode, config);
-}
-
 function findBoardRowForCodeSlot(detail, codeSlot) {
   const slot = String(codeSlot ?? "").trim();
   if (!slot || !detail?.boardRows?.length) return null;
@@ -920,27 +900,6 @@ export function buildCodeSlotScopedMonthDailySummaries(
   return (monthDailySummaries ?? []).map((daily) =>
     buildCodeSlotScopedDailySummary(daily, codeSlot, manualEntryConfig),
   );
-}
-
-export function buildCodeSlotScopedGrandTotalSummary(
-  monthDailySummaries,
-  codeSlot,
-  manualEntryConfig,
-  defaultProductCode = DEFAULT_PRODUCT_CODE,
-) {
-  const config = resolveManualEntryConfig(manualEntryConfig ?? defaultProductCode);
-  const slot = String(codeSlot ?? "").trim();
-  const displayProductCode = formatCodeSlotProductCode(
-    config.defaultProductCode,
-    slot,
-  );
-  const scopedDailies = buildCodeSlotScopedMonthDailySummaries(
-    monthDailySummaries,
-    slot,
-    config,
-  );
-
-  return buildGrandTotalSummaryFromManual(scopedDailies, displayProductCode, config);
 }
 
 function buildGrandTotalRow(

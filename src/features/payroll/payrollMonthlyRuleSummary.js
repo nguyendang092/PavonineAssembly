@@ -64,14 +64,14 @@ export function workDaysCreditFromWorkedHours(hours) {
 }
 
 /** Ô đếm ngày phép / nghỉ (PN 0,5 · NB/KL/KP 1). */
-export function fmtPayrollMonthlyLeaveDayCell(n) {
+function fmtPayrollMonthlyLeaveDayCell(n) {
   if (!Number.isFinite(n) || n <= 0) return " ";
   if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
   return formatCoeffHoursForDisplay(n);
 }
 
 /** Ô phụ cấp ca đêm (VND) — số nguyên, có phân tách nghìn. */
-export function fmtPayrollMonthlyNightShiftAllowanceCell(n) {
+function fmtPayrollMonthlyNightShiftAllowanceCell(n) {
   if (!Number.isFinite(n) || n <= 0) return " ";
   return Math.round(n).toLocaleString("vi-VN");
 }
@@ -81,7 +81,7 @@ export function fmtPayrollMonthlyNightShiftAllowanceCell(n) {
  * - Có ngày HĐ: [ngày vào làm, ngày HĐ) → thử việc; từ ngày HĐ → hợp đồng.
  * - Không có ngày HĐ: mọi ngày (từ ngày vào làm nếu có) → hợp đồng.
  */
-export function monthlyWorkPhaseForDateKey(
+function monthlyWorkPhaseForDateKey(
   dateKey,
   joinDateRaw,
   contractDateRaw,
@@ -106,7 +106,7 @@ export function monthlyWorkPhaseForDateKey(
 }
 
 /** Ngày trong tháng có được tính giờ công cho NV (từ ngày vào làm trở đi). */
-export function isPayrollMonthDayOnOrAfterJoin(
+function isPayrollMonthDayOnOrAfterJoin(
   dateKey,
   joinDateRaw,
   monthKeys = [],
@@ -131,7 +131,7 @@ export function isPayrollMonthDayCellBeforeJoinWithoutAttendance(
 }
 
 /** Số ngày công chuẩn từ ngày vào làm (trừ CN) — dùng chốt nghỉ không lương / phép năm. */
-export function countEmployedStandardWorkDaysInMonth(monthKeys, joinDateRaw) {
+function countEmployedStandardWorkDaysInMonth(monthKeys, joinDateRaw) {
   let n = 0;
   for (const dk of monthKeys) {
     if (!isPayrollMonthDayOnOrAfterJoin(dk, joinDateRaw, monthKeys)) continue;
@@ -143,7 +143,7 @@ export function countEmployedStandardWorkDaysInMonth(monthKeys, joinDateRaw) {
 }
 
 /** Số ngày công lịch (trừ Chủ nhật) trong tháng thuộc giai đoạn; `phase === null` = cả tháng. */
-export function countPhaseCalendarWorkDaysInMonth(
+function countPhaseCalendarWorkDaysInMonth(
   monthKeys,
   joinDateRaw,
   contractDateRaw,
@@ -214,7 +214,7 @@ function leaveUnitsByCode(leaveShort, code) {
 }
 
 /** Đếm PN / NB / KL / KP từ `loaiPhep` — dùng cho cột tổng hợp lưới tháng. */
-export function payrollMonthlyLeaveUnitsForEmployee(emp) {
+function payrollMonthlyLeaveUnitsForEmployee(emp) {
   const leaveRaw = getAttendanceLeaveTypeRaw(emp);
   if (!leaveRaw) {
     return { pn: 0, nb: 0, kl: 0, kp: 0 };
@@ -266,7 +266,7 @@ function leaveExcludedFromIncludedWorkDays(leaveShort) {
 }
 
 /** Ngày có loại phép này không cộng vào «Tổng ngày công (gồm ngày nghỉ có lương)». */
-export function isPayrollMonthLeaveExcludedFromWorkDaysTotal(emp) {
+function isPayrollMonthLeaveExcludedFromWorkDaysTotal(emp) {
   const leaveRaw = getAttendanceLeaveTypeRaw(emp);
   if (!leaveRaw) return false;
   const leaveShort = formatAttendanceLeaveTypeColumnDisplay(leaveRaw);

@@ -108,7 +108,7 @@ function excelDashMarkOrEmpty(mark) {
 }
 
 /** Giá trị ô ngày Excel — số cho giờ công; chữ cho mã phép / NB / NL. */
-export function formatPayrollMonthlyTimesheetDayCellText({
+function formatPayrollMonthlyTimesheetDayCellText({
   emp,
   ch,
   dateKey,
@@ -346,7 +346,7 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   return { grid, layout };
 }
 
-export function applyPayrollMonthlyTimesheetExcelSheetStyles(
+function applyPayrollMonthlyTimesheetExcelSheetStyles(
   sheet,
   { layout, monthKeys, chunkByDate, filteredIds, repById, maxCols },
 ) {

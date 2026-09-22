@@ -25,7 +25,7 @@ export function isSaturdayDateKey(dateKey) {
 }
 
 /** Thứ 7 / Chủ nhật — Tài xế tổng luôn tính như ngày thường (bỏ cờ off lịch). */
-export function isTaiXeTongWeekendNormalWeekday(dateKey) {
+function isTaiXeTongWeekendNormalWeekday(dateKey) {
   return isSundayDateKey(dateKey) || isSaturdayDateKey(dateKey);
 }
 

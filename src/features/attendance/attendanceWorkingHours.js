@@ -174,7 +174,7 @@ export function getKoreanTimesheetEveningOvertimeHoursFromGioRa(timeOut) {
   return roundHoursToHundredths(otMinutes / 60);
 }
 
-export function shouldUseKoreanNbSundayEveningOtRule({
+function shouldUseKoreanNbSundayEveningOtRule({
   koreanTimesheetRules = false,
   isCompensatoryDay = false,
   dateKey = null,
@@ -192,7 +192,7 @@ export function shouldUseKoreanNbSundayEveningOtRule({
   return isSundayDateKeyForKoreanOt(dateKey);
 }
 
-export function shouldUseKoreanTimesheetEveningOtRule({
+function shouldUseKoreanTimesheetEveningOtRule({
   koreanTimesheetRules = false,
   isCompensatoryDay = false,
   dateKey = null,
@@ -227,7 +227,7 @@ export function formatPayrollHoursForDisplayHundredths(value) {
 }
 
 /** @param {unknown} s */
-export function parseHHMMToMinutes(s) {
+function parseHHMMToMinutes(s) {
   if (s == null) return null;
   const t = String(s).trim();
   const m = HHMM.exec(t);
@@ -362,7 +362,7 @@ export function getPayrollNightOtWindowHours22To06(timeIn, timeOut) {
  * Giờ hiển thị cột ×2.7 khi đã xác nhận TC đêm — ngày thường, khung 22:00–06:00 (tối đa 8h).
  * @returns {number | null}
  */
-export function resolvePayrollNightOtPaperworkHours(
+function resolvePayrollNightOtPaperworkHours(
   timeIn,
   timeOut,
   payrollNightOtPaperwork,
@@ -386,7 +386,7 @@ export function getNightShiftTotalWindowHours22To05(timeIn, timeOut, shiftCode) 
 }
 
 /** TC ca đêm: sau mốc 05:00, floor(phút / 30) × 0.5 — giống block 30 phút. */
-export function getNightShiftPayrollOvertimeHoursFromOtMinutes(otMinutes) {
+function getNightShiftPayrollOvertimeHoursFromOtMinutes(otMinutes) {
   const m = Number(otMinutes);
   if (!Number.isFinite(m) || m <= 0) return 0;
   return Math.floor(m / 30) * 0.5;
@@ -477,7 +477,7 @@ function getTapVuDayShiftRegularHoursNumeric(a, b) {
  * @param {unknown} timeOut
  * @returns {number | null}
  */
-export function getTapVuThaiSanOvertimeHoursFromGioRa(timeOut) {
+function getTapVuThaiSanOvertimeHoursFromGioRa(timeOut) {
   const TAP_THAI_OT_PAY_START_MIN = 16 * 60;
   const TAP_THAI_OT_ELIGIBLE_AFTER_MIN = 16 * 60 + 30;
   const b = parseHHMMToMinutes(timeOut);
@@ -1171,8 +1171,8 @@ export function isEarlyArrivalForNightShiftPaperworkOvertime(timeIn, shiftCode) 
 }
 
 /** Popup xác nhận TC đêm — giờ vào từ 22:00 đến 05:00 (mọi ca). */
-export const NIGHT_OT_PAPERWORK_ENTRY_START_MIN = 22 * 60;
-export const NIGHT_OT_PAPERWORK_ENTRY_END_MIN = 5 * 60;
+const NIGHT_OT_PAPERWORK_ENTRY_START_MIN = 22 * 60;
+const NIGHT_OT_PAPERWORK_ENTRY_END_MIN = 5 * 60;
 
 export function isNightOtPaperworkEligible(timeIn) {
   const a = parseHHMMToMinutes(timeIn);
@@ -1265,7 +1265,7 @@ export function parseLunchOtHours(value) {
 }
 
 /** Phút TC tài xế nhập trên form (`tangCaTaiXePhut`) — số nguyên dương, không giới hạn trần. */
-export function parseDriverOtMinutes(value) {
+function parseDriverOtMinutes(value) {
   if (value === null || value === undefined || value === "") return 0;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return 0;
@@ -1273,7 +1273,7 @@ export function parseDriverOtMinutes(value) {
 }
 
 /** Quy đổi phút TC tài xế → giờ TC (tỷ lệ phút/60, làm tròn 0.01h — VD 20 phút → 0.33). */
-export function driverOtMinutesToOvertimeHours(minutes) {
+function driverOtMinutesToOvertimeHours(minutes) {
   if (!Number.isFinite(minutes) || minutes <= 0) return 0;
   return roundHoursToHundredths(minutes / 60);
 }

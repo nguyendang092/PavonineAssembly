@@ -6,7 +6,6 @@ import {
   orderByKey,
   query,
   ref,
-  runTransaction,
   set,
   startAt,
   endAt,
@@ -18,11 +17,7 @@ import {
 } from "@/hooks/firebaseGeneration";
 import { normalizeManualStore } from "../s90d/lib/s90dManualEntries";
 import { buildArchiveMonthPatch, applyArchiveMonthLocally } from "./manualEntriesArchive";
-import {
-  mergeDayEntryOnConflict,
-  readDayUpdatedAt,
-  stampDayUpdatedAt,
-} from "./manualEntriesDayMerge";
+import { readDayUpdatedAt, stampDayUpdatedAt } from "./manualEntriesDayMerge";
 import {
   clearProcessDraft,
   loadProcessDraft,
@@ -71,7 +66,7 @@ export function createManualEntriesRepository({
   /** @type {Map<string, () => void>} */
   const monthUnsubs = new Map();
   let metaUnsub = null;
-  let skipRemote = false;
+  let skipRemoteDepth = 0;
   let onlineListener = null;
   /** @type {((monthKey: string, slice: Record<string, unknown>) => void) | null} */
   let monthSliceListener = null;
@@ -98,10 +93,6 @@ export function createManualEntriesRepository({
     }
   }
 
-  function getDayRevision(dateKey) {
-    return dayRevisionCache[dateKey] ?? 0;
-  }
-
   function parseMonthSnapshot(raw, monthKey) {
     const entries = parseManualEntriesSnapshot(raw);
     return extractMonthSlice(entries, monthKey);
@@ -120,7 +111,7 @@ export function createManualEntriesRepository({
   }
 
   function emitMonthSlice(monthKey, slice) {
-    if (skipRemote) {
+    if (skipRemoteDepth > 0) {
       deferredRemoteSlices.set(monthKey, slice);
       return;
     }
@@ -128,7 +119,7 @@ export function createManualEntriesRepository({
   }
 
   function flushDeferredRemoteSlices() {
-    if (skipRemote || !monthSliceListener) return;
+    if (skipRemoteDepth > 0 || !monthSliceListener) return;
     const pending = [...deferredRemoteSlices.entries()];
     deferredRemoteSlices.clear();
     pending.forEach(([monthKey, slice]) => {
@@ -137,8 +128,12 @@ export function createManualEntriesRepository({
   }
 
   function setSkipRemote(next) {
-    skipRemote = next;
-    if (!next) flushDeferredRemoteSlices();
+    if (next) {
+      skipRemoteDepth += 1;
+      return;
+    }
+    skipRemoteDepth = Math.max(0, skipRemoteDepth - 1);
+    if (skipRemoteDepth === 0) flushDeferredRemoteSlices();
   }
 
   function subscribeMonth(monthKey, myGeneration) {
@@ -172,7 +167,7 @@ export function createManualEntriesRepository({
     if (metaUnsub) metaUnsub();
     const metaRef = ref(db, `${firebaseRoot}/_meta`);
     const handleValue = (snapshot) => {
-      if (skipRemote) return;
+      if (skipRemoteDepth > 0) return;
       if (isFirebaseGenerationStale(myGeneration, subscribeGenerationRef)) return;
       const months = snapshot.val()?.months ?? {};
       for (const [monthKey, payload] of Object.entries(months)) {
@@ -254,36 +249,9 @@ export function createManualEntriesRepository({
     }
   }
 
-  async function saveDayWithTransaction(dateKey, clientDay, process, localProcessDay) {
-    const dayRef = ref(db, `${firebaseRoot}/${dateKey}`);
-    const baseUpdatedAt = getDayRevision(dateKey);
-
-    await runTransaction(dayRef, (remoteDay) => {
-      const remote =
-        remoteDay && typeof remoteDay === "object" ? remoteDay : null;
-      const remoteUpdatedAt = readDayUpdatedAt(remote);
-
-      let mergedDay = clientDay;
-      if (remote && remoteUpdatedAt > baseUpdatedAt) {
-        mergedDay = mergeDayEntryOnConflict(
-          remote,
-          clientDay,
-          process,
-          localProcessDay,
-        );
-      } else if (remote) {
-        mergedDay = { ...remote, ...clientDay };
-      }
-
-      return stampDayUpdatedAt(mergedDay);
-    });
-  }
-
   async function persistDays({
     store,
     touchedDateKeys,
-    process,
-    localByDate,
     fullRemoteWrite = false,
   }) {
     setSkipRemote(true);
@@ -296,23 +264,23 @@ export function createManualEntriesRepository({
         return;
       }
 
+      /** @type {Record<string, unknown>} */
+      const patch = {};
       for (const dateKey of touchedDateKeys) {
         const clientDay = store?.[dateKey];
         if (!clientDay) continue;
-        const localProcessDay = localByDate?.[dateKey] ?? clientDay?.[process] ?? {};
-        await saveDayWithTransaction(
-          dateKey,
-          clientDay,
-          process,
-          localProcessDay,
-        );
+        patch[dateKey] = clientDay._updatedAt
+          ? clientDay
+          : stampDayUpdatedAt(clientDay);
       }
+
+      if (!Object.keys(patch).length) return;
 
       const monthKeys = [
         ...new Set(touchedDateKeys.map((dateKey) => dateKey.slice(0, 7))),
       ];
-      const metaPatch = buildMonthMetaOnlyPatch(store, monthKeys);
-      await update(ref(db, firebaseRoot), metaPatch);
+      Object.assign(patch, buildMonthMetaOnlyPatch(store, monthKeys));
+      await update(ref(db, firebaseRoot), patch);
 
       rememberDayRevisions(store, touchedDateKeys);
     } finally {

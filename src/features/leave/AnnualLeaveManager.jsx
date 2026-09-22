@@ -30,11 +30,15 @@ import {
 import { parseAnnualLeaveExcelFile } from "./annualLeaveExcelImport";
 import { exportAnnualLeaveExcel } from "./annualLeaveExcelExport";
 import { useAnnualLeaveYearData } from "./useAnnualLeaveYearData";
-import { persistAnnualLeaveYearFromAttendance } from "./annualLeaveAttendanceSync";
+import {
+  persistAnnualLeaveMonthFromAttendance,
+  persistAnnualLeaveYearFromAttendance,
+} from "./annualLeaveAttendanceSync";
 import {
   annualLeaveYearRefPath,
   buildAnnualLeaveMergeUploadUpdates,
 } from "./annualLeaveYearDataOps";
+import { syncAnnualLeaveForLocalDayRollover } from "./annualLeaveDailyAttendanceSync";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
 import { useDebouncedSearchQuery } from "@/hooks/useDebouncedSearchQuery";
 import { useTodayDateKeyLocal } from "@/hooks/useTodayDateKeyLocal";
@@ -91,10 +95,24 @@ export default function AnnualLeaveManager() {
   const exportRef = useRef(null);
   const actionsAnchorRef = useRef(null);
   const actionsPanelRef = useRef(null);
+  const dailySyncTodayRef = useRef("");
 
   const canManage = canManageAnnualLeave(user, userRole);
   const todayKey = useTodayDateKeyLocal();
   const { yearData, yearLoading } = useAnnualLeaveYearData(year);
+
+  useEffect(() => {
+    if (!canManage || yearLoading || !todayKey) return;
+    if (dailySyncTodayRef.current === todayKey) return;
+    dailySyncTodayRef.current = todayKey;
+
+    void syncAnnualLeaveForLocalDayRollover(db, {
+      todayKey,
+      updatedBy: user?.email ?? "client-daily",
+    }).catch(() => {
+      dailySyncTodayRef.current = "";
+    });
+  }, [canManage, todayKey, user?.email, yearLoading]);
 
   useEffect(() => {
     const rawYear = searchParams.get("year");
@@ -272,7 +290,8 @@ export default function AnnualLeaveManager() {
           return;
         }
 
-        const { updates, importedCount } = buildAnnualLeaveMergeUploadUpdates({
+        const { updates, importedCount, newEmpKeys } =
+          buildAnnualLeaveMergeUploadUpdates({
           year,
           records,
           existingYearData: yearData,
@@ -280,11 +299,16 @@ export default function AnnualLeaveManager() {
         });
 
         await update(ref(db), updates);
-        await persistAnnualLeaveYearFromAttendance(db, {
-          year,
-          attendanceRootPath: "attendance",
-          updatedBy: user?.email ?? "",
-        });
+
+        if (newEmpKeys.length > 0) {
+          await persistAnnualLeaveMonthFromAttendance(db, {
+            year,
+            dateKey: todayKey,
+            attendanceRootPath: "attendance",
+            updatedBy: user?.email ?? "",
+            scopeEmpKeySet: new Set(newEmpKeys),
+          });
+        }
         setAlert({
           show: true,
           type: "success",
@@ -310,7 +334,7 @@ export default function AnnualLeaveManager() {
         setUploading(false);
       }
     },
-    [canManage, year, user?.email, yearData, t],
+    [canManage, year, user?.email, yearData, t, todayKey],
   );
 
   const handleDeleteYearData = useCallback(async () => {

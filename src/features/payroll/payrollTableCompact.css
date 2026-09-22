@@ -155,7 +155,8 @@
   color: rgb(100 116 139);
 }
 
-.dark .payroll-monthly-grid-menu__head {
+.dark .payroll-monthly-grid-menu__head,
+.dark .payroll-monthly-grid-menu__item-desc {
   color: rgb(148 163 184);
 }
 
@@ -265,8 +266,4 @@
   font-weight: 500;
   line-height: 1.35;
   color: rgb(100 116 139);
-}
-
-.dark .payroll-monthly-grid-menu__item-desc {
-  color: rgb(148 163 184);
 }

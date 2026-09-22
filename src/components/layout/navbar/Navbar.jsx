@@ -53,7 +53,7 @@ export default function Navbar({ user, setUser, userRole }) {
     closeMobileMenu,
     mobileDropdowns,
     toggleMobileDropdown,
-  } = useMobileMenu(menuConfig);
+  } = useMobileMenu();
 
   const closeUserMenu = useCallback(() => setUserDropdownOpen(false), []);
 
@@ -168,8 +168,6 @@ export default function Navbar({ user, setUser, userRole }) {
       <NavbarMobileDrawer
         open={mobileMenuOpen}
         onClose={closeMobileMenu}
-        theme={theme}
-        toggleTheme={toggleTheme}
         t={t}
         menuCtx={menuCtx}
         onSignIn={handleSignIn}
@@ -177,27 +175,25 @@ export default function Navbar({ user, setUser, userRole }) {
       />
 
       <nav ref={navbarMeasureRef} className="navbar">
+        <button
+          type="button"
+          id="hamburger-menu"
+          aria-label={
+            mobileMenuOpen
+              ? t("navbar.closeMobileMenu", "Đóng menu")
+              : t("navbar.openMobileMenu", "Mở menu")
+          }
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-menu"
+          onClick={toggleMobileMenu}
+        >
+          {mobileMenuOpen ? "✕" : "☰"}
+        </button>
+
         <div className="nav-logo">
           <Link to="/" className="nav-logo-text" aria-label={t("navbar.home", "Trang chủ")}>
             Pavonine
           </Link>
-        </div>
-
-        <div
-          id="hamburger-menu"
-          role="button"
-          tabIndex={0}
-          aria-label={t("navbar.openMobileMenu", "Mở menu")}
-          aria-expanded={mobileMenuOpen}
-          onClick={toggleMobileMenu}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              toggleMobileMenu();
-            }
-          }}
-        >
-          ☰
         </div>
 
         <NavbarDesktop

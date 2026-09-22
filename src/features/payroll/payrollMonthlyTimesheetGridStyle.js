@@ -38,14 +38,14 @@ export const PTS_COLORS = {
   detailOfficialBody: "FFF5F3FF",
 };
 
-export function hexToExcelArgb(hex) {
+function hexToExcelArgb(hex) {
   const h = String(hex || "").replace("#", "");
   if (h.length === 6) return `FF${h.toUpperCase()}`;
   return h.length === 8 ? h.toUpperCase() : "FFFFFFFF";
 }
 
 /** Ngày off hoặc nghỉ bù (NB) trên lịch công ty. */
-export function isPayrollMonthlyTimesheetOffLikeCalendarDay(ch) {
+function isPayrollMonthlyTimesheetOffLikeCalendarDay(ch) {
   return Boolean(ch?.isOffDay || ch?.isCompensatoryDay);
 }
 
@@ -82,19 +82,19 @@ export function getPayrollMonthlyTimesheetDayBodyBg(pd, ch) {
   return null;
 }
 
-export function getPayrollMonthlyTimesheetDetailGroupHeaderBg(groupKey) {
+function getPayrollMonthlyTimesheetDetailGroupHeaderBg(groupKey) {
   if (groupKey === "total") return PTS_COLORS.detailTotalHeader;
   if (groupKey === "trial") return PTS_COLORS.detailTrialHeader;
   return PTS_COLORS.detailOfficialHeader;
 }
 
-export function getPayrollMonthlyTimesheetDetailGroupBodyBg(groupIndex) {
+function getPayrollMonthlyTimesheetDetailGroupBodyBg(groupIndex) {
   if (groupIndex === 0) return PTS_COLORS.detailTotalBody;
   if (groupIndex === 1) return PTS_COLORS.detailTrialBody;
   return PTS_COLORS.detailOfficialBody;
 }
 
-export function getPayrollMonthlyTimesheetEmployeeStripeBg(empBlockIdx) {
+function getPayrollMonthlyTimesheetEmployeeStripeBg(empBlockIdx) {
   return empBlockIdx % 2 === 0
     ? PTS_COLORS.stickyBodyEven
     : PTS_COLORS.stickyBodyOdd;

@@ -206,7 +206,8 @@
   transition: background 0.15s ease, opacity 0.15s ease;
 }
 
-.wpd-btn:disabled {
+.wpd-btn:disabled,
+.wpd-action-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -470,11 +471,6 @@
 
 .wpd-action-btn:hover:not(:disabled) {
   filter: brightness(1.08);
-}
-
-.wpd-action-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .wpd-grand-total {

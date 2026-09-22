@@ -120,7 +120,8 @@
   color: #000;
 }
 
-.dark .annual-leave-time-popup-filter-label {
+.dark .annual-leave-time-popup-filter-label,
+.dark .annual-leave-time-popup-empty {
   color: #94a3b8;
 }
 
@@ -239,10 +240,6 @@
   font-size: 0.9375rem;
   font-weight: 600;
   color: #000;
-}
-
-.dark .annual-leave-time-popup-empty {
-  color: #94a3b8;
 }
 
 .annual-leave-time-popup-table-wrap {

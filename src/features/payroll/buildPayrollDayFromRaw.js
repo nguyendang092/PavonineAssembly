@@ -169,7 +169,7 @@ function sortPayrollEmployeesStable(rows) {
   });
 }
 
-export function slimPayrollMonthEmployeeRecord(emp) {
+function slimPayrollMonthEmployeeRecord(emp) {
   if (!emp || typeof emp !== "object") return emp;
   const o = {};
   if (emp.id != null) o.id = emp.id;

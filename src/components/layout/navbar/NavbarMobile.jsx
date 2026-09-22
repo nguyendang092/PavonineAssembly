@@ -8,21 +8,17 @@ function NavbarMobile({ menuCtx, onSignIn, onSignOut }) {
       <div className="mobile-nav-items">
         <MobileMenuTop menuConfig={menuCtx.menuConfig} ctx={menuCtx} />
       </div>
-      {user ? (
-        <div className="mobile-nav-button">
-          <div className="anim-layer" />
-          <a href="#" onClick={onSignOut}>
+      <div className="mobile-nav-footer">
+        {user ? (
+          <button type="button" className="mobile-nav-button" onClick={onSignOut}>
             {t("navbar.logOut")}
-          </a>
-        </div>
-      ) : (
-        <div className="mobile-nav-button">
-          <div className="anim-layer" />
-          <a href="#" onClick={onSignIn}>
+          </button>
+        ) : (
+          <button type="button" className="mobile-nav-button" onClick={onSignIn}>
             {t("navbar.dangNhap")}
-          </a>
-        </div>
-      )}
+          </button>
+        )}
+      </div>
     </>
   );
 }

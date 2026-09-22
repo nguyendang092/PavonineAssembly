@@ -77,7 +77,7 @@ function buildDailyReportRemarkShortLabels() {
 }
 
 /** Nhãn ghi chú KO — khớp bảng quy đổi loại phép (연차↔PN, 병가↔PO, …). */
-export const ATTENDANCE_DAILY_REPORT_REMARK_LABELS_KO = {
+const ATTENDANCE_DAILY_REPORT_REMARK_LABELS_KO = {
   annualLeave: "연차",
   halfAnnualLeave: "반차",
   sickLeave: "병가",
@@ -103,7 +103,7 @@ export function getDailyReportRemarkLabels(locale = "vi-VN") {
   return remarkShortLabelsCache;
 }
 
-export function normalizeDailyReportDeptToken(value) {
+function normalizeDailyReportDeptToken(value) {
   return String(value ?? "")
     .trim()
     .normalize("NFD")
@@ -113,7 +113,7 @@ export function normalizeDailyReportDeptToken(value) {
 }
 
 /** ASSY / ASSEMBLY / ASSY_* / ASSY-* / ASSY - … */
-export function matchesDailyReportAssemblyDept(value) {
+function matchesDailyReportAssemblyDept(value) {
   const raw = String(value ?? "").trim();
   if (!raw) return false;
   if (raw.includes("조립")) return true;

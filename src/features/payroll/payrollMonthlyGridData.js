@@ -23,7 +23,7 @@ import {
 import { mixFingerprintHash } from "@/features/payroll/payrollMonthChunksFingerprint";
 
 /** Phân tách MNV và Firebase id khi cùng MNV có nhiều bản ghi. */
-export const PAYROLL_MONTH_ROW_ID_SEP = "__";
+const PAYROLL_MONTH_ROW_ID_SEP = "__";
 
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -60,7 +60,7 @@ export function normalizePayrollMonthRowIdKey(key) {
   return String(key ?? "").trim();
 }
 
-export function parsePayrollMonthRowIdParts(rowId) {
+function parsePayrollMonthRowIdParts(rowId) {
   const s = normalizePayrollMonthRowIdKey(rowId);
   const idx = s.indexOf(PAYROLL_MONTH_ROW_ID_SEP);
   if (idx === -1) return { mnv: s, firebaseId: "" };
@@ -78,7 +78,7 @@ export function payrollMonthDisplayMnvFromRowId(rowId, rep) {
 }
 
 /** Chuẩn hóa tên bộ phận — dùng chung lọc lưới tháng / bảng ngày. */
-export function normalizePayrollDepartment(value) {
+function normalizePayrollDepartment(value) {
   return String(value ?? "")
     .trim()
     .replace(/\s+/g, " ");
@@ -190,7 +190,7 @@ export function countPayrollMonthErrorDays(dayChunks) {
   return (dayChunks ?? []).filter((c) => isPayrollMonthChunkFetchError(c)).length;
 }
 
-export function payrollMonthRepResolveBinding(rowId, rep) {
+function payrollMonthRepResolveBinding(rowId, rep) {
   const { mnv, firebaseId } = parsePayrollMonthRowIdParts(rowId);
   if (!rep && !firebaseId && !mnv) return null;
   return {
@@ -237,7 +237,7 @@ function stripPayrollMonthRepProfileDates(emp) {
 }
 
 /** Gộp MNV đã biết trong tháng theo Firebase id — tránh tách 2 dòng khi một ngày thiếu MNV. */
-export function buildPayrollMonthFirebaseIdToMnv(dayChunks) {
+function buildPayrollMonthFirebaseIdToMnv(dayChunks) {
   const map = new Map();
   for (const chunk of dayChunks ?? []) {
     for (const emp of chunk.employees ?? []) {
@@ -249,7 +249,7 @@ export function buildPayrollMonthFirebaseIdToMnv(dayChunks) {
 }
 
 /** MNV → tập Firebase id (phát hiện trùng MNV khác người). */
-export function buildPayrollMonthMnvToFirebaseIds(dayChunks) {
+function buildPayrollMonthMnvToFirebaseIds(dayChunks) {
   const map = new Map();
   for (const chunk of dayChunks ?? []) {
     for (const emp of chunk.employees ?? []) {
@@ -304,7 +304,7 @@ export function canonicalPayrollMonthRowId(emp, indexes) {
 }
 
 /** Mọi alias có thể tra cứu một NV trong chunk ngày. */
-export function payrollMonthEmployeeRowAliases(emp) {
+function payrollMonthEmployeeRowAliases(emp) {
   const keys = new Set();
   const add = (v) => {
     const k = normalizePayrollMonthRowIdKey(v);

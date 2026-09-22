@@ -36,7 +36,7 @@ export function comboStatI18nKey(metricKey) {
  * Nhân sự: BGC, vào trễ, ca đêm + các loại phép & trạng thái nghỉ.
  * Sản xuất: tổng nhân viên + chấm công (rộng), giờ vào lệch / # HH:MM.
  */
-export const COMBO_DASHBOARD_TILE_KEYS_HR = [
+const COMBO_DASHBOARD_TILE_KEYS_HR = [
   "wrongDepartment",
   "buGioCong",
   "late",
@@ -128,7 +128,7 @@ export function attendanceProductionDeptMatchKey(
   return compact;
 }
 
-export function matchesComboStatsProductionDepartment(
+function matchesComboStatsProductionDepartment(
   normalizeDepartment,
   boPhanRaw,
 ) {
@@ -234,6 +234,6 @@ export const COMBO_DASHBOARD_TILES = [
 ];
 
 /** Tooltip + Bar: thứ tự vẽ (trái → phải) — fill từ `getAttendanceComboBarFillForMetricKey`. */
-export const COMBO_BAR_SERIES = COMBO_CHART_METRIC_KEYS.map((dataKey) => ({
+const COMBO_BAR_SERIES = COMBO_CHART_METRIC_KEYS.map((dataKey) => ({
   dataKey,
 }));

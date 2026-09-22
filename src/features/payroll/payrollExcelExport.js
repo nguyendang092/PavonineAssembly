@@ -136,7 +136,7 @@ export function formatPayrollExcelDateCell(dateKey, displayLocale) {
  * Tách ngày / tháng / năm từ `dateKey` (YYYY-MM-DD) theo lịch local — dùng cho xuất Excel.
  * @returns {{ day: number | ""; month: number | ""; year: number | "" }}
  */
-export function getPayrollExcelDateParts(dateKey) {
+function getPayrollExcelDateParts(dateKey) {
   const d = parseLocalDateKey(dateKey);
   if (!d) return { day: "", month: "", year: "" };
   return {
@@ -160,7 +160,7 @@ export function getPayrollExcelDateParts(dateKey) {
  *   lateOtExcludedById?: Record<string, boolean>,
  * }} ctx — `isCompensatoryDay` vẫn dùng cho công thức giờ; không còn cột «Nghỉ bù» trên sheet (chỉ OFF/HOLIDAY + khối giờ).
  */
-export function payrollEmployeeRowValues(emp, idx, ctx) {
+function payrollEmployeeRowValues(emp, idx, ctx) {
   const {
     isPayrollOffLikeDay,
     isOffDay = false,

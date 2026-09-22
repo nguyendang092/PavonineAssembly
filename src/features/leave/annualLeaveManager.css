@@ -182,18 +182,12 @@ html:has(.annual-leave-actions-btn[aria-expanded="true"])
   box-shadow: 4px 0 8px -6px rgb(0 0 0 / 0.12);
 }
 
-.annual-leave-sticky-bg-even {
-  background-color: #f4f8f6;
-}
-
-.annual-leave-sticky-bg-odd {
-  background-color: var(--surface);
-}
-
+.annual-leave-sticky-bg-even,
 .annual-leave-table-row-even > td {
   background-color: #f4f8f6;
 }
 
+.annual-leave-sticky-bg-odd,
 .annual-leave-table-row-odd > td {
   background-color: var(--surface);
 }
@@ -272,18 +266,12 @@ html:has(.annual-leave-actions-btn[aria-expanded="true"])
   color: var(--primary);
 }
 
-.dark .annual-leave-sticky-bg-even {
-  background-color: rgb(22 34 29);
-}
-
-.dark .annual-leave-sticky-bg-odd {
-  background-color: var(--surface);
-}
-
+.dark .annual-leave-sticky-bg-even,
 .dark .annual-leave-table-row-even > td {
   background-color: rgb(22 34 29);
 }
 
+.dark .annual-leave-sticky-bg-odd,
 .dark .annual-leave-table-row-odd > td {
   background-color: var(--surface);
 }
@@ -752,7 +740,10 @@ col.annual-leave-col-detail {
   color: #000;
 }
 
-.dark .annual-leave-detail-scope-label {
+.dark .annual-leave-detail-scope-label,
+.dark .annual-leave-detail-year-select-label,
+.dark .annual-leave-detail-month-tag,
+.dark .annual-leave-detail-empty-text {
   color: #94a3b8;
 }
 
@@ -769,10 +760,6 @@ col.annual-leave-col-detail {
   text-transform: uppercase;
   color: #000;
   line-height: 1;
-}
-
-.dark .annual-leave-detail-year-select-label {
-  color: #94a3b8;
 }
 
 .annual-leave-detail-year-select-input {
@@ -1116,10 +1103,6 @@ col.annual-leave-col-detail {
   color: #000;
 }
 
-.dark .annual-leave-detail-month-tag {
-  color: #94a3b8;
-}
-
 .annual-leave-detail-row-display-only td {
   background: rgb(248 250 252 / 0.85);
 }
@@ -1302,10 +1285,6 @@ col.annual-leave-col-detail {
   color: #000;
 }
 
-.dark .annual-leave-detail-empty-text {
-  color: #94a3b8;
-}
-
 @media (max-width: 768px) {
   .annual-leave-detail-overlay {
     padding: 0.75rem;
@@ -1331,10 +1310,7 @@ col.annual-leave-col-detail {
 }
 
 /* Phân trang — chế độ sáng: chữ đen (chỉ trong trang quản lý phép năm) */
-:not(.dark) .annual-leave-viewport .hr-table-pagination {
-  color: var(--ink);
-}
-
+:not(.dark) .annual-leave-viewport .hr-table-pagination,
 :not(.dark) .annual-leave-viewport .hr-table-pagination__summary-range,
 :not(.dark) .annual-leave-viewport .hr-table-pagination__summary-total,
 :not(.dark) .annual-leave-viewport .hr-table-pagination__nav-btn,

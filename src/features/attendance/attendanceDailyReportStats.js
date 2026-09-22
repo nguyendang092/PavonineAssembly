@@ -12,9 +12,9 @@ import {
   resolveDailyReportEmployeeProcessId,
 } from "./attendanceDailyReportConfig";
 
-export const ATTENDANCE_DAILY_REPORT_ANDON_WARN = 5;
-export const ATTENDANCE_DAILY_REPORT_ANDON_BAD = 15;
-export const ATTENDANCE_DAILY_REPORT_RATE_BAR_MAX = 20;
+const ATTENDANCE_DAILY_REPORT_ANDON_WARN = 5;
+const ATTENDANCE_DAILY_REPORT_ANDON_BAD = 15;
+const ATTENDANCE_DAILY_REPORT_RATE_BAR_MAX = 20;
 
 export function getDailyReportAndonTier(rate) {
   if (rate == null || !Number.isFinite(rate) || rate <= 0) return "ok";
@@ -297,7 +297,7 @@ function sumFromRows(rows, workerType, shift, locale) {
   return sumShiftCells(rows.map((row) => row[workerType][shift]), locale);
 }
 
-export function buildDailyReportSummary(rows, locale = "vi-VN") {
+function buildDailyReportSummary(rows, locale = "vi-VN") {
   const regularDay = sumFromRows(rows, "regular", "day", locale);
   const regularNight = sumFromRows(rows, "regular", "night", locale);
   const seasonalDay = sumFromRows(rows, "seasonal", "day", locale);
@@ -320,7 +320,7 @@ export function formatDailyReportAbsentRate(rate) {
   return Number.isInteger(rounded) ? `${rounded}%` : `${rounded.toFixed(1)}%`;
 }
 
-export function formatDailyReportHeaderDate(dateKey, locale = "ko-KR") {
+function formatDailyReportHeaderDate(dateKey, locale = "ko-KR") {
   if (!dateKey) return "";
   const [y, m, d] = String(dateKey).split("-").map(Number);
   if (!y || !m || !d) return dateKey;

@@ -7,16 +7,16 @@
 export const DAY_EARLY_PAPERWORK_CUTOFF_MIN = 6 * 60 + 40;
 
 /** Mốc khung 05:40–06:40 và 06:40–07:40. */
-export const DAY_EARLY_OT_MARKER_FIRST_MIN = 5 * 60 + 40;
-export const DAY_EARLY_OT_MARKER_SECOND_MIN = 6 * 60 + 40;
+const DAY_EARLY_OT_MARKER_FIRST_MIN = 5 * 60 + 40;
+const DAY_EARLY_OT_MARKER_SECOND_MIN = 6 * 60 + 40;
 /** Từ 06:00 → chỉ khung 06:40–07:40; trước 06:00 → cả hai khung (2h). */
 export const DAY_EARLY_OT_SECOND_TIER_MIN = 6 * 60;
 
-export const DAY_EARLY_OT_SEGMENT_EARLY = Object.freeze([
+const DAY_EARLY_OT_SEGMENT_EARLY = Object.freeze([
   DAY_EARLY_OT_MARKER_FIRST_MIN,
   DAY_EARLY_OT_MARKER_SECOND_MIN,
 ]);
-export const DAY_EARLY_OT_SEGMENT_LATE = Object.freeze([
+const DAY_EARLY_OT_SEGMENT_LATE = Object.freeze([
   DAY_EARLY_OT_MARKER_SECOND_MIN,
   7 * 60 + 40,
 ]);
@@ -30,7 +30,7 @@ export const NIGHT_SHIFT_OFFICIAL_START_MIN = 18 * 60 + 40;
 export const NIGHT_SHIFT_EARLY_PAPERWORK_MIN_IN_MIN = 15 * 60;
 
 /** Hai khung TC sớm: 17:40–18:40 và 18:40–19:40 (tối đa 2h). */
-export const NIGHT_EARLY_OT_SEGMENT_START_MINUTES = Object.freeze([
+const NIGHT_EARLY_OT_SEGMENT_START_MINUTES = Object.freeze([
   17 * 60 + 40,
   18 * 60 + 40,
 ]);
@@ -39,7 +39,7 @@ export const NIGHT_EARLY_OT_SECOND_TIER_MIN = 18 * 60;
 export const NIGHT_EARLY_OT_MAX_HOURS = 2;
 
 /** Ca đêm: hai khung TC sớm (mỗi khung 1h), tối đa 2h. */
-export const NIGHT_EARLY_OT_SEGMENTS = Object.freeze(
+const NIGHT_EARLY_OT_SEGMENTS = Object.freeze(
   NIGHT_EARLY_OT_SEGMENT_START_MINUTES.map((start, i) =>
     Object.freeze([
       start,
@@ -56,7 +56,7 @@ export const NIGHT_EARLY_OT_SEGMENTS = Object.freeze(
  * @param {number} segStart
  * @param {number} segEnd
  */
-export function paperworkOvertimeSegmentMinutes(entryMin, segStart, segEnd) {
+function paperworkOvertimeSegmentMinutes(entryMin, segStart, segEnd) {
   const start = Math.max(entryMin, segStart);
   if (start >= segEnd) return 0;
   return segEnd - start;

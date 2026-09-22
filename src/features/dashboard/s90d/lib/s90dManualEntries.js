@@ -638,7 +638,7 @@ export function mergeProcessMonthIntoStore(
     next[dateKey] = day;
   });
 
-  return normalizeManualStore(next, config);
+  return next;
 }
 
 export function updateProcessMonthProductCode(

@@ -296,7 +296,8 @@
   color: #c2410c;
 }
 
-.dark .al-day-detail-deduction-label {
+.dark .al-day-detail-deduction-label,
+.dark .al-day-detail-deduction-unit {
   color: #fdba74;
 }
 
@@ -319,10 +320,6 @@
   font-weight: 700;
   color: #ea580c;
   opacity: 0.85;
-}
-
-.dark .al-day-detail-deduction-unit {
-  color: #fdba74;
 }
 
 .al-day-detail-cards {

@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { getMobileExpandedStateFromMenu } from "../menuUtils";
 
 function dispatchMobileMenuToggle(open) {
   window.dispatchEvent(
@@ -9,7 +8,7 @@ function dispatchMobileMenuToggle(open) {
   );
 }
 
-export function useMobileMenu(menuItems) {
+export function useMobileMenu() {
   const [open, setOpen] = useState(false);
   const [mobileDropdowns, setMobileDropdowns] = useState({});
 
@@ -22,13 +21,11 @@ export function useMobileMenu(menuItems) {
   const toggle = useCallback(() => {
     setOpen((prev) => {
       const next = !prev;
-      setMobileDropdowns(
-        next ? getMobileExpandedStateFromMenu(menuItems) : {},
-      );
+      if (!next) setMobileDropdowns({});
       dispatchMobileMenuToggle(next);
       return next;
     });
-  }, [menuItems]);
+  }, []);
 
   const toggleDropdown = useCallback((key) => {
     setMobileDropdowns((prev) => ({ ...prev, [key]: !prev[key] }));

@@ -3,7 +3,7 @@ import { db, ref, get } from "@/services/firebase";
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** @param {string} anchorYyyyMmDd */
-export function dateKeysInMonth(anchorYyyyMmDd) {
+function dateKeysInMonth(anchorYyyyMmDd) {
   if (!anchorYyyyMmDd || !DATE_KEY.test(anchorYyyyMmDd)) return [];
   const [y, m] = anchorYyyyMmDd.split("-").map(Number);
   if (!y || !m) return [];
@@ -56,7 +56,7 @@ export async function fetchOffAndHolidayDateKeysInMonth(
  * @param {string} [attendanceRootPath="attendance"]
  * @returns {Promise<string[]>} — các ngày có off, đã sort
  */
-export async function fetchOffDayDateKeysInMonth(
+async function fetchOffDayDateKeysInMonth(
   anchorYyyyMmDd,
   attendanceRootPath = "attendance",
 ) {
@@ -72,7 +72,7 @@ export async function fetchOffDayDateKeysInMonth(
  * @param {string[]} keys
  * @param {string} [locale="vi-VN"]
  */
-export function formatOffDayDateKeysCompact(keys, locale = "vi-VN") {
+function formatOffDayDateKeysCompact(keys, locale = "vi-VN") {
   if (!keys.length) return "";
   const ym = keys[0].slice(0, 7);
   const allSameMonth = keys.every((k) => k.slice(0, 7) === ym);

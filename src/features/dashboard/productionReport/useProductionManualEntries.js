@@ -30,6 +30,17 @@ import {
 } from "../s90d/lib/s90dManualExcel";
 import { createManualEntriesRepository } from "./manualEntriesRepository";
 import { extractMonthSlice } from "./manualEntriesMonthUtils";
+import { stampDayUpdatedAt } from "./manualEntriesDayMerge";
+
+function stampTouchedDays(store, dateKeys) {
+  const next = { ...store };
+  const updatedAt = Date.now();
+  for (const dateKey of dateKeys) {
+    if (!next[dateKey]) continue;
+    next[dateKey] = stampDayUpdatedAt(next[dateKey], updatedAt);
+  }
+  return next;
+}
 
 export function useProductionManualEntries(config) {
   const {
@@ -72,9 +83,21 @@ export function useProductionManualEntries(config) {
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const bootstrappedRef = useRef(false);
 
+  const persistRemoteRef = useRef(Promise.resolve());
+
   const applyStore = useCallback(
-    (nextStore, { bumpProcessSync = false, persistLocal = true } = {}) => {
-      const normalized = normalizeManualStore(nextStore, manualEntryConfig);
+    (
+      nextStore,
+      {
+        bumpProcessSync = false,
+        persistLocal = true,
+        alreadyNormalized = false,
+        revisionDateKeys = null,
+      } = {},
+    ) => {
+      const normalized = alreadyNormalized
+        ? nextStore
+        : normalizeManualStore(nextStore, manualEntryConfig);
       storeRef.current = normalized;
       setStore(normalized);
       if (bumpProcessSync) {
@@ -83,10 +106,10 @@ export function useProductionManualEntries(config) {
       if (persistLocal) {
         repo.persistLocal(normalized);
       }
-      repo.rememberDayRevisions(
-        normalized,
-        Object.keys(normalized).filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)),
-      );
+      const dateKeys =
+        revisionDateKeys ??
+        Object.keys(normalized).filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key));
+      repo.rememberDayRevisions(normalized, dateKeys);
     },
     [manualEntryConfig, repo],
   );
@@ -196,59 +219,81 @@ export function useProductionManualEntries(config) {
         process = "",
         localByDate = {},
         fullRemoteWrite = false,
+        waitForRemote = true,
       } = {},
     ) => {
-      const normalized = normalizeManualStore(nextStore, manualEntryConfig);
+      const stampedStore =
+        !fullRemoteWrite && touchedDateKeys.length
+          ? stampTouchedDays(nextStore, touchedDateKeys)
+          : nextStore;
 
-      setSaving(true);
-      setSyncError("");
+      applyStore(stampedStore, {
+        bumpProcessSync: false,
+        alreadyNormalized: true,
+        revisionDateKeys: touchedDateKeys,
+      });
 
-      try {
-        applyStore(normalized, { bumpProcessSync: false });
-
-        const remoteOk = await repo.persistStoreAttempt({
-          store: normalized,
-          touchedDateKeys,
-          process,
-          localByDate,
-          fullRemoteWrite,
-        });
-
-        setPendingSyncCount(repo.pendingWriteCount());
-
-        if (!remoteOk) {
-          setSyncError(
-            "Không lưu được lên Firebase — đã xếp hàng, sẽ thử lại khi có mạng.",
-          );
-          throw new Error("SAVE_FAILED");
+      const runRemote = async () => {
+        if (waitForRemote) {
+          setSaving(true);
+          setSyncError("");
         }
+        try {
+          const remoteOk = await repo.persistStoreAttempt({
+            store: stampedStore,
+            touchedDateKeys,
+            process,
+            localByDate,
+            fullRemoteWrite,
+          });
 
-        setSyncError("");
-      } finally {
-        setSaving(false);
+          setPendingSyncCount(repo.pendingWriteCount());
+
+          if (!remoteOk) {
+            setSyncError(
+              "Không lưu được lên Firebase — đã xếp hàng, sẽ thử lại khi có mạng.",
+            );
+            if (waitForRemote) throw new Error("SAVE_FAILED");
+            return;
+          }
+
+          setSyncError("");
+        } finally {
+          if (waitForRemote) setSaving(false);
+        }
+      };
+
+      if (waitForRemote) {
+        await runRemote();
+        return;
       }
+
+      persistRemoteRef.current = persistRemoteRef.current
+        .then(runRemote)
+        .catch(() => {});
     },
-    [applyStore, manualEntryConfig, repo],
+    [applyStore, repo],
   );
 
   const saveProcessMonth = useCallback(
-    async (process, dateKeys, localByDate) => {
+    async (process, localByDate) => {
+      const touchedDateKeys = Object.keys(localByDate ?? {}).filter(Boolean);
+
+      if (!touchedDateKeys.length) return;
+
       const nextStore = mergeProcessMonthIntoStore(
         storeRef.current,
-        dateKeys,
+        touchedDateKeys,
         process,
         localByDate,
         manualEntryConfig,
       );
 
-      const touchedDateKeys = dateKeys.filter(
-        (dateKey) => localByDate[dateKey] !== undefined,
-      );
-
       await persistStore(nextStore, {
-        touchedDateKeys: touchedDateKeys.length ? touchedDateKeys : dateKeys,
+        touchedDateKeys,
         process,
         localByDate,
+        waitForRemote: false,
       });
     },
     [manualEntryConfig, persistStore],

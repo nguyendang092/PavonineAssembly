@@ -44,7 +44,9 @@
   font-weight: 700;
 }
 
-.dark .mc-defect-heatmap-table thead th {
+.dark .mc-defect-heatmap-table thead th,
+.dark .mc-defect-heatmap-table .mc-defect-heatmap-td-total,
+.dark .mc-defect-heatmap-table thead .mc-defect-heatmap-sticky-col {
   background: rgb(30 41 59);
 }
 
@@ -90,10 +92,6 @@
   background: #f1f5f9;
 }
 
-.dark .mc-defect-heatmap-table .mc-defect-heatmap-td-total {
-  background: rgb(30 41 59);
-}
-
 .mc-defect-heatmap-table th:first-child,
 .mc-defect-heatmap-table td:first-child {
   width: 10rem;
@@ -125,10 +123,6 @@
 
 .mc-defect-heatmap-table thead .mc-defect-heatmap-sticky-col.mc-defect-heatmap-th-row1 {
   z-index: 32;
-}
-
-.dark .mc-defect-heatmap-table thead .mc-defect-heatmap-sticky-col {
-  background: rgb(30 41 59);
 }
 
 .mc-defect-heatmap-table thead .mc-defect-heatmap-th-total.mc-defect-heatmap-th-row1 {

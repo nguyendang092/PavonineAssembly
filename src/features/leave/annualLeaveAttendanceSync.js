@@ -642,6 +642,7 @@ export async function persistAnnualLeaveMonthFromAttendance(
     updatedBy = "",
     scopeEmpKeySet = null,
     monthAttendanceOverride = null,
+    resyncAggFromMonth = false,
   },
 ) {
   const resolvedYearMonth =
@@ -662,6 +663,7 @@ export async function persistAnnualLeaveMonthFromAttendance(
     await resolvePersistDerivedMapsForMonth(db, year, resolvedYearMonth, {
       monthAttendanceData,
       updatedBy,
+      resyncAggFromMonth,
     });
 
   const yearSnap = await get(ref(db, `${ANNUAL_LEAVE_RTDB_ROOT}/${year}`));

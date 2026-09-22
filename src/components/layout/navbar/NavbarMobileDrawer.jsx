@@ -1,63 +1,50 @@
 import { memo } from "react";
-import { FiMoon, FiSun } from "react-icons/fi";
 import NavbarMobile from "./NavbarMobile";
 
 function NavbarMobileDrawer({
   open,
   onClose,
-  theme,
-  toggleTheme,
   t,
   menuCtx,
   onSignIn,
   onSignOut,
 }) {
   return (
-    <div id="mobile-menu" className={open ? "active" : ""}>
-      <span
-        id="hamburger-cross"
-        role="button"
-        tabIndex={0}
+    <>
+      <button
+        type="button"
+        className={`mobile-menu-overlay${open ? " active" : ""}`}
         aria-label={t("navbar.closeMobileMenu", "Đóng menu")}
+        aria-hidden={!open}
+        tabIndex={-1}
         onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClose();
-          }
-        }}
-      >
-        ✕
-      </span>
-      <div className="mobile-menu-toolbar">
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="theme-toggle-btn"
-          title={
-            theme === "dark"
-              ? t("navbar.themeSwitchToLight")
-              : t("navbar.themeSwitchToDark")
-          }
-          aria-label={
-            theme === "dark"
-              ? t("navbar.themeSwitchToLight")
-              : t("navbar.themeSwitchToDark")
-          }
-        >
-          {theme === "dark" ? (
-            <FiSun size={20} strokeWidth={2} />
-          ) : (
-            <FiMoon size={20} strokeWidth={2} />
-          )}
-        </button>
-      </div>
-      <NavbarMobile
-        menuCtx={menuCtx}
-        onSignIn={onSignIn}
-        onSignOut={onSignOut}
       />
-    </div>
+      <div
+        id="mobile-menu"
+        className={open ? "active" : ""}
+        role="dialog"
+        aria-modal="true"
+        aria-hidden={!open}
+        aria-label={t("navbar.menu", "Menu")}
+      >
+        <div className="mobile-menu-header">
+          <p className="mobile-menu-title">{t("navbar.menu", "Menu")}</p>
+          <button
+            type="button"
+            id="hamburger-cross"
+            aria-label={t("navbar.closeMobileMenu", "Đóng menu")}
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        </div>
+        <NavbarMobile
+          menuCtx={menuCtx}
+          onSignIn={onSignIn}
+          onSignOut={onSignOut}
+        />
+      </div>
+    </>
   );
 }
 

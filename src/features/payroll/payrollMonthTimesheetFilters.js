@@ -26,7 +26,7 @@ export const PAYROLL_TIMESHEET_PRESENCE_FILTER = Object.freeze({
 });
 
 /** Giờ công chuẩn ca ngày — dùng lọc «đi trễ về sớm» (< 8h). */
-export const PAYROLL_STANDARD_DAY_WORK_HOURS = 8;
+const PAYROLL_STANDARD_DAY_WORK_HOURS = 8;
 
 export const PAYROLL_SHORT_HOURS_FILTER = Object.freeze({
   ALL: "all",
@@ -34,7 +34,7 @@ export const PAYROLL_SHORT_HOURS_FILTER = Object.freeze({
 });
 
 /** @param {string} filterValue */
-export function findPayrollLeaveTypeFilterOption(filterValue) {
+function findPayrollLeaveTypeFilterOption(filterValue) {
   const s = String(filterValue ?? "").trim();
   if (!s || s === PAYROLL_TIMESHEET_PRESENCE_FILTER.ALL) return null;
   if (s === ATTENDANCE_LEAVE_FILTER_NONE) return { value: ATTENDANCE_LEAVE_FILTER_NONE };

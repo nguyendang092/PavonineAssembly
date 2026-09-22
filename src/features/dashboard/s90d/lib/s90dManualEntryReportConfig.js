@@ -39,12 +39,6 @@ export const S90D_SIZE_BOARD_SPECS = Object.freeze([
   },
 ]);
 
-export const R95D_ASSEMBLY_BOARD_SPECS = Object.freeze([
-  { id: "assembly-r95d65", label: "R95D 65", productCode: "R95D 65" },
-  { id: "assembly-r95d75", label: "R95D 75", productCode: "R95D 75" },
-  { id: "assembly-r95d85", label: "R95D 85", productCode: "R95D 85" },
-]);
-
 export const AP5_SUMMARY_VIEW_GROUPS = Object.freeze([
   { id: "ap5ff", label: "AP5FF" },
   { id: "ap5fz", label: "AP5FZ" },

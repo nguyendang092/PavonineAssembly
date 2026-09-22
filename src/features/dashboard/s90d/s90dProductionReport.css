@@ -41,10 +41,7 @@
   flex-shrink: 0;
 }
 
-.s90d-report-sticky .s90d-report-header {
-  margin-bottom: 0;
-}
-
+.s90d-report-sticky .s90d-report-header,
 .s90d-report-sticky .s90d-tabs {
   margin-bottom: 0;
 }
@@ -112,11 +109,11 @@
     0 4px 14px rgba(79, 70, 229, 0.07);
 }
 
-.s90d-toolbar-filters {
+.s90d-toolbar-filters,
+.s90d-toolbar-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
   padding: var(--s90d-toolbar-panel-padding);
   border-radius: var(--s90d-toolbar-panel-radius);
   border: var(--s90d-toolbar-panel-border);
@@ -124,17 +121,13 @@
   box-shadow: var(--s90d-toolbar-panel-shadow);
 }
 
+.s90d-toolbar-filters {
+  gap: 0.75rem;
+}
+
 .s90d-toolbar-actions {
-  display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
   gap: 0.625rem;
-  padding: var(--s90d-toolbar-panel-padding);
-  border-radius: var(--s90d-toolbar-panel-radius);
-  border: var(--s90d-toolbar-panel-border);
-  background: var(--s90d-toolbar-panel-bg);
-  box-shadow: var(--s90d-toolbar-panel-shadow);
 }
 
 .s90d-toolbar-actions-label {
@@ -237,7 +230,8 @@
   border-left: 1px solid #c7d2fe;
 }
 
-.s90d-view-toggle-btn:hover {
+.s90d-view-toggle-btn:hover,
+.s90d-tab:hover {
   background: #eef2ff;
 }
 
@@ -344,11 +338,6 @@
   border-color: #4f46e5;
 }
 
-.s90d-save-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .s90d-save-btn--dirty {
   box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
 }
@@ -439,9 +428,9 @@
   color: #475569;
 }
 
-.s90d-process-date-input {
+.s90d-process-date-input,
+.s90d-toolbar input {
   min-height: 2.25rem;
-  min-width: 10.5rem;
   border-radius: 0.625rem;
   border: 1px solid #cbd5e1;
   background: #fff;
@@ -449,6 +438,10 @@
   font-size: 0.8125rem;
   font-weight: 700;
   color: #0f172a;
+}
+
+.s90d-process-date-input {
+  min-width: 10.5rem;
 }
 
 .s90d-process-date-nav {
@@ -486,17 +479,6 @@
   font-size: 0.8125rem;
   font-weight: 700;
   color: #1e293b;
-}
-
-.s90d-toolbar input {
-  min-height: 2.25rem;
-  border-radius: 0.625rem;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #0f172a;
 }
 
 .s90d-excel-btn,
@@ -553,11 +535,6 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
-.s90d-excel-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .s90d-chart-btn {
   border: 1px solid #7c3aed;
   background: #f5f3ff;
@@ -568,11 +545,6 @@
   background: #ede9fe;
   border-color: #6d28d9;
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
-}
-
-.s90d-chart-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .s90d-image-btn {
@@ -587,6 +559,9 @@
   box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
 }
 
+.s90d-save-btn:disabled,
+.s90d-excel-btn:disabled,
+.s90d-chart-btn:disabled,
 .s90d-image-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -1007,10 +982,6 @@ body.s90d-chart-modal-open {
   transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.s90d-tab:hover {
-  background: #eef2ff;
-}
-
 .s90d-tab--active {
   background: #4f46e5;
   color: #fff;
@@ -1025,12 +996,7 @@ body.s90d-chart-modal-open {
   margin-bottom: 1.5rem;
 }
 
-.s90d-daily-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
+.s90d-daily-grid,
 .s90d-daily-product-stack {
   display: flex;
   flex-direction: column;
@@ -1325,7 +1291,9 @@ body.s90d-chart-modal-open {
   text-align: center;
 }
 
-.s90d-kpi-value--ng {
+.s90d-kpi-value--ng,
+.s90d-daily-stat-value--ng,
+.s90d-daily-process-qty--ng {
   color: #dc2626;
 }
 
@@ -1494,12 +1462,15 @@ body.s90d-chart-modal-open {
   white-space: nowrap;
 }
 
-.s90d-summary-process-table thead .s90d-col-date .s90d-bilingual-header {
+.s90d-summary-process-table thead .s90d-col-date .s90d-bilingual-header,
+.s90d-summary-process-table thead .s90d-col-product--full .s90d-bilingual-header {
   gap: 0.05rem;
 }
 
 .s90d-summary-process-table thead .s90d-col-date .s90d-th-ko,
-.s90d-summary-process-table thead .s90d-col-date .s90d-th-vi {
+.s90d-summary-process-table thead .s90d-col-date .s90d-th-vi,
+.s90d-summary-process-table thead .s90d-col-product--full .s90d-th-ko,
+.s90d-summary-process-table thead .s90d-col-product--full .s90d-th-vi {
   font-size: 0.625rem;
   line-height: 1.05;
 }
@@ -1517,11 +1488,7 @@ body.s90d-chart-modal-open {
 }
 
 .s90d-summary-process-table .s90d-head-total-qty,
-.s90d-summary-process-table .s90d-col-total-qty {
-  width: 4.75rem;
-  min-width: 4.75rem;
-}
-
+.s90d-summary-process-table .s90d-col-total-qty,
 .s90d-summary-process-table .s90d-head-ok,
 .s90d-summary-process-table .s90d-col-ok {
   width: 4.75rem;
@@ -1532,11 +1499,7 @@ body.s90d-chart-modal-open {
 .s90d-summary-process-table .s90d-col-ng,
 .s90d-summary-process-table .s90d-col-yield,
 .s90d-summary-process-table .s90d-head-cumulative,
-.s90d-summary-process-table .s90d-col-cumulative {
-  width: 3.5rem;
-  min-width: 3.5rem;
-}
-
+.s90d-summary-process-table .s90d-col-cumulative,
 .s90d-summary-process-table .s90d-head-ng-rate,
 .s90d-summary-process-table .s90d-col-ng-rate {
   width: 3.5rem;
@@ -1573,16 +1536,6 @@ body.s90d-chart-modal-open {
   padding-left: 0.25rem;
   padding-right: 0.25rem;
   font-size: 0.6875rem;
-}
-
-.s90d-summary-process-table thead .s90d-col-product--full .s90d-bilingual-header {
-  gap: 0.05rem;
-}
-
-.s90d-summary-process-table thead .s90d-col-product--full .s90d-th-ko,
-.s90d-summary-process-table thead .s90d-col-product--full .s90d-th-vi {
-  font-size: 0.625rem;
-  line-height: 1.05;
 }
 
 .s90d-summary-process-table .s90d-row-percent .s90d-col-product--full {
@@ -1674,15 +1627,9 @@ body.s90d-chart-modal-open {
 }
 
 .s90d-head-total-qty,
-.s90d-col-total-qty {
-  width: 3.25rem;
-}
-
+.s90d-col-total-qty,
 .s90d-head-ok,
-.s90d-col-ok {
-  width: 3.25rem;
-}
-
+.s90d-col-ok,
 .s90d-head-target,
 .s90d-col-target,
 .s90d-head-efficiency,
@@ -1691,14 +1638,8 @@ body.s90d-chart-modal-open {
 }
 
 .s90d-head-ng,
-.s90d-col-ng {
-  width: 3rem;
-}
-
-.s90d-col-yield {
-  width: 3rem;
-}
-
+.s90d-col-ng,
+.s90d-col-yield,
 .s90d-head-ng-rate,
 .s90d-col-ng-rate {
   width: 3rem;
@@ -1789,7 +1730,9 @@ body.s90d-chart-modal-open {
   line-height: 1.1;
 }
 
-.s90d-row-shift:nth-child(even) {
+.s90d-row-shift:nth-child(even),
+.s90d-row-shift:nth-child(even) .s90d-col-date,
+.s90d-row-shift:nth-child(even) .s90d-sticky-col {
   background: #fafafa;
 }
 
@@ -1806,11 +1749,6 @@ body.s90d-chart-modal-open {
   background: #eef2ff;
 }
 
-.s90d-row-shift:nth-child(even) .s90d-col-date,
-.s90d-row-shift:nth-child(even) .s90d-sticky-col {
-  background: #fafafa;
-}
-
 .s90d-row-board-sub .s90d-col-process {
   color: #0f172a;
   font-size: inherit;
@@ -1825,14 +1763,38 @@ body.s90d-chart-modal-open {
   padding-left: 1.25rem;
 }
 
+.s90d-col-process,
+.s90d-process {
+  font-weight: 700;
+  font-size: inherit;
+  text-transform: uppercase;
+}
+
+.s90d-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.s90d-row-total,
+.s90d-row-total td,
 .s90d-row-total .s90d-sticky-col,
 .s90d-row-total .s90d-col-date {
   background: #ffff00 !important;
 }
 
+.s90d-row-total {
+  font-weight: 800;
+}
+
+.s90d-row-percent,
+.s90d-row-percent td,
 .s90d-row-percent .s90d-sticky-col,
 .s90d-row-percent .s90d-col-date {
   background: #dbeafe !important;
+}
+
+.s90d-row-percent {
+  font-weight: 700;
+  color: #1e3a8a;
 }
 
 .s90d-col-date,
@@ -1861,41 +1823,6 @@ body.s90d-chart-modal-open {
 .s90d-col-ng-rate {
   color: #dc2626;
   font-weight: 700;
-}
-
-.s90d-col-process {
-  font-weight: 700;
-  font-size: inherit;
-  text-transform: uppercase;
-}
-
-.s90d-process {
-  font-weight: 700;
-  font-size: inherit;
-  text-transform: uppercase;
-}
-
-.s90d-num {
-  font-variant-numeric: tabular-nums;
-}
-
-.s90d-row-total {
-  background: #ffff00 !important;
-  font-weight: 800;
-}
-
-.s90d-row-total td {
-  background: #ffff00 !important;
-}
-
-.s90d-row-percent {
-  background: #dbeafe !important;
-  font-weight: 700;
-  color: #1e3a8a;
-}
-
-.s90d-row-percent td {
-  background: #dbeafe !important;
 }
 
 .s90d-row-percent .s90d-col-line {
@@ -2031,7 +1958,8 @@ body.s90d-chart-modal-open {
 }
 
 /* Daily dashboard tab (S90D) */
-.s90d-daily-dashboard {
+.s90d-daily-dashboard,
+.s90d-daily-all-days-stack {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -2111,10 +2039,6 @@ body.s90d-chart-modal-open {
   font-variant-numeric: tabular-nums;
 }
 
-.s90d-daily-stat-value--ng {
-  color: #dc2626;
-}
-
 .s90d-daily-stat-value--rate {
   color: #d97706;
 }
@@ -2145,12 +2069,6 @@ body.s90d-chart-modal-open {
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
-}
-
-.s90d-daily-all-days-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
 }
 
 .s90d-daily-date-strip-label {
@@ -2319,18 +2237,23 @@ body.s90d-chart-modal-open {
   vertical-align: middle;
 }
 
-.s90d-daily-process-table thead th:first-child {
+.s90d-daily-process-table thead th:first-child,
+.s90d-daily-board-header-row .s90d-daily-board-header-cell:first-child {
   text-align: left;
 }
 
 .s90d-daily-process-table thead th:first-child .s90d-bilingual-header,
 .s90d-daily-process-table thead th:first-child .s90d-bilingual-header--ko-below .s90d-th-vi,
-.s90d-daily-process-table thead th:first-child .s90d-bilingual-header--ko-below .s90d-th-ko {
+.s90d-daily-process-table thead th:first-child .s90d-bilingual-header--ko-below .s90d-th-ko,
+.s90d-daily-board-header-row .s90d-daily-board-header-cell:first-child .s90d-bilingual-header,
+.s90d-daily-board-header-row .s90d-daily-board-header-cell:first-child .s90d-bilingual-header--ko-below .s90d-th-vi,
+.s90d-daily-board-header-row .s90d-daily-board-header-cell:first-child .s90d-bilingual-header--ko-below .s90d-th-ko {
   align-items: flex-start;
   text-align: left;
 }
 
-.s90d-daily-process-table thead th .s90d-bilingual-header {
+.s90d-daily-process-table thead th .s90d-bilingual-header,
+.s90d-daily-board-header-cell .s90d-bilingual-header {
   text-transform: none;
   letter-spacing: normal;
   align-items: center;
@@ -2339,7 +2262,9 @@ body.s90d-chart-modal-open {
 }
 
 .s90d-daily-process-table thead th .s90d-bilingual-header--ko-below .s90d-th-vi,
-.s90d-daily-process-table thead th .s90d-bilingual-header--ko-below .s90d-th-ko {
+.s90d-daily-process-table thead th .s90d-bilingual-header--ko-below .s90d-th-ko,
+.s90d-daily-board-header-cell .s90d-bilingual-header--ko-below .s90d-th-vi,
+.s90d-daily-board-header-cell .s90d-bilingual-header--ko-below .s90d-th-ko {
   font-weight: 800;
   color: #000;
   text-align: center;
@@ -2354,22 +2279,6 @@ body.s90d-chart-modal-open {
 .s90d-daily-process-table thead th .s90d-bilingual-header--ko-below .s90d-th-ko {
   font-size: 0.75rem;
   line-height: 1.15;
-}
-
-.s90d-daily-board-header-cell .s90d-bilingual-header {
-  text-transform: none;
-  letter-spacing: normal;
-  align-items: center;
-  text-align: center;
-  width: 100%;
-}
-
-.s90d-daily-board-header-cell .s90d-bilingual-header--ko-below .s90d-th-vi,
-.s90d-daily-board-header-cell .s90d-bilingual-header--ko-below .s90d-th-ko {
-  font-weight: 800;
-  color: #000;
-  text-align: center;
-  width: 100%;
 }
 
 .s90d-daily-board-header-cell .s90d-bilingual-header--ko-below .s90d-th-vi {
@@ -2430,17 +2339,6 @@ body.s90d-chart-modal-open {
 
 .s90d-daily-process-table tbody td.s90d-daily-process-name {
   vertical-align: middle;
-  text-align: left;
-}
-
-.s90d-daily-board-header-row .s90d-daily-board-header-cell:first-child {
-  text-align: left;
-}
-
-.s90d-daily-board-header-row .s90d-daily-board-header-cell:first-child .s90d-bilingual-header,
-.s90d-daily-board-header-row .s90d-daily-board-header-cell:first-child .s90d-bilingual-header--ko-below .s90d-th-vi,
-.s90d-daily-board-header-row .s90d-daily-board-header-cell:first-child .s90d-bilingual-header--ko-below .s90d-th-ko {
-  align-items: flex-start;
   text-align: left;
 }
 
@@ -2587,12 +2485,6 @@ body.s90d-chart-modal-open {
   flex: 0 0 auto;
 }
 
-.s90d-daily-board-row-toggle.s90d-daily-process-toggle--open {
-  transform: rotate(90deg);
-  background: #ccfbf1;
-  border-color: #14b8a6;
-}
-
 .s90d-daily-tree-hook {
   color: #94a3b8;
   font-size: 0.875rem;
@@ -2718,10 +2610,6 @@ body.s90d-chart-modal-open {
 
 .s90d-daily-process-qty--sub {
   color: #475569;
-}
-
-.s90d-daily-process-qty--ng {
-  color: #dc2626;
 }
 
 .s90d-daily-process-rate {

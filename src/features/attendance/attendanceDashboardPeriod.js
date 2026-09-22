@@ -7,9 +7,9 @@ import {
 } from "@/utils/dateKey";
 
 export const DASHBOARD_PERIOD_DAY = "day";
-export const DASHBOARD_PERIOD_WEEK = "week";
-export const DASHBOARD_PERIOD_MONTH = "month";
-export const DASHBOARD_PERIOD_YEAR = "year";
+const DASHBOARD_PERIOD_WEEK = "week";
+const DASHBOARD_PERIOD_MONTH = "month";
+const DASHBOARD_PERIOD_YEAR = "year";
 
 export const DASHBOARD_PERIOD_IDS = [
   DASHBOARD_PERIOD_DAY,
@@ -42,7 +42,7 @@ export function getWeekEndKey(dateKey) {
   return formatDateKeyLocal(start);
 }
 
-export function getYearStartKey(dateKey) {
+function getYearStartKey(dateKey) {
   const d = parseLocalDateKey(dateKey);
   if (!d) {
     const y = String(dateKey).slice(0, 4);
@@ -51,7 +51,7 @@ export function getYearStartKey(dateKey) {
   return `${d.getFullYear()}-01-01`;
 }
 
-export function getYearEndKey(dateKey) {
+function getYearEndKey(dateKey) {
   const d = parseLocalDateKey(dateKey);
   if (!d) {
     const y = String(dateKey).slice(0, 4);
@@ -110,7 +110,7 @@ function listSevenDaysFromAnchor(anchorDateKey) {
   return keys;
 }
 
-export function listDashboardTrendDateKeys(period, anchorDateKey) {
+function listDashboardTrendDateKeys(period, anchorDateKey) {
   const p = normalizeDashboardPeriod(period);
   if (p === DASHBOARD_PERIOD_DAY || p === DASHBOARD_PERIOD_WEEK) {
     return listSevenDaysFromAnchor(anchorDateKey);

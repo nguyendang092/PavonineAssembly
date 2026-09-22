@@ -184,7 +184,7 @@ export function isAttendanceHalfPnLeaveType(leaveType) {
   return formatAttendanceLeaveTypeColumnDisplay(leaveType) === "1/2PN";
 }
 
-export function hasAttendanceLeaveTypeSelected(leaveType) {
+function hasAttendanceLeaveTypeSelected(leaveType) {
   return Boolean(String(leaveType ?? "").trim());
 }
 
@@ -350,7 +350,7 @@ function attendanceLeaveShortBlocksCompensatoryNb(emp) {
 }
 
 /** Loại phép NV — không hiển thị / không đếm NB nghỉ bù lịch. */
-export function isAttendanceLeaveTypeNv(emp) {
+function isAttendanceLeaveTypeNv(emp) {
   if (!emp || typeof emp !== "object") return false;
   const leaveRaw = getAttendanceLeaveTypeRaw(emp);
   if (!leaveRaw) return false;
@@ -403,7 +403,7 @@ export function mergeAttendanceDayMeta(existing, patch) {
  * @param {Record<string, unknown> | null | undefined} daySnapshot
  * @returns {Record<string, unknown> | null}
  */
-export function getAttendanceDayMetaFromSnapshot(daySnapshot) {
+function getAttendanceDayMetaFromSnapshot(daySnapshot) {
   if (!daySnapshot || typeof daySnapshot !== "object") return null;
   const meta = daySnapshot[ATTENDANCE_DAY_META_KEY];
   if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;

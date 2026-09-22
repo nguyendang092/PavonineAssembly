@@ -97,10 +97,6 @@
   color: rgb(15 23 42);
 }
 
-.dark .pm-ts-name-cell {
-  color: rgb(248 250 252);
-}
-
 .pm-ts-thead th {
   box-shadow: inset 0 -1px 0 rgb(15 23 42 / 0.12);
 }
@@ -141,7 +137,13 @@
   opacity: 1;
 }
 
-.dark .pm-ts-header-day {
+.dark .pm-ts-name-cell,
+.dark .pm-ts-header-day,
+.dark .pm-ts-mnv-cell,
+.dark .pm-ts-bp-cell,
+.dark .pm-ts-coeff-col-cell,
+.dark .pm-ts-day-value,
+.dark .pm-ts-coeff-value {
   color: rgb(248 250 252);
 }
 
@@ -174,16 +176,12 @@
 
 .pm-ts-mnv-cell,
 .pm-ts-bp-cell,
-.pm-ts-coeff-col-cell {
+.pm-ts-coeff-col-cell,
+.pm-ts-day-value,
+.pm-ts-coeff-value {
   font-weight: 700;
   letter-spacing: 0.02em;
   color: rgb(15 23 42);
-}
-
-.dark .pm-ts-mnv-cell,
-.dark .pm-ts-bp-cell,
-.dark .pm-ts-coeff-col-cell {
-  color: rgb(248 250 252);
 }
 
 .pm-ts-bp-cell {
@@ -220,18 +218,6 @@
   height: 100%;
   min-height: 0;
   padding: 1px 2px;
-}
-
-.pm-ts-day-value,
-.pm-ts-coeff-value {
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: rgb(15 23 42);
-}
-
-.dark .pm-ts-day-value,
-.dark .pm-ts-coeff-value {
-  color: rgb(248 250 252);
 }
 
 .pm-ts-day-empty {

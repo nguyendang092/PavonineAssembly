@@ -49,7 +49,7 @@ export const ATTENDANCE_LOAI_PHEP_OPTIONS = [
 ];
 
 /** Giá trị chuẩn lưu `loaiPhep` cho BGC — hiển thị viết tắt «BGC». */
-export const ATTENDANCE_BGC_LOAI_PHEP_VALUE = "Bù giờ công";
+const ATTENDANCE_BGC_LOAI_PHEP_VALUE = "Bù giờ công";
 
 /**
  * Alias BGC (loại phép / giờ vào / ghi chú) — gộp về {@link ATTENDANCE_BGC_LOAI_PHEP_VALUE}.
@@ -260,7 +260,7 @@ const LOAI_PHEP_EXTENDED_ALIAS_RULES = [
  * @param {unknown} raw
  * @returns {typeof ATTENDANCE_LOAI_PHEP_OPTIONS[number] | null}
  */
-export function matchAttendanceLoaiPhepAliasOption(raw) {
+function matchAttendanceLoaiPhepAliasOption(raw) {
   const p = parseLoaiPhepLatin(raw);
   if (!p) return null;
   for (const rule of LOAI_PHEP_EXTENDED_ALIAS_RULES) {
@@ -294,7 +294,7 @@ export function canonicalAttendanceLoaiPhepValue(raw) {
 }
 
 /** `loaiPhep` là 1/2 phép năm — được phép có đồng thời giờ vào. */
-export function isAttendanceHalfAnnualLeave(raw) {
+function isAttendanceHalfAnnualLeave(raw) {
   const t = String(raw ?? "").trim();
   if (!t) return false;
   return canonicalAttendanceLoaiPhepValue(t) === "1/2 Phép năm";
@@ -646,7 +646,7 @@ export function getAttendanceLeaveTypeEmphasisBadgeClassName(raw) {
 }
 
 /** Mã phép dài (vd. 1/2PN) — cỡ chữ nhỏ hơn để vừa ô lưới tháng. */
-export function isAttendanceLeaveShortLabelCompact(leaveShort) {
+function isAttendanceLeaveShortLabelCompact(leaveShort) {
   return String(leaveShort ?? "").trim().toUpperCase() === "1/2PN";
 }
 
@@ -679,7 +679,7 @@ export function getAttendanceLeaveTypeEmphasisCellClassName(raw) {
 }
 
 /** In A3: badge loại phép — nền đậm, viền mảnh. */
-export function getAttendanceLeaveTypeEmphasisPrintStyleAttr(raw, leaveShort) {
+function getAttendanceLeaveTypeEmphasisPrintStyleAttr(raw, leaveShort) {
   const compact = isAttendanceLeaveShortLabelCompact(leaveShort);
   const fontSize = compact ? "5.5pt" : "6.5pt";
   const pad = compact ? "0 1px" : "1px 3px";

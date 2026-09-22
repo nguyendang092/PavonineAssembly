@@ -11,11 +11,11 @@ import { parseLocalDateKey } from "@/utils/dateKey";
 /** Giờ chuẩn đúng giờ buổi sáng — khớp mockup dashboard. */
 export const ATTENDANCE_DASHBOARD_ON_TIME_CUTOFF = "07:40";
 /** Giờ chuẩn đúng giờ ca đêm S2. */
-export const ATTENDANCE_DASHBOARD_NIGHT_ON_TIME_CUTOFF = "19:40";
+const ATTENDANCE_DASHBOARD_NIGHT_ON_TIME_CUTOFF = "19:40";
 
 const GIO_VAO_HHMM = /^(\d{1,2}):(\d{2})/;
 
-export function parseAttendanceClockMinutes(raw) {
+function parseAttendanceClockMinutes(raw) {
   const m = String(raw ?? "").trim().match(GIO_VAO_HHMM);
   if (!m) return null;
   const h = Number(m[1]);
@@ -26,7 +26,7 @@ export function parseAttendanceClockMinutes(raw) {
   return h * 60 + min;
 }
 
-export function parseAttendanceCutoffMinutes(cutoff = ATTENDANCE_DASHBOARD_ON_TIME_CUTOFF) {
+function parseAttendanceCutoffMinutes(cutoff = ATTENDANCE_DASHBOARD_ON_TIME_CUTOFF) {
   return parseAttendanceClockMinutes(cutoff);
 }
 
@@ -63,7 +63,7 @@ function parseJoinDateToLocalDate(raw) {
   return null;
 }
 
-export function yearsOfServiceFromJoinDate(joinDateRaw, asOfDateKey) {
+function yearsOfServiceFromJoinDate(joinDateRaw, asOfDateKey) {
   const join = parseJoinDateToLocalDate(joinDateRaw);
   const asOf = parseLocalDateKey(asOfDateKey);
   if (!join || !asOf) return null;
@@ -83,7 +83,7 @@ function seniorityBucket(years) {
   return "gt10";
 }
 
-export function employeeHasApprovedLeave(flags) {
+function employeeHasApprovedLeave(flags) {
   return (
     flags.annualLeave ||
     flags.halfAnnualLeave ||
@@ -424,7 +424,7 @@ function buildResignedEmployees(classified) {
   );
 }
 
-export function joinYearFromJoinDate(joinDateRaw) {
+function joinYearFromJoinDate(joinDateRaw) {
   const join = parseJoinDateToLocalDate(joinDateRaw);
   if (!join) return null;
   return join.getFullYear();

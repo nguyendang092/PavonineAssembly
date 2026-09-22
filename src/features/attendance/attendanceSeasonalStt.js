@@ -17,14 +17,6 @@ export function isKoreanAttendanceRoot(attendanceRootPath) {
   return attendanceRootPath === KOREAN_ATTENDANCE_ROOT;
 }
 
-/** Điểm danh tách khỏi phép năm / attendance chính (thời vụ, nhân viên Hàn). */
-export function shouldSkipAnnualLeaveForAttendanceRoot(attendanceRootPath) {
-  return (
-    isSeasonalAttendanceRoot(attendanceRootPath) ||
-    isKoreanAttendanceRoot(attendanceRootPath)
-  );
-}
-
 function hasSeasonalSttFieldValue(raw) {
   if (raw === "" || raw == null || raw === undefined) return false;
   const s = String(raw).trim();
