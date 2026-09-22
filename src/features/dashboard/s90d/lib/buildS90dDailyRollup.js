@@ -11,6 +11,12 @@ export function resolveNgRateTone(ngRatePct) {
 
 export const S90D_ALL_DAYS_KEY = "__all__";
 
+function ngRateFromQty(ngQty, totalQty) {
+  const total = Number(totalQty) || 0;
+  if (!total) return 0;
+  return Math.round(((Number(ngQty) || 0) / total) * 1000) / 10;
+}
+
 export function mergeMonthDailySummariesForRollup(sectionDailiesList = []) {
   const byDate = new Map();
 
@@ -21,12 +27,18 @@ export function mergeMonthDailySummariesForRollup(sectionDailiesList = []) {
 
       const prev = byDate.get(dateKey);
       if (!prev) {
+        const totalQty = Number(daily.totalRow?.totalQty) || 0;
+        const ngQty = Number(daily.totalRow?.ngQty) || 0;
         byDate.set(dateKey, {
           dateKey,
           hasData: Boolean(daily.hasData),
           totalRow: {
-            totalQty: Number(daily.totalRow?.totalQty) || 0,
-            ngQty: Number(daily.totalRow?.ngQty) || 0,
+            totalQty,
+            ngQty,
+            ngRatePct:
+              daily.totalRow?.ngRatePct != null && daily.totalRow.ngRatePct !== ""
+                ? Number(daily.totalRow.ngRatePct)
+                : ngRateFromQty(ngQty, totalQty),
           },
           processRows: (daily.processRows ?? []).map((row) => ({
             process: row.process,
@@ -40,6 +52,10 @@ export function mergeMonthDailySummariesForRollup(sectionDailiesList = []) {
       prev.hasData = prev.hasData || Boolean(daily.hasData);
       prev.totalRow.totalQty += Number(daily.totalRow?.totalQty) || 0;
       prev.totalRow.ngQty += Number(daily.totalRow?.ngQty) || 0;
+      prev.totalRow.ngRatePct = ngRateFromQty(
+        prev.totalRow.ngQty,
+        prev.totalRow.totalQty,
+      );
 
       const byProcess = new Map(
         prev.processRows.map((row) => [row.process, row]),

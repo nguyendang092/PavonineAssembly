@@ -26,12 +26,27 @@ describe("mergeMonthDailySummariesForRollup", () => {
     expect(merged[0]).toMatchObject({
       dateKey: "2026-09-01",
       hasData: true,
-      totalRow: { totalQty: 15, ngQty: 3 },
+      totalRow: { totalQty: 15, ngQty: 3, ngRatePct: 20 },
     });
     expect(merged[0].processRows[0]).toMatchObject({
       process: "PRESS",
       totalQty: 15,
       ngQty: 3,
     });
+  });
+
+  it("keeps ngRatePct when a single section is rolled up", () => {
+    const merged = mergeMonthDailySummariesForRollup([
+      [
+        {
+          dateKey: "2026-09-02",
+          hasData: true,
+          totalRow: { totalQty: 100, ngQty: 4, ngRatePct: 4 },
+          processRows: [],
+        },
+      ],
+    ]);
+
+    expect(merged[0].totalRow.ngRatePct).toBe(4);
   });
 });

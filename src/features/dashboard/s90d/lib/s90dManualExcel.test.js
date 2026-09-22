@@ -81,7 +81,7 @@ describe("s90dManualExcel", () => {
       },
     ]);
 
-    expect(store["2026-07-01"].PRESS.boards).toHaveLength(2);
+    expect(store["2026-07-01"].PRESS.boards).toHaveLength(4);
     expect(store["2026-07-01"].PRESS.boards[1].productCode).toBe("S90D");
     expect(store["2026-07-01"].PRESS.boards[1].codeSlot).toBe("E");
     expect(store["2026-07-01"].PRESS.boards[1].shifts["08~10"].okQty).toBe(7);

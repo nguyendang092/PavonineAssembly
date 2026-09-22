@@ -1,4 +1,5 @@
 import React, {
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -8,21 +9,19 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 import AlertMessage from "@/components/ui/AlertMessage";
+import { lazyImport } from "@/utils/lazyImport";
 import S90dProcessTabPanel from "../s90d/components/S90dProcessTabPanel";
 import S90dDailyTabPanel from "../s90d/components/S90dDailyTabPanel";
-import S90dSummaryChartModal from "../s90d/components/S90dSummaryChartModal";
-import {
-  buildCodeSlotScopedGrandTotalSummary,
-  buildCodeSlotScopedMonthDailySummaries,
-  buildProductScopedGrandTotalSummary,
-  buildProductScopedMonthDailySummaries,
-} from "../s90d/lib/buildS90dFromManual";
 import { S90D_PROCESSES } from "../s90d/lib/s90dDefectColumns";
 import { formatS90dMonthDisplayLabel } from "../s90d/lib/s90dDateUtils";
-import { filterSpecsBySummaryViewGroup } from "../s90d/lib/s90dManualEntryReportConfig";
 import { useReportT } from "./useReportTranslation";
 import { useProductionReportContext } from "./ProductionReportContext";
+import { buildVisibleProductSummarySections } from "./productionSummarySections";
 import "../s90d/s90dProductionReport.css";
+
+const S90dSummaryChartModal = lazyImport(
+  () => import("../s90d/components/S90dSummaryChartModal"),
+);
 
 const BASE_TABS = Object.freeze({
   TOTAL: "total",
@@ -76,6 +75,9 @@ export default function ManualProductionReportPage({
   } = manualEntries;
 
   const productBoardSpecs = useMemo(() => {
+    if (manualEntryConfig?.summaryBoardSpecs?.length) {
+      return manualEntryConfig.summaryBoardSpecs;
+    }
     if (
       !manualEntryConfig?.fixedBoardSpecsAllProcesses ||
       !manualEntryConfig?.fixedBoardSpecs?.length
@@ -108,48 +110,6 @@ export default function ManualProductionReportPage({
     });
   }, [manualEntryConfig]);
 
-  const productSummarySections = useMemo(() => {
-    if (typeSlotSpecs.length >= 2) {
-      return typeSlotSpecs.map((spec) => ({
-        productCode: spec.productCode,
-        label: spec.label,
-        codeSlot: spec.codeSlot,
-        monthDailySummaries: buildCodeSlotScopedMonthDailySummaries(
-          monthDailySummaries,
-          spec.codeSlot,
-          manualEntryConfig,
-        ),
-        grandTotalSummary: buildCodeSlotScopedGrandTotalSummary(
-          monthDailySummaries,
-          spec.codeSlot,
-          manualEntryConfig,
-        ),
-      }));
-    }
-
-    if (productBoardSpecs.length < 2) return null;
-
-    return productBoardSpecs.map((spec) => ({
-      productCode: spec.productCode,
-      label: spec.label ?? spec.productCode,
-      monthDailySummaries: buildProductScopedMonthDailySummaries(
-        monthDailySummaries,
-        spec.productCode,
-        manualEntryConfig,
-      ),
-      grandTotalSummary: buildProductScopedGrandTotalSummary(
-        monthDailySummaries,
-        spec.productCode,
-        manualEntryConfig,
-      ),
-    }));
-  }, [
-    manualEntryConfig,
-    monthDailySummaries,
-    productBoardSpecs,
-    typeSlotSpecs,
-  ]);
-
   const summaryViewGroups = useMemo(
     () =>
       Array.isArray(manualEntryConfig?.summaryViewGroups)
@@ -170,41 +130,37 @@ export default function ManualProductionReportPage({
     summaryViewGroups[0]?.id ??
     "";
 
-  const visibleProductSummarySections = useMemo(() => {
-    if (!productSummarySections?.length || !summaryViewGroups.length) {
-      return productSummarySections;
-    }
-    const byCodeSlot = productSummarySections.filter(
-      (section) => String(section.codeSlot ?? "") === activeSummaryViewGroup,
-    );
-    if (byCodeSlot.length) return byCodeSlot;
+  const isProcessTab = processes.includes(activeTab);
+  const isSummaryTab =
+    activeTab === BASE_TABS.TOTAL || activeTab === BASE_TABS.DAILY;
 
-    const allowedCodes = new Set(
-      filterSpecsBySummaryViewGroup(
+  const visibleProductSummarySections = useMemo(
+    () =>
+      buildVisibleProductSummarySections({
+        typeSlotSpecs,
         productBoardSpecs,
+        summaryViewGroups,
         activeSummaryViewGroup,
-      ).map((spec) => spec.productCode),
-    );
-    if (!allowedCodes.size) return productSummarySections;
-    const filtered = productSummarySections.filter((section) =>
-      allowedCodes.has(section.productCode),
-    );
-    return filtered.length ? filtered : productSummarySections;
-  }, [
-    activeSummaryViewGroup,
-    productBoardSpecs,
-    productSummarySections,
-    summaryViewGroups,
-  ]);
+        monthDailySummaries,
+        manualEntryConfig,
+        enabled: isSummaryTab,
+      }),
+    [
+      activeSummaryViewGroup,
+      isSummaryTab,
+      manualEntryConfig,
+      monthDailySummaries,
+      productBoardSpecs,
+      summaryViewGroups,
+      typeSlotSpecs,
+    ],
+  );
 
   const tabOrder = useMemo(
     () => [BASE_TABS.TOTAL, BASE_TABS.DAILY, ...processes],
     [processes],
   );
 
-  const isProcessTab = processes.includes(activeTab);
-  const isSummaryTab =
-    activeTab === BASE_TABS.TOTAL || activeTab === BASE_TABS.DAILY;
   const excelBusy = saving || importing;
 
   useLayoutEffect(() => {
@@ -327,12 +283,25 @@ export default function ManualProductionReportPage({
 
   const pageSubtitle = rt("pageSubtitle", "");
 
-  const summaryPanelProps = {
-    monthDailySummaries,
-    grandTotalSummary,
-    monthDisplayLabel,
-    productSections: visibleProductSummarySections,
-  };
+  const summaryPanelProps = useMemo(
+    () => ({
+      monthDailySummaries,
+      grandTotalSummary,
+      monthDisplayLabel,
+      productSections: visibleProductSummarySections,
+    }),
+    [
+      grandTotalSummary,
+      monthDailySummaries,
+      monthDisplayLabel,
+      visibleProductSummarySections,
+    ],
+  );
+
+  const chartSummary =
+    visibleProductSummarySections?.length === 1
+      ? visibleProductSummarySections[0]
+      : null;
 
   return (
     <div
@@ -507,14 +476,22 @@ export default function ManualProductionReportPage({
         aria-hidden="true"
       />
 
-      <S90dSummaryChartModal
-        isOpen={chartModalOpen && isSummaryTab}
-        onClose={() => setChartModalOpen(false)}
-        variant={activeTab === BASE_TABS.DAILY ? "daily" : "total"}
-        grandTotalSummary={grandTotalSummary}
-        monthDailySummaries={monthDailySummaries}
-        monthDisplayLabel={monthDisplayLabel}
-      />
+      {chartModalOpen && isSummaryTab ? (
+        <Suspense fallback={null}>
+          <S90dSummaryChartModal
+            isOpen
+            onClose={() => setChartModalOpen(false)}
+            variant={activeTab === BASE_TABS.DAILY ? "daily" : "total"}
+            grandTotalSummary={
+              chartSummary?.grandTotalSummary ?? grandTotalSummary
+            }
+            monthDailySummaries={
+              chartSummary?.monthDailySummaries ?? monthDailySummaries
+            }
+            monthDisplayLabel={monthDisplayLabel}
+          />
+        </Suspense>
+      ) : null}
 
       {loading ? (
         <div className="s90d-sync-banner" role="status">

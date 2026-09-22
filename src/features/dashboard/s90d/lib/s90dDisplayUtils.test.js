@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateBoardRowsByProductGroup,
   formatS90dBoardDisplayName,
+  formatS90dReportProductCode,
   resolveS90dChainYieldPct,
   resolveS90dCumulativeYieldPct,
   resolveS90dStepYieldPct,
@@ -267,5 +268,16 @@ describe("formatS90dBoardDisplayName", () => {
         codeSlot: "E",
       }),
     ).toBe("S90D INZI Type E");
+  });
+});
+
+describe("formatS90dReportProductCode", () => {
+  it("maps legacy S90D codes to S90D65 / S90D55", () => {
+    expect(formatS90dReportProductCode("S90D", "65")).toBe("S90D65");
+    expect(formatS90dReportProductCode("S90D INZI", "65")).toBe("S90D65 INZI");
+    expect(formatS90dReportProductCode("S90D MXC")).toBe("S90D65 MXC");
+    expect(formatS90dReportProductCode("S90D55", "55")).toBe("S90D55");
+    expect(formatS90dReportProductCode("S90D INZI", "55")).toBe("S90D55 INZI");
+    expect(formatS90dReportProductCode("AP5FF")).toBe("AP5FF");
   });
 });

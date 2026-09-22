@@ -9,6 +9,7 @@ import {
   formatShiftLineLabel,
   formatShortDateLabel,
   formatS90dTypeSlotLabel,
+  formatS90dReportProductCode,
   isHighDefectCell,
   resolveS90dTotalYieldPct,
 } from "../lib/s90dDisplayUtils";
@@ -94,6 +95,7 @@ const ShiftRow = memo(function ShiftRow({
   onShiftFieldChange,
   showCodeSlotColumn = false,
   defaultCodeSlot = null,
+  displayProductCode = "",
 }) {
   const rt = useReportT();
   const isTotal = row.isTotal;
@@ -150,9 +152,9 @@ const ShiftRow = memo(function ShiftRow({
       <td className="s90d-col-line">{lineCell}</td>
       <td
         className="s90d-col-product"
-        title={isPercent ? undefined : row.productCode}
+        title={isPercent ? undefined : displayProductCode || row.productCode}
       >
-        {isPercent ? "" : row.productCode}
+        {isPercent ? "" : displayProductCode || row.productCode}
       </td>
       {showCodeSlotColumn ? (
         <td
@@ -255,15 +257,16 @@ export default memo(function S90dProcessShiftTable({
     processSummary.shiftRows?.[0]?.productCode ??
     totalRow?.productCode ??
     "S90D";
-  const displayProductCode = boardLabel || productCode;
+  const displayProductCode = formatS90dReportProductCode(
+    productCode,
+    processSummary.viewGroup,
+  );
   const codeSlot = processSummary.codeSlot;
   const showCodeSlotColumn = isTrackedCodeSlot(codeSlot);
   const infoColCount = INFO_COL_COUNT_BASE + (showCodeSlotColumn ? 1 : 0);
-  const tableTitle =
-    boardLabel ||
-    (codeSlot
-      ? `${productCode} · ${formatS90dTypeSlotLabel(codeSlot)}`
-      : productCode);
+  const tableTitle = codeSlot
+    ? `${displayProductCode} · ${formatS90dTypeSlotLabel(codeSlot)}`
+    : displayProductCode || boardLabel || productCode;
 
   const { primaryShiftRows, lateShiftRows } = useMemo(() => {
     const primary = [];
@@ -294,6 +297,7 @@ export default memo(function S90dProcessShiftTable({
       }
       showCodeSlotColumn={showCodeSlotColumn}
       defaultCodeSlot={codeSlot}
+      displayProductCode={displayProductCode}
     />
   );
 

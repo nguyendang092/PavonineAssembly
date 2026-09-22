@@ -1,6 +1,7 @@
 import {
   DEFAULT_PRODUCT_CODE,
   R95D_CODE_SLOTS,
+  S90D_SIZE_SLOTS,
   resolveManualEntryConfig,
   resolveProcessBoardSpecs,
   shouldApplyFixedBoardSpecs,
@@ -83,7 +84,26 @@ export function mapLegacyCodeSlot(codeSlot, config) {
   return slot;
 }
 
-/** @returns {Array<{ id: string, label: string, productCode: string, codeSlot?: string|null, parentBoardId?: string }>} */
+function isS90dTypeSubcodeConfig(config) {
+  return (
+    config?.usesProductSubCodes &&
+    config.defaultProductCode === DEFAULT_PRODUCT_CODE &&
+    resolveCodeSlots(config)[0] === "D"
+  );
+}
+
+function s90dSizeProductCode(baseProductCode, size) {
+  const base = String(baseProductCode ?? "").trim() || DEFAULT_PRODUCT_CODE;
+  if (size === "65") return base;
+  const suffix = base.replace(/^S90D\s*/i, "").trim();
+  return suffix ? `S90D${size} ${suffix}` : `S90D${size}`;
+}
+
+function s90dSizedBoardId(baseId, size) {
+  return size === "65" ? baseId : `${baseId.replace(/-code/i, `-${size}-code`)}`;
+}
+
+/** @returns {Array<{ id: string, label: string, productCode: string, codeSlot?: string|null, parentBoardId?: string, viewGroup?: string }>} */
 export function buildS90dEntryBoardSpecs(process, configInput = DEFAULT_PRODUCT_CODE) {
   const config = resolveManualEntryConfig(configInput);
   const codeSlots = resolveCodeSlots(config);
@@ -95,8 +115,9 @@ export function buildS90dEntryBoardSpecs(process, configInput = DEFAULT_PRODUCT_
         id: spec.id,
         label: spec.label,
         productCode: spec.productCode,
-        codeSlot: null,
+        codeSlot: spec.codeSlot ?? null,
         parentBoardId: spec.id,
+        viewGroup: spec.viewGroup ?? null,
       }));
     }
     return [
@@ -106,8 +127,47 @@ export function buildS90dEntryBoardSpecs(process, configInput = DEFAULT_PRODUCT_
         productCode: config.defaultProductCode,
         codeSlot: null,
         parentBoardId: "board-1",
+        viewGroup: null,
       },
     ];
+  }
+
+  if (isS90dTypeSubcodeConfig(config)) {
+    if (shouldApplyFixedBoardSpecs(process, config)) {
+      return (config.fixedBoardSpecs ?? []).flatMap((spec) =>
+        S90D_SIZE_SLOTS.flatMap((size) =>
+          codeSlots.map((codeSlot) => {
+            const typeId = `${spec.id}-code${codeSlotToIdSuffix(codeSlot)}`;
+            return {
+              id: s90dSizedBoardId(typeId, size),
+              label: `${s90dSizeProductCode(spec.productCode, size)} · ${formatS90dTypeSlotLabel(codeSlot, config)}`,
+              productCode: s90dSizeProductCode(spec.productCode, size),
+              codeSlot,
+              viewGroup: size,
+              parentBoardId: size === "65" ? spec.id : `${spec.id}-${size}`,
+            };
+          }),
+        ),
+      );
+    }
+
+    const processKey = String(process ?? "process").toLowerCase();
+    return S90D_SIZE_SLOTS.flatMap((size) =>
+      codeSlots.map((codeSlot) => {
+        const typeId = `${processKey}-code${codeSlotToIdSuffix(codeSlot)}`;
+        return {
+          id: s90dSizedBoardId(typeId, size),
+          label:
+            size === "65"
+              ? formatS90dTypeSlotLabel(codeSlot, config)
+              : `${s90dSizeProductCode(config.defaultProductCode, size)} · ${formatS90dTypeSlotLabel(codeSlot, config)}`,
+          productCode: s90dSizeProductCode(config.defaultProductCode, size),
+          codeSlot,
+          viewGroup: size,
+          parentBoardId: s90dSizedBoardId(typeId, size),
+        };
+      }),
+    );
   }
 
   if (shouldApplyFixedBoardSpecs(process, config)) {
@@ -118,6 +178,7 @@ export function buildS90dEntryBoardSpecs(process, configInput = DEFAULT_PRODUCT_
         productCode: spec.productCode,
         codeSlot,
         parentBoardId: spec.id,
+        viewGroup: spec.viewGroup ?? null,
       })),
     );
   }
@@ -129,6 +190,7 @@ export function buildS90dEntryBoardSpecs(process, configInput = DEFAULT_PRODUCT_
     productCode: config.defaultProductCode,
     codeSlot,
     parentBoardId: `${processKey}-code${codeSlotToIdSuffix(codeSlot)}`,
+    viewGroup: null,
   }));
 }
 

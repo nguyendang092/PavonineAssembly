@@ -17,6 +17,28 @@ export const S90D_ASSEMBLY_BOARD_SPECS = Object.freeze([
   { id: "assembly-mxc", label: "S90D MXC", productCode: "S90D MXC" },
 ]);
 
+export const S90D_SIZE_SLOTS = Object.freeze(["65", "55"]);
+
+export const S90D_SUMMARY_VIEW_GROUPS = Object.freeze([
+  { id: "65", label: "S90D65" },
+  { id: "55", label: "S90D55" },
+]);
+
+export const S90D_SIZE_BOARD_SPECS = Object.freeze([
+  {
+    id: "s90d65",
+    label: "S90D65",
+    productCode: "S90D65",
+    viewGroup: "65",
+  },
+  {
+    id: "s90d55",
+    label: "S90D55",
+    productCode: "S90D55",
+    viewGroup: "55",
+  },
+]);
+
 export const R95D_ASSEMBLY_BOARD_SPECS = Object.freeze([
   { id: "assembly-r95d65", label: "R95D 65", productCode: "R95D 65" },
   { id: "assembly-r95d75", label: "R95D 75", productCode: "R95D 75" },
@@ -110,12 +132,11 @@ export function resolveProcessBoardSpecs(process, config) {
 
 export function resolveSpecSummaryViewGroup(spec) {
   const explicit = String(spec?.viewGroup ?? "").trim().toLowerCase();
-  if (explicit) return explicit;
+  if (explicit && explicit !== "d" && explicit !== "e") {
+    return explicit;
+  }
 
-  const codeSlot = String(spec?.codeSlot ?? "").trim().toLowerCase();
-  if (codeSlot === "55") return "75";
-  if (codeSlot) return codeSlot;
-
+  const id = String(spec?.id ?? "").trim().toLowerCase();
   const hay = `${spec?.id ?? ""} ${spec?.productCode ?? ""} ${spec?.label ?? ""}`
     .toLowerCase()
     .replace(/\s+/g, "");
@@ -126,6 +147,15 @@ export function resolveSpecSummaryViewGroup(spec) {
   if (hay.includes("ap5fl")) return "ap5fl";
   const r95d = hay.match(/r95d(65|75|85|55)/);
   if (r95d) return r95d[1] === "55" ? "75" : r95d[1];
+  if (hay.includes("s90d55") || /(?:^|-)55-code/.test(id)) return "55";
+  if (hay.includes("s90d65") || /(?:^|-)65-code/.test(id)) return "65";
+  if (hay.includes("s90d") || hay.includes("inzi") || hay.includes("mxc")) {
+    return "65";
+  }
+
+  const codeSlot = String(spec?.codeSlot ?? "").trim().toLowerCase();
+  if (codeSlot === "55") return "75";
+  if (codeSlot && codeSlot !== "d" && codeSlot !== "e") return codeSlot;
   return "";
 }
 
@@ -148,6 +178,7 @@ export function createManualEntryConfig({
   codeSlots = null,
   codeSlotLabelPrefix = "Type",
   summaryViewGroups = null,
+  summaryBoardSpecs = null,
 } = {}) {
   return Object.freeze({
     defaultProductCode,
@@ -160,6 +191,7 @@ export function createManualEntryConfig({
     codeSlots,
     codeSlotLabelPrefix,
     summaryViewGroups,
+    summaryBoardSpecs,
   });
 }
 
@@ -169,6 +201,8 @@ export const S90D_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
   fixedBoardSpecs: S90D_ASSEMBLY_BOARD_SPECS,
   fixedBoardSpecsAllProcesses: false,
   usesProductSubCodes: true,
+  summaryViewGroups: S90D_SUMMARY_VIEW_GROUPS,
+  summaryBoardSpecs: S90D_SIZE_BOARD_SPECS,
 });
 
 export const R95D_MANUAL_ENTRY_CONFIG = createManualEntryConfig({
@@ -237,6 +271,7 @@ export function manualEntryConfigFromReportConfig(reportConfig = {}) {
     codeSlots: reportConfig.codeSlots ?? null,
     codeSlotLabelPrefix: reportConfig.codeSlotLabelPrefix ?? "Type",
     summaryViewGroups: reportConfig.summaryViewGroups ?? null,
+    summaryBoardSpecs: reportConfig.summaryBoardSpecs ?? null,
   });
 }
 

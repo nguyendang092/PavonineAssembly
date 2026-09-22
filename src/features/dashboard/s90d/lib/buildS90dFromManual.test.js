@@ -106,9 +106,10 @@ describe("buildS90dFromManual", () => {
       (detail) => detail.process === "HAIRLINE",
     );
 
-    expect(pressDetail?.boardRows).toHaveLength(2);
+    expect(pressDetail?.boardRows).toHaveLength(4);
     expect(pressDetail?.boardRows[0].codeSlot).toBe("D");
     expect(pressDetail?.boardRows[1].codeSlot).toBe("E");
+    expect(pressDetail?.boardRows[2].viewGroup).toBe("55");
     expect(pressDetail?.boardRows[0].yieldPct).toBe(100);
     expect(pressDetail?.boardRows[1].yieldPct).toBeCloseTo(87.5, 1);
     expect(hairlineDetail?.boardRows[0].yieldPct).toBe(90);

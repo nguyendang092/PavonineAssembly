@@ -25,6 +25,7 @@ import {
   ASSEMBLY_PROCESS,
   resolveManualEntryConfig,
   resolveProcessBoardSpecs,
+  resolveSpecSummaryViewGroup,
   shouldApplyFixedBoardSpecs,
   S90D_MANUAL_ENTRY_CONFIG,
 } from "./s90dManualEntryReportConfig";
@@ -55,6 +56,7 @@ export function createEmptyProcessBoard(
   productCode = DEFAULT_PRODUCT_CODE,
   codeSlot = null,
   parentBoardId = null,
+  viewGroup = null,
 ) {
   const normalizedSlot = isTrackedCodeSlot(codeSlot) ? String(codeSlot).trim() : null;
   return {
@@ -63,6 +65,7 @@ export function createEmptyProcessBoard(
     productCode: String(productCode ?? DEFAULT_PRODUCT_CODE).trim() || DEFAULT_PRODUCT_CODE,
     codeSlot: normalizedSlot,
     parentBoardId: parentBoardId ?? id,
+    viewGroup: viewGroup ? String(viewGroup).trim() : null,
     shifts: Object.fromEntries(
       S90D_SHIFT_SLOTS.map((slot) => [slot, createEmptyShiftEntry()]),
     ),
@@ -81,6 +84,7 @@ function createEmptyProcessDayEntryFromSpecs(process, configInput = DEFAULT_PROD
         spec.productCode,
         spec.codeSlot,
         spec.parentBoardId ?? spec.id,
+        spec.viewGroup ?? null,
       ),
     ),
   };
@@ -124,6 +128,10 @@ function normalizeProcessBoard(rawBoard, sequence = 1, config) {
   board.parentBoardId =
     String(rawBoard.parentBoardId ?? board.parentBoardId ?? board.id).trim() ||
     board.id;
+  board.viewGroup =
+    String(rawBoard.viewGroup ?? "").trim() ||
+    resolveSpecSummaryViewGroup(board) ||
+    null;
   board.shifts = normalizeProcessShifts(rawBoard.shifts);
   return board;
 }
@@ -156,8 +164,12 @@ function findLegacyBoardForEntrySpec(normalizedBoards, spec, config) {
     })(),
   ]);
 
+  const specGroup = resolveSpecSummaryViewGroup(spec);
+
   const bySlot = normalizedBoards.find(
     (board) =>
+      (!specGroup ||
+        (resolveSpecSummaryViewGroup(board) || "65") === specGroup) &&
       aliases.has(board.codeSlot) &&
       (board.parentBoardId === spec.parentBoardId ||
         board.productCode === spec.productCode),
@@ -166,6 +178,7 @@ function findLegacyBoardForEntrySpec(normalizedBoards, spec, config) {
 
   const slots = resolveCodeSlots(config);
   if (spec.codeSlot !== slots[0]) return null;
+  if (specGroup && specGroup !== "65") return null;
 
   const legacyParent = normalizedBoards.find(
     (board) =>
@@ -186,6 +199,7 @@ function materializeEntryBoard(spec, matchedBoard, index, config) {
       productCode: spec.productCode,
       codeSlot: spec.codeSlot,
       parentBoardId: spec.parentBoardId ?? spec.id,
+      viewGroup: spec.viewGroup ?? matchedBoard.viewGroup ?? null,
       shifts:
         matchedBoard.id === spec.id || matchedBoard.codeSlot === spec.codeSlot
           ? matchedBoard.shifts
@@ -204,6 +218,7 @@ function materializeEntryBoard(spec, matchedBoard, index, config) {
     spec.productCode,
     spec.codeSlot,
     spec.parentBoardId ?? spec.id,
+    spec.viewGroup ?? null,
   );
 }
 

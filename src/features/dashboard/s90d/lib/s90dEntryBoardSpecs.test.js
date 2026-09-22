@@ -11,29 +11,44 @@ import {
 import { resolveProcessBoards } from "./s90dManualEntries";
 
 describe("s90dEntryBoardSpecs", () => {
-  it("creates two entry boards for regular S90D processes", () => {
+  it("creates four entry boards for regular S90D processes (65/55 × Type D/E)", () => {
     const specs = buildS90dEntryBoardSpecs("PRESS", S90D_MANUAL_ENTRY_CONFIG);
-    expect(specs).toHaveLength(2);
+    expect(specs).toHaveLength(4);
+    expect(specs.map((spec) => spec.id)).toEqual([
+      "press-coded",
+      "press-codee",
+      "press-55-coded",
+      "press-55-codee",
+    ]);
+    expect(specs.map((spec) => spec.viewGroup)).toEqual([
+      "65",
+      "65",
+      "55",
+      "55",
+    ]);
     expect(specs[0]).toMatchObject({
-      id: "press-coded",
       label: "Type D",
       codeSlot: "D",
+      productCode: "S90D",
     });
-    expect(specs[1]).toMatchObject({
-      id: "press-codee",
-      label: "Type E",
-      codeSlot: "E",
+    expect(specs[2]).toMatchObject({
+      productCode: "S90D55",
+      codeSlot: "D",
     });
   });
 
-  it("creates four entry boards for assembly INZI/MXC x Code D/E", () => {
+  it("creates eight entry boards for assembly INZI/MXC × 65/55 × Type D/E", () => {
     const specs = buildS90dEntryBoardSpecs("ASSEMBLY", S90D_MANUAL_ENTRY_CONFIG);
-    expect(specs).toHaveLength(4);
+    expect(specs).toHaveLength(8);
     expect(specs.map((spec) => spec.id)).toEqual([
       "assembly-inzi-coded",
       "assembly-inzi-codee",
+      "assembly-inzi-55-coded",
+      "assembly-inzi-55-codee",
       "assembly-mxc-coded",
       "assembly-mxc-codee",
+      "assembly-mxc-55-coded",
+      "assembly-mxc-55-codee",
     ]);
   });
 
@@ -61,11 +76,50 @@ describe("s90dEntryBoardSpecs", () => {
       S90D_MANUAL_ENTRY_CONFIG,
     );
 
-    expect(boards).toHaveLength(4);
+    expect(boards).toHaveLength(8);
     expect(boards[0].shifts["08~10"].okQty).toBe(10);
     expect(boards[1].shifts["08~10"].okQty).toBe(0);
-    expect(boards[2].shifts["08~10"].okQty).toBe(5);
+    expect(boards[2].shifts["08~10"].okQty).toBe(0);
+    expect(boards[4].shifts["08~10"].okQty).toBe(5);
+  });
+
+  it("keeps legacy S90D PRESS Type D/E on the 65 view", () => {
+    const boards = resolveProcessBoards(
+      {
+        boards: [
+          {
+            id: "press-coded",
+            productCode: "S90D",
+            codeSlot: "D",
+            shifts: {
+              "08~10": { okQty: 20, ngQty: 0, defects: {} },
+            },
+          },
+          {
+            id: "press-codee",
+            productCode: "S90D",
+            codeSlot: "E",
+            shifts: {
+              "08~10": { okQty: 8, ngQty: 0, defects: {} },
+            },
+          },
+        ],
+      },
+      "PRESS",
+      S90D_MANUAL_ENTRY_CONFIG,
+    );
+
+    expect(boards).toHaveLength(4);
+    expect(boards[0].shifts["08~10"].okQty).toBe(20);
+    expect(boards[1].shifts["08~10"].okQty).toBe(8);
+    expect(boards[2].shifts["08~10"].okQty).toBe(0);
     expect(boards[3].shifts["08~10"].okQty).toBe(0);
+    expect(
+      filterSpecsBySummaryViewGroup(boards, "65").map((board) => board.id),
+    ).toEqual(["press-coded", "press-codee"]);
+    expect(
+      filterSpecsBySummaryViewGroup(boards, "55").map((board) => board.id),
+    ).toEqual(["press-55-coded", "press-55-codee"]);
   });
 
   it("infers code slot from board id suffix", () => {

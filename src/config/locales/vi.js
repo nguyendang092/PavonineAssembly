@@ -760,6 +760,9 @@ const vi = {
     dailyDateColorLegend: "Màu = tỷ lệ NG trong ngày đó",
     dailyProcessExpandHint:
       "Bấm ▶ ở đầu mỗi dòng để mở chi tiết lỗi của công đoạn đó",
+    summaryViewLabel: "Loại xem",
+    summaryView_65: "S90D65",
+    summaryView_55: "S90D55",
     dailyToggleProcess: "Mở chi tiết {{process}}",
     dailyToggleBoardDefects: "Mở chi tiết lỗi {{product}}",
     dailyBoardCountBadge: "{{count}} mã hàng",

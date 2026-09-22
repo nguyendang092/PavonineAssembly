@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { FiDownload } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
@@ -158,7 +165,14 @@ function S90dDailyDateStrip({
           </span>
         </button>
         {monthDailySummaries.map((daily) => {
-          const ngRatePct = daily.totalRow?.ngRatePct ?? 0;
+          const totalQty = Number(daily.totalRow?.totalQty) || 0;
+          const ngQty = Number(daily.totalRow?.ngQty) || 0;
+          const ngRatePct =
+            daily.totalRow?.ngRatePct != null && daily.totalRow.ngRatePct !== ""
+              ? Number(daily.totalRow.ngRatePct)
+              : totalQty
+                ? Math.round((ngQty / totalQty) * 1000) / 10
+                : 0;
           const tone = daily.hasData ? resolveNgRateTone(ngRatePct) : "empty";
           const isSelected =
             !isAllDaysSelected && daily.dateKey === selectedDateKey;
@@ -375,7 +389,7 @@ function S90dDailyBoardCard({
   );
 }
 
-export default function S90dDailyTabPanel({
+export default memo(function S90dDailyTabPanel({
   monthDailySummaries = [],
   variant = "daily",
   grandTotalSummary = null,
@@ -388,6 +402,9 @@ export default function S90dDailyTabPanel({
   const [selectedDateKey, setSelectedDateKey] = useState(S90D_ALL_DAYS_KEY);
   const monthSummariesForUi = useMemo(() => {
     if (!productSections?.length) return monthDailySummaries;
+    if (productSections.length === 1) {
+      return productSections[0].monthDailySummaries;
+    }
     return mergeMonthDailySummariesForRollup(
       productSections.map((section) => section.monthDailySummaries),
     );
@@ -575,4 +592,4 @@ export default function S90dDailyTabPanel({
       {renderBoardContent()}
     </div>
   );
-}
+});

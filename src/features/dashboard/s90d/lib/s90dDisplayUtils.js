@@ -27,6 +27,23 @@ export function formatS90dProductTypeLabel(
   return base;
 }
 
+/** Đưa mã S90D cũ về S90D65 / S90D55 cho khớp tab Tổng và Theo ngày. */
+export function formatS90dReportProductCode(productCode, viewGroup = "") {
+  const code = String(productCode ?? "").trim();
+  if (!code) return code;
+
+  const group = String(viewGroup ?? "").trim();
+  if (/^S90D55\b/i.test(code) || group === "55") {
+    if (/^S90D55\b/i.test(code)) return code;
+    return code.replace(/^S90D\b/i, "S90D55");
+  }
+  if (/^S90D65\b/i.test(code)) return code;
+  if (/^S90D\b/i.test(code) || group === "65") {
+    return code.replace(/^S90D\b/i, "S90D65");
+  }
+  return code;
+}
+
 export function formatShiftLineLabel(shiftSlot) {
   if (!shiftSlot || shiftSlot === "TOTAL" || shiftSlot === "PERCENT") {
     return shiftSlot;

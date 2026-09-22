@@ -1,19 +1,4 @@
-import React from "react";
-import ManualProductionReportPage from "./productionReport/ManualProductionReportPage";
-import { ProductionReportProvider } from "./productionReport/ProductionReportContext";
 import { AP5_PRODUCTION_REPORT_CONFIG } from "./productionReport/productionReportConfigs";
-import { useProductionManualEntries } from "./productionReport/useProductionManualEntries";
+import { createManualProductionReportPage } from "./productionReport/createManualProductionReportPage";
 
-function AP5ProductionReportContent() {
-  const manualEntries = useProductionManualEntries(AP5_PRODUCTION_REPORT_CONFIG);
-
-  return <ManualProductionReportPage manualEntries={manualEntries} />;
-}
-
-export default function AP5ProductionReportPage() {
-  return (
-    <ProductionReportProvider config={AP5_PRODUCTION_REPORT_CONFIG}>
-      <AP5ProductionReportContent />
-    </ProductionReportProvider>
-  );
-}
+export default createManualProductionReportPage(AP5_PRODUCTION_REPORT_CONFIG);

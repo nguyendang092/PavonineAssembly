@@ -199,13 +199,13 @@ export default function S90dProcessTabPanel({
 
   const shiftHandlers = useMemo(() => {
     const handlers = new Map();
-    for (const board of selectedBoards) {
+    for (const board of visibleBoards) {
       handlers.set(board.id, (shiftSlot, field, value) => {
         updateShiftField(board.id, shiftSlot, field, value);
       });
     }
     return handlers;
-  }, [selectedBoards, updateShiftField]);
+  }, [updateShiftField, visibleBoards]);
 
   const handleSave = useCallback(async () => {
     if (!isDirty || saving) return;

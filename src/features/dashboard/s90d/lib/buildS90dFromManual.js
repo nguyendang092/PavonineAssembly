@@ -16,6 +16,7 @@ import { formatS90dDailyDateLabel } from "./s90dDateUtils";
 import { DEFAULT_PRODUCT_CODE, resolveProcessBoards } from "./s90dManualEntries";
 import {
   resolveManualEntryConfig,
+  resolveSpecSummaryViewGroup,
 } from "./s90dManualEntryReportConfig";
 import {
   collectDefectImageLists,
@@ -255,6 +256,7 @@ export function buildProcessShiftSummaryFromManual({
     process,
     dateLabel,
     codeSlot,
+    viewGroup: entry?.viewGroup ?? resolveSpecSummaryViewGroup(entry) ?? null,
     shiftRows,
     totalRow,
     percentRow,
@@ -305,6 +307,16 @@ function mergeProcessBoardSummariesToProcessRow(summaries, process) {
   return merged;
 }
 
+function mergeBoardRowsToProcessRow(process, boardRows) {
+  return mergeProcessBoardSummariesToProcessRow(
+    (boardRows ?? []).map((row) => ({
+      totalRow: row,
+      hasData: (row.totalQty ?? 0) > 0,
+    })),
+    process,
+  );
+}
+
 function buildDisplayBoardRowsFromAggregate(aggregate, process, config) {
   if (!shouldShowProductBoardRows(process, config)) {
     return [];
@@ -331,6 +343,7 @@ function buildDisplayBoardRowsFromAggregate(aggregate, process, config) {
       label: board?.label ?? `Bảng ${index + 1}`,
       productCode,
       codeSlot: codeSlot ?? null,
+      viewGroup: board?.viewGroup ?? resolveSpecSummaryViewGroup(board) ?? null,
       totalQty: summary.totalRow.totalQty,
       okQty: summary.totalRow.okQty,
       yieldPct: summary.totalRow.yieldPct,
@@ -720,6 +733,105 @@ export function buildProductScopedGrandTotalSummary(
   );
 }
 
+export function buildViewGroupScopedDailySummary(
+  dailySummary,
+  viewGroup,
+  manualEntryConfig,
+) {
+  if (!dailySummary || !viewGroup) return dailySummary;
+
+  const config = resolveManualEntryConfig(manualEntryConfig);
+  const group = String(viewGroup).trim().toLowerCase();
+  const displayProductCode =
+    config.summaryBoardSpecs?.find((spec) => spec.viewGroup === group)
+      ?.productCode ??
+    `${config.defaultProductCode}${group}`.replace(/\s+/g, "");
+  const processes = config.processes;
+
+  const processDetails = processes.map((process) => {
+    const detail = dailySummary.processDetails?.find(
+      (item) => item.process === process,
+    );
+    const boardRows = (detail?.boardRows ?? []).filter(
+      (row) => resolveSpecSummaryViewGroup(row) === group,
+    );
+    const processRow = {
+      ...mergeBoardRowsToProcessRow(process, boardRows),
+      productCode: displayProductCode,
+    };
+
+    return {
+      process,
+      processRow,
+      boardRows,
+      boardCount: boardRows.length,
+    };
+  });
+
+  const processRows = processDetails.map((detail) => detail.processRow);
+
+  applyS90dReportYieldMetrics(
+    {
+      processDetails,
+      processRows,
+      processes,
+      usesProductSubCodes: config.usesProductSubCodes,
+      fixedBoardSpecsAllProcesses: config.fixedBoardSpecsAllProcesses,
+      fixedBoardSpecs: config.fixedBoardSpecs,
+      codeSlots: config.codeSlots,
+    },
+    { emptyAsNull: true },
+  );
+
+  const outputProcess = processes[processes.length - 1];
+  const totalRow = buildDailyTotalRow(processRows, {
+    outputProcessOnly: false,
+    outputProcess,
+    processes: config.processes,
+  });
+  const percentRow = buildDailyPercentRow(totalRow);
+
+  return {
+    ...dailySummary,
+    productCode: displayProductCode,
+    processRows,
+    processDetails,
+    totalRow: { ...totalRow, productCode: displayProductCode },
+    percentRow,
+    hasData: processRows.some((row) => row.totalQty > 0),
+  };
+}
+
+export function buildViewGroupScopedMonthDailySummaries(
+  monthDailySummaries,
+  viewGroup,
+  manualEntryConfig,
+) {
+  return (monthDailySummaries ?? []).map((daily) =>
+    buildViewGroupScopedDailySummary(daily, viewGroup, manualEntryConfig),
+  );
+}
+
+export function buildViewGroupScopedGrandTotalSummary(
+  monthDailySummaries,
+  viewGroup,
+  manualEntryConfig,
+  defaultProductCode = DEFAULT_PRODUCT_CODE,
+) {
+  const config = resolveManualEntryConfig(manualEntryConfig ?? defaultProductCode);
+  const displayProductCode =
+    config.summaryBoardSpecs?.find(
+      (spec) => String(spec.viewGroup ?? "") === String(viewGroup ?? ""),
+    )?.productCode ?? defaultProductCode;
+  const scopedDailies = buildViewGroupScopedMonthDailySummaries(
+    monthDailySummaries,
+    viewGroup,
+    config,
+  );
+
+  return buildGrandTotalSummaryFromManual(scopedDailies, displayProductCode, config);
+}
+
 function findBoardRowForCodeSlot(detail, codeSlot) {
   const slot = String(codeSlot ?? "").trim();
   if (!slot || !detail?.boardRows?.length) return null;
@@ -961,6 +1073,8 @@ export function buildGrandProcessDetailsFromManual(
             codeSlot: isTrackedCodeSlot(boardRow.codeSlot, config)
               ? boardRow.codeSlot
               : inferCodeSlotFromBoardId(boardRow.boardId ?? key, config),
+            viewGroup:
+              boardRow.viewGroup ?? resolveSpecSummaryViewGroup(boardRow) ?? null,
             totalQty: 0,
             okQty: 0,
             ngQty: 0,

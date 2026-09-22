@@ -1,4 +1,5 @@
 import {
+  startTransition,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -21,7 +22,6 @@ import {
   getProcessEntry,
   mergeProcessMonthIntoStore,
   normalizeManualStore,
-  processDayHasData,
 } from "../s90d/lib/s90dManualEntries";
 import {
   exportS90dManualMonthToExcel,
@@ -134,7 +134,9 @@ export function useProductionManualEntries(config) {
         return;
       }
 
-      applyStore(merged, { bumpProcessSync: true });
+      startTransition(() => {
+        applyStore(merged, { bumpProcessSync: true });
+      });
       setLoading(false);
       setSyncError("");
     };
@@ -239,13 +241,9 @@ export function useProductionManualEntries(config) {
         manualEntryConfig,
       );
 
-      const touchedDateKeys = dateKeys.filter((dateKey) => {
-        if (localByDate[dateKey] !== undefined) return true;
-        return (
-          JSON.stringify(nextStore[dateKey]) !==
-          JSON.stringify(storeRef.current[dateKey])
-        );
-      });
+      const touchedDateKeys = dateKeys.filter(
+        (dateKey) => localByDate[dateKey] !== undefined,
+      );
 
       await persistStore(nextStore, {
         touchedDateKeys: touchedDateKeys.length ? touchedDateKeys : dateKeys,
@@ -346,13 +344,8 @@ export function useProductionManualEntries(config) {
   );
 
   const hasAnyData = useMemo(
-    () =>
-      Object.values(store ?? {}).some((day) =>
-        manualEntryConfig.processes.some((process) =>
-          processDayHasData(day?.[process], process, manualEntryConfig),
-        ),
-      ),
-    [manualEntryConfig, store],
+    () => monthDailySummaries.some((daily) => daily.hasData),
+    [monthDailySummaries],
   );
 
   return {
