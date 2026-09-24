@@ -14,6 +14,7 @@ export const ROUTE_CHUNK_LOADERS = {
   "/performance": () => import("@/features/dashboard/PerformanceChart"),
   "/qr-code-generator": () => import("@/components/ui/QRCodeGenerator"),
   "/stock-variance": () => import("@/features/dashboard/warehouseInventory"),
+  "/inventory-audit": () => import("@/features/dashboard/inventoryAudit"),
   "/mc-defect-report": () => import("@/features/dashboard/mcDefectReport"),
   "/attendance-list": () => import("@/features/attendance/AttendanceList"),
   "/korean-timesheet": () => import("@/features/attendance/KoreanTimesheetPage"),

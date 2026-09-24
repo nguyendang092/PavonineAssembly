@@ -83,6 +83,9 @@ const QRCodeGenerator = lazyImport(
 const WarehouseInventoryDashboard = lazyImport(
   () => import("@/features/dashboard/warehouseInventory"),
 );
+const InventoryAuditPage = lazyImport(
+  () => import("@/features/dashboard/inventoryAudit"),
+);
 const MCDefectReportDashboard = lazyImport(
   () => import("@/features/dashboard/mcDefectReport"),
 );
@@ -116,6 +119,7 @@ const ROUTE_COMPONENTS = {
   PerformanceChart,
   QRCodeGenerator,
   WarehouseInventoryDashboard,
+  InventoryAuditPage,
   MCDefectReportDashboard,
   AttendanceList,
   SeasonalStaffAttendance,

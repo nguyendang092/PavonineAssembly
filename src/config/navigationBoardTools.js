@@ -108,6 +108,14 @@ export const NAVIGATION_BOARD_TOOLS = [
     status: "active",
   },
   {
+    id: "APP-24",
+    path: "/inventory-audit",
+    category: "finance",
+    titleKey: "navbar.inventoryAudit",
+    descriptionKey: "navigationBoard.descInventoryAudit",
+    status: "new",
+  },
+  {
     id: "APP-09",
     path: "/attendance-list",
     category: "hr",

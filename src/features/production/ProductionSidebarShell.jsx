@@ -161,6 +161,7 @@ const ITEM_ICONS = {
   "/s95h-production-report": ICONS.report,
   "/performance": ICONS.chart,
   "/stock-variance": ICONS.inventory,
+  "/inventory-audit": ICONS.inventory,
   "/mc-defect-report": ICONS.defect,
   "/attendance-daily-report": ICONS.attendance,
   "/attendance-list": ICONS.attendance,

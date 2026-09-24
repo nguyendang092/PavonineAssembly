@@ -67,6 +67,11 @@ export const menuConfig = [
                 path: "/stock-variance",
               },
               {
+                key: "inventoryAudit",
+                label: "navbar.inventoryAudit",
+                path: "/inventory-audit",
+              },
+              {
                 key: "mcDefectReport",
                 label: "navbar.mcDefectReport",
                 type: "nested",
@@ -180,6 +185,7 @@ export const routeConfig = [
   { path: "/performance", element: "PerformanceChart" },
   { path: "/qr-code-generator", element: "QRCodeGenerator" },
   { path: "/stock-variance", element: "WarehouseInventoryDashboard" },
+  { path: "/inventory-audit", element: "InventoryAuditPage" },
   { path: "/mc-defect-report", element: "MCDefectReportDashboard" },
   { path: "/attendance-list", element: "AttendanceList" },
   { path: "/korean-timesheet", element: "KoreanTimesheetPage" },
