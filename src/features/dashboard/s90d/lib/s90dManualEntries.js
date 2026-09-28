@@ -90,10 +90,6 @@ function createEmptyProcessDayEntryFromSpecs(process, configInput = DEFAULT_PROD
   };
 }
 
-export function createEmptyDayProcessEntry() {
-  return createEmptyProcessDayEntryFromSpecs("PRESS", DEFAULT_PRODUCT_CODE);
-}
-
 export function createEmptyProcessDayEntry(
   process,
   configInput = DEFAULT_PRODUCT_CODE,
@@ -518,11 +514,6 @@ export function getProcessEntry(
   );
 }
 
-export function getProcessBoard(store, dateKey, process, boardId) {
-  const boards = getProcessEntry(store, dateKey, process).boards;
-  return boards.find((board) => board.id === boardId) ?? boards[0];
-}
-
 export function updateManualProductCode(
   store,
   dateKey,
@@ -607,17 +598,6 @@ export function ensureProcessBoardAtIndex(
   return next;
 }
 
-/** Lấy dữ liệu 1 công đoạn theo các ngày trong tháng (cho form nhập cục bộ). */
-export function extractProcessMonthSlice(store, dateKeys, process) {
-  return Object.fromEntries(
-    dateKeys.map((dateKey) => [
-      dateKey,
-      getProcessEntry(store, dateKey, process),
-    ]),
-  );
-}
-
-/** Gộp form công đoạn vào store trước khi lưu Firebase. */
 export function mergeProcessMonthIntoStore(
   store,
   dateKeys,
@@ -639,29 +619,6 @@ export function mergeProcessMonthIntoStore(
   });
 
   return next;
-}
-
-export function updateProcessMonthProductCode(
-  localByDate,
-  dateKey,
-  boardId,
-  productCode,
-) {
-  const processDayEntry = cloneProcessDayEntry(
-    localByDate[dateKey] ?? createEmptyDayProcessEntry(),
-  );
-  const boardIndex = findBoardIndex(processDayEntry.boards, boardId);
-  const targetIndex = boardIndex >= 0 ? boardIndex : 0;
-
-  processDayEntry.boards[targetIndex] = {
-    ...processDayEntry.boards[targetIndex],
-    productCode: String(productCode ?? "").trim() || DEFAULT_PRODUCT_CODE,
-  };
-
-  return {
-    ...localByDate,
-    [dateKey]: processDayEntry,
-  };
 }
 
 export function updateProcessMonthShiftField(
@@ -696,18 +653,4 @@ export function updateProcessMonthShiftField(
     ...localByDate,
     [dateKey]: updated[dateKey][process],
   };
-}
-
-export function boardHasData(board) {
-  return Object.values(board?.shifts ?? {}).some(
-    (shift) =>
-      (shift?.okQty ?? 0) > 0 ||
-      S90D_DEFECT_COLUMNS.some(({ key }) => (shift?.defects?.[key] ?? 0) > 0),
-  );
-}
-
-export function processDayHasData(processDayEntry, process, configInput) {
-  return resolveProcessBoards(processDayEntry, process, configInput).some(
-    boardHasData,
-  );
 }

@@ -35,20 +35,36 @@ export function buildTwoMonthCompareRows(
     const earlier = earlierByKey.get(k);
     if (!earlier) continue;
 
-    const actualDelta = (later.actualQty ?? 0) - (earlier.actualQty ?? 0);
-    const sysDelta = (later.sysQty ?? 0) - (earlier.sysQty ?? 0);
+    const actualFrom = earlier.actualQty ?? 0;
+    const actualTo = later.actualQty ?? 0;
+    const sysFrom = earlier.sysQty ?? 0;
+    const sysTo = later.sysQty ?? 0;
+    const amountFrom = earlier.amountActual ?? 0;
+    const amountTo = later.amountActual ?? 0;
+    const gapFrom = earlier.gapAmount ?? 0;
+    const gapTo = later.gapAmount ?? 0;
+    const actualDelta = actualTo - actualFrom;
+    const sysDelta = sysTo - sysFrom;
 
     rows.push({
       ...later,
       month: `${earlier.month} → ${later.month}`,
       monthKey: `${earlierKey}__${laterKey}`,
+      actualQtyFrom: actualFrom,
+      actualQtyTo: actualTo,
       actualQty: actualDelta,
+      sysQtyFrom: sysFrom,
+      sysQtyTo: sysTo,
       sysQty: sysDelta,
-      amountActual: (later.amountActual ?? 0) - (earlier.amountActual ?? 0),
-      gapAmount: (later.gapAmount ?? 0) - (earlier.gapAmount ?? 0),
+      amountActualFrom: amountFrom,
+      amountActualTo: amountTo,
+      amountActual: amountTo - amountFrom,
+      gapAmountFrom: gapFrom,
+      gapAmountTo: gapTo,
+      gapAmount: gapTo - gapFrom,
       monthlyDiff: actualDelta - sysDelta,
       codeDelta: actualDelta,
-      amountDelta: (later.amountActual ?? 0) - (earlier.amountActual ?? 0),
+      amountDelta: amountTo - amountFrom,
       hasPrevMonth: true,
       compareFromMonth: earlier.month,
       compareToMonth: later.month,
@@ -57,6 +73,12 @@ export function buildTwoMonthCompareRows(
   }
 
   rows.sort((a, b) => {
+    const byAbsQty =
+      Math.abs(b.actualQty ?? 0) - Math.abs(a.actualQty ?? 0);
+    if (byAbsQty) return byAbsQty;
+    const byAbsAmt =
+      Math.abs(b.amountActual ?? 0) - Math.abs(a.amountActual ?? 0);
+    if (byAbsAmt) return byAbsAmt;
     if (a.whFilterKey !== b.whFilterKey) {
       return a.whFilterKey.localeCompare(b.whFilterKey, "vi");
     }

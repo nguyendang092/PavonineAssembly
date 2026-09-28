@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   applyInventoryAuditLookup,
+  applyInventoryAuditWarehouseToRows,
   assertInventoryAuditSourceSize,
   buildInventoryAuditLookupIndex,
   compactInventoryAuditSource,
+  listInventoryAuditWarehouseCodes,
   packInventoryAuditSource,
 } from "./inventoryAuditLookup";
 import { packInventoryAuditSourceTable } from "./inventoryAuditSourceTable";
@@ -173,5 +175,21 @@ describe("inventoryAuditLookup", () => {
         tableIndex,
       ).locationName,
     ).toBe("Kho 039");
+  });
+
+  it("lists unique warehouse codes and applies them to every row", () => {
+    expect(listInventoryAuditWarehouseCodes(index)).toEqual(["A-01", "B-02"]);
+    const next = applyInventoryAuditWarehouseToRows(
+      [
+        { id: "1", locationCode: "", erpCode: "" },
+        { id: "2", locationCode: "B-02", erpCode: "ERP-2" },
+      ],
+      "A-01",
+      index,
+    );
+    expect(next).toMatchObject([
+      { id: "1", locationCode: "A-01", locationName: "Kệ A" },
+      { id: "2", locationCode: "A-01", locationName: "Kệ A", erpCode: "ERP-2" },
+    ]);
   });
 });

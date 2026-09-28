@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiAlertTriangle, FiChevronDown, FiDatabase, FiDownload, FiEdit2, FiLayers, FiPlus, FiSearch, FiTrash2, FiUpload } from "react-icons/fi";
 import { INVENTORY_AUDIT_WORKSPACE_COLUMNS } from "./lib/constants";
 import {
@@ -7,6 +7,12 @@ import {
 } from "./lib/inventoryAuditSpaces";
 import { useInventoryAudit } from "./hooks/useInventoryAudit";
 import { downloadInventoryAuditExcel } from "./lib/exportInventoryAuditExcel";
+import {
+  inventoryAuditArrowDir,
+  inventoryAuditEditableColKeys,
+  nextInventoryAuditCell,
+  shouldMoveInventoryAuditCell,
+} from "./lib/inventoryAuditCellNav";
 import "./inventoryAudit.css";
 
 function formatQtyTotal(qty) {
@@ -36,9 +42,12 @@ function AuditCellInput({
   value,
   onChange,
   onEnter,
+  onArrowMove,
   onPasteGrid,
   ariaLabel,
   numeric,
+  rowId,
+  colKey,
 }) {
   return (
     <input
@@ -47,6 +56,8 @@ function AuditCellInput({
       inputMode={numeric ? "decimal" : "text"}
       value={value ?? ""}
       aria-label={ariaLabel}
+      data-audit-row={rowId}
+      data-audit-col={colKey}
       onChange={(e) => onChange(e.target.value)}
       onPaste={(e) => {
         const text = e.clipboardData?.getData("text/plain") ?? "";
@@ -59,7 +70,15 @@ function AuditCellInput({
         if (e.key === "Enter" && onEnter) {
           e.preventDefault();
           onEnter();
+          return;
         }
+        if (!onArrowMove || !shouldMoveInventoryAuditCell(e, e.currentTarget)) {
+          return;
+        }
+        const dir = inventoryAuditArrowDir(e.key);
+        if (!dir) return;
+        e.preventDefault();
+        onArrowMove(rowId, colKey, dir);
       }}
     />
   );
@@ -74,10 +93,13 @@ export default function InventoryAuditPage() {
     workspaces,
     viewingKey,
     viewingLabel,
+    viewingWarehouseCode,
+    warehouseCodes,
     selectWorkspace,
     addWorkspace,
     mergeWorkspaces,
     renameWorkspace,
+    setWorkspaceWarehouseCode,
     deleteWorkspace,
     canManageNamedSpace,
     rows,
@@ -113,6 +135,7 @@ export default function InventoryAuditPage() {
   const [mergeB, setMergeB] = useState("");
   const [mergeDest, setMergeDest] = useState(INVENTORY_AUDIT_MERGE_DEST_NEW);
   const [exporting, setExporting] = useState(false);
+  const tableRef = useRef(null);
 
   const viewingWorkspace = useMemo(
     () => workspaces.find((ws) => ws.key === viewingKey) || null,
@@ -162,6 +185,31 @@ export default function InventoryAuditPage() {
     if (!title) return;
     renameWorkspace(viewId, title);
   };
+
+  const editableColKeys = useMemo(
+    () => inventoryAuditEditableColKeys(Boolean(viewingWarehouseCode)),
+    [viewingWarehouseCode],
+  );
+
+  const moveAuditCell = useCallback(
+    (rowId, colKey, dir) => {
+      const next = nextInventoryAuditCell(
+        filteredRows,
+        editableColKeys,
+        rowId,
+        colKey,
+        dir,
+      );
+      if (!next) return;
+      const el = tableRef.current?.querySelector(
+        `input[data-audit-row="${CSS.escape(next.rowId)}"][data-audit-col="${CSS.escape(next.colKey)}"]`,
+      );
+      if (!el) return;
+      el.focus();
+      el.select();
+    },
+    [filteredRows, editableColKeys],
+  );
 
   const exportExcel = async () => {
     setExporting(true);
@@ -253,6 +301,7 @@ export default function InventoryAuditPage() {
               </span>
             ) : null}
             <span className="inv-audit-ws-item-meta">
+              {ws.warehouseCode ? `${ws.warehouseCode} · ` : ""}
               {tl("rowCount", "{{count}} dòng", { count: ws.rowCount ?? 0 })}
             </span>
           </button>
@@ -495,23 +544,51 @@ export default function InventoryAuditPage() {
             {tl("pageTitle", "Kiểm kê tồn kho")}
           </h1>
           {canEdit ? (
-            <input
-              className="inv-audit-ws-title-input"
-              value={titleDraft}
-              maxLength={80}
-              aria-label={tl("workspaceTitleLabel", "Tên")}
-              placeholder={tl("workspaceTitlePlaceholder", "Đặt tên không gian…")}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              onBlur={() => saveWorkspaceTitle(viewingKey, titleDraft)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.currentTarget.blur();
+            <div className="inv-audit-ws-identity">
+              <input
+                className="inv-audit-ws-title-input"
+                value={titleDraft}
+                maxLength={80}
+                aria-label={tl("workspaceTitleLabel", "Tên")}
+                placeholder={tl("workspaceTitlePlaceholder", "Đặt tên không gian…")}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={() => saveWorkspaceTitle(viewingKey, titleDraft)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                  }
+                }}
+              />
+              <select
+                className="inv-audit-ws-warehouse-select"
+                value={viewingWarehouseCode}
+                aria-label={tl("workspaceWarehouseLabel", "Mã kho")}
+                onChange={(e) =>
+                  setWorkspaceWarehouseCode(viewingKey, e.target.value)
                 }
-              }}
-            />
+              >
+                <option value="">
+                  {tl("workspaceWarehousePlaceholder", "Chọn mã kho")}
+                </option>
+                {viewingWarehouseCode &&
+                !warehouseCodes.includes(viewingWarehouseCode) ? (
+                  <option value={viewingWarehouseCode}>
+                    {viewingWarehouseCode}
+                  </option>
+                ) : null}
+                {warehouseCodes.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </div>
           ) : (
-            <p className="inv-audit-subtitle">{viewingLabel}</p>
+            <p className="inv-audit-subtitle">
+              {viewingLabel}
+              {viewingWarehouseCode ? ` · ${viewingWarehouseCode}` : ""}
+            </p>
           )}
           <p
             className={`inv-audit-status${saveError ? " inv-audit-status--error" : ""}${!canEdit ? " inv-audit-status--view" : ""}`}
@@ -674,6 +751,7 @@ export default function InventoryAuditPage() {
         }}
       >
         <table
+          ref={tableRef}
           className={`inv-audit-table inv-audit-table--workspace${canEdit ? "" : " inv-audit-table--readonly"}`}
         >
           <colgroup>
@@ -753,16 +831,26 @@ export default function InventoryAuditPage() {
                     <td
                       key={col.key}
                       className={[
-                        col.pink ? "inv-audit-td--pink" : "",
-                        col.autoFill ? "inv-audit-td--autofill" : "",
+                        col.pink &&
+                        !(col.key === "locationCode" && viewingWarehouseCode)
+                          ? "inv-audit-td--pink"
+                          : "",
+                        col.autoFill ||
+                        (col.key === "locationCode" && viewingWarehouseCode)
+                          ? "inv-audit-td--autofill"
+                          : "",
                       ]
                         .filter(Boolean)
                         .join(" ") || undefined}
                     >
-                      {canEdit && !col.autoFill ? (
+                      {canEdit &&
+                      !col.autoFill &&
+                      !(col.key === "locationCode" && viewingWarehouseCode) ? (
                         <AuditCellInput
-                          numeric={col.key === "qty"}
+                          numeric={Boolean(col.numeric)}
                           value={row[col.key]}
+                          rowId={row.id}
+                          colKey={col.key}
                           ariaLabel={col.vi || col.en}
                           onChange={(value) =>
                             updateCell(row.id, col.key, value)
@@ -770,6 +858,7 @@ export default function InventoryAuditPage() {
                           onPasteGrid={(text) =>
                             pasteGrid(row.id, col.key, text)
                           }
+                          onArrowMove={moveAuditCell}
                           onEnter={col.key === "remarks" ? () => addRow(1) : undefined}
                         />
                       ) : (

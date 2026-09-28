@@ -11,6 +11,10 @@ import { useTranslation } from "react-i18next";
 import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
 import {
+  downloadDataUrl,
+  exportNodeToPng,
+} from "@/utils/exportDomPng";
+import {
   buildMonthDailyRollup,
   mergeMonthDailySummariesForRollup,
   resolveNgRateTone,
@@ -128,6 +132,8 @@ function S90dDailyDateStrip({
   onSelect,
   monthAvgNgRate = 0,
   hasAnyDayData = false,
+  onDownloadAll = null,
+  exportingAll = false,
 }) {
   const rt = useReportT();
   const isAllDaysSelected = selectedDateKey === S90D_ALL_DAYS_KEY;
@@ -138,9 +144,26 @@ function S90dDailyDateStrip({
         <p className="s90d-daily-date-strip-label">
           {rt("dailyPickDateLabel", "Chọn ngày xem chi tiết")}
         </p>
-        <p className="s90d-daily-date-strip-legend">
-          {rt("dailyDateColorLegend", "Màu = tỷ lệ NG trong ngày đó")}
-        </p>
+        <div className="s90d-daily-date-strip-head-actions">
+          <p className="s90d-daily-date-strip-legend">
+            {rt("dailyDateColorLegend", "Màu = tỷ lệ NG trong ngày đó")}
+          </p>
+          {isAllDaysSelected && onDownloadAll ? (
+            <button
+              type="button"
+              className="s90d-image-btn dashboard-no-print"
+              disabled={!hasAnyDayData || exportingAll}
+              onClick={onDownloadAll}
+            >
+              <FiDownload className="s90d-btn-icon" aria-hidden="true" />
+              <span>
+                {exportingAll
+                  ? rt("boardImageExporting", "Đang tải…")
+                  : rt("downloadAllBoardImages", "Tải tất cả bảng")}
+              </span>
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div
@@ -202,10 +225,9 @@ function S90dDailyDateStrip({
   );
 }
 
-async function waitForPaint() {
-  await new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  });
+function skipExportControls(node) {
+  if (!(node instanceof Element)) return true;
+  return !node.classList.contains("dashboard-no-print");
 }
 
 function S90dDailyBoardCard({
@@ -236,59 +258,26 @@ function S90dDailyBoardCard({
     if (!boardExportRef.current || !hasData || exportingImage) return;
 
     setExportingImage(true);
-
-    let scrollEl = null;
-    let prevOverflow = "";
-    let prevOverflowX = "";
-    let prevOverflowY = "";
-
     try {
-      await waitForPaint();
-
-      scrollEl = boardExportRef.current.querySelector(
-        ".s90d-table-wrap--board",
+      const dataUrl = await exportNodeToPng(boardExportRef.current, {
+        filter: skipExportControls,
+      });
+      downloadDataUrl(
+        dataUrl,
+        buildBoardExportFilename({
+          reportCode: defaultProductCode,
+          isTotalView,
+          isAllDaysView,
+          selectedDateKey: summary?.dateKey || selectedDateKey,
+          monthDisplayLabel,
+          productCode,
+        }),
       );
-      if (scrollEl) {
-        prevOverflow = scrollEl.style.overflow;
-        prevOverflowX = scrollEl.style.overflowX;
-        prevOverflowY = scrollEl.style.overflowY;
-        scrollEl.style.overflow = "visible";
-        scrollEl.style.overflowX = "visible";
-        scrollEl.style.overflowY = "visible";
-      }
-
-      await waitForPaint();
-
-      const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(boardExportRef.current, {
-        cacheBust: true,
-        pixelRatio: 2,
-        filter: (node) => {
-          if (!(node instanceof Element)) return true;
-          return !node.classList.contains("dashboard-no-print");
-        },
-      });
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = buildBoardExportFilename({
-        reportCode: defaultProductCode,
-        isTotalView,
-        isAllDaysView,
-        selectedDateKey: summary?.dateKey || selectedDateKey,
-        monthDisplayLabel,
-        productCode,
-      });
-      link.click();
     } catch {
       window.alert(
         rt("boardImageExportError", "Không thể tải hình bảng sản lượng."),
       );
     } finally {
-      if (scrollEl) {
-        scrollEl.style.overflow = prevOverflow;
-        scrollEl.style.overflowX = prevOverflowX;
-        scrollEl.style.overflowY = prevOverflowY;
-      }
       setExportingImage(false);
     }
   }, [
@@ -400,6 +389,8 @@ export default memo(function S90dDailyTabPanel({
   const { defaultProductCode } = useProductionReportContext();
   const isTotalView = variant === "total";
   const [selectedDateKey, setSelectedDateKey] = useState(S90D_ALL_DAYS_KEY);
+  const [exportingAll, setExportingAll] = useState(false);
+  const allBoardsExportRef = useRef(null);
   const monthSummariesForUi = useMemo(() => {
     if (!productSections?.length) return monthDailySummaries;
     if (productSections.length === 1) {
@@ -448,6 +439,31 @@ export default memo(function S90dDailyTabPanel({
     [monthSummariesForUi],
   );
 
+  const handleDownloadAllBoards = useCallback(async () => {
+    if (!allBoardsExportRef.current || exportingAll) return;
+    setExportingAll(true);
+    try {
+      const dataUrl = await exportNodeToPng(allBoardsExportRef.current, {
+        filter: skipExportControls,
+      });
+      downloadDataUrl(
+        dataUrl,
+        buildBoardExportFilename({
+          reportCode: defaultProductCode,
+          isAllDaysView: true,
+          monthDisplayLabel,
+          productCode: defaultProductCode,
+        }),
+      );
+    } catch {
+      window.alert(
+        rt("boardImageExportError", "Không thể tải hình bảng sản lượng."),
+      );
+    } finally {
+      setExportingAll(false);
+    }
+  }, [defaultProductCode, exportingAll, monthDisplayLabel, rt]);
+
   const renderBoardContent = () => {
     if (productSections?.length) {
       if (isTotalView) {
@@ -485,7 +501,7 @@ export default memo(function S90dDailyTabPanel({
         }
 
         return (
-          <div className="s90d-daily-all-days-stack">
+          <div ref={allBoardsExportRef} className="s90d-daily-all-days-stack">
             {daysWithData.map((daily) => (
               <div
                 key={daily.dateKey}
@@ -499,6 +515,8 @@ export default memo(function S90dDailyTabPanel({
                     <S90dDailyBoardCard
                       key={`${daily.dateKey}-${section.productCode}`}
                       summary={summary}
+                      isAllDaysView
+                      monthDisplayLabel={monthDisplayLabel}
                       defaultProductCode={section.productCode}
                       rt={rt}
                     />
@@ -543,11 +561,13 @@ export default memo(function S90dDailyTabPanel({
       }
 
       return (
-        <div className="s90d-daily-all-days-stack">
+        <div ref={allBoardsExportRef} className="s90d-daily-all-days-stack">
           {daysWithData.map((daily) => (
             <S90dDailyBoardCard
               key={daily.dateKey}
               summary={daily}
+              isAllDaysView
+              monthDisplayLabel={monthDisplayLabel}
               defaultProductCode={defaultProductCode}
               rt={rt}
             />
@@ -586,6 +606,8 @@ export default memo(function S90dDailyTabPanel({
           onSelect={setSelectedDateKey}
           monthAvgNgRate={rollup.avgNgRate}
           hasAnyDayData={rollup.activeDays > 0}
+          onDownloadAll={isAllDaysView ? handleDownloadAllBoards : null}
+          exportingAll={exportingAll}
         />
       ) : null}
 

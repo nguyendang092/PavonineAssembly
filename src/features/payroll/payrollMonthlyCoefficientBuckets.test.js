@@ -109,11 +109,11 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     expect(coeffHours(lines, 1.5)).toBe(0.53);
   });
 
-  it("Korean Timesheet Chủ nhật — TC 17:32 gộp ×2.0", () => {
+  it("Korean Timesheet Chủ nhật OFF — TC 17:32 gộp ×2.0", () => {
     const lines = getPayrollMonthlyCoefficientLines({
       timeIn: "08:00",
       timeOut: "17:32",
-      isOffDay: false,
+      isOffDay: true,
       isHolidayDay: false,
       shiftCode: "S1",
       payrollEarlyOtPaperwork: false,
@@ -140,7 +140,22 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     expect(eveningOnly).toBe(0.53);
   });
 
-  it("Korean Timesheet Chủ nhật — TC 17:15 gộp ×2.0", () => {
+  it("Korean Timesheet Chủ nhật OFF — TC 17:15 gộp ×2.0", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "08:00",
+      timeOut: "17:15",
+      isOffDay: true,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      koreanTimesheetRules: true,
+      dateKey: "2026-07-12",
+    });
+    expect(coeffHours(lines, 2.0)).toBe(8.25);
+  });
+
+  it("Korean Timesheet Chủ nhật không OFF — TC 17:15 như ngày thường", () => {
     const lines = getPayrollMonthlyCoefficientLines({
       timeIn: "08:00",
       timeOut: "17:15",
@@ -151,6 +166,22 @@ describe("getPayrollMonthlyCoefficientLines", () => {
       payrollLateOtExcluded: false,
       koreanTimesheetRules: true,
       dateKey: "2026-07-12",
+    });
+    expect(coeffHours(lines, 2.0)).toBe(0);
+    expect(coeffHours(lines, 1.5)).toBe(0);
+  });
+
+  it("Korean Timesheet thứ 7 OFF — TC 17:15 từ 17:00 gộp ×2.0", () => {
+    const lines = getPayrollMonthlyCoefficientLines({
+      timeIn: "08:00",
+      timeOut: "17:15",
+      isOffDay: true,
+      isHolidayDay: false,
+      shiftCode: "S1",
+      payrollEarlyOtPaperwork: false,
+      payrollLateOtExcluded: false,
+      koreanTimesheetRules: true,
+      dateKey: "2026-07-11",
     });
     expect(coeffHours(lines, 2.0)).toBe(8.25);
   });
@@ -568,7 +599,7 @@ describe("getPayrollMonthlyCoefficientLines", () => {
     expect(Number(coeffTxt)).toBeGreaterThan(0);
   });
 
-  it("Chủ nhật ca đêm thường — gộp toàn bộ ở ×2.7, không tách ×0.3/×1.5", () => {
+  it("Chủ nhật không OFF ca đêm — tách như ngày thường", () => {
     const sundayKey = "2026-06-07";
     const ch = {
       dateKey: sundayKey,
@@ -582,7 +613,8 @@ describe("getPayrollMonthlyCoefficientLines", () => {
       caLamViec: "S2",
     };
     const main = getPayrollMonthlyMainRowCell(emp, ch);
-    expect(main.kind).toBe("dash");
+    expect(main.kind).toBe("hours");
+    expect(main.hours).toBe(7);
 
     const coeffMap = getPayrollMonthlyCoeffHoursMap({
       timeIn: "22:00",
@@ -594,22 +626,12 @@ describe("getPayrollMonthlyCoefficientLines", () => {
       payrollLateOtExcluded: false,
       dateKey: sundayKey,
     });
-    expect(coeffMap.get(2.7)).toBeGreaterThan(0);
-    expect(coeffMap.get(0.3) ?? 0).toBe(0);
-    expect(coeffMap.get(1.5) ?? 0).toBe(0);
-
-    const coeffTxt = formatPayrollMonthlyCoeffSubrowDayCell({
-      emp,
-      ch,
-      sr: PAYROLL_MONTHLY_SUBROWS[4],
-      coeffMap,
-      main,
-    });
-    expect(coeffTxt).not.toBe("S2");
-    expect(Number(coeffTxt)).toBeGreaterThan(0);
+    expect(coeffMap.get(0.3)).toBe(7);
+    expect(coeffMap.get(1.5)).toBe(1);
+    expect(coeffMap.get(2.7) ?? 0).toBe(0);
   });
 
-  it("Chủ nhật ca ngày thường — gộp toàn bộ ở ×2.0, dòng chính trống", () => {
+  it("Chủ nhật không OFF ca ngày — giờ dòng chính, TC ×1.5", () => {
     const sundayKey = "2026-06-07";
     const ch = {
       dateKey: sundayKey,
@@ -623,7 +645,8 @@ describe("getPayrollMonthlyCoefficientLines", () => {
       caLamViec: "S1",
     };
     const main = getPayrollMonthlyMainRowCell(emp, ch);
-    expect(main.kind).toBe("dash");
+    expect(main.kind).toBe("hours");
+    expect(main.hours).toBeGreaterThan(0);
 
     const coeffMap = getPayrollMonthlyCoeffHoursMap({
       timeIn: "08:00",
@@ -635,8 +658,7 @@ describe("getPayrollMonthlyCoefficientLines", () => {
       payrollLateOtExcluded: false,
       dateKey: sundayKey,
     });
-    expect(coeffMap.get(2.0)).toBeGreaterThan(0);
-    expect(coeffMap.get(1.5) ?? 0).toBe(0);
+    expect(coeffMap.get(2.0) ?? 0).toBe(0);
   });
 
   it("ngày OFF + tangCaTrua — cộng vào ×2.0 gộp", () => {

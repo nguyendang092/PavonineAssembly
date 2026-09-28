@@ -10,6 +10,7 @@ const COL_WIDTHS = {
   unit: 10,
   qty: 12,
   remarks: 24,
+  check: 12,
 };
 
 const COLORS = {
@@ -110,7 +111,7 @@ export function buildInventoryAuditExportSheet(rows = []) {
     ),
     records: (Array.isArray(rows) ? rows : []).map((row) =>
       columns.map((col) =>
-        col.key === "qty" ? qtyCell(row?.[col.key]) : String(row?.[col.key] ?? ""),
+        col.numeric ? qtyCell(row?.[col.key]) : String(row?.[col.key] ?? ""),
       ),
     ),
     qtyTotal: sumInventoryAuditQty(rows),
@@ -199,7 +200,7 @@ export async function buildInventoryAuditWorkbook({
           color: { argb: col.autoFill ? COLORS.muted : COLORS.ink },
           size: 10,
         },
-        numFmt: col.key === "qty" ? QTY_NUM_FMT : undefined,
+        numFmt: col.numeric ? QTY_NUM_FMT : undefined,
       });
     });
   });
@@ -207,7 +208,7 @@ export async function buildInventoryAuditWorkbook({
   INVENTORY_AUDIT_WORKSPACE_COLUMNS.forEach((col, i) => {
     const column = sheet.getColumn(i + 1);
     column.width = COL_WIDTHS[col.key] ?? 14;
-    if (col.key === "qty") column.numFmt = QTY_NUM_FMT;
+    if (col.numeric) column.numFmt = QTY_NUM_FMT;
   });
 
   if (records.length) {

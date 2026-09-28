@@ -63,6 +63,15 @@ const COLUMN_MATCHERS = [
     key: "remarks",
     tests: [/^remarks?$/i, /ghi\s*chú/i],
   },
+  {
+    key: "check",
+    tests: [
+      /^check$/i,
+      /ki[eể]m\s*tra\s*sl/i,
+      /qty\s*check/i,
+      /check\s*(qty|sl)/i,
+    ],
+  },
 ];
 
 function cellText(v) {
@@ -139,7 +148,7 @@ function looksLikeGenericHeaderRow(row) {
 function looksLikeViSubheader(row) {
   if (!Array.isArray(row)) return false;
   const blob = row.map(headerBlob).join(" | ");
-  return /vị\s*trí|tên\s*vị\s*trí|loại\s*hàng|đơn\s*vị|số\s*lượng|ghi\s*chú|mục/.test(
+  return /vị\s*trí|tên\s*vị\s*trí|loại\s*hàng|đơn\s*vị|số\s*lượng|ghi\s*chú|ki[eể]m\s*tra|mục/.test(
     blob,
   );
 }
@@ -198,6 +207,7 @@ export function parseInventoryAuditMatrix(matrix, options = {}) {
     if (!any) continue;
     records.push(record);
     const qtyRaw = colMap.qty !== undefined ? cells[colMap.qty] : "";
+    const checkRaw = colMap.check !== undefined ? cells[colMap.check] : "";
     const row = {
       tag: pick(cells, colMap, "tag"),
       locationCode: pick(cells, colMap, "locationCode"),
@@ -208,6 +218,7 @@ export function parseInventoryAuditMatrix(matrix, options = {}) {
       unit: pick(cells, colMap, "unit"),
       qty: parseQty(qtyRaw),
       remarks: pick(cells, colMap, "remarks"),
+      check: parseQty(checkRaw),
     };
     rows.push(row);
   }

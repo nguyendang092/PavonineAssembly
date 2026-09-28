@@ -232,12 +232,14 @@ export function useWarehouseInventoryDashboard() {
   }, [filteredStructuredRows, tablePage, tablePageSize]);
 
   const codeDiffSoftScale = useMemo(() => {
-    const maxAbs = filteredStructuredRows.reduce(
-      (mx, r) => Math.max(mx, Math.abs(r.gapAmount ?? 0)),
-      0,
-    );
+    const maxAbs = filteredStructuredRows.reduce((mx, r) => {
+      const value = monthCompareMode
+        ? Math.abs(r.actualQty ?? 0)
+        : Math.abs(r.gapAmount ?? 0);
+      return Math.max(mx, value);
+    }, 0);
     return maxAbs > 0 ? maxAbs : 1;
-  }, [filteredStructuredRows]);
+  }, [filteredStructuredRows, monthCompareMode]);
 
   const warehouseOptions = useMemo(() => {
     const keys = new Set();

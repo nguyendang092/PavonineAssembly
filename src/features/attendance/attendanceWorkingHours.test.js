@@ -161,7 +161,31 @@ describe("getPayrollDayOvertimeHoursNumeric", () => {
     ).toBe(0);
   });
 
-  it("Korean Timesheet Chủ nhật — TC 17:15 từ 17:00", () => {
+  it("Korean Timesheet thứ 7 OFF — TC 17:15 từ 17:00", () => {
+    expect(
+      getPayrollDayOvertimeHoursNumeric(
+        "08:00",
+        "17:15",
+        true,
+        "S1",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        {
+          koreanTimesheetRules: true,
+          isOffDay: true,
+          dateKey: "2026-07-11",
+        },
+      ),
+    ).toBe(0.25);
+  });
+
+  it("Korean Timesheet Chủ nhật không OFF — TC 17:15 như ngày thường", () => {
     expect(
       getPayrollDayOvertimeHoursNumeric(
         "08:00",
@@ -178,10 +202,11 @@ describe("getPayrollDayOvertimeHoursNumeric", () => {
         undefined,
         {
           koreanTimesheetRules: true,
+          isOffDay: false,
           dateKey: "2026-07-12",
         },
       ),
-    ).toBe(0.25);
+    ).toBe(0);
   });
 
   it("Korean Timesheet ngày NB — TC 17:15 như ngày thường (sau 17:30)", () => {

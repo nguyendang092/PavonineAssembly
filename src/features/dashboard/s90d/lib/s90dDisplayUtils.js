@@ -178,18 +178,9 @@ export function isHighDefectCell(defectQty, totalNgQty) {
   return defectQty / totalNgQty >= 0.15;
 }
 
-export function formatS90dDailyQty(value) {
-  return Number(value || 0).toLocaleString("vi-VN");
-}
-
 export function capYieldPct(value) {
   if (value == null || value === "" || Number.isNaN(Number(value))) return null;
   return Math.min(100, Math.max(0, Number(value)));
-}
-
-export function formatS90dDailyPct(value) {
-  if (value == null || value === "") return "";
-  return `${capYieldPct(value).toLocaleString("vi-VN")}%`;
 }
 
 export function formatS90dYieldPct(value, emptyLabel = "0%") {
@@ -237,11 +228,6 @@ export function resolveS90dTotalYieldPct(row) {
     return capYieldPct((Number(row.okQty) / Number(row.totalQty)) * 100);
   }
   return null;
-}
-
-export function formatS90dDailyNg(value) {
-  const n = Number(value) || 0;
-  return n > 0 ? n.toLocaleString("vi-VN") : "-";
 }
 
 export function formatS90dDefectQty(value, isPercentRow) {

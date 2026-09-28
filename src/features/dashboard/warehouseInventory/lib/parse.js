@@ -284,55 +284,11 @@ export function parseWarehouseInventoryFile(file) {
  * @param {object[]} rows
  */
 export function computeWarehouseInventoryStats(rows) {
-  let totalActualValue = 0;
-  let totalErpValue = 0;
-  let totalActualQty = 0;
-  let rowsWithQty = 0;
-
-  /** @type {Map<string, number>} */
-  const statusCounts = new Map();
-  /** @type {Map<string, number>} */
-  const warehouseValue = new Map();
-  /** @type {Map<string, number>} */
-  const categoryQty = new Map();
-
-  let discrepancyLines = 0;
-  /** @type {string[]} */
   const months = [];
-
   for (const r of rows) {
-    const aq = typeof r.actualQty === "number" ? r.actualQty : 0;
-    if (r.actualQty != null) rowsWithQty += 1;
-    totalActualQty += aq;
-
-    const av =
-      typeof r.amountActual === "number" ? r.amountActual : 0;
-    const ev = typeof r.amountErp === "number" ? r.amountErp : 0;
-    totalActualValue += av;
-    totalErpValue += ev;
-
-    const st =
-      String(r.status ?? "").trim() || "—";
-    statusCounts.set(st, (statusCounts.get(st) || 0) + 1);
-
-    const wh = String(r.whCode ?? r.warehouseName ?? "").trim() || "—";
-    warehouseValue.set(wh, (warehouseValue.get(wh) || 0) + av);
-
-    const cat = String(r.category ?? "").trim() || "—";
-    categoryQty.set(cat, (categoryQty.get(cat) || 0) + aq);
-
-    const ga = typeof r.gapAbs === "number" ? r.gapAbs : null;
-    const g = typeof r.gap === "number" ? r.gap : null;
-    const disc =
-      (ga != null && Math.abs(ga) > 1e-6) ||
-      (g != null && Math.abs(g) > 1e-6) ||
-      r.checkFlag === false;
-    if (disc) discrepancyLines += 1;
-
     const m = String(r.month ?? "").trim();
     if (m) months.push(m);
   }
-
   const uniqMonths = [...new Set(months)];
   const periodLabel =
     uniqMonths.length === 1
@@ -340,31 +296,7 @@ export function computeWarehouseInventoryStats(rows) {
       : uniqMonths.length > 1
         ? uniqMonths.join(" · ")
         : "—";
-
-  const topLines = [...rows]
-    .map((r, i) => ({
-      i,
-      label: [r.item, r.code].filter(Boolean).join(" · ") || `#${i + 1}`,
-      value: typeof r.amountActual === "number" ? r.amountActual : 0,
-      qty: typeof r.actualQty === "number" ? r.actualQty : 0,
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 12);
-
-  return {
-    rowCount: rows.length,
-    periodLabel,
-    totalActualQty,
-    rowsWithQty,
-    totalActualValue,
-    totalErpValue,
-    valueDelta: totalActualValue - totalErpValue,
-    statusCounts,
-    warehouseValue,
-    categoryQty,
-    discrepancyLines,
-    topLines,
-  };
+  return { periodLabel };
 }
 
 export function formatKRW(n) {
@@ -403,150 +335,6 @@ export function normalizeMonthSortKey(raw) {
     sortKey: compact.toLowerCase(),
     display: compact,
   };
-}
-
-/** Gap có dấu: ưu tiên cột Gap (đúng như file); thiếu thì fallback Thực tế − 전산 (sys). */
-export function getSignedGap(row) {
-  if (row == null || typeof row !== "object") return null;
-  const gapNumeric =
-    typeof row.gap === "number" ? row.gap : parseFlexibleNumber(row.gap);
-  if (gapNumeric != null && Number.isFinite(gapNumeric)) return gapNumeric;
-  const a = row.actualQty;
-  const s = row.sysQty;
-  if (typeof a === "number" && typeof s === "number" && Number.isFinite(a) && Number.isFinite(s)) {
-    return a - s;
-  }
-  return null;
-}
-
-export function getAbsGap(row) {
-  if (row == null || typeof row !== "object") return null;
-  if (typeof row.gapAbs === "number" && Number.isFinite(row.gapAbs)) {
-    return row.gapAbs;
-  }
-  const sg = getSignedGap(row);
-  if (sg != null) return Math.abs(sg);
-  return null;
-}
-
-function valueDeltaRow(row) {
-  const av = typeof row.amountActual === "number" ? row.amountActual : 0;
-  const ev = typeof row.amountErp === "number" ? row.amountErp : 0;
-  return av - ev;
-}
-
-/**
- * Pivot: mỗi CODE × từng tháng — tổng Gap (có dấu), tổng |Gap|, chênh giá trị TT−ERP.
- * @param {object[]} rows — mỗi dòng có `month` (khuyến nghị), `code`, …
- */
-export function buildMonthCodeGapPivot(rows) {
-  /** @type {Map<string, string>} */
-  const monthDisplay = new Map();
-  /** @type {Map<string, Map<string, { signedSum: number; absSum: number; vdSum: number; n: number }>>} */
-  const byCode = new Map();
-  /** @type {Map<string, string>} */
-  const codeItem = new Map();
-
-  for (const r of rows) {
-    const mRaw = String(r.month ?? "").trim();
-    const { sortKey, display } = normalizeMonthSortKey(mRaw || "—");
-    monthDisplay.set(sortKey, mRaw && display !== "—" ? display : mRaw || display);
-
-    const codeRaw = String(r.code ?? "").trim();
-    const code = codeRaw || `∅`;
-    const item = String(r.item ?? "").trim();
-    if (item && !codeItem.has(code)) codeItem.set(code, item);
-
-    const sg = getSignedGap(r);
-    const ab = getAbsGap(r);
-    const vd = valueDeltaRow(r);
-
-    if (!byCode.has(code)) byCode.set(code, new Map());
-    const byM = byCode.get(code);
-    if (!byM.has(sortKey)) {
-      byM.set(sortKey, { signedSum: 0, absSum: 0, vdSum: 0, n: 0 });
-    }
-    const cell = byM.get(sortKey);
-    if (sg != null && Number.isFinite(sg)) cell.signedSum += sg;
-    if (ab != null && Number.isFinite(ab)) cell.absSum += ab;
-    cell.vdSum += vd;
-    cell.n += 1;
-  }
-
-  const monthOrder = [...monthDisplay.keys()].filter((k) => k !== "_").sort();
-  if (monthOrder.length === 0 && monthDisplay.has("_")) {
-    monthOrder.push("_");
-  }
-
-  const months = monthOrder.map((sortKey) => ({
-    sortKey,
-    display: monthDisplay.get(sortKey) ?? sortKey,
-  }));
-
-  /** @type {Array<{ code: string; item: string; byMonth: Record<string, { signedSum: number; absSum: number; vdSum: number; n: number }>; swingSigned: number | null; swingValue: number | null }>} */
-  const pivotRows = [];
-
-  for (const [code, byM] of byCode) {
-    const presentMonths = monthOrder.filter((mk) => byM.has(mk));
-    const byMonth = {};
-    for (const mk of monthOrder) {
-      const c = byM.get(mk);
-      if (c) byMonth[mk] = { ...c };
-    }
-
-    let swingSigned = null;
-    let swingValue = null;
-    if (presentMonths.length >= 2) {
-      const first = presentMonths[0];
-      const last = presentMonths[presentMonths.length - 1];
-      const a = byM.get(first);
-      const b = byM.get(last);
-      if (a && b) {
-        swingSigned = b.signedSum - a.signedSum;
-        swingValue = b.vdSum - a.vdSum;
-      }
-    }
-
-    pivotRows.push({
-      code,
-      item: codeItem.get(code) ?? "",
-      byMonth,
-      swingSigned,
-      swingValue,
-    });
-  }
-
-  pivotRows.sort((a, b) => {
-    const av = Math.abs(a.swingSigned ?? 0);
-    const bv = Math.abs(b.swingSigned ?? 0);
-    if (bv !== av) return bv - av;
-    return String(a.code).localeCompare(String(b.code), "vi");
-  });
-
-  const monthTotalsSigned = monthOrder.map((sortKey) => {
-    let s = 0;
-    for (const r of rows) {
-      const mRaw = String(r.month ?? "").trim();
-      const { sortKey: sk } = normalizeMonthSortKey(mRaw || "—");
-      if (sk !== sortKey) continue;
-      const g = getSignedGap(r);
-      if (g != null) s += g;
-    }
-    return s;
-  });
-  const monthTotalsAbs = monthOrder.map((sortKey) => {
-    let s = 0;
-    for (const r of rows) {
-      const mRaw = String(r.month ?? "").trim();
-      const { sortKey: sk } = normalizeMonthSortKey(mRaw || "—");
-      if (sk !== sortKey) continue;
-      const g = getAbsGap(r);
-      if (g != null) s += g;
-    }
-    return s;
-  });
-
-  return { months, pivotRows, monthTotalsSigned, monthTotalsAbs };
 }
 
 /** Tháng xuất hiện nhiều nhất trong dữ liệu (gợi ý khi lưu kỳ). */

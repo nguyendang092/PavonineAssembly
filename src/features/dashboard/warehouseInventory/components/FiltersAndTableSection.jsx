@@ -1,9 +1,16 @@
 import React, { memo, useCallback } from "react";
 import { formatKRW } from "../lib/parse";
+import {
+  formatPctChange,
+  formatPlainQty,
+  formatSignedKRW,
+  formatSignedQty,
+  signedDeltaClass,
+} from "../lib/formatDelta";
 
-function FilterField({ label, children, compare = false }) {
+function FilterField({ label, children, accent = "" }) {
   return (
-    <div className={compare ? "wah-inv-field wah-inv-field--compare" : "wah-inv-field"}>
+    <div className={accent ? `wah-inv-field wah-inv-field--${accent}` : "wah-inv-field"}>
       <label className="wah-inv-field__label">{label}</label>
       {children}
     </div>
@@ -13,6 +20,7 @@ function FilterField({ label, children, compare = false }) {
 function FiltersAndTableSection(props) {
   const {
     tl,
+    kpi,
     whFilter,
     setWhFilter,
     categoryFilter,
@@ -50,24 +58,31 @@ function FiltersAndTableSection(props) {
   const pageEnd = Math.min(tablePage * tablePageSize, totalRows);
   const monthCompareNeedsPick =
     monthCompareMode && (!monthCompareFrom || !monthCompareTo);
-  const tableColSpan = 13;
+  const comparing = Boolean(monthCompareMode && !monthCompareNeedsPick);
+  const tableColSpan = monthCompareMode ? 13 : 13;
+
+  const setViewMode = (nextCompare) => {
+    setMonthCompareMode((on) => {
+      if (on === nextCompare) return on;
+      if (nextCompare) setMonthFilter("");
+      else {
+        setMonthCompareFrom("");
+        setMonthCompareTo("");
+      }
+      return nextCompare;
+    });
+  };
 
   const rowBackground = useCallback(
     (r, idx) => {
-      const ratio = Math.min(
-        1,
-        Math.abs(r.gapAmount ?? 0) / codeDiffSoftScale,
-      );
-      const alpha = 0.04 + ratio * 0.12;
-      if ((r.gapAmount ?? 0) > 0) {
-        return `rgba(254, 202, 202, ${alpha})`;
-      }
-      if ((r.gapAmount ?? 0) < 0) {
-        return `rgba(191, 219, 254, ${alpha})`;
-      }
-      return idx % 2 === 0 ? "transparent" : "rgba(148, 163, 184, 0.06)";
+      const value = comparing ? (r.actualQty ?? 0) : (r.gapAmount ?? 0);
+      const ratio = Math.min(1, Math.abs(value) / codeDiffSoftScale);
+      const alpha = 0.05 + ratio * 0.16;
+      if (value > 0) return `rgba(167, 243, 208, ${alpha})`;
+      if (value < 0) return `rgba(254, 205, 211, ${alpha})`;
+      return idx % 2 === 0 ? "transparent" : "rgba(148, 163, 184, 0.08)";
     },
-    [codeDiffSoftScale],
+    [codeDiffSoftScale, comparing],
   );
 
   const renderWarehouseRow = useCallback(
@@ -76,27 +91,28 @@ function FiltersAndTableSection(props) {
         key={`${r.whCode}-${r.warehouseName}-${r.category}-${r.monthKey}-${r.code}-${idx}`}
         style={{ backgroundColor: rowBackground(r, idx) }}
       >
-        <td className="wah-inv-td-num text-slate-500">{rowNo}</td>
-        <td className="text-left text-slate-700 dark:text-slate-200">{r.month}</td>
+        <td className="wah-inv-td-num wah-inv-td-muted">{rowNo}</td>
+        <td className="wah-inv-td-left wah-inv-td-month">{r.month}</td>
         <td>{r.category}</td>
         <td className="wah-inv-td-code">{r.whCode}</td>
         <td
-          className="wah-inv-td-truncate text-left"
+          className="wah-inv-td-truncate wah-inv-td-left"
           title={r.warehouseName !== "—" ? String(r.warehouseName) : undefined}
         >
           {r.warehouseName}
         </td>
         <td
-          className="wah-inv-td-truncate text-left"
+          className="wah-inv-td-truncate wah-inv-td-left"
           title={r.item !== "—" ? String(r.item) : undefined}
         >
           {r.item}
         </td>
-        <td
-          className="wah-inv-td-truncate font-semibold uppercase text-violet-700 dark:text-violet-300"
-          title={r.status !== "—" ? String(r.status) : undefined}
-        >
-          {r.status}
+        <td className="wah-inv-td-truncate wah-inv-td-status">
+          {r.status !== "—" ? (
+            <span className="wah-inv-status-pill">{r.status}</span>
+          ) : (
+            r.status
+          )}
         </td>
         <td className="wah-inv-td-code">
           {r.code === "∅" ? tl("codeEmptyLabel", "(코드 없음)") : r.code}
@@ -108,18 +124,18 @@ function FiltersAndTableSection(props) {
           {r.unit}
         </td>
         <td
-          className="wah-inv-td-truncate text-left"
+          className="wah-inv-td-truncate wah-inv-td-left"
           title={r.reason !== "—" ? String(r.reason) : undefined}
         >
           {r.reason}
         </td>
-        <td className="wah-inv-td-num text-amber-800 dark:text-amber-200">
+        <td className="wah-inv-td-num wah-inv-td-qty">
           {r.actualQty.toLocaleString("vi-VN", { maximumFractionDigits: 4 })}
         </td>
-        <td className="wah-inv-td-num text-slate-700 dark:text-slate-200">
+        <td className="wah-inv-td-num wah-inv-td-sys">
           {r.sysQty.toLocaleString("vi-VN", { maximumFractionDigits: 4 })}
         </td>
-        <td className="wah-inv-td-num text-emerald-800 dark:text-emerald-200">
+        <td className="wah-inv-td-num wah-inv-td-money">
           {formatKRW(r.amountActual ?? 0)}
         </td>
       </tr>
@@ -127,32 +143,95 @@ function FiltersAndTableSection(props) {
     [rowBackground, tl],
   );
 
+  const renderCompareRow = useCallback(
+    (r, idx, rowNo) => {
+      const qtyPct = formatPctChange(r.actualQtyFrom, r.actualQty);
+      const amtPct = formatPctChange(r.amountActualFrom, r.amountActual);
+      return (
+        <tr
+          key={`${r.whCode}-${r.warehouseName}-${r.category}-${r.monthKey}-${r.code}-${idx}`}
+          style={{ backgroundColor: rowBackground(r, idx) }}
+        >
+          <td className="wah-inv-td-num wah-inv-td-muted">{rowNo}</td>
+          <td className="wah-inv-td-period">{r.month}</td>
+          <td>{r.category}</td>
+          <td className="wah-inv-td-code">{r.whCode}</td>
+          <td
+            className="wah-inv-td-truncate wah-inv-td-left"
+            title={r.warehouseName !== "—" ? String(r.warehouseName) : undefined}
+          >
+            {r.warehouseName}
+          </td>
+          <td
+            className="wah-inv-td-truncate wah-inv-td-left"
+            title={r.item !== "—" ? String(r.item) : undefined}
+          >
+            {r.item}
+          </td>
+          <td className="wah-inv-td-code">
+            {r.code === "∅" ? tl("codeEmptyLabel", "(코드 없음)") : r.code}
+          </td>
+          <td className="wah-inv-td-num wah-inv-td-from">
+            {formatPlainQty(r.actualQtyFrom)}
+          </td>
+          <td className="wah-inv-td-num wah-inv-td-to">
+            {formatPlainQty(r.actualQtyTo)}
+          </td>
+          <td className={`wah-inv-td-num ${signedDeltaClass(r.actualQty)}`}>
+            {formatSignedQty(r.actualQty)}
+            {qtyPct ? <span className="wah-inv-delta-pct">{qtyPct}</span> : null}
+          </td>
+          <td className="wah-inv-td-num wah-inv-td-from">
+            {formatKRW(r.amountActualFrom ?? 0)}
+          </td>
+          <td className="wah-inv-td-num wah-inv-td-to">
+            {formatKRW(r.amountActualTo ?? 0)}
+          </td>
+          <td className={`wah-inv-td-num ${signedDeltaClass(r.amountActual)}`}>
+            {formatSignedKRW(r.amountActual)}
+            {amtPct ? <span className="wah-inv-delta-pct">{amtPct}</span> : null}
+          </td>
+        </tr>
+      );
+    },
+    [rowBackground, tl],
+  );
+
   return (
     <>
-      <div className="dashboard-no-print wah-inv-panel">
-        <div className="wah-inv-panel__head">
-          <div>
-            <p className="wah-inv-panel__title">
-              {tl("filtersSectionTitle", "Bộ lọc")}
-            </p>
-            <p className="wah-inv-panel__hint">
-              {tl(
-                "filtersSectionHint",
-                "Lọc theo điều kiện — KPI và bảng cập nhật ngay.",
-              )}
-            </p>
-          </div>
-        </div>
-
+      <div className={`dashboard-no-print wah-inv-panel${monthCompareMode ? " wah-inv-panel--compare" : ""}`}>
         <div className="wah-inv-panel__body">
-          <div className="wah-inv-filter-grid">
+          <div className="wah-inv-modes" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!monthCompareMode}
+              className={`wah-inv-mode wah-inv-mode--list${!monthCompareMode ? " wah-inv-mode--on" : ""}`}
+              onClick={() => setViewMode(false)}
+            >
+              {tl("viewModeList", "Xem theo tháng")}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={monthCompareMode}
+              className={`wah-inv-mode wah-inv-mode--cmp${monthCompareMode ? " wah-inv-mode--on" : ""}`}
+              onClick={() => setViewMode(true)}
+            >
+              {tl("viewModeCompare", "So sánh 2 tháng")}
+            </button>
+          </div>
+
+          <div
+            className={`wah-inv-filter-grid${monthCompareMode ? " wah-inv-filter-grid--compare" : ""}`}
+          >
             <FilterField label={tl("filterWh", "Kho")}>
               <select
                 value={whFilter}
                 onChange={(ev) => setWhFilter(ev.target.value)}
                 className="wah-inv-control"
               >
-                <option value="">{tl("filterWhAll", "Tất cả kho")}</option>
+                <option value="">{tl("filterWhAll", "Tất cả")}</option>
                 {warehouseOptions.map((w) => (
                   <option key={w} value={w}>
                     {w}
@@ -176,23 +255,16 @@ function FiltersAndTableSection(props) {
               </select>
             </FilterField>
 
-            <FilterField
-              label={
-                monthCompareMode
-                  ? tl("monthCompareSectionTitle", "So sánh 2 tháng")
-                  : tl("monthFilterLabel", "Tháng")
-              }
-              compare={monthCompareMode}
-            >
-              {monthCompareMode ? (
-                <div className="grid gap-2 sm:grid-cols-2">
+            {monthCompareMode ? (
+              <>
+                <FilterField label={tl("monthCompareFrom", "Tháng trước")} accent="from">
                   <select
                     value={monthCompareFrom}
                     onChange={(ev) => setMonthCompareFrom(ev.target.value)}
                     className="wah-inv-control"
                   >
                     <option value="">
-                      {tl("monthCompareFrom", "Tháng trước")}
+                      {tl("monthComparePick", "Chọn tháng")}
                     </option>
                     {monthTableOptions.map((m) => (
                       <option key={`from-${m.value}`} value={m.value}>
@@ -200,13 +272,15 @@ function FiltersAndTableSection(props) {
                       </option>
                     ))}
                   </select>
+                </FilterField>
+                <FilterField label={tl("monthCompareTo", "Tháng sau")} accent="to">
                   <select
                     value={monthCompareTo}
                     onChange={(ev) => setMonthCompareTo(ev.target.value)}
                     className="wah-inv-control"
                   >
                     <option value="">
-                      {tl("monthCompareTo", "Tháng sau")}
+                      {tl("monthComparePick", "Chọn tháng")}
                     </option>
                     {monthTableOptions.map((m) => (
                       <option key={`to-${m.value}`} value={m.value}>
@@ -214,34 +288,39 @@ function FiltersAndTableSection(props) {
                       </option>
                     ))}
                   </select>
-                </div>
-              ) : (
+                </FilterField>
+              </>
+            ) : (
+              <FilterField label={tl("monthFilterLabel", "Tháng")}>
                 <select
                   value={monthFilter}
                   onChange={(ev) => setMonthFilter(ev.target.value)}
                   className="wah-inv-control"
                 >
-                  <option value="">{tl("filterAllMonths", "Tất cả tháng")}</option>
+                  <option value="">{tl("filterAllMonths", "Tất cả")}</option>
                   {monthTableOptions.map((m) => (
                     <option key={m.value} value={m.value}>
                       {m.label}
                     </option>
                   ))}
                 </select>
-              )}
-            </FilterField>
+              </FilterField>
+            )}
 
-            <FilterField label="CODE / ITEM">
+            <FilterField label={tl("searchFieldLabel", "Tìm mã")} accent="search">
               <input
                 value={codeSearch}
                 onChange={(ev) => setCodeSearch(ev.target.value)}
-                placeholder={tl("searchCodePlaceholder", "Tìm CODE, ITEM…")}
+                placeholder={tl("searchCodePlaceholder", "CODE hoặc ITEM")}
                 className="wah-inv-control"
               />
             </FilterField>
           </div>
 
           <div className="wah-inv-toolbar">
+            <p className="wah-inv-toolbar__label">
+              {tl("filtersHideLabel", "Ẩn dòng")}
+            </p>
             <div className="wah-inv-chips">
               <label
                 className={`wah-inv-chip ${hideZeroMonthlyDiff ? "wah-inv-chip--active" : ""}`}
@@ -261,77 +340,152 @@ function FiltersAndTableSection(props) {
                   checked={hideZeroActualQty}
                   onChange={(e) => setHideZeroActualQty(e.target.checked)}
                 />
-                {tl("hideZeroActualQty", "Ẩn SL thực tế & hệ thống = 0")}
+                {tl(
+                  comparing ? "hideUnchangedQty" : "hideZeroActualQty",
+                  comparing
+                    ? "Ẩn số lượng không đổi"
+                    : "Ẩn số lượng 0",
+                )}
               </label>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setMonthCompareMode((on) => {
-                  const next = !on;
-                  if (next) setMonthFilter("");
-                  else {
-                    setMonthCompareFrom("");
-                    setMonthCompareTo("");
-                  }
-                  return next;
-                });
-              }}
-              className={`wah-inv-toggle ${monthCompareMode ? "wah-inv-toggle--active" : ""}`}
-            >
-              {tl("monthCompareModeButton", "So sánh 12 tháng")}
-            </button>
           </div>
         </div>
       </div>
 
+      {kpi}
+
+      {monthCompareNeedsPick ? (
+        <p className="dashboard-no-print wah-inv-callout" role="status">
+          {tl(
+            "monthComparePickBoth",
+            "Chọn tháng trước và tháng sau để xem chênh lệch.",
+          )}
+        </p>
+      ) : null}
+
       <div className="wah-inv-table-section">
         <div className="wah-inv-table-section__head">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-            {tl("structuredTableTitle", "Chi tiết theo tháng × mã")}
+          <p>
+            {monthCompareMode
+              ? tl("compareTableTitle", "Chênh lệch hai tháng")
+              : tl("structuredTableTitle", "Bảng chi tiết")}
           </p>
-          <span className="text-[11px] font-semibold tabular-nums text-slate-500">
-            {structuredSummary.rows.toLocaleString("vi-VN")}{" "}
-            {tl("tableRowsLabel", "dòng")}
-          </span>
+          {monthCompareMode ? (
+            <span className="wah-inv-compare-legend">
+              <span className="wah-inv-delta wah-inv-delta--up">
+                {tl("legendIncrease", "Tăng")}
+              </span>
+              <span className="wah-inv-delta wah-inv-delta--down">
+                {tl("legendDecrease", "Giảm")}
+              </span>
+              <span className="wah-inv-delta wah-inv-delta--flat">
+                {tl("legendUnchanged", "Không đổi")}
+              </span>
+            </span>
+          ) : (
+            <span>
+              {structuredSummary.rows.toLocaleString("vi-VN")}{" "}
+              {tl("tableRowsLabel", "dòng")}
+            </span>
+          )}
         </div>
 
         <div className="wah-inv-table-wrap">
-          <table className="wah-inv-table">
+          <table
+            className={`wah-inv-table${monthCompareMode ? " wah-inv-table--compare" : ""}`}
+          >
             <thead>
-              <tr>
-                <th>{tl("colStt", "STT")}</th>
-                <th className="text-left">Month</th>
-                <th>{tl("colCategoryKr", "구분")}</th>
-                <th>{tl("colWarehouseCode", "Mã kho")}</th>
-                <th className="text-left">{tl("colWarehouse", "Kho")}</th>
-                <th className="text-left">{tl("colItem", "ITEM")}</th>
-                <th>{tl("colStatus", "STATUS")}</th>
-                <th>CODE</th>
-                <th>{tl("colUnit", "Đơn vị")}</th>
-                <th className="text-left">{tl("colReason", "Lý do")}</th>
-                <th>{tl("colActualQty", "SL thực tế")}</th>
-                <th>{tl("colSystemQtyKr", "SL hệ thống")}</th>
-                <th>{tl("colAmount", "Số tiền")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedStructuredRows.length > 0 ? (
-                pagedStructuredRows.map((r, idx) =>
-                  renderWarehouseRow(r, idx, pageStart + idx),
-                )
+              {monthCompareMode ? (
+                <>
+                  <tr>
+                    <th rowSpan={2}>{tl("colStt", "STT")}</th>
+                    <th rowSpan={2} className="wah-inv-td-left">
+                      {tl("colComparePeriod", "Kỳ")}
+                    </th>
+                    <th rowSpan={2}>{tl("colCategoryKr", "구분")}</th>
+                    <th rowSpan={2}>{tl("colWarehouseCode", "Mã kho")}</th>
+                    <th rowSpan={2} className="wah-inv-td-left">
+                      {tl("colWarehouse", "Kho")}
+                    </th>
+                    <th rowSpan={2} className="wah-inv-td-left">
+                      {tl("colItem", "ITEM")}
+                    </th>
+                    <th rowSpan={2}>CODE</th>
+                    <th
+                      colSpan={3}
+                      className="wah-inv-th-group wah-inv-th-group--qty"
+                    >
+                      {tl("colActualQty", "Thực tế")}
+                    </th>
+                    <th
+                      colSpan={3}
+                      className="wah-inv-th-group wah-inv-th-group--amt"
+                    >
+                      {tl("colAmount", "Tiền")}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th className="wah-inv-th-from">
+                      {tl("colCompareFrom", "Trước")}
+                    </th>
+                    <th className="wah-inv-th-to">
+                      {tl("colCompareTo", "Sau")}
+                    </th>
+                    <th className="wah-inv-th-delta">
+                      {tl("colCompareDelta", "Δ")}
+                    </th>
+                    <th className="wah-inv-th-from">
+                      {tl("colCompareFrom", "Trước")}
+                    </th>
+                    <th className="wah-inv-th-to">
+                      {tl("colCompareTo", "Sau")}
+                    </th>
+                    <th className="wah-inv-th-delta">
+                      {tl("colCompareDelta", "Δ")}
+                    </th>
+                  </tr>
+                </>
               ) : (
                 <tr>
-                  <td colSpan={tableColSpan} className="py-10 text-sm text-slate-500">
+                  <th>{tl("colStt", "STT")}</th>
+                  <th className="wah-inv-th-month wah-inv-td-left">
+                    {tl("monthFilterLabel", "Tháng")}
+                  </th>
+                  <th>{tl("colCategoryKr", "구분")}</th>
+                  <th>{tl("colWarehouseCode", "Mã kho")}</th>
+                  <th className="wah-inv-td-left">{tl("colWarehouse", "Kho")}</th>
+                  <th className="wah-inv-td-left">{tl("colItem", "ITEM")}</th>
+                  <th className="wah-inv-th-status">{tl("colStatus", "STATUS")}</th>
+                  <th>CODE</th>
+                  <th>{tl("colUnit", "Đơn vị")}</th>
+                  <th className="wah-inv-td-left">{tl("colReason", "Lý do")}</th>
+                  <th className="wah-inv-th-actual">{tl("colActualQty", "Thực tế")}</th>
+                  <th className="wah-inv-th-sys">{tl("colSystemQtyKr", "Hệ thống")}</th>
+                  <th className="wah-inv-th-money">{tl("colAmount", "Tiền")}</th>
+                </tr>
+              )}
+            </thead>
+            <tbody>
+              {!monthCompareMode && pagedStructuredRows.length > 0
+                ? pagedStructuredRows.map((r, idx) =>
+                    renderWarehouseRow(r, idx, pageStart + idx),
+                  )
+                : comparing && pagedStructuredRows.length > 0
+                  ? pagedStructuredRows.map((r, idx) =>
+                      renderCompareRow(r, idx, pageStart + idx),
+                    )
+                  : (
+                <tr>
+                  <td colSpan={tableColSpan} className="wah-inv-empty-cell">
                     {monthCompareNeedsPick
                       ? tl(
                           "monthComparePickBoth",
-                          "Chọn đủ tháng trước và tháng sau để xem chênh lệch.",
+                          "Chọn tháng trước và tháng sau để xem chênh lệch.",
                         )
                       : monthCompareMode
                         ? tl(
                             "monthCompareNoMatches",
-                            "Không có mã trùng khớp giữa hai tháng đã chọn.",
+                            "Không có mã trùng giữa hai tháng.",
                           )
                         : tl("tableEmpty", "Không có dòng phù hợp bộ lọc.")}
                   </td>
@@ -343,25 +497,19 @@ function FiltersAndTableSection(props) {
 
         <div className="wah-inv-pagination dashboard-no-print">
           <span className="tabular-nums">
-            {tl(
-              "tablePageRangeSummary",
-              "Dòng {{from}}–{{to}} / {{count}} · trang {{page}}/{{total}}",
-              {
-                from: pageStart,
-                to: pageEnd,
-                count: totalRows,
-                page: tablePage,
-                total: tableTotalPages,
-              },
-            )}
+            {tl("tablePageRangeSummary", "{{from}}–{{to}} / {{count}}", {
+              from: pageStart,
+              to: pageEnd,
+              count: totalRows,
+            })}
           </span>
           <div className="wah-inv-pagination__actions">
-            <label className="flex items-center gap-1.5">
+            <label className="wah-inv-page-size">
               <span>{tl("rowsPerPage", "Dòng/trang")}</span>
               <select
                 value={tablePageSize}
                 onChange={(ev) => setTablePageSize(Number(ev.target.value))}
-                className="wah-inv-control !w-auto py-1"
+                className="wah-inv-control wah-inv-control--sm"
               >
                 {tablePageSizeOptions.map((size) => (
                   <option key={size} value={size}>
@@ -370,6 +518,12 @@ function FiltersAndTableSection(props) {
                 ))}
               </select>
             </label>
+            <span className="wah-inv-page-num">
+              {tl("tablePageSummary", "Trang {{page}}/{{total}}", {
+                page: tablePage,
+                total: tableTotalPages,
+              })}
+            </span>
             <button
               type="button"
               onClick={() => setTablePage((p) => Math.max(1, p - 1))}

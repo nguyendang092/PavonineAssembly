@@ -34,8 +34,11 @@ describe("buildTwoMonthCompareRows", () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0].actualQty).toBe(5);
+    expect(rows[0].actualQtyFrom).toBe(10);
+    expect(rows[0].actualQtyTo).toBe(15);
     expect(rows[0].sysQty).toBe(1);
     expect(rows[0].amountActual).toBe(500);
+    expect(rows[0].amountActualFrom).toBe(1000);
     expect(rows[0].gapAmount).toBe(100);
     expect(rows[0].month).toBe("01-2026 → 02-2026");
     expect(rows[0].isMonthCompareRow).toBe(true);
@@ -63,5 +66,35 @@ describe("buildTwoMonthCompareRows", () => {
       "2026-01",
     );
     expect(rows[0].actualQty).toBe(6);
+  });
+
+  it("orders larger quantity swings first", () => {
+    const rows = buildTwoMonthCompareRows(
+      [
+        baseRow({
+          code: "SMALL",
+          monthKey: "2026-01",
+          actualQty: 10,
+        }),
+        baseRow({
+          code: "SMALL",
+          monthKey: "2026-02",
+          actualQty: 11,
+        }),
+        baseRow({
+          code: "BIG",
+          monthKey: "2026-01",
+          actualQty: 10,
+        }),
+        baseRow({
+          code: "BIG",
+          monthKey: "2026-02",
+          actualQty: 40,
+        }),
+      ],
+      "2026-01",
+      "2026-02",
+    );
+    expect(rows.map((r) => r.code)).toEqual(["BIG", "SMALL"]);
   });
 });

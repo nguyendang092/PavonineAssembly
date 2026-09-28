@@ -174,11 +174,22 @@ export function getKoreanTimesheetEveningOvertimeHoursFromGioRa(timeOut) {
   return roundHoursToHundredths(otMinutes / 60);
 }
 
+function koreanCalendarOffDayFromOtOptions({
+  isOffDay,
+  calendarIsOffDay,
+} = {}) {
+  if (calendarIsOffDay !== undefined) return Boolean(calendarIsOffDay);
+  if (isOffDay !== undefined) return Boolean(isOffDay);
+  return null;
+}
+
 function shouldUseKoreanNbSundayEveningOtRule({
   koreanTimesheetRules = false,
   isCompensatoryDay = false,
   dateKey = null,
   includeTaiXeTongInWorkingHours = false,
+  isOffDay,
+  calendarIsOffDay,
 } = {}) {
   if (!koreanTimesheetRules) return false;
   if (isCompensatoryDay) return false;
@@ -189,20 +200,18 @@ function shouldUseKoreanNbSundayEveningOtRule({
     const pd = parseLocalDateKey(String(dateKey ?? ""));
     if (pd && (pd.getDay() === 0 || pd.getDay() === 6)) return false;
   }
+  const calendarOff = koreanCalendarOffDayFromOtOptions({
+    isOffDay,
+    calendarIsOffDay,
+  });
+  if (calendarOff === true) return true;
+  if (calendarOff === false) return false;
   return isSundayDateKeyForKoreanOt(dateKey);
 }
 
-function shouldUseKoreanTimesheetEveningOtRule({
-  koreanTimesheetRules = false,
-  isCompensatoryDay = false,
-  dateKey = null,
-} = {}) {
-  if (!koreanTimesheetRules) return false;
-  return !shouldUseKoreanNbSundayEveningOtRule({
-    koreanTimesheetRules,
-    isCompensatoryDay,
-    dateKey,
-  });
+function shouldUseKoreanTimesheetEveningOtRule(otOptions = {}) {
+  if (!otOptions.koreanTimesheetRules) return false;
+  return !shouldUseKoreanNbSundayEveningOtRule(otOptions);
 }
 
 /**

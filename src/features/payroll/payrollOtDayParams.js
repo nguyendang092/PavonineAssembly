@@ -50,6 +50,11 @@ export function payrollDayOvertimeOptionsFromParams(p) {
     isCompensatoryDay: p?.isCompensatoryDay === true,
     dateKey: p?.dateKey ?? null,
     includeTaiXeTongInWorkingHours: flags.includeTaiXeTongInWorkingHours,
+    isOffDay:
+      p?.calendarIsOffDay !== undefined
+        ? Boolean(p.calendarIsOffDay)
+        : p?.isOffDay,
+    calendarIsOffDay: p?.calendarIsOffDay,
   };
 }
 

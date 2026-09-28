@@ -34,9 +34,14 @@ describe("inventoryAuditSpaces", () => {
           ownerEmail: "me@x.com",
           ownerName: "Me",
           title: "Kho chính",
+          warehouseCode: "WH01",
           rows: [{ id: "1" }],
           named: {
-            extra: { title: "Kho 2", rows: [{ id: "2" }, { id: "3" }] },
+            extra: {
+              title: "Kho 2",
+              warehouseCode: "WH02",
+              rows: [{ id: "2" }, { id: "3" }],
+            },
           },
         },
       },
@@ -49,11 +54,13 @@ describe("inventoryAuditSpaces", () => {
       spaceId: "default",
       isDefault: true,
       title: "Kho chính",
+      warehouseCode: "WH01",
       rowCount: 1,
     });
     expect(list[1]).toMatchObject({
       spaceId: "extra",
       title: "Kho 2",
+      warehouseCode: "WH02",
       rowCount: 2,
     });
     expect(

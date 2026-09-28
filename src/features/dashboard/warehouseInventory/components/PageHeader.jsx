@@ -10,29 +10,36 @@ export default function PageHeader({
   error,
   handleFile,
   clearData,
+  fileName,
+  periodLabel,
 }) {
   return (
     <>
       <header className="dashboard-no-print wah-inv-page-header">
-        <div>
+        <div className="wah-inv-page-header__copy">
           <h1 className="wah-inv-page-header__title">
-            {tl("pageTitle", "Báo cáo kiểm kê kho")}
+            {tl("pageTitle", "Báo cáo kiểm kê")}
           </h1>
-          <p className="wah-inv-page-header__subtitle">
-            {tl(
-              "pageSubtitle",
-              "Tải file Excel tồn kho, lọc theo kho/tháng/mã và so sánh chênh lệch giữa các kỳ.",
-            )}
-          </p>
+          {rows.length > 0 ? (
+            <p className="wah-inv-page-header__meta">
+              <span title={fileName || undefined}>{fileName || "—"}</span>
+              {periodLabel ? (
+                <>
+                  <span className="wah-inv-meta-sep">·</span>
+                  {periodLabel}
+                </>
+              ) : null}
+            </p>
+          ) : null}
         </div>
         <div className="wah-inv-actions">
-          <label className="wah-inv-btn wah-inv-btn--primary cursor-pointer">
+          <label className="wah-inv-btn wah-inv-btn--primary">
             <FiUpload aria-hidden />
-            {tl("uploadBtn", "Chọn file Excel")}
+            {tl("uploadBtn", "Mở Excel")}
             <input
               type="file"
               accept=".xlsx,.xls"
-              className="hidden"
+              hidden
               onChange={handleFile}
               disabled={loading && rows.length === 0}
             />
@@ -45,11 +52,11 @@ export default function PageHeader({
             className="wah-inv-btn wah-inv-btn--ghost"
           >
             <FiRefreshCw
-              className={isRevalidatingCloud ? "animate-spin" : ""}
+              className={isRevalidatingCloud ? "is-spinning" : ""}
               aria-hidden
             />
             {isRevalidatingCloud
-              ? tl("refreshingCloud", "Đang làm mới…")
+              ? tl("refreshingCloud", "Đang tải…")
               : tl("refreshCloud", "Làm mới")}
           </button>
           {rows.length > 0 ? (
@@ -59,7 +66,7 @@ export default function PageHeader({
               className="wah-inv-btn wah-inv-btn--ghost"
             >
               <FiTrash2 aria-hidden />
-              {tl("clearBtn", "Xóa dữ liệu")}
+              {tl("clearBtn", "Xóa")}
             </button>
           ) : null}
         </div>
@@ -72,22 +79,15 @@ export default function PageHeader({
       ) : null}
 
       {loading && rows.length === 0 ? (
-        <p className="dashboard-no-print mb-4 text-sm font-medium text-slate-600 dark:text-slate-400">
-          {tl("loading", "Đang đọc file…")}
+        <p className="dashboard-no-print wah-inv-status">
+          {tl("loading", "Đang đọc…")}
         </p>
       ) : null}
 
       {rows.length === 0 && !loading ? (
         <div className="dashboard-no-print wah-inv-empty">
-          <p className="text-base font-bold text-slate-800 dark:text-slate-100">
-            {tl("emptyTitle", "Chưa có dữ liệu")}
-          </p>
-          <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            {tl(
-              "emptyHint",
-              "Xuất báo cáo tồn kho từ ERP/Excel (giữ cột THỰC TẾ, STATUS, mã kho, 재고금액…), rồi bấm «Chọn file Excel».",
-            )}
-          </p>
+          <p>{tl("emptyTitle", "Chưa có dữ liệu")}</p>
+          <p>{tl("emptyHint", "Bấm «Mở Excel» để tải báo cáo tồn kho.")}</p>
         </div>
       ) : null}
     </>

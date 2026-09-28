@@ -82,6 +82,24 @@ describe("taiXeTongPayrollDay", () => {
       }),
     ).toBe(false);
   });
+
+  it("Chủ nhật không OFF lịch — không gộp hệ số cuối tuần", () => {
+    expect(
+      shouldUsePayrollMonthSundayMergedRules({
+        dateKey: "2026-06-07",
+        isOffDay: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("Chủ nhật OFF lịch — vẫn gộp hệ số cuối tuần", () => {
+    expect(
+      shouldUsePayrollMonthSundayMergedRules({
+        dateKey: "2026-06-07",
+        isOffDay: true,
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("getPayrollMonthlyCoefficientLines — Tài xế tổng", () => {

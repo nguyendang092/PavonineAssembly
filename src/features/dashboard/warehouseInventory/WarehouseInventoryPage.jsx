@@ -80,7 +80,7 @@ export default function WarehouseInventoryPage() {
   );
 
   return (
-    <div className="dashboard-print-fill wah-inv-page w-full px-3 py-4 sm:px-5">
+    <div className="dashboard-print-fill wah-inv-page">
       <PageHeader
         tl={data.tl}
         rows={data.rows}
@@ -90,13 +90,13 @@ export default function WarehouseInventoryPage() {
         error={data.error}
         handleFile={data.handleFile}
         clearData={data.clearData}
+        fileName={data.fileName}
+        periodLabel={data.stats?.periodLabel}
       />
 
       {data.rows.length > 0 ? (
         <ReportKpiSection
           tl={data.tl}
-          fileName={data.fileName}
-          stats={data.stats}
           structuredSummary={data.structuredSummary}
           tableSectionProps={tableSectionProps}
         />

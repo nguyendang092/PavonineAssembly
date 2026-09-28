@@ -341,6 +341,29 @@ export function applyInventoryAuditLookup(row, index) {
   };
 }
 
+export function listInventoryAuditWarehouseCodes(index) {
+  const seen = new Set();
+  const codes = [];
+  for (const loc of index?.locations?.values() ?? []) {
+    const code = text(loc?.locationCode, MAX_CODE);
+    if (!code) continue;
+    const key = inventoryAuditLookupKey(code);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    codes.push(code);
+  }
+  codes.sort((a, b) => a.localeCompare(b, "vi", { numeric: true }));
+  return codes;
+}
+
+export function applyInventoryAuditWarehouseToRows(rows, warehouseCode, index) {
+  const code = text(warehouseCode, MAX_CODE);
+  if (!code) return Array.isArray(rows) ? rows : [];
+  return (Array.isArray(rows) ? rows : []).map((row) =>
+    applyInventoryAuditLookup({ ...row, locationCode: code }, index),
+  );
+}
+
 function findLocation(index, typed) {
   for (const key of inventoryAuditLocationKeys(typed)) {
     const loc = index?.locations.get(key);

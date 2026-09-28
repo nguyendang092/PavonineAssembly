@@ -5,6 +5,7 @@ import { useUser } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
 import {
   INVENTORY_AUDIT_AUTO_FILL_KEYS,
+  INVENTORY_AUDIT_NUMERIC_KEYS,
   INVENTORY_AUDIT_SOURCE_PATH,
   INVENTORY_AUDIT_SOURCE_ROOT,
   INVENTORY_AUDIT_WORKSPACE_COLUMNS,
@@ -17,7 +18,9 @@ import {
 } from "../lib/constants";
 import {
   applyInventoryAuditLookup,
+  applyInventoryAuditWarehouseToRows,
   buildInventoryAuditLookupIndex,
+  listInventoryAuditWarehouseCodes,
 } from "../lib/inventoryAuditLookup";
 import { packInventoryAuditSourceTable } from "../lib/inventoryAuditSourceTable";
 import {
@@ -113,6 +116,16 @@ export function useInventoryAudit() {
   );
   const lookupIndexRef = useRef(lookupIndex);
   lookupIndexRef.current = lookupIndex;
+  const warehouseCodes = useMemo(
+    () => listInventoryAuditWarehouseCodes(lookupIndex),
+    [lookupIndex],
+  );
+  const viewingWarehouseCode = useMemo(() => {
+    const ws = workspaces.find((w) => w.key === viewingKey);
+    return String(ws?.warehouseCode ?? "").trim();
+  }, [workspaces, viewingKey]);
+  const warehouseCodeRef = useRef(viewingWarehouseCode);
+  warehouseCodeRef.current = viewingWarehouseCode;
 
   useEffect(() => {
     if (myKey && !viewingKey) {
@@ -331,10 +344,20 @@ export function useInventoryAudit() {
         500,
         Math.max(1, Math.floor(Number(count)) || 1),
       );
+      const warehouseCode = warehouseCodeRef.current;
+      const index = lookupIndexRef.current;
       commitRows(
         (prev) => [
           ...prev,
-          ...Array.from({ length: n }, () => createInventoryAuditRow()),
+          ...Array.from({ length: n }, () => {
+            const row = createInventoryAuditRow();
+            return warehouseCode
+              ? applyInventoryAuditLookup(
+                  { ...row, locationCode: warehouseCode },
+                  index,
+                )
+              : row;
+          }),
         ],
         { immediate: true },
       );
@@ -345,15 +368,15 @@ export function useInventoryAudit() {
   const updateCell = useCallback(
     (rowId, key, value) => {
       if (!canEdit || INVENTORY_AUDIT_AUTO_FILL_KEYS.has(key)) return;
+      if (key === "locationCode" && warehouseCodeRef.current) return;
       commitRows((prev) =>
         prev.map((row) => {
           if (row.id !== rowId) return row;
-          const nextValue =
-            key === "qty"
-              ? parseQtyInput(value)
-              : key === "remarks"
-                ? formatInventoryAuditRemarks(value)
-                : value;
+          const nextValue = INVENTORY_AUDIT_NUMERIC_KEYS.has(key)
+            ? parseQtyInput(value)
+            : key === "remarks"
+              ? formatInventoryAuditRemarks(value)
+              : value;
           const patched = { ...row, [key]: nextValue };
           if (key === "locationCode" || key === "erpCode") {
             return applyInventoryAuditLookup(patched, lookupIndexRef.current);
@@ -387,14 +410,18 @@ export function useInventoryAudit() {
             cells.forEach((cell, colOffset) => {
               const col = INVENTORY_AUDIT_WORKSPACE_COLUMNS[col0 + colOffset];
               if (!col || col.autoFill) return;
-              base[col.key] =
-                col.key === "qty"
-                  ? parseQtyInput(cell)
-                  : col.key === "remarks"
-                    ? formatInventoryAuditRemarks(cell)
-                    : cell;
+              if (col.key === "locationCode" && warehouseCodeRef.current) return;
+              base[col.key] = INVENTORY_AUDIT_NUMERIC_KEYS.has(col.key)
+                ? parseQtyInput(cell)
+                : col.key === "remarks"
+                  ? formatInventoryAuditRemarks(cell)
+                  : cell;
             });
-            next[idx] = applyInventoryAuditLookup(base, lookupIndexRef.current);
+            const warehouseCode = warehouseCodeRef.current;
+            next[idx] = applyInventoryAuditLookup(
+              warehouseCode ? { ...base, locationCode: warehouseCode } : base,
+              lookupIndexRef.current,
+            );
           });
           return next;
         },
@@ -424,12 +451,14 @@ export function useInventoryAudit() {
       setLoading(true);
       try {
         const parsed = await parseInventoryAuditFile(file);
-        const imported = parsed.rows.map((row) =>
-          applyInventoryAuditLookup(
-            importedToWorkspaceRow(row),
+        const warehouseCode = warehouseCodeRef.current;
+        const imported = parsed.rows.map((row) => {
+          const next = importedToWorkspaceRow(row);
+          return applyInventoryAuditLookup(
+            warehouseCode ? { ...next, locationCode: warehouseCode } : next,
             lookupIndexRef.current,
-          ),
-        );
+          );
+        });
         commitRows((prev) => [...prev, ...imported], { immediate: true });
       } catch (err) {
         const code = err instanceof Error ? err.message : "";
@@ -618,6 +647,7 @@ export function useInventoryAudit() {
           });
           await set(ref(db, inventoryAuditSpacePath(myKey, spaceId)), {
             title,
+            warehouseCode: "",
             savedAt: new Date().toISOString(),
             rows: merged,
           });
@@ -682,6 +712,7 @@ export function useInventoryAudit() {
       });
       await set(ref(db, inventoryAuditSpacePath(myKey, spaceId)), {
         title,
+        warehouseCode: "",
         savedAt: new Date().toISOString(),
         rows: [],
       });
@@ -734,6 +765,56 @@ export function useInventoryAudit() {
     [myKey, workspaces, tl, email, ownerName],
   );
 
+  const setWorkspaceWarehouseCode = useCallback(
+    async (viewId, nextCode) => {
+      const id = String(viewId || viewingKeyRef.current || "").trim();
+      const { ownerKey, spaceId } = parseInventoryAuditViewId(id);
+      if (!myKey || ownerKey !== myKey) return false;
+      const path = inventoryAuditSpacePath(ownerKey, spaceId);
+      if (!path) return false;
+      const warehouseCode = String(nextCode ?? "").trim().slice(0, 48);
+      const current =
+        String(workspaces.find((w) => w.key === id)?.warehouseCode ?? "").trim();
+      if (warehouseCode === current) return false;
+      try {
+        setSaveError("");
+        const patch = { warehouseCode };
+        if (spaceId === INVENTORY_AUDIT_DEFAULT_SPACE_ID) {
+          patch.ownerEmail = email;
+          patch.ownerName = ownerName;
+        }
+        if (warehouseCode) {
+          if (saveTimerRef.current) {
+            window.clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = null;
+          }
+          const sourceRows =
+            id === viewingKeyRef.current
+              ? rowsRef.current
+              : await fetchSpaceRows(id);
+          const nextRows = applyInventoryAuditWarehouseToRows(
+            sourceRows,
+            warehouseCode,
+            lookupIndexRef.current,
+          );
+          patch.rows = nextRows;
+          patch.savedAt = new Date().toISOString();
+          if (id === viewingKeyRef.current) {
+            rowsRef.current = nextRows;
+            setRows(nextRows);
+          }
+        }
+        await update(ref(db, path), patch);
+        return true;
+      } catch (err) {
+        console.error(err);
+        setSaveError(tl("saveError", "Không lưu được không gian làm việc."));
+        return false;
+      }
+    },
+    [myKey, workspaces, tl, email, ownerName, fetchSpaceRows],
+  );
+
   const deleteWorkspace = useCallback(async () => {
     const { ownerKey, spaceId } = parseInventoryAuditViewId(
       viewingKeyRef.current,
@@ -783,6 +864,7 @@ export function useInventoryAudit() {
         r.unit,
         r.qty,
         r.remarks,
+        r.check,
       ]
         .map((v) => String(v ?? "").toLowerCase())
         .some((v) => v.includes(q)),
@@ -831,14 +913,15 @@ export function useInventoryAudit() {
     workspaces,
     viewingKey,
     viewingLabel,
-    viewingIsDefault: viewingParts.spaceId === INVENTORY_AUDIT_DEFAULT_SPACE_ID,
-    canRenameWorkspace,
-    canManageNamedSpace,
+    viewingWarehouseCode,
+    warehouseCodes,
     selectWorkspace,
     addWorkspace,
     mergeWorkspaces,
     renameWorkspace,
+    setWorkspaceWarehouseCode,
     deleteWorkspace,
+    canManageNamedSpace,
     rows,
     error,
     saveError,

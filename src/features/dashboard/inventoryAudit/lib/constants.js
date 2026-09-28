@@ -66,17 +66,31 @@ export const INVENTORY_AUDIT_WORKSPACE_COLUMNS = [
     colClass: "inv-audit-col-unit",
     autoFill: true,
   },
-  { key: "qty", en: "Qty", vi: "số lượng", colClass: "inv-audit-col-qty" },
+  { key: "qty", en: "Qty", vi: "số lượng", colClass: "inv-audit-col-qty", numeric: true },
   {
     key: "remarks",
     en: "Remarks",
     vi: "Ghi chú",
     colClass: "inv-audit-col-remarks",
   },
+  {
+    key: "check",
+    en: "Check",
+    vi: "Kiểm tra SL",
+    colClass: "inv-audit-col-check",
+    numeric: true,
+    autoFill: true,
+  },
 ];
 
 export const INVENTORY_AUDIT_AUTO_FILL_KEYS = new Set(
   INVENTORY_AUDIT_WORKSPACE_COLUMNS.filter((col) => col.autoFill).map(
+    (col) => col.key,
+  ),
+);
+
+export const INVENTORY_AUDIT_NUMERIC_KEYS = new Set(
+  INVENTORY_AUDIT_WORKSPACE_COLUMNS.filter((col) => col.numeric).map(
     (col) => col.key,
   ),
 );
@@ -97,6 +111,7 @@ export function createInventoryAuditRow() {
     id: `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     ...EMPTY_TEXT_FIELDS,
     qty: "",
+    check: "",
   };
 }
 
@@ -108,9 +123,14 @@ export function formatInventoryAuditRemarks(value) {
   return s.charAt(0).toLocaleUpperCase("vi-VN") + s.slice(1);
 }
 
+function normalizeQtyLike(value) {
+  if (value == null || value === "") return "";
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  return String(value).trim();
+}
+
 export function normalizeInventoryAuditRow(raw) {
   if (!raw || typeof raw !== "object") return createInventoryAuditRow();
-  const qty = raw.qty;
   return {
     id: String(raw.id ?? "").trim() || createInventoryAuditRow().id,
     tag: String(raw.tag ?? "").trim(),
@@ -120,11 +140,9 @@ export function normalizeInventoryAuditRow(raw) {
     erpCode: String(raw.erpCode ?? raw.code ?? "").trim(),
     itemName: String(raw.itemName ?? raw.item ?? "").trim(),
     unit: String(raw.unit ?? "").trim(),
-    qty:
-      typeof qty === "number" && Number.isFinite(qty)
-        ? qty
-        : String(qty ?? "").trim(),
+    qty: normalizeQtyLike(raw.qty),
     remarks: formatInventoryAuditRemarks(raw.remarks),
+    check: normalizeQtyLike(raw.check),
   };
 }
 
@@ -138,6 +156,7 @@ const AUDIT_ROW_CONTENT_KEYS = [
   "unit",
   "qty",
   "remarks",
+  "check",
 ];
 
 export function isEmptyInventoryAuditRow(row) {

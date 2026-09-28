@@ -559,6 +559,7 @@ export function getPayrollMonthlyMainRowCell(emp, ch) {
   if (shouldUsePayrollMonthSundayMergedRules({
     includeTaiXeTongInWorkingHours,
     dateKey: ch?.dateKey,
+    isOffDay: ch?.isOffDay,
   })) {
     return { kind: "dash" };
   }
@@ -605,6 +606,7 @@ function payrollMonthNightShiftGcCoeffForMainRowDisplay(ch, emp) {
     shouldUsePayrollMonthSundayMergedRules({
       includeTaiXeTongInWorkingHours: flags.includeTaiXeTongInWorkingHours,
       dateKey: ch?.dateKey,
+      isOffDay: ch?.isOffDay,
     })
   ) {
     return null;
@@ -665,6 +667,7 @@ function shouldPayrollMonthNightShiftShowShiftBadgeOnCoeff({
       includeTaiXeTongInWorkingHours: employeeRegimeWorkingHoursFlags(emp)
         .includeTaiXeTongInWorkingHours,
       dateKey: ch?.dateKey,
+      isOffDay: ch?.isOffDay,
     })
   ) {
     return false;

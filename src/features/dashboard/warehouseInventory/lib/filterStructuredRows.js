@@ -65,12 +65,14 @@ export function summarizeStructuredRows(filteredStructuredRows) {
   let monthlyDiff = 0;
   let codeDiff = 0;
   let gapAmount = 0;
+  let amountActual = 0;
   for (const r of filteredStructuredRows) {
     actual += r.actualQty;
     sys += r.sysQty;
     monthlyDiff += r.monthlyDiff;
     codeDiff += r.codeDelta;
     gapAmount += typeof r.gapAmount === "number" ? r.gapAmount : 0;
+    amountActual += typeof r.amountActual === "number" ? r.amountActual : 0;
   }
   return {
     rows: filteredStructuredRows.length,
@@ -79,6 +81,10 @@ export function summarizeStructuredRows(filteredStructuredRows) {
     monthlyDiff,
     codeDiff,
     gapAmount,
+    amountActual,
     qtyDiffRate: Math.abs(actual) < 1e-9 ? null : monthlyDiff / actual,
+    changedQtyRows: filteredStructuredRows.filter(
+      (r) => Math.abs(r.actualQty ?? 0) >= 1e-9,
+    ).length,
   };
 }

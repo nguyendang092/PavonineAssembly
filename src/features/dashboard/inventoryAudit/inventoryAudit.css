@@ -456,6 +456,30 @@
   outline: none;
 }
 
+.inv-audit-ws-identity {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.inv-audit-ws-warehouse-select {
+  width: 9.25rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 2rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--ia-line);
+  border-radius: 999px;
+  background: var(--ia-card);
+  color: var(--ia-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
 .inv-audit-ws-item-name-input {
   width: 100%;
   box-sizing: border-box;
@@ -710,7 +734,7 @@
 
 .inv-audit-table {
   width: 100%;
-  min-width: 78rem;
+  min-width: 86rem;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -761,7 +785,11 @@
 }
 
 .inv-audit-col-remarks {
-  width: 13%;
+  width: 11%;
+}
+
+.inv-audit-col-check {
+  width: 8.5%;
 }
 
 .inv-audit-col-actions {

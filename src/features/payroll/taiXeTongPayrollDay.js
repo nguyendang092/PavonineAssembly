@@ -59,6 +59,12 @@ export function shouldTaiXeTongTreatSundayAsNormalWeekday({
   );
 }
 
+function payrollCalendarOffDayFromCtx(ctx = {}) {
+  if (ctx.calendarIsOffDay !== undefined) return ctx.calendarIsOffDay;
+  if (ctx.isOffDay !== undefined) return ctx.isOffDay;
+  return undefined;
+}
+
 /** Có áp dụng luật gộp GC+TC Chủ nhật trên lưới tháng hay không. */
 export function shouldUsePayrollMonthSundayMergedRules(ctx = {}) {
   if (
@@ -69,5 +75,8 @@ export function shouldUsePayrollMonthSundayMergedRules(ctx = {}) {
   ) {
     return false;
   }
-  return isSundayDateKey(ctx.dateKey);
+  if (!isSundayDateKey(ctx.dateKey)) return false;
+  const calendarOff = payrollCalendarOffDayFromCtx(ctx);
+  if (calendarOff === false) return false;
+  return true;
 }

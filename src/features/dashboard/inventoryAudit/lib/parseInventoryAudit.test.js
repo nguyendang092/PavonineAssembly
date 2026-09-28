@@ -16,6 +16,7 @@ describe("resolveInventoryAuditColumns", () => {
       "Unit Đơn vị tính",
       "Qty số lượng",
       "Remarks Ghi chú",
+      "Check Kiểm tra SL",
     ];
     expect(resolveInventoryAuditColumns(headers)).toEqual({
       tag: 0,
@@ -27,6 +28,7 @@ describe("resolveInventoryAuditColumns", () => {
       unit: 6,
       qty: 7,
       remarks: 8,
+      check: 9,
     });
   });
 });
@@ -44,6 +46,7 @@ describe("parseInventoryAuditMatrix", () => {
         "Unit",
         "Qty",
         "Remarks",
+        "Check",
       ],
       [
         "",
@@ -55,9 +58,10 @@ describe("parseInventoryAuditMatrix", () => {
         "Đơn vị tính",
         "số lượng",
         "Ghi chú",
+        "Kiểm tra SL",
       ],
-      ["1", "A-01", "Kệ A", "FG", "ERP-9", "Cover", "EA", 12, ""],
-      ["-", "-", "-", "-", "-", "-", "-", "-", "-"],
+      ["1", "A-01", "Kệ A", "FG", "ERP-9", "Cover", "EA", 12, "", 11],
+      ["-", "-", "-", "-", "-", "-", "-", "-", "-", "-"],
     ];
     const { rows } = parseInventoryAuditMatrix(matrix);
     expect(rows).toHaveLength(1);
@@ -70,6 +74,7 @@ describe("parseInventoryAuditMatrix", () => {
       itemName: "Cover",
       unit: "EA",
       qty: 12,
+      check: 11,
     });
   });
 

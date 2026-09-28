@@ -127,14 +127,3 @@ export function buildMonthDailyRollup(monthDailySummaries = []) {
     ngTargetPct: S90D_NG_RATE_TARGET_PCT,
   };
 }
-
-export function pickDefaultDailyDateKey(monthDailySummaries = []) {
-  if (!monthDailySummaries.length) return "";
-
-  const lastWithData = [...monthDailySummaries]
-    .reverse()
-    .find((daily) => daily.hasData);
-  if (lastWithData) return lastWithData.dateKey;
-
-  return monthDailySummaries[monthDailySummaries.length - 1]?.dateKey ?? "";
-}

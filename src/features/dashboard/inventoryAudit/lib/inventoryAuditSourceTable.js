@@ -103,6 +103,7 @@ export function sourceRecordsToAuditRows(table) {
     unit: cellAt(record, INVENTORY_AUDIT_SOURCE_UNIT_COL),
     qty: pickCell(record, colMap, "qty"),
     remarks: pickCell(record, colMap, "remarks"),
+    check: pickCell(record, colMap, "check"),
     tag: pickCell(record, colMap, "tag"),
   }));
 }

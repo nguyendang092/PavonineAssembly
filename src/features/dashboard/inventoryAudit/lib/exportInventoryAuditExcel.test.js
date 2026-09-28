@@ -31,6 +31,9 @@ describe("exportInventoryAuditExcel", () => {
     expect(sheet.qtyTotal).toBe(12);
     expect(typeof sheet.records[0][7]).toBe("number");
     expect(sheet.headerLabels[7]).toBe("Qty\nsố lượng");
+    expect(sheet.headersEn.at(-1)).toBe("Check");
+    expect(sheet.headersVi.at(-1)).toBe("Kiểm tra SL");
+    expect(sheet.records[0][9]).toBeNull();
   });
 
   it("sanitizes filename and sheet names", () => {

@@ -201,6 +201,8 @@ function payrollDayOvertimeOptionsFromDayCtx(dayCtx = {}) {
     koreanTimesheetRules: dayCtx.koreanTimesheetRules === true,
     isCompensatoryDay: Boolean(dayCtx.isCompensatoryDay),
     dateKey: dayCtx.dateKey ?? null,
+    isOffDay: dayCtx.isOffDay,
+    calendarIsOffDay: dayCtx.calendarIsOffDay,
   };
 }
 

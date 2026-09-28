@@ -2078,11 +2078,11 @@ body.s90d-chart-modal-open {
   color: #1e1b4b;
 }
 
-.s90d-daily-date-strip-legend {
-  margin: 0;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: #64748b;
+.s90d-daily-date-strip-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
 }
 
 .s90d-daily-date-strip {

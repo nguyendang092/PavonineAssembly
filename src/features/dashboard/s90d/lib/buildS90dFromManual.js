@@ -1,4 +1,3 @@
-import { getISOWeek, parseISO } from "date-fns";
 import {
   S90D_DEFECT_COLUMNS,
   S90D_PROCESSES,
@@ -212,20 +211,6 @@ function sumShiftEntries(entries) {
   return merged;
 }
 
-export function dateKeyInWeek(dateKey, weekKey) {
-  if (!weekKey) return true;
-  const [weekNum, year] = weekKey.split("_");
-  try {
-    const date = parseISO(dateKey);
-    return (
-      getISOWeek(date).toString() === weekNum &&
-      date.getFullYear().toString() === year
-    );
-  } catch {
-    return false;
-  }
-}
-
 export function buildProcessShiftSummaryFromManual({
   dayEntry,
   process,
@@ -381,49 +366,6 @@ export function buildProcessDayAggregateSummaryFromManual({
     summaries,
     processRow,
     hasData: summaries.some((summary) => summary.hasData),
-  };
-}
-
-export function buildWeekProcessShiftSummaryFromManual({
-  store,
-  process,
-  dateKeys,
-  weekKey,
-  dateLabel = "TOTAL",
-}) {
-  const filteredKeys = dateKeys.filter((dateKey) =>
-    dateKeyInWeek(dateKey, weekKey),
-  );
-  const mergedBySlot = Object.fromEntries(
-    S90D_SHIFT_SLOTS.map((slot) => [slot, []]),
-  );
-  let productCode = DEFAULT_PRODUCT_CODE;
-
-  filteredKeys.forEach((dateKey) => {
-    const boards = resolveProcessBoards(store[dateKey]?.[process], process);
-    boards.forEach((board) => {
-      if (board?.productCode) {
-        productCode = board.productCode;
-      }
-      S90D_SHIFT_SLOTS.forEach((slot) => {
-        mergedBySlot[slot].push(board?.shifts?.[slot] ?? { okQty: 0, ngQty: 0, defects: {} });
-      });
-    });
-  });
-
-  const shiftRows = S90D_SHIFT_SLOTS.map((slot) =>
-    buildShiftRow(slot, process, productCode, sumShiftEntries(mergedBySlot[slot])),
-  );
-  const totalRow = buildShiftTotalRow(process, productCode, shiftRows);
-  const percentRow = buildShiftPercentRow(totalRow);
-
-  return {
-    process,
-    dateLabel,
-    shiftRows,
-    totalRow,
-    percentRow,
-    hasData: shiftRows.some((row) => row.totalQty > 0),
   };
 }
 
