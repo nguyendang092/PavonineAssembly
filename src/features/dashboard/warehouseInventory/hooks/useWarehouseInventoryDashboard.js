@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect, useDeferredValue } from "react";
+import { useMemo, useState, useCallback, useEffect, useDeferredValue, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { db, ref, get, set } from "@/services/firebase";
 import {
@@ -11,8 +11,13 @@ import {
   dominantMonthLabel,
   parseWarehouseInventoryFile,
 } from "../lib/parse";
+import {
+  mergeWarehouseInventoryRows,
+  removeWarehouseInventoryRowsByMonth,
+} from "../lib/mergeWarehouseInventoryRows";
 import { buildStructuredMonthCodeRows } from "../lib/buildStructuredRows";
-import { buildTwoMonthCompareRows } from "../lib/buildTwoMonthCompareRows";
+import { buildMultiMonthCompareRows } from "../lib/buildTwoMonthCompareRows";
+import { yearFromMonthKey } from "../lib/parse";
 import {
   filterAndSortStructuredRows,
   summarizeStructuredRows,
@@ -34,19 +39,22 @@ export function useWarehouseInventoryDashboard() {
   );
 
   const [rows, setRows] = useState([]);
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [whFilter, setWhFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
   const [monthCompareMode, setMonthCompareMode] = useState(false);
-  const [monthCompareFrom, setMonthCompareFrom] = useState("");
-  const [monthCompareTo, setMonthCompareTo] = useState("");
+  const [compareMonthKeys, setCompareMonthKeys] = useState([]);
   const [codeSearch, setCodeSearch] = useState("");
   const deferredCodeSearch = useDeferredValue(codeSearch);
-  const [hideZeroMonthlyDiff, setHideZeroMonthlyDiff] = useState(false);
+  const [hideZeroMonthlyDiff, setHideZeroMonthlyDiff] = useState(true);
   const [hideZeroActualQty, setHideZeroActualQty] = useState(true);
+  const [qtySort, setQtySort] = useState("desc");
   const [tablePage, setTablePage] = useState(1);
   const [tablePageSize, setTablePageSize] = useState(WAREHOUSE_INV_TABLE_PAGE_SIZE);
   const [hasTriedCloudLoad, setHasTriedCloudLoad] = useState(false);
@@ -108,13 +116,14 @@ export function useWarehouseInventoryDashboard() {
     whFilter,
     categoryFilter,
     monthFilter,
+    yearFilter,
     monthCompareMode,
-    monthCompareFrom,
-    monthCompareTo,
+    compareMonthKeys,
     deferredCodeSearch,
     hideZeroMonthlyDiff,
     hideZeroActualQty,
     tablePageSize,
+    qtySort,
   ]);
 
   useEffect(() => {
@@ -172,19 +181,48 @@ export function useWarehouseInventoryDashboard() {
       .map(([value, label]) => ({ value, label }));
   }, [structuredMonthCodeRows]);
 
-  const compareSourceRows = useMemo(() => {
-    if (!monthCompareMode || !monthCompareFrom || !monthCompareTo) return [];
-    return buildTwoMonthCompareRows(
-      structuredMonthCodeRows,
-      monthCompareFrom,
-      monthCompareTo,
+  const yearOptions = useMemo(() => {
+    const years = new Set();
+    for (const m of monthTableOptions) {
+      const y = yearFromMonthKey(m.value);
+      if (y) years.add(y);
+    }
+    return [...years].sort((a, b) => b.localeCompare(a));
+  }, [monthTableOptions]);
+
+  const monthOptionsForYear = useMemo(() => {
+    if (!yearFilter) return monthTableOptions;
+    return monthTableOptions.filter(
+      (m) => yearFromMonthKey(m.value) === yearFilter,
     );
-  }, [
-    structuredMonthCodeRows,
-    monthCompareMode,
-    monthCompareFrom,
-    monthCompareTo,
-  ]);
+  }, [monthTableOptions, yearFilter]);
+
+  useEffect(() => {
+    if (!yearFilter) return;
+    if (monthFilter && yearFromMonthKey(monthFilter) !== yearFilter) {
+      setMonthFilter("");
+    }
+    setCompareMonthKeys((keys) =>
+      keys.filter((k) => yearFromMonthKey(k) === yearFilter),
+    );
+  }, [yearFilter, monthFilter]);
+
+  const toggleCompareMonth = useCallback((monthKey) => {
+    const key = String(monthKey ?? "").trim();
+    if (!key) return;
+    setCompareMonthKeys((keys) => {
+      if (keys.includes(key)) return keys.filter((k) => k !== key);
+      return [...keys, key].sort((a, b) => a.localeCompare(b));
+    });
+  }, []);
+
+  const compareSourceRows = useMemo(() => {
+    if (!monthCompareMode) return [];
+    return buildMultiMonthCompareRows(
+      structuredMonthCodeRows,
+      compareMonthKeys,
+    );
+  }, [structuredMonthCodeRows, monthCompareMode, compareMonthKeys]);
 
   const filteredStructuredRows = useMemo(
     () =>
@@ -194,9 +232,11 @@ export function useWarehouseInventoryDashboard() {
           whFilter,
           categoryFilter,
           monthFilter: monthCompareMode ? "" : monthFilter,
+          yearFilter: monthCompareMode ? "" : yearFilter,
           codeSearch: deferredCodeSearch,
           hideZeroMonthlyDiff,
           hideZeroActualQty,
+          qtySort,
         },
       ),
     [
@@ -206,9 +246,11 @@ export function useWarehouseInventoryDashboard() {
       whFilter,
       categoryFilter,
       monthFilter,
+      yearFilter,
       deferredCodeSearch,
       hideZeroMonthlyDiff,
       hideZeroActualQty,
+      qtySort,
     ],
   );
 
@@ -250,6 +292,25 @@ export function useWarehouseInventoryDashboard() {
     return [...keys].sort((a, b) => a.localeCompare(b, "vi"));
   }, [rows]);
 
+  const persistSnapshot = useCallback(async (nextRows, nextFileName) => {
+    const name = String(nextFileName ?? "").trim() || "Cloud Snapshot";
+    setRows(nextRows);
+    setFileName(name);
+    setCached(WAREHOUSE_INVENTORY_SNAPSHOT_CACHE_KEY, {
+      rows: nextRows,
+      fileName: name,
+    });
+    try {
+      await set(ref(db, WAREHOUSE_INV_LATEST_PATH), {
+        savedAt: new Date().toISOString(),
+        fileName: name,
+        rows: nextRows,
+      });
+    } catch (saveErr) {
+      console.error("saveLatestSnapshotToCloud failed:", saveErr);
+    }
+  }, []);
+
   const handleFile = useCallback(
     async (e) => {
       const file = e.target.files?.[0];
@@ -259,18 +320,9 @@ export function useWarehouseInventoryDashboard() {
       setLoading(true);
       try {
         const parsed = await parseWarehouseInventoryFile(file);
-        setRows(parsed.rows);
-        setFileName(file.name);
+        const merged = mergeWarehouseInventoryRows(rowsRef.current, parsed.rows);
+        await persistSnapshot(merged, file.name);
         setWhFilter("");
-        try {
-          await set(ref(db, WAREHOUSE_INV_LATEST_PATH), {
-            savedAt: new Date().toISOString(),
-            fileName: file.name,
-            rows: parsed.rows,
-          });
-        } catch (saveErr) {
-          console.error("saveLatestSnapshotToCloud failed:", saveErr);
-        }
       } catch (err) {
         console.error(err);
         const code = err instanceof Error ? err.message : "";
@@ -291,21 +343,38 @@ export function useWarehouseInventoryDashboard() {
             ),
           );
         }
-        setRows([]);
-        setFileName("");
       } finally {
         setLoading(false);
       }
     },
-    [tl],
+    [persistSnapshot, tl],
   );
 
-  const clearData = useCallback(() => {
-    setRows([]);
-    setFileName("");
-    setError("");
-    setWhFilter("");
-  }, []);
+  const deleteMonth = useCallback(
+    async (monthKey) => {
+      const key = String(monthKey ?? "").trim();
+      if (!key) return;
+      const label =
+        monthTableOptions.find((m) => m.value === key)?.label ?? key;
+      const ok = window.confirm(
+        tl("deleteMonthConfirm", "Xóa toàn bộ dữ liệu tháng {{month}}?", {
+          month: label,
+        }),
+      );
+      if (!ok) return;
+      setError("");
+      setLoading(true);
+      try {
+        const next = removeWarehouseInventoryRowsByMonth(rowsRef.current, key);
+        await persistSnapshot(next, fileName);
+        setMonthFilter((m) => (m === key ? "" : m));
+        setCompareMonthKeys((keys) => keys.filter((k) => k !== key));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fileName, monthTableOptions, persistSnapshot, tl],
+  );
   return {
     tl,
     rows,
@@ -320,18 +389,23 @@ export function useWarehouseInventoryDashboard() {
     setCategoryFilter,
     monthFilter,
     setMonthFilter,
+    yearFilter,
+    setYearFilter,
+    yearOptions,
+    monthOptionsForYear,
     monthCompareMode,
     setMonthCompareMode,
-    monthCompareFrom,
-    setMonthCompareFrom,
-    monthCompareTo,
-    setMonthCompareTo,
+    compareMonthKeys,
+    setCompareMonthKeys,
+    toggleCompareMonth,
     codeSearch,
     setCodeSearch,
     hideZeroMonthlyDiff,
     setHideZeroMonthlyDiff,
     hideZeroActualQty,
     setHideZeroActualQty,
+    qtySort,
+    setQtySort,
     tablePage,
     setTablePage,
     tablePageSize,
@@ -347,6 +421,6 @@ export function useWarehouseInventoryDashboard() {
     warehouseOptions,
     codeDiffSoftScale,
     handleFile,
-    clearData,
+    deleteMonth,
   };
 }

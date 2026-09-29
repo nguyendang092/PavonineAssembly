@@ -337,6 +337,17 @@ export function normalizeMonthSortKey(raw) {
   };
 }
 
+/** Năm từ monthKey `YYYY-MM` hoặc nhãn `MM-YYYY`. */
+export function yearFromMonthKey(monthKey) {
+  const t = String(monthKey ?? "").trim();
+  const yyyyMm = t.match(/^(\d{4})-(\d{2})$/);
+  if (yyyyMm) return yyyyMm[1];
+  const mmYyyy = t.match(/^(\d{2})-(\d{4})$/);
+  if (mmYyyy) return mmYyyy[2];
+  const y = t.match(/(?:^|[^\d])(\d{4})(?:[^\d]|$)/);
+  return y ? y[1] : "";
+}
+
 /** Tháng xuất hiện nhiều nhất trong dữ liệu (gợi ý khi lưu kỳ). */
 export function dominantMonthLabel(rows) {
   const counts = new Map();

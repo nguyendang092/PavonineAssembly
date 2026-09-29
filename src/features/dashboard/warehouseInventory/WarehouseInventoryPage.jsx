@@ -17,18 +17,23 @@ export default function WarehouseInventoryPage() {
       setCategoryFilter: data.setCategoryFilter,
       monthFilter: data.monthFilter,
       setMonthFilter: data.setMonthFilter,
+      yearFilter: data.yearFilter,
+      setYearFilter: data.setYearFilter,
+      yearOptions: data.yearOptions,
+      monthOptionsForYear: data.monthOptionsForYear,
       monthCompareMode: data.monthCompareMode,
       setMonthCompareMode: data.setMonthCompareMode,
-      monthCompareFrom: data.monthCompareFrom,
-      setMonthCompareFrom: data.setMonthCompareFrom,
-      monthCompareTo: data.monthCompareTo,
-      setMonthCompareTo: data.setMonthCompareTo,
+      compareMonthKeys: data.compareMonthKeys,
+      setCompareMonthKeys: data.setCompareMonthKeys,
+      toggleCompareMonth: data.toggleCompareMonth,
       codeSearch: data.codeSearch,
       setCodeSearch: data.setCodeSearch,
       hideZeroMonthlyDiff: data.hideZeroMonthlyDiff,
       setHideZeroMonthlyDiff: data.setHideZeroMonthlyDiff,
       hideZeroActualQty: data.hideZeroActualQty,
       setHideZeroActualQty: data.setHideZeroActualQty,
+      qtySort: data.qtySort,
+      setQtySort: data.setQtySort,
       warehouseOptions: data.warehouseOptions,
       categoryOptions: data.categoryOptions,
       monthTableOptions: data.monthTableOptions,
@@ -51,18 +56,23 @@ export default function WarehouseInventoryPage() {
       data.setCategoryFilter,
       data.monthFilter,
       data.setMonthFilter,
+      data.yearFilter,
+      data.setYearFilter,
+      data.yearOptions,
+      data.monthOptionsForYear,
       data.monthCompareMode,
       data.setMonthCompareMode,
-      data.monthCompareFrom,
-      data.setMonthCompareFrom,
-      data.monthCompareTo,
-      data.setMonthCompareTo,
+      data.compareMonthKeys,
+      data.setCompareMonthKeys,
+      data.toggleCompareMonth,
       data.codeSearch,
       data.setCodeSearch,
       data.hideZeroMonthlyDiff,
       data.setHideZeroMonthlyDiff,
       data.hideZeroActualQty,
       data.setHideZeroActualQty,
+      data.qtySort,
+      data.setQtySort,
       data.warehouseOptions,
       data.categoryOptions,
       data.monthTableOptions,
@@ -89,9 +99,9 @@ export default function WarehouseInventoryPage() {
         onRefreshCloud={data.refreshCloudSnapshot}
         error={data.error}
         handleFile={data.handleFile}
-        clearData={data.clearData}
-        fileName={data.fileName}
-        periodLabel={data.stats?.periodLabel}
+        monthTableOptions={data.monthTableOptions}
+        monthFilter={data.monthFilter}
+        deleteMonth={data.deleteMonth}
       />
 
       {data.rows.length > 0 ? (

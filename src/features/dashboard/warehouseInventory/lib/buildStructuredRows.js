@@ -48,6 +48,7 @@ export function buildStructuredMonthCodeRows(analysisRows) {
         actualQty: 0,
         sysQty: 0,
         amountActual: 0,
+        amountErp: 0,
         gapAmount: 0,
         monthlyDiff: 0,
         itemSet: new Set(),
@@ -70,6 +71,7 @@ export function buildStructuredMonthCodeRows(analysisRows) {
     row.actualQty += actualQty;
     row.sysQty += sysQty;
     row.amountActual += amtActual;
+    row.amountErp += amtErp;
     row.gapAmount += diffAmount;
     row.monthlyDiff = row.actualQty - row.sysQty;
   }

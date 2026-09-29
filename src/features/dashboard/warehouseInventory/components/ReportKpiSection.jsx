@@ -1,134 +1,192 @@
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import KpiCard from "./KpiCard";
 import FiltersAndTableSection from "./FiltersAndTableSection";
-import { formatKRW } from "../lib/parse";
-import { formatSignedKRW, formatSignedQty } from "../lib/formatDelta";
+import { formatSignedQty, signedDeltaClass } from "../lib/formatDelta";
+import { summarizeStructuredRowsByMonth } from "../lib/filterStructuredRows";
+import { InventoryQtyCell, InventoryWonCell } from "./InventoryValueCells";
+
+function formatRate(rate) {
+  if (rate == null) return "—";
+  return `${(rate * 100).toLocaleString("vi-VN", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}%`;
+}
+
+function MonthDashboard({ tl, months, monthFilter, setMonthFilter }) {
+  const metrics = [
+    {
+      key: "actual",
+      label: tl("colActualQty", "Thực tế"),
+      render: (m) => <InventoryQtyCell value={m.actual} fractionDigits={2} />,
+    },
+    {
+      key: "sys",
+      label: tl("colSystemQtyKr", "Hệ thống"),
+      render: (m) => <InventoryQtyCell value={m.sys} fractionDigits={2} />,
+    },
+    {
+      key: "gap",
+      label: tl("colMonthlyDiffKr", "GAP"),
+      className: (m) => signedDeltaClass(m.monthlyDiff),
+      render: (m) => (
+        <InventoryQtyCell value={m.monthlyDiff} delta fractionDigits={2} />
+      ),
+    },
+    {
+      key: "gapAmt",
+      label: tl("gapAmountLabel", "Tiền GAP"),
+      className: (m) => signedDeltaClass(m.gapAmount),
+      render: (m) => <InventoryWonCell value={m.gapAmount} signed />,
+    },
+    {
+      key: "amount",
+      label: tl("colAmount", "Tiền"),
+      render: (m) => <InventoryWonCell value={m.amountActual} />,
+    },
+    {
+      key: "rate",
+      label: tl("qtyDiffRateLabel", "Tỉ lệ lệch"),
+      render: (m) => formatRate(m.qtyDiffRate),
+    },
+  ];
+
+  return (
+    <div className="wah-inv-month-dash">
+      <div className="wah-inv-month-dash__head">
+        <p className="wah-inv-month-dash__title">
+          {tl("monthDashTitle", "Dashboard theo tháng")}
+        </p>
+        <p className="wah-inv-month-dash__hint">
+          {tl(
+            "monthDashHint",
+            "Mỗi cột một tháng — cùng hàng để so sánh.",
+          )}
+        </p>
+      </div>
+      <div className="wah-inv-month-dash__scroll">
+        <table className="wah-inv-month-dash__table">
+          <colgroup>
+            <col className="wah-inv-month-dash__col-metric" />
+            {months.map((m) => (
+              <col key={m.monthKey} className="wah-inv-month-dash__col-month" />
+            ))}
+          </colgroup>
+          <thead>
+            <tr>
+              <th className="wah-inv-month-dash__metric" scope="col">
+                {tl("monthDashMetric", "Chỉ số")}
+              </th>
+              {months.map((m) => {
+                const active = monthFilter === m.monthKey;
+                return (
+                  <th key={m.monthKey} className="wah-inv-month-dash__col" scope="col">
+                    <button
+                      type="button"
+                      className={`wah-inv-month-dash__month${active ? " wah-inv-month-dash__month--on" : ""}`}
+                      onClick={() =>
+                        setMonthFilter(active ? "" : m.monthKey)
+                      }
+                    >
+                      {m.month}
+                    </button>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {metrics.map((metric) => (
+              <tr key={metric.key}>
+                <th scope="row" className="wah-inv-month-dash__metric">
+                  {metric.label}
+                </th>
+                {months.map((m) => (
+                  <td
+                    key={`${metric.key}-${m.monthKey}`}
+                    className={`wah-inv-month-dash__val ${metric.className?.(m) ?? ""}`.trim()}
+                  >
+                    {metric.render(m)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 function ReportKpiSection({
   tl,
   structuredSummary,
   tableSectionProps,
 }) {
-  const { monthCompareMode } = tableSectionProps;
+  const { monthCompareMode, monthFilter, setMonthFilter, compareMonthKeys } =
+    tableSectionProps;
   const monthCompareNeedsPick =
-    monthCompareMode &&
-    (!tableSectionProps.monthCompareFrom ||
-      !tableSectionProps.monthCompareTo);
+    monthCompareMode && (compareMonthKeys?.length ?? 0) < 2;
   const comparing = Boolean(monthCompareMode && !monthCompareNeedsPick);
+  const monthSummaries = useMemo(
+    () =>
+      summarizeStructuredRowsByMonth(
+        tableSectionProps.filteredStructuredRows,
+      ),
+    [tableSectionProps.filteredStructuredRows],
+  );
 
   return (
     <section className="wah-inv-report">
       <FiltersAndTableSection
         {...tableSectionProps}
         kpi={
-          monthCompareNeedsPick ? null : (
+          monthCompareNeedsPick ? null : comparing ? (
             <div className="wah-inv-kpi-grid">
               <KpiCard
-                label={
-                  comparing
-                    ? tl("kpiDeltaActual", "Δ thực tế")
-                    : tl("colActualQty", "Thực tế")
-                }
-                hint={
-                  comparing
-                    ? tl("kpiHintDelta", "Sau − trước")
-                    : tl("kpiHintActual", "Số lượng kiểm kê")
-                }
-                value={
-                  comparing
-                    ? formatSignedQty(structuredSummary.actual)
-                    : structuredSummary.actual.toLocaleString("vi-VN", {
-                        maximumFractionDigits: 4,
-                      })
-                }
-                tone={comparing ? "emerald" : "amber"}
+                label={tl("kpiDeltaActual", "Δ thực tế")}
+                hint={tl("kpiHintDelta", "Cuối − đầu")}
+                value={formatSignedQty(structuredSummary.actual)}
+                tone="emerald"
               />
               <KpiCard
-                label={
-                  comparing
-                    ? tl("kpiDeltaSys", "Δ hệ thống")
-                    : tl("colSystemQtyKr", "Hệ thống")
-                }
-                hint={
-                  comparing
-                    ? tl("kpiHintDelta", "Sau − trước")
-                    : tl("kpiHintSys", "Số trên sổ")
-                }
-                value={
-                  comparing
-                    ? formatSignedQty(structuredSummary.sys)
-                    : structuredSummary.sys.toLocaleString("vi-VN", {
-                        maximumFractionDigits: 4,
-                      })
-                }
+                label={tl("kpiDeltaSys", "Δ hệ thống")}
+                hint={tl("kpiHintDelta", "Cuối − đầu")}
+                value={formatSignedQty(structuredSummary.sys)}
                 tone="sky"
               />
               <KpiCard
-                label={
-                  comparing
-                    ? tl("kpiDeltaGap", "Δ GAP")
-                    : tl("colMonthlyDiffKr", "GAP")
-                }
-                hint={
-                  comparing
-                    ? tl("kpiHintDelta", "Sau − trước")
-                    : tl("kpiHintGap", "Thực tế − hệ thống")
-                }
-                value={
-                  comparing
-                    ? formatSignedQty(structuredSummary.monthlyDiff)
-                    : structuredSummary.monthlyDiff.toLocaleString("vi-VN", {
-                        maximumFractionDigits: 4,
-                      })
-                }
+                label={tl("kpiDeltaGap", "Δ GAP")}
+                hint={tl("kpiHintDelta", "Cuối − đầu")}
+                value={formatSignedQty(structuredSummary.monthlyDiff)}
                 tone="rose"
               />
               <KpiCard
-                label={
-                  comparing
-                    ? tl("kpiDeltaAmount", "Δ tiền")
-                    : tl("gapAmountLabel", "Tiền GAP")
-                }
-                hint={
-                  comparing
-                    ? tl("kpiHintDelta", "Sau − trước")
-                    : tl("kpiHintGapAmt", "Giá trị chênh")
-                }
+                label={tl("kpiDeltaAmount", "Δ tiền")}
+                hint={tl("kpiHintDelta", "Cuối − đầu")}
                 value={
-                  comparing
-                    ? formatSignedKRW(structuredSummary.amountActual)
-                    : formatKRW(structuredSummary.gapAmount)
+                  <InventoryWonCell
+                    value={structuredSummary.amountActual}
+                    signed
+                  />
                 }
                 tone="emerald"
               />
               <KpiCard
-                label={
-                  comparing
-                    ? tl("kpiChangedShare", "Mã đổi SL")
-                    : tl("qtyDiffRateLabel", "Tỉ lệ lệch")
-                }
-                hint={
-                  comparing
-                    ? tl("kpiHintChanged", "Có đổi số lượng")
-                    : tl("kpiHintRate", "Dòng GAP ≠ 0")
-                }
-                value={
-                  comparing
-                    ? `${structuredSummary.changedQtyRows ?? 0}/${structuredSummary.rows}`
-                    : structuredSummary.qtyDiffRate == null
-                      ? "—"
-                      : `${(structuredSummary.qtyDiffRate * 100).toLocaleString(
-                          "vi-VN",
-                          {
-                            minimumFractionDigits: 1,
-                            maximumFractionDigits: 1,
-                          },
-                        )}%`
-                }
+                label={tl("kpiChangedShare", "Mã đổi SL")}
+                hint={tl("kpiHintChanged", "Có đổi số lượng")}
+                value={`${structuredSummary.changedQtyRows ?? 0}/${structuredSummary.rows}`}
                 tone="violet"
               />
             </div>
-          )
+          ) : monthSummaries.length ? (
+            <MonthDashboard
+              tl={tl}
+              months={monthSummaries}
+              monthFilter={monthFilter}
+              setMonthFilter={setMonthFilter}
+            />
+          ) : null
         }
       />
     </section>
