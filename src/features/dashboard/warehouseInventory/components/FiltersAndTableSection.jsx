@@ -100,14 +100,6 @@ function FiltersAndTableSection(props) {
     props.filteredStructuredRows[0]?.compareToMonth ||
     compareMonthsMeta[compareMonthsMeta.length - 1]?.label ||
     "";
-  const qtyDeltaHeader = tl("colQtyDelta", "수량 ({{to}}−{{from}})", {
-    from: compareFromLabel,
-    to: compareToLabel,
-  });
-  const amtDeltaHeader = tl("colAmtDelta", "금액 ({{to}}−{{from}})", {
-    from: compareFromLabel,
-    to: compareToLabel,
-  });
 
   const compareTotals = comparing
     ? props.filteredStructuredRows.reduce(
@@ -275,7 +267,7 @@ function FiltersAndTableSection(props) {
           <div
             className={`wah-inv-filter-bar${monthCompareMode ? " wah-inv-filter-bar--compare" : ""}`}
           >
-            <div className={`wah-inv-period${monthCompareMode ? " wah-inv-period--compare" : ""}`}>
+            <div className="wah-inv-filter-row">
               <FilterField compact label={tl("filterYear", "Năm")} accent="year">
                 <select
                   value={yearFilter}
@@ -291,28 +283,7 @@ function FiltersAndTableSection(props) {
                 </select>
               </FilterField>
 
-              {monthCompareMode ? (
-                <div className="wah-inv-month-picks">
-                  <span className="wah-inv-field__label wah-inv-field--compact-label">
-                    {tl("monthFilterLabel", "Tháng")}
-                  </span>
-                  <div className="wah-inv-month-picks__list">
-                    {monthOptionsForYear.map((m) => {
-                      const on = compareMonthKeys.includes(m.value);
-                      return (
-                        <button
-                          key={m.value}
-                          type="button"
-                          className={`wah-inv-month-pick${on ? " wah-inv-month-pick--on" : ""}`}
-                          onClick={() => toggleCompareMonth(m.value)}
-                        >
-                          {monthSelectLabel(m, yearFilter)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
+              {monthCompareMode ? null : (
                 <FilterField
                   compact
                   label={tl("monthFilterLabel", "Tháng")}
@@ -334,7 +305,6 @@ function FiltersAndTableSection(props) {
                   </select>
                 </FilterField>
               )}
-            </div>
 
             <FilterField compact label={tl("filterWh", "Kho")}>
               <select
@@ -421,6 +391,29 @@ function FiltersAndTableSection(props) {
                 )}
               </label>
             </div>
+            </div>
+            {monthCompareMode ? (
+              <div className="wah-inv-month-picks">
+                <span className="wah-inv-field__label wah-inv-field--compact-label">
+                  {tl("monthFilterLabel", "Tháng")}
+                </span>
+                <div className="wah-inv-month-picks__list">
+                  {monthOptionsForYear.map((m) => {
+                    const on = compareMonthKeys.includes(m.value);
+                    return (
+                      <button
+                        key={m.value}
+                        type="button"
+                        className={`wah-inv-month-pick${on ? " wah-inv-month-pick--on" : ""}`}
+                        onClick={() => toggleCompareMonth(m.value)}
+                      >
+                        {monthSelectLabel(m, yearFilter)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -481,7 +474,7 @@ function FiltersAndTableSection(props) {
                 <>
                   <tr>
                     <th rowSpan={2} className="wah-inv-th-id">
-                      {tl("colWarehouseCodeKr", "창고(Mã kh)")}
+                      {tl("colWarehouseCodeKr", "창고(Mã kho)")}
                     </th>
                     <th rowSpan={2} className="wah-inv-th-id">
                       WAREHOUSE
@@ -502,10 +495,20 @@ function FiltersAndTableSection(props) {
                       </th>
                     ))}
                     <th rowSpan={2} className="wah-inv-th-delta">
-                      {qtyDeltaHeader}
+                      <span className="wah-inv-th-delta__k">
+                        {tl("colQtyDeltaTitle", "수량")}
+                      </span>
+                      <span className="wah-inv-th-delta__r">
+                        {compareToLabel} − {compareFromLabel}
+                      </span>
                     </th>
                     <th rowSpan={2} className="wah-inv-th-delta">
-                      {amtDeltaHeader}
+                      <span className="wah-inv-th-delta__k">
+                        {tl("colAmtDeltaTitle", "금액")}
+                      </span>
+                      <span className="wah-inv-th-delta__r">
+                        {compareToLabel} − {compareFromLabel}
+                      </span>
                     </th>
                   </tr>
                   <tr>

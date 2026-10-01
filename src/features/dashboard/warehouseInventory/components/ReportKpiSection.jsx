@@ -17,21 +17,26 @@ function MonthDashboard({ tl, months, monthFilter, setMonthFilter }) {
   const metrics = [
     {
       key: "actual",
-      label: tl("colActualQty", "Thực tế"),
+      label: tl("monthDashActual", "Thực tế EA"),
       render: (m) => <InventoryQtyCell value={m.actual} fractionDigits={2} />,
     },
     {
       key: "sys",
-      label: tl("colSystemQtyKr", "Hệ thống"),
+      label: tl("monthDashSys", "Hệ thống EA"),
       render: (m) => <InventoryQtyCell value={m.sys} fractionDigits={2} />,
     },
     {
       key: "gap",
-      label: tl("colMonthlyDiffKr", "GAP"),
+      label: tl("monthDashGap", "GAP EA"),
       className: (m) => signedDeltaClass(m.monthlyDiff),
       render: (m) => (
         <InventoryQtyCell value={m.monthlyDiff} delta fractionDigits={2} />
       ),
+    },
+    {
+      key: "rate",
+      label: tl("qtyDiffRateLabel", "Tỉ lệ lệch"),
+      render: (m) => formatRate(m.qtyDiffRate),
     },
     {
       key: "gapAmt",
@@ -43,11 +48,6 @@ function MonthDashboard({ tl, months, monthFilter, setMonthFilter }) {
       key: "amount",
       label: tl("colAmount", "Tiền"),
       render: (m) => <InventoryWonCell value={m.amountActual} />,
-    },
-    {
-      key: "rate",
-      label: tl("qtyDiffRateLabel", "Tỉ lệ lệch"),
-      render: (m) => formatRate(m.qtyDiffRate),
     },
   ];
 

@@ -10,7 +10,7 @@ export const WAREHOUSE_INVENTORY_TEMPLATE_HEADERS = [
   "SPEC",
   "MODEL",
   "UNIT",
-  "창고(Mã kh)",
+  "창고(Mã kho)",
   "STATUS",
   "CODE",
   "THỰC TẾ",

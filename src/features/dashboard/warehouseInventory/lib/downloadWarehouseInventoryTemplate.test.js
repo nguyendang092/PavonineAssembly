@@ -16,7 +16,7 @@ describe("warehouse inventory Excel template", () => {
       "SPEC",
       "MODEL",
       "UNIT",
-      "창고(Mã kh)",
+      "창고(Mã kho)",
       "STATUS",
       "CODE",
       "THỰC TẾ",
