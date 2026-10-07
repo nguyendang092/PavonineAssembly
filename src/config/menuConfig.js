@@ -29,6 +29,11 @@ export const menuConfig = [
                 label: "navbar.qrCodeGenerator",
                 path: "/qr-code-generator",
               },
+              {
+                key: "formLibrary",
+                label: "navbar.formLibrary",
+                path: "/form-library",
+              },
             ],
           },
           {
@@ -184,6 +189,7 @@ export const routeConfig = [
   { path: "/mold", element: "MoldManager" },
   { path: "/performance", element: "PerformanceChart" },
   { path: "/qr-code-generator", element: "QRCodeGenerator" },
+  { path: "/form-library", element: "FormLibraryPage" },
   { path: "/stock-variance", element: "WarehouseInventoryDashboard" },
   { path: "/inventory-audit", element: "InventoryAuditPage" },
   { path: "/mc-defect-report", element: "MCDefectReportDashboard" },

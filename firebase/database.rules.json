@@ -296,6 +296,19 @@
       }
     },
 
+    "formLibrary": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "files": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$fileId": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+
     "logs": {
       ".read": "auth != null",
       ".write": "auth != null",

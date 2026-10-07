@@ -15,5 +15,12 @@ service firebase.storage {
         && request.resource.size < 32 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
+
+    match /formLibrary/{fileId}/{fileName} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.size < 25 * 1024 * 1024;
+      allow delete: if request.auth != null;
+    }
   }
 }

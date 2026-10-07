@@ -17,6 +17,11 @@ function qtyValueForSort(r) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function amountValueForSort(r) {
+  const n = Number(r?.amountErp);
+  return Number.isFinite(n) ? n : 0;
+}
+
 /**
  * @param {object[]} structuredMonthCodeRows
  * @param {{
@@ -28,6 +33,7 @@ function qtyValueForSort(r) {
  *   hideZeroMonthlyDiff: boolean,
  *   hideZeroActualQty: boolean,
  *   qtySort: "asc" | "desc",
+ *   sortBy: "qty" | "amount",
  * }} filters
  */
 export function filterAndSortStructuredRows(structuredMonthCodeRows, filters) {
@@ -40,6 +46,7 @@ export function filterAndSortStructuredRows(structuredMonthCodeRows, filters) {
     hideZeroMonthlyDiff,
     hideZeroActualQty,
     qtySort,
+    sortBy = "qty",
   } = filters;
   const search = codeSearch.trim().toLowerCase();
   const baseRows = structuredMonthCodeRows.filter((r) => {
@@ -71,8 +78,9 @@ export function filterAndSortStructuredRows(structuredMonthCodeRows, filters) {
   });
 
   const dir = qtySort === "asc" ? 1 : -1;
+  const valueForSort = sortBy === "amount" ? amountValueForSort : qtyValueForSort;
   return [...baseRows].sort((a, b) => {
-    const d = qtyValueForSort(a) - qtyValueForSort(b);
+    const d = valueForSort(a) - valueForSort(b);
     if (d !== 0) return d * dir;
     return String(a.code ?? "").localeCompare(String(b.code ?? ""), "vi");
   });
@@ -96,7 +104,7 @@ export function groupStructuredRowsByMonth(rows) {
     g.rows.push(r);
     g.actual += Number(r.actualQty) || 0;
     g.sys += Number(r.sysQty) || 0;
-    g.amount += Number(r.amountActual) || 0;
+    g.amount += Number(r.amountErp) || 0;
   }
   return [...map.values()].sort((a, b) =>
     String(a.monthKey).localeCompare(String(b.monthKey)),
@@ -118,6 +126,7 @@ export function summarizeStructuredRows(filteredStructuredRows) {
   let codeDiff = 0;
   let gapAmount = 0;
   let amountActual = 0;
+  let amountErp = 0;
   for (const r of filteredStructuredRows) {
     actual += r.actualQty;
     sys += r.sysQty;
@@ -125,6 +134,7 @@ export function summarizeStructuredRows(filteredStructuredRows) {
     codeDiff += r.codeDelta;
     gapAmount += typeof r.gapAmount === "number" ? r.gapAmount : 0;
     amountActual += typeof r.amountActual === "number" ? r.amountActual : 0;
+    amountErp += typeof r.amountErp === "number" ? r.amountErp : 0;
   }
   return {
     rows: filteredStructuredRows.length,
@@ -134,7 +144,9 @@ export function summarizeStructuredRows(filteredStructuredRows) {
     codeDiff,
     gapAmount,
     amountActual,
+    amountErp,
     qtyDiffRate: Math.abs(actual) < 1e-9 ? null : monthlyDiff / actual,
+    erpUnitRate: Math.abs(actual) < 1e-9 ? null : amountErp / actual,
     changedQtyRows: filteredStructuredRows.filter(
       (r) => Math.abs(r.actualQty ?? 0) >= 1e-9,
     ).length,

@@ -470,6 +470,7 @@ async function persistAnnualLeaveForEmployeeKeys(
     attendanceRootPath,
     attendanceRootForAccrual,
     updatedBy = "",
+    touchYearMeta = true,
   },
 ) {
   const indexed = indexAnnualLeaveYearByEmpKey(yearData);
@@ -546,7 +547,9 @@ async function persistAnnualLeaveForEmployeeKeys(
         newUsed: txResult.state.used,
         balance: txResult.state.balance,
       });
-      await touchAnnualLeaveYearMeta(db, year, updatedBy);
+      if (touchYearMeta) {
+        await touchAnnualLeaveYearMeta(db, year, updatedBy);
+      }
     }
 
     return { results, appliedCount: results.length };
@@ -566,7 +569,9 @@ async function persistAnnualLeaveForEmployeeKeys(
     });
   }
 
-  await touchAnnualLeaveYearMeta(db, year, updatedBy);
+  if (touchYearMeta) {
+    await touchAnnualLeaveYearMeta(db, year, updatedBy);
+  }
 
   return { results, appliedCount: results.length };
 }
@@ -643,6 +648,7 @@ export async function persistAnnualLeaveMonthFromAttendance(
     scopeEmpKeySet = null,
     monthAttendanceOverride = null,
     resyncAggFromMonth = false,
+    touchYearMeta = true,
   },
 ) {
   const resolvedYearMonth =
@@ -651,13 +657,16 @@ export async function persistAnnualLeaveMonthFromAttendance(
     return { results: [], appliedCount: 0, reason: "invalid_year_month" };
   }
 
-  const monthAttendanceData =
-    monthAttendanceOverride ??
-    (await loadAttendanceRootForYearMonth(
-      db,
-      attendanceRootPath,
-      resolvedYearMonth,
-    ));
+  const shouldLoadMonthAttendance =
+    monthAttendanceOverride != null || resyncAggFromMonth === true;
+  const monthAttendanceData = shouldLoadMonthAttendance
+    ? (monthAttendanceOverride ??
+      (await loadAttendanceRootForYearMonth(
+        db,
+        attendanceRootPath,
+        resolvedYearMonth,
+      )))
+    : null;
 
   const { deductionsByEmpKey, attendanceMonthlyByEmpKey } =
     await resolvePersistDerivedMapsForMonth(db, year, resolvedYearMonth, {
@@ -704,6 +713,7 @@ export async function persistAnnualLeaveMonthFromAttendance(
     attendanceRootPath,
     attendanceRootForAccrual,
     updatedBy,
+    touchYearMeta,
   });
 }
 

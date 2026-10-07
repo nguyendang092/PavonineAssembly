@@ -34,6 +34,8 @@ export default function WarehouseInventoryPage() {
       setHideZeroActualQty: data.setHideZeroActualQty,
       qtySort: data.qtySort,
       setQtySort: data.setQtySort,
+      sortBy: data.sortBy,
+      setSortBy: data.setSortBy,
       warehouseOptions: data.warehouseOptions,
       categoryOptions: data.categoryOptions,
       monthTableOptions: data.monthTableOptions,
@@ -73,6 +75,8 @@ export default function WarehouseInventoryPage() {
       data.setHideZeroActualQty,
       data.qtySort,
       data.setQtySort,
+      data.sortBy,
+      data.setSortBy,
       data.warehouseOptions,
       data.categoryOptions,
       data.monthTableOptions,
@@ -108,6 +112,9 @@ export default function WarehouseInventoryPage() {
         <ReportKpiSection
           tl={data.tl}
           structuredSummary={data.structuredSummary}
+          dashboardMonthSummaries={data.dashboardMonthSummaries}
+          fxRates={data.fxRates}
+          onFxRateChange={data.setMonthFxRate}
           tableSectionProps={tableSectionProps}
         />
       ) : null}

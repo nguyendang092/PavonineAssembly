@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDerivedMapsFromLeaveAggYear,
+  collectAnnualLeaveEmpKeysFromAttendanceDay,
   computeLeaveAggDeltasForDayChange,
   monthKeyFromDateKey,
 } from "./attendanceLeaveAgg";
@@ -41,5 +42,14 @@ describe("attendanceLeaveAgg", () => {
     );
 
     expect(deltas).toEqual([{ empKey: "emp_A", delta: -0.5 }]);
+  });
+
+  it("collectAnnualLeaveEmpKeysFromAttendanceDay skips meta and empty records", () => {
+    const keys = collectAnnualLeaveEmpKeysFromAttendanceDay({
+      _meta: { updatedAt: "x" },
+      emp_A: { mnv: "A" },
+      emp_B: { mnv: "B" },
+    });
+    expect([...keys].sort()).toEqual(["emp_A", "emp_B"]);
   });
 });

@@ -62,6 +62,8 @@ function FiltersAndTableSection(props) {
     setHideZeroActualQty,
     qtySort = "desc",
     setQtySort = () => {},
+    sortBy = "qty",
+    setSortBy = () => {},
     warehouseOptions,
     categoryOptions,
     structuredSummary,
@@ -185,7 +187,7 @@ function FiltersAndTableSection(props) {
           <InventoryQtyCell value={r.sysQty} />
         </td>
         <td className="wah-inv-td-num wah-inv-td-money-cell wah-inv-td-money">
-          <InventoryWonCell value={r.amountActual} />
+          <InventoryWonCell value={r.amountErp} />
         </td>
       </tr>
     ),
@@ -355,14 +357,26 @@ function FiltersAndTableSection(props) {
               accent="sort"
             >
               <select
-                value={qtySort}
-                onChange={(ev) => setQtySort(ev.target.value)}
+                value={`${sortBy}-${qtySort}`}
+                onChange={(ev) => {
+                  const [nextBy, nextDir] = String(ev.target.value).split("-");
+                  setSortBy(nextBy === "amount" ? "amount" : "qty");
+                  setQtySort(nextDir === "asc" ? "asc" : "desc");
+                }}
                 className="wah-inv-control"
               >
-                <option value="desc">
-                  {tl("sortQtyDesc", "Giảm dần")}
+                <option value="qty-desc">
+                  {tl("sortByQtyDesc", "Số lượng giảm dần")}
                 </option>
-                <option value="asc">{tl("sortQtyAsc", "Tăng dần")}</option>
+                <option value="qty-asc">
+                  {tl("sortByQtyAsc", "Số lượng tăng dần")}
+                </option>
+                <option value="amount-desc">
+                  {tl("sortByAmountDesc", "Số tiền giảm dần")}
+                </option>
+                <option value="amount-asc">
+                  {tl("sortByAmountAsc", "Số tiền tăng dần")}
+                </option>
               </select>
             </FilterField>
 

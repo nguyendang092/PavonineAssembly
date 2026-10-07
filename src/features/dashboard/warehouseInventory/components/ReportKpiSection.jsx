@@ -1,8 +1,7 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useEffect, useState } from "react";
 import KpiCard from "./KpiCard";
 import FiltersAndTableSection from "./FiltersAndTableSection";
 import { formatSignedQty, signedDeltaClass } from "../lib/formatDelta";
-import { summarizeStructuredRowsByMonth } from "../lib/filterStructuredRows";
 import { InventoryQtyCell, InventoryWonCell } from "./InventoryValueCells";
 
 function formatRate(rate) {
@@ -13,7 +12,14 @@ function formatRate(rate) {
   })}%`;
 }
 
-function MonthDashboard({ tl, months, monthFilter, setMonthFilter }) {
+function MonthDashboard({
+  tl,
+  months,
+  monthFilter,
+  setMonthFilter,
+  fxRates = {},
+  onFxRateChange,
+}) {
   const metrics = [
     {
       key: "actual",
@@ -46,10 +52,47 @@ function MonthDashboard({ tl, months, monthFilter, setMonthFilter }) {
     },
     {
       key: "amount",
-      label: tl("colAmount", "Tiền"),
-      render: (m) => <InventoryWonCell value={m.amountActual} />,
+      label: tl("monthDashAmount", "Tổng tiền ERP"),
+      render: (m) => <InventoryWonCell value={m.amountErp} />,
+    },
+    {
+      key: "erpRate",
+      label: tl("monthDashErpRate", "Tỉ giá"),
+      input: true,
     },
   ];
+
+  const [fxDraft, setFxDraft] = useState({});
+
+  useEffect(() => {
+    const next = {};
+    for (const m of months) {
+      const saved = fxRates[m.monthKey];
+      next[m.monthKey] =
+        saved == null || saved === "" ? "" : String(saved);
+    }
+    setFxDraft(next);
+  }, [months, fxRates]);
+
+  const commitFxRate = (monthKey) => {
+    const raw = String(fxDraft[monthKey] ?? "")
+      .trim()
+      .replace(",", ".");
+    if (!raw) {
+      onFxRateChange?.(monthKey, null);
+      return;
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+      const saved = fxRates[monthKey];
+      setFxDraft((d) => ({
+        ...d,
+        [monthKey]: saved == null ? "" : String(saved),
+      }));
+      return;
+    }
+    onFxRateChange?.(monthKey, n);
+  };
 
   return (
     <div className="wah-inv-month-dash">
@@ -106,7 +149,25 @@ function MonthDashboard({ tl, months, monthFilter, setMonthFilter }) {
                     key={`${metric.key}-${m.monthKey}`}
                     className={`wah-inv-month-dash__val ${metric.className?.(m) ?? ""}`.trim()}
                   >
-                    {metric.render(m)}
+                    {metric.input ? (
+                      <input
+                        className="wah-inv-month-dash__fx"
+                        inputMode="decimal"
+                        value={fxDraft[m.monthKey] ?? ""}
+                        onChange={(ev) => {
+                          const value = ev.target.value;
+                          setFxDraft((d) => ({ ...d, [m.monthKey]: value }));
+                        }}
+                        onBlur={() => commitFxRate(m.monthKey)}
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter") ev.currentTarget.blur();
+                        }}
+                        placeholder={tl("monthDashFxPlaceholder", "Nhập")}
+                        aria-label={`${metric.label} ${m.month}`}
+                      />
+                    ) : (
+                      metric.render(m)
+                    )}
                   </td>
                 ))}
               </tr>
@@ -121,6 +182,9 @@ function MonthDashboard({ tl, months, monthFilter, setMonthFilter }) {
 function ReportKpiSection({
   tl,
   structuredSummary,
+  dashboardMonthSummaries = [],
+  fxRates = {},
+  onFxRateChange,
   tableSectionProps,
 }) {
   const { monthCompareMode, monthFilter, setMonthFilter, compareMonthKeys } =
@@ -128,13 +192,6 @@ function ReportKpiSection({
   const monthCompareNeedsPick =
     monthCompareMode && (compareMonthKeys?.length ?? 0) < 2;
   const comparing = Boolean(monthCompareMode && !monthCompareNeedsPick);
-  const monthSummaries = useMemo(
-    () =>
-      summarizeStructuredRowsByMonth(
-        tableSectionProps.filteredStructuredRows,
-      ),
-    [tableSectionProps.filteredStructuredRows],
-  );
 
   return (
     <section className="wah-inv-report">
@@ -179,12 +236,14 @@ function ReportKpiSection({
                 tone="violet"
               />
             </div>
-          ) : monthSummaries.length ? (
+          ) : dashboardMonthSummaries.length ? (
             <MonthDashboard
               tl={tl}
-              months={monthSummaries}
+              months={dashboardMonthSummaries}
               monthFilter={monthFilter}
               setMonthFilter={setMonthFilter}
+              fxRates={fxRates}
+              onFxRateChange={onFxRateChange}
             />
           ) : null
         }

@@ -149,12 +149,19 @@ const ICONS = {
       <path d="M9 12l2 2 4-4" />
     </svg>
   ),
+  forms: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </svg>
+  ),
 };
 
 const ITEM_ICONS = {
   "/nhietdo": ICONS.temperature,
   "/mold": ICONS.mold,
   "/qr-code-generator": ICONS.qr,
+  "/form-library": ICONS.forms,
   "/normal": ICONS.chart,
   "/s90d-production-report": ICONS.report,
   "/ap5-production-report": ICONS.report,

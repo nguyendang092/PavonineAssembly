@@ -117,6 +117,22 @@ export function computeDayLeaveDeductionForRecord(dateKey, year, _empKey, rawEmp
   return deduction === 0 ? 0 : roundAnnualLeaveHours(deduction);
 }
 
+/** Mọi `emp_*` có mặt trong node ngày điểm danh (kể cả không trừ phép). */
+export function collectAnnualLeaveEmpKeysFromAttendanceDay(dayData) {
+  const keys = new Set();
+  if (!dayData || typeof dayData !== "object") return keys;
+
+  for (const [recordKey, rawEmp] of Object.entries(dayData)) {
+    if (isAttendanceDayMetaKey(recordKey)) continue;
+    if (!rawEmp || typeof rawEmp !== "object") continue;
+    const mnvKey = attendanceMnvKeyFromDayRecord(recordKey, rawEmp);
+    const firebaseKey = annualLeaveEmpFirebaseKey(mnvKey);
+    if (firebaseKey) keys.add(firebaseKey);
+  }
+
+  return keys;
+}
+
 /** Map `emp_{mnv}` → tổng trừ phép trong một ngày điểm danh. */
 export function computeDayLeaveDeductionsByEmpKey(dateKey, year, dayData) {
   const map = {};

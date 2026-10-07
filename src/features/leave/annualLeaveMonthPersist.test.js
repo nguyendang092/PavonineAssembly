@@ -82,7 +82,7 @@ describe("persistAnnualLeaveMonthFromAttendance", () => {
     const getPaths = mockGet.mock.calls.map(([path]) => path);
     expect(getPaths).toContain("attendanceLeaveAgg/2026");
     expect(getPaths).toContain("annualLeave/2026");
-    expect(getPaths.filter((path) => path === "attendance").length).toBe(1);
+    expect(getPaths.filter((path) => path === "attendance").length).toBe(0);
     expect(annualLeaveStore.emp_A).toEqual(
       expect.objectContaining({
         [ANNUAL_LEAVE_EMP.ATTENDANCE_ANNUAL_LEAVE_USED]: 1,
@@ -92,6 +92,44 @@ describe("persistAnnualLeaveMonthFromAttendance", () => {
     expect(mockRunTransaction).toHaveBeenCalledWith(
       "annualLeave/2026/emp_A",
       expect.any(Function),
+    );
+  });
+
+  it("resyncAggFromMonth loads the month attendance query", async () => {
+    annualLeaveStore.emp_A = {
+      [ANNUAL_LEAVE_EMP.MNV_PREFIX]: "A",
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_CURRENT_YEAR]: 12,
+      [ANNUAL_LEAVE_EMP.ANNUAL_LEAVE_USED]: 0,
+    };
+    mockGet.mockImplementation((path) => {
+      if (path === "attendanceLeaveAgg/2026") {
+        return Promise.resolve({ val: () => ({}) });
+      }
+      if (typeof path === "string" && path.startsWith("attendance")) {
+        return Promise.resolve({ val: () => ({}) });
+      }
+      if (path === "annualLeave/2026") {
+        return Promise.resolve({ val: () => annualLeaveStore });
+      }
+      if (path === "annualLeave/2026/_meta") {
+        return Promise.resolve({ exists: () => true, val: () => ({}) });
+      }
+      return Promise.resolve({ exists: () => false, val: () => null });
+    });
+
+    await persistAnnualLeaveMonthFromAttendance(
+      {},
+      {
+        year: 2026,
+        yearMonth: "2026-06",
+        scopeEmpKeySet: new Set(["emp_A"]),
+        resyncAggFromMonth: true,
+      },
+    );
+
+    const getPaths = mockGet.mock.calls.map(([path]) => path);
+    expect(getPaths.filter((path) => path === "attendance").length).toBeGreaterThanOrEqual(
+      1,
     );
   });
 });

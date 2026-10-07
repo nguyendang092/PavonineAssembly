@@ -12,6 +12,7 @@ const row = (monthKey, month, actualQty = 1, extra = {}) => ({
   actualQty,
   sysQty: 1,
   amountActual: 10,
+  amountErp: extra.amountErp ?? 0,
   monthlyDiff: extra.monthlyDiff ?? 0,
   codeDelta: 0,
   gapAmount: extra.gapAmount ?? 0,
@@ -46,6 +47,15 @@ describe("summarizeStructuredRowsByMonth", () => {
     expect(months[0].rows).toBe(2);
     expect(months[1].actual).toBe(5);
     expect(months[1].gapAmount).toBe(50);
+  });
+
+  it("sums 재고금액(ERP) for the money row", () => {
+    const months = summarizeStructuredRowsByMonth([
+      row("2026-08", "08-2026", 1, { amountErp: 100 }),
+      row("2026-08", "08-2026", 1, { amountErp: 50 }),
+    ]);
+    expect(months[0].amountErp).toBe(150);
+    expect(months[0].erpUnitRate).toBe(75);
   });
 });
 
@@ -130,6 +140,63 @@ describe("filterAndSortStructuredRows yearFilter", () => {
       filterAndSortStructuredRows(rows, { ...base, qtySort: "desc" }).map(
         (r) => r.code,
       ),
+    ).toEqual(["HIGH", "LOW"]);
+  });
+
+  it("sorts by ERP amount asc or desc", () => {
+    const rows = [
+      { ...row("2026-01", "01-2026", 9, { amountErp: 100 }), code: "C" },
+      { ...row("2026-01", "01-2026", 1, { amountErp: 800 }), code: "A" },
+      { ...row("2026-01", "01-2026", 5, { amountErp: 40 }), code: "B" },
+    ];
+    const base = {
+      whFilter: "",
+      categoryFilter: "",
+      monthFilter: "",
+      yearFilter: "",
+      codeSearch: "",
+      hideZeroMonthlyDiff: false,
+      hideZeroActualQty: false,
+      sortBy: "amount",
+    };
+    expect(
+      filterAndSortStructuredRows(rows, { ...base, qtySort: "asc" }).map(
+        (r) => r.code,
+      ),
+    ).toEqual(["B", "C", "A"]);
+    expect(
+      filterAndSortStructuredRows(rows, { ...base, qtySort: "desc" }).map(
+        (r) => r.code,
+      ),
+    ).toEqual(["A", "C", "B"]);
+  });
+
+  it("in compare mode amount sort uses money delta", () => {
+    const rows = [
+      {
+        ...row("cmp", "02→03", 99, { amountErp: 10 }),
+        code: "LOW",
+        isMonthCompareRow: true,
+      },
+      {
+        ...row("cmp", "02→03", 1, { amountErp: 500 }),
+        code: "HIGH",
+        isMonthCompareRow: true,
+      },
+    ];
+    const base = {
+      whFilter: "",
+      categoryFilter: "",
+      monthFilter: "",
+      yearFilter: "",
+      codeSearch: "",
+      hideZeroMonthlyDiff: false,
+      hideZeroActualQty: false,
+      sortBy: "amount",
+      qtySort: "desc",
+    };
+    expect(
+      filterAndSortStructuredRows(rows, base).map((r) => r.code),
     ).toEqual(["HIGH", "LOW"]);
   });
 });

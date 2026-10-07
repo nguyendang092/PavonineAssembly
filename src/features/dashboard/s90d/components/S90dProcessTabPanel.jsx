@@ -59,6 +59,8 @@ export default function S90dProcessTabPanel({
   viewGroup = "",
   onDirtyChange,
   saveRef,
+  jumpDateKey = "",
+  jumpNonce = 0,
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
@@ -133,6 +135,11 @@ export default function S90dProcessTabPanel({
   useEffect(() => {
     setSelectedDateKey((prev) => clampDateKeyToMonth(prev, monthDayKeys));
   }, [monthDayKeys]);
+
+  useEffect(() => {
+    if (!jumpDateKey || !monthDayKeys.includes(jumpDateKey)) return;
+    setSelectedDateKey(jumpDateKey);
+  }, [jumpDateKey, jumpNonce, monthDayKeys]);
 
   useEffect(() => {
     if (!isDirty || !saveProcessDraft) return undefined;

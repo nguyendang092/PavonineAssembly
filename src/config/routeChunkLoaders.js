@@ -13,6 +13,7 @@ export const ROUTE_CHUNK_LOADERS = {
   "/mold": () => import("@/features/inventory/MoldManager"),
   "/performance": () => import("@/features/dashboard/PerformanceChart"),
   "/qr-code-generator": () => import("@/components/ui/QRCodeGenerator"),
+  "/form-library": () => import("@/features/formLibrary/FormLibraryPage"),
   "/stock-variance": () => import("@/features/dashboard/warehouseInventory"),
   "/inventory-audit": () => import("@/features/dashboard/inventoryAudit"),
   "/mc-defect-report": () => import("@/features/dashboard/mcDefectReport"),

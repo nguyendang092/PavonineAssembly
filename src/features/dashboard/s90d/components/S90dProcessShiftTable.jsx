@@ -375,7 +375,9 @@ export default memo(function S90dProcessShiftTable({
       <div className="s90d-table-wrap s90d-table-wrap--board">
         <table
           className={`s90d-board-table s90d-process-table-layout${
-            reportId === "s95h" ? " s90d-process-table-layout--wide-product" : ""
+            reportId === "s95h"
+              ? " s90d-process-table-layout--wide-product"
+              : ""
           }`}
         >
           <colgroup>

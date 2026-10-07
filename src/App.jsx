@@ -80,6 +80,9 @@ const PerformanceChart = lazyImport(
 const QRCodeGenerator = lazyImport(
   () => import("@/components/ui/QRCodeGenerator"),
 );
+const FormLibraryPage = lazyImport(
+  () => import("@/features/formLibrary/FormLibraryPage"),
+);
 const WarehouseInventoryDashboard = lazyImport(
   () => import("@/features/dashboard/warehouseInventory"),
 );
@@ -118,6 +121,7 @@ const ROUTE_COMPONENTS = {
   MoldManager,
   PerformanceChart,
   QRCodeGenerator,
+  FormLibraryPage,
   WarehouseInventoryDashboard,
   InventoryAuditPage,
   MCDefectReportDashboard,

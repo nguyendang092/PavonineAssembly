@@ -939,7 +939,7 @@
 }
 
 .wah-inv-month-dash__col-metric {
-  width: 10.25rem;
+  width: 12.5rem;
 }
 
 .wah-inv-month-dash__table th,
@@ -956,7 +956,7 @@
   position: sticky;
   left: 0;
   z-index: 1;
-  width: 10.25rem;
+  width: 12.5rem;
   text-align: left;
   background: #f8fafc;
   font-weight: 750;
@@ -1044,6 +1044,30 @@
   justify-content: center;
   align-items: center;
   gap: 0.15rem;
+}
+
+.wah-inv-month-dash__fx {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 9.5rem;
+  height: 2.15rem;
+  margin: 0 auto;
+  border: 1px solid var(--wah-border-strong);
+  border-radius: 0.35rem;
+  background: var(--wah-surface);
+  padding: 0 0.45rem;
+  color: var(--wah-text);
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  outline: none;
+}
+
+.wah-inv-month-dash__fx:focus {
+  border-color: var(--wah-accent);
+  box-shadow: 0 0 0 3px rgba(63, 111, 102, 0.18);
 }
 
 .dark .wah-inv-month-dash {

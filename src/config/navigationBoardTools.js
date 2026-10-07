@@ -92,6 +92,14 @@ export const NAVIGATION_BOARD_TOOLS = [
     status: "active",
   },
   {
+    id: "APP-25",
+    path: "/form-library",
+    category: "documents",
+    titleKey: "navbar.formLibrary",
+    descriptionKey: "navigationBoard.descFormLibrary",
+    status: "new",
+  },
+  {
     id: "APP-07",
     path: "/mc-defect-report",
     category: "operations",

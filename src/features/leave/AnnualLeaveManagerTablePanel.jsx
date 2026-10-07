@@ -1,4 +1,12 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useUserIdentity } from "@/contexts/UserContext";
 import { db } from "@/services/firebase";
@@ -74,12 +82,13 @@ function AnnualLeaveManagerTablePanel({
     resolveAnnualLeaveManagerMonthIndex(monthFilter);
 
   const { data: leaveAggYearData } = useLeaveAggYearExternal(year, true);
+  const deferredLeaveAggYearData = useDeferredValue(leaveAggYearData);
 
   const leaveAggMonthlyByEmpKey = useMemo(() => {
-    if (!leaveAggYearData) return {};
-    return buildDerivedMapsFromLeaveAggYear(leaveAggYearData, year)
+    if (!deferredLeaveAggYearData) return {};
+    return buildDerivedMapsFromLeaveAggYear(deferredLeaveAggYearData, year)
       .attendanceMonthlyByEmpKey;
-  }, [leaveAggYearData, year]);
+  }, [deferredLeaveAggYearData, year]);
 
   const { monthlyByEmpKey } = useMemo(
     () =>

@@ -10,6 +10,7 @@ import {
   computeWarehouseInventoryStats,
   dominantMonthLabel,
   parseWarehouseInventoryFile,
+  yearFromMonthKey,
 } from "../lib/parse";
 import {
   mergeWarehouseInventoryRows,
@@ -17,10 +18,11 @@ import {
 } from "../lib/mergeWarehouseInventoryRows";
 import { buildStructuredMonthCodeRows } from "../lib/buildStructuredRows";
 import { buildMultiMonthCompareRows } from "../lib/buildTwoMonthCompareRows";
-import { yearFromMonthKey } from "../lib/parse";
+import { normalizeWarehouseFxRates } from "../lib/normalizeWarehouseFxRates";
 import {
   filterAndSortStructuredRows,
   summarizeStructuredRows,
+  summarizeStructuredRowsByMonth,
 } from "../lib/filterStructuredRows";
 import {
   DASHBOARD_QUERY_CACHE_TTL_MS,
@@ -42,6 +44,11 @@ export function useWarehouseInventoryDashboard() {
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
   const [fileName, setFileName] = useState("");
+  const fileNameRef = useRef(fileName);
+  fileNameRef.current = fileName;
+  const [fxRates, setFxRates] = useState({});
+  const fxRatesRef = useRef(fxRates);
+  fxRatesRef.current = fxRates;
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [whFilter, setWhFilter] = useState("");
@@ -55,6 +62,7 @@ export function useWarehouseInventoryDashboard() {
   const [hideZeroMonthlyDiff, setHideZeroMonthlyDiff] = useState(true);
   const [hideZeroActualQty, setHideZeroActualQty] = useState(true);
   const [qtySort, setQtySort] = useState("desc");
+  const [sortBy, setSortBy] = useState("qty");
   const [tablePage, setTablePage] = useState(1);
   const [tablePageSize, setTablePageSize] = useState(WAREHOUSE_INV_TABLE_PAGE_SIZE);
   const [hasTriedCloudLoad, setHasTriedCloudLoad] = useState(false);
@@ -64,6 +72,7 @@ export function useWarehouseInventoryDashboard() {
     const cloudRows = Array.isArray(payload?.rows) ? payload.rows : [];
     setRows(cloudRows);
     setFileName(String(payload?.fileName ?? "").trim() || "Cloud Snapshot");
+    setFxRates(normalizeWarehouseFxRates(payload?.fxRates));
     setWhFilter("");
     return cloudRows.length > 0;
   }, []);
@@ -91,6 +100,7 @@ export function useWarehouseInventoryDashboard() {
         const normalized = {
           rows: Array.isArray(payload?.rows) ? payload.rows : [],
           fileName: String(payload?.fileName ?? "").trim() || "Cloud Snapshot",
+          fxRates: normalizeWarehouseFxRates(payload?.fxRates),
         };
         setCached(WAREHOUSE_INVENTORY_SNAPSHOT_CACHE_KEY, normalized);
         return applyCloudSnapshot(normalized);
@@ -237,6 +247,7 @@ export function useWarehouseInventoryDashboard() {
           hideZeroMonthlyDiff,
           hideZeroActualQty,
           qtySort,
+          sortBy,
         },
       ),
     [
@@ -251,12 +262,30 @@ export function useWarehouseInventoryDashboard() {
       hideZeroMonthlyDiff,
       hideZeroActualQty,
       qtySort,
+      sortBy,
     ],
   );
 
   const structuredSummary = useMemo(
     () => summarizeStructuredRows(filteredStructuredRows),
     [filteredStructuredRows],
+  );
+
+  const dashboardMonthSummaries = useMemo(
+    () =>
+      summarizeStructuredRowsByMonth(
+        filterAndSortStructuredRows(structuredMonthCodeRows, {
+          whFilter,
+          categoryFilter,
+          monthFilter: "",
+          yearFilter,
+          codeSearch: "",
+          hideZeroMonthlyDiff: false,
+          hideZeroActualQty: false,
+          qtySort: "desc",
+        }),
+      ),
+    [structuredMonthCodeRows, whFilter, categoryFilter, yearFilter],
   );
 
   const tableTotalPages = Math.max(
@@ -292,24 +321,45 @@ export function useWarehouseInventoryDashboard() {
     return [...keys].sort((a, b) => a.localeCompare(b, "vi"));
   }, [rows]);
 
-  const persistSnapshot = useCallback(async (nextRows, nextFileName) => {
+  const persistSnapshot = useCallback(async (nextRows, nextFileName, nextFxRates) => {
     const name = String(nextFileName ?? "").trim() || "Cloud Snapshot";
+    const rates = normalizeWarehouseFxRates(
+      nextFxRates === undefined ? fxRatesRef.current : nextFxRates,
+    );
     setRows(nextRows);
     setFileName(name);
+    setFxRates(rates);
     setCached(WAREHOUSE_INVENTORY_SNAPSHOT_CACHE_KEY, {
       rows: nextRows,
       fileName: name,
+      fxRates: rates,
     });
     try {
       await set(ref(db, WAREHOUSE_INV_LATEST_PATH), {
         savedAt: new Date().toISOString(),
         fileName: name,
         rows: nextRows,
+        fxRates: rates,
       });
     } catch (saveErr) {
       console.error("saveLatestSnapshotToCloud failed:", saveErr);
     }
   }, []);
+
+  const setMonthFxRate = useCallback(
+    (monthKey, value) => {
+      const key = String(monthKey ?? "").trim();
+      if (!key) return;
+      setFxRates((prev) => {
+        const next = { ...prev };
+        if (value == null || !Number.isFinite(value)) delete next[key];
+        else next[key] = value;
+        void persistSnapshot(rowsRef.current, fileNameRef.current, next);
+        return next;
+      });
+    },
+    [persistSnapshot],
+  );
 
   const handleFile = useCallback(
     async (e) => {
@@ -406,6 +456,8 @@ export function useWarehouseInventoryDashboard() {
     setHideZeroActualQty,
     qtySort,
     setQtySort,
+    sortBy,
+    setSortBy,
     tablePage,
     setTablePage,
     tablePageSize,
@@ -413,6 +465,9 @@ export function useWarehouseInventoryDashboard() {
     tablePageSizeOptions: WAREHOUSE_INV_TABLE_PAGE_SIZE_OPTIONS,
     stats,
     structuredSummary,
+    dashboardMonthSummaries,
+    fxRates,
+    setMonthFxRate,
     filteredStructuredRows,
     pagedStructuredRows,
     tableTotalPages,

@@ -33,6 +33,7 @@ export const PERMISSION_IDS = Object.freeze({
   PERMISSION_CATALOG_PAGE: "permission_catalog_page",
   KOREAN_TIMESHEET: "korean_timesheet",
   ANNUAL_LEAVE: "annual_leave",
+  FORM_LIBRARY: "form_library",
 });
 
 /**
@@ -241,6 +242,19 @@ export const PERMISSION_CATALOG = Object.freeze([
     ],
     authRolesHelpers: ["canManageAnnualLeave"],
   },
+  {
+    id: PERMISSION_IDS.FORM_LIBRARY,
+    labelVi: "Kho biểu mẫu — xem / tải về; Admin-HR thêm xóa",
+    quyTac:
+      "Trang kho biểu mẫu dùng chung: mọi user đăng nhập xem và tải file. Chỉ Admin/HR tải lên hoặc xóa form.",
+    routes: ["/form-library"],
+    modules: [
+      "features/formLibrary/FormLibraryPage.jsx",
+      "features/formLibrary/useFormLibrary.js",
+      "features/formLibrary/formLibraryUtils.js",
+    ],
+    authRolesHelpers: ["canManageFormLibrary"],
+  },
 ]);
 
 /** In ra console (vd. gọi từ DevTools) để xem catalog dạng bảng. */
@@ -257,6 +271,11 @@ export function debugPrintPermissionCatalog() {
 
 /** Korean Timesheet — chỉ Admin / HR xem và thao tác. */
 export function canViewKoreanTimesheet(user, userRole) {
+  return isAdminAccess(user, userRole);
+}
+
+/** Kho biểu mẫu — Admin/HR tải lên và xóa; mọi user đăng nhập vẫn xem/tải về. */
+export function canManageFormLibrary(user, userRole) {
   return isAdminAccess(user, userRole);
 }
 

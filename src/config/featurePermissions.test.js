@@ -78,6 +78,7 @@ describe("PERMISSION_CATALOG integrity", () => {
   it("lists authRolesHelpers exported from authRoles or featurePermissions", () => {
     const featurePermissionExports = new Set([
       "canViewKoreanTimesheet",
+      "canManageFormLibrary",
       "canViewAttendanceDashboard",
       "canExportAttendanceDashboard",
       "canPrintAttendanceDashboardReport",

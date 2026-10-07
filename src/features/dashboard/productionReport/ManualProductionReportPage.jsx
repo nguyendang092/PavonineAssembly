@@ -17,6 +17,9 @@ import { formatS90dMonthDisplayLabel } from "../s90d/lib/s90dDateUtils";
 import { useReportT } from "./useReportTranslation";
 import { useProductionReportContext } from "./ProductionReportContext";
 import { buildVisibleProductSummarySections } from "./productionSummarySections";
+import { listMissingProductionProcessEntries } from "./listMissingProductionProcessEntries";
+import ProductionMissingEntryNotify from "./ProductionMissingEntryNotify";
+import { useTodayDateKeyLocal } from "@/hooks/useTodayDateKeyLocal";
 import "../s90d/s90dProductionReport.css";
 
 const S90dSummaryChartModal = lazyImport(
@@ -34,6 +37,7 @@ export default function ManualProductionReportPage({
 }) {
   const { t } = useTranslation();
   const rt = useReportT();
+  const todayKey = useTodayDateKeyLocal();
   const { id: reportId } = useProductionReportContext();
   const excelInputRef = useRef(null);
   const headerRef = useRef(null);
@@ -48,6 +52,7 @@ export default function ManualProductionReportPage({
   const [summaryViewGroup, setSummaryViewGroup] = useState("");
   const [processDirty, setProcessDirty] = useState(false);
   const processSaveRef = useRef(null);
+  const [entryJump, setEntryJump] = useState({ dateKey: "", token: 0 });
   const {
     loading,
     saving,
@@ -281,6 +286,22 @@ export default function ManualProductionReportPage({
     [processes, rt, t],
   );
 
+  const missingEntries = useMemo(
+    () =>
+      listMissingProductionProcessEntries({
+        monthDailySummaries,
+        processes,
+        throughDateKey: todayKey,
+      }),
+    [monthDailySummaries, processes, todayKey],
+  );
+
+  const handleSelectMissingEntry = useCallback((item) => {
+    if (!item?.process || !item?.dateKey) return;
+    setEntryJump({ dateKey: item.dateKey, token: Date.now() });
+    setActiveTab(item.process);
+  }, []);
+
   const pageSubtitle = rt("pageSubtitle", "");
 
   const summaryPanelProps = useMemo(
@@ -388,6 +409,12 @@ export default function ManualProductionReportPage({
                 {rt("toolbarActions", "Thao tác")}
               </span>
               <div className="s90d-toolbar-actions-row">
+                <ProductionMissingEntryNotify
+                  missing={missingEntries}
+                  processLabels={tabLabels}
+                  onSelect={handleSelectMissingEntry}
+                  rt={rt}
+                />
                 <button
                   type="button"
                   className="s90d-excel-btn"
@@ -540,6 +567,8 @@ export default function ManualProductionReportPage({
           viewGroup={activeSummaryViewGroup}
           onDirtyChange={setProcessDirty}
           saveRef={processSaveRef}
+          jumpDateKey={entryJump.dateKey}
+          jumpNonce={entryJump.token}
         />
       ) : null}
     </div>

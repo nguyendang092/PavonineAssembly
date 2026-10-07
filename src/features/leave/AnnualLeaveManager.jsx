@@ -30,6 +30,7 @@ import {
 import { parseAnnualLeaveExcelFile } from "./annualLeaveExcelImport";
 import { exportAnnualLeaveExcel } from "./annualLeaveExcelExport";
 import { useAnnualLeaveYearData } from "./useAnnualLeaveYearData";
+import { useAnnualLeaveDailySyncLock } from "./annualLeaveLiveExternalHooks";
 import {
   persistAnnualLeaveMonthFromAttendance,
   persistAnnualLeaveYearFromAttendance,
@@ -84,6 +85,7 @@ export default function AnnualLeaveManager() {
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [dailySyncing, setDailySyncing] = useState(false);
   const { query: debouncedSearch, onDebouncedSearchChange } =
     useDebouncedSearchQuery(year);
   const [deptFilter, setDeptFilter] = useState("");
@@ -100,19 +102,32 @@ export default function AnnualLeaveManager() {
   const canManage = canManageAnnualLeave(user, userRole);
   const todayKey = useTodayDateKeyLocal();
   const { yearData, yearLoading } = useAnnualLeaveYearData(year);
+  const { active: dailySyncLockActive } = useAnnualLeaveDailySyncLock(year);
 
   useEffect(() => {
-    if (!canManage || yearLoading || !todayKey) return;
+    if (!canManage || !todayKey) return;
     if (dailySyncTodayRef.current === todayKey) return;
-    dailySyncTodayRef.current = todayKey;
 
+    let cancelled = false;
+    dailySyncTodayRef.current = todayKey;
     void syncAnnualLeaveForLocalDayRollover(db, {
       todayKey,
       updatedBy: user?.email ?? "client-daily",
-    }).catch(() => {
-      dailySyncTodayRef.current = "";
-    });
-  }, [canManage, todayKey, user?.email, yearLoading]);
+      onHeavyWorkStart: () => {
+        if (!cancelled) setDailySyncing(true);
+      },
+    })
+      .catch(() => {
+        dailySyncTodayRef.current = "";
+      })
+      .finally(() => {
+        if (!cancelled) setDailySyncing(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canManage, todayKey, user?.email]);
 
   useEffect(() => {
     const rawYear = searchParams.get("year");
@@ -509,17 +524,17 @@ export default function AnnualLeaveManager() {
 
           <div className="annual-leave-table-shell">
             <PayrollMonthGridLoadingOverlay
-              active={yearLoading || syncing}
+              active={yearLoading || syncing || dailySyncing || dailySyncLockActive}
               mode="overlay"
               message={
-                syncing
+                syncing || dailySyncing || dailySyncLockActive
                   ? t("annualLeave.recalculating", {
                       defaultValue: "Đang tính lại…",
                     })
                   : undefined
               }
               subtitle={
-                syncing
+                syncing || dailySyncing || dailySyncLockActive
                   ? t("annualLeave.recalculatingSubtitle", {
                       defaultValue:
                         "Đang đồng bộ phép năm từ điểm danh, vui lòng chờ…",
