@@ -166,7 +166,9 @@ export function usePayrollMonthDayChunks({
 
         if (dayRaw != null) {
           chunk = stampPayrollMonthChunkAttendanceRootFlags(
-            buildPayrollMonthDayChunkFromRaw(dayRaw, dateKey),
+            buildPayrollMonthDayChunkFromRaw(dayRaw, dateKey, {
+              attendanceRootPath,
+            }),
             attendanceRootPath,
           );
           usedLocalRaw = true;
@@ -184,7 +186,9 @@ export function usePayrollMonthDayChunks({
               : null;
           if (patchedRaw) {
             chunk = stampPayrollMonthChunkAttendanceRootFlags(
-              buildPayrollMonthDayChunkFromRaw(patchedRaw, dateKey),
+              buildPayrollMonthDayChunkFromRaw(patchedRaw, dateKey, {
+                attendanceRootPath,
+              }),
               attendanceRootPath,
             );
             usedLocalRaw = true;

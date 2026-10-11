@@ -1,36 +1,39 @@
 import { describe, expect, it } from "vitest";
-import {
-  dayNormalTotal,
-  dayOkNormalOnly,
-  dayOkSplit,
-  dayReworkOnly,
-} from "./dayTotals";
+import { dayNGTotal, dayNormalTotal, formatDayLabelShort } from "./dayTotals";
 
-describe("dayOkSplit", () => {
-  it("sums day and night for non-CNC areas", () => {
+describe("dayTotals", () => {
+  it("sums day and night OK for non-CNC areas", () => {
     const dayArr = [
       {
         Day: { normal: 10, rework: 2 },
         Night: { normal: 5, rework: 1 },
       },
     ];
-    expect(dayOkSplit("PRESS", dayArr, 0)).toEqual({ normal: 15, rework: 3 });
-    expect(dayOkNormalOnly("PRESS", dayArr, 0)).toBe(15);
-    expect(dayReworkOnly("PRESS", dayArr, 0)).toBe(3);
     expect(dayNormalTotal("PRESS", dayArr, 0)).toBe(18);
   });
 
-  it("uses next night shift for CNC", () => {
+  it("uses only the day shift for CNC OK total", () => {
     const dayArr = [
       {
         Day: { normal: 4, rework: 1 },
         Night: { normal: 99, rework: 99 },
       },
+    ];
+    expect(dayNormalTotal("CNC", dayArr, 0)).toBe(5);
+  });
+
+  it("sums NG the same way as OK (CNC = day only)", () => {
+    const dayArr = [
       {
-        Day: { normal: 0, rework: 0 },
-        Night: { normal: 3, rework: 2 },
+        Day: { ng_normal: 2, ng_rework: 1 },
+        Night: { ng_normal: 8, ng_rework: 8 },
       },
     ];
-    expect(dayOkSplit("CNC", dayArr, 0)).toEqual({ normal: 7, rework: 3 });
+    expect(dayNGTotal("PRESS", dayArr, 0)).toBe(19);
+    expect(dayNGTotal("CNC", dayArr, 0)).toBe(3);
+  });
+
+  it("formats ISO dates as dd/MM", () => {
+    expect(formatDayLabelShort("2026-10-09")).toBe("09/10");
   });
 });

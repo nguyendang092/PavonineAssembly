@@ -36,6 +36,7 @@ import {
 } from "./attendanceGioVaoTypeOptions";
 import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 import { useSelectedDateWithTodayRollover } from "@/hooks/useSelectedDateWithTodayRollover";
+import { downloadXlsxBuffer } from "@/utils/downloadXlsxBuffer";
 import "./attendanceDashboard.css";
 import "./hrPageCompact.css";
 
@@ -376,15 +377,7 @@ function AttendanceDashboardPage() {
         s.absent,
       ]);
       const buf = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buf], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `attendance-dashboard-${selectedDate}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadXlsxBuffer(buf, `attendance-dashboard-${selectedDate}.xlsx`);
     } finally {
       setExportBusy(false);
     }

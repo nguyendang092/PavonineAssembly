@@ -917,8 +917,22 @@ html.mold-page-active footer:not(.mold-form-foot):not(.mold-detail-foot) {
 
   .mold-sidebar-item {
     width: auto;
+    min-height: 2.5rem;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 8px 12px;
+  }
+
+  .mold-topbar {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .mold-topbar-title {
+    font-size: 20px;
+  }
+
+  .mold-topbar-actions {
+    width: 100%;
   }
 }
 
@@ -1667,4 +1681,47 @@ html.mold-page-active footer:not(.mold-form-foot):not(.mold-detail-foot) {
 
 .mold-image-lightbox--expanded .mold-image-lightbox-img {
   max-height: calc(100dvh - 120px);
+}
+
+html.dark #app-main-scroll:has(.mold-dashboard),
+html.dark.mold-page-active #app-main-scroll.mold-page-scroll-root {
+  background: #020617;
+}
+
+html.dark .mold-dashboard {
+  --mold-bg: #020617;
+  --mold-steel-light: #1e293b;
+  --mold-warn-bg: #3b2a12;
+  --mold-ok-bg: #052e16;
+  --mold-danger-bg: #3b1512;
+  --mold-border: #334155;
+  --mold-ink: #f1f5f9;
+  --mold-muted: #94a3b8;
+}
+
+html.dark .mold-table-shell {
+  background: #0f172a;
+}
+
+html.dark .mold-table thead th {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+html.dark .mold-table tbody td {
+  border-bottom-color: #334155;
+  color: #e2e8f0;
+}
+
+html.dark .mold-table tbody tr:hover {
+  background: #1e293b;
+}
+
+html.dark .mold-image-lightbox {
+  background: #0f172a;
+}
+
+html.dark .mold-image-lightbox-img {
+  background: #020617;
+  border-color: #475569;
 }

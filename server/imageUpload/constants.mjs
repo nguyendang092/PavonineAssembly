@@ -1,4 +1,4 @@
-export const API_BASE = "/api/images";
+const API_BASE = "/api/images";
 
 export const ROUTES = Object.freeze({
   UPLOAD: `${API_BASE}/upload`,

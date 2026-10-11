@@ -243,6 +243,46 @@ function resolveMonthWorkSummaryForAccrual(
 }
 
 /**
+ * +1 PN cho đúng một tháng lịch — cùng quy tắc `resolveAnnualLeaveMonthlyAccrualDays`.
+ * @returns {0 | 1}
+ */
+export function annualLeaveGrantForCalendarMonth({
+  startWorkingDate,
+  year,
+  monthIndex,
+  monthWorkSummary = null,
+  asOfDateKey = null,
+} = {}) {
+  const y = Number(year);
+  if (monthIndex == null || monthIndex === "") return 0;
+  const m = Number(monthIndex);
+  if (!Number.isFinite(y) || !Number.isInteger(m) || m < 0 || m > 11) return 0;
+
+  const range = resolveAnnualLeaveAccrualMonthRange(
+    startWorkingDate,
+    y,
+    asOfDateKey,
+  );
+  if (!range || m < range.startMonth || m > range.endMonth) return 0;
+
+  if (annualLeaveMonthUsesPayrollHalfAccrualRule(y, m)) {
+    return monthMeetsHalfStandardWorkDays(monthWorkSummary) ? 1 : 0;
+  }
+
+  const normalizedStart = normalizeAnnualLeaveStartWorkingDate(startWorkingDate);
+  if (!normalizedStart) return 0;
+
+  if (isStartWorkingDateInCalendarYear(normalizedStart, y)) {
+    if (!isStartWorkingDateInCalendarMonth(startWorkingDate, y, m)) {
+      return 1;
+    }
+    return monthMeetsHalfStandardWorkDays(monthWorkSummary) ? 1 : 0;
+  }
+
+  return 1;
+}
+
+/**
  * Số tháng +1 phép trong năm.
  * - Từ `2026-06` (và mọi tháng năm ≥ 2027): mọi NV kiểm ≥ ½ ngày thực tế làm việc
  *   (tổng ngày công hoặc ngày nghỉ thai sản) — cộng ngay khi đạt, kể cả tháng hiện tại.
@@ -263,52 +303,24 @@ export function resolveAnnualLeaveMonthlyAccrualDays(
   if (!range) return 0;
 
   const y = Number(year);
-  const normalizedStart = normalizeAnnualLeaveStartWorkingDate(startWorkingDate);
-  const newJoinerInYear =
-    normalizedStart && isStartWorkingDateInCalendarYear(normalizedStart, y);
   let accrual = 0;
   for (
     let monthIndex = range.startMonth;
     monthIndex <= range.endMonth;
     monthIndex += 1
   ) {
-    if (annualLeaveMonthUsesPayrollHalfAccrualRule(y, monthIndex)) {
-      const summary = resolveMonthWorkSummaryForAccrual(
-        monthWorkSummaryByYearMonth,
-        y,
-        monthIndex,
-      );
-      if (monthMeetsHalfStandardWorkDays(summary)) {
-        accrual += 1;
-      }
-      continue;
-    }
-
-    if (!normalizedStart) {
-      continue;
-    }
-
-    if (newJoinerInYear) {
-      const isJoinMonth = isStartWorkingDateInCalendarMonth(
-        startWorkingDate,
-        y,
-        monthIndex,
-      );
-      if (!isJoinMonth) {
-        accrual += 1;
-        continue;
-      }
-      const summary = resolveMonthWorkSummaryForAccrual(
-        monthWorkSummaryByYearMonth,
-        y,
-        monthIndex,
-      );
-      if (monthMeetsHalfStandardWorkDays(summary)) {
-        accrual += 1;
-      }
-    } else {
-      accrual += 1;
-    }
+    const summary = resolveMonthWorkSummaryForAccrual(
+      monthWorkSummaryByYearMonth,
+      y,
+      monthIndex,
+    );
+    accrual += annualLeaveGrantForCalendarMonth({
+      startWorkingDate,
+      year: y,
+      monthIndex,
+      monthWorkSummary: summary,
+      asOfDateKey,
+    });
   }
   return accrual;
 }

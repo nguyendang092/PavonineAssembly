@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { LoadingProvider } from "./contexts/LoadingContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import ToastViewport from "./components/ui/ToastViewport";
 import { initThemeFromStorage } from "./utils/theme";
 import "./styles/index.css";
 
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <ThemeProvider>
       <LoadingProvider>
         <App />
+        <ToastViewport />
       </LoadingProvider>
     </ThemeProvider>
   </React.StrictMode>,

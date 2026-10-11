@@ -259,6 +259,25 @@
   .attendance-dashboard__kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .attendance-dashboard__shell {
+    padding: 0.4rem 0.4rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .attendance-dashboard__filters {
+    align-items: stretch;
+  }
+
+  .attendance-dashboard__filter-chip {
+    margin-left: 0;
+  }
+
+  .attendance-dashboard__filter-input,
+  .attendance-dashboard__filter-select,
+  .attendance-dashboard__btn {
+    min-height: 2.5rem;
+  }
 }
 
 .attendance-dashboard__kpi {
@@ -1213,6 +1232,80 @@
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--ad-navy-soft);
+}
+
+html.dark .attendance-dashboard {
+  --ad-navy: #93c5fd;
+  --ad-navy-mid: #60a5fa;
+  --ad-navy-soft: #bfdbfe;
+  --ad-card: #0f172a;
+  --ad-muted: #94a3b8;
+  color: #e2e8f0;
+}
+
+html.dark .attendance-dashboard__shell {
+  background: linear-gradient(180deg, #020617 0%, #0b1220 42%, #020617 100%);
+}
+
+html.dark .attendance-dashboard__report-head,
+html.dark .attendance-dashboard__filters,
+html.dark .attendance-dashboard__kpi,
+html.dark .attendance-dashboard__card {
+  background: var(--ad-card);
+  border-color: #334155;
+  box-shadow: none;
+}
+
+html.dark .attendance-dashboard__btn {
+  background: #0f172a;
+  border-color: #475569;
+}
+
+html.dark .attendance-dashboard__btn:hover {
+  background: #1e293b;
+}
+
+html.dark .attendance-dashboard__resignation-kpi,
+html.dark .attendance-dashboard__list-row {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+html.dark .attendance-dashboard__report-logo {
+  background: #1e3a8a;
+  color: #fff;
+}
+
+html.dark .attendance-dashboard__card-head {
+  background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
+  color: #fff;
+}
+
+html.dark .attendance-dashboard__filter-input,
+html.dark .attendance-dashboard__filter-select {
+  background: #020617;
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+html.dark .attendance-dashboard__kpi--green .attendance-dashboard__kpi-value {
+  color: #34d399;
+}
+
+html.dark .attendance-dashboard__kpi--amber .attendance-dashboard__kpi-value {
+  color: #fbbf24;
+}
+
+html.dark .attendance-dashboard__kpi--rose .attendance-dashboard__kpi-value {
+  color: #fb7185;
+}
+
+html.dark .attendance-dashboard__kpi--sky .attendance-dashboard__kpi-value {
+  color: #38bdf8;
+}
+
+html.dark .attendance-dashboard__kpi-sub {
+  color: #94a3b8;
 }
 
 @media print {

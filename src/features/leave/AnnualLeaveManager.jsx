@@ -29,6 +29,7 @@ import {
 } from "./annualLeaveManagerMonthFilter";
 import { parseAnnualLeaveExcelFile } from "./annualLeaveExcelImport";
 import { exportAnnualLeaveExcel } from "./annualLeaveExcelExport";
+import { downloadXlsxBuffer } from "@/utils/downloadXlsxBuffer";
 import { useAnnualLeaveYearData } from "./useAnnualLeaveYearData";
 import { useAnnualLeaveDailySyncLock } from "./annualLeaveLiveExternalHooks";
 import {
@@ -407,15 +408,7 @@ export default function AnnualLeaveManager() {
         monthColumnLabels,
         monthlyByEmpKey,
       });
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `PAVONINE_annual_leave_${year}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadXlsxBuffer(buffer, `PAVONINE_annual_leave_${year}.xlsx`);
     } catch (err) {
       setAlert({
         show: true,

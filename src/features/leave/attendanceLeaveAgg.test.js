@@ -4,6 +4,7 @@ import {
   collectAnnualLeaveEmpKeysFromAttendanceDay,
   computeLeaveAggDeltasForDayChange,
   monthKeyFromDateKey,
+  resolveLeaveAggMonthlyValuesForEmp,
 } from "./attendanceLeaveAgg";
 import { ATTENDANCE_LEAVE_AGG_EMP } from "./attendanceLeaveAggFields";
 
@@ -31,6 +32,19 @@ describe("attendanceLeaveAgg", () => {
       0, 0, 0, 0, 1, 2, 0.5, 0, 0, 0, 0, 0,
     ]);
     expect(deductionsByEmpKey.emp_A).toBe(2.5);
+  });
+
+  it("resolveLeaveAggMonthlyValuesForEmp reads one employee without scanning others", () => {
+    const yearAggData = {
+      emp_A: {
+        [ATTENDANCE_LEAVE_AGG_EMP.DEDUCTION_BY_MONTH]: { "06": 2 },
+      },
+      emp_B: {
+        [ATTENDANCE_LEAVE_AGG_EMP.DEDUCTION_BY_MONTH]: { "07": 1 },
+      },
+    };
+    expect(resolveLeaveAggMonthlyValuesForEmp(yearAggData, "emp_A")[5]).toBe(2);
+    expect(resolveLeaveAggMonthlyValuesForEmp(yearAggData, "emp_missing")).toBeNull();
   });
 
   it("computeLeaveAggDeltasForDayChange diffs one day snapshots", () => {

@@ -518,6 +518,10 @@
   .wah-inv-month-picks__list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .wah-inv-filter-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .wah-inv-field__label {

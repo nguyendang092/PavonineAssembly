@@ -1,18 +1,12 @@
 import ExcelJS from "exceljs";
+import { downloadXlsxBuffer } from "@/utils/downloadXlsxBuffer";
+import { sanitizeDownloadFilenameSegment } from "@/utils/sanitizeDownloadFilenameSegment";
 
 function formatDateKeyForExcel(dateKey) {
   if (!dateKey || typeof dateKey !== "string") return dateKey;
   const [y, m, d] = dateKey.split("-");
   if (!y || !m || !d) return dateKey;
   return `${d}/${m}/${y}`;
-}
-
-function sanitizeFilePart(value) {
-  return String(value ?? "")
-    .trim()
-    .replace(/[^\w.-]+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "");
 }
 
 /**
@@ -70,16 +64,11 @@ export async function exportEmployeeAttendanceTimeExcel({
   ];
 
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  const namePart = sanitizeFilePart(employeeName) || "employee";
-  const mnvPart = sanitizeFilePart(mnv) || "mnv";
+  const namePart = sanitizeDownloadFilenameSegment(employeeName) || "employee";
+  const mnvPart = sanitizeDownloadFilenameSegment(mnv) || "mnv";
   const monthPart = month ? `_${month}` : "_all";
-  a.download = `PAVONINE_cham_cong_${mnvPart}_${year}${monthPart}_${namePart}.xlsx`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadXlsxBuffer(
+    buffer,
+    `PAVONINE_cham_cong_${mnvPart}_${year}${monthPart}_${namePart}.xlsx`,
+  );
 }

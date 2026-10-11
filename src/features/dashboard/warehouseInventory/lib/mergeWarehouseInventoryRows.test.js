@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { mergeWarehouseInventoryRows, removeWarehouseInventoryRowsByMonth } from "./mergeWarehouseInventoryRows";
+import {
+  coerceWarehouseInventoryRows,
+  mergeWarehouseInventoryRows,
+  removeWarehouseInventoryRowsByMonth,
+} from "./mergeWarehouseInventoryRows";
+
+describe("coerceWarehouseInventoryRows", () => {
+  it("turns a firebase object list into an array", () => {
+    const rows = coerceWarehouseInventoryRows({
+      1: { code: "B" },
+      0: { code: "A" },
+    });
+    expect(rows.map((r) => r.code)).toEqual(["A", "B"]);
+  });
+});
 
 describe("mergeWarehouseInventoryRows", () => {
   it("keeps old months and appends a new month", () => {

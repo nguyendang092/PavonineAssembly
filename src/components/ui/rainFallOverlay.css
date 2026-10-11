@@ -1,0 +1,15 @@
+.rain-fall-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-weather, 11000);
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rain-fall-overlay {
+    display: none;
+  }
+}

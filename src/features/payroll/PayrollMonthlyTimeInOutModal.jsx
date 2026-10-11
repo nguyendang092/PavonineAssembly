@@ -56,8 +56,9 @@ import {
   parseLocalDateKey,
 } from "@/utils/dateKey";
 import "./payrollMonthlyTimeInOutModal.css";
+import { useToastWhen } from "@/hooks/useToastWhen";
 
-const STICKY_COL_WIDTHS = [42, 200, 80, 72];
+const STICKY_COL_WIDTHS = [42, 200, 80, 56, 72];
 const STICKY_COL_COUNT = STICKY_COL_WIDTHS.length;
 const DAY_COL_WIDTH = 72;
 const VIRTUAL_THRESHOLD = 18;
@@ -345,6 +346,13 @@ const TimeInOutEmployeeRow = memo(function TimeInOutEmployeeRow({
       </td>
       <td
         style={stickyColStyle(3)}
+        className={`${pmTioStickyClass()} py-1.5 px-1 text-center text-[10px] font-extrabold tabular-nums text-slate-800 dark:text-slate-100 ${rowBg}`}
+        title={rep.maBoPhan || ""}
+      >
+        {rep.maBoPhan ? String(rep.maBoPhan).trim() : "—"}
+      </td>
+      <td
+        style={stickyColStyle(4)}
         className={`${pmTioStickyClass()} py-1.5 px-1 text-center text-[10px] font-bold leading-snug text-slate-700 dark:text-slate-200 ${rowBg}`}
         title={rep.boPhan || ""}
       >
@@ -391,6 +399,7 @@ export default function PayrollMonthlyTimeInOutModal({
   userDepartments = null,
   onAlert,
   employees = [],
+  attendanceRootPath = "attendance",
 }) {
   const [localNameFilter, setLocalNameFilter] = useState("");
   const [selectedDepartments, setSelectedDepartments] = useState([]);
@@ -488,10 +497,18 @@ export default function PayrollMonthlyTimeInOutModal({
     patchDay,
   } = usePayrollMonthDayChunks({
     monthKeys: monthRange.keys,
+    attendanceRootPath,
     tlPage,
     emptyMessageKey: "monthlyTimeInOutEmpty",
     errorMessageKey: "monthlyTimeInOutError",
   });
+  useToastWhen(
+    error &&
+      error !==
+        tlPage("monthlyTimeInOutEmpty", "Không có dữ liệu trong tháng này.")
+      ? error
+      : "",
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -936,8 +953,11 @@ export default function PayrollMonthlyTimeInOutModal({
                 )}
               />
             ) : error && !displayDayChunks.length ? (
-              <p className="py-8 text-center text-sm font-semibold text-red-600">
-                {error}
+              <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                {tlPage(
+                  "monthlyTimeInOutEmpty",
+                  "Không có dữ liệu trong tháng này.",
+                )}
               </p>
             ) : (
               <div
@@ -986,6 +1006,13 @@ export default function PayrollMonthlyTimeInOutModal({
                       <th
                         rowSpan={2}
                         style={stickyColStyle(3)}
+                        className={`${pmTioStickyClass()} bg-slate-100 px-1 py-2 text-center text-[10px] font-extrabold uppercase tracking-wide text-slate-800 dark:bg-slate-800 dark:text-slate-100`}
+                      >
+                        {tlPage("monthlyTimesheetColDeptCode", "Mã BP")}
+                      </th>
+                      <th
+                        rowSpan={2}
+                        style={stickyColStyle(4)}
                         className={`${pmTioStickyClass()} bg-slate-100 px-1 py-2 text-center text-[10px] font-extrabold uppercase tracking-wide text-slate-800 dark:bg-slate-800 dark:text-slate-100`}
                       >
                         {tlPage("monthlyTimesheetColDept", "BP")}
@@ -1114,6 +1141,7 @@ export default function PayrollMonthlyTimeInOutModal({
         dayIsHolidayDay={
           chunkByDate.get(dayCellFormDate)?.isHolidayDay ?? false
         }
+        attendanceRootPath={attendanceRootPath}
       />
     </>,
     document.body,

@@ -11,10 +11,23 @@ export const fromSafeKey = (key, columns = MOLD_COLUMNS) => {
 };
 
 export const getImagePath = (cellValue) => {
-  if (!cellValue || !String(cellValue).trim()) return null;
-  if (String(cellValue).startsWith("/")) return cellValue;
-  return `/picture/molds/${cellValue}`;
+  const raw = String(cellValue ?? "").trim();
+  if (!raw) return null;
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw;
+  if (raw.startsWith("/")) return raw;
+  return `/picture/molds/${raw}`;
 };
+
+/** Chrome/OneDrive đôi khi lỗi ERR_CACHE_READ_FAILURE — thử lại 1 lần, bỏ cache. */
+export function retryImageSrcOnce(event, originalSrc) {
+  const el = event?.currentTarget;
+  const src = String(originalSrc ?? "").trim();
+  if (!el || !src || el.dataset.cacheRetry === "1") return false;
+  el.dataset.cacheRetry = "1";
+  const join = src.includes("?") ? "&" : "?";
+  el.src = `${src}${join}_r=${Date.now()}`;
+  return true;
+}
 
 export const formatMoldNumber = (value) => {
   if (value == null || value === "") return "—";

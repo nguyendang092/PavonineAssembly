@@ -293,7 +293,7 @@ function AttendanceListFilterMenus({
                   }}
                 />
 
-                {showKoreanMonthlyTimesheet && onOpenMonthlyTimesheet ? (
+                {onOpenMonthlyTimesheet ? (
                   <>
                     <ToolsMenuSection
                       label={tl("toolsSectionMonthlyTimesheet", "Xem giờ công")}
@@ -304,7 +304,9 @@ function AttendanceListFilterMenus({
                         defaultValue: "Xem giờ công",
                       })}
                       hint={t(
-                        "payrollSalary.koreanMonthlyTimesheetButtonHint",
+                        showKoreanMonthlyTimesheet
+                          ? "payrollSalary.koreanMonthlyTimesheetButtonHint"
+                          : "payrollSalary.monthlyTimesheetButtonHint",
                         {
                           defaultValue: t(
                             "payrollSalary.monthlyTimesheetButtonHint",

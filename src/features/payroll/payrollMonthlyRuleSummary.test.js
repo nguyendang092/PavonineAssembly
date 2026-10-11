@@ -1413,4 +1413,39 @@ describe("buildMonthlyRuleSummary — Nghỉ bù (NB)", () => {
     expect(flat[resolveMonthlyDetailFlatIndex(2, 14)]).toBe("1");
     expect(flat[resolveMonthlyDetailFlatIndex(2, 15)]).toBe("50.000");
   });
+
+  it("appends official annual-leave grant/balance after night GC on the total block only", () => {
+    const summaries = {
+      total: {
+        standardWorkDays: 22,
+        workDays: 11,
+        unpaidDays: 0,
+        pnDays: 0,
+        nbDays: 0,
+        klDays: 0,
+        kpDays: 0,
+        coeff03: 0,
+        coeff15: 0,
+        coeff20: 0,
+        coeff27: 0,
+        coeff30: 0,
+        coeff39: 0,
+        nightShiftWindowHours: 8,
+      },
+      trial: {},
+      official: {},
+    };
+    const flat = buildMonthlyDetailFlatValues({
+      si: 0,
+      summaries,
+      fmt: fmtPayrollMonthlySummaryCell,
+      colsPerBlock: MONTH_DETAIL_COLS_PER_BLOCK,
+      includeAnnualLeaveCols: true,
+      annualLeaveCols: { monthGrant: 1, balanceDisplay: "9.00" },
+    });
+    expect(flat[17]).toBe("8");
+    expect(flat[18]).toBe("1");
+    expect(flat[19]).toBe("9.00");
+    expect(flat[resolveMonthlyDetailFlatIndex(1, 0, true)]).toBe(" ");
+  });
 });

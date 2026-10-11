@@ -506,6 +506,26 @@
 }
 
 @media (max-width: 760px) {
+  .form-library-page {
+    padding: 0.65rem 0.65rem 1.1rem;
+  }
+
+  .form-library-title {
+    font-size: 1.2rem;
+  }
+
+  .form-library-kpis {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .form-library-chip {
+    min-height: 2.5rem;
+    height: auto;
+    padding: 0.4rem 0.85rem;
+  }
+
   .form-library-table__hide-sm {
     display: none;
   }

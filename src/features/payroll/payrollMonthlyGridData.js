@@ -173,7 +173,9 @@ export async function fetchOneDayWithRetry(
     try {
       const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
       return stampPayrollMonthChunkAttendanceRootFlags(
-        buildPayrollMonthDayChunkFromRaw(snap.val(), dateKey),
+        buildPayrollMonthDayChunkFromRaw(snap.val(), dateKey, {
+          attendanceRootPath,
+        }),
         attendanceRootPath,
       );
     } catch (err) {
@@ -416,6 +418,10 @@ export function resolvePayrollMonthDayEmployee(chunk, rowId, rep) {
   return null;
 }
 
+export function payrollMonthEmpSortableStt(emp) {
+  return parsePayrollMonthSortableStt(emp?.sttThoiVu ?? emp?.stt);
+}
+
 export function parsePayrollMonthSortableStt(raw) {
   const n = Number(raw);
   if (Number.isFinite(n)) return n;
@@ -433,10 +439,7 @@ export function comparePayrollMonthRowsByDepartment(aRep, bRep) {
     normalizePayrollDepartment(bRep?.boPhan).toLocaleLowerCase("vi") || "\uffff";
   const byDept = aDept.localeCompare(bDept, "vi", { sensitivity: "base" });
   if (byDept !== 0) return byDept;
-  return (
-    parsePayrollMonthSortableStt(aRep?.stt) -
-    parsePayrollMonthSortableStt(bRep?.stt)
-  );
+  return payrollMonthEmpSortableStt(aRep) - payrollMonthEmpSortableStt(bRep);
 }
 
 export function collectPayrollMonthSortedEmployeeIds(dayChunks) {
@@ -445,7 +448,7 @@ export function collectPayrollMonthSortedEmployeeIds(dayChunks) {
   for (const chunk of dayChunks) {
     for (const emp of chunk.employees) {
       const id = canonicalPayrollMonthRowId(emp, indexes);
-      const stt = parsePayrollMonthSortableStt(emp.stt);
+      const stt = payrollMonthEmpSortableStt(emp);
       const prev = meta.get(id);
       if (!prev) {
         meta.set(id, {
@@ -489,10 +492,10 @@ export function payrollMonthRepresentativeEmployee(dayChunks, rowId) {
       }
     }
 
-    const sttN = parsePayrollMonthSortableStt(e.stt);
+    const sttN = payrollMonthEmpSortableStt(e);
     if (sttN < bestStt) {
       bestStt = sttN;
-      bestSttRaw = e.stt;
+      bestSttRaw = e.sttThoiVu ?? e.stt;
     }
 
     if (!out) {
@@ -741,17 +744,21 @@ async function fetchPayrollMonthDayChunksFromAggregate(
   monthKey,
   attendanceRootPath,
 ) {
-  const monthlyRoot =
-    attendanceRootPath === "koreanAttendance"
-      ? "koreanAttendanceMonthly"
-      : "attendanceMonthly";
+  const monthlyRoot = isKoreanAttendanceRoot(attendanceRootPath)
+    ? "koreanAttendanceMonthly"
+    : attendanceRootPath === "attendance"
+      ? "attendanceMonthly"
+      : null;
+  if (!monthlyRoot) return null;
   const snap = await get(ref(db, `${monthlyRoot}/${monthKey}`));
   const raw = snap.val() || {};
   const dateKeys = Object.keys(raw).sort();
   if (!dateKeys.length) return null;
   const chunks = dateKeys.map((dateKey) =>
     stampPayrollMonthChunkAttendanceRootFlags(
-      buildPayrollMonthDayChunkFromRaw(raw[dateKey], dateKey),
+      buildPayrollMonthDayChunkFromRaw(raw[dateKey], dateKey, {
+        attendanceRootPath,
+      }),
       attendanceRootPath,
     ),
   );
@@ -761,7 +768,7 @@ async function fetchPayrollMonthDayChunksFromAggregate(
 
 /**
  * Tải dữ liệu `{attendanceRootPath}/{ngày}` cho cả tháng — batch + retry + abort.
- * @param {string} [hooks.attendanceRootPath="attendance"] — `attendance` hoặc `koreanAttendance`
+ * @param {string} [hooks.attendanceRootPath="attendance"] — `attendance`, `koreanAttendance` hoặc `seasonalAttendance`
  */
 export async function fetchPayrollMonthDayChunks(monthKeys, hooks = {}) {
   const attendanceRootPath = hooks.attendanceRootPath ?? "attendance";

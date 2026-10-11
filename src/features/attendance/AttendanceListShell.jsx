@@ -127,6 +127,10 @@ function AttendanceListShell({
     pathname === "/attendance-salary" ||
     pathname.startsWith("/attendance-salary");
 
+  const isSeasonalWorkHoursActive =
+    pathname === "/seasonal-staff-salary" ||
+    pathname.startsWith("/seasonal-staff-salary");
+
   const isAnnualLeaveActive =
     pathname === "/annual-leave" || pathname.startsWith("/annual-leave");
 
@@ -227,6 +231,20 @@ function AttendanceListShell({
               tone="emerald"
               icon={ICONS.workHours}
               label={t("attendanceList.sidebarWorkHours", "Giờ công")}
+            />
+          </SidebarNavLink>
+
+          <SidebarNavLink
+            to={`/seasonal-staff-salary?date=${encodeURIComponent(dateKey)}`}
+            className={itemClass(isSeasonalWorkHoursActive, "teal")}
+          >
+            <SidebarItemContent
+              tone="teal"
+              icon={ICONS.workHours}
+              label={t(
+                "attendanceList.sidebarSeasonalWorkHours",
+                "Giờ công thời vụ",
+              )}
             />
           </SidebarNavLink>
 

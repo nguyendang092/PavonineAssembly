@@ -18,6 +18,7 @@ import { buildChartFromWeekRows } from "../lib/buildChartFromWeekRows";
 import { dayNormalTotal, dayNGTotal, formatDayLabelShort } from "../lib/dayTotals";
 import { getCurrentWeekNumber } from "../lib/constants";
 import { DEFAULT_WORKPLACE_PRODUCTION_PATHS } from "../workplaceProductionPaths";
+import { toast } from "@/components/ui/toast";
 import {
   buildWorkplaceAreaMetrics,
   resolveWorkplaceAreaTheme,
@@ -91,7 +92,7 @@ export function useWorkplaceProductionDashboard(
         processExcelData(rows, selectedYear);
       } catch (error) {
         console.error("Lỗi load dữ liệu Firebase:", error);
-        alert("Lỗi load dữ liệu Firebase: " + error.message);
+        toast.error("Lỗi load dữ liệu Firebase: " + error.message);
       }
     };
     loadDataFromFirebase();
@@ -188,9 +189,9 @@ export function useWorkplaceProductionDashboard(
         setRawData(jsonData);
         processExcelData(jsonData, selectedYear);
         await uploadToFirebase(jsonData);
-        alert(t("workplaceChart.uploadSuccess"));
+        toast.success(t("workplaceChart.uploadSuccess"));
       } catch (err) {
-        alert(
+        toast.error(
           t("workplaceChart.uploadError") + (err?.message || "Không thể xử lý file"),
         );
       } finally {
@@ -293,9 +294,9 @@ export function useWorkplaceProductionDashboard(
         const sheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(sheet);
         await persistDetailRowsToFirebase(jsonData);
-        alert(t("workplaceChart.uploadSuccess"));
+        toast.success(t("workplaceChart.uploadSuccess"));
       } catch (err) {
-        alert(
+        toast.error(
           t("workplaceChart.uploadError") + (err?.message || "Không thể xử lý file"),
         );
       } finally {

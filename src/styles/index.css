@@ -2,10 +2,157 @@
 @import "./fonts.css";
 @import "./animations.css";
 @import "./appScroll.css";
+@import "./mobile.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/**
+ * Dark-mode contrast layer (after Tailwind utilities).
+ * Remaps leftover light utilities and native form controls without
+ * overriding explicit `dark:` color variants.
+ */
+html.dark,
+html.dark body,
+html.dark #root,
+html.dark #app-main-scroll {
+  background-color: var(--app-page-bg);
+  color: var(--app-text);
+}
+
+html.dark .text-black,
+html.dark .dark\:text-black {
+  color: var(--app-text) !important;
+}
+
+html.dark
+  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
+    [type="hidden"]
+  ):not([type="range"]):not([type="file"]):not([type="color"]):not(
+    [type="image"]
+  ) {
+  background-color: var(--app-surface);
+  color: var(--app-text);
+  border-color: var(--app-border);
+  color-scheme: dark;
+}
+
+html.dark :is(input, textarea)::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
+html.dark option,
+html.dark optgroup {
+  background-color: var(--app-surface);
+  color: var(--app-text);
+}
+
+html.dark .bg-white:not([class*="dark:bg"]) {
+  background-color: var(--app-surface) !important;
+}
+
+html.dark .bg-gray-50:not([class*="dark:bg"]),
+html.dark .bg-slate-50:not([class*="dark:bg"]) {
+  background-color: var(--app-page-bg);
+}
+
+html.dark .bg-gray-100:not([class*="dark:bg"]),
+html.dark .bg-slate-100:not([class*="dark:bg"]) {
+  background-color: var(--app-surface-2);
+}
+
+html.dark .text-slate-900:not([class*="dark:text"]),
+html.dark .text-gray-900:not([class*="dark:text"]),
+html.dark .text-slate-800:not([class*="dark:text"]),
+html.dark .text-gray-800:not([class*="dark:text"]) {
+  color: var(--app-text);
+}
+
+html.dark .text-slate-700:not([class*="dark:text"]),
+html.dark .text-gray-700:not([class*="dark:text"]) {
+  color: #e2e8f0;
+}
+
+html.dark .text-slate-600:not([class*="dark:text"]),
+html.dark .text-gray-600:not([class*="dark:text"]) {
+  color: var(--app-text-muted);
+}
+
+html.dark .text-slate-500:not([class*="dark:text"]),
+html.dark .text-gray-500:not([class*="dark:text"]) {
+  color: #94a3b8;
+}
+
+html.dark .border-slate-200:not([class*="dark:border"]),
+html.dark .border-gray-200:not([class*="dark:border"]),
+html.dark .border-slate-300:not([class*="dark:border"]),
+html.dark .border-gray-300:not([class*="dark:border"]) {
+  border-color: var(--app-border);
+}
+
+html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--app-border);
+}
+
+html.dark .ReactModal__Content {
+  background: var(--app-surface);
+  color: var(--app-text);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background-color: #475569;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background-color: #0f172a;
+}
+
+html.dark table {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+html.dark table thead :is(th, td):not([class*="dark:bg"]):not(
+    [class*="s90d-head-group"]
+  ):not([class*="wah-inv-th-"]) {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #475569 !important;
+}
+
+html.dark table tbody :is(th, td):not([class*="dark:bg"]),
+html.dark table tfoot :is(th, td):not([class*="dark:bg"]) {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
+}
+
+html.dark :is(
+  .mold-table-shell,
+  .mold-table-wrap,
+  .s90d-table-wrap,
+  .s90d-board-card,
+  .wah-inv-table-wrap,
+  .inv-audit-table-wrap,
+  .form-library-table-wrap,
+  .tm-table-block,
+  .tm-table-scroll,
+  .attendance-table-compact,
+  .attendance-table-scroll,
+  .annual-leave-table-scroll,
+  .annual-leave-table-shell,
+  .payroll-salary-table-scroll,
+  .payroll-salary-table-compact,
+  .pm-ts-table-wrap
+) {
+  background-color: #0f172a !important;
+  color: #e2e8f0;
+  border-color: #334155;
+}
 
 @layer base {
   html {

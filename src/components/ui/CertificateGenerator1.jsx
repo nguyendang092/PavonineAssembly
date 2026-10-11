@@ -4,6 +4,7 @@ import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
 import { isProductionLayoutPath } from "@/features/production/productionSidebarConfig";
 import CertificateGeneratorFormShell from "./CertificateGeneratorFormShell";
+import { toast } from "./toast";
 
 export default function CertificateGenerator1() {
   const { pathname } = useLocation();
@@ -151,11 +152,11 @@ export default function CertificateGenerator1() {
 
   const handleGenerate = () => {
     if (!canEdit) {
-      alert("Chỉ tài khoản Admin / HR mới được chỉnh sửa.");
+      toast.warning("Chỉ tài khoản Admin / HR mới được chỉnh sửa.");
       return;
     }
     if (!name.trim()) {
-      alert("Vui lòng nhập tên!");
+      toast.warning("Vui lòng nhập tên!");
       return;
     }
     setStt((prev) => {
@@ -167,7 +168,7 @@ export default function CertificateGenerator1() {
 
   const handleDownload = () => {
     if (!canEdit) {
-      alert("Chỉ tài khoản Admin / HR mới được tải file.");
+      toast.warning("Chỉ tài khoản Admin / HR mới được tải file.");
       return;
     }
     // Xử lý tên file: bỏ dấu, viết liền, lowercase, thay khoảng trắng bằng _
@@ -192,6 +193,7 @@ export default function CertificateGenerator1() {
 
   return (
     <div
+      className="certificate-generator-page"
       style={{
         display: "flex",
         height: inProductionLayout

@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React from "react";
 import { useTranslation } from "react-i18next";
 import FiltersDropdown from "./components/FiltersDropdown";
 import KpiCards from "./components/KpiCards";
@@ -12,21 +12,6 @@ import {
 import { useMcDefectDashboard } from "./hooks/useMcDefectDashboard";
 import "./mcDefectReport.css";
 
-const MessageBanner = memo(function MessageBanner({ message, messageType }) {
-  if (!message) return null;
-  const tone =
-    messageType === "success"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
-      : messageType === "error"
-        ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"
-        : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300";
-  return (
-    <div className={`rounded-xl border px-4 py-2.5 text-sm font-semibold ${tone}`}>
-      {message}
-    </div>
-  );
-});
-
 /** Trang «Báo cáo hàng lỗi MC» — chỉ ghép layout; logic nằm trong hook + lib. */
 export default function McDefectReportPage() {
   const { t, i18n } = useTranslation();
@@ -36,8 +21,6 @@ export default function McDefectReportPage() {
   const {
     dashboardExportRef,
     loading,
-    message,
-    messageType,
     saving,
     reportOwner,
     setReportOwner,
@@ -103,10 +86,6 @@ export default function McDefectReportPage() {
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             {tl("loadingFirebase", "Đang tải dữ liệu...")}
           </div>
-        ) : null}
-
-        {!loading ? (
-          <MessageBanner message={message} messageType={messageType} />
         ) : null}
 
         <div className="space-y-4">

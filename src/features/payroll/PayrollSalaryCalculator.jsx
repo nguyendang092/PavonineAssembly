@@ -73,6 +73,7 @@ import {
   PAYROLL_SHORT_HOURS_FILTER,
 } from "@/features/payroll/attendanceDayPresenceFilters";
 import AttendanceHrPageShell from "@/features/attendance/AttendanceHrPageShell";
+import { isSeasonalAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 import "@/features/attendance/attendanceToolbarFocus.css";
 import "@/features/attendance/hrPageCompact.css";
 import "./payrollTableCompact.css";
@@ -98,8 +99,8 @@ const noop = () => {};
 
 function sortEmployeesAscForPopup(rows) {
   return [...rows].sort((a, b) => {
-    const aStt = Number(a?.stt);
-    const bStt = Number(b?.stt);
+    const aStt = Number(a?.sttThoiVu ?? a?.stt);
+    const bStt = Number(b?.sttThoiVu ?? b?.stt);
     const aSttNorm = Number.isFinite(aStt) ? aStt : Number.POSITIVE_INFINITY;
     const bSttNorm = Number.isFinite(bStt) ? bStt : Number.POSITIVE_INFINITY;
     return aSttNorm - bSttNorm;
@@ -107,10 +108,12 @@ function sortEmployeesAscForPopup(rows) {
 }
 
 /**
- * Trang lương: đọc attendance/{ngày} (chỉ xem). Ngày off + ca ngày: giờ quy đổi ở cột TC off.
+ * Trang lương: đọc `{attendanceRootPath}/{ngày}` (chỉ xem). Ngày off + ca ngày: giờ quy đổi ở cột TC off.
  * Điểm danh NV: chỉnh sửa chấm công — không hiển thị cột TC off.
  */
-export default function PayrollSalaryCalculator() {
+export default function PayrollSalaryCalculator({
+  attendanceRootPath = "attendance",
+} = {}) {
   const { t, i18n } = useTranslation();
   const displayLocale = i18n.language?.startsWith("ko") ? "ko-KR" : "vi-VN";
   const { user, userRole, userDepartments } = useUser();
@@ -230,11 +233,13 @@ export default function PayrollSalaryCalculator() {
           ? affectedDateKeys
           : [selectedDate];
       const cacheKeys = new Set(
-        dateKeys.map((dk) => buildPayrollMonthCacheKey("attendance", [dk])),
+        dateKeys.map((dk) =>
+          buildPayrollMonthCacheKey(attendanceRootPath, [dk]),
+        ),
       );
       cacheKeys.forEach(invalidatePayrollMonthCache);
     },
-    [selectedDate],
+    [attendanceRootPath, selectedDate],
   );
 
   const normalizeDepartment = useCallback((value) => {
@@ -255,7 +260,10 @@ export default function PayrollSalaryCalculator() {
     leaveTypeFilter !== deferredLeaveTypeFilter ||
     overtimeFilter !== deferredOvertimeFilter ||
     shortHoursFilter !== deferredShortHoursFilter;
-  const attendancePath = selectedDate ? `attendance/${selectedDate}` : null;
+  const isSeasonalPayroll = isSeasonalAttendanceRoot(attendanceRootPath);
+  const attendancePath = selectedDate
+    ? `${attendanceRootPath}/${selectedDate}`
+    : null;
   const {
     data: attendanceDayRaw,
     loading: isDayLoading,
@@ -282,6 +290,7 @@ export default function PayrollSalaryCalculator() {
         data,
         employeesRef.current,
         payrollEmployeesRef.current,
+        { attendanceRootPath },
       );
       payrollEmployeesRef.current = parsed.payrollEmployees;
       setIsOffDay((prev) =>
@@ -319,7 +328,7 @@ export default function PayrollSalaryCalculator() {
         return parsed.baseEmployees;
       });
     });
-  }, [attendanceDayRaw, isDayLoading, selectedDate]);
+  }, [attendanceDayRaw, attendanceRootPath, isDayLoading, selectedDate]);
 
   useEffect(() => {
     setEarlyOtSuppressed(false);
@@ -338,13 +347,13 @@ export default function PayrollSalaryCalculator() {
     async (metaFieldKey, normalizeMap, updates, localMap) => {
       const metaRef = ref(
         db,
-        `attendance/${selectedDate}/${ATTENDANCE_DAY_META_KEY}`,
+        `${attendanceRootPath}/${selectedDate}/${ATTENDANCE_DAY_META_KEY}`,
       );
       const cur = normalizeMap(localMap ?? {});
       const next = { ...cur, ...updates };
       await update(metaRef, { [metaFieldKey]: next });
     },
-    [selectedDate],
+    [attendanceRootPath, selectedDate],
   );
 
   const mergeEarlyOt = useCallback(
@@ -823,6 +832,7 @@ export default function PayrollSalaryCalculator() {
           rangeFrom,
           rangeTo,
           selectedDepartments,
+          attendanceRootPath,
           selectedDate,
           currentDayEmployees: employeesForPayroll,
           currentDayMeta: {
@@ -848,6 +858,9 @@ export default function PayrollSalaryCalculator() {
           tlPage,
           tlTable,
           normalizeDepartment,
+          filenamePrefix: isSeasonalPayroll
+            ? "Bang-gio-cong-thoi-vu"
+            : "Bang-gio-cong",
           singleDaySheetTitle:
             rangeFrom === rangeTo && rangeFrom === selectedDate
               ? payrollExportSheetTitle
@@ -872,6 +885,8 @@ export default function PayrollSalaryCalculator() {
       displayLocale,
       tlPage,
       tlTable,
+      attendanceRootPath,
+      isSeasonalPayroll,
       selectedDate,
       employeesForPayroll,
       isOffDay,
@@ -898,13 +913,20 @@ export default function PayrollSalaryCalculator() {
         <div className="mb-1 shrink-0">
           <div className="w-full border-t-4 border-violet-600 bg-white px-2 py-0.5 shadow-sm dark:bg-slate-900 dark:ring-1 dark:ring-slate-700">
             <h1 className="text-sm font-bold uppercase leading-snug tracking-wide text-[#1e293b] md:text-base dark:text-slate-100">
-              {tlPage("pageTitle", "Xem giờ công")}
+              {isSeasonalPayroll
+                ? tlPage("seasonalPageTitle", "Xem giờ công thời vụ")
+                : tlPage("pageTitle", "Xem giờ công")}
             </h1>
             <p className="mt-0 hidden text-[10px] leading-snug text-gray-600 md:mt-0.5 md:block md:text-[11px]">
-              {tlPage(
-                "pageSubtitle",
-                "Cùng dữ liệu với Điểm danh NV; cột Sửa mở form cập nhật tại đây — lưu Firebase đồng bộ mọi nơi dùng MNV. Công thức lương sẽ bổ sung sau.",
-              )}
+              {isSeasonalPayroll
+                ? tlPage(
+                    "seasonalPageSubtitle",
+                    "Cùng dữ liệu với Điểm danh NV thời vụ; cột Sửa mở form cập nhật tại đây.",
+                  )
+                : tlPage(
+                    "pageSubtitle",
+                    "Cùng dữ liệu với Điểm danh NV; cột Sửa mở form cập nhật tại đây — lưu Firebase đồng bộ mọi nơi dùng MNV. Công thức lương sẽ bổ sung sau.",
+                  )}
             </p>
           </div>
         </div>
@@ -926,6 +948,7 @@ export default function PayrollSalaryCalculator() {
               isHolidayDay={isHolidayDay}
               isCompensatoryDay={isCompensatoryDay}
               tl={tlAttendance}
+              attendanceRootPath={attendanceRootPath}
               onSaved={handleOffHolidayDaysSaved}
               onAlert={setAlert}
               className="min-w-0 flex-1"
@@ -1029,6 +1052,7 @@ export default function PayrollSalaryCalculator() {
                       isOffDay={isOffDay}
                       isHolidayDay={isHolidayDay}
                       isCompensatoryDay={isCompensatoryDay}
+                      isSeasonalAttendance={isSeasonalPayroll}
                       attendanceDateKey={selectedDate}
                     />
                   ))}
@@ -1072,6 +1096,7 @@ export default function PayrollSalaryCalculator() {
         dayIsCompensatory={isCompensatoryDay}
         dayIsOffDay={isOffDay}
         dayIsHolidayDay={isHolidayDay}
+        attendanceRootPath={attendanceRootPath}
       />
         </Suspense>
       ) : null}
@@ -1155,6 +1180,7 @@ export default function PayrollSalaryCalculator() {
           userDepartments={userDepartments}
           onAlert={setAlert}
           employees={employees}
+          attendanceRootPath={attendanceRootPath}
         />
         </Suspense>
       ) : null}
@@ -1183,6 +1209,7 @@ export default function PayrollSalaryCalculator() {
           userDepartments={userDepartments}
           onAlert={setAlert}
           employees={employees}
+          attendanceRootPath={attendanceRootPath}
         />
         </Suspense>
       ) : null}

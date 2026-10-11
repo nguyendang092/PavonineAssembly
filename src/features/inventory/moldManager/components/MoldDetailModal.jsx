@@ -8,7 +8,7 @@ import {
   parseShotCount,
   resolveTypeStyle,
 } from "../lib/moldMetrics";
-import { formatMoldNumber, getImagePath } from "../lib/moldUtils";
+import { formatMoldNumber, getImagePath, retryImageSrcOnce } from "../lib/moldUtils";
 
 function DetailField({ label, value, wide = false, mono = false }) {
   const display = value != null && String(value).trim() !== "" ? value : "—";
@@ -43,7 +43,12 @@ function MediaCard({ label, imagePath, alt, onZoom, emptyLabel }) {
           className="mold-detail-media-frame mold-detail-media-frame--clickable"
           onClick={() => onZoom?.({ show: true, src: imagePath, alt })}
         >
-          <img src={imagePath} alt={alt} loading="lazy" />
+          <img
+            src={imagePath}
+            alt={alt}
+            loading="lazy"
+            onError={(ev) => retryImageSrcOnce(ev, imagePath)}
+          />
         </button>
       ) : (
         <div className="mold-detail-media-frame mold-detail-media-frame--empty">

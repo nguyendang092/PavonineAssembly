@@ -21,6 +21,7 @@ import {
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
 import { employeeRegimeWorkingHoursFlags } from "@/features/attendance/employeeRegime";
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
+import { downloadXlsxBuffer } from "@/utils/downloadXlsxBuffer";
 
 /** Một ngày & nhiều ngày: 3 cột (ngày / tháng / năm) + 25 cột bảng. */
 const PAYROLL_EXCEL_COL_COUNT = 28;
@@ -467,24 +468,11 @@ export async function buildPayrollSalaryExcelWorkbookMultiDay({
   return workbook;
 }
 
-const PAYROLL_XLSX_MIME =
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-function triggerDownloadXlsxBuffer(buffer, filename) {
-  const blob = new Blob([buffer], { type: PAYROLL_XLSX_MIME });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export async function downloadPayrollSalaryExcel(opts) {
   const { selectedDate, filename } = opts;
   const workbook = await buildPayrollSalaryExcelWorkbook(opts);
   const buffer = await workbook.xlsx.writeBuffer();
-  triggerDownloadXlsxBuffer(
+  downloadXlsxBuffer(
     buffer,
     filename || `Bang-gio-cong_${selectedDate}.xlsx`,
   );
@@ -493,5 +481,5 @@ export async function downloadPayrollSalaryExcel(opts) {
 /** @param {{ workbook: object, filename: string }} opts */
 export async function downloadPayrollWorkbookToFile({ workbook, filename }) {
   const buffer = await workbook.xlsx.writeBuffer();
-  triggerDownloadXlsxBuffer(buffer, filename);
+  downloadXlsxBuffer(buffer, filename);
 }

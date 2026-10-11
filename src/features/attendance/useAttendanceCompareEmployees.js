@@ -6,6 +6,7 @@ import {
   useRef,
   startTransition,
 } from "react";
+import { getTodayDateKeyLocal } from "@/utils/dateKey";
 import { db, get, ref } from "@/services/firebase";
 import {
   bumpFirebaseGeneration,
@@ -38,7 +39,7 @@ export function useAttendanceCompareEmployees({
   setAlert,
   tl,
 }) {
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = getTodayDateKeyLocal();
   const [compareEmployeesOpen, setCompareEmployeesOpen] = useState(false);
   const [compareEmployeesBusy, setCompareEmployeesBusy] = useState(false);
   const [compareEmployeesResult, setCompareEmployeesResult] = useState(null);
@@ -60,7 +61,7 @@ export function useAttendanceCompareEmployees({
     return employees
       .map((emp) => {
         const stt = seasonal ? emp?.sttThoiVu : emp?.stt;
-        return `${emp?.id ?? ""}:${stt ?? ""}`;
+        return `${emp?.id ?? ""}:${emp?.mnv ?? ""}:${emp?.boPhan ?? ""}:${stt ?? ""}`;
       })
       .join("|");
   }, [employees, attendanceRootPath]);
@@ -144,6 +145,12 @@ export function useAttendanceCompareEmployees({
       try {
         const loadRowsByDate = async (dateKey) => {
           const key = `${attendanceRootPath}:${dateKey}`;
+          const selectedKey = String(selectedDate || "").trim();
+          if (dateKey === selectedKey) {
+            return sortEmployeesStableAsc(employees, {
+              seasonal: isSeasonalAttendance,
+            });
+          }
           const cached = compareDayRowsCacheRef.current.get(key);
           if (cached) return cached;
           const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
@@ -179,10 +186,12 @@ export function useAttendanceCompareEmployees({
         const prevSttRank = buildCompareSttRankMap(
           previousRows,
           isSeasonalAttendance,
+          { alreadySorted: true },
         );
         const currSttRank = buildCompareSttRankMap(
           currentRows,
           isSeasonalAttendance,
+          { alreadySorted: true },
         );
 
         const orderedProductionMatchKeys = resolveOrderedProductionMatchKeys(
@@ -271,6 +280,7 @@ export function useAttendanceCompareEmployees({
     },
     [
       selectedDate,
+      employees,
       compareCriteria,
       attendanceRootPath,
       comboProductionDeptOrder,

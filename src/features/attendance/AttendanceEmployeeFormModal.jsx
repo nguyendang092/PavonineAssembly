@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { parseLocalDateKey } from "@/utils/dateKey";
 import { useTranslation } from "react-i18next";
-import { db, ref, update, get } from "@/services/firebase";
+import { db, ref, update } from "@/services/firebase";
 import {
   buildEmployeeAttendanceDayDocument,
   attendanceMnvStorageKey,
@@ -19,6 +19,7 @@ import {
 } from "@/config/authRoles";
 import {
   ATTENDANCE_LOAI_PHEP_OPTIONS,
+  getAttendanceLeaveTypeColorCss,
   isAttendanceGioVaoClockTime,
   isAttendanceLoaiPhepAllowsClockTimes,
 } from "./attendanceGioVaoTypeOptions";
@@ -41,9 +42,6 @@ import {
 } from "@/features/attendance/attendanceDayMeta";
 import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
 import { shouldClientSyncAnnualLeaveForAttendanceRoot } from "@/config/annualLeaveClientSync";
-import {
-  applyAnnualLeaveDeductionDelta,
-} from "@/features/leave/annualLeaveClientDaySync";
 import { annualLeaveYearFromDateKey } from "@/features/leave/annualLeaveBalanceLookup";
 import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
 import {
@@ -145,6 +143,52 @@ const employeeModalOtRowColClass = "flex min-w-0 flex-col gap-0.5";
 const employeeModalClearTimeButtonClass =
   "shrink-0 min-w-[4.25rem] rounded-lg border-2 border-slate-300 bg-slate-100 px-2 py-1 text-[10px] font-bold leading-tight text-slate-700 transition hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
 
+const LOAI_PHEP_OPTION_ELEMENTS = ATTENDANCE_LOAI_PHEP_OPTIONS.map(
+  ({ value, shortLabel }) => (
+    <option
+      key={value}
+      value={value}
+      style={{ color: getAttendanceLeaveTypeColorCss(shortLabel) }}
+    >
+      {shortLabel} — {value}
+    </option>
+  ),
+);
+
+function buildAttendanceFormState(
+  initialRecord,
+  { dayIsCompensatory, attendanceRootPath },
+) {
+  if (!initialRecord || typeof initialRecord !== "object") {
+    return { ...EMPTY_EMPLOYEE_FORM };
+  }
+  const merged = applyLegacyIncludeTsNvAndCanonicalPhep({
+    ...EMPTY_EMPLOYEE_FORM,
+    ...initialRecord,
+    ...(initialRecord.id ? {} : { id: "" }),
+  });
+  merged.duocNghiBu = normalizeDuocNghiBuForForm(
+    dayIsCompensatory,
+    merged.duocNghiBu,
+  );
+  merged.boPhanChuaDung = normalizeBoPhanChuaDungForForm(merged.boPhanChuaDung);
+  merged[ATTENDANCE_EMP.NAME_YELLOW_BG] =
+    normalizeHoVaTenYellowHighlightForForm(
+      merged[ATTENDANCE_EMP.NAME_YELLOW_BG],
+    );
+  merged[ATTENDANCE_EMP.LEAVE_TYPE_CHECK] = normalizeLeaveTypeCheckForForm(
+    merged[ATTENDANCE_EMP.LEAVE_TYPE_CHECK],
+  );
+  if (isSeasonalAttendanceRoot(attendanceRootPath)) {
+    merged.stt = merged.sttThoiVu ?? "";
+    merged.gioiTinh =
+      normalizeAttendanceGioiTinhValue(merged.gioiTinh) ||
+      merged.gioiTinh ||
+      "YES";
+  }
+  return merged;
+}
+
 /**
  * Modal thêm / cập nhật dòng điểm danh — chỉ ghi `attendance/{ngày}/{key}`.
  * Dùng chung Điểm danh NV và màn tính lương — `update()` nên mọi màn `onValue` đồng bộ.
@@ -168,6 +212,7 @@ export default function AttendanceEmployeeFormModal({
   dayIsHolidayDay = false,
   /** Chỉ xem — không cho sửa / lưu (vd. manager xem từ lưới tháng bảng lương). */
   readOnly = false,
+  overlayZIndex,
 }) {
   const { t, i18n } = useTranslation();
   const tl = useCallback(
@@ -191,10 +236,18 @@ export default function AttendanceEmployeeFormModal({
     });
   }, [selectedDate, i18n.language]);
 
-  const [form, setForm] = useState(() => ({ ...EMPTY_EMPLOYEE_FORM }));
+  const [form, setForm] = useState(() =>
+    buildAttendanceFormState(initialRecord, {
+      dayIsCompensatory,
+      attendanceRootPath,
+    }),
+  );
   /** Khóa `attendance/{date}/{id}` khi sửa — giữ cố định khi form thay đổi */
-  const [editAttendanceKey, setEditAttendanceKey] = useState(null);
+  const [editAttendanceKey, setEditAttendanceKey] = useState(
+    () => initialRecord?.id || null,
+  );
   const [saving, setSaving] = useState(false);
+  const skipFormInitEffectRef = useRef(true);
 
   /**
    * Chỉ reset form khi mở form / đổi người sửa / đổi ngày — không phụ thuộc `initialRecord`
@@ -223,68 +276,18 @@ export default function AttendanceEmployeeFormModal({
 
   useEffect(() => {
     if (!open) return;
-    if (initialRecord && initialRecord.id) {
-      const merged = applyLegacyIncludeTsNvAndCanonicalPhep({
-        ...EMPTY_EMPLOYEE_FORM,
-        ...initialRecord,
-      });
-      merged.duocNghiBu = normalizeDuocNghiBuForForm(
-        dayIsCompensatory,
-        merged.duocNghiBu,
-      );
-      merged.boPhanChuaDung = normalizeBoPhanChuaDungForForm(
-        merged.boPhanChuaDung,
-      );
-      merged[ATTENDANCE_EMP.NAME_YELLOW_BG] =
-        normalizeHoVaTenYellowHighlightForForm(
-          merged[ATTENDANCE_EMP.NAME_YELLOW_BG],
-        );
-      merged[ATTENDANCE_EMP.LEAVE_TYPE_CHECK] = normalizeLeaveTypeCheckForForm(
-        merged[ATTENDANCE_EMP.LEAVE_TYPE_CHECK],
-      );
-      if (isSeasonalAttendanceRoot(attendanceRootPath)) {
-        merged.stt = merged.sttThoiVu ?? "";
-        merged.gioiTinh =
-          normalizeAttendanceGioiTinhValue(merged.gioiTinh) ||
-          merged.gioiTinh ||
-          "YES";
-      }
-      setForm(merged);
-      setEditAttendanceKey(initialRecord.id);
-    } else if (initialRecord && typeof initialRecord === "object") {
-      const merged = applyLegacyIncludeTsNvAndCanonicalPhep({
-        ...EMPTY_EMPLOYEE_FORM,
-        ...initialRecord,
-        id: "",
-      });
-      merged.duocNghiBu = normalizeDuocNghiBuForForm(
-        dayIsCompensatory,
-        merged.duocNghiBu,
-      );
-      merged.boPhanChuaDung = normalizeBoPhanChuaDungForForm(
-        merged.boPhanChuaDung,
-      );
-      merged[ATTENDANCE_EMP.NAME_YELLOW_BG] =
-        normalizeHoVaTenYellowHighlightForForm(
-          merged[ATTENDANCE_EMP.NAME_YELLOW_BG],
-        );
-      merged[ATTENDANCE_EMP.LEAVE_TYPE_CHECK] = normalizeLeaveTypeCheckForForm(
-        merged[ATTENDANCE_EMP.LEAVE_TYPE_CHECK],
-      );
-      if (isSeasonalAttendanceRoot(attendanceRootPath)) {
-        merged.stt = merged.sttThoiVu ?? "";
-        merged.gioiTinh =
-          normalizeAttendanceGioiTinhValue(merged.gioiTinh) ||
-          merged.gioiTinh ||
-          "YES";
-      }
-      setForm(merged);
-      setEditAttendanceKey(null);
-    } else {
-      setForm({ ...EMPTY_EMPLOYEE_FORM });
-      setEditAttendanceKey(null);
+    if (skipFormInitEffectRef.current) {
+      skipFormInitEffectRef.current = false;
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialRecord chỉ đọc khi formInitKey đổi; không deps object để tránh reset khi parent tạo {...emp} mới cùng id
+    setForm(
+      buildAttendanceFormState(initialRecord, {
+        dayIsCompensatory,
+        attendanceRootPath,
+      }),
+    );
+    setEditAttendanceKey(initialRecord?.id || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialRecord chỉ đọc khi formInitKey đổi
   }, [open, formInitKey]);
 
   useEffect(() => {
@@ -304,43 +307,20 @@ export default function AttendanceEmployeeFormModal({
     }));
   }, []);
 
-  /** Khóa cuộn nền (desktop + mobile/iOS): overflow + body fixed + khôi phục scroll khi đóng. */
+  /** Combo đã khóa cuộn — không position:fixed lại body (gây giật layout cả biểu đồ). */
   useEffect(() => {
-    if (!open) return;
+    if (!open || overlayZIndex) return;
     const html = document.documentElement;
     const body = document.body;
-    const scrollY = window.scrollY;
-    const prev = {
-      htmlOverflow: html.style.overflow,
-      bodyOverflow: body.style.overflow,
-      bodyPosition: body.style.position,
-      bodyTop: body.style.top,
-      bodyLeft: body.style.left,
-      bodyRight: body.style.right,
-      bodyWidth: body.style.width,
-      overscroll: html.style.overscrollBehavior,
-    };
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
     html.style.overflow = "hidden";
-    html.style.overscrollBehavior = "none";
     body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.left = "0";
-    body.style.right = "0";
-    body.style.width = "100%";
-
     return () => {
-      html.style.overflow = prev.htmlOverflow;
-      html.style.overscrollBehavior = prev.overscroll;
-      body.style.overflow = prev.bodyOverflow;
-      body.style.position = prev.bodyPosition;
-      body.style.top = prev.bodyTop;
-      body.style.left = prev.bodyLeft;
-      body.style.right = prev.bodyRight;
-      body.style.width = prev.bodyWidth;
-      window.scrollTo(0, scrollY);
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
     };
-  }, [open]);
+  }, [open, overlayZIndex]);
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -370,7 +350,19 @@ export default function AttendanceEmployeeFormModal({
 
   const formHasOvertimeHours = useMemo(
     () => employeeHasPayrollOvertimeHours(form, attendanceDayCtx),
-    [form, attendanceDayCtx],
+    [
+      attendanceDayCtx,
+      form[ATTENDANCE_EMP.TIME_IN],
+      form[ATTENDANCE_EMP.TIME_OUT],
+      form[ATTENDANCE_EMP.SHIFT],
+      form[ATTENDANCE_EMP.LUNCH_OT_HOURS],
+      form[ATTENDANCE_EMP.DRIVER_OT_MINUTES],
+      form[ATTENDANCE_EMP.DRIVER_NIGHT_OT_MINUTES],
+      form.includeTaiXeInWorkingHours,
+      form.includeTaiXeTongInWorkingHours,
+      form.payrollEarlyOtPaperwork,
+      form.payrollLateOtExcluded,
+    ],
   );
 
   const otCheckOn = isHoVaTenYellowHighlight(form[ATTENDANCE_EMP.NAME_YELLOW_BG]);
@@ -468,20 +460,23 @@ export default function AttendanceEmployeeFormModal({
 
   const syncAnnualLeaveAfterAttendanceSave = (oldRecord, newLoaiPhep) => {
     if (!shouldClientSyncAnnualLeaveForAttendanceRoot(attendanceRootPath)) {
-      return Promise.resolve({ applied: false, reason: "disabled" });
+      return;
     }
     const year = annualLeaveYearFromDateKey(selectedDate);
-    return applyAnnualLeaveDeductionDelta(db, {
-      year,
-      attendanceRootPath,
-      updatedBy: user?.email ?? "",
-      dateKey: selectedDate,
-      oldRecord,
-      newLoaiPhep,
-    }).catch((err) => {
-      console.error("annualLeaveClientDaySync failed:", err);
-      return { applied: false, reason: "error" };
-    });
+    void import("@/features/leave/annualLeaveClientDaySync")
+      .then(({ applyAnnualLeaveDeductionDelta }) =>
+        applyAnnualLeaveDeductionDelta(db, {
+          year,
+          attendanceRootPath,
+          updatedBy: user?.email ?? "",
+          dateKey: selectedDate,
+          oldRecord,
+          newLoaiPhep,
+        }),
+      )
+      .catch((err) => {
+        console.error("annualLeaveClientDaySync failed:", err);
+      });
   };
 
   const finishSaveSuccess = (
@@ -490,8 +485,6 @@ export default function AttendanceEmployeeFormModal({
     loaiPhepToSave,
     savePayload = null,
   ) => {
-    setForm({ ...EMPTY_EMPLOYEE_FORM });
-    setEditAttendanceKey(null);
     setSaving(false);
     onClose();
     notify({
@@ -504,7 +497,7 @@ export default function AttendanceEmployeeFormModal({
     } else {
       onSaved?.(selectedDate);
     }
-    void syncAnnualLeaveAfterAttendanceSave(oldRecordForLeave, loaiPhepToSave);
+    syncAnnualLeaveAfterAttendanceSave(oldRecordForLeave, loaiPhepToSave);
   };
 
   const handleSubmit = async (e) => {
@@ -532,7 +525,10 @@ export default function AttendanceEmployeeFormModal({
     try {
       setSaving(true);
       if (editAttendanceKey) {
-        const existing = employees.find((emp) => emp.id === editAttendanceKey);
+        const existing =
+          initialRecord?.id === editAttendanceKey
+            ? initialRecord
+            : employees.find((emp) => emp.id === editAttendanceKey);
         if (
           !existing ||
           !canEditAttendanceForEmployee({
@@ -585,6 +581,7 @@ export default function AttendanceEmployeeFormModal({
           existingRaw,
           dayDoc,
           editAttendanceKey,
+          { seasonal: isSeasonalAttendance },
         );
         const updates = buildAttendanceDayRootPersistUpdates(
           attendancePath,
@@ -666,14 +663,12 @@ export default function AttendanceEmployeeFormModal({
           isSeasonal: isSeasonalAttendance,
         });
         const path = `${attendanceRootPath}/${selectedDate}/${firebaseKey}`;
-        const persistedNode =
-          addTarget?.mode === "add-merge"
-            ? mergeAttendanceDayNodeForPersist(
-                existingRaw,
-                dayDoc,
-                firebaseKey,
-              )
-            : { ...dayDoc, id: firebaseKey };
+        const persistedNode = mergeAttendanceDayNodeForPersist(
+          addTarget?.mode === "add-merge" ? existingRaw : {},
+          dayDoc,
+          firebaseKey,
+          { seasonal: isSeasonalAttendance },
+        );
 
         const updates = buildAttendanceDayRootPersistUpdates(
           path,
@@ -731,11 +726,15 @@ export default function AttendanceEmployeeFormModal({
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center overflow-hidden overscroll-none bg-black/45 p-3 backdrop-blur-[2px] sm:p-4"
-      style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
+      className={`fixed inset-0 flex items-center justify-center overflow-hidden overscroll-none bg-black/45 p-3 sm:p-4${
+        overlayZIndex ? "" : " backdrop-blur-[2px]"
+      }`}
+      style={{
+        zIndex: overlayZIndex || "var(--z-modal-backdrop, 1200)",
+      }}
     >
       <div
-        className={`relative mx-auto w-full max-w-[40rem] max-h-[92vh] overflow-y-auto overflow-x-hidden rounded-2xl border bg-white px-3 py-2.5 shadow-xl animate-fadeIn sm:px-3.5 sm:py-3 dark:bg-slate-900 ${
+        className={`relative mx-auto w-full max-w-[40rem] max-h-[92vh] overflow-y-auto overflow-x-hidden rounded-2xl border bg-white px-3 py-2.5 shadow-xl sm:px-3.5 sm:py-3 dark:bg-slate-900 ${
           isEditMode
             ? "border-fuchsia-300/80 dark:border-fuchsia-700/70"
             : "border-slate-200/90 dark:border-slate-700/80"
@@ -1128,24 +1127,31 @@ export default function AttendanceEmployeeFormModal({
                 onChange={handleLoaiPhepSelect}
                 disabled={isViewOnly}
                 className={employeeModalOtRowFieldClass}
+                style={{
+                  color:
+                    getAttendanceLeaveTypeColorCss(
+                      form[ATTENDANCE_EMP.LEAVE_TYPE],
+                    ) || undefined,
+                }}
               >
-                <option value="">
+                <option value="" style={{ color: "#6b7280" }}>
                   {tl("leaveTypePlaceholder", "— Không chọn —")}
                 </option>
                 {(() => {
                   const raw = String(form[ATTENDANCE_EMP.LEAVE_TYPE] ?? "").trim();
                   const isStd = Boolean(findGioVaoTypeOptionMatch(raw));
                   return !isStd && raw ? (
-                    <option value={raw}>
+                    <option
+                      value={raw}
+                      style={{
+                        color: getAttendanceLeaveTypeColorCss(raw) || "#dc2626",
+                      }}
+                    >
                       {raw} {tl("leaveTypeCurrentValue", "(giá trị hiện tại)")}
                     </option>
                   ) : null;
                 })()}
-                {ATTENDANCE_LOAI_PHEP_OPTIONS.map(({ value, shortLabel }) => (
-                  <option key={value} value={value}>
-                    {shortLabel} — {value}
-                  </option>
-                ))}
+                {LOAI_PHEP_OPTION_ELEMENTS}
               </select>
             </div>
           </div>

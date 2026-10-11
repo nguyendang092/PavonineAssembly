@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { downloadXlsxBuffer } from "@/utils/downloadXlsxBuffer";
 import { formatAttendanceTimeInColumnDisplay } from "./attendanceGioVaoTypeOptions";
 
 /** Xuất Excel danh sách bù công — logic tách từ AttendanceList. */
@@ -49,14 +50,6 @@ export async function exportAttendanceBuCongExcel({
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `bu-cong-${selectedDate}.xlsx`;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadXlsxBuffer(buffer, `bu-cong-${selectedDate}.xlsx`);
   return buCongEmployees.length;
 }

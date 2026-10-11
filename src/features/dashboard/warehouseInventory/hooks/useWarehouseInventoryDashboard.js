@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useEffect, useDeferredValue, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { db, ref, get, set } from "@/services/firebase";
+import { db, ref, get, set, waitForFirebaseAuth } from "@/services/firebase";
 import {
   WAREHOUSE_INV_LATEST_PATH,
   WAREHOUSE_INV_TABLE_PAGE_SIZE,
@@ -13,6 +13,7 @@ import {
   yearFromMonthKey,
 } from "../lib/parse";
 import {
+  coerceWarehouseInventoryRows,
   mergeWarehouseInventoryRows,
   removeWarehouseInventoryRowsByMonth,
 } from "../lib/mergeWarehouseInventoryRows";
@@ -69,7 +70,7 @@ export function useWarehouseInventoryDashboard() {
   const [isRevalidatingCloud, setIsRevalidatingCloud] = useState(false);
 
   const applyCloudSnapshot = useCallback((payload) => {
-    const cloudRows = Array.isArray(payload?.rows) ? payload.rows : [];
+    const cloudRows = coerceWarehouseInventoryRows(payload?.rows);
     setRows(cloudRows);
     setFileName(String(payload?.fileName ?? "").trim() || "Cloud Snapshot");
     setFxRates(normalizeWarehouseFxRates(payload?.fxRates));
@@ -85,8 +86,10 @@ export function useWarehouseInventoryDashboard() {
             DASHBOARD_QUERY_CACHE_TTL_MS,
           )
         : null;
+      const cachedRows = coerceWarehouseInventoryRows(cached?.data?.rows);
+      const hasCachedRows = cachedRows.length > 0;
 
-      if (cached?.data) {
+      if (hasCachedRows) {
         applyCloudSnapshot(cached.data);
         if (cached.isFresh) return true;
         setIsRevalidatingCloud(true);
@@ -95,24 +98,43 @@ export function useWarehouseInventoryDashboard() {
       }
 
       try {
+        const user = await waitForFirebaseAuth();
+        if (!user) {
+          setError(
+            tl(
+              "errorNeedLogin",
+              "Phiên đăng nhập Firebase chưa sẵn sàng. Đăng nhập lại rồi bấm Làm mới.",
+            ),
+          );
+          return hasCachedRows;
+        }
         const snap = await get(ref(db, WAREHOUSE_INV_LATEST_PATH));
         const payload = snap?.val?.() ?? snap.val();
         const normalized = {
-          rows: Array.isArray(payload?.rows) ? payload.rows : [],
+          rows: coerceWarehouseInventoryRows(payload?.rows),
           fileName: String(payload?.fileName ?? "").trim() || "Cloud Snapshot",
           fxRates: normalizeWarehouseFxRates(payload?.fxRates),
         };
         setCached(WAREHOUSE_INVENTORY_SNAPSHOT_CACHE_KEY, normalized);
+        setError("");
         return applyCloudSnapshot(normalized);
       } catch (err) {
         console.error("loadLatestSnapshotFromCloud failed:", err);
-        return Boolean(cached?.data?.rows?.length);
+        if (!hasCachedRows) {
+          setError(
+            tl(
+              "errorCloudLoad",
+              "Không tải được dữ liệu kiểm kê trên cloud. Bấm Làm mới hoặc đăng nhập lại.",
+            ),
+          );
+        }
+        return hasCachedRows;
       } finally {
         setLoading(false);
         setIsRevalidatingCloud(false);
       }
     },
-    [applyCloudSnapshot],
+    [applyCloudSnapshot, tl],
   );
 
   const refreshCloudSnapshot = useCallback(() => {

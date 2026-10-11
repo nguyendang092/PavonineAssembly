@@ -5,10 +5,10 @@ import { useReportT } from "../../productionReport/useReportTranslation";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
 import {
   aggregateBoardRowsByProductGroup,
-  formatS90dDefectQty,
+  formatS90dUncappedPct,
+  formatS90dQtyCell,
   formatS90dYieldPct,
   formatShortDateLabel,
-  isHighDefectCell,
   resolveS90dChainYieldPct,
   resolveS90dCumulativeYieldPct,
 } from "../lib/s90dDisplayUtils";
@@ -18,7 +18,7 @@ import {
   resolveS95hTargetQty,
 } from "../lib/s95hProcessTargets";
 import S90dBilingualHeader from "./S90dBilingualHeader";
-import S90dDefectImageThumbs from "./S90dDefectImageThumbs";
+import S90dDefectCell from "./S90dDefectCell";
 
 const INFO_COL_COUNT_BASE = 4;
 const QTY_COL_COUNT = 6;
@@ -32,51 +32,6 @@ function resolveClassificationCell({
   if (isPercent) return "";
   if (isTotal) return rt("totalLabel", "TOTAL");
   return processLabel;
-}
-
-function formatQty(value, isPercentRow) {
-  if (isPercentRow) {
-    return value > 0 ? `${value}%` : "0%";
-  }
-  if (!Number(value)) return "-";
-  return Number(value || 0).toLocaleString("vi-VN");
-}
-
-function formatPct(value) {
-  if (value == null || value === "") return "-";
-  return `${Number(value).toLocaleString("vi-VN")}%`;
-}
-
-function DefectCell({
-  qty,
-  imageUrl = "",
-  defectKey,
-  isPercent,
-  highlight,
-  totalNgQty,
-}) {
-  const showPink = !isPercent && isHighDefectCell(qty, totalNgQty);
-  const className = [
-    "s90d-num",
-    "s90d-defect-cell",
-    highlight || showPink ? "s90d-cell-alert" : "",
-    isPercent ? "s90d-cell-percent" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return (
-    <td className={className}>
-      <div className="s90d-defect-cell-display">
-        <span>{formatS90dDefectQty(qty, isPercent)}</span>
-        <S90dDefectImageThumbs
-          imageMap={{ [defectKey]: imageUrl }}
-          defectKey={defectKey}
-          isPercent={isPercent}
-        />
-      </div>
-    </td>
-  );
 }
 
 const SummaryProcessRow = memo(function SummaryProcessRow({
@@ -154,14 +109,14 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
       <td className="s90d-col-classification">{classificationCell}</td>
       {showTargetCols ? (
         <td className="s90d-num s90d-col-target">
-          {targetQty != null ? formatQty(targetQty, false) : ""}
+          {targetQty != null ? formatS90dQtyCell(targetQty, false, true) : ""}
         </td>
       ) : null}
       <td className="s90d-num s90d-col-total-qty">
-        {isPercent ? "" : formatQty(row.totalQty, false)}
+        {isPercent ? "" : formatS90dQtyCell(row.totalQty, false, true)}
       </td>
       <td className="s90d-num s90d-col-ok">
-        {isPercent ? "" : formatQty(row.okQty, false)}
+        {isPercent ? "" : formatS90dQtyCell(row.okQty, false, true)}
       </td>
       {showTargetCols ? (
         <td className="s90d-num s90d-col-efficiency">
@@ -177,20 +132,21 @@ const SummaryProcessRow = memo(function SummaryProcessRow({
         {isPercent ? "" : formatS90dYieldPct(cumulativeYieldPct, "-")}
       </td>
       <td className={`s90d-num s90d-col-ng ${isTotal ? "s90d-ng-total" : ""}`}>
-        {isPercent ? "" : formatQty(row.ngQty, false)}
+        {isPercent ? "" : formatS90dQtyCell(row.ngQty, false, true)}
       </td>
       <td
         className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}
       >
-        {isPercent ? "" : formatPct(row.ngRatePct)}
+        {isPercent ? "" : formatS90dUncappedPct(row.ngRatePct, "-")}
       </td>
       {S90D_DEFECT_COLUMNS.map(({ key }) => (
-        <DefectCell
+        <S90dDefectCell
           key={key}
           defectKey={key}
           qty={row.defects?.[key] ?? 0}
           imageUrl={row.defectImages?.[key] ?? ""}
           isPercent={isPercent}
+          useDash
           highlight={
             !isPercent &&
             isTotal &&

@@ -14,6 +14,7 @@ import {
 } from "firebase/auth";
 import { logUserAction } from "@/utils/userLog";
 import { useTranslation } from "react-i18next";
+import { toast } from "@/components/ui/toast";
 import "../../public/css/auth.css";
 
 /** Ký tự placeholder “vô hình” để CSS dùng :not(:placeholder-shown) — nhãn nổi không phụ thuộc :valid (tránh đè chữ khi gõ email dở). */
@@ -81,7 +82,6 @@ export default function SignIn({ onSignIn, onClose }) {
     loading: false,
   });
 
-  const [error, setError] = useState("");
   const [resetSuccess, setResetSuccess] = useState(false);
 
   /** Desktop/tablet: scale card 750×450 vừa viewport. Mobile: không scale (CSS stack) — tránh dải cực hẹp. */
@@ -196,22 +196,13 @@ export default function SignIn({ onSignIn, onClose }) {
     };
   }, []);
 
-  // Auto-hide reset success message after 3 seconds
-  useEffect(() => {
-    if (resetSuccess) {
-      const timer = setTimeout(() => setResetSuccess(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [resetSuccess]);
-
   // Password Reset Handler
   const handlePasswordReset = async (e) => {
     e.preventDefault();
-    setError("");
     updateUI("loading", true);
 
     if (!formState.resetEmail) {
-      setError(t("signIn.requireEmailReset"));
+      toast.warning(t("signIn.requireEmailReset"));
       updateUI("loading", false);
       return;
     }
@@ -220,10 +211,11 @@ export default function SignIn({ onSignIn, onClose }) {
       const auth = getAuth();
       await sendPasswordResetEmail(auth, formState.resetEmail);
       setResetSuccess(true);
+      toast.success(t("signIn.resetSent"));
       updateForm("resetEmail", "");
       logUserAction("password_reset_sent", { email: formState.resetEmail });
     } catch (err) {
-      setError(t("signIn.resetFail"));
+      toast.error(t("signIn.resetFail"));
     } finally {
       updateUI("loading", false);
     }
@@ -232,11 +224,10 @@ export default function SignIn({ onSignIn, onClose }) {
   // Sign In Handler
   const handleSignIn = async (e) => {
     e.preventDefault();
-    setError("");
     updateUI("loading", true);
 
     if (!formState.signInEmail || !formState.signInPassword) {
-      setError(t("signIn.requireEmailPassword"));
+      toast.warning(t("signIn.requireEmailPassword"));
       updateUI("loading", false);
       return;
     }
@@ -261,7 +252,7 @@ export default function SignIn({ onSignIn, onClose }) {
       clearForm();
       if (onClose) onClose();
     } catch (err) {
-      setError(t("signIn.loginFail"));
+      toast.error(t("signIn.loginFail"));
     } finally {
       updateUI("loading", false);
     }
@@ -270,7 +261,6 @@ export default function SignIn({ onSignIn, onClose }) {
   // Sign Up Handler
   const handleSignUp = async (e) => {
     e.preventDefault();
-    setError("");
     updateUI("loading", true);
 
     if (
@@ -278,7 +268,7 @@ export default function SignIn({ onSignIn, onClose }) {
       !formState.signUpPassword ||
       !formState.signUpName
     ) {
-      setError(t("signIn.requireAllFields"));
+      toast.warning(t("signIn.requireAllFields"));
       updateUI("loading", false);
       return;
     }
@@ -311,7 +301,7 @@ export default function SignIn({ onSignIn, onClose }) {
         });
       if (onClose) onClose();
     } catch (err) {
-      setError(t("signIn.signupFail"));
+      toast.error(t("signIn.signupFail"));
     } finally {
       updateUI("loading", false);
     }
@@ -391,15 +381,6 @@ export default function SignIn({ onSignIn, onClose }) {
                 <AuthFieldIcon variant="lock" />
               </div>
 
-              {error && !uiState.isActive && (
-                <div
-                  className="animation error-message"
-                  style={{ "--D": 3, "--S": 24 }}
-                >
-                  {error}
-                </div>
-              )}
-
               <div
                 className="input-box animation"
                 style={{ "--D": 3, "--S": 24 }}
@@ -424,7 +405,6 @@ export default function SignIn({ onSignIn, onClose }) {
                     onClick={(e) => {
                       e.preventDefault();
                       updateUI("showReset", true);
-                      setError("");
                     }}
                   >
                     {t("signIn.forgotPassword")}
@@ -438,7 +418,6 @@ export default function SignIn({ onSignIn, onClose }) {
                     onClick={(e) => {
                       e.preventDefault();
                       updateUI("isActive", true);
-                      setError("");
                     }}
                   >
                     {t("signIn.signup")}
@@ -518,15 +497,6 @@ export default function SignIn({ onSignIn, onClose }) {
                 <AuthFieldIcon variant="lock" />
               </div>
 
-              {error && uiState.isActive && (
-                <div
-                  className="animation error-message"
-                  style={{ "--li": 20, "--S": 4 }}
-                >
-                  {error}
-                </div>
-              )}
-
               <div
                 className="input-box animation"
                 style={{ "--li": 20, "--S": 4 }}
@@ -552,7 +522,6 @@ export default function SignIn({ onSignIn, onClose }) {
                     onClick={(e) => {
                       e.preventDefault();
                       updateUI("isActive", false);
-                      setError("");
                     }}
                   >
                     {t("signIn.login")}
@@ -581,7 +550,6 @@ export default function SignIn({ onSignIn, onClose }) {
           onClick={() => {
             updateUI("showReset", false);
             setResetSuccess(false);
-            setError("");
           }}
         >
           <div
@@ -589,11 +557,6 @@ export default function SignIn({ onSignIn, onClose }) {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="reset-modal-title">{t("signIn.sendReset")}</h2>
-            {resetSuccess && (
-              <div className="reset-success-message">
-                {t("signIn.resetSent")}
-              </div>
-            )}
             <form onSubmit={handlePasswordReset}>
               <div className="reset-input-wrapper">
                 <input
@@ -605,9 +568,6 @@ export default function SignIn({ onSignIn, onClose }) {
                   className="reset-email-input"
                 />
               </div>
-              {error && !resetSuccess && (
-                <div className="reset-error-message">{error}</div>
-              )}
               <div className="reset-button-group">
                 <button
                   type="submit"
@@ -623,7 +583,6 @@ export default function SignIn({ onSignIn, onClose }) {
                   onClick={() => {
                     updateUI("showReset", false);
                     setResetSuccess(false);
-                    setError("");
                   }}
                   className="reset-cancel-btn"
                 >

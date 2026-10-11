@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { downloadXlsxBuffer } from "@/utils/downloadXlsxBuffer";
 import { formatDailyReportAbsentRate } from "./attendanceDailyReportStats";
 
 function formatAbsentExcelCell(cell, pendingLabel) {
@@ -297,15 +298,10 @@ export async function exportAttendanceDailyReportExcel({
   styleDataRows(sheet, dataStartRow, grandRow.number);
 
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = buildAttendanceDailyReportExportFilename(dateKey, "xlsx");
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadXlsxBuffer(
+    buffer,
+    buildAttendanceDailyReportExportFilename(dateKey, "xlsx"),
+  );
 }
 
 export async function exportAttendanceDailyReportImage({

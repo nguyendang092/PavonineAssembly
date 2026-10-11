@@ -7,6 +7,7 @@ import {
   isStartWorkingDateInCalendarMonth,
   isStartWorkingDateInCalendarYear,
   listAnnualLeaveCalendarYearMonths,
+  annualLeaveGrantForCalendarMonth,
   monthMeetsHalfStandardWorkDays,
   normalizeAnnualLeaveStartWorkingDate,
   resolveAnnualLeaveAccrualMonthRange,
@@ -122,6 +123,62 @@ describe("monthMeetsHalfStandardWorkDays", () => {
         standardWorkDays: 22,
       }),
     ).toBe(false);
+  });
+});
+
+describe("annualLeaveGrantForCalendarMonth", () => {
+  it("returns 1 when half-rule month meets work-day threshold, else 0", () => {
+    expect(
+      annualLeaveGrantForCalendarMonth({
+        startWorkingDate: "2020-01-10",
+        year: 2026,
+        monthIndex: 9,
+        monthWorkSummary: { workDays: 11, standardWorkDays: 22 },
+        asOfDateKey: "2026-10-31",
+      }),
+    ).toBe(1);
+    expect(
+      annualLeaveGrantForCalendarMonth({
+        startWorkingDate: "2020-01-10",
+        year: 2026,
+        monthIndex: 9,
+        monthWorkSummary: { workDays: 10, standardWorkDays: 22 },
+        asOfDateKey: "2026-10-31",
+      }),
+    ).toBe(0);
+  });
+
+  it("returns 0 when monthIndex is missing", () => {
+    expect(
+      annualLeaveGrantForCalendarMonth({
+        startWorkingDate: "2020-01-10",
+        year: 2026,
+        monthIndex: null,
+        monthWorkSummary: { workDays: 22, standardWorkDays: 22 },
+        asOfDateKey: "2026-10-31",
+      }),
+    ).toBe(0);
+  });
+
+  it("returns 0 for months after as-of or before join", () => {
+    expect(
+      annualLeaveGrantForCalendarMonth({
+        startWorkingDate: "2020-01-10",
+        year: 2026,
+        monthIndex: 10,
+        monthWorkSummary: { workDays: 22, standardWorkDays: 22 },
+        asOfDateKey: "2026-10-11",
+      }),
+    ).toBe(0);
+    expect(
+      annualLeaveGrantForCalendarMonth({
+        startWorkingDate: "2026-11-01",
+        year: 2026,
+        monthIndex: 9,
+        monthWorkSummary: { workDays: 22, standardWorkDays: 22 },
+        asOfDateKey: "2026-10-31",
+      }),
+    ).toBe(0);
   });
 });
 

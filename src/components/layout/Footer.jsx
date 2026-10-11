@@ -4,7 +4,7 @@ const Footer = () => {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="relative z-0 mt-0 w-full overflow-hidden border-t border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100/90 px-4 py-10 text-slate-800 dark:border-transparent dark:from-slate-950 dark:to-slate-950 dark:text-slate-100 md:px-10">
+    <footer className="relative z-0 mt-0 w-full overflow-hidden border-t border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100/90 px-4 py-6 text-slate-800 dark:border-transparent dark:from-slate-950 dark:to-slate-950 dark:text-slate-100 md:px-10 md:py-10">
       <div className="pointer-events-none absolute inset-0 opacity-20 dark:opacity-30">
         <div className="absolute -top-24 -left-16 h-56 rounded-full bg-cyan-400/20 blur-3xl dark:bg-cyan-400/20" />
         <div className="absolute -right-20 -bottom-24 h-64 rounded-full bg-emerald-400/15 blur-3xl dark:bg-emerald-400/20" />
@@ -55,7 +55,7 @@ const Footer = () => {
               </ul>
             </div>
 
-            <div className="flex h-full min-h-[250px] w-full flex-col rounded-xl border border-emerald-600/25 bg-emerald-50/90 p-4 dark:border-emerald-300/30 dark:bg-emerald-300/10">
+            <div className="flex h-full min-h-0 w-full flex-col rounded-xl border border-emerald-600/25 bg-emerald-50/90 p-4 dark:border-emerald-300/30 dark:bg-emerald-300/10 md:min-h-[250px]">
               <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800 dark:text-emerald-200">
                 Góc tuyển dụng
               </h4>

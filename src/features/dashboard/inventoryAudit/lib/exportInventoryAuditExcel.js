@@ -1,3 +1,4 @@
+import { XLSX_MIME } from "@/utils/downloadXlsxBuffer";
 import { INVENTORY_AUDIT_WORKSPACE_COLUMNS } from "./constants";
 
 const COL_WIDTHS = {
@@ -224,7 +225,7 @@ export async function buildInventoryAuditWorkbook({
 function triggerXlsxDownload(buffer, filename) {
   const bytes = excelBufferToUint8Array(buffer);
   const blob = new Blob([bytes], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    type: XLSX_MIME,
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

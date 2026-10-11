@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateBoardRowsByProductGroup,
   formatS90dBoardDisplayName,
+  formatS90dPctCell,
+  formatS90dQty,
+  formatS90dQtyCell,
   formatS90dReportProductCode,
+  formatS90dUncappedPct,
   resolveS90dChainYieldPct,
   resolveS90dCumulativeYieldPct,
   resolveS90dStepYieldPct,
@@ -268,6 +272,20 @@ describe("formatS90dBoardDisplayName", () => {
         codeSlot: "E",
       }),
     ).toBe("S90D INZI Type E");
+  });
+});
+
+describe("s90d quantity/percent formatters", () => {
+  it("formats qty and percent cells with the same empty fallbacks as the tables", () => {
+    expect(formatS90dQty(1200)).toBe((1200).toLocaleString("vi-VN"));
+    expect(formatS90dQtyCell(0, false, true)).toBe("-");
+    expect(formatS90dQtyCell(0, false, false)).toBe((0).toLocaleString("vi-VN"));
+    expect(formatS90dQtyCell(12, true, false)).toBe("12%");
+    expect(formatS90dQtyCell(0, true, false)).toBe("0%");
+    expect(formatS90dUncappedPct(null)).toBe("0%");
+    expect(formatS90dUncappedPct(null, "0.0%")).toBe("0.0%");
+    expect(formatS90dPctCell("", true)).toBe("-");
+    expect(formatS90dPctCell("", false)).toBe("0%");
   });
 });
 

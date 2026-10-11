@@ -11,14 +11,12 @@ import {
   get,
   query,
   orderByKey,
-  limitToFirst,
-  limitToLast,
-  startAfter,
   startAt,
   endAt,
   runTransaction,
   off,
 } from "firebase/database";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import {
   getStorage,
   ref as storageRef,
@@ -40,6 +38,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
+const auth = getAuth(app);
+
+/** Chờ Auth khôi phục từ IndexedDB — `get()` trước đó sẽ bị rules `auth != null` từ chối. */
+export function waitForFirebaseAuth() {
+  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+  return new Promise((resolve) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub();
+      resolve(user);
+    });
+  });
+}
 
 // Export thêm các hàm thao tác database phổ biến
 export {
@@ -53,9 +63,6 @@ export {
   get,
   query,
   orderByKey,
-  limitToFirst,
-  limitToLast,
-  startAfter,
   startAt,
   endAt,
   runTransaction,

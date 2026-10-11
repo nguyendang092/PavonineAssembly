@@ -24,13 +24,13 @@ import {
   DETAIL_GROUP_KEYS,
   MONTH_DETAIL_HOUR_COL_INDICES,
   MONTH_DETAIL_ALLOWANCE_COL_INDICES,
-  MONTH_DETAIL_OT_COL_COUNT,
-  MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT,
-  MONTH_DETAIL_WORKDAY_COL_COUNT,
+  MONTH_DETAIL_ANNUAL_LEAVE_BALANCE_COL,
+  MONTH_DETAIL_ANNUAL_LEAVE_GRANT_COL,
   MONTHLY_TIMESHEET_STICKY_COL_COUNT,
   PAYROLL_MONTHLY_DETAIL_COL_EXCEL_WIDTH,
   payrollMonthlyTimesheetLayoutOffsets,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
+import { EMPTY_PAYROLL_MONTHLY_ANNUAL_LEAVE_COLS } from "@/features/payroll/payrollMonthlyTimesheetAnnualLeaveCols";
 import {
   buildPayrollMonthlyTimesheetExcelBorders,
   resolvePayrollMonthlyTimesheetExcelCellFill,
@@ -51,6 +51,8 @@ const PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT = "0.0";
 /** Hai chữ số thập phân — Korean Timesheet khối THỜI GIAN LÀM VIỆC / HỢP ĐỒNG. */
 const PAYROLL_MONTHLY_EXCEL_HOURS_HUNDREDTHS_NUM_FMT = "0.00";
 const PAYROLL_MONTHLY_EXCEL_ALLOWANCE_NUM_FMT = "#,##0";
+const PAYROLL_MONTHLY_EXCEL_ANNUAL_LEAVE_GRANT_NUM_FMT = "0";
+const PAYROLL_MONTHLY_EXCEL_ANNUAL_LEAVE_BALANCE_NUM_FMT = "0.00";
 
 function excelHoursOrEmpty(n) {
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -168,7 +170,14 @@ function coercePayrollMonthlyExcelNumericCell(value) {
 
 function applyPayrollMonthlyTimesheetExcelNumberFormats(
   sheet,
-  { layout, monthKeys, maxRow, maxCols, koreanTimesheetRules = false },
+  {
+    layout,
+    monthKeys,
+    maxRow,
+    maxCols,
+    koreanTimesheetRules = false,
+    includeAnnualLeaveCols = false,
+  },
 ) {
   const L = MONTHLY_TIMESHEET_STICKY_COL_COUNT;
   const dayColFirst = L + 1;
@@ -181,6 +190,16 @@ function applyPayrollMonthlyTimesheetExcelNumberFormats(
 
   const detailHourColSet = new Set();
   const detailAllowanceColSet = new Set();
+  const annualLeaveGrantColSet = new Set();
+  const annualLeaveBalanceColSet = new Set();
+  if (includeAnnualLeaveCols) {
+    annualLeaveGrantColSet.add(
+      layout.totalDetailStart + MONTH_DETAIL_ANNUAL_LEAVE_GRANT_COL + 1,
+    );
+    annualLeaveBalanceColSet.add(
+      layout.totalDetailStart + MONTH_DETAIL_ANNUAL_LEAVE_BALANCE_COL + 1,
+    );
+  }
   if (koreanTimesheetRules) {
     const blockStarts = [
       layout.totalDetailStart,
@@ -204,11 +223,15 @@ function applyPayrollMonthlyTimesheetExcelNumberFormats(
       : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
   }
   for (let c = detailColFirst; c <= maxCols; c += 1) {
-    sheet.getColumn(c).numFmt = detailAllowanceColSet.has(c)
-      ? PAYROLL_MONTHLY_EXCEL_ALLOWANCE_NUM_FMT
-      : detailHourColSet.has(c)
-        ? detailHourFmt
-        : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
+    sheet.getColumn(c).numFmt = annualLeaveGrantColSet.has(c)
+      ? PAYROLL_MONTHLY_EXCEL_ANNUAL_LEAVE_GRANT_NUM_FMT
+      : annualLeaveBalanceColSet.has(c)
+        ? PAYROLL_MONTHLY_EXCEL_ANNUAL_LEAVE_BALANCE_NUM_FMT
+        : detailAllowanceColSet.has(c)
+          ? PAYROLL_MONTHLY_EXCEL_ALLOWANCE_NUM_FMT
+          : detailHourColSet.has(c)
+            ? detailHourFmt
+            : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
   }
 
   for (let r = HEADER_ROW_COUNT + 1; r <= maxRow; r += 1) {
@@ -238,11 +261,15 @@ function applyPayrollMonthlyTimesheetExcelNumberFormats(
       const coerced = coercePayrollMonthlyExcelNumericCell(cell.value);
       cell.value = coerced;
       if (typeof coerced === "number") {
-        cell.numFmt = detailAllowanceColSet.has(c)
-          ? PAYROLL_MONTHLY_EXCEL_ALLOWANCE_NUM_FMT
-          : detailHourColSet.has(c)
-            ? detailHourFmt
-            : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
+        cell.numFmt = annualLeaveGrantColSet.has(c)
+          ? PAYROLL_MONTHLY_EXCEL_ANNUAL_LEAVE_GRANT_NUM_FMT
+          : annualLeaveBalanceColSet.has(c)
+            ? PAYROLL_MONTHLY_EXCEL_ANNUAL_LEAVE_BALANCE_NUM_FMT
+            : detailAllowanceColSet.has(c)
+              ? PAYROLL_MONTHLY_EXCEL_ALLOWANCE_NUM_FMT
+              : detailHourColSet.has(c)
+                ? detailHourFmt
+                : PAYROLL_MONTHLY_EXCEL_HOURS_NUM_FMT;
       }
     }
   }
@@ -257,15 +284,21 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   summaryById,
   detailHeaders,
   koreanTimesheetRules = false,
+  includeAnnualLeaveCols = false,
+  annualLeaveColsByRowId = null,
 }) {
   const days = monthKeys.length;
-  const layout = payrollMonthlyTimesheetLayoutOffsets(days);
+  const layout = payrollMonthlyTimesheetLayoutOffsets(days, {
+    includeAnnualLeaveCols,
+  });
   const cols = layout.totalCols;
   const grid = [];
   const detailHeadersByGroup =
     detailHeaders && typeof detailHeaders === "object" && detailHeaders.total
       ? detailHeaders
-      : buildPayrollMonthlyTimesheetDetailHeadersByGroup(tlPage);
+      : buildPayrollMonthlyTimesheetDetailHeadersByGroup(tlPage, {
+          includeAnnualLeaveCols,
+        });
 
   const emptyRow = () => Array(cols).fill(null);
   const L = MONTHLY_TIMESHEET_STICKY_COL_COUNT;
@@ -274,8 +307,9 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   header[0] = tlPage("monthlyTimesheetColStt", "STT");
   header[1] = tlPage("monthlyTimesheetColName", "Họ và tên");
   header[2] = tlPage("monthlyTimesheetColMnv", "MNV");
-  header[3] = tlPage("monthlyTimesheetColDept", "BP");
-  header[4] = tlPage("monthlyTimesheetColCoeff", "Hệ số TC");
+  header[3] = tlPage("monthlyTimesheetColDeptCode", "Mã BP");
+  header[4] = tlPage("monthlyTimesheetColDept", "BP");
+  header[5] = tlPage("monthlyTimesheetColCoeff", "Hệ số TC");
 
   monthKeys.forEach((dk, i) => {
     const pd = parseLocalDateKey(dk);
@@ -303,13 +337,22 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
   filteredIds.forEach((id, empBlockIdx) => {
     const rep = repById.get(id);
     const summaries = summaryById.get(id);
-    const detailMatrix = buildMonthlyDetailMatrixForEmployee(
-      summaries,
-      buildPayrollMonthlyTimesheetExcelDetailFormatters(koreanTimesheetRules),
-    );
+    const detailMatrix = buildMonthlyDetailMatrixForEmployee(summaries, {
+      ...buildPayrollMonthlyTimesheetExcelDetailFormatters(
+        koreanTimesheetRules,
+      ),
+      includeAnnualLeaveCols,
+      annualLeaveCols:
+        annualLeaveColsByRowId?.get?.(id) ??
+        EMPTY_PAYROLL_MONTHLY_ANNUAL_LEAVE_COLS,
+    });
     const nameDisp = String(rep?.hoVaTen ?? "—");
     const mnvDisp =
       rep?.mnv != null && String(rep.mnv).trim() ? String(rep.mnv) : "—";
+    const deptCodeDisp =
+      rep?.maBoPhan != null && String(rep.maBoPhan).trim()
+        ? String(rep.maBoPhan).trim()
+        : "—";
     const deptDisp = rep?.boPhan ? String(rep.boPhan) : "—";
 
     PAYROLL_MONTHLY_SUBROWS.forEach((sr, si) => {
@@ -317,8 +360,9 @@ export function buildPayrollMonthlyTimesheetExcelGrid({
       row[0] = empBlockIdx + 1;
       row[1] = nameDisp;
       row[2] = mnvDisp;
-      row[3] = deptDisp;
-      row[4] = sr.coeff == null ? null : roundHoursToTenths(sr.coeff);
+      row[3] = deptCodeDisp;
+      row[4] = deptDisp;
+      row[5] = sr.coeff == null ? null : roundHoursToTenths(sr.coeff);
 
       monthKeys.forEach((dk, di) => {
         const ch = chunkByDate.get(dk);
@@ -443,6 +487,7 @@ function applyPayrollMonthlyTimesheetExcelSheetStyles(
       const isHeader = r <= HEADER_ROW_COUNT;
       const isNameCol = c === 2;
       const isMnvCol = c === 3;
+      const isDeptCodeCol = c === 4;
       const isCoeffCol = c === L;
       const isDayOrDetail = c > L;
       cell.alignment = {
@@ -452,7 +497,10 @@ function applyPayrollMonthlyTimesheetExcelSheetStyles(
       };
       cell.font = {
         name:
-          isMnvCol || isCoeffCol || (isDayOrDetail && !isHeader)
+          isMnvCol ||
+          isDeptCodeCol ||
+          isCoeffCol ||
+          (isDayOrDetail && !isHeader)
             ? "Consolas"
             : "Arial",
         size: isHeader ? 10 : 9,
@@ -472,6 +520,8 @@ export async function writePayrollMonthlyTimesheetWorkbook({
   summaryById,
   detailHeaders,
   koreanTimesheetRules = false,
+  includeAnnualLeaveCols = false,
+  annualLeaveColsByRowId = null,
 }) {
   const { grid, layout } = buildPayrollMonthlyTimesheetExcelGrid({
     tlPage,
@@ -482,6 +532,8 @@ export async function writePayrollMonthlyTimesheetWorkbook({
     summaryById,
     detailHeaders,
     koreanTimesheetRules,
+    includeAnnualLeaveCols,
+    annualLeaveColsByRowId,
   });
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("MonthlyTimesheet");
@@ -492,12 +544,13 @@ export async function writePayrollMonthlyTimesheetWorkbook({
 
   const maxRow = sheet.rowCount;
   const maxCols = grid.reduce((m, row) => Math.max(m, row.length), 0);
-  const { leading, days } = payrollMonthlyTimesheetLayoutOffsets(monthKeys.length);
+  const { leading, days } = layout;
   const daysEndCol = leading + days;
   for (let c = 1; c <= maxCols; c += 1) {
     if (c === 1) sheet.getColumn(c).width = 6;
     else if (c === 2) sheet.getColumn(c).width = 24;
     else if (c === 3) sheet.getColumn(c).width = 12;
+    else if (c === 4) sheet.getColumn(c).width = 10;
     else if (c <= leading) sheet.getColumn(c).width = 12;
     else if (c <= daysEndCol) sheet.getColumn(c).width = 6;
     else sheet.getColumn(c).width = PAYROLL_MONTHLY_DETAIL_COL_EXCEL_WIDTH;
@@ -518,6 +571,7 @@ export async function writePayrollMonthlyTimesheetWorkbook({
     maxRow,
     maxCols,
     koreanTimesheetRules,
+    includeAnnualLeaveCols,
   });
 
   return workbook.xlsx.writeBuffer();

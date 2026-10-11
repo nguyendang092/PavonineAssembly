@@ -1,7 +1,6 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { push, remove, update } from "firebase/database";
-import * as XLSX from "@e965/xlsx";
 import AlertMessage from "@/components/ui/AlertMessage";
 import { useUserIdentity } from "@/contexts/UserContext";
 import { db, ref, set } from "@/services/firebase";
@@ -18,6 +17,7 @@ import {
   MOLD_COLUMNS,
 } from "./lib/moldConstants";
 import { buildMoldKpiSummary, getMoldStatus } from "./lib/moldMetrics";
+import { exportMoldsExcel } from "./lib/exportMoldsExcel";
 import {
   fromSafeKey,
   getColumnTranslationKey,
@@ -57,8 +57,9 @@ export default function MoldManagerPage() {
   const [imageZoom, setImageZoom] = useState({ show: false, src: "", alt: "" });
   const [failedImages, setFailedImages] = useState(new Set());
   const [detailModal, setDetailModal] = useState({ show: false, mold: null });
+  const [exportingExcel, setExportingExcel] = useState(false);
 
-  const { data: moldsRaw } = useFirebaseValue("molds");
+  const { data: moldsRaw, loading: moldsLoading } = useFirebaseValue("molds");
 
   const molds = useMemo(() => {
     if (!moldsRaw || typeof moldsRaw !== "object") return [];
@@ -340,26 +341,27 @@ export default function MoldManagerPage() {
     [t, user],
   );
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    if (exportingExcel) return;
+    setExportingExcel(true);
     try {
-      const dataRows = filteredMolds.map((m) => {
-        const row = {};
-        columns.forEach((col) => {
-          row[getTranslatedColumn(col)] = m[col] ?? "";
-        });
-        return row;
+      await exportMoldsExcel({
+        molds: filteredMolds,
+        columns,
+        headerLabel: getTranslatedColumn,
+        origin: window.location.origin,
       });
-      const ws = XLSX.utils.json_to_sheet(dataRows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Molds");
-      XLSX.writeFile(wb, `molds_${new Date().toISOString().slice(0, 10)}.xlsx`);
       setAlert({
         show: true,
         type: "success",
-        message: `${t("moldManager.exportExcel")} ✅`,
+        message: t("moldManager.exportExcelSuccess", {
+          defaultValue: "Đã xuất Excel (kèm ảnh nếu có).",
+        }),
       });
     } catch {
       setAlert({ show: true, type: "error", message: t("moldManager.errorOccurred") });
+    } finally {
+      setExportingExcel(false);
     }
   };
 
@@ -395,6 +397,8 @@ export default function MoldManagerPage() {
           <MoldTopBar
             subtitle={topSubtitle}
             onExport={handleExportExcel}
+            exportDisabled={exportingExcel}
+            exporting={exportingExcel}
             onAddNew={handleAddNew}
             showAddButton={Boolean(user)}
           />
@@ -424,6 +428,7 @@ export default function MoldManagerPage() {
 
           <MoldDataTable
             molds={filteredMolds}
+            loading={moldsLoading}
             searchTerm={deferredSearchTerm}
             page={page}
             onPageChange={setPage}

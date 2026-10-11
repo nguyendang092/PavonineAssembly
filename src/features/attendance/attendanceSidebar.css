@@ -414,13 +414,75 @@ html.hr-page-active .attendance-with-sidebar {
 }
 
 @media (max-width: 1023px) {
+  .attendance-with-sidebar {
+    --att-mobile-nav-h: 3.4rem;
+  }
+
   .attendance-with-sidebar__nav {
+    display: flex;
+    position: fixed;
+    top: var(--app-navbar-height, 3.25rem);
+    left: 0;
+    right: 0;
+    bottom: auto;
+    width: 100%;
+    height: var(--att-mobile-nav-h);
+    max-height: var(--att-mobile-nav-h);
+    flex-direction: row;
+    align-items: stretch;
+    overflow: hidden;
+    border-right: 0;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: 0 4px 16px -10px rgba(15, 23, 42, 0.22);
+    z-index: 40;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .attendance-with-sidebar__brand,
+  .attendance-with-sidebar__section,
+  .attendance-with-sidebar__footer {
     display: none;
+  }
+
+  .attendance-with-sidebar__links {
+    flex: 1 1 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 0;
+    padding: 0.4rem 0.55rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .attendance-with-sidebar__item {
+    flex: 0 0 auto;
+    width: auto;
+    height: auto;
+    min-height: 2.55rem;
+    padding: 0.35rem 0.7rem;
+  }
+
+  .attendance-with-sidebar__item::before {
+    display: none;
+  }
+
+  .attendance-with-sidebar__label {
+    flex: none;
+    white-space: nowrap;
   }
 
   .attendance-with-sidebar__main {
     margin-left: 0;
+    margin-top: var(--att-mobile-nav-h);
     width: 100%;
+    min-height: calc(
+      100dvh - var(--app-navbar-height, 3.25rem) - var(--att-mobile-nav-h)
+    );
   }
 }
 
@@ -662,6 +724,32 @@ html.hr-page-active .attendance-with-sidebar {
     visibility: visible;
     pointer-events: auto;
   }
+}
+
+html.dark .attendance-with-sidebar {
+  --att-sb-surface: #020617;
+  --att-sb-nav-bg: #0f172a;
+}
+
+html.dark .attendance-with-sidebar__item {
+  background: rgba(15, 23, 42, 0.92);
+  color: #cbd5e1;
+}
+
+html.dark .attendance-with-sidebar__item:hover,
+html.dark .attendance-with-sidebar__item--active {
+  background: color-mix(in srgb, var(--sb-tone) 22%, #0f172a);
+  color: #f8fafc;
+}
+
+html.dark .attendance-with-sidebar__item--disabled,
+html.dark .attendance-with-sidebar__item--disabled:hover {
+  background: rgba(15, 23, 42, 0.55);
+  color: #64748b;
+}
+
+html.dark .attendance-with-sidebar__section {
+  color: #94a3b8;
 }
 
 @media (prefers-reduced-motion: reduce) {

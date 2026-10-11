@@ -8,6 +8,8 @@ import { createPortal } from "react-dom";
 import Navbar from "@/components/layout/Navbar";
 import BackToTop from "@/components/ui/BackToTop";
 import BackToBottom from "@/components/ui/BackToBottom";
+import MobileChromeToggle from "@/components/ui/MobileChromeToggle";
+import RainFallOverlay from "@/components/ui/RainFallOverlay";
 import Footer from "@/components/layout/Footer";
 import "@/config/i18n";
 import {
@@ -36,6 +38,9 @@ const SeasonalStaffAttendance = lazyImport(
 );
 const PayrollSalaryCalculator = lazyImport(
   () => import("@/features/payroll/PayrollSalaryCalculator"),
+);
+const SeasonalPayrollSalaryPage = lazyImport(
+  () => import("@/features/payroll/SeasonalPayrollSalaryPage"),
 );
 const AnnualLeaveManager = lazyImport(
   () => import("@/features/leave/AnnualLeaveManager"),
@@ -128,6 +133,7 @@ const ROUTE_COMPONENTS = {
   AttendanceList,
   SeasonalStaffAttendance,
   PayrollSalaryCalculator,
+  SeasonalPayrollSalaryPage,
   AnnualLeaveManager,
   KoreanTimesheetPage,
   AttendanceDashboardPage,
@@ -143,9 +149,10 @@ function ScrollActionPortal({ scrollContainerRef }) {
 
   return createPortal(
     <div
-      className="pointer-events-auto fixed bottom-2 right-6 flex items-center gap-1.5"
+      className="app-scroll-actions pointer-events-auto fixed bottom-2 right-4 flex items-center gap-1.5 sm:right-6"
       style={{ zIndex: "var(--z-scroll-actions)" }}
     >
+      <MobileChromeToggle />
       <BackToBottom
         alwaysVisible
         inline
@@ -240,6 +247,7 @@ const App = () => {
     <UserProvider>
       <Router>
         <div className="min-h-screen flex flex-col bg-gray-50 text-slate-900 transition-colors duration-200 dark:bg-slate-950 dark:text-slate-100">
+          <RainFallOverlay />
           <NavbarShell isScrolled={isScrolled} />
 
           <MainScrollShell mainScrollRef={mainScrollRef}>

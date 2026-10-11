@@ -1,5 +1,15 @@
 import { normalizeMonthSortKey } from "./parse";
 
+/** RTDB đôi khi trả `rows` dạng object `{0:…,1:…}` thay vì array. */
+export function coerceWarehouseInventoryRows(raw) {
+  if (Array.isArray(raw)) return raw.filter((row) => row && typeof row === "object");
+  if (!raw || typeof raw !== "object") return [];
+  return Object.keys(raw)
+    .sort((a, b) => Number(a) - Number(b))
+    .map((key) => raw[key])
+    .filter((row) => row && typeof row === "object");
+}
+
 /**
  * Khóa dòng để gộp upload: kho + loại + tháng + CODE.
  * Upload file mới giữ tháng/mã cũ; dòng trùng khóa thì lấy bản mới.

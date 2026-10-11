@@ -30,6 +30,7 @@ import {
   resetMcDefectFilters,
 } from "../lib/dataAggregations";
 import { useMcDefectA3ManualEmployees } from "./useMcDefectA3ManualEmployees";
+import { toast } from "@/components/ui/toast";
 
 /** State, Firebase, derived data, CRUD — dùng trong McDefectReportPage. */
 export function useMcDefectDashboard() {
@@ -47,8 +48,6 @@ export function useMcDefectDashboard() {
     error: firebaseError,
   } = useFirebaseValue(MC_DEFECT_REPORT_PATH);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("info");
   const [reportMonth, setReportMonth] = useState("2026-05");
   const [reportDepartment, setReportDepartment] = useState(MC_DEFECT_FILTER_ALL);
   const [reportEmployee, setReportEmployee] = useState(MC_DEFECT_FILTER_ALL);
@@ -59,17 +58,14 @@ export function useMcDefectDashboard() {
   const [form, setForm] = useState(INITIAL_MC_DEFECT_FORM);
   /** { date, recordKey } khi đang sửa một dòng từ bảng raw */
   const [editingRecord, setEditingRecord] = useState(null);
+  const firebaseErrorNotifiedRef = useRef(false);
 
   const notifyA3ManualLoadError = useCallback(() => {
-    setMessageType("error");
-    setMessage(
-      tl("loadFirebaseError", "Không tải được dữ liệu từ Firebase."),
-    );
+    toast.error(tl("loadFirebaseError", "Không tải được dữ liệu từ Firebase."));
   }, [tl]);
 
   const notifyA3ManualSaveError = useCallback(() => {
-    setMessageType("error");
-    setMessage(tl("saveError", "Không lưu được dữ liệu lên Firebase."));
+    toast.error(tl("saveError", "Không lưu được dữ liệu lên Firebase."));
   }, [tl]);
 
   const a3Manual = useMcDefectA3ManualEmployees(
@@ -84,10 +80,15 @@ export function useMcDefectDashboard() {
   useEffect(() => {
     if (firebaseLoading) return;
     if (firebaseError) {
-      setMessageType("error");
-      setMessage(tl("loadFirebaseError", "Không tải được dữ liệu từ Firebase."));
+      if (!firebaseErrorNotifiedRef.current) {
+        firebaseErrorNotifiedRef.current = true;
+        toast.error(
+          tl("loadFirebaseError", "Không tải được dữ liệu từ Firebase."),
+        );
+      }
       return;
     }
+    firebaseErrorNotifiedRef.current = false;
     setRows(parseMcDefectReportSnapshot(defectReportRaw));
   }, [defectReportRaw, firebaseError, firebaseLoading, tl]);
 
@@ -330,14 +331,14 @@ export function useMcDefectDashboard() {
       note: row.note || "",
     });
     setEditingRecord({ date: row.date, recordKey: row.recordKey });
-    setMessageType("info");
-    setMessage(tl("editModeMessage", "Đang chỉnh sửa — thay đổi form phía trên rồi bấm «Cập nhật»."));
+    toast.info(
+      tl("editModeMessage", "Đang chỉnh sửa — thay đổi form phía trên rồi bấm «Cập nhật»."),
+    );
   }, [tl]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingRecord(null);
     setForm(INITIAL_MC_DEFECT_FORM);
-    setMessage("");
   }, []);
 
   const handleSubmit = useCallback((e) => {
@@ -354,8 +355,9 @@ export function useMcDefectDashboard() {
       !Number.isFinite(errorCount) ||
       errorCount < 0
     ) {
-      setMessageType("error");
-      setMessage(tl("validationError", "Vui lòng điền đủ ngày, nhân viên, bộ phận, loại lỗi và số lỗi hợp lệ."));
+      toast.error(
+        tl("validationError", "Vui lòng điền đủ ngày, nhân viên, bộ phận, loại lỗi và số lỗi hợp lệ."),
+      );
       return;
     }
     setSaving(true);
@@ -386,8 +388,7 @@ export function useMcDefectDashboard() {
 
     savePromise
       .then(() => {
-        setMessageType("success");
-        setMessage(
+        toast.success(
           isUpdate
             ? tl("recordUpdated", "Đã cập nhật bản ghi.")
             : tl("recordAdded", "Đã thêm dữ liệu thành công."),
@@ -395,8 +396,7 @@ export function useMcDefectDashboard() {
         resetFormAfterSave();
       })
       .catch(() => {
-        setMessageType("error");
-        setMessage(tl("saveError", "Không lưu được dữ liệu lên Firebase."));
+        toast.error(tl("saveError", "Không lưu được dữ liệu lên Firebase."));
       })
       .finally(() => setSaving(false));
   }, [form, editingRecord, tl]);
@@ -412,12 +412,10 @@ export function useMcDefectDashboard() {
           setEditingRecord(null);
           setForm(INITIAL_MC_DEFECT_FORM);
         }
-        setMessageType("success");
-        setMessage(tl("recordDeleted", "Đã xóa bản ghi."));
+        toast.success(tl("recordDeleted", "Đã xóa bản ghi."));
       })
       .catch(() => {
-        setMessageType("error");
-        setMessage(tl("deleteError", "Không xóa được bản ghi."));
+        toast.error(tl("deleteError", "Không xóa được bản ghi."));
       });
   }, [editingRecord, tl]);
 
@@ -425,15 +423,12 @@ export function useMcDefectDashboard() {
     if (!file) return;
     try {
       setSaving(true);
-      setMessage("");
       const count = await importMcDefectExcelFile(file, rows, tl);
-      setMessageType("success");
-      setMessage(
+      toast.success(
         tl("importSuccess", "Đã import {{count}} dòng (trùng khóa sẽ tự động ghi đè, không nhân bản).", { count }),
       );
     } catch (error) {
-      setMessageType("error");
-      setMessage(
+      toast.error(
         tl("importFailed", "Import thất bại: {{message}}", {
           message: error?.message || tl("unknownError", "Lỗi không xác định"),
         }),
@@ -461,11 +456,9 @@ export function useMcDefectDashboard() {
         .toISOString()
         .slice(0, 10)}.png`;
       a.click();
-      setMessageType("success");
-      setMessage(tl("imageDownloaded", "Đã tải hình dashboard."));
+      toast.success(tl("imageDownloaded", "Đã tải hình dashboard."));
     } catch {
-      setMessageType("error");
-      setMessage(tl("imageExportError", "Không thể xuất hình dashboard."));
+      toast.error(tl("imageExportError", "Không thể xuất hình dashboard."));
     }
   }, [tl]);
 
@@ -495,11 +488,9 @@ export function useMcDefectDashboard() {
       pdf.save(
         `Dashboard_Loi_Nhan_Su_${new Date().toISOString().slice(0, 10)}.pdf`,
       );
-      setMessageType("success");
-      setMessage(tl("pdfExported", "Đã xuất PDF dashboard."));
+      toast.success(tl("pdfExported", "Đã xuất PDF dashboard."));
     } catch {
-      setMessageType("error");
-      setMessage(tl("pdfExportError", "Không thể xuất PDF dashboard."));
+      toast.error(tl("pdfExportError", "Không thể xuất PDF dashboard."));
     }
   }, [tl]);
 
@@ -522,8 +513,6 @@ export function useMcDefectDashboard() {
   return {
     dashboardExportRef,
     loading,
-    message,
-    messageType,
     saving,
     reportOwner,
     setReportOwner,

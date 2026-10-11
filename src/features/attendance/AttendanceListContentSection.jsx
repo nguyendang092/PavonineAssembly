@@ -1,4 +1,4 @@
-import React, { memo, lazy, Suspense, useCallback } from "react";
+import React, { memo, lazy, Suspense, useCallback, useEffect } from "react";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import HrTablePagination from "@/components/ui/HrTablePagination";
 import { useHrTablePagination } from "@/hooks/useHrTablePagination";
@@ -8,10 +8,8 @@ import {
   useAttendanceListContentBranch,
   useAttendanceListComboBranch,
 } from "./attendanceListBranchContexts";
+import { loadAttendanceEmployeeFormModal } from "./loadAttendanceEmployeeFormModal";
 
-const AttendanceEmployeeFormModal = lazy(
-  () => import("./AttendanceEmployeeFormModal"),
-);
 const AttendanceOffDaysModal = lazy(
   () => import("./AttendanceOffDaysModal"),
 );
@@ -24,10 +22,6 @@ const AttendanceComboChartModal = lazy(
  */
 function AttendanceListContentSection() {
   const {
-    showEmployeeModal,
-    setShowEmployeeModal,
-    setEmployeeModalRecord,
-    employeeModalRecord,
     selectedDate,
     setSelectedDate,
     employees,
@@ -76,15 +70,16 @@ function AttendanceListContentSection() {
     comboStatDetailKey,
     setComboStatDetailKey,
     comboStatLabelByKey,
-    comboStatEmployeesByKey,
+    comboStatDetailEmployees,
     compareEmployeesBusy,
     handleOpenCompareEmployees,
+    normalizeDepartment,
   } = useAttendanceListComboBranch();
 
-  const closeEmployeeModal = useCallback(() => {
-    setShowEmployeeModal(false);
-    setEmployeeModalRecord(null);
-  }, [setShowEmployeeModal, setEmployeeModalRecord]);
+  useEffect(() => {
+    if (!showComboChartModal) return;
+    void loadAttendanceEmployeeFormModal();
+  }, [showComboChartModal]);
 
   const closeOffDaysModal = useCallback(() => {
     setOffDaysModalOpen(false);
@@ -96,26 +91,6 @@ function AttendanceListContentSection() {
 
   return (
     <>
-      {showEmployeeModal ? (
-        <Suspense fallback={null}>
-        <AttendanceEmployeeFormModal
-          open
-          onClose={closeEmployeeModal}
-          initialRecord={employeeModalRecord}
-          selectedDate={selectedDate}
-          employees={employees}
-          user={user}
-          userRole={userRole}
-          userDepartments={userDepartments}
-          attendanceRootPath={attendanceRootPath}
-          onAlert={setAlert}
-          dayIsCompensatory={isCompensatoryDay}
-          dayIsOffDay={isOffDay}
-          dayIsHolidayDay={isHolidayDay}
-        />
-        </Suspense>
-      ) : null}
-
       {offDaysModalOpen ? (
         <Suspense fallback={null}>
         <AttendanceOffDaysModal
@@ -174,8 +149,11 @@ function AttendanceListContentSection() {
             comboStatDetailKey={comboStatDetailKey}
             setComboStatDetailKey={setComboStatDetailKey}
             comboStatLabelByKey={comboStatLabelByKey}
-            comboStatEmployeesByKey={comboStatEmployeesByKey}
+            comboStatDetailEmployees={comboStatDetailEmployees}
             attendanceRootPath={attendanceRootPath}
+            normalizeDepartment={normalizeDepartment}
+            onEditEmployee={handleEdit}
+            canEditEmployee={canEditEmployee}
             compareEmployeesBusy={compareEmployeesBusy}
             onCompareEmployees={handleOpenCompareEmployees}
           />

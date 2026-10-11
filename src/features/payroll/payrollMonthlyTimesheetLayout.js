@@ -2,8 +2,8 @@
  * Cấu trúc cột lưới / xuất Excel bảng chấm công tháng — một nguồn, khớp PayrollMonthlyTimesheetModal.
  */
 
-/** STT + Họ tên + MNV + BP + Hệ số TC */
-export const MONTHLY_TIMESHEET_STICKY_COL_COUNT = 5;
+/** STT + Họ tên + MNV + Mã BP + BP + Hệ số TC */
+export const MONTHLY_TIMESHEET_STICKY_COL_COUNT = 6;
 /** Độ rộng cột khối chi tiết trên lưới tháng [px]. */
 export const PAYROLL_MONTHLY_DETAIL_COL_WIDTH_PX = 56;
 /** Độ rộng cột khối chi tiết khi xuất Excel (đơn vị ký tự). */
@@ -11,6 +11,8 @@ export const PAYROLL_MONTHLY_DETAIL_COL_EXCEL_WIDTH = 12;
 export const MONTH_DETAIL_COLS_PER_BLOCK = 18;
 /** Khối tổng — đủ 18 cột (gồm «Ngày thực tế làm việc»). */
 export const MONTH_DETAIL_TOTAL_COLS_PER_BLOCK = MONTH_DETAIL_COLS_PER_BLOCK;
+/** Hai cột PN (tháng hiện tại 0/1 + còn lại) — chỉ khối tổng NV chính thức. */
+export const MONTH_DETAIL_ANNUAL_LEAVE_COL_COUNT = 2;
 /** Khối thử việc / hợp đồng — bỏ cột «Ngày thực tế làm việc». */
 export const MONTH_DETAIL_PHASE_COLS_PER_BLOCK = 17;
 /** Cột 0–6 trong khối tổng — «NGÀY LÀM VIỆC». */
@@ -19,6 +21,9 @@ export const MONTH_DETAIL_WORKDAY_COL_COUNT = 7;
 export const MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT = 6;
 /** Cột 7–17 — «TĂNG CA (Hrs)» (6 TC + 2 NB + TS + phụ cấp ca đêm + Tổng GC ca đêm). */
 export const MONTH_DETAIL_OT_COL_COUNT = 11;
+/** Cột PN tháng này / tổng PN còn lại trong khối tổng (sau Tổng GC ca đêm). */
+export const MONTH_DETAIL_ANNUAL_LEAVE_GRANT_COL = 18;
+export const MONTH_DETAIL_ANNUAL_LEAVE_BALANCE_COL = 19;
 /** Phụ cấp ca đêm (S2) — VND / ngày. */
 export const PAYROLL_MONTHLY_NIGHT_SHIFT_ALLOWANCE_VND = 50_000;
 /** Chỉ số cột giờ trong khối chi tiết (0-based) — dùng định dạng Excel giờ. */
@@ -31,38 +36,68 @@ export const MONTH_DETAIL_ALLOWANCE_COL_INDICES = Object.freeze([16]);
 export const MONTH_DETAIL_SATS_COL_COUNT = 0;
 export const DETAIL_GROUP_KEYS = ["total", "trial", "official"];
 
-/** Số cột từng khối chi tiết: tổng 18, thử việc/hợp đồng 17. */
-const MONTHLY_DETAIL_BLOCK_COL_COUNTS = Object.freeze([
-  MONTH_DETAIL_TOTAL_COLS_PER_BLOCK,
-  MONTH_DETAIL_PHASE_COLS_PER_BLOCK,
-  MONTH_DETAIL_PHASE_COLS_PER_BLOCK,
-]);
-
-function monthlyDetailBlockColCount(groupIndex) {
+export function monthlyDetailTotalColsPerBlock(includeAnnualLeaveCols = false) {
   return (
-    MONTHLY_DETAIL_BLOCK_COL_COUNTS[groupIndex] ??
+    MONTH_DETAIL_TOTAL_COLS_PER_BLOCK +
+    (includeAnnualLeaveCols ? MONTH_DETAIL_ANNUAL_LEAVE_COL_COUNT : 0)
+  );
+}
+
+/** Số cột từng khối chi tiết: tổng 18 (+2 PN khi bật), thử việc/hợp đồng 17. */
+export function monthlyDetailBlockColCounts(includeAnnualLeaveCols = false) {
+  return [
+    monthlyDetailTotalColsPerBlock(includeAnnualLeaveCols),
+    MONTH_DETAIL_PHASE_COLS_PER_BLOCK,
+    MONTH_DETAIL_PHASE_COLS_PER_BLOCK,
+  ];
+}
+
+function monthlyDetailBlockColCount(groupIndex, includeAnnualLeaveCols = false) {
+  return (
+    monthlyDetailBlockColCounts(includeAnnualLeaveCols)[groupIndex] ??
     MONTH_DETAIL_TOTAL_COLS_PER_BLOCK
   );
 }
 
-export function monthlyDetailFlatColCount() {
-  return MONTHLY_DETAIL_BLOCK_COL_COUNTS.reduce((sum, n) => sum + n, 0);
+export function monthlyDetailFlatColCount(includeAnnualLeaveCols = false) {
+  return monthlyDetailBlockColCounts(includeAnnualLeaveCols).reduce(
+    (sum, n) => sum + n,
+    0,
+  );
+}
+
+function includeAnnualLeaveColsFrom(arg) {
+  if (arg === true) return true;
+  if (arg && typeof arg === "object") {
+    return Boolean(arg.includeAnnualLeaveCols);
+  }
+  return false;
 }
 
 /** Chuyển (khối, cột trong khối) → chỉ số phẳng trong `detailFlat`. */
-export function resolveMonthlyDetailFlatIndex(groupIndex, colInBlock) {
+export function resolveMonthlyDetailFlatIndex(
+  groupIndex,
+  colInBlock,
+  includeAnnualLeaveCols = false,
+) {
+  const include = includeAnnualLeaveColsFrom(includeAnnualLeaveCols);
   let offset = 0;
   for (let i = 0; i < groupIndex; i++) {
-    offset += monthlyDetailBlockColCount(i);
+    offset += monthlyDetailBlockColCount(i, include);
   }
   return offset + colInBlock;
 }
 
 /** Chuyển chỉ số phẳng → `{ groupIndex, colInBlock }`. */
-export function resolveMonthlyDetailGroupAndCol(flatIdx) {
+export function resolveMonthlyDetailGroupAndCol(
+  flatIdx,
+  includeAnnualLeaveCols = false,
+) {
+  const include = includeAnnualLeaveColsFrom(includeAnnualLeaveCols);
+  const counts = monthlyDetailBlockColCounts(include);
   let rem = flatIdx;
-  for (let g = 0; g < MONTHLY_DETAIL_BLOCK_COL_COUNTS.length; g++) {
-    const width = monthlyDetailBlockColCount(g);
+  for (let g = 0; g < counts.length; g++) {
+    const width = counts[g];
     if (rem < width) return { groupIndex: g, colInBlock: rem };
     rem -= width;
   }
@@ -79,8 +114,12 @@ function resolveMonthlyDetailBlockStart(layout, groupIndex) {
 /** Ghi `detailFlat` vào hàng xuất Excel — cùng map cột với PayrollMonthlyTimesheetModal. */
 export function assignMonthlyDetailFlatToExportRow(row, layout, detailFlat) {
   if (!Array.isArray(detailFlat) || !row || !layout) return;
+  const include = includeAnnualLeaveColsFrom(layout);
   for (let flatIdx = 0; flatIdx < detailFlat.length; flatIdx += 1) {
-    const { groupIndex, colInBlock } = resolveMonthlyDetailGroupAndCol(flatIdx);
+    const { groupIndex, colInBlock } = resolveMonthlyDetailGroupAndCol(
+      flatIdx,
+      include,
+    );
     const blockStart = resolveMonthlyDetailBlockStart(layout, groupIndex);
     row[blockStart + colInBlock] = detailFlat[flatIdx];
   }
@@ -99,34 +138,45 @@ export const MONTHLY_TIMESHEET_COEFF_COL_BY_SUBROW = {
   6: 5,
 };
 
-export function payrollMonthlyTimesheetTotalColCount(monthKeyCount) {
+export function payrollMonthlyTimesheetTotalColCount(
+  monthKeyCount,
+  options = {},
+) {
+  const includeAnnualLeaveCols = includeAnnualLeaveColsFrom(options);
   return (
     MONTHLY_TIMESHEET_STICKY_COL_COUNT +
     monthKeyCount +
-    monthlyDetailFlatColCount()
+    monthlyDetailFlatColCount(includeAnnualLeaveCols)
   );
 }
 
 /** Chỉ số cột 0-based cho lưới / Excel. */
-export function payrollMonthlyTimesheetLayoutOffsets(monthKeyCount) {
+export function payrollMonthlyTimesheetLayoutOffsets(
+  monthKeyCount,
+  options = {},
+) {
+  const includeAnnualLeaveCols = includeAnnualLeaveColsFrom(options);
   const days = monthKeyCount;
   const leading = MONTHLY_TIMESHEET_STICKY_COL_COUNT;
-  const totalBlock = MONTH_DETAIL_TOTAL_COLS_PER_BLOCK;
+  const totalBlock = monthlyDetailTotalColsPerBlock(includeAnnualLeaveCols);
   const phaseBlock = MONTH_DETAIL_PHASE_COLS_PER_BLOCK;
   return {
     leading,
     days,
+    includeAnnualLeaveCols,
     totalDetailStart: leading + days,
     trialDetailStart: leading + days + totalBlock,
     officialDetailStart: leading + days + totalBlock + phaseBlock,
-    totalCols: payrollMonthlyTimesheetTotalColCount(monthKeyCount),
+    totalCols: payrollMonthlyTimesheetTotalColCount(monthKeyCount, {
+      includeAnnualLeaveCols,
+    }),
   };
 }
 
 /** 18 cột chi tiết — dùng chung lưới và Excel. */
 export function buildPayrollMonthlyTimesheetDetailHeaders(
   tlPage,
-  { includeSoNgayCong = true } = {},
+  { includeSoNgayCong = true, includeAnnualLeaveCols = false } = {},
 ) {
   const headers = [
     tlPage("monthlyRuleColSoNgayCong", "Ngày thực tế làm việc"),
@@ -148,12 +198,22 @@ export function buildPayrollMonthlyTimesheetDetailHeaders(
     tlPage("monthlyRuleColNightShiftAllowance", "Phụ cấp ca đêm"),
     tlPage("monthlyRuleColNightShiftTotalHours", "Tổng GC ca đêm"),
   ];
+  if (includeSoNgayCong && includeAnnualLeaveCols) {
+    headers.push(
+      tlPage("monthlyTimesheetColMonthAnnualLeaveGrant", "PN tháng này"),
+      tlPage("monthlyTimesheetColAnnualLeaveBalance", "Tổng PN còn lại"),
+    );
+  }
   return includeSoNgayCong ? headers : headers.slice(1);
 }
 
-export function buildPayrollMonthlyTimesheetDetailHeadersByGroup(tlPage) {
+export function buildPayrollMonthlyTimesheetDetailHeadersByGroup(
+  tlPage,
+  { includeAnnualLeaveCols = false } = {},
+) {
   const total = buildPayrollMonthlyTimesheetDetailHeaders(tlPage, {
     includeSoNgayCong: true,
+    includeAnnualLeaveCols,
   });
   const phase = buildPayrollMonthlyTimesheetDetailHeaders(tlPage, {
     includeSoNgayCong: false,

@@ -34,7 +34,7 @@
 
 .dark .mc-defect-heatmap-table th,
 .dark .mc-defect-heatmap-table td {
-  border-color: #000;
+  border-color: #64748b;
 }
 
 .mc-defect-heatmap-table thead th {

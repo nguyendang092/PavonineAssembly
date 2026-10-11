@@ -2,6 +2,7 @@ import {
   formatAttendanceTimeInColumnDisplay,
   formatAttendanceLeaveTypeColumnForEmployee,
 } from "@/features/attendance/attendanceGioVaoTypeOptions";
+import { downloadXlsxBuffer } from "@/utils/downloadXlsxBuffer";
 
 /**
  * Bố cục sheet điểm danh (1 ngày) — dùng chung xuất Excel / mẫu upload để đồng bộ cột.
@@ -351,16 +352,11 @@ export async function downloadAttendanceDiemDanhTemplate(opts = {}) {
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
   const now = new Date();
   const dateOut = selectedDate || now.toISOString().slice(0, 10);
   const timeOut = now.toTimeString().slice(0, 8).replace(/:/g, "-");
-  a.download = `${fileNamePrefix}_${dateOut}_${timeOut}.xlsx`;
-  a.click();
-  window.URL.revokeObjectURL(url);
+  downloadXlsxBuffer(
+    buffer,
+    `${fileNamePrefix}_${dateOut}_${timeOut}.xlsx`,
+  );
 }

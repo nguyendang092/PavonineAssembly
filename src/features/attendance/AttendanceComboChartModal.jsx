@@ -1,32 +1,18 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ResponsiveContainer,
-  ComposedChart,
-  Bar,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from "recharts";
-import {
-  COMBO_CHART_METRIC_KEYS,
   COMBO_DASHBOARD_TILES,
   COMBO_DASHBOARD_TILE_KEYS_PRODUCTION,
   COMBO_DASHBOARD_TILE_KEYS_PRODUCTION_DETAIL,
   COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS,
   mergeComboProductionDeptPickerKeys,
+  filterEmployeesByComboDepartment,
 } from "./attendanceComboChartConfig";
-import {
-  getAttendanceLeaveTypeBadgeClassNameForComboStatKey,
-  getAttendanceLeaveTypeColorClassNameForComboStatKey,
-  getAttendanceComboBarFillForMetricKey,
-  formatAttendanceLeaveTypeColumnForEmployee,
-} from "./attendanceGioVaoTypeOptions";
-import {
-  isSeasonalAttendanceRoot,
-  resolveAttendanceDisplayStt,
-} from "./attendanceSeasonalStt";
+import { sortEmployeesStableAsc } from "./attendanceListSort";
+import { getAttendanceLeaveTypeColorClassNameForComboStatKey } from "./attendanceGioVaoTypeOptions";
+import { isSeasonalAttendanceRoot } from "./attendanceSeasonalStt";
+import AttendanceComboDeptChartCard from "./AttendanceComboDeptChartCard";
+import AttendanceComboStatDetailPanel from "./AttendanceComboStatDetailPanel";
+import AttendanceComboProductionDeptPicker from "./AttendanceComboProductionDeptPicker";
 import "../dashboard/dashboard.css";
 
 function AttendanceComboChartModal({
@@ -51,39 +37,89 @@ function AttendanceComboChartModal({
   comboStatDetailKey,
   setComboStatDetailKey,
   comboStatLabelByKey,
-  comboStatEmployeesByKey,
+  comboStatDetailEmployees = [],
   attendanceRootPath = "attendance",
   compareEmployeesBusy = false,
   onCompareEmployees,
+  normalizeDepartment,
+  onEditEmployee,
+  canEditEmployee,
 }) {
   const isSeasonalAttendance = isSeasonalAttendanceRoot(attendanceRootPath);
-  const detailTableCaptureRef = React.useRef(null);
-
-  /** Cùng một tập key cho ô KPI và cột Bar — tránh SX: KPI chi tiết nhưng chart chỉ 3 chỉ số chung. */
-  const comboGroupMetricKeys = React.useMemo(
+  const comboGroupMetricKeys = useMemo(
     () =>
       comboDashboardGroup === "production"
         ? COMBO_DASHBOARD_TILE_KEYS_PRODUCTION_DETAIL
         : COMBO_DASHBOARD_TILE_KEYS_PRODUCTION,
     [comboDashboardGroup],
   );
-  const comboDashboardTileKeySet = React.useMemo(
+  const comboDashboardTileKeySet = useMemo(
     () => new Set(comboGroupMetricKeys),
     [comboGroupMetricKeys],
   );
-  const activeComboMetricKeys = comboGroupMetricKeys;
 
   const [productionDeptPickerOpen, setProductionDeptPickerOpen] =
-    React.useState(false);
-  const [productionDeptPickerDraft, setProductionDeptPickerDraft] =
-    React.useState([]);
-  const [showDetailTiles, setShowDetailTiles] = React.useState(false);
+    useState(false);
+  const [productionDeptPickerDraft, setProductionDeptPickerDraft] = useState(
+    [],
+  );
+  const [showDetailTiles, setShowDetailTiles] = useState(false);
+  const [comboStatDetailDepartment, setComboStatDetailDepartment] =
+    useState(null);
 
   const handleCompareEmployeesClick = useCallback(() => {
     void onCompareEmployees?.();
   }, [onCompareEmployees]);
 
-  const productionDeptLabelForPicker = React.useCallback(
+  const unknownDepartmentLabel = tl(
+    "unknownDepartment",
+    "Chưa phân bộ phận",
+  );
+
+  const openMetricDetail = useCallback(
+    (key) => {
+      setComboStatDetailDepartment(null);
+      setComboStatDetailKey(key);
+    },
+    [setComboStatDetailKey],
+  );
+
+  const openDeptAttendance = useCallback(
+    (department) => {
+      setComboStatDetailDepartment(department || null);
+      setComboStatDetailKey("total");
+    },
+    [setComboStatDetailKey],
+  );
+
+  const closeStatDetail = useCallback(() => {
+    setComboStatDetailDepartment(null);
+    setComboStatDetailKey(null);
+  }, [setComboStatDetailKey]);
+
+  useEffect(() => {
+    if (!comboStatDetailKey) setComboStatDetailDepartment(null);
+  }, [comboStatDetailKey]);
+
+  const detailEmployees = useMemo(() => {
+    const filtered = filterEmployeesByComboDepartment(
+      comboStatDetailEmployees,
+      comboStatDetailDepartment,
+      normalizeDepartment,
+      unknownDepartmentLabel,
+    );
+    return sortEmployeesStableAsc(filtered, {
+      seasonal: isSeasonalAttendance,
+    });
+  }, [
+    comboStatDetailEmployees,
+    comboStatDetailDepartment,
+    normalizeDepartment,
+    unknownDepartmentLabel,
+    isSeasonalAttendance,
+  ]);
+
+  const productionDeptLabelForPicker = useCallback(
     (mk) =>
       comboProductionDeptCatalog.find((c) => c.matchKey === mk)?.label ??
       COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS[mk] ??
@@ -91,7 +127,7 @@ function AttendanceComboChartModal({
     [comboProductionDeptCatalog],
   );
 
-  const openProductionDeptPicker = React.useCallback(() => {
+  const openProductionDeptPicker = useCallback(() => {
     const base =
       comboProductionDeptOrder.length > 0
         ? [...comboProductionDeptOrder]
@@ -100,7 +136,7 @@ function AttendanceComboChartModal({
     setProductionDeptPickerOpen(true);
   }, [comboProductionDeptOrder, comboProductionDeptCatalog]);
 
-  const toggleProductionDeptDraftKey = React.useCallback((mk) => {
+  const toggleProductionDeptDraftKey = useCallback((mk) => {
     setProductionDeptPickerDraft((prev) => {
       const i = prev.indexOf(mk);
       if (i >= 0) return prev.filter((_, j) => j !== i);
@@ -108,7 +144,7 @@ function AttendanceComboChartModal({
     });
   }, []);
 
-  const moveProductionDeptDraftKey = React.useCallback((index, dir) => {
+  const moveProductionDeptDraftKey = useCallback((index, dir) => {
     setProductionDeptPickerDraft((prev) => {
       const j = index + dir;
       if (j < 0 || j >= prev.length) return prev;
@@ -118,7 +154,7 @@ function AttendanceComboChartModal({
     });
   }, []);
 
-  const saveProductionDeptPicker = React.useCallback(() => {
+  const saveProductionDeptPicker = useCallback(() => {
     const list =
       productionDeptPickerDraft.length > 0
         ? [...productionDeptPickerDraft]
@@ -133,100 +169,11 @@ function AttendanceComboChartModal({
 
   if (!open) return null;
 
-  const detailEmployees =
-    comboStatDetailKey != null
-      ? (comboStatEmployeesByKey[comboStatDetailKey] ?? [])
-      : [];
-
-  const detailMetricLabel =
-    comboStatDetailKey != null
+  const detailMetricLabel = comboStatDetailDepartment
+    ? `${comboStatDetailDepartment}${selectedDate ? ` · ${selectedDate}` : ""}`
+    : comboStatDetailKey != null
       ? (comboStatLabelByKey[comboStatDetailKey] ?? "")
       : "";
-
-  const buildDetailExportFileBase = () => {
-    const metric = String(comboStatDetailKey ?? "detail")
-      .replace(/[^a-zA-Z0-9_-]+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    return `thong-ke-chi-tiet_${metric || "detail"}_${stamp}`;
-  };
-
-  const handleExportDetailImage = async () => {
-    try {
-      const node = detailTableCaptureRef.current;
-      if (!node) return;
-      const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(node, {
-        cacheBust: true,
-        pixelRatio: Math.min(2, window.devicePixelRatio || 1.5),
-      });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `${buildDetailExportFileBase()}.png`;
-      a.click();
-    } catch (err) {
-      alert(tl("exportImageFail", "Không thể xuất hình. Vui lòng thử lại."));
-    }
-  };
-
-  const handleExportDetailExcel = async () => {
-    try {
-      const ExcelJS = (await import("exceljs")).default;
-      const workbook = new ExcelJS.Workbook();
-      const ws = workbook.addWorksheet("Detail");
-      ws.addRow([
-        tl("colIndex", "STT"),
-        tl("colCode", "MNV"),
-        tl("colName", "Họ và tên"),
-        tl("colDepartment", "Bộ phận"),
-        tl("colTimeIn", "Giờ vào"),
-        tl("leaveTypeColumn", "Loại phép"),
-        tl("comboStatColShift", "Ca làm việc"),
-      ]);
-      const headerRow = ws.getRow(1);
-      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      headerRow.alignment = { vertical: "middle", horizontal: "center" };
-      headerRow.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF4F46E5" },
-      };
-      detailEmployees.forEach((emp, idx) => {
-        ws.addRow([
-          resolveAttendanceDisplayStt(emp, idx + 1, isSeasonalAttendance) ??
-            idx + 1,
-          emp.mnv ?? "",
-          emp.hoVaTen ?? "",
-          emp.boPhan ?? "",
-          emp.gioVao ?? "",
-          formatAttendanceLeaveTypeColumnForEmployee(emp) || "",
-          emp.caLamViec ?? "",
-        ]);
-      });
-      ws.columns = [
-        { width: 6 },
-        { width: 14 },
-        { width: 28 },
-        { width: 24 },
-        { width: 14 },
-        { width: 16 },
-        { width: 14 },
-      ];
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${buildDetailExportFileBase()}.xlsx`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      alert(tl("exportExcelFail", "Không thể xuất Excel. Vui lòng thử lại."));
-    }
-  };
 
   return (
     <div
@@ -311,7 +258,6 @@ function AttendanceComboChartModal({
                 disabled={compareEmployeesBusy}
                 className="col-span-2 flex h-8 min-w-0 w-full items-center justify-center overflow-hidden whitespace-nowrap rounded-lg border border-indigo-300 bg-indigo-600 px-1 py-1 text-[8px] font-bold uppercase tracking-tight text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-1 sm:w-auto sm:px-3 sm:text-xs sm:tracking-wide dark:border-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600"
               >
-                {compareEmployeesBusy ? "⏳ " : "🧩 "}
                 {tl("compareEmployeesButton", "So sánh")}
               </button>
             ) : null}
@@ -335,7 +281,7 @@ function AttendanceComboChartModal({
               comboDashboardStats.total > 0 ? (
                 <button
                   type="button"
-                  onClick={() => setComboStatDetailKey("total")}
+                  onClick={() => openMetricDetail("total")}
                   className="min-w-[118px] shrink-0 rounded-lg border border-slate-300/80 bg-slate-50/90 px-1.5 py-1.5 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[100px] sm:max-w-[156px] sm:flex-1 sm:basis-[108px] dark:border-slate-700/90 dark:bg-slate-900/95"
                 >
                   <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-600 sm:text-[10px] dark:text-slate-400">
@@ -352,14 +298,12 @@ function AttendanceComboChartModal({
                 const v = comboDashboardStats[tile.key];
                 if (!v || v <= 0) return null;
                 const label = comboStatLabelByKey[tile.key] ?? tile.key;
-                const baseBtn =
-                  "min-w-[118px] shrink-0 rounded-lg border border-slate-300/80 bg-slate-50/90 px-1.5 py-1.5 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[100px] sm:max-w-[156px] sm:flex-1 sm:basis-[108px] dark:border-slate-700/90 dark:bg-slate-900/95";
                 return (
                   <button
                     key={tile.key}
                     type="button"
-                    onClick={() => setComboStatDetailKey(tile.key)}
-                    className={`${baseBtn} hover:ring-2 hover:ring-sky-500/35`}
+                    onClick={() => openMetricDetail(tile.key)}
+                    className="min-w-[118px] shrink-0 rounded-lg border border-slate-300/80 bg-slate-50/90 px-1.5 py-1.5 text-left shadow-sm transition hover:ring-2 hover:ring-sky-500/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/55 sm:min-w-[100px] sm:max-w-[156px] sm:flex-1 sm:basis-[108px] dark:border-slate-700/90 dark:bg-slate-900/95"
                   >
                     <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-600 sm:text-[10px] dark:text-slate-400">
                       {label}
@@ -399,11 +343,6 @@ function AttendanceComboChartModal({
                     className="animate-pulse rounded-xl border border-slate-300/60 bg-slate-100/90 p-2 dark:border-slate-700/80 dark:bg-slate-900/80"
                   >
                     <div className="mb-2 h-3 w-2/3 rounded bg-slate-300 dark:bg-slate-600" />
-                    <div className="mb-3 flex gap-1">
-                      <div className="h-6 flex-1 rounded bg-slate-200 dark:bg-slate-700" />
-                      <div className="h-6 flex-1 rounded bg-slate-200 dark:bg-slate-700" />
-                      <div className="h-6 flex-1 rounded bg-slate-200 dark:bg-slate-700" />
-                    </div>
                     <div className="h-[180px] rounded-lg bg-slate-200/80 dark:bg-slate-800/80 sm:h-[190px]" />
                   </div>
                 ))}
@@ -413,119 +352,18 @@ function AttendanceComboChartModal({
             <div className="min-h-0 flex-1 overflow-y-auto pr-1 transition-opacity duration-200">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {comboChartRowsVisible.map((row) => (
-                  <div
+                  <AttendanceComboDeptChartCard
                     key={row.department}
-                    className="rounded-xl border border-slate-300/85 bg-slate-80 p-1 transition dark:border-slate-700/90 dark:bg-slate-900/90"
-                  >
-                    <div className="mb-1 flex items-center justify-between gap-2 border-b border-slate-200/90 pb-1.5 dark:border-slate-700/80">
-                      <h4 className="min-w-0 flex flex-1 items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-slate-800 dark:text-slate-50">
-                        {comboDashboardGroup === "production" &&
-                        typeof getComboProductionDeptChartRank === "function" &&
-                        getComboProductionDeptChartRank(row.department) !=
-                          null ? (
-                          <span
-                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-amber-500 text-[10px] font-black text-white"
-                            title={tl(
-                              "comboProductionDeptRankHint",
-                              "Thứ tự BP sản xuất đã chọn",
-                            )}
-                          >
-                            {getComboProductionDeptChartRank(row.department)}
-                          </span>
-                        ) : null}
-                        <span className="min-w-0 truncate">
-                          {row.department}
-                        </span>
-                      </h4>
-                      <span className="rounded bg-slate-200/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-black dark:bg-slate-800 dark:text-slate-300">
-                        {tl("totalEmployees", "Tổng")}: {row.total}
-                      </span>
-                    </div>
-                    <div className="mb-1.5 flex flex-wrap gap-1 text-[10px]">
-                      {activeComboMetricKeys.map((k) => {
-                        const n = row[k];
-                        if (!n || n <= 0) return null;
-                        const lab =
-                          k === "nonStandardTimeIn"
-                            ? tl("nonStandardTimeInShort", "≠ HH:MM")
-                            : (comboStatLabelByKey[k] ?? k);
-                        return (
-                          <span
-                            key={k}
-                            className={`rounded border px-1.5 py-1 font-semibold uppercase ${getAttendanceLeaveTypeBadgeClassNameForComboStatKey(k)}`}
-                          >
-                            {lab}: {n}
-                          </span>
-                        );
-                      })}
-                    </div>
-                    <div className="mx-auto h-[180px] w-full sm:h-[190px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart
-                          data={[row]}
-                          margin={{
-                            top: 8,
-                            right: 10,
-                            left: 6,
-                            bottom: 18,
-                          }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#64748b"
-                            strokeOpacity={0.35}
-                          />
-                          <XAxis dataKey="department" hide />
-                          <YAxis
-                            yAxisId="left"
-                            allowDecimals={false}
-                            width={22}
-                            tick={{ fill: "#94a3b8", fontSize: 10 }}
-                          />
-                          <Tooltip
-                            formatter={(value, name) => {
-                              if (name === "total")
-                                return [
-                                  value,
-                                  tl("totalEmployees", "Tổng số nhân viên"),
-                                ];
-                              if (COMBO_CHART_METRIC_KEYS.includes(name)) {
-                                return [
-                                  value,
-                                  comboStatLabelByKey[name] ?? name,
-                                ];
-                              }
-                              return [value, name];
-                            }}
-                          />
-                          {activeComboMetricKeys.map((dataKey) =>
-                            row[dataKey] > 0 ? (
-                              <Bar
-                                key={dataKey}
-                                yAxisId="left"
-                                dataKey={dataKey}
-                                barSize={45}
-                                fill={getAttendanceComboBarFillForMetricKey(
-                                  dataKey,
-                                )}
-                                radius={[4, 4, 0, 0]}
-                              />
-                            ) : null,
-                          )}
-                          {row.total > 0 ? (
-                            <Line
-                              yAxisId="left"
-                              type="monotone"
-                              dataKey="total"
-                              stroke="#7c3aed"
-                              strokeWidth={2.25}
-                              dot={{ r: 3 }}
-                            />
-                          ) : null}
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
+                    row={row}
+                    comboDashboardGroup={comboDashboardGroup}
+                    getComboProductionDeptChartRank={
+                      getComboProductionDeptChartRank
+                    }
+                    activeComboMetricKeys={comboGroupMetricKeys}
+                    comboStatLabelByKey={comboStatLabelByKey}
+                    tl={tl}
+                    onOpenDeptAttendance={openDeptAttendance}
+                  />
                 ))}
               </div>
               {comboChartCardsVisibleCount < comboChartDataOrdered.length ? (
@@ -537,308 +375,30 @@ function AttendanceComboChartModal({
           )}
         </div>
 
-        {comboStatDetailKey && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="combo-stat-detail-title"
-            className="absolute inset-0 flex items-center justify-center bg-slate-950/55 p-2 backdrop-blur-sm sm:p-6"
-            style={{ zIndex: "var(--z-modal-content, 1210)" }}
-            onClick={() => setComboStatDetailKey(null)}
-          >
-            <div
-              className="flex max-h-[88vh] w-full max-w-[98vw] flex-col overflow-hidden rounded-lg border border-sky-400/60 bg-white sm:max-h-[min(90vh,940px)] sm:max-w-[min(96vw,80rem)] sm:rounded-xl sm:border-2 dark:border-sky-500/40 dark:bg-slate-900"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-1.5 bg-gradient-to-r from-sky-600 via-sky-500 to-teal-500 px-2 py-2 sm:gap-2 sm:px-4 sm:py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[8px] font-bold uppercase leading-none tracking-[0.1em] text-sky-100/95 text-black sm:text-[9px] sm:tracking-[0.12em]">
-                    {tl("comboStatDetailBadge", "Chi tiết danh sách")}
-                  </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <h4
-                      id="combo-stat-detail-title"
-                      className="text-sm font-extrabold leading-tight text-white sm:text-[1.05rem]"
-                    >
-                      {detailMetricLabel}
-                    </h4>
-                    <span className="inline-flex shrink-0 items-center rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-bold text-white ring-1 ring-white/35 sm:px-2 sm:text-[11px]">
-                      {tl("peopleCount", "{{count}} người", {
-                        count: detailEmployees.length ?? 0,
-                      })}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={handleExportDetailImage}
-                    className="inline-flex h-7 items-center justify-center rounded-md bg-white/15 px-1.5 text-[10px] font-bold text-white ring-1 ring-white/40 transition hover:bg-white/25 sm:h-8 sm:px-2.5 sm:text-[11px]"
-                    title={tl("exportImage", "Xuất hình")}
-                  >
-                    🖼️ {tl("exportImage", "Xuất hình")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExportDetailExcel}
-                    className="inline-flex h-7 items-center justify-center rounded-md bg-white/15 px-1.5 text-[10px] font-bold text-white ring-1 ring-white/40 transition hover:bg-white/25 sm:h-8 sm:px-2.5 sm:text-[11px]"
-                    title={tl("exportExcel", "Xuất Excel")}
-                  >
-                    📊 {tl("exportExcel", "Xuất Excel")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setComboStatDetailKey(null)}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/15 text-sm leading-none text-white ring-1 ring-white/40 transition hover:bg-white/25 sm:h-9 sm:w-9 sm:rounded-lg sm:text-lg"
-                    aria-label={t("attendanceList.close")}
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-              <div className="min-h-0 flex-1 overflow-auto bg-gradient-to-b from-sky-50/90 to-emerald-50/40 px-1.5 py-2 sm:px-4 sm:py-3 dark:from-slate-950 dark:to-slate-900">
-                <div
-                  ref={detailTableCaptureRef}
-                  className="overflow-hidden rounded-xl border-2 border-sky-200/80 bg-white dark:border-slate-600 dark:bg-slate-900"
-                >
-                  <div className="max-h-[70vh] overflow-auto sm:max-h-[min(68vh,760px)]">
-                    <table className="min-w-[720px] table-fixed border-collapse text-left text-[11px] leading-snug sm:min-w-0 sm:w-full sm:text-[15px]">
-                      <thead className="sticky top-0 z-10">
-                        <tr className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white">
-                          <th className="w-9 whitespace-nowrap px-1 py-2 text-center text-[10px] font-extrabold uppercase tracking-wide text-white sm:w-12 sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
-                            {tl("colIndex", "STT")}
-                          </th>
-                          <th className="w-11 whitespace-nowrap px-1 py-2 text-[10px] font-extrabold uppercase tracking-wide text-white sm:w-20 sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
-                            {tl("colCode", "MNV")}
-                          </th>
-                          <th className="w-[30%] px-1 py-2 text-[10px] font-extrabold uppercase tracking-wide text-white sm:w-[24%] sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
-                            {tl("colName", "Họ và tên")}
-                          </th>
-                          <th className="w-[14%] px-1 py-2 text-[10px] font-extrabold uppercase tracking-wide text-white sm:w-[20%] sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
-                            {tl("colDepartment", "Bộ phận")}
-                          </th>
-                          <th className="w-16 whitespace-nowrap px-1 py-2 text-center text-[10px] font-extrabold uppercase tracking-wide text-amber-100 sm:w-24 sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
-                            {tl("colTimeIn", "Giờ vào")}
-                          </th>
-                          <th className="w-16 px-1 py-2 text-[10px] font-extrabold uppercase tracking-wide text-rose-100 sm:w-24 sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
-                            {tl("leaveTypeColumn", "Loại phép")}
-                          </th>
-                          <th className="w-16 px-1 py-2 text-[10px] font-extrabold uppercase tracking-wide text-emerald-100 sm:w-24 sm:px-2 sm:py-3 sm:text-xs sm:tracking-wider">
-                            {tl("comboStatColShift", "Ca làm việc")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-sky-100 dark:divide-slate-700">
-                        {detailEmployees.length === 0 ? (
-                          <tr>
-                            <td
-                              colSpan={7}
-                              className="bg-amber-50/80 px-3 py-10 text-center text-sm font-medium text-amber-900 sm:px-4 sm:py-14 sm:text-base dark:bg-amber-950/30 dark:text-amber-200"
-                            >
-                              {tl("noData", "Không có dữ liệu")}
-                            </td>
-                          </tr>
-                        ) : (
-                          detailEmployees.map((emp, idx) => (
-                            <tr
-                              key={emp.id ?? `${emp.mnv}-${idx}`}
-                              className="odd:bg-white even:bg-sky-50/90 transition-colors hover:bg-amber-50/80 dark:odd:bg-slate-900 dark:even:bg-slate-800/90 dark:hover:bg-slate-700/80"
-                            >
-                              <td className="bg-sky-100/50 px-1 py-2 text-center text-sm font-bold tabular-nums text-sky-800 sm:px-2 sm:py-3 sm:text-base dark:bg-sky-950/50 dark:text-sky-200">
-                                {resolveAttendanceDisplayStt(
-                                  emp,
-                                  idx + 1,
-                                  isSeasonalAttendance,
-                                ) ?? idx + 1}
-                              </td>
-                              <td className="px-1.5 py-2 sm:px-3 sm:py-3">
-                                <span className="inline-block rounded-md bg-indigo-100 px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums text-indigo-900 sm:px-2 sm:text-sm dark:bg-indigo-950/80 dark:text-indigo-200">
-                                  {emp.mnv ?? ""}
-                                </span>
-                              </td>
-                              <td className="px-1 py-2 text-[11px] font-semibold text-slate-900 sm:px-3 sm:py-3 sm:text-base sm:font-bold dark:text-white">
-                                <span
-                                  className="block overflow-hidden text-ellipsis whitespace-nowrap sm:whitespace-normal"
-                                  title={emp.hoVaTen ?? ""}
-                                >
-                                  {emp.hoVaTen ?? ""}
-                                </span>
-                              </td>
-                              <td className="break-words px-1 py-2 text-[11px] font-medium text-violet-900 sm:px-3 sm:py-3 sm:text-base dark:text-violet-200">
-                                {emp.boPhan ?? ""}
-                              </td>
-                              <td className="whitespace-nowrap bg-emerald-50/70 px-1.5 py-2 text-center font-mono text-[11px] font-bold text-emerald-800 sm:px-3 sm:py-3 sm:text-base dark:bg-emerald-950/40 dark:text-emerald-300">
-                                {emp.gioVao ?? ""}
-                              </td>
-                              <td className="whitespace-nowrap bg-rose-50/70 px-1.5 py-2 text-center text-[11px] font-semibold text-rose-800 sm:px-3 sm:py-3 sm:text-base dark:bg-rose-950/30 dark:text-rose-200">
-                                {formatAttendanceLeaveTypeColumnForEmployee(
-                                  emp,
-                                ) || "—"}
-                              </td>
-                              <td className="bg-amber-50/60 px-1.5 py-2 text-[11px] font-semibold text-amber-900 sm:px-3 sm:py-3 sm:text-base dark:bg-amber-950/30 dark:text-amber-200">
-                                {emp.caLamViec ?? ""}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {productionDeptPickerOpen ? (
-          <div
-            className="absolute inset-0 flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm"
-            style={{ zIndex: "var(--z-modal-content, 1210)" }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="combo-production-dept-picker-title"
-            onClick={() => setProductionDeptPickerOpen(false)}
-          >
-            <div
-              className="flex max-h-[min(88vh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-emerald-500/50 bg-white dark:border-emerald-700/60 dark:bg-slate-900"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="border-b border-slate-200 bg-emerald-50 px-4 py-3 dark:border-slate-700 dark:bg-emerald-950/40">
-                <h3
-                  id="combo-production-dept-picker-title"
-                  className="text-sm font-bold text-emerald-950 dark:text-emerald-100"
-                >
-                  {tl(
-                    "comboProductionDeptPickerTitle",
-                    "Bộ phận sản xuất — Thứ tự hiển thị biểu đồ",
-                  )}
-                </h3>
-                <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                  {tl(
-                    "comboProductionDeptPickerHint",
-                    "Chọn bộ phận sản xuất và sắp thứ tự (1, 2, 3,...).",
-                  )}
-                </p>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-                <p className="mb-2 text-[11px] font-semibold uppercase text-slate-500 dark:text-slate-400">
-                  {tl("comboProductionDeptPickerSelected", "Đã chọn")}
-                </p>
-                {productionDeptPickerDraft.length === 0 ? (
-                  <p className="mb-4 text-xs text-amber-800 dark:text-amber-200">
-                    {tl(
-                      "comboProductionDeptPickerEmpty",
-                      "Chưa chọn — Lưu sẽ dùng danh sách mặc định đầy đủ.",
-                    )}
-                  </p>
-                ) : (
-                  <ol className="mb-4 space-y-2">
-                    {productionDeptPickerDraft.map((mk, idx) => (
-                      <li
-                        key={mk}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-800/90"
-                      >
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                          <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] text-white">
-                            {idx + 1}
-                          </span>
-                          {productionDeptLabelForPicker(mk)}
-                        </span>
-                        <span className="flex shrink-0 gap-1">
-                          <button
-                            type="button"
-                            className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold disabled:opacity-40 dark:border-slate-600"
-                            onClick={() => moveProductionDeptDraftKey(idx, -1)}
-                            disabled={idx === 0}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold disabled:opacity-40 dark:border-slate-600"
-                            onClick={() => moveProductionDeptDraftKey(idx, 1)}
-                            disabled={
-                              idx === productionDeptPickerDraft.length - 1
-                            }
-                          >
-                            ↓
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded border border-rose-300 px-1.5 py-0.5 text-[10px] font-bold text-rose-800 dark:border-rose-700 dark:text-rose-200"
-                            onClick={() => toggleProductionDeptDraftKey(mk)}
-                          >
-                            {tl("comboProductionDeptPickerRemove", "Bỏ")}
-                          </button>
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-                <p className="mb-2 text-[11px] font-semibold uppercase text-slate-500 dark:text-slate-400">
-                  {tl("comboProductionDeptPickerCatalog", "Danh mục")}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {comboProductionDeptCatalog.map(({ matchKey: mk, label }) => {
-                    const selected = productionDeptPickerDraft.indexOf(mk) >= 0;
-                    return (
-                      <button
-                        key={mk}
-                        type="button"
-                        onClick={() => toggleProductionDeptDraftKey(mk)}
-                        className={`rounded-lg border px-2 py-1 text-xs font-bold transition ${
-                          selected
-                            ? "border-emerald-600 bg-emerald-500/20 text-emerald-950 dark:border-emerald-500 dark:text-emerald-100"
-                            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 overflow-x-auto border-t border-slate-200 bg-slate-50 px-4 py-3 whitespace-nowrap sm:flex-wrap sm:justify-end sm:overflow-visible dark:border-slate-700 dark:bg-slate-950/80">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setProductionDeptPickerDraft(
-                      mergeComboProductionDeptPickerKeys(
-                        comboProductionDeptCatalog,
-                      ),
-                    )
-                  }
-                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
-                >
-                  {tl("comboProductionDeptPickerReset", "Mặc định")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onPersistComboProductionDeptOrder?.([]);
-                    setProductionDeptPickerOpen(false);
-                  }}
-                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
-                >
-                  {tl("comboProductionDeptPickerClearSaved", "Reset")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProductionDeptPickerOpen(false)}
-                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200"
-                >
-                  {tl("cancel", "Hủy")}
-                </button>
-                <button
-                  type="button"
-                  onClick={saveProductionDeptPicker}
-                  className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700"
-                >
-                  {tl("save", "Lưu")}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        <AttendanceComboStatDetailPanel
+          comboStatDetailKey={comboStatDetailKey}
+          detailMetricLabel={detailMetricLabel}
+          detailEmployees={detailEmployees}
+          isSeasonalAttendance={isSeasonalAttendance}
+          setComboStatDetailKey={closeStatDetail}
+          tl={tl}
+          t={t}
+          onEditEmployee={onEditEmployee}
+          canEditEmployee={canEditEmployee}
+        />
+        <AttendanceComboProductionDeptPicker
+          open={productionDeptPickerOpen}
+          onClose={() => setProductionDeptPickerOpen(false)}
+          tl={tl}
+          comboProductionDeptCatalog={comboProductionDeptCatalog}
+          productionDeptPickerDraft={productionDeptPickerDraft}
+          setProductionDeptPickerDraft={setProductionDeptPickerDraft}
+          productionDeptLabelForPicker={productionDeptLabelForPicker}
+          toggleProductionDeptDraftKey={toggleProductionDeptDraftKey}
+          moveProductionDeptDraftKey={moveProductionDeptDraftKey}
+          onPersistComboProductionDeptOrder={onPersistComboProductionDeptOrder}
+          onSave={saveProductionDeptPicker}
+        />
       </div>
     </div>
   );

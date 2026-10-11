@@ -12,6 +12,9 @@ export const AttendanceListFilteredDataBranchContext = createContext(null);
 /** Modal thống kê combo + so sánh nhân viên. */
 export const AttendanceListComboBranchContext = createContext(null);
 
+/** Form thêm/sửa điểm danh — tách khỏi content để mở modal không re-render bảng/biểu đồ. */
+export const AttendanceListEmployeeModalBranchContext = createContext(null);
+
 /** Ô tìm kiếm — tách khỏi toolbar để gõ không re-render filter/action menus. */
 export const AttendanceListSearchBranchContext = createContext(null);
 
@@ -60,6 +63,16 @@ export function useAttendanceListComboBranch() {
   if (v == null) {
     throw new Error(
       "useAttendanceListComboBranch must be used under AttendanceListComboBranchContext.Provider",
+    );
+  }
+  return v;
+}
+
+export function useAttendanceListEmployeeModalBranch() {
+  const v = useContext(AttendanceListEmployeeModalBranchContext);
+  if (v == null) {
+    throw new Error(
+      "useAttendanceListEmployeeModalBranch must be used under AttendanceListEmployeeModalBranchContext.Provider",
     );
   }
   return v;

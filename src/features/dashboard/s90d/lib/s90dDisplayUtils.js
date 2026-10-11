@@ -188,6 +188,27 @@ export function formatS90dYieldPct(value, emptyLabel = "0%") {
   return `${capYieldPct(value).toLocaleString("vi-VN")}%`;
 }
 
+export function formatS90dQty(value) {
+  return Number(value || 0).toLocaleString("vi-VN");
+}
+
+export function formatS90dQtyCell(value, isPercentRow, useDash) {
+  if (isPercentRow) {
+    return value > 0 ? `${value}%` : "0%";
+  }
+  if (useDash && !Number(value)) return "-";
+  return formatS90dQty(value);
+}
+
+export function formatS90dUncappedPct(value, emptyLabel = "0%") {
+  if (value == null || value === "") return emptyLabel;
+  return `${Number(value).toLocaleString("vi-VN")}%`;
+}
+
+export function formatS90dPctCell(value, useDash) {
+  return formatS90dUncappedPct(value, useDash ? "-" : "0%");
+}
+
 export function resolveS90dStepYieldPct(row) {
   if (!row?.totalQty) return null;
   return capYieldPct((Number(row.okQty ?? 0) / Number(row.totalQty)) * 100);

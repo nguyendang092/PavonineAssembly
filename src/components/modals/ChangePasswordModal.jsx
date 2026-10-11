@@ -7,26 +7,23 @@ import {
   EmailAuthProvider,
 } from "firebase/auth";
 import { logUserAction } from "@/utils/userLog";
+import { toast } from "@/components/ui/toast";
 
 export default function ChangePasswordModal({ onClose }) {
   const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError(t("changePassword.requireAll"));
+      toast.warning(t("changePassword.requireAll"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError(t("changePassword.mismatch"));
+      toast.warning(t("changePassword.mismatch"));
       return;
     }
     setLoading(true);
@@ -42,7 +39,7 @@ export default function ChangePasswordModal({ onClose }) {
       );
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPassword);
-      setSuccess(t("changePassword.success"));
+      toast.success(t("changePassword.success"));
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -53,7 +50,7 @@ export default function ChangePasswordModal({ onClose }) {
         "Đổi mật khẩu thành công",
       );
     } catch (err) {
-      setError(t("changePassword.fail"));
+      toast.error(t("changePassword.fail"));
     } finally {
       setLoading(false);
     }
@@ -112,14 +109,6 @@ export default function ChangePasswordModal({ onClose }) {
               required
             />
           </div>
-          {error && (
-            <div className="text-sm text-red-500 dark:text-red-400">{error}</div>
-          )}
-          {success && (
-            <div className="text-sm text-green-600 dark:text-green-400">
-              {success}
-            </div>
-          )}
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 transition"

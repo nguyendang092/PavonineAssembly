@@ -54,7 +54,7 @@ export const PERMISSION_CATALOG = Object.freeze([
     labelVi: "Lưới tháng (bảng lương) — bấm ô ngày mở form điểm danh",
     quyTac:
       "Trên trang giờ công, mở lưới tháng theo từng nhân viên; bấm ô từng ngày để sửa giờ vào/ra, loại phép và ca làm việc của ngày đó.",
-    routes: ["/attendance-salary"],
+    routes: ["/attendance-salary", "/seasonal-staff-salary"],
     modules: [
       "features/payroll/PayrollMonthlyTimesheetModal.jsx",
       "features/payroll/PayrollMonthlyTimeInOutModal.jsx",
@@ -106,7 +106,12 @@ export const PERMISSION_CATALOG = Object.freeze([
     labelVi: "Form điểm danh nhân viên (modal)",
     quyTac:
       "Modal nhập và sửa điểm danh một nhân viên trong ngày: giờ vào/ra, loại phép, ca, nghỉ bù, ghi chú; lưu Firebase và đồng bộ phép năm khi có PN.",
-    routes: ["/attendance-list", "/attendance-salary", "/seasonal-staff-attendance"],
+    routes: [
+      "/attendance-list",
+      "/attendance-salary",
+      "/seasonal-staff-attendance",
+      "/seasonal-staff-salary",
+    ],
     modules: [
       "features/attendance/AttendanceEmployeeFormModal.jsx",
       "utils/attendanceEmployeeRecord.js",
@@ -140,6 +145,7 @@ export const PERMISSION_CATALOG = Object.freeze([
       "/attendance-list",
       "/seasonal-staff-attendance",
       "/attendance-salary",
+      "/seasonal-staff-salary",
     ],
     modules: [
       "features/attendance/AttendanceListDateOffToolbar.jsx",
@@ -155,8 +161,11 @@ export const PERMISSION_CATALOG = Object.freeze([
     labelVi: "Trang tính lương — chỉnh dòng liên quan điểm danh",
     quyTac:
       "Trang tính lương/giờ công: xem bảng nhân viên theo tháng, chỉnh thông tin chấm công trên từng dòng và xác nhận giấy tờ tăng ca (OT).",
-    routes: ["/attendance-salary"],
-    modules: ["features/payroll/PayrollSalaryCalculator.jsx"],
+    routes: ["/attendance-salary", "/seasonal-staff-salary"],
+    modules: [
+      "features/payroll/PayrollSalaryCalculator.jsx",
+      "features/payroll/SeasonalPayrollSalaryPage.jsx",
+    ],
     authRolesHelpers: [
       "canEditAttendanceForEmployee",
       "canConfirmOtPaperwork",

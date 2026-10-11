@@ -629,6 +629,8 @@ function valuesForDetailBlock({
   fmtAllowance = fmtPayrollMonthlyNightShiftAllowanceCell,
   colsPerBlock,
   includeSoNgayCong = true,
+  includeAnnualLeaveCols = false,
+  annualLeaveCols = null,
 }) {
   const tcByRow = [
     summary.coeff03,
@@ -694,6 +696,17 @@ function valuesForDetailBlock({
   if (!includeSoNgayCong) {
     return values.filter((_, idx) => idx !== DETAIL_COL_SO_NGAY_CONG);
   }
+  if (includeAnnualLeaveCols) {
+    if (si === 0) {
+      values.push(annualLeaveCols?.monthGrant === 1 ? "1" : "0");
+      const balance = annualLeaveCols?.balanceDisplay;
+      values.push(
+        balance == null || String(balance).trim() === "" ? "—" : String(balance),
+      );
+    } else {
+      values.push(" ", " ");
+    }
+  }
   return values;
 }
 
@@ -710,6 +723,8 @@ export function buildMonthlyDetailFlatValues({
   fmtLeave = fmtPayrollMonthlyLeaveDayCell,
   fmtAllowance = fmtPayrollMonthlyNightShiftAllowanceCell,
   colsPerBlock = MONTH_DETAIL_COLS_PER_BLOCK,
+  includeAnnualLeaveCols = false,
+  annualLeaveCols = null,
 }) {
   const total = summaries?.total ?? summaries ?? {};
   const trial = summaries?.trial ?? {};
@@ -728,6 +743,8 @@ export function buildMonthlyDetailFlatValues({
       summary: total,
       fmtHours,
       includeSoNgayCong: true,
+      includeAnnualLeaveCols,
+      annualLeaveCols,
     }),
     ...valuesForDetailBlock({
       ...blockArgs,
@@ -753,6 +770,8 @@ export function buildMonthlyDetailMatrixForEmployee(summaries, options = {}) {
   const fmtAllowance =
     options.fmtAllowance ?? fmtPayrollMonthlyNightShiftAllowanceCell;
   const colsPerBlock = options.colsPerBlock ?? MONTH_DETAIL_COLS_PER_BLOCK;
+  const includeAnnualLeaveCols = Boolean(options.includeAnnualLeaveCols);
+  const annualLeaveCols = options.annualLeaveCols ?? null;
   return PAYROLL_MONTHLY_SUBROWS.map((_, si) =>
     buildMonthlyDetailFlatValues({
       si,
@@ -763,6 +782,8 @@ export function buildMonthlyDetailMatrixForEmployee(summaries, options = {}) {
       fmtLeave,
       fmtAllowance,
       colsPerBlock,
+      includeAnnualLeaveCols,
+      annualLeaveCols,
     }),
   );
 }

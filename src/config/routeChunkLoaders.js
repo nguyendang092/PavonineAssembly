@@ -22,6 +22,8 @@ export const ROUTE_CHUNK_LOADERS = {
   "/seasonal-staff-attendance": () =>
     import("@/features/attendance/SeasonalStaffAttendance"),
   "/attendance-salary": () => import("@/features/payroll/PayrollSalaryCalculator"),
+  "/seasonal-staff-salary": () =>
+    import("@/features/payroll/SeasonalPayrollSalaryPage"),
   "/annual-leave": () => import("@/features/leave/AnnualLeaveManager"),
   "/attendance-dashboard": () =>
     import("@/features/attendance/AttendanceDashboardPage"),

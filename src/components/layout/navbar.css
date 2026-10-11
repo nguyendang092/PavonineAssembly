@@ -102,8 +102,8 @@ body {
 }
 
 #hamburger-menu {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border-radius: 999px;
     display: none;
@@ -720,7 +720,8 @@ body {
 @media (max-width: 1280px) {
     .navbar {
         gap: 0.5rem;
-        padding-inline: 12px;
+        padding-inline: max(12px, env(safe-area-inset-left, 0px))
+            max(12px, env(safe-area-inset-right, 0px));
         background: var(--nav-bg-light);
         z-index: calc(var(--navbar-z-mobile-overlay) + 1);
     }
@@ -777,6 +778,7 @@ body {
         bottom: 0;
         left: 0;
         width: min(22.5rem, 100vw);
+        max-width: 100%;
         height: auto;
         flex-direction: column;
         padding: 0;
@@ -994,8 +996,12 @@ body {
 }
 
 @media (max-width: 480px) {
+    #mobile-menu {
+        width: 100vw;
+    }
+
     .nav-logo-text {
-        font-size: 1.15rem;
+        font-size: 1.05rem;
     }
 
     .user-profile-text {

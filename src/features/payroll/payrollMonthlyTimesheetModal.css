@@ -140,6 +140,7 @@
 .dark .pm-ts-name-cell,
 .dark .pm-ts-header-day,
 .dark .pm-ts-mnv-cell,
+.dark .pm-ts-dept-code-cell,
 .dark .pm-ts-bp-cell,
 .dark .pm-ts-coeff-col-cell,
 .dark .pm-ts-day-value,
@@ -175,6 +176,7 @@
 }
 
 .pm-ts-mnv-cell,
+.pm-ts-dept-code-cell,
 .pm-ts-bp-cell,
 .pm-ts-coeff-col-cell,
 .pm-ts-day-value,
@@ -184,6 +186,7 @@
   color: rgb(15 23 42);
 }
 
+.pm-ts-dept-code-cell,
 .pm-ts-bp-cell {
   overflow: hidden;
   text-overflow: ellipsis;

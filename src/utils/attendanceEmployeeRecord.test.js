@@ -204,6 +204,28 @@ describe("buildEmployeeAttendanceDayDocument loaiPhep (form save)", () => {
   });
 });
 
+describe("mergeAttendanceDayNodeForPersist — thời vụ", () => {
+  it("không ghi stt chính thức hay cờ payroll vào node thời vụ", () => {
+    const merged = mergeAttendanceDayNodeForPersist(
+      {
+        stt: 99,
+        sttThoiVu: 2,
+        mnv: "TV001",
+        monthEmployeeKey: "TV001",
+        payrollEarlyOtPaperwork: true,
+      },
+      { sttThoiVu: 2, mnv: "TV001", gioVao: "07:00" },
+      "emp_tv1",
+      { seasonal: true },
+    );
+    expect(merged.stt).toBeNull();
+    expect(merged.sttThoiVu).toBe(2);
+    expect(merged.monthEmployeeKey).toBeUndefined();
+    expect(merged.payrollEarlyOtPaperwork).toBeUndefined();
+    expect(merged.mnv).toBe("TV001");
+  });
+});
+
 describe("buildAttendanceDayNodePersistPatch", () => {
   it("only includes changed fields on edit", () => {
     const existing = {

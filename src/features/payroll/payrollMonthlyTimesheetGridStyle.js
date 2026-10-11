@@ -5,7 +5,6 @@ import { getAttendanceLeaveTypeEmphasisPrintCellBg } from "@/features/attendance
 import { parseLocalDateKey } from "@/utils/dateKey";
 import {
   DETAIL_GROUP_KEYS,
-  MONTH_DETAIL_COLS_PER_BLOCK,
   MONTHLY_TIMESHEET_STICKY_COL_COUNT,
   resolveMonthlyDetailGroupAndCol,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
@@ -174,7 +173,10 @@ export function buildPayrollMonthlyTimesheetExcelBorders({
   ];
   const isDetailGroupStart = detailGroupStarts.includes(c);
   const { groupIndex: detailGroupIdx, colInBlock } = isDetailCol
-    ? resolveMonthlyDetailGroupAndCol(c - 1 - layout.totalDetailStart)
+    ? resolveMonthlyDetailGroupAndCol(
+        c - 1 - layout.totalDetailStart,
+        layout?.includeAnnualLeaveCols,
+      )
     : { groupIndex: 0, colInBlock: 0 };
   const col0InBlock = isDetailCol && colInBlock === 0;
 
@@ -236,7 +238,10 @@ export function resolvePayrollMonthlyTimesheetExcelCellFill({
 
     if (c > daysEnd) {
       const rel = c - 1 - layout.totalDetailStart;
-      const { groupIndex: block } = resolveMonthlyDetailGroupAndCol(rel);
+      const { groupIndex: block } = resolveMonthlyDetailGroupAndCol(
+        rel,
+        layout?.includeAnnualLeaveCols,
+      );
       return getPayrollMonthlyTimesheetDetailGroupHeaderBg(
         DETAIL_GROUP_KEYS[block],
       );
@@ -262,6 +267,9 @@ export function resolvePayrollMonthlyTimesheetExcelCellFill({
   }
 
   const rel = c - 1 - layout.totalDetailStart;
-  const { groupIndex } = resolveMonthlyDetailGroupAndCol(rel);
+  const { groupIndex } = resolveMonthlyDetailGroupAndCol(
+    rel,
+    layout?.includeAnnualLeaveCols,
+  );
   return getPayrollMonthlyTimesheetDetailGroupBodyBg(groupIndex);
 }

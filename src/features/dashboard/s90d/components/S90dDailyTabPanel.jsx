@@ -20,26 +20,11 @@ import {
   resolveNgRateTone,
   S90D_ALL_DAYS_KEY,
 } from "../lib/buildS90dDailyRollup";
-import { formatShortDateLabel } from "../lib/s90dDisplayUtils";
+import { formatS90dQty, formatS90dUncappedPct, formatShortDateLabel } from "../lib/s90dDisplayUtils";
+import { sanitizeDownloadFilenameSegment } from "@/utils/sanitizeDownloadFilenameSegment";
+import { toast } from "@/components/ui/toast";
 import S90dKpiCards from "./S90dKpiCards";
 import S90dSummaryProcessTable from "./S90dSummaryProcessTable";
-
-function formatQty(value) {
-  return Number(value || 0).toLocaleString("vi-VN");
-}
-
-function formatPct(value) {
-  if (value == null || value === "") return "0%";
-  return `${Number(value).toLocaleString("vi-VN")}%`;
-}
-
-function sanitizeExportSegment(value) {
-  return String(value ?? "")
-    .trim()
-    .replace(/[^\w.-]+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "");
-}
 
 function buildBoardExportFilename({
   reportCode,
@@ -49,17 +34,17 @@ function buildBoardExportFilename({
   monthDisplayLabel,
   productCode,
 }) {
-  const prefix = sanitizeExportSegment(reportCode) || "S90D";
-  const code = sanitizeExportSegment(productCode) || prefix;
+  const prefix = sanitizeDownloadFilenameSegment(reportCode) || "S90D";
+  const code = sanitizeDownloadFilenameSegment(productCode) || prefix;
   if (isTotalView) {
-    const month = sanitizeExportSegment(monthDisplayLabel) || "Thang";
+    const month = sanitizeDownloadFilenameSegment(monthDisplayLabel) || "Thang";
     return `${prefix}_Tong_${month}_${code}.png`;
   }
   if (isAllDaysView) {
-    const month = sanitizeExportSegment(monthDisplayLabel) || "Thang";
+    const month = sanitizeDownloadFilenameSegment(monthDisplayLabel) || "Thang";
     return `${prefix}_Tat_ca_${month}_${code}.png`;
   }
-  const date = sanitizeExportSegment(selectedDateKey) || "Ngay";
+  const date = sanitizeDownloadFilenameSegment(selectedDateKey) || "Ngay";
   return `${prefix}_${date}_${code}.png`;
 }
 
@@ -73,7 +58,7 @@ function S90dDailyMonthStats({ rollup }) {
         <p className="s90d-daily-stat-label">
           {rt("dailyMonthCumulative", "Lũy kế tháng")}
         </p>
-        <p className="s90d-daily-stat-value">{formatQty(rollup.monthTotalQty)}</p>
+        <p className="s90d-daily-stat-value">{formatS90dQty(rollup.monthTotalQty)}</p>
         <p className="s90d-daily-stat-hint">
           {rt("dailyMonthActiveDays", "{{count}} ngày đã nhập", {
             count: rollup.activeDays,
@@ -86,7 +71,7 @@ function S90dDailyMonthStats({ rollup }) {
           {rt("dailyMonthNgTotal", "Tổng NG lũy kế")}
         </p>
         <p className="s90d-daily-stat-value s90d-daily-stat-value--ng">
-          {formatQty(rollup.monthNgQty)}
+          {formatS90dQty(rollup.monthNgQty)}
         </p>
         <p className="s90d-daily-stat-hint">
           {rt("dailyMonthTopNgLine", "Line NG nhiều nhất: {{process}}", {
@@ -102,7 +87,7 @@ function S90dDailyMonthStats({ rollup }) {
           {rt("dailyMonthAvgNgRate", "Tỷ lệ NG bình quân")}
         </p>
         <p className="s90d-daily-stat-value s90d-daily-stat-value--rate">
-          {formatPct(rollup.avgNgRate)}
+          {formatS90dUncappedPct(rollup.avgNgRate)}
         </p>
         <p className="s90d-daily-stat-hint">
           {rt("dailyMonthNgTarget", "Mục tiêu < {{target}}%", {
@@ -184,7 +169,7 @@ function S90dDailyDateStrip({
             {rt("dailyAllDays", "Tất cả")}
           </span>
           <span className="s90d-daily-date-chip-rate">
-            {hasAnyDayData ? formatPct(monthAvgNgRate) : "—"}
+            {hasAnyDayData ? formatS90dUncappedPct(monthAvgNgRate) : "—"}
           </span>
         </button>
         {monthDailySummaries.map((daily) => {
@@ -215,7 +200,7 @@ function S90dDailyDateStrip({
                 {formatShortDateLabel(daily.dateKey)}
               </span>
               <span className="s90d-daily-date-chip-rate">
-                {daily.hasData ? formatPct(ngRatePct) : "—"}
+                {daily.hasData ? formatS90dUncappedPct(ngRatePct) : "—"}
               </span>
             </button>
           );
@@ -274,7 +259,7 @@ function S90dDailyBoardCard({
         }),
       );
     } catch {
-      window.alert(
+      toast.error(
         rt("boardImageExportError", "Không thể tải hình bảng sản lượng."),
       );
     } finally {
@@ -456,7 +441,7 @@ export default memo(function S90dDailyTabPanel({
         }),
       );
     } catch {
-      window.alert(
+      toast.error(
         rt("boardImageExportError", "Không thể tải hình bảng sản lượng."),
       );
     } finally {

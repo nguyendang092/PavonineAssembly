@@ -194,7 +194,9 @@ function buildDayChunkMapForYearMonths(
       const raw = attendanceRoot[dateKey];
       if (!raw) continue;
       const chunk = stampPayrollMonthChunkAttendanceRootFlags(
-        buildPayrollMonthDayChunkFromRaw(raw, dateKey),
+        buildPayrollMonthDayChunkFromRaw(raw, dateKey, {
+          attendanceRootPath,
+        }),
         attendanceRootPath,
       );
       if (chunk) map.set(dateKey, chunk);

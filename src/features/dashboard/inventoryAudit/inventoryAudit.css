@@ -1274,12 +1274,14 @@
 @media (max-width: 860px) {
   .inv-audit-page {
     flex-direction: column;
+    overflow: visible;
+    min-height: 0;
   }
 
   .inv-audit-ws-sidebar {
     flex: 0 0 auto;
     width: 100%;
-    max-height: 12rem;
+    max-height: none;
     border-right: 0;
     border-bottom: 1px solid #cbd5e1;
   }

@@ -587,6 +587,18 @@ export function getAttendanceLeaveTypeColorClassNameForEmployee(emp) {
   return getAttendanceLeaveTypeColorClassName(getAttendanceLeaveTypeRaw(emp));
 }
 
+/** Hex cùng quy tắc `getAttendanceLeaveTypeColorClassName` — dùng cho `<select>`/`<option>`. */
+export function getAttendanceLeaveTypeColorCss(raw) {
+  const cls = getAttendanceLeaveTypeColorClassName(raw);
+  if (cls.includes("text-blue-600")) return "#2563eb";
+  if (cls.includes("text-green-600")) return "#16a34a";
+  if (cls.includes("text-amber-700")) return "#b45309";
+  if (cls.includes("text-gray-600")) return "#4b5563";
+  if (cls.includes("text-gray-500")) return "#6b7280";
+  if (cls.includes("text-red-600")) return "#dc2626";
+  return "";
+}
+
 /**
  * Badge «Phân loại phép» (tóm tắt): nền + chữ + viền theo cùng quy tắc.
  */

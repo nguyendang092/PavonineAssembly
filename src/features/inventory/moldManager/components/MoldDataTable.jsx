@@ -15,7 +15,7 @@ import {
   parseShotCount,
   resolveTypeStyle,
 } from "../lib/moldMetrics";
-import { formatMoldNumber, getImagePath } from "../lib/moldUtils";
+import { formatMoldNumber, getImagePath, retryImageSrcOnce } from "../lib/moldUtils";
 import MoldRowActionsMenu from "./MoldRowActionsMenu";
 
 function HighlightText({ text, query }) {
@@ -153,6 +153,7 @@ function MoldPagination({ page, totalPages, onPageChange, t }) {
 
 export default function MoldDataTable({
   molds,
+  loading = false,
   searchTerm,
   page,
   onPageChange,
@@ -281,7 +282,9 @@ export default function MoldDataTable({
                   alt: mold["Mold Code"],
                 })
               }
-              onError={() => onImageError(imageKey)}
+              onError={(ev) => {
+                if (!retryImageSrcOnce(ev, imagePath)) onImageError(imageKey);
+              }}
             />
           ) : (
             <span className="mold-thumb mold-thumb--empty">—</span>
@@ -350,7 +353,9 @@ export default function MoldDataTable({
             {!molds.length ? (
               <tr>
                 <td colSpan={12} style={{ textAlign: "center", padding: "32px" }}>
-                  {t("moldManager.noResults", "Không có bản ghi phù hợp.")}
+                  {loading
+                    ? t("moldManager.loading", "Đang tải dữ liệu…")
+                    : t("moldManager.noResults", "Không có bản ghi phù hợp.")}
                 </td>
               </tr>
             ) : null}

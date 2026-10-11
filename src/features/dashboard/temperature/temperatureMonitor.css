@@ -1017,6 +1017,33 @@
   }
 }
 
+html.dark .temperature-monitor-page {
+  --tm-bg: #020617;
+  --tm-card: #0f172a;
+  --tm-border: #334155;
+  --tm-border-strong: #475569;
+  --tm-text: #f1f5f9;
+  --tm-text-2: #94a3b8;
+  --tm-text-3: #64748b;
+  --tm-accent-light: #0b3a48;
+  --tm-ok-bg: #052e16;
+  --tm-warn-bg: #3b2a12;
+  --tm-danger-bg: #3b1512;
+  --tm-empty-bg: #1e293b;
+}
+
+html.dark .tm-table tbody tr:nth-child(even) {
+  background: #1e293b;
+}
+
+html.dark .tm-table tbody tr:hover {
+  background: #334155;
+}
+
+html.dark .tm-table td {
+  color: #e2e8f0;
+}
+
 .tm-sr-only {
   position: absolute;
   width: 1px;

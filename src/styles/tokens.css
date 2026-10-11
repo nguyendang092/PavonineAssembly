@@ -1,9 +1,15 @@
 :root {
   /* App shell */
   --app-page-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-surface-2: #f1f5f9;
+  --app-text: #0f172a;
+  --app-text-muted: #475569;
+  --app-border: #cbd5e1;
 
   /* Unified z-index scale */
   --z-content: 1;
+  --z-weather: 11000;
   --z-scroll-actions: 80;
   --z-navbar: 90;
   --z-navbar-dropdown: 110;
@@ -14,8 +20,17 @@
   --z-auth-modal: 10050;
   --z-notification-overlay: 2147483646;
   --z-notification-popup: 2147483647;
-  --z-toast: 1300;
+  --z-toast: 12000;
   --z-loading: 1400;
+}
+
+html.dark {
+  --app-page-bg: #020617;
+  --app-surface: #0f172a;
+  --app-surface-2: #1e293b;
+  --app-text: #f8fafc;
+  --app-text-muted: #cbd5e1;
+  --app-border: #475569;
 }
 
 html,
@@ -24,4 +39,3 @@ body,
   height: 100%;
   margin: 0;
 }
-

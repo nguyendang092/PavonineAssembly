@@ -187,6 +187,41 @@ describe("parsePayrollDayFromAttendanceRaw — TC sớm ca đêm", () => {
   });
 });
 
+describe("buildPayrollMonthDayChunkFromRaw — điểm danh thời vụ", () => {
+  it("đọc sttThoiVu, copy sang stt, sắp xếp theo STT thời vụ", () => {
+    const chunk = buildPayrollMonthDayChunkFromRaw(
+      {
+        emp_tv2: {
+          mnv: "TV002",
+          hoVaTen: "B",
+          gioVao: "07:30",
+          gioRa: "16:30",
+          sttThoiVu: 2,
+          stt: 99,
+        },
+        emp_tv1: {
+          mnv: "TV001",
+          hoVaTen: "A",
+          gioVao: "07:00",
+          gioRa: "16:00",
+          sttThoiVu: 1,
+        },
+      },
+      "2026-06-12",
+      { attendanceRootPath: "seasonalAttendance" },
+    );
+    expect(chunk).not.toBeNull();
+    expect(chunk.employees).toHaveLength(2);
+    expect(chunk.employees[0]?.mnv).toBe("TV001");
+    expect(chunk.employees[0]?.sttThoiVu).toBe(1);
+    expect(chunk.employees[0]?.stt).toBe(1);
+    expect(chunk.employees[1]?.mnv).toBe("TV002");
+    expect(chunk.employees[1]?.sttThoiVu).toBe(2);
+    expect(chunk.employees[1]?.stt).toBe(2);
+    expect(chunk.koreanTimesheetRules).toBeFalsy();
+  });
+});
+
 describe("patchPayrollMonthDayRawInMemory", () => {
   it("cập nhật _rawCache tại chỗ — không cần get() lại", () => {
     const chunk = buildPayrollMonthDayChunkFromRaw(

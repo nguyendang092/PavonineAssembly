@@ -467,7 +467,7 @@ html.dark .annual-leave-actions-dropdown-item--danger:hover:not(:disabled) {
 
 @media (max-width: 720px) {
   .annual-leave-wrap {
-    padding: 28px 0 48px 18px;
+    padding: 12px 12px 32px;
   }
 
   .annual-leave-topbar-title {

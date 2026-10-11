@@ -1,4 +1,4 @@
-export const ERROR_STATUS = Object.freeze({
+const ERROR_STATUS = Object.freeze({
   AUTH_REQUIRED: 401,
   AUTH_INVALID: 401,
   METHOD_NOT_ALLOWED: 405,

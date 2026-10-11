@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import LoadingBlock from "@/components/ui/LoadingBlock";
+import { toast } from "@/components/ui/toast";
 import { db, ref, set } from "@/services/firebase";
 import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { isAdminAccess } from "@/config/authRoles";
@@ -75,11 +76,11 @@ export default function PerformanceChart() {
     const check = canAddTeamName(selectedYear, newTeamName, data);
     if (!check.ok) {
       if (check.reason === "empty") {
-        alert("Nhập tên team.");
+        toast.warning("Nhập tên team.");
       } else if (check.reason === "base") {
-        alert("Team này đã có trong danh sách mặc định.");
+        toast.warning("Team này đã có trong danh sách mặc định.");
       } else if (check.reason === "duplicate") {
-        alert("Team đã tồn tại trong bảng.");
+        toast.warning("Team đã tồn tại trong bảng.");
       }
       return;
     }
@@ -181,7 +182,7 @@ export default function PerformanceChart() {
 
   const handleSaveData = useCallback(async () => {
     if (!isAdminAccess(user, userRole)) {
-      alert("Chỉ tài khoản admin mới có quyền lưu dữ liệu.");
+      toast.warning("Chỉ tài khoản admin mới có quyền lưu dữ liệu.");
       return;
     }
     setSaving(true);
@@ -193,10 +194,10 @@ export default function PerformanceChart() {
         [selectedYear]: data,
       }));
       setHasUnsavedChanges(false);
-      alert("✅ Đã lưu dữ liệu thành công!");
+      toast.success("Đã lưu dữ liệu thành công!");
     } catch (error) {
       console.error("Error saving to Firebase:", error);
-      alert("❌ Lỗi khi lưu dữ liệu!");
+      toast.error("Lỗi khi lưu dữ liệu!");
     } finally {
       setSaving(false);
     }

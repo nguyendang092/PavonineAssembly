@@ -210,7 +210,9 @@ export async function executePayrollSalaryExcelExportRange({
       };
     } else {
       const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-      const parsed = parsePayrollDayFromAttendanceRaw(snap.val());
+      const parsed = parsePayrollDayFromAttendanceRaw(snap.val(), [], [], {
+        attendanceRootPath,
+      });
       dayEmployees = parsed.baseEmployees;
       dayMeta = buildDayMetaFromParsed(parsed, koreanTimesheetRules);
     }
@@ -296,7 +298,9 @@ export async function executePayrollSalaryExcelExportRange({
       };
     } else {
       const snap = await get(ref(db, `${attendanceRootPath}/${dateKey}`));
-      parsed = parsePayrollDayFromAttendanceRaw(snap.val());
+      parsed = parsePayrollDayFromAttendanceRaw(snap.val(), [], [], {
+        attendanceRootPath,
+      });
     }
 
     const meta = buildDayMetaFromParsed(parsed, koreanTimesheetRules);

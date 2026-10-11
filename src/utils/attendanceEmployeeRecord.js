@@ -722,7 +722,12 @@ export function buildEmployeeAttendanceDayDocument({
  * @param {Record<string, unknown>} dayDoc — payload đã build từ form
  * @param {string} recordId — `id` bản ghi (Firebase key con)
  */
-export function mergeAttendanceDayNodeForPersist(existing, dayDoc, recordId) {
+export function mergeAttendanceDayNodeForPersist(
+  existing,
+  dayDoc,
+  recordId,
+  options = {},
+) {
   const ex =
     existing && typeof existing === "object" ? { ...existing } : {};
   const d = dayDoc && typeof dayDoc === "object" ? { ...dayDoc } : {};
@@ -731,7 +736,15 @@ export function mergeAttendanceDayNodeForPersist(existing, dayDoc, recordId) {
   const merged = { ...ex, ...d, id: recordId };
   delete merged.ngayThangNamSinh;
   delete merged.birthDate;
-  return normalizeAttendanceDayRecord(merged);
+  const out = normalizeAttendanceDayRecord(merged);
+  if (options.seasonal === true) {
+    delete out.monthEmployeeKey;
+    delete out.payrollEarlyOtPaperwork;
+    delete out.payrollLateOtExcluded;
+    delete out.payrollNightOtPaperwork;
+    out.stt = null;
+  }
+  return out;
 }
 
 function attendancePersistFieldEqual(prev, next) {

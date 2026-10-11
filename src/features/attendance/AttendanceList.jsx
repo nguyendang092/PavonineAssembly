@@ -25,6 +25,7 @@ import AttendanceListHeader from "./AttendanceListHeader";
 import AttendanceListToolbarSection from "./AttendanceListToolbarSection";
 import AttendanceListToolbarSearchCluster from "./AttendanceToolbarSearchCluster";
 import AttendanceListContentSection from "./AttendanceListContentSection";
+import AttendanceEmployeeFormHost from "./AttendanceEmployeeFormHost";
 import AttendanceHrPageShell from "./AttendanceHrPageShell";
 import { useAttendanceStatisticsSidebar } from "./attendanceStatisticsSidebarContext";
 import "./attendanceToolbarFocus.css";
@@ -52,6 +53,7 @@ import {
   AttendanceListSearchBranchContext,
   AttendanceListFilteredDataBranchContext,
   AttendanceListComboBranchContext,
+  AttendanceListEmployeeModalBranchContext,
 } from "./attendanceListBranchContexts";
 const AttendanceExportRangeModal = lazy(
   () => import("./AttendanceExportRangeModal"),
@@ -71,8 +73,6 @@ const PayrollRangeExcelExportModal = lazy(
 import { db, get, ref } from "@/services/firebase";
 import {
   isKoreanAttendanceRoot,
-  isSeasonalAttendanceRoot,
-  KOREAN_ATTENDANCE_ROOT,
 } from "./attendanceSeasonalStt";
 
 const AttendanceList = memo(function AttendanceList({
@@ -408,7 +408,7 @@ const AttendanceList = memo(function AttendanceList({
     comboChartDataOrdered,
     comboDashboardStats,
     comboChartRowsVisible,
-    comboStatEmployeesByKey,
+    comboStatDetailEmployees,
     comboStatLabelByKey,
   } = useAttendanceComboChart({
     deferredFilteredEmployees,
@@ -747,12 +747,23 @@ const AttendanceList = memo(function AttendanceList({
     ],
   );
 
-  const contentBranchValue = useMemo(
+  const employeeModalBranchValue = useMemo(
     () => ({
       showEmployeeModal,
+      employeeModalRecord,
       setShowEmployeeModal,
       setEmployeeModalRecord,
+    }),
+    [
+      showEmployeeModal,
       employeeModalRecord,
+      setShowEmployeeModal,
+      setEmployeeModalRecord,
+    ],
+  );
+
+  const contentBranchValue = useMemo(
+    () => ({
       selectedDate,
       setSelectedDate,
       employees,
@@ -783,10 +794,6 @@ const AttendanceList = memo(function AttendanceList({
       isHolidayDay,
     }),
     [
-      showEmployeeModal,
-      setShowEmployeeModal,
-      setEmployeeModalRecord,
-      employeeModalRecord,
       selectedDate,
       setSelectedDate,
       employees,
@@ -835,11 +842,12 @@ const AttendanceList = memo(function AttendanceList({
       comboStatDetailKey,
       setComboStatDetailKey,
       comboStatLabelByKey,
-      comboStatEmployeesByKey,
+      comboStatDetailEmployees,
       compareEmployeesBusy,
       handleOpenCompareEmployees,
       comboDashboardGroup,
       setComboDashboardGroup,
+      normalizeDepartment,
       tl,
       t,
     }),
@@ -859,11 +867,12 @@ const AttendanceList = memo(function AttendanceList({
       comboStatDetailKey,
       setComboStatDetailKey,
       comboStatLabelByKey,
-      comboStatEmployeesByKey,
+      comboStatDetailEmployees,
       compareEmployeesBusy,
       handleOpenCompareEmployees,
       comboDashboardGroup,
       setComboDashboardGroup,
+      normalizeDepartment,
       tl,
       t,
     ],
@@ -1028,7 +1037,7 @@ const AttendanceList = memo(function AttendanceList({
             userDepartments={userDepartments}
             onAlert={setAlert}
             employees={employees}
-            attendanceRootPath={KOREAN_ATTENDANCE_ROOT}
+            attendanceRootPath={attendanceRootPath}
           />
           </Suspense>
         ) : null}
@@ -1120,6 +1129,9 @@ const AttendanceList = memo(function AttendanceList({
                 </div>
               </AttendanceListFilteredDataBranchContext.Provider>
             </div>
+            <AttendanceListEmployeeModalBranchContext.Provider
+              value={employeeModalBranchValue}
+            >
             <AttendanceListContentBranchContext.Provider
               value={contentBranchValue}
             >
@@ -1128,9 +1140,11 @@ const AttendanceList = memo(function AttendanceList({
               >
                 <div className="hr-page-main">
                   <AttendanceListContentSection />
+                  <AttendanceEmployeeFormHost />
                 </div>
               </AttendanceListComboBranchContext.Provider>
             </AttendanceListContentBranchContext.Provider>
+            </AttendanceListEmployeeModalBranchContext.Provider>
           </AttendanceListToolbarBranchContext.Provider>
         </AttendanceListSearchBranchContext.Provider>
         </div>

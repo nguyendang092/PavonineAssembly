@@ -1,7 +1,6 @@
 import {
   useState,
   useEffect,
-  useRef,
   useMemo,
   useCallback,
   useDeferredValue,
@@ -15,8 +14,8 @@ import Modal from "react-modal";
 import { ref, set, remove, update, get } from "firebase/database";
 import { db } from "@/services/firebase";
 import { useFirebaseValue } from "@/hooks/useFirebaseValue";
-import AlertMessage from "@/components/ui/AlertMessage";
 import LoadingBlock from "@/components/ui/LoadingBlock";
+import { toast } from "@/components/ui/toast";
 import { useTranslation } from "react-i18next";
 import TemperatureMonitorTopbar from "@/features/dashboard/temperature/TemperatureMonitorTopbar";
 import TemperatureAreaCard from "@/features/dashboard/temperature/TemperatureAreaCard";
@@ -36,7 +35,6 @@ const emptyData = () => ({ temperature: {}, humidity: {} });
 const TemperatureMonitor = () => {
   const { user } = useUserIdentity();
   const { t, i18n } = useTranslation();
-  const [toastMessage, setToastMessage] = useState("");
   const [editingMachine, setEditingMachine] = useState(null);
   const [editMachineName, setEditMachineName] = useState("");
   const [selectedArea, setSelectedArea] = useState(null);
@@ -55,18 +53,6 @@ const TemperatureMonitor = () => {
   const [data, setData] = useState(emptyData);
   const [baseline, setBaseline] = useState(emptyData);
   const [saving, setSaving] = useState(false);
-
-  const toastTimeoutRef = useRef();
-  const showToast = useCallback((message) => {
-    setToastMessage(message);
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    toastTimeoutRef.current = setTimeout(() => setToastMessage(""), 3000);
-  }, []);
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     setSelectedArea((prev) => (prev && !areas[prev] ? null : prev));
@@ -161,12 +147,12 @@ const TemperatureMonitor = () => {
           `Lưu dữ liệu máy: ${selectedMachine}, khu vực: ${selectedArea}, tháng: ${selectedMonth}`,
         );
       }
-      showToast(
+      toast.success(
         t("temperatureMonitor.saveSuccess", { machine: selectedMachine }),
       );
     } catch (error) {
       console.error("Lỗi lưu dữ liệu:", error);
-      showToast(t("temperatureMonitor.saveFail"));
+      toast.error(t("temperatureMonitor.saveFail"));
     } finally {
       setSaving(false);
     }
@@ -175,7 +161,6 @@ const TemperatureMonitor = () => {
     selectedArea,
     selectedMachine,
     selectedMonth,
-    showToast,
     t,
     user,
   ]);
@@ -195,7 +180,7 @@ const TemperatureMonitor = () => {
           (m) => m.trim().toLowerCase() === trimmedNew.toLowerCase(),
         )
       ) {
-        alert(t("temperatureMonitor.machineExists"));
+        toast.warning(t("temperatureMonitor.machineExists"));
         return;
       }
       setIsLoading(true);
@@ -223,7 +208,7 @@ const TemperatureMonitor = () => {
         if (selectedMachine === oldName) setSelectedMachine(trimmedNew);
         setEditingMachine(null);
         setEditMachineName("");
-        showToast(
+        toast.success(
           t("temperatureMonitor.renamed", { oldName, newName: trimmedNew }),
         );
         if (user?.email) {
@@ -234,12 +219,12 @@ const TemperatureMonitor = () => {
           );
         }
       } catch (error) {
-        alert(t("temperatureMonitor.editError"));
+        toast.error(t("temperatureMonitor.editError"));
         console.error(error);
       }
       setIsLoading(false);
     },
-    [areas, selectedArea, selectedMachine, showToast, t, user],
+    [areas, selectedArea, selectedMachine, t, user],
   );
 
   const handleDeleteMachine = useCallback(
@@ -272,7 +257,7 @@ const TemperatureMonitor = () => {
           );
         }
       } catch (error) {
-        alert(t("temperatureMonitor.deleteError"));
+        toast.error(t("temperatureMonitor.deleteError"));
       }
       setIsLoading(false);
     },
@@ -290,7 +275,7 @@ const TemperatureMonitor = () => {
     const trimmedMachine = newMachineName.trim();
     if (!trimmedMachine || !selectedArea) return;
     if (!isValidMachineName(trimmedMachine)) {
-      alert(t("temperatureMonitor.invalidMachineName"));
+      toast.warning(t("temperatureMonitor.invalidMachineName"));
       return;
     }
     const existingMachines = areas[selectedArea]?.machines || [];
@@ -299,7 +284,7 @@ const TemperatureMonitor = () => {
         (m) => m.trim().toLowerCase() === trimmedMachine.toLowerCase(),
       )
     ) {
-      alert(t("temperatureMonitor.machineExists"));
+      toast.warning(t("temperatureMonitor.machineExists"));
       return;
     }
     setIsLoading(true);
@@ -323,7 +308,7 @@ const TemperatureMonitor = () => {
         );
       }
     } catch (error) {
-      alert(t("temperatureMonitor.addError"));
+      toast.error(t("temperatureMonitor.addError"));
     }
     setIsLoading(false);
   }, [areas, newMachineName, selectedArea, t, user]);
@@ -503,10 +488,6 @@ const TemperatureMonitor = () => {
         )}
       </Modal>
 
-      <AlertMessage
-        message={toastMessage}
-        onClose={() => setToastMessage("")}
-      />
     </div>
   );
 };

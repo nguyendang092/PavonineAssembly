@@ -2,6 +2,13 @@ const vi = {
   loading: {
     loading: "Đang tải dữ liệu...",
   },
+  toast: {
+    success: "Thành công",
+    error: "Lỗi",
+    warning: "Cảnh báo",
+    info: "Thông báo",
+    close: "Đóng thông báo",
+  },
   hrTablePagination: {
     ariaLabel: "Phân trang bảng dữ liệu",
     showingLabel: "HIỂN THỊ",
@@ -125,6 +132,7 @@ const vi = {
     attendance: "Điểm danh",
     attendanceList: "Điểm danh NV",
     attendanceSalary: "Xem giờ công",
+    seasonalStaffSalary: "Xem giờ công thời vụ",
     seasonalStaffAttendance: "Điểm danh NV thời vụ",
     userDepartment: "Phân quyền User",
     permissionCatalog: "Phân quyền & chức năng",
@@ -138,7 +146,7 @@ const vi = {
   },
   navigationBoard: {
     kicker: "Nội bộ • Điều hướng nhanh",
-    title: "Bảng điều hướng",
+    title: "Truy cập nhanh",
     subtitle:
       "Danh mục tổng hợp các công cụ và trang nội bộ. Tìm kiếm hoặc lọc theo nhóm để đi thẳng đến nơi cần đến.",
     searchPlaceholder: "Tìm công cụ theo tên…",
@@ -180,6 +188,8 @@ const vi = {
     descAttendanceDailyReport:
       "Báo cáo điểm danh ngày theo công đoạn — ca ngày/đêm, chính thức/thời vụ.",
     descPayroll: "Xem giờ công, bảng lương và lưới chấm công tháng.",
+    descSeasonalPayroll:
+      "Xem giờ công nhân viên thời vụ và lưới chấm công tháng từ điểm danh thời vụ.",
     descCertificate1: "Tạo bằng khen ưu tú nhất.",
     descCertificate2: "Tạo bằng khen ưu tú.",
     descUserDepartment: "Phân quyền user theo bộ phận và vai trò.",
@@ -725,6 +735,8 @@ const vi = {
     totalLabel: "TOTAL",
     monthYearFilter: "Tháng/Năm",
     toolbarActions: "Thao tác",
+    collapseStickyHeader: "Thu gọn thanh báo cáo",
+    expandStickyHeader: "Mở thanh báo cáo",
     missingEntryTitle: "Chưa nhập sản lượng",
     missingEntryEmpty: "Đã nhập đủ các công đoạn đến hôm nay.",
     missingEntryHint: "Bấm công đoạn để mở đúng ngày và nhập.",
@@ -1087,6 +1099,8 @@ const vi = {
     loginRequired: "Vui lòng đăng nhập để thực hiện thao tác này",
     close: "Đóng",
     exportExcel: "Xuất Excel",
+    exportingExcel: "Đang xuất Excel…",
+    exportExcelSuccess: "Đã xuất Excel (kèm ảnh nếu có).",
     columns: {
       no: "STT",
       subsidiary: "Chi nhánh",
@@ -1211,6 +1225,10 @@ const vi = {
     loading: "Đang đọc…",
     emptyTitle: "Chưa có dữ liệu",
     emptyHint: "Bấm «Upload Excel» để tải báo cáo, hoặc «Tải template» để lấy file mẫu.",
+    errorNeedLogin:
+      "Phiên đăng nhập Firebase chưa sẵn sàng. Đăng nhập lại rồi bấm Làm mới.",
+    errorCloudLoad:
+      "Không tải được dữ liệu kiểm kê trên cloud. Bấm Làm mới hoặc đăng nhập lại.",
     errorMissingActual: "Thiếu cột THỰC TẾ.",
     errorEmpty: "Sheet trống.",
     errorParse: "Không đọc được file .xlsx.",
@@ -1338,6 +1356,8 @@ const vi = {
     pageNotFoundHint:
       "Đường dẫn không tồn tại hoặc đã đổi. Kiểm tra lại link hoặc dùng nút bên dưới.",
     backToHome: "Về trang chủ",
+    collapseChrome: "Thu nhỏ thanh cố định",
+    expandChrome: "Mở thanh cố định",
   },
   attendanceTable: {
     reportLabel: "Báo cáo thời gian",
@@ -1497,6 +1517,7 @@ const vi = {
     sidebarKoreanTimesheetDisabled: "Chỉ HR mới được quyền truy cập",
     sidebarStatistics: "Thống kê",
     sidebarWorkHours: "Giờ công",
+    sidebarSeasonalWorkHours: "Giờ công thời vụ",
     sidebarAnnualLeave: "Phép năm",
     sidebarDashboard: "Dashboard",
     dashboardReportTitle: "Báo cáo thống kê điểm danh nhân viên",
@@ -1619,6 +1640,7 @@ const vi = {
     compareEmployeesButton: "So sánh",
     collapseDetailTiles: "Thu gọn",
     expandDetailTiles: "Xem chi tiết",
+    comboDeptAttendanceDetail: "Xem chi tiết",
     comboProductionDeptRankHint: "Thứ tự BP sản xuất đã chọn",
     comboProductionDeptPickerSelected: "Đã chọn",
     comboProductionDeptPickerRemove: "Bỏ",
@@ -1733,6 +1755,7 @@ const vi = {
     comboDashboardGroupProduction: "Sản xuất",
     nonStandardTimeInShort: "≠ HH:MM",
     comboStatDetailBadge: "Chi tiết danh sách",
+    comboStatEdit: "Chỉnh sửa",
     comboStatColShift: "Ca làm việc",
     comboStat: {
       checkedIn: "Chấm công",
@@ -1844,7 +1867,8 @@ const vi = {
     compareEmployeesPickPreviousDate: "Ngày trước",
     compareEmployeesPickDate: "Chọn ngày",
     compareEmployeesAllDepartments: "Tất cả bộ phận",
-    compareEmployeesRun: "So sánh",
+    compareEmployeesRun: "Chạy so sánh",
+    compareEmployeesRunHint: "Tải dữ liệu theo ngày đã chọn.",
     compareEmployeesLoading: "Đang so sánh dữ liệu...",
     compareEmployeesNoData: "Không có dữ liệu để so sánh.",
     compareEmployeesPrevTotal: "Tổng ngày trước",
@@ -1861,6 +1885,15 @@ const vi = {
     compareEmployeesDateRange: "{{previous}} → {{current}}",
     compareEmployeesOnlyPreviousTotal: "Chỉ ngày trước: {{count}}",
     compareEmployeesOnlyCurrentTotal: "Chỉ ngày hiện tại: {{count}}",
+    compareEmployeesDiffOnly: "Chỉ hiện bộ phận có thay đổi",
+    compareEmployeesDiffOnlyHint:
+      "Bộ lọc bảng: ẩn bộ phận số lượng không đổi. Không chạy so sánh.",
+    compareEmployeesNoDiff:
+      "Không có bộ phận nào thay đổi. Bỏ chọn bộ lọc để xem toàn bộ.",
+    compareEmployeesColPrev: "Trước",
+    compareEmployeesColCurrent: "Hiện tại",
+    compareEmployeesColSame: "Trùng",
+    compareEmployeesDelta: "Chênh lệch",
     boPhanChuaDungFlag: "Bộ phận chưa đúng",
     classification: "Phân loại phép",
     colLeaveType: "Loại phép",
@@ -1922,6 +1955,9 @@ const vi = {
   salaryCalc: {
     pageTitle: "Xem giờ công",
     pageSubtitle: "Xem giờ công và giờ công tăng ca trong tháng .",
+    seasonalPageTitle: "Xem giờ công thời vụ",
+    seasonalPageSubtitle:
+      "Cùng dữ liệu với Điểm danh NV thời vụ; cột Sửa mở form cập nhật tại đây.",
     table: {
       stt: "STT",
       workDateDay: "Ngày",
@@ -1985,6 +2021,18 @@ const vi = {
     allDepts: "Tất cả bộ phận",
     earlyOtModalDontShowSession: "Không hiển thị trong hôm nay.",
     monthlyTimesheetButton: "Xem giờ công",
+    monthlyTimesheetButtonHint: "Bảng chấm công tháng.",
+    monthlyTimesheetTitle: "Bảng chấm công tháng",
+    koreanMonthlyTimesheetTitle: "KOREAN TIMESHEET - Bảng chấm công tháng",
+    koreanMonthlyTimesheetEmpty:
+      "Không có dữ liệu điểm danh Korean Timesheet trong tháng này.",
+    koreanMonthlyTimesheetButtonHint:
+      "Bảng chấm công tháng từ điểm danh Korean Timesheet.",
+    seasonalMonthlyTimesheetTitle: "Bảng chấm công tháng — nhân viên thời vụ",
+    seasonalMonthlyTimesheetEmpty:
+      "Không có dữ liệu điểm danh thời vụ trong tháng này.",
+    seasonalMonthlyTimesheetButtonHint:
+      "Bảng chấm công tháng từ điểm danh thời vụ.",
     monthlyGridMenuTimesheetDesc: "Giờ công, phép, hệ số tăng ca",
     monthlyGridMenuTimeInOutDesc: "Giờ vào & giờ ra mỗi ngày",
     monthlyTimeInOutButton: "Xem giờ vào & ra",
@@ -2018,6 +2066,7 @@ const vi = {
     monthlyTimesheetColMnv: "MNV",
     monthlyTimesheetColName: "Họ và tên",
     monthlyTimesheetColDept: "BP",
+    monthlyTimesheetColDeptCode: "Mã BP",
     monthlyTimesheetColCoeff: "Hệ số TC",
     monthlyTimesheetDaysInMonth: "Ngày trong tháng",
     monthlyTimesheetDeptAll: "Tất cả bộ phận",
@@ -2033,6 +2082,9 @@ const vi = {
     monthlyRuleOfficialTitle: "THỜI GIAN HỢP ĐỒNG",
     monthlyRuleGroupWorkday: "NGÀY LÀM VIỆC",
     monthlyRuleGroupOt: "TĂNG CA (Hrs)",
+    monthlyRuleGroupAnnualLeave: "PHÉP NĂM",
+    monthlyTimesheetColMonthAnnualLeaveGrant: "PN tháng này",
+    monthlyTimesheetColAnnualLeaveBalance: "Tổng PN còn lại",
     monthlyRuleColSoNgayCong: "Ngày thực tế làm việc",
     monthlyRuleColWorkDays: "Tổng ngày công (gồm ngày nghỉ có lương)",
     monthlyRuleColNightShiftTotalHours: "Tổng GC ca đêm",

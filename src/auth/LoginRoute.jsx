@@ -7,7 +7,6 @@ function safeRedirectTarget(from) {
   if (!from || typeof from !== "string") return "/";
   const pathOnly = from.split("?")[0];
   if (!pathOnly.startsWith("/") || pathOnly.startsWith("//")) return "/";
-  // Tránh vòng lặp /login
   if (pathOnly === "/login") return "/";
   return from;
 }

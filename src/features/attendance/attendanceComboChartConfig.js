@@ -27,6 +27,15 @@ export const COMBO_CHART_METRIC_KEYS = [
   "wrongDepartment",
 ];
 
+/** Một object đếm metric — dùng thống kê KPI / hàng biểu đồ. */
+export function createEmptyComboMetricCounts() {
+  const counts = Object.create(null);
+  for (let i = 0; i < COMBO_CHART_METRIC_KEYS.length; i += 1) {
+    counts[COMBO_CHART_METRIC_KEYS[i]] = 0;
+  }
+  return counts;
+}
+
 /** i18n: `attendanceList.comboStat.<metricKey>` — xem `useAttendanceListI18n.tlComboStat`. */
 export function comboStatI18nKey(metricKey) {
   return `comboStat.${metricKey}`;
@@ -112,7 +121,10 @@ export function attendanceProductionDeptMatchKey(
   normalizeDepartment,
   boPhanRaw,
 ) {
-  const normalized = normalizeDepartment(boPhanRaw);
+  const normalized =
+    typeof normalizeDepartment === "function"
+      ? normalizeDepartment(boPhanRaw)
+      : normalizeTextValue(boPhanRaw).toLowerCase();
   if (!normalized) return "";
   const compact = normalized.replace(/\s+/g, "").replace(/-/g, "");
   if (COMBO_STATS_PRODUCTION_DEPT_MATCH_KEYS.has(compact)) return compact;
@@ -157,6 +169,25 @@ export function resolveComboChartDepartmentLabel(
   }
   const mk = attendanceProductionDeptMatchKey(normalizeDepartment, boPhanRaw);
   return COMBO_STATS_PRODUCTION_DEPT_PICKER_LABELS[mk] ?? trimmed;
+}
+
+/** Lọc NV đúng hàng biểu đồ (cùng nhãn `resolveComboChartDepartmentLabel`). */
+export function filterEmployeesByComboDepartment(
+  employees,
+  departmentLabel,
+  normalizeDepartment,
+  unknownLabel,
+) {
+  const list = Array.isArray(employees) ? employees : [];
+  if (!departmentLabel) return list;
+  return list.filter(
+    (emp) =>
+      resolveComboChartDepartmentLabel(
+        normalizeDepartment,
+        emp?.boPhan,
+        unknownLabel,
+      ) === departmentLabel,
+  );
 }
 
 /**

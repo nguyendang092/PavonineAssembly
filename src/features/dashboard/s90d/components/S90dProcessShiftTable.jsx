@@ -4,86 +4,23 @@ import { useProductionReportContext } from "../../productionReport/ProductionRep
 import { useReportT } from "../../productionReport/useReportTranslation";
 import { S90D_DEFECT_COLUMNS } from "../lib/s90dDefectColumns";
 import {
-  formatS90dDefectQty,
+  formatS90dPctCell,
+  formatS90dQtyCell,
   formatS90dYieldPct,
   formatShiftLineLabel,
   formatShortDateLabel,
   formatS90dTypeSlotLabel,
   formatS90dReportProductCode,
-  isHighDefectCell,
   resolveS90dTotalYieldPct,
 } from "../lib/s90dDisplayUtils";
 import { codeSlotCssTone, isTrackedCodeSlot } from "../lib/s90dEntryBoardSpecs";
 import { isLateShiftSlot } from "../lib/s90dShiftSlots";
 import S90dBilingualHeader from "./S90dBilingualHeader";
-import S90dDefectCellEditor from "./S90dDefectCellEditor";
-import S90dDefectImageThumbs from "./S90dDefectImageThumbs";
+import S90dDefectCell from "./S90dDefectCell";
 import S90dKpiCards from "./S90dKpiCards";
 
 const INFO_COL_COUNT_BASE = 4;
 const QTY_COL_COUNT = 5;
-
-function formatQty(value, isPercentRow, useDash) {
-  if (isPercentRow) {
-    return value > 0 ? `${value}%` : "0%";
-  }
-  if (useDash && !Number(value)) return "-";
-  return Number(value || 0).toLocaleString("vi-VN");
-}
-
-function formatPct(value, useDash) {
-  if (value == null || value === "") return useDash ? "-" : "0%";
-  return `${Number(value).toLocaleString("vi-VN")}%`;
-}
-
-function DefectCell({
-  qty,
-  imageUrl = "",
-  defectKey,
-  isPercent,
-  highlight,
-  totalNgQty,
-  useDash,
-  editable = false,
-  onQtyChange,
-}) {
-  const showPink = !isPercent && isHighDefectCell(qty, totalNgQty);
-  const className = [
-    "s90d-num",
-    "s90d-defect-cell",
-    highlight || showPink ? "s90d-cell-alert" : "",
-    isPercent ? "s90d-cell-percent" : "",
-    editable && !isPercent ? "s90d-defect-cell--editable" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  if (editable && !isPercent) {
-    return (
-      <S90dDefectCellEditor
-        qty={qty}
-        onQtyChange={onQtyChange}
-        className={className}
-      />
-    );
-  }
-
-  const display = useDash
-    ? formatS90dDefectQty(qty, isPercent)
-    : formatQty(qty, isPercent, false);
-  return (
-    <td className={className}>
-      <div className="s90d-defect-cell-display">
-        <span>{display}</span>
-        <S90dDefectImageThumbs
-          imageMap={{ [defectKey]: imageUrl }}
-          defectKey={defectKey}
-          isPercent={isPercent}
-        />
-      </div>
-    </td>
-  );
-}
 
 const ShiftRow = memo(function ShiftRow({
   row,
@@ -171,7 +108,7 @@ const ShiftRow = memo(function ShiftRow({
         {isPercent ? "" : processCellLabel}
       </td>
       <td className="s90d-num s90d-col-total-qty">
-        {isPercent ? "" : formatQty(row.totalQty, false, useDash)}
+        {isPercent ? "" : formatS90dQtyCell(row.totalQty, false, useDash)}
       </td>
       <td className="s90d-num s90d-col-ok">
         {canEdit ? (
@@ -186,11 +123,11 @@ const ShiftRow = memo(function ShiftRow({
         ) : isPercent ? (
           ""
         ) : (
-          formatQty(row.okQty, false, useDash)
+          formatS90dQtyCell(row.okQty, false, useDash)
         )}
       </td>
       <td className={`s90d-num s90d-col-ng ${isTotal ? "s90d-ng-total" : ""}`}>
-        {isPercent ? "" : formatQty(row.ngQty, false, useDash)}
+        {isPercent ? "" : formatS90dQtyCell(row.ngQty, false, useDash)}
       </td>
       <td className="s90d-num s90d-col-yield">
         {isPercent
@@ -203,10 +140,10 @@ const ShiftRow = memo(function ShiftRow({
       <td
         className={`s90d-num s90d-col-ng-rate ${isTotal ? "s90d-ng-total" : ""}`}
       >
-        {isPercent ? "" : formatPct(row.ngRatePct, useDash)}
+        {isPercent ? "" : formatS90dPctCell(row.ngRatePct, useDash)}
       </td>
       {S90D_DEFECT_COLUMNS.map(({ key }) => (
-        <DefectCell
+        <S90dDefectCell
           key={key}
           defectKey={key}
           qty={row.defects[key] ?? 0}

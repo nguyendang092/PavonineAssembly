@@ -181,6 +181,14 @@ export const NAVIGATION_BOARD_TOOLS = [
     status: "active",
   },
   {
+    id: "APP-14B",
+    path: "/seasonal-staff-salary",
+    category: "hr",
+    titleKey: "navbar.seasonalStaffSalary",
+    descriptionKey: "navigationBoard.descSeasonalPayroll",
+    status: "new",
+  },
+  {
     id: "APP-15",
     path: "/bangkhen1",
     category: "documents",

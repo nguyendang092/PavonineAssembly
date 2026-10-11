@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { canEditAttendanceForEmployee } from "@/config/authRoles";
+import { loadAttendanceEmployeeFormModal } from "./loadAttendanceEmployeeFormModal";
 import { getFirstDayOfMonthKey } from "@/utils/dateKey";
 import { db, ref, get } from "@/services/firebase";
 import { handleUploadExcel } from "./AttendanceUploadHandler";
@@ -14,6 +15,7 @@ import {
 } from "./attendanceListPrint";
 import { exportAttendanceBuCongExcel } from "./attendanceListBuCongExport";
 import { mergeAttendanceDayRowsFromRaw } from "./mergeAttendanceDayRows";
+import { downloadXlsxBuffer } from "@/utils/downloadXlsxBuffer";
 
 /**
  * Handlers upload/export/in/sửa — logic giữ nguyên từ AttendanceList.
@@ -91,15 +93,7 @@ export function useAttendanceListHandlers({
         setAlert({ show: true, ...result.alert });
         return;
       }
-      const blob = new Blob([result.buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = result.filename;
-      a.click();
-      window.URL.revokeObjectURL(url);
+      downloadXlsxBuffer(result.buffer, result.filename);
 
       setShowExportRangeModal(false);
       setAlert({
@@ -138,6 +132,7 @@ export function useAttendanceListHandlers({
 
   const handleEdit = useCallback(
     (emp) => {
+      void loadAttendanceEmployeeFormModal();
       if (!user) {
         setAlert({
           show: true,
@@ -161,7 +156,7 @@ export function useAttendanceListHandlers({
         });
         return;
       }
-      setEmployeeModalRecord({ ...emp });
+      setEmployeeModalRecord(emp);
       setShowEmployeeModal(true);
     },
     [user, userRole, userDepartments, t, setAlert, setEmployeeModalRecord, setShowEmployeeModal],

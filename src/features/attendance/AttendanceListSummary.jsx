@@ -35,13 +35,13 @@ function AttendanceListSummary({
   return (
     <SummaryRoot>
       <div className="w-full">
-        <div className="attendance-list-summary-inner flex flex-wrap items-center gap-2 border border-blue-100 rounded-md px-2 py-1 bg-gradient-to-r from-blue-50 to-blue-100 shadow-sm">
-            <span className="flex items-center gap-1 text-xs font-bold text-gray-700 md:text-sm">
-              <span className="text-blue-600 text-base">📊</span>
+        <div className="attendance-list-summary-inner flex flex-wrap items-center gap-2 rounded-md border border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100 px-2 py-1 shadow-sm dark:border-slate-600 dark:from-slate-950 dark:to-slate-900 dark:shadow-none">
+            <span className="flex items-center gap-1 text-xs font-bold text-gray-700 md:text-sm dark:text-slate-100">
+              <span className="text-base text-blue-600 dark:text-sky-300">📊</span>
               {tl("totalEmployees", "Tổng số nhân viên")}:
-              <span className="ml-1 text-base text-blue-700 md:text-lg">{shown}</span>
+              <span className="ml-1 text-base text-blue-700 md:text-lg dark:text-sky-300">{shown}</span>
               {filteredOut ? (
-                <span className="ml-1 text-xs font-semibold text-amber-700">
+                <span className="ml-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
                   {tl(
                     "attendanceFilteredOfLoaded",
                     "/ {{loaded}} trên ngày (đang lọc)",
@@ -50,10 +50,10 @@ function AttendanceListSummary({
                 </span>
               ) : null}
             </span>
-            <span className="flex items-center gap-1 text-xs font-bold text-gray-700 border-l border-blue-200 pl-3 md:text-sm">
-              <span className="text-indigo-500 text-base">🏷️</span>
+            <span className="flex items-center gap-1 border-l border-blue-200 pl-3 text-xs font-bold text-gray-700 md:text-sm dark:border-slate-600 dark:text-slate-100">
+              <span className="text-base text-indigo-500 dark:text-indigo-300">🏷️</span>
               {tl("classification", "Phân loại phép")}:
-              <span className="flex flex-wrap gap-1 ml-1">
+              <span className="ml-1 flex flex-wrap gap-1">
                 {leaveEntries.length > 0 ? (
                   leaveEntries.map(([time, count]) => (
                     <span
@@ -64,27 +64,27 @@ function AttendanceListSummary({
                     </span>
                   ))
                 ) : (
-                  <span className="italic text-gray-400">
+                  <span className="italic text-gray-400 dark:text-slate-400">
                     {tl("noClassification", "Không có phân loại")}
                   </span>
                 )}
               </span>
             </span>
-            <span className="flex items-center gap-1 text-xs font-bold text-gray-700 border-l border-blue-200 pl-3 md:text-sm">
-              <span className="text-amber-500 text-base">🕒</span>
+            <span className="flex items-center gap-1 border-l border-blue-200 pl-3 text-xs font-bold text-gray-700 md:text-sm dark:border-slate-600 dark:text-slate-100">
+              <span className="text-base text-amber-500 dark:text-amber-300">🕒</span>
               {tl("workShiftStats", "Thống kê ca làm việc")}:
-              <span className="flex flex-wrap gap-1 ml-1">
+              <span className="ml-1 flex flex-wrap gap-1">
                 {shiftEntries.length > 0 ? (
                   shiftEntries.map(([shift, count]) => (
                     <span
                       key={shift}
-                      className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-bold text-2xs border border-amber-200"
+                      className="px-2 py-0.5 rounded border border-amber-200 bg-amber-100 text-2xs font-bold text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200"
                     >
                       {shift}: {count}
                     </span>
                   ))
                 ) : (
-                  <span className="italic text-gray-400">
+                  <span className="italic text-gray-400 dark:text-slate-400">
                     {tl("noShiftStats", "Không có ca làm việc")}
                   </span>
                 )}

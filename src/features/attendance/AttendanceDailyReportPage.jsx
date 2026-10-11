@@ -15,6 +15,8 @@ import {
 import { useAttendanceDailyReportData } from "./useAttendanceDailyReportData";
 import { ISO_DATE_KEY_RE } from "./attendanceListShared";
 import { useSelectedDateWithTodayRollover } from "@/hooks/useSelectedDateWithTodayRollover";
+import { toast } from "@/components/ui/toast";
+import { useToastWhen } from "@/hooks/useToastWhen";
 import "./attendanceDailyReport.css";
 import "./hrPageCompact.css";
 
@@ -62,6 +64,12 @@ function AttendanceDailyReportPage() {
     seasonalEmployees,
     dayMeta,
   } = useAttendanceDailyReportData(selectedDate);
+
+  useToastWhen(
+    error
+      ? tl("dailyReportError", "Không tải được dữ liệu: {{error}}", { error })
+      : "",
+  );
 
   const report = useMemo(
     () =>
@@ -148,7 +156,7 @@ function AttendanceDailyReportPage() {
         dateKey: selectedDate,
       });
     } catch {
-      window.alert(
+      toast.error(
         tl(
           "dailyReportImageExportError",
           "Không thể tải hình báo cáo. Vui lòng thử lại.",
@@ -172,7 +180,7 @@ function AttendanceDailyReportPage() {
         title: exportTitle,
       });
     } catch {
-      window.alert(
+      toast.error(
         tl(
           "dailyReportExcelExportError",
           "Không thể xuất Excel. Vui lòng thử lại.",
@@ -278,14 +286,6 @@ function AttendanceDailyReportPage() {
               </div>
             </div>
           </header>
-
-          {error ? (
-            <div className="adr-error" role="alert">
-              {tl("dailyReportError", "Không tải được dữ liệu: {{error}}", {
-                error,
-              })}
-            </div>
-          ) : null}
 
           {(regularEmployees.length ||
             seasonalEmployees.length ||

@@ -103,6 +103,18 @@ export function buildDerivedMapsFromLeaveAggYear(yearAggData, year) {
   return { deductionsByEmpKey, attendanceMonthlyByEmpKey };
 }
 
+/** 12 tháng PN từ `attendanceLeaveAgg/{year}/{empKey}` — không quét cả năm. */
+export function resolveLeaveAggMonthlyValuesForEmp(yearAggData, empKey) {
+  if (!empKey || !yearAggData || typeof yearAggData !== "object") return null;
+  const raw = yearAggData[empKey];
+  if (!raw || typeof raw !== "object") return null;
+  const monthMap = normalizeLeaveAggMonthMap(
+    raw[ATTENDANCE_LEAVE_AGG_EMP.DEDUCTION_BY_MONTH],
+  );
+  if (!Object.keys(monthMap).length) return null;
+  return leaveAggMonthMapToMonthlyArray(monthMap);
+}
+
 export function computeDayLeaveDeductionForRecord(dateKey, year, _empKey, rawEmp) {
   if (!rawEmp || typeof rawEmp !== "object") return 0;
   if (!dateKey?.startsWith(`${year}-`)) return 0;

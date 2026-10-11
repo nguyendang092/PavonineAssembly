@@ -4,6 +4,7 @@ import { FiDownload, FiFileText, FiSearch, FiTrash2, FiUpload } from "react-icon
 import { useUserIdentity, useUserPermissions } from "@/contexts/UserContext";
 import { canManageFormLibrary } from "@/config/featurePermissions";
 import AlertMessage from "@/components/ui/AlertMessage";
+import { useToastWhen } from "@/hooks/useToastWhen";
 import LoadingBlock from "@/components/ui/LoadingBlock";
 import { useFormLibrary } from "./useFormLibrary";
 import {
@@ -40,7 +41,7 @@ export default function FormLibraryPage() {
   const { user } = useUserIdentity();
   const { userRole } = useUserPermissions();
   const canManage = canManageFormLibrary(user, userRole);
-  const { files, loading, busy, uploadFile, deleteFile } = useFormLibrary({
+  const { files, loading, busy, error, uploadFile, deleteFile } = useFormLibrary({
     canManage,
   });
   const [query, setQuery] = useState("");
@@ -48,6 +49,13 @@ export default function FormLibraryPage() {
   const [title, setTitle] = useState("");
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
   const fileInputRef = useRef(null);
+  useToastWhen(
+    error === "load"
+      ? t("formLibrary.loadError", {
+          defaultValue: "Không tải được kho biểu mẫu.",
+        })
+      : "",
+  );
 
   const searched = useMemo(
     () => filterFormLibraryFiles(files, query),

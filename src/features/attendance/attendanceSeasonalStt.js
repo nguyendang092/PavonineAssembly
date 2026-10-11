@@ -4,10 +4,8 @@ import { normalizeAttendanceGioiTinhValue } from "./attendanceGender";
  * STT riêng điểm danh thời vụ — Firebase `seasonalAttendance/{ngày}/{key}/sttThoiVu`.
  * Không dùng `stt` (chính thức) để tránh lệch khi dữ liệu bị trộn.
  */
-const SEASONAL_ATTENDANCE_ROOT = "seasonalAttendance";
-const KOREAN_ATTENDANCE_ROOT = "koreanAttendance";
-
-export { KOREAN_ATTENDANCE_ROOT };
+export const SEASONAL_ATTENDANCE_ROOT = "seasonalAttendance";
+export const KOREAN_ATTENDANCE_ROOT = "koreanAttendance";
 
 export function isSeasonalAttendanceRoot(attendanceRootPath) {
   return attendanceRootPath === SEASONAL_ATTENDANCE_ROOT;

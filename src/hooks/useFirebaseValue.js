@@ -5,6 +5,9 @@ import {
   isFirebaseGenerationStale,
 } from "./firebaseGeneration";
 
+/** Giữ snapshot theo path — tránh bảng trống khi HMR / Vite restart cắt listener. */
+const firebaseValueCache = new Map();
+
 /**
  * Realtime listener Firebase RTDB — tự cleanup + stale-check khi path đổi.
  *
@@ -13,8 +16,14 @@ import {
  */
 export function useFirebaseValue(path, options = {}) {
   const { enabled = true } = options;
-  const [data, setData] = useState(undefined);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState(() =>
+    enabled && path && firebaseValueCache.has(path)
+      ? firebaseValueCache.get(path)
+      : undefined,
+  );
+  const [loading, setLoading] = useState(
+    () => Boolean(enabled && path && !firebaseValueCache.has(path)),
+  );
   const [error, setError] = useState(null);
   const generationRef = useRef(0);
 
@@ -27,16 +36,24 @@ export function useFirebaseValue(path, options = {}) {
     }
 
     const myGeneration = bumpFirebaseGeneration(generationRef);
-    setLoading(true);
+    const hasCache = firebaseValueCache.has(path);
+    if (hasCache) {
+      setData(firebaseValueCache.get(path));
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setData(undefined);
+    }
     setError(null);
-    setData(undefined);
 
     const dataRef = ref(db, path);
     const unsubscribe = onValue(
       dataRef,
       (snapshot) => {
         if (isFirebaseGenerationStale(myGeneration, generationRef)) return;
-        setData(snapshot.val());
+        const value = snapshot.val();
+        firebaseValueCache.set(path, value);
+        setData(value);
         setLoading(false);
       },
       (err) => {

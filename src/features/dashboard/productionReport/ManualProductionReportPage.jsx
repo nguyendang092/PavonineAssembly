@@ -20,6 +20,7 @@ import { buildVisibleProductSummarySections } from "./productionSummarySections"
 import { listMissingProductionProcessEntries } from "./listMissingProductionProcessEntries";
 import ProductionMissingEntryNotify from "./ProductionMissingEntryNotify";
 import { useTodayDateKeyLocal } from "@/hooks/useTodayDateKeyLocal";
+import { useToastWhen } from "@/hooks/useToastWhen";
 import "../s90d/s90dProductionReport.css";
 
 const S90dSummaryChartModal = lazyImport(
@@ -30,6 +31,20 @@ const BASE_TABS = Object.freeze({
   TOTAL: "total",
   DAILY: "daily",
 });
+
+const STICKY_COLLAPSE_KEY = "pavonine.s90dStickyCollapsed";
+
+function readStickyCollapsed() {
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = window.localStorage.getItem(STICKY_COLLAPSE_KEY);
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+  } catch {
+    /* ignore */
+  }
+  return window.matchMedia("(max-width: 1023px)").matches;
+}
 
 export default function ManualProductionReportPage({
   manualEntries,
@@ -42,6 +57,7 @@ export default function ManualProductionReportPage({
   const excelInputRef = useRef(null);
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(0);
+  const [stickyCollapsed, setStickyCollapsed] = useState(readStickyCollapsed);
   const [activeTab, setActiveTab] = useState(BASE_TABS.TOTAL);
   const [saveAlert, setSaveAlert] = useState({
     show: false,
@@ -78,6 +94,19 @@ export default function ManualProductionReportPage({
     processes = S90D_PROCESSES,
     manualEntryConfig,
   } = manualEntries;
+
+  useToastWhen(syncError);
+  useToastWhen(
+    pendingSyncCount > 0 && !syncError
+      ? rt(
+          "pendingSyncBanner",
+          "Có thay đổi chờ đồng bộ Firebase khi có mạng.",
+          { count: pendingSyncCount },
+        )
+      : "",
+    "warning",
+    pendingSyncCount > 0 && !syncError ? "s90d-pending-sync" : "",
+  );
 
   const productBoardSpecs = useMemo(() => {
     if (manualEntryConfig?.summaryBoardSpecs?.length) {
@@ -185,7 +214,27 @@ export default function ManualProductionReportPage({
       observer.disconnect();
       window.removeEventListener("resize", syncHeight);
     };
-  }, [syncError, isSummaryTab, activeTab, loading, toolbarExtra, summaryViewGroups]);
+  }, [
+    syncError,
+    isSummaryTab,
+    activeTab,
+    loading,
+    toolbarExtra,
+    summaryViewGroups,
+    stickyCollapsed,
+  ]);
+
+  const toggleStickyCollapsed = useCallback(() => {
+    setStickyCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(STICKY_COLLAPSE_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
 
   const handleProcessSave = useCallback(
     async (localByDate) => {
@@ -342,15 +391,59 @@ export default function ManualProductionReportPage({
         onChange={handleExcelFileChange}
       />
 
-      <div ref={headerRef} className="s90d-report-sticky dashboard-no-print">
+      <div
+        ref={headerRef}
+        className={`s90d-report-sticky dashboard-no-print${
+          stickyCollapsed ? " s90d-report-sticky--collapsed" : ""
+        }`}
+      >
         <div className="s90d-report-header">
-          <div>
-            <h1 className="s90d-report-title">
-              {rt("pageTitle", "Báo cáo sản lượng")}
-            </h1>
+          <div className="s90d-report-header-lead">
+            <div className="s90d-report-title-row">
+              <h1 className="s90d-report-title">
+                {rt("pageTitle", "Báo cáo sản lượng")}
+              </h1>
+              <button
+                type="button"
+                className="s90d-sticky-toggle"
+                onClick={toggleStickyCollapsed}
+                aria-expanded={!stickyCollapsed}
+                aria-label={
+                  stickyCollapsed
+                    ? rt("expandStickyHeader", "Mở thanh báo cáo")
+                    : rt("collapseStickyHeader", "Thu gọn thanh báo cáo")
+                }
+                title={
+                  stickyCollapsed
+                    ? rt("expandStickyHeader", "Mở thanh báo cáo")
+                    : rt("collapseStickyHeader", "Thu gọn thanh báo cáo")
+                }
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  aria-hidden
+                >
+                  {stickyCollapsed ? (
+                    <path d="M6 15l6-6 6 6" />
+                  ) : (
+                    <path d="M6 9l6 6 6-6" />
+                  )}
+                </svg>
+              </button>
+            </div>
             {pageSubtitle ? (
               <p className="s90d-report-subtitle">{pageSubtitle}</p>
             ) : null}
+            <p className="s90d-sticky-compact-meta">
+              {formatS90dMonthDisplayLabel(selectedMonthKey)}
+              <span aria-hidden> · </span>
+              {tabLabels[activeTab]}
+            </p>
           </div>
 
           <div className="s90d-toolbar">
@@ -483,18 +576,6 @@ export default function ManualProductionReportPage({
           ))}
         </div>
 
-        {syncError ? (
-          <div className="s90d-sync-banner">{syncError}</div>
-        ) : null}
-        {!syncError && pendingSyncCount > 0 ? (
-          <div className="s90d-sync-banner s90d-sync-banner--pending">
-            {rt(
-              "pendingSyncBanner",
-              "Có {{count}} thay đổi chờ đồng bộ Firebase khi có mạng.",
-              { count: pendingSyncCount },
-            )}
-          </div>
-        ) : null}
       </div>
 
       <div

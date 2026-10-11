@@ -3,6 +3,7 @@
  * - 504 "Outdated Optimize Dep": `npm run dev:reset` (xóa cache + --force), hoặc `npm run dev:force`, hard-refresh (Ctrl+Shift+R).
  * - "Failed to fetch dynamically imported module": thường do tab cũ / server restart — F5 hoặc để App dùng lazyImport tự reload 1 lần.
  * - Project trên OneDrive: nếu watcher lỗi, chạy `set VITE_USE_POLLING=1&& npm run dev` (Windows CMD) hoặc `VITE_USE_POLLING=1 npm run dev` (bash).
+ * - `ERR_CACHE_READ_FAILURE` (Chrome + OneDrive): DevTools → Network → Disable cache, Ctrl+Shift+R. Không unshift middleware (làm hỏng module/HMR).
  * - Upload ảnh: API `/api/images/upload` (Vite dev / `npm run server`) + Firebase Storage fallback.
  *   `.env`: IMGBB_API_KEY, FIREBASE_API_KEY (xác thực token), IMAGE_UPLOAD_SKIP_AUTH=1 (dev).
  */
@@ -14,6 +15,20 @@ import react from "@vitejs/plugin-react";
 import { createImageUploadMiddleware } from "./server/imageUpload/createImageUploadMiddleware.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Bỏ ETag từ Chrome trước khi Vite quyết định 304 — không đụng stack nội bộ. */
+function disableBrowserHttpCache() {
+  return {
+    name: "disable-browser-http-cache",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        delete req.headers["if-none-match"];
+        delete req.headers["if-modified-since"];
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -27,6 +42,7 @@ export default defineConfig(async ({ mode }) => {
   const imageUploadMiddleware = createImageUploadMiddleware();
 
   const plugins = [
+    disableBrowserHttpCache(),
     react(),
     {
       name: "image-upload-api",
@@ -55,6 +71,9 @@ export default defineConfig(async ({ mode }) => {
     plugins,
     base: "/",
     server: {
+      headers: {
+        "Cache-Control": "no-store",
+      },
       watch: {
         usePolling: process.env.VITE_USE_POLLING === "1",
       },

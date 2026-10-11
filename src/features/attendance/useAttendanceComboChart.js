@@ -18,6 +18,7 @@ import {
   COMBO_CHART_METRIC_KEYS,
   attendanceProductionDeptMatchKey,
   applyProductionStatsRowOrder,
+  createEmptyComboMetricCounts,
   resolveComboChartDepartmentLabel,
 } from "./attendanceComboChartConfig";
 
@@ -142,8 +143,6 @@ export function useAttendanceComboChart({
   const comboChartData = useMemo(() => {
     if (!showComboChartModal) return [];
     const map = new Map();
-    const emptyMetrics = () =>
-      Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, 0]));
     deferredFilteredForComboStats.forEach((emp) => {
       const flags = getAttendanceComboFlags(emp);
       const department = resolveComboChartDepartmentLabel(
@@ -154,7 +153,7 @@ export function useAttendanceComboChart({
       const row = map.get(department) || {
         department,
         total: 0,
-        ...emptyMetrics(),
+        ...createEmptyComboMetricCounts(),
       };
       row.total += 1;
       for (const k of COMBO_CHART_METRIC_KEYS) {
@@ -186,23 +185,14 @@ export function useAttendanceComboChart({
   ]);
 
   const comboDashboardStats = useMemo(() => {
-    if (!showComboChartModal) {
-      const zero = () =>
-        Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, 0]));
-      return { total: 0, ...zero() };
+    const stats = { total: 0, ...createEmptyComboMetricCounts() };
+    if (!showComboChartModal) return stats;
+    for (const row of comboChartData) {
+      stats.total += row.total;
+      for (const k of COMBO_CHART_METRIC_KEYS) {
+        stats[k] += row[k];
+      }
     }
-    const zero = () =>
-      Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, 0]));
-    const stats = comboChartData.reduce(
-      (acc, row) => {
-        acc.total += row.total;
-        for (const k of COMBO_CHART_METRIC_KEYS) {
-          acc[k] += row[k];
-        }
-        return acc;
-      },
-      { total: 0, ...zero() },
-    );
     return stats;
   }, [comboChartData, showComboChartModal]);
 
@@ -211,26 +201,21 @@ export function useAttendanceComboChart({
     [comboChartDataOrdered, comboChartCardsVisibleCount],
   );
 
-  const comboStatEmployeesByKey = useMemo(() => {
-    if (!showComboChartModal) {
-      return {
-        total: [],
-        ...Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, []])),
-      };
-    }
+  const comboStatDetailEmployees = useMemo(() => {
+    if (!showComboChartModal || !comboStatDetailKey) return [];
     const list = deferredFilteredForComboStats;
-    const buckets = {
-      total: [...list],
-      ...Object.fromEntries(COMBO_CHART_METRIC_KEYS.map((k) => [k, []])),
-    };
+    if (comboStatDetailKey === "total") return list;
+    const out = [];
     for (const emp of list) {
-      const f = getAttendanceComboFlags(emp);
-      for (const k of COMBO_CHART_METRIC_KEYS) {
-        if (f[k]) buckets[k].push(emp);
-      }
+      const flags = getAttendanceComboFlags(emp);
+      if (flags[comboStatDetailKey]) out.push(emp);
     }
-    return buckets;
-  }, [deferredFilteredForComboStats, showComboChartModal]);
+    return out;
+  }, [
+    deferredFilteredForComboStats,
+    showComboChartModal,
+    comboStatDetailKey,
+  ]);
 
   const comboStatLabelByKey = useMemo(() => {
     const fromKeys = Object.fromEntries(
@@ -358,7 +343,7 @@ export function useAttendanceComboChart({
     comboChartDataOrdered,
     comboDashboardStats,
     comboChartRowsVisible,
-    comboStatEmployeesByKey,
+    comboStatDetailEmployees,
     comboStatLabelByKey,
   };
 }

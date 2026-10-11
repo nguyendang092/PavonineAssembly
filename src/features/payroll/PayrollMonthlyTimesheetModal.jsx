@@ -33,6 +33,7 @@ import {
 import { pickPayrollEmployeeJoinDate } from "@/features/payroll/payrollEmployeeFields";
 import { payrollOtDayParamsFromMonthChunkEmp } from "@/features/payroll/payrollOtDayParams";
 import { writePayrollMonthlyTimesheetWorkbook } from "@/features/payroll/payrollMonthlyTimesheetExcelGrid";
+import { downloadXlsxBuffer } from "@/utils/downloadXlsxBuffer";
 import {
   buildMonthlyDetailMatrixForEmployee,
   fmtPayrollMonthlySummaryHoursCell,
@@ -41,17 +42,28 @@ import {
 import {
   buildPayrollMonthlyTimesheetDetailHeadersByGroup,
   DETAIL_GROUP_KEYS,
-  MONTH_DETAIL_COLS_PER_BLOCK,
+  MONTH_DETAIL_ANNUAL_LEAVE_COL_COUNT,
   MONTH_DETAIL_OT_COL_COUNT,
   MONTH_DETAIL_PHASE_COLS_PER_BLOCK,
   MONTH_DETAIL_PHASE_WORKDAY_COL_COUNT,
   MONTH_DETAIL_SATS_COL_COUNT,
-  MONTH_DETAIL_TOTAL_COLS_PER_BLOCK,
   MONTH_DETAIL_WORKDAY_COL_COUNT,
   PAYROLL_MONTHLY_DETAIL_COL_WIDTH_PX,
+  monthlyDetailTotalColsPerBlock,
   payrollMonthlyTimesheetTotalColCount,
   resolveMonthlyDetailGroupAndCol,
 } from "@/features/payroll/payrollMonthlyTimesheetLayout";
+import {
+  buildPayrollMonthlyTimesheetAnnualLeaveColsByRowId,
+  EMPTY_PAYROLL_MONTHLY_ANNUAL_LEAVE_COLS,
+  resolvePayrollMonthlyTimesheetMonthIndex,
+  resolvePayrollMonthlyTimesheetYear,
+} from "@/features/payroll/payrollMonthlyTimesheetAnnualLeaveCols";
+import {
+  useAnnualLeaveYearExternal,
+  useLeaveAggYearExternal,
+} from "@/features/leave/annualLeaveLiveExternalHooks";
+import { indexAnnualLeaveYearByEmpKey } from "@/features/leave/annualLeaveEmpKey";
 import {
   isPayrollMonthlyTimesheetSundayLikeDay,
   payrollMonthlyTimesheetDayBodyBgClass,
@@ -81,7 +93,10 @@ import {
   buildPayrollMonthGridOverlayCopy,
   usePayrollMonthModalScrollLock,
 } from "@/features/payroll/payrollMonthModalUi";
-import { isKoreanAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
+import {
+  isKoreanAttendanceRoot,
+  isSeasonalAttendanceRoot,
+} from "@/features/attendance/attendanceSeasonalStt";
 import { usePayrollMonthDayChunks } from "@/features/payroll/usePayrollMonthDayChunks";
 import { invalidatePayrollMonthCache } from "@/features/payroll/payrollMonthCache";
 import { invalidateAnnualLeaveMonthWorkSummaryPersistCache } from "@/features/leave/annualLeaveMonthWorkSummaryPersistCache";
@@ -95,9 +110,10 @@ import PayrollRangeExcelExportModal from "@/features/payroll/PayrollRangeExcelEx
 import PayrollTimesheetPresenceFiltersMenu from "@/features/payroll/PayrollTimesheetPresenceFiltersMenu";
 import { payrollExportDepartmentFilenameSuffix } from "@/features/payroll/payrollExportDepartmentFilter";
 import "./payrollMonthlyTimesheetModal.css";
+import { useToastWhen } from "@/hooks/useToastWhen";
 
 /** Cột cố định trái: STT, Họ tên, MNV, BP, Hệ số TC [px]. */
-const STICKY_COL_WIDTHS = [36, 200, 72, 80, 64];
+const STICKY_COL_WIDTHS = [36, 200, 72, 56, 80, 64];
 const MONTH_DAY_COL_WIDTH = 42;
 
 /** Chiều cao scroll mỗi khối NV (N dòng × ô ngày) — khớp `.pm-ts-data-cell`. */
@@ -165,7 +181,7 @@ const MONTH_DAY_MAIN_CELL_CLASS =
   "pm-ts-day-cell pm-ts-data-cell text-center align-middle leading-none text-slate-900 dark:text-slate-100";
 
 const MONTH_DAY_MAIN_VALUE_CLASS =
-  "pm-ts-day-value tabular-nums text-black dark:text-black";
+  "pm-ts-day-value tabular-nums text-black dark:text-slate-100";
 
 const MONTH_DAY_LEAVE_BADGE_BASE_CLASS = "pm-ts-leave-badge";
 
@@ -315,7 +331,9 @@ function payrollMonthlyEmployeeBlockPropsEqual(prev, next) {
     prev.userDepartments === next.userDepartments &&
     prev.openDayCellEditor === next.openDayCellEditor &&
     prev.tlPage === next.tlPage &&
-    prev.fmtHours === next.fmtHours
+    prev.fmtHours === next.fmtHours &&
+    prev.includeAnnualLeaveCols === next.includeAnnualLeaveCols &&
+    prev.annualLeaveCols === next.annualLeaveCols
   );
 }
 
@@ -508,10 +526,11 @@ const PayrollMonthlyTimesheetDetailCells = memo(
     isLastSub,
     subrowEdgeClass,
     blockStartClass,
+    includeAnnualLeaveCols = false,
   }) {
     return detailValues.map((v, idx) => {
       const { groupIndex: group, colInBlock } =
-        resolveMonthlyDetailGroupAndCol(idx);
+        resolveMonthlyDetailGroupAndCol(idx, includeAnnualLeaveCols);
       const groupBg = payrollMonthlyTimesheetDetailGroupBodyClass(group);
       return (
         <td
@@ -546,6 +565,8 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
     tlPage,
     fmtHours = null,
     onRetryDay,
+    includeAnnualLeaveCols = false,
+    annualLeaveCols = EMPTY_PAYROLL_MONTHLY_ANNUAL_LEAVE_COLS,
   }) {
     const sttDisp = empBlockIdx + 1;
     const employeeStripe =
@@ -557,8 +578,10 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
       () =>
         buildMonthlyDetailMatrixForEmployee(summaries, {
           fmtHours,
+          includeAnnualLeaveCols,
+          annualLeaveCols,
         }),
-      [summaries, fmtHours],
+      [summaries, fmtHours, includeAnnualLeaveCols, annualLeaveCols],
     );
 
     return (
@@ -608,17 +631,27 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
                   ...stickyColStyle(3),
                   ...(isLastSub ? { borderBottom: "2px solid #000" } : null),
                 }}
-                className={`${STICKY_TD_BASE_CLASS} ${stickyColClass(3)} pm-ts-sticky-data-cell pm-ts-data-cell pm-ts-bp-cell text-center ${subrowEdgeClass} ${blockStartClass}`}
-                title={rep?.boPhan ?? ""}
+                className={`${STICKY_TD_BASE_CLASS} ${stickyColClass(3)} pm-ts-sticky-data-cell pm-ts-data-cell pm-ts-dept-code-cell text-center ${subrowEdgeClass} ${blockStartClass}`}
+                title={rep?.maBoPhan ?? ""}
               >
-                {rep?.boPhan ? rep.boPhan : "—"}
+                {rep?.maBoPhan ? String(rep.maBoPhan).trim() : "—"}
               </td>
               <td
                 style={{
                   ...stickyColStyle(4),
                   ...(isLastSub ? { borderBottom: "2px solid #000" } : null),
                 }}
-                className={`${STICKY_TD_BASE_CLASS} ${stickyColClass(4)} pm-ts-sticky-data-cell pm-ts-data-cell pm-ts-coeff-col-cell text-center ${subrowEdgeClass} ${blockStartClass}`}
+                className={`${STICKY_TD_BASE_CLASS} ${stickyColClass(4)} pm-ts-sticky-data-cell pm-ts-data-cell pm-ts-bp-cell text-center ${subrowEdgeClass} ${blockStartClass}`}
+                title={rep?.boPhan ?? ""}
+              >
+                {rep?.boPhan ? rep.boPhan : "—"}
+              </td>
+              <td
+                style={{
+                  ...stickyColStyle(5),
+                  ...(isLastSub ? { borderBottom: "2px solid #000" } : null),
+                }}
+                className={`${STICKY_TD_BASE_CLASS} ${stickyColClass(5)} pm-ts-sticky-data-cell pm-ts-data-cell pm-ts-coeff-col-cell text-center ${subrowEdgeClass} ${blockStartClass}`}
               >
                 {sr.coeff == null ? "\u00a0" : Number(sr.coeff).toFixed(1)}
               </td>
@@ -648,6 +681,7 @@ const PayrollMonthlyTimesheetEmployeeBlock = memo(
                 isLastSub={isLastSub}
                 subrowEdgeClass={subrowEdgeClass}
                 blockStartClass={blockStartClass}
+                includeAnnualLeaveCols={includeAnnualLeaveCols}
               />
             </tr>
           );
@@ -694,7 +728,7 @@ export default function PayrollMonthlyTimesheetModal({
   onAlert,
   /** Danh sách NV ngày đang chọn trên trang lương (fallback khi mở form). */
   employees = [],
-  /** Firebase root — `attendance` (mặc định) hoặc `koreanAttendance`. */
+  /** Firebase root — `attendance` (mặc định), `koreanAttendance` hoặc `seasonalAttendance`. */
   attendanceRootPath = "attendance",
 }) {
   const [localNameFilter, setLocalNameFilter] = useState("");
@@ -789,15 +823,24 @@ export default function PayrollMonthlyTimesheetModal({
   }, [open, departmentFilter, workHoursFilterProp]);
 
   const isKoreanTimesheetSource = isKoreanAttendanceRoot(attendanceRootPath);
+  const isSeasonalTimesheetSource = isSeasonalAttendanceRoot(
+    attendanceRootPath,
+  );
+  const includeAnnualLeaveCols =
+    !isKoreanTimesheetSource && !isSeasonalTimesheetSource;
   const monthlyDetailFmtHours = isKoreanTimesheetSource
     ? fmtPayrollMonthlySummaryHoursCell
     : null;
   const timesheetTitleKey = isKoreanTimesheetSource
     ? "koreanMonthlyTimesheetTitle"
-    : "monthlyTimesheetTitle";
+    : isSeasonalTimesheetSource
+      ? "seasonalMonthlyTimesheetTitle"
+      : "monthlyTimesheetTitle";
   const timesheetTitleDefault = isKoreanTimesheetSource
     ? "KOREAN TIMESHEET - Bảng chấm công tháng"
-    : "Bảng chấm công tháng";
+    : isSeasonalTimesheetSource
+      ? "Bảng chấm công tháng — nhân viên thời vụ"
+      : "Bảng chấm công tháng";
 
   const timesheetZoom = TIMESHEET_ZOOM_LEVELS[timesheetZoomIdx];
 
@@ -849,10 +892,14 @@ export default function PayrollMonthlyTimesheetModal({
     tlPage,
     emptyMessageKey: isKoreanTimesheetSource
       ? "koreanMonthlyTimesheetEmpty"
-      : "monthlyTimesheetEmpty",
+      : isSeasonalTimesheetSource
+        ? "seasonalMonthlyTimesheetEmpty"
+        : "monthlyTimesheetEmpty",
     emptyMessageDefault: isKoreanTimesheetSource
       ? "Không có dữ liệu điểm danh Korean Timesheet trong tháng này."
-      : "Không có dữ liệu điểm danh nào trong tháng này.",
+      : isSeasonalTimesheetSource
+        ? "Không có dữ liệu điểm danh thời vụ trong tháng này."
+        : "Không có dữ liệu điểm danh nào trong tháng này.",
   });
 
   useEffect(() => {
@@ -923,6 +970,45 @@ export default function PayrollMonthlyTimesheetModal({
     if (!hasRemoteUpdate || !open) return;
     invalidatePayrollMonthCache(cacheKey);
   }, [hasRemoteUpdate, open, cacheKey]);
+
+  useToastWhen(
+    error &&
+      error !==
+        tlPage(
+          isKoreanTimesheetSource
+            ? "koreanMonthlyTimesheetEmpty"
+            : isSeasonalTimesheetSource
+              ? "seasonalMonthlyTimesheetEmpty"
+              : "monthlyTimesheetEmpty",
+          isKoreanTimesheetSource
+            ? "Không có dữ liệu điểm danh Korean Timesheet trong tháng này."
+            : isSeasonalTimesheetSource
+              ? "Không có dữ liệu điểm danh thời vụ trong tháng này."
+              : "Không có dữ liệu điểm danh nào trong tháng này.",
+        )
+      ? error
+      : "",
+  );
+  useToastWhen(
+    errorDayCount > 0
+      ? tlPage(
+          "monthlyTimesheetErrorDays",
+          "{{count}} ngày tải lỗi — dữ liệu các ngày này có thể chưa chính xác.",
+          { count: errorDayCount },
+        )
+      : "",
+    "error",
+    errorDayCount > 0 ? "payroll-error-days" : "",
+  );
+  useToastWhen(
+    hasRemoteUpdate
+      ? tlPage(
+          "monthlyTimesheetRemoteUpdate",
+          "Có cập nhật mới từ người dùng khác.",
+        )
+      : "",
+    "warning",
+  );
 
   useEffect(() => {
     if (!loading && !loadingMore && displayDayChunks.length) {
@@ -1159,6 +1245,53 @@ export default function PayrollMonthlyTimesheetModal({
       dirtyPatch: summaryDirtyPatch,
     });
 
+  const timesheetYear = resolvePayrollMonthlyTimesheetYear(monthRange.first);
+  const timesheetMonthIndex = resolvePayrollMonthlyTimesheetMonthIndex(
+    monthRange.first,
+  );
+  const { data: annualLeaveYearData } = useAnnualLeaveYearExternal(
+    timesheetYear,
+    open && includeAnnualLeaveCols,
+  );
+  const { data: leaveAggYearData } = useLeaveAggYearExternal(
+    timesheetYear,
+    open && includeAnnualLeaveCols,
+  );
+
+  const annualLeaveByEmpKey = useMemo(() => {
+    if (!includeAnnualLeaveCols) return null;
+    return indexAnnualLeaveYearByEmpKey(annualLeaveYearData);
+  }, [includeAnnualLeaveCols, annualLeaveYearData]);
+
+  const annualLeaveColsPrevRef = useRef(null);
+  const annualLeaveColsByRowId = useMemo(() => {
+    if (!includeAnnualLeaveCols) {
+      annualLeaveColsPrevRef.current = null;
+      return null;
+    }
+    const map = buildPayrollMonthlyTimesheetAnnualLeaveColsByRowId({
+      year: timesheetYear,
+      monthIndex: timesheetMonthIndex,
+      ids: filteredIds,
+      repById,
+      summaryById: monthlySummaryById,
+      annualLeaveByEmpKey,
+      leaveAggYearData,
+      previousByRowId: annualLeaveColsPrevRef.current,
+    });
+    annualLeaveColsPrevRef.current = map;
+    return map;
+  }, [
+    includeAnnualLeaveCols,
+    timesheetYear,
+    timesheetMonthIndex,
+    filteredIds,
+    repById,
+    monthlySummaryById,
+    annualLeaveByEmpKey,
+    leaveAggYearData,
+  ]);
+
   const isGridFullyBusy = isGridBusy || isSummariesBusy;
 
   const gridOverlayCopy = useMemo(
@@ -1257,6 +1390,10 @@ export default function PayrollMonthlyTimesheetModal({
 
   const timesheetTotalColCount = payrollMonthlyTimesheetTotalColCount(
     monthRange.keys.length,
+    { includeAnnualLeaveCols },
+  );
+  const totalDetailColCount = monthlyDetailTotalColsPerBlock(
+    includeAnnualLeaveCols,
   );
 
   const stickyColsTotalWidth = useMemo(
@@ -1304,8 +1441,11 @@ export default function PayrollMonthlyTimesheetModal({
   ]);
 
   const detailHeadersByGroup = useMemo(
-    () => buildPayrollMonthlyTimesheetDetailHeadersByGroup(tlPage),
-    [tlPage],
+    () =>
+      buildPayrollMonthlyTimesheetDetailHeadersByGroup(tlPage, {
+        includeAnnualLeaveCols,
+      }),
+    [tlPage, includeAnnualLeaveCols],
   );
 
   const buildExportIds = useCallback(
@@ -1364,6 +1504,17 @@ export default function PayrollMonthlyTimesheetModal({
           }
         }
 
+        const exportAnnualLeaveColsByRowId = includeAnnualLeaveCols
+          ? buildPayrollMonthlyTimesheetAnnualLeaveColsByRowId({
+              year: timesheetYear,
+              monthIndex: timesheetMonthIndex,
+              ids: exportIds,
+              repById,
+              summaryById: exportSummaryById,
+              annualLeaveByEmpKey,
+              leaveAggYearData,
+            })
+          : null;
         const buf = await writePayrollMonthlyTimesheetWorkbook({
           tlPage,
           monthKeys: monthRange.keys,
@@ -1373,12 +1524,9 @@ export default function PayrollMonthlyTimesheetModal({
           summaryById: exportSummaryById,
           detailHeaders: detailHeadersByGroup,
           koreanTimesheetRules: isKoreanTimesheetSource,
+          includeAnnualLeaveCols,
+          annualLeaveColsByRowId: exportAnnualLeaveColsByRowId,
         });
-        const blob = new Blob([buf], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
         const d = new Date();
         const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(
           2,
@@ -1387,12 +1535,12 @@ export default function PayrollMonthlyTimesheetModal({
           2,
           "0",
         )}${String(d.getMinutes()).padStart(2, "0")}`;
-        a.href = url;
         const deptSuffix =
           payrollExportDepartmentFilenameSuffix(exportDepartments);
-        a.download = `BangChamCongThang_${stamp}${deptSuffix}.xlsx`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadXlsxBuffer(
+          buf,
+          `BangChamCongThang_${stamp}${deptSuffix}.xlsx`,
+        );
         setExportModalOpen(false);
       } catch (e) {
         setError(
@@ -1416,6 +1564,12 @@ export default function PayrollMonthlyTimesheetModal({
       summaryCacheRef,
       tlPage,
       isKoreanTimesheetSource,
+      includeAnnualLeaveCols,
+      timesheetYear,
+      timesheetMonthIndex,
+      annualLeaveByEmpKey,
+      leaveAggYearData,
+      repById,
     ],
   );
 
@@ -1449,7 +1603,7 @@ export default function PayrollMonthlyTimesheetModal({
   return createPortal(
     <>
       <div
-        className="fixed inset-0 flex flex-col overflow-hidden overscroll-none bg-black/50 p-2 backdrop-blur-[1px] sm:p-4"
+        className="fixed inset-0 flex flex-col overflow-hidden overscroll-none bg-black/50 p-0 backdrop-blur-[1px] sm:p-4"
         style={{ zIndex: "var(--z-modal-backdrop, 1200)" }}
         role="dialog"
         aria-modal="true"
@@ -1498,16 +1652,10 @@ export default function PayrollMonthlyTimesheetModal({
 
           <div className="min-h-0 flex flex-1 flex-col p-2 sm:p-3">
             {hasRemoteUpdate ? (
-              <div className="pm-ts-update-banner mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950">
-                <span>
-                  {tlPage(
-                    "monthlyTimesheetRemoteUpdate",
-                    "Có cập nhật mới từ người dùng khác.",
-                  )}
-                </span>
+              <div className="mb-2 flex flex-wrap justify-end">
                 <button
                   type="button"
-                  className="rounded border border-amber-400 bg-white px-2 py-1 font-bold hover:bg-amber-100"
+                  className="rounded border border-slate-300 bg-white px-2 py-1 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                   onClick={() => {
                     setHasRemoteUpdate(false);
                     void loadMonth({ force: true });
@@ -1518,17 +1666,10 @@ export default function PayrollMonthlyTimesheetModal({
               </div>
             ) : null}
             {errorDayCount > 0 ? (
-              <div className="pm-ts-error-banner mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-950">
-                <span>
-                  {tlPage(
-                    "monthlyTimesheetErrorDays",
-                    "{{count}} ngày tải lỗi — dữ liệu các ngày này có thể chưa chính xác.",
-                    { count: errorDayCount },
-                  )}
-                </span>
+              <div className="mb-2 flex flex-wrap justify-end">
                 <button
                   type="button"
-                  className="rounded border border-rose-400 bg-white px-2 py-1 font-bold hover:bg-rose-100"
+                  className="rounded border border-slate-300 bg-white px-2 py-1 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                   onClick={() => {
                     for (const ch of displayDayChunks) {
                       if (isPayrollMonthChunkFetchError(ch)) {
@@ -1688,8 +1829,11 @@ export default function PayrollMonthlyTimesheetModal({
                   )}
                 />
               ) : error && !displayDayChunks.length ? (
-                <p className="py-8 text-center text-sm font-semibold text-red-600 dark:text-red-400">
-                  {error}
+                <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                  {tlPage(
+                    "monthlyTimesheetEmpty",
+                    "Không có dữ liệu điểm danh nào trong tháng này.",
+                  )}
                 </p>
               ) : (
                 <div
@@ -1710,7 +1854,7 @@ export default function PayrollMonthlyTimesheetModal({
                   >
                     <thead className="pm-ts-thead">
                       <tr className="bg-slate-100 dark:bg-slate-800">
-                        {[0, 1, 2, 3, 4].map((ci) => (
+                        {[0, 1, 2, 3, 4, 5].map((ci) => (
                           <th
                             key={`h1-${ci}`}
                             rowSpan={3}
@@ -1723,18 +1867,26 @@ export default function PayrollMonthlyTimesheetModal({
                             }}
                             className={`${STICKY_TH_BASE_CLASS} ${stickyColClass(ci)} text-center align-middle`}
                           >
-                            {ci === 3
-                              ? tlPage("monthlyTimesheetColDept", "BP")
-                              : ci === 4
-                                ? tlPage("monthlyTimesheetColCoeff", "Hệ số TC")
-                                : ci === 0
-                                  ? tlPage("monthlyTimesheetColStt", "STT")
-                                  : ci === 1
+                            {ci === 0
+                              ? tlPage("monthlyTimesheetColStt", "STT")
+                              : ci === 1
+                                ? tlPage(
+                                    "monthlyTimesheetColName",
+                                    "Họ và tên",
+                                  )
+                                : ci === 2
+                                  ? tlPage("monthlyTimesheetColMnv", "MNV")
+                                  : ci === 3
                                     ? tlPage(
-                                        "monthlyTimesheetColName",
-                                        "Họ và tên",
+                                        "monthlyTimesheetColDeptCode",
+                                        "Mã BP",
                                       )
-                                    : tlPage("monthlyTimesheetColMnv", "MNV")}
+                                    : ci === 4
+                                      ? tlPage("monthlyTimesheetColDept", "BP")
+                                      : tlPage(
+                                          "monthlyTimesheetColCoeff",
+                                          "Hệ số TC",
+                                        )}
                           </th>
                         ))}
                         <th
@@ -1748,7 +1900,7 @@ export default function PayrollMonthlyTimesheetModal({
                           )}
                         </th>
                         <th
-                          colSpan={MONTH_DETAIL_TOTAL_COLS_PER_BLOCK}
+                          colSpan={totalDetailColCount}
                           style={monthHeaderStickyStyle(headerRowTops.row1, 90)}
                           className={`${THIN_HEAD_BORDER_CLASS} ${STRONG_BORDER_LEFT_CLASS} pm-ts-banner-head bg-slate-200 px-1 py-1.5 text-center font-extrabold text-slate-900 dark:bg-slate-700 dark:text-slate-100`}
                         >
@@ -1848,6 +2000,24 @@ export default function PayrollMonthlyTimesheetModal({
                             >
                               {tlPage("monthlyRuleGroupOt", "TĂNG CA (Hrs)")}
                             </th>,
+                            ...(isTotal && includeAnnualLeaveCols
+                              ? [
+                                  <th
+                                    key={`${groupKey}-annual-leave`}
+                                    colSpan={MONTH_DETAIL_ANNUAL_LEAVE_COL_COUNT}
+                                    style={monthHeaderStickyStyle(
+                                      headerRowTops.row2,
+                                      85,
+                                    )}
+                                    className={`${THIN_HEAD_BORDER_CLASS} ${NO_TOP_BORDER_CLASS} pm-ts-detail-group-head ${groupBg} px-1 py-1 text-center font-extrabold uppercase tracking-wide text-slate-900 dark:text-slate-100`}
+                                  >
+                                    {tlPage(
+                                      "monthlyRuleGroupAnnualLeave",
+                                      "PHÉP NĂM",
+                                    )}
+                                  </th>,
+                                ]
+                              : []),
                             ...(MONTH_DETAIL_SATS_COL_COUNT > 0
                               ? [
                                   <th
@@ -1929,6 +2099,11 @@ export default function PayrollMonthlyTimesheetModal({
                                 tlPage={tlPage}
                                 fmtHours={monthlyDetailFmtHours}
                                 onRetryDay={patchDay}
+                                includeAnnualLeaveCols={includeAnnualLeaveCols}
+                                annualLeaveCols={
+                                  annualLeaveColsByRowId?.get(rowId) ??
+                                  EMPTY_PAYROLL_MONTHLY_ANNUAL_LEAVE_COLS
+                                }
                               />
                             </tbody>
                           );
@@ -1967,16 +2142,16 @@ export default function PayrollMonthlyTimesheetModal({
                             tlPage={tlPage}
                             fmtHours={monthlyDetailFmtHours}
                             onRetryDay={patchDay}
+                            includeAnnualLeaveCols={includeAnnualLeaveCols}
+                            annualLeaveCols={
+                              annualLeaveColsByRowId?.get(rowId) ??
+                              EMPTY_PAYROLL_MONTHLY_ANNUAL_LEAVE_COLS
+                            }
                           />
                         ))}
                       </tbody>
                     )}
                   </table>
-                  {error && displayDayChunks.length ? (
-                    <p className="mt-2 text-center text-xs text-amber-700 dark:text-amber-300">
-                      {error}
-                    </p>
-                  ) : null}
                   {!filteredIds.length && displayDayChunks.length ? (
                     <p className="mt-4 text-center text-sm text-slate-600 dark:text-slate-300">
                       {tlPage(

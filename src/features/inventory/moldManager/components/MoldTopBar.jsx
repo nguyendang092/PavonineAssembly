@@ -31,6 +31,8 @@ function RulerIcon() {
 export default function MoldTopBar({
   subtitle,
   onExport,
+  exportDisabled = false,
+  exporting = false,
   onAddNew,
   showAddButton,
 }) {
@@ -47,9 +49,16 @@ export default function MoldTopBar({
       </div>
 
       <div className="mold-topbar-actions">
-        <button type="button" className="mold-btn mold-btn--ghost" onClick={onExport}>
+        <button
+          type="button"
+          className="mold-btn mold-btn--ghost"
+          onClick={onExport}
+          disabled={exportDisabled}
+        >
           <FiDownload size={14} aria-hidden="true" />
-          {t("moldManager.exportExcel")}
+          {exporting
+            ? t("moldManager.exportingExcel", { defaultValue: "Đang xuất Excel…" })
+            : t("moldManager.exportExcel")}
         </button>
         {showAddButton ? (
           <button type="button" className="mold-btn mold-btn--primary" onClick={onAddNew}>

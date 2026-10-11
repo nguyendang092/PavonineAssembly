@@ -16,6 +16,7 @@ export const PRODUCTION_LAYOUT_PATHS = [
   "/attendance-list",
   "/seasonal-staff-attendance",
   "/attendance-salary",
+  "/seasonal-staff-salary",
   "/annual-leave",
   "/attendance-dashboard",
   "/korean-timesheet",
@@ -141,6 +142,13 @@ export const PRODUCTION_SIDEBAR_SECTIONS = [
         labelDefault: "Giờ công",
         tone: "emerald",
         resolvePayrollPath: true,
+      },
+      {
+        path: "/seasonal-staff-salary",
+        labelKey: "attendanceList.sidebarSeasonalWorkHours",
+        labelDefault: "Giờ công thời vụ",
+        tone: "teal",
+        appendTodayDate: true,
       },
       {
         path: "/annual-leave",

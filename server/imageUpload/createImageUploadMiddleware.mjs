@@ -1,4 +1,4 @@
-import { ROUTES } from "./constants.mjs";
+import { LEGACY_IMGBB_ROUTE, ROUTES } from "./constants.mjs";
 import { toErrorResponse } from "./errors.mjs";
 import {
   readBearerToken,
@@ -10,7 +10,7 @@ import { isImgbbConfigured, uploadViaImgbb } from "./providers/imgbb.mjs";
 import { parseUploadRequest } from "./validateUploadRequest.mjs";
 import { verifyFirebaseIdToken } from "./verifyFirebaseToken.mjs";
 
-export function buildHealthPayload() {
+function buildHealthPayload() {
   return {
     success: true,
     data: {
@@ -25,11 +25,11 @@ export function buildHealthPayload() {
   };
 }
 
-export async function handleHealthRequest(_req, res) {
+async function handleHealthRequest(_req, res) {
   sendJson(res, 200, buildHealthPayload());
 }
 
-export async function handleUploadRequest(req, res) {
+async function handleUploadRequest(req, res) {
   const token = readBearerToken(req);
   const user = await verifyFirebaseIdToken(token);
   const body = await readJsonBody(req);
@@ -49,7 +49,7 @@ export async function handleUploadRequest(req, res) {
 export function createImageUploadMiddleware() {
   return async (req, res, next) => {
     const pathname = req.url?.split("?")[0] ?? "";
-    const isLegacy = pathname === "/api/imgbb/upload";
+    const isLegacy = pathname === LEGACY_IMGBB_ROUTE;
     const isUpload = pathname === ROUTES.UPLOAD || isLegacy;
     const isHealth = pathname === ROUTES.HEALTH;
 
@@ -85,6 +85,3 @@ export function createImageUploadMiddleware() {
     }
   };
 }
-
-/** @deprecated Dùng createImageUploadMiddleware */
-export const createImgbbUploadMiddleware = createImageUploadMiddleware;

@@ -5,6 +5,9 @@ import {
   buildCompareSttRankMap,
   mergeCompareDepartmentListChartAligned,
   mergeCompareDepartmentListOfficial,
+  computeCompareRows,
+  previousDateOf,
+  sumCompareRowsTotals,
 } from "./attendanceCompareEmployeesLogic";
 import { sortEmployeesStableAsc } from "./attendanceListSort";
 import { resolveAttendanceDisplayStt } from "./attendanceSeasonalStt";
@@ -13,6 +16,14 @@ const normalizeDepartment = (v) =>
   String(v ?? "")
     .trim()
     .toLowerCase();
+
+describe("previousDateOf", () => {
+  it("uses local calendar date, not UTC ISO", () => {
+    expect(previousDateOf("2026-03-01")).toBe("2026-02-28");
+    expect(previousDateOf("2026-01-01")).toBe("2025-12-31");
+    expect(previousDateOf("bad")).toBe("");
+  });
+});
 
 describe("buildCompareSttRankMap", () => {
   it("matches table STT order for seasonal rows without sttThoiVu", () => {
@@ -108,5 +119,43 @@ describe("mergeCompareDepartmentListChartAligned", () => {
       normalizeDepartment,
     );
     expect(merged).toEqual(["Extrusion", "Press", "HairLine", "Anodizing"]);
+  });
+});
+
+describe("computeCompareRows", () => {
+  it("marks hasDiff and delta from previous/current-only maps", () => {
+    const prevByDept = new Map([
+      [
+        "MC",
+        new Map([
+          ["a", { stt: 1, label: "A" }],
+          ["b", { stt: 2, label: "B" }],
+        ]),
+      ],
+    ]);
+    const currByDept = new Map([
+      [
+        "MC",
+        new Map([
+          ["b", { stt: 2, label: "B" }],
+          ["c", { stt: 3, label: "C" }],
+        ]),
+      ],
+    ]);
+    const [row] = computeCompareRows(["MC"], prevByDept, currByDept);
+    expect(row.previousCount).toBe(2);
+    expect(row.currentCount).toBe(2);
+    expect(row.sameCount).toBe(1);
+    expect(row.delta).toBe(0);
+    expect(row.hasDiff).toBe(true);
+    expect(row.previousOnly.map((e) => e.label)).toEqual(["A"]);
+    expect(row.currentOnly.map((e) => e.label)).toEqual(["C"]);
+    expect(sumCompareRowsTotals([row])).toEqual({
+      previous: 2,
+      current: 2,
+      same: 1,
+      previousOnly: 1,
+      currentOnly: 1,
+    });
   });
 });

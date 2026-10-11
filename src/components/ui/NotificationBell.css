@@ -259,10 +259,12 @@
 
 @media (max-width: 640px) {
   .noti-bell-popup {
-    top: 66px;
+    top: calc(var(--app-navbar-height, 3.25rem) + 0.5rem);
     width: calc(100vw - 16px);
-    max-height: calc(100vh - 100px);
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - var(--app-navbar-height, 3.25rem) - 1rem);
     padding: 12px;
+    border-radius: 16px;
   }
 
   .noti-bell-header {

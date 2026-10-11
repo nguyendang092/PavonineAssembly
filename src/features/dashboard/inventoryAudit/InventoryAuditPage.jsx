@@ -14,6 +14,8 @@ import {
   shouldMoveInventoryAuditCell,
 } from "./lib/inventoryAuditCellNav";
 import "./inventoryAudit.css";
+import { toast } from "@/components/ui/toast";
+import { useToastWhen } from "@/hooks/useToastWhen";
 
 function formatQtyTotal(qty) {
   if (qty == null || qty === "") return "0";
@@ -136,6 +138,9 @@ export default function InventoryAuditPage() {
   const [mergeDest, setMergeDest] = useState(INVENTORY_AUDIT_MERGE_DEST_NEW);
   const [exporting, setExporting] = useState(false);
   const tableRef = useRef(null);
+  useToastWhen(error);
+  useToastWhen(saveError);
+  useToastWhen(sourceError);
 
   const viewingWorkspace = useMemo(
     () => workspaces.find((ws) => ws.key === viewingKey) || null,
@@ -221,7 +226,7 @@ export default function InventoryAuditPage() {
       });
     } catch (err) {
       console.error(err);
-      window.alert(tl("exportError", "Không xuất được Excel."));
+      toast.error(tl("exportError", "Không xuất được Excel."));
     } finally {
       setExporting(false);
     }
@@ -359,9 +364,6 @@ export default function InventoryAuditPage() {
               {tl("sourceEmptyState", "Chưa có nguồn.")}
             </p>
           )}
-          {sourceError ? (
-            <p className="inv-audit-source-error">{sourceError}</p>
-          ) : null}
           <div className="inv-audit-source-actions">
             <label className="inv-audit-btn inv-audit-btn--primary inv-audit-source-upload">
               <FiDatabase aria-hidden />
@@ -591,15 +593,13 @@ export default function InventoryAuditPage() {
             </p>
           )}
           <p
-            className={`inv-audit-status${saveError ? " inv-audit-status--error" : ""}${!canEdit ? " inv-audit-status--view" : ""}`}
+            className={`inv-audit-status${!canEdit ? " inv-audit-status--view" : ""}`}
             aria-live="polite"
           >
             {canEdit
               ? saving
                 ? tl("saving", "Đang lưu")
-                : saveError
-                  ? saveError
-                  : tl("savedOwn", "Đã lưu")
+                : tl("savedOwn", "Đã lưu")
               : tl("viewOnlyHint", "Chỉ xem")}
           </p>
         </div>
@@ -693,12 +693,6 @@ export default function InventoryAuditPage() {
         ) : null}
         </div>
       </header>
-
-      {error ? (
-        <div className="inv-audit-alert dashboard-no-print" role="alert">
-          {error}
-        </div>
-      ) : null}
 
       {loading && rows.length === 0 ? (
         <p className="inv-audit-muted dashboard-no-print">

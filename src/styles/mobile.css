@@ -1,0 +1,165 @@
+/**
+ * Lớp giao diện mobile dùng chung — không đổi logic, chỉ layout / vùng chạm / overflow.
+ */
+
+:root {
+  --touch-min: 2.75rem;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (max-width: 1023px) {
+  html,
+  body,
+  #root {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  #app-main-scroll {
+    overflow-x: hidden;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Bảng rộng: cuộn ngang, không kéo cả trang */
+  :is(
+    .attendance-table-scroll,
+    .payroll-salary-table-scroll,
+    .annual-leave-table-scroll,
+    .s90d-table-wrap,
+    .mold-table-wrap,
+    .wah-inv-table-scroll,
+    .inv-audit-table-wrap,
+    .form-library-table-wrap,
+    .overflow-x-auto
+  ) {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  /* Ô nhập trên thanh công cụ — 16px để iOS không zoom */
+  :is(
+      .attendance-toolbar-controls,
+      .s90d-toolbar,
+      .navigation-board-page,
+      .wah-inv-filter-bar,
+      .form-library-toolbar,
+      .mold-topbar,
+      .annual-leave-filterbar,
+      .attendance-dashboard__filters,
+      .inv-audit-ws-sidebar-search
+    )
+    :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
+      [type="hidden"]
+    ):not([type="range"]) {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  .hr-page-compact {
+    padding: 0.25rem 0.5rem 0.75rem;
+  }
+
+  .hr-page-compact .attendance-toolbar-controls .h-8 {
+    height: var(--touch-min);
+    min-height: var(--touch-min);
+  }
+
+  .hr-page-compact .attendance-toolbar-controls {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  footer {
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-scroll-actions {
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+    bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.mobile-chrome-toggle {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .mobile-chrome-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    background: #fff;
+    color: #1d4ed8;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.14);
+    cursor: pointer;
+  }
+
+  .mobile-chrome-toggle[aria-pressed="true"] {
+    background: #1d4ed8;
+    color: #fff;
+    border-color: #1d4ed8;
+  }
+
+  html.dark .mobile-chrome-toggle {
+    background: #0f172a;
+    border-color: #334155;
+    color: #93c5fd;
+  }
+
+  html.dark .mobile-chrome-toggle[aria-pressed="true"] {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+  }
+
+  .attendance-with-sidebar__nav {
+    transition: transform 0.22s ease, opacity 0.22s ease;
+  }
+
+  html.mobile-chrome-collapsed .attendance-with-sidebar {
+    --att-mobile-nav-h: 0px;
+  }
+
+  html.mobile-chrome-collapsed .attendance-with-sidebar__nav {
+    transform: translateY(-110%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  html.mobile-chrome-collapsed .attendance-with-sidebar__main {
+    margin-top: 0;
+  }
+
+  html.mobile-chrome-collapsed .attendance-toolbar-controls,
+  html.mobile-chrome-collapsed .annual-leave-topbar,
+  html.mobile-chrome-collapsed .annual-leave-filterbar,
+  html.mobile-chrome-collapsed .attendance-dashboard__filters,
+  html.mobile-chrome-collapsed .attendance-dashboard__toolbar,
+  html.mobile-chrome-collapsed .wah-inv-filter-bar,
+  html.mobile-chrome-collapsed .form-library-hero,
+  html.mobile-chrome-collapsed .form-library-toolbar,
+  html.mobile-chrome-collapsed .mold-sidebar,
+  html.mobile-chrome-collapsed .wpd-sidebar,
+  html.mobile-chrome-collapsed .inv-audit-ws-sidebar {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .certificate-generator-page {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: calc(100dvh - var(--app-navbar-height, 3.25rem) - 1rem);
+    overflow: auto !important;
+  }
+}

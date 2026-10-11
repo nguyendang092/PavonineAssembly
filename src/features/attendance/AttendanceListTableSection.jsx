@@ -139,7 +139,7 @@ function AttendanceListTableSection({
     : "";
 
   return (
-    <div className="attendance-table-compact min-w-0 w-full max-w-none bg-white">
+    <div className="attendance-table-compact min-w-0 w-full max-w-none bg-white dark:bg-slate-950">
       <div
         ref={shouldVirtualize ? scrollRef : null}
         className={`attendance-table-scroll min-w-0 w-full max-w-full ${outerScrollClass} ${verticalScrollClass}`}

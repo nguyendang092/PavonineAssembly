@@ -698,6 +698,34 @@
   }
 }
 
+html.dark .attendance-daily-report {
+  --adr-navy: #5eead4;
+  --adr-bg: #020617;
+  --adr-surface: #0f172a;
+  --adr-line: #334155;
+  --adr-text: #e2e8f0;
+  --adr-muted: #94a3b8;
+}
+
+html.dark .adr-export-btn:hover:not(:disabled) {
+  background: #1e293b;
+}
+
+html.dark .adr-export-btn--primary {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #ecfdf5;
+}
+
+html.dark .adr-thead__main th {
+  background: #115e59;
+  color: #ecfdf5;
+}
+
+html.dark .adr-cat {
+  background: #0f172a;
+}
+
 @media print {
   .adr-no-export {
     display: none !important;

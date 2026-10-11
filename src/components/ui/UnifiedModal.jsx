@@ -47,25 +47,25 @@ const UnifiedModal = ({
   const variantStyles = {
     info: {
       header: "bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600",
-      text: "text-indigo-700",
+      text: "text-indigo-700 dark:text-indigo-300",
       icon: "ℹ️",
       buttonPrimary: "bg-gradient-to-r from-indigo-600 to-purple-600",
     },
     warning: {
       header: "bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400",
-      text: "text-blue-700",
+      text: "text-blue-700 dark:text-sky-300",
       icon: "⚠️",
       buttonPrimary: "bg-gradient-to-r from-amber-500 to-orange-500",
     },
     success: {
       header: "bg-gradient-to-r from-green-500 via-emerald-600 to-teal-600",
-      text: "text-green-700",
+      text: "text-green-700 dark:text-emerald-300",
       icon: "✅",
       buttonPrimary: "bg-gradient-to-r from-green-500 to-emerald-600",
     },
     danger: {
       header: "bg-gradient-to-r from-red-600 via-pink-600 to-rose-700",
-      text: "text-red-700",
+      text: "text-red-700 dark:text-rose-300",
       icon: "🚨",
       buttonPrimary: "bg-gradient-to-r from-red-600 to-pink-600",
     },

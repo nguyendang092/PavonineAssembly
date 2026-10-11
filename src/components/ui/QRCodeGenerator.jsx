@@ -1,13 +1,12 @@
 import React, { useRef, useState, useEffect } from "react";
-import AlertMessage from "./AlertMessage";
 import QRCode from "qrcode";
+import { toast } from "./toast";
 
 function QRCodeGenerator() {
   const [qrValue, setQrValue] = useState("BN96-63323A DZ9M");
   const [qrSize, setQrSize] = useState(200);
   const [fgColor, setFgColor] = useState("#000000");
   const [bgColor, setBgColor] = useState("#ffffff");
-  const [toast, setToast] = useState("");
   const ERROR_LEVEL = "H";
   const canvasRef = useRef(null);
 
@@ -65,12 +64,13 @@ function QRCodeGenerator() {
     }).catch((err) => console.error(err));
   }, [qrValue, qrSize, fgColor, bgColor]);
 
-  const showToast = (msg = "") => {
-    setToast(msg);
+  const showToast = (msg = "", type = "info") => {
+    if (!msg) return;
+    toast.show({ type, message: msg, duration: 1800 });
   };
 
   const handleDownloadQR = async (format = "png") => {
-    if (!canvasRef.current) return showToast("Không có QR để tải");
+    if (!canvasRef.current) return showToast("Không có QR để tải", "warning");
     try {
       const validFgColor = validateHexColor(fgColor);
       const validBgColor = validateHexColor(bgColor);
@@ -103,36 +103,36 @@ function QRCodeGenerator() {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
       }
-      showToast("Đã tải xuống");
+      showToast("Đã tải xuống", "success");
     } catch (e) {
       console.error(e);
-      showToast("Lỗi khi tải");
+      showToast("Lỗi khi tải", "error");
     }
   };
 
   const handlePrintQR = () => {
-    if (!canvasRef.current) return showToast("Không có QR để in");
+    if (!canvasRef.current) return showToast("Không có QR để in", "warning");
     try {
       const image = canvasRef.current.toDataURL("image/png");
       const w = window.open("", "_blank");
-      if (!w) return showToast("Trình duyệt chặn popup");
+      if (!w) return showToast("Trình duyệt chặn popup", "warning");
       w.document.write(
         `<!doctype html><html><head><title>In QR</title><style>body{margin:0;display:flex;align-items:center;justify-content:center;height:100vh}</style></head><body><img src="${image}" style="max-width:90%;height:auto" onload="window.print();setTimeout(()=>window.close(),200)"/></body></html>`,
       );
       w.document.close();
     } catch (e) {
       console.error(e);
-      showToast("Lỗi in");
+      showToast("Lỗi in", "error");
     }
   };
 
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(qrValue || "");
-      showToast("Đã sao chép");
+      showToast("Đã sao chép", "success");
     } catch (e) {
       console.error(e);
-      showToast("Không thể sao chép");
+      showToast("Không thể sao chép", "error");
     }
   };
 
@@ -152,7 +152,7 @@ function QRCodeGenerator() {
             <button
               onClick={() => {
                 setQrValue("BN96-63323A DZ9M");
-                showToast("Mẫu được đặt lại");
+                showToast("Mẫu được đặt lại", "success");
               }}
               className="rounded-lg border bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
@@ -332,18 +332,6 @@ function QRCodeGenerator() {
               </div>
             </div>
           </aside>
-        </div>
-
-        <div className="mt-6">
-          <AlertMessage
-            alert={{
-              show: Boolean(toast),
-              type: "info",
-              message: toast,
-            }}
-            autoHideMs={1800}
-            onClose={() => setToast("")}
-          />
         </div>
       </div>
     </div>

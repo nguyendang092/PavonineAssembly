@@ -1,5 +1,6 @@
 import * as XLSX from "@e965/xlsx";
 import { ref, update } from "firebase/database";
+import { toast } from "@/components/ui/toast";
 
 function sanitizeKey(key) {
   return key?.toString().replace(/[.#$/\[\]]/g, "_") || "unknown";
@@ -13,7 +14,7 @@ export function uploadNgFaultyExcel(
   { db, user, logUserAction, onLoading, ngRoot = "ng" },
 ) {
   if (!file) {
-    alert("Vui lòng chọn file Excel!");
+    toast.warning("Vui lòng chọn file Excel!");
     return Promise.resolve();
   }
   onLoading?.(true);
@@ -33,7 +34,7 @@ export function uploadNgFaultyExcel(
           !jsonData[0]?.ItemCode ||
           typeof jsonData[0]?.FaultyQuantity === "undefined"
         ) {
-          alert("File Excel thiếu cột hoặc sai định dạng!");
+          toast.error("File Excel thiếu cột hoặc sai định dạng!");
           resolve();
           return;
         }
@@ -79,11 +80,11 @@ export function uploadNgFaultyExcel(
           );
         }
         await update(ref(db), updates);
-        alert("Upload thành công!");
+        toast.success("Upload thành công!");
         resolve();
       } catch (err) {
         console.error("Lỗi xử lý file:", err);
-        alert("Lỗi xử lý file Excel: " + err.message);
+        toast.error("Lỗi xử lý file Excel: " + err.message);
         reject(err);
       } finally {
         onLoading?.(false);

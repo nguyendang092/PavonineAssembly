@@ -22,6 +22,7 @@ import {
 } from "@/features/payroll/payrollNightOtMeta";
 
 import { PAYROLL_EMP } from "@/features/payroll/payrollEmployeeFields";
+import { isSeasonalAttendanceRoot } from "@/features/attendance/attendanceSeasonalStt";
 
 function normalizePayrollMonthRowIdKey(key) {
   return String(key ?? "").trim();
@@ -70,6 +71,7 @@ function buildPayrollMonthByMonthEmployeeKeyMapForRaw(employees) {
  */
 const PAYROLL_MONTH_SLIM_KEYS = [
   PAYROLL_EMP.STT,
+  "sttThoiVu",
   PAYROLL_EMP.MNV,
   PAYROLL_EMP.MVT,
   PAYROLL_EMP.DEPT_CODE,
@@ -161,8 +163,8 @@ export function reconcilePayrollEmployeesFromBase(
 
 function sortPayrollEmployeesStable(rows) {
   return [...rows].sort((a, b) => {
-    const aStt = Number(a?.stt);
-    const bStt = Number(b?.stt);
+    const aStt = Number(a?.sttThoiVu ?? a?.stt);
+    const bStt = Number(b?.sttThoiVu ?? b?.stt);
     const aSttNorm = Number.isFinite(aStt) ? aStt : Number.POSITIVE_INFINITY;
     const bSttNorm = Number.isFinite(bStt) ? bStt : Number.POSITIVE_INFINITY;
     return aSttNorm - bSttNorm;
@@ -179,12 +181,20 @@ function slimPayrollMonthEmployeeRecord(emp) {
   for (const k of PAYROLL_MONTH_SLIM_KEYS) {
     if (Object.prototype.hasOwnProperty.call(emp, k)) o[k] = emp[k];
   }
+  if (
+    (o[PAYROLL_EMP.STT] == null || o[PAYROLL_EMP.STT] === "") &&
+    o.sttThoiVu != null &&
+    o.sttThoiVu !== ""
+  ) {
+    o[PAYROLL_EMP.STT] = o.sttThoiVu;
+  }
   return o;
 }
 
 /** Hồ sơ NV ổn định trên lưới tháng — không gộp giờ vào/ra / phép từ ngày khác. */
 const PAYROLL_MONTH_REP_PROFILE_KEYS = [
   PAYROLL_EMP.STT,
+  "sttThoiVu",
   PAYROLL_EMP.MNV,
   PAYROLL_EMP.MVT,
   PAYROLL_EMP.EMPLOYEE_NAME,
@@ -278,6 +288,7 @@ export function parsePayrollDayFromAttendanceRaw(
   raw,
   prevBaseEmployees = [],
   prevPayrollEmployees = [],
+  options = {},
 ) {
   if (raw == null || typeof raw !== "object") {
     return {
@@ -295,8 +306,11 @@ export function parsePayrollDayFromAttendanceRaw(
   const isOffDay = getIsOffDayFromRaw(raw);
   const isHolidayDay = getIsHolidayDayFromRaw(raw);
   const isCompensatoryDay = getIsCompensatoryDayFromRaw(raw);
+  const seasonal =
+    options.seasonal === true ||
+    isSeasonalAttendanceRoot(options.attendanceRootPath);
   const baseEmployees = sortPayrollEmployeesStable(
-    reconcileAttendanceDayRowsFromRaw(prevBaseEmployees, raw),
+    reconcileAttendanceDayRowsFromRaw(prevBaseEmployees, raw, { seasonal }),
   );
   const earlyOtPaperworkById = sanitizeEarlyOtPaperworkById(
     getEarlyOtPaperworkFromRaw(raw),
@@ -457,8 +471,8 @@ export function buildErrorPayrollMonthDayChunk(dateKey, err) {
  *   lateOtExcludedById: Record<string, boolean>,
  * }}
  */
-export function buildPayrollMonthDayChunkFromRaw(raw, dateKey) {
-  const parsed = parsePayrollDayFromAttendanceRaw(raw);
+export function buildPayrollMonthDayChunkFromRaw(raw, dateKey, options = {}) {
+  const parsed = parsePayrollDayFromAttendanceRaw(raw, [], [], options);
   const slimEmployees = parsed.payrollEmployees.map((e) =>
     slimPayrollMonthEmployeeRecord(e),
   );

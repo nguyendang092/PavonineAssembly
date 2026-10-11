@@ -2,16 +2,12 @@ import React, { useMemo } from "react";
 import { useProductionReportContext } from "../../productionReport/ProductionReportContext";
 import { useReportT } from "../../productionReport/useReportTranslation";
 import { buildProductCodeYieldItems } from "../lib/s90dChartData";
-import { formatS90dYieldPct, resolveS90dCumulativeYieldPct } from "../lib/s90dDisplayUtils";
-
-function formatQty(value) {
-  return Number(value || 0).toLocaleString("vi-VN");
-}
-
-function formatPct(value) {
-  if (value == null || value === "") return "0.0%";
-  return `${Number(value).toLocaleString("vi-VN")}%`;
-}
+import {
+  formatS90dQty,
+  formatS90dUncappedPct,
+  formatS90dYieldPct,
+  resolveS90dCumulativeYieldPct,
+} from "../lib/s90dDisplayUtils";
 
 function S90dYieldRing({ yieldPct, label, sublabel, isValid = true }) {
   if (!isValid || yieldPct == null) {
@@ -119,14 +115,14 @@ export default function S90dKpiCards({
         <p className="s90d-kpi-title">
           {rt("kpiTotalQty", "Tổng số lượng")}
         </p>
-        <p className="s90d-kpi-value">{formatQty(totalRow?.totalQty)}</p>
+        <p className="s90d-kpi-value">{formatS90dQty(totalRow?.totalQty)}</p>
       </div>
 
       <div className="s90d-kpi-card s90d-kpi-card--ok">
         <p className="s90d-kpi-title">
           {rt("kpiOkQty", "Số lượng đạt")}
         </p>
-        <p className="s90d-kpi-value">{formatQty(totalRow?.okQty)}</p>
+        <p className="s90d-kpi-value">{formatS90dQty(totalRow?.okQty)}</p>
       </div>
 
       <div className="s90d-kpi-card s90d-kpi-card--ng">
@@ -134,7 +130,7 @@ export default function S90dKpiCards({
           {rt("kpiNgQty", "Số lượng NG")}
         </p>
         <p className="s90d-kpi-value s90d-kpi-value--ng">
-          {formatQty(totalRow?.ngQty)}
+          {formatS90dQty(totalRow?.ngQty)}
         </p>
       </div>
 
@@ -143,7 +139,7 @@ export default function S90dKpiCards({
           {rt("kpiNgRate", "Tỷ lệ NG")}
         </p>
         <p className="s90d-kpi-value s90d-kpi-value--rate">
-          {ngRatePct == null ? "—" : formatPct(ngRatePct)}
+          {ngRatePct == null ? "—" : formatS90dUncappedPct(ngRatePct, "0.0%")}
         </p>
       </div>
     </div>

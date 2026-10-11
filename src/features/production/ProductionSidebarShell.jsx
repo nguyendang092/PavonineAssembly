@@ -175,6 +175,7 @@ const ITEM_ICONS = {
   "/seasonal-staff-attendance": ICONS.seasonal,
   openAttendanceStatistics: ICONS.statistics,
   "/attendance-salary": ICONS.workHours,
+  "/seasonal-staff-salary": ICONS.workHours,
   "/annual-leave": ICONS.annualLeave,
   "/attendance-dashboard": ICONS.dashboard,
   "/korean-timesheet": ICONS.koreanTimesheet,

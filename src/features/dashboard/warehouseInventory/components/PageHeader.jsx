@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FiDownload, FiRefreshCw, FiTrash2, FiUpload } from "react-icons/fi";
 import { downloadWarehouseInventoryTemplate } from "../lib/downloadWarehouseInventoryTemplate";
+import { useToastWhen } from "@/hooks/useToastWhen";
 
 export default function PageHeader({
   tl,
@@ -15,6 +16,7 @@ export default function PageHeader({
   deleteMonth,
 }) {
   const [deleteMonthKey, setDeleteMonthKey] = useState(monthFilter);
+  useToastWhen(error);
 
   useEffect(() => {
     if (monthFilter) {
@@ -99,12 +101,6 @@ export default function PageHeader({
           ) : null}
         </div>
       </header>
-
-      {error ? (
-        <div className="dashboard-no-print wah-inv-alert" role="alert">
-          {error}
-        </div>
-      ) : null}
 
       {loading && rows.length === 0 ? (
         <p className="dashboard-no-print wah-inv-status">

@@ -1,3 +1,4 @@
+import { getDateKeyBySubtractDays } from "@/utils/dateKey";
 import {
   attendanceProductionDeptMatchKey,
   COMBO_STATS_PRODUCTION_DEPT_DEFAULT_ORDER,
@@ -13,10 +14,9 @@ const ALLOWED_PRODUCTION_MATCH_KEYS = new Set(
 );
 
 export function previousDateOf(dateKey) {
-  const d = new Date(`${String(dateKey || "").trim()}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return "";
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+  const key = String(dateKey || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return "";
+  return getDateKeyBySubtractDays(key, 1);
 }
 
 export function resolveOrderedProductionMatchKeys(
@@ -40,8 +40,14 @@ function compareEmployeeIdentity(emp) {
 }
 
 /** Thứ tự STT theo ngày — cùng sort với bảng điểm danh (`sortEmployeesStableAsc`). */
-export function buildCompareSttRankMap(rows, seasonal = false) {
-  const sorted = sortEmployeesStableAsc(rows || [], { seasonal });
+export function buildCompareSttRankMap(
+  rows,
+  seasonal = false,
+  { alreadySorted = false } = {},
+) {
+  const sorted = alreadySorted
+    ? rows || []
+    : sortEmployeesStableAsc(rows || [], { seasonal });
   const map = new Map();
   sorted.forEach((emp, idx) => {
     const { key } = compareEmployeeIdentity(emp);
@@ -212,15 +218,37 @@ export function computeCompareRows(allDepts, prevByDept, currByDept) {
     sortCompareEmployeeEntries(previousOnly);
     sortCompareEmployeeEntries(currentOnly);
 
+    const previousCount = prevEmpMap.size;
+    const currentCount = currEmpMap.size;
     return {
       department,
-      previousCount: prevEmpMap.size,
-      currentCount: currEmpMap.size,
+      previousCount,
+      currentCount,
+      delta: currentCount - previousCount,
       sameCount,
       previousOnly,
       currentOnly,
+      hasDiff: previousOnly.length > 0 || currentOnly.length > 0,
     };
   });
+}
+
+export function sumCompareRowsTotals(rows) {
+  const totals = {
+    previous: 0,
+    current: 0,
+    same: 0,
+    previousOnly: 0,
+    currentOnly: 0,
+  };
+  for (const row of rows || []) {
+    totals.previous += Number(row.previousCount) || 0;
+    totals.current += Number(row.currentCount) || 0;
+    totals.same += Number(row.sameCount) || 0;
+    totals.previousOnly += row.previousOnly?.length || 0;
+    totals.currentOnly += row.currentOnly?.length || 0;
+  }
+  return totals;
 }
 
 function filterCompareRowsByDepartment(rows, departmentFilter) {
