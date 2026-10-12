@@ -4,20 +4,27 @@
  * Đổi giá trị WEATHER_EFFECT_KEY:
  *   "rain"    — chỉ mưa + sấm
  *   "snow"    — chỉ tuyết
- *   "bubbles"  — bong bóng bay
- *   "sparkles" — hạt sáng lấp lánh
- *   "auto"     — mưa / tuyết / bong bóng / lấp lánh thay phiên
- *   "off"      — tắt
+ *   "bubbles"   — bong bóng bay
+ *   "sparkles"  — hạt sáng lấp lánh
+ *   "fireflies" — đom đóm bay
+ *   "auto"      — mưa / tuyết / bong bóng / lấp lánh / đom đóm thay phiên
+ *   "off"       — tắt
  *
- * Khi đang mở web: Alt + W để xoay rain → snow → bubbles → sparkles → auto → off.
+ * Khi đang mở web: Alt + W để xoay rain → snow → bubbles → sparkles → fireflies → auto → off.
+ * Băng rôn xe tay ga: đổi RAIN_SCOOTER_BANNER_TEXT.
  */
 export const WEATHER_EFFECT_KEY = "rain";
+
+/** Nội dung băng rôn kéo sau xe máy tay ga khi mưa. */
+export const RAIN_SCOOTER_BANNER_TEXT =
+  "Pavonine, xin gửi đến các chị em lời chúc 20/10 thật vui vẻ, luôn xinh tươi, khỏe mạnh.";
 
 export const WEATHER_EFFECT_OPTIONS = [
   "rain",
   "snow",
   "bubbles",
   "sparkles",
+  "fireflies",
   "auto",
   "off",
 ];
