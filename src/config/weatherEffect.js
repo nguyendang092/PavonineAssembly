@@ -13,7 +13,7 @@
  * Khi đang mở web: Alt + W để xoay rain → snow → bubbles → sparkles → fireflies → auto → off.
  * Băng rôn xe tay ga: đổi RAIN_SCOOTER_BANNER_TEXT.
  */
-export const WEATHER_EFFECT_KEY = "rain";
+export const WEATHER_EFFECT_KEY = "fireflies";
 
 /** Nội dung băng rôn kéo sau xe máy tay ga khi mưa. */
 export const RAIN_SCOOTER_BANNER_TEXT =
