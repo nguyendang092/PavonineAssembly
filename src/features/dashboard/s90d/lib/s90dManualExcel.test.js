@@ -20,7 +20,12 @@ describe("s90dManualExcel", () => {
     expect(headers).toContain("Trầy, xước");
     expect(headers).toContain("Lỗi loang màu");
     expect(headers).toContain("Lỗi GAP");
+    expect(headers).toContain("Lỗi sai màu");
+    expect(headers).toContain("Lỗi tróc sơn");
     expect(headers).not.toContain("Lỗi nhuộm");
+    expect(headers.indexOf("Lỗi tróc sơn")).toBe(
+      headers.indexOf("Lỗi sai màu") + 1,
+    );
   });
 
   it("parses spreadsheet rows with board index", () => {

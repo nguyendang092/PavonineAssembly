@@ -200,6 +200,17 @@ function buildHeaderIndexMap(headerRow) {
       }
     });
 
+    if (header === "mau" || header === "loi mau") {
+      map.defects.color = index;
+    }
+    if (
+      header === "troc son" ||
+      header === "loi troc son" ||
+      header === "peeling" ||
+      header.includes("박리")
+    ) {
+      map.defects.paintPeel = index;
+    }
     if (
       header === "loi nhuom" ||
       header === "nhuom" ||

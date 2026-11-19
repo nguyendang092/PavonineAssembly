@@ -25,7 +25,8 @@ export const S90D_DEFECT_COLUMNS = Object.freeze([
   { key: "stain", ko: "얼룩 불량", vi: "Lỗi loang màu", shortVi: "Loang" },
   { key: "gap", ko: "GAP 불량", vi: "Lỗi GAP", shortVi: "GAP" },
   { key: "corrosion", ko: "부식", vi: "Ăn mòn", shortVi: "Mòn" },
-  { key: "color", ko: "컬러", vi: "Màu", shortVi: "Màu" },
+  { key: "color", ko: "컬러 불량", vi: "Lỗi sai màu", shortVi: "Sai màu" },
+  { key: "paintPeel", ko: "박리", vi: "Lỗi tróc sơn", shortVi: "Tróc sơn" },
   { key: "whiteSpot", ko: "백점 불량", vi: "Lỗi chấm trắng", shortVi: "Chấm" },
   {
     key: "assemblyDefect",

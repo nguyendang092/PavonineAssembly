@@ -17,6 +17,16 @@ describe("s90dDefectColumns", () => {
     expect(S90D_DEFECT_COLUMNS.find((column) => column.key === "gap")?.vi).toBe(
       "Lỗi GAP",
     );
+    expect(S90D_DEFECT_COLUMNS.find((column) => column.key === "color")?.vi).toBe(
+      "Lỗi sai màu",
+    );
+    expect(
+      S90D_DEFECT_COLUMNS.find((column) => column.key === "paintPeel"),
+    ).toMatchObject({
+      ko: "박리",
+      vi: "Lỗi tróc sơn",
+    });
+    expect(keys.indexOf("paintPeel")).toBe(keys.indexOf("color") + 1);
   });
 
   it("merges legacy nhuộm (tape) into loang màu (stain)", () => {
